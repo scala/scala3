@@ -59,23 +59,14 @@ object Array {
   def emptyObjectArray  = EmptyArrays.emptyObjectArray
 
   private object EmptyArrays {
-    /** The shared empty `Array[Boolean]` returned by [[Array.emptyBooleanArray]]. */
     val emptyBooleanArray = new Array[Boolean](0)
-    /** The shared empty `Array[Byte]` returned by [[Array.emptyByteArray]]. */
     val emptyByteArray    = new Array[Byte](0)
-    /** The shared empty `Array[Char]` returned by [[Array.emptyCharArray]]. */
     val emptyCharArray    = new Array[Char](0)
-    /** The shared empty `Array[Double]` returned by [[Array.emptyDoubleArray]]. */
     val emptyDoubleArray  = new Array[Double](0)
-    /** The shared empty `Array[Float]` returned by [[Array.emptyFloatArray]]. */
     val emptyFloatArray   = new Array[Float](0)
-    /** The shared empty `Array[Int]` returned by [[Array.emptyIntArray]]. */
     val emptyIntArray     = new Array[Int](0)
-    /** The shared empty `Array[Long]` returned by [[Array.emptyLongArray]]. */
     val emptyLongArray    = new Array[Long](0)
-    /** The shared empty `Array[Short]` returned by [[Array.emptyShortArray]]. */
     val emptyShortArray   = new Array[Short](0)
-    /** The shared empty `Array[Object]` returned by [[Array.emptyObjectArray]]. */
     val emptyObjectArray  = new Array[Object](0)
   }
 
@@ -88,13 +79,7 @@ object Array {
   implicit def toFactory[A : ClassTag](dummy: Array.type): Factory[A, Array[A]] = new ArrayFactory(dummy)
   @SerialVersionUID(3L)
   private class ArrayFactory[A : ClassTag](dummy: Array.type) extends Factory[A, Array[A]] with Serializable {
-    /** Builds an array containing the elements of the given collection.
-     *
-     *  @param it the source of elements to include in the array
-     *  @return a new `Array[A]` holding the elements of `it`, in iteration order
-     */
     def fromSpecific(it: IterableOnce[A]^): Array[A] = Array.from[A](it)
-    /** Returns a new builder that accumulates elements into an `Array[A]`. */
     def newBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder[A]
   }
 

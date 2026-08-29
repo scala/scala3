@@ -147,11 +147,6 @@ object ClassTag {
   @inline
   @SerialVersionUID(1L)
   private class GenericClassTag[T](val runtimeClass: jClass[_]) extends ClassTag[T] {
-    /** Returns a new array with element type `T` and length `len`, created
-     *  reflectively from `runtimeClass`.
-     *
-     *  @param len the length of the new array
-     */
     override def newArray(len: Int): Array[T] = {
       java.lang.reflect.Array.newInstance(runtimeClass, len).asInstanceOf[Array[T]]
     }

@@ -73,32 +73,11 @@ object Symbol extends UniquenessCache[String, Symbol] {
 private[scala] abstract class UniquenessCache[K, V] {
   private val cache = js.Dictionary.empty[V]
 
-  /** Creates the value to cache for a given key; called by `apply` on a cache miss.
-   *
-   *  @param k the key
-   *  @return a fresh value to associate with `k`
-   */
   protected def valueFromKey(k: String): V
-  /** Returns the key under which a given value is cached, if it can be recovered.
-   *
-   *  @param v the value whose key to return
-   *  @return the key of `v`, or `None` if it cannot be determined
-   */
   protected def keyFromValue(v: V): Option[String]
 
-  /** Returns the unique value for the given key, creating and caching it via
-   *  `valueFromKey` on first use.
-   *
-   *  @param name the key to look up
-   *  @return the cached value for `name`
-   */
   def apply(name: String): V =
     cache.getOrElseUpdate(name, valueFromKey(name))
 
-  /** Extracts the key of a value, for use in pattern matching.
-   *
-   *  @param other the value whose key to extract
-   *  @return the key of `other`, or `None` if it cannot be determined
-   */
   def unapply(other: V): Option[String] = keyFromValue(other)
 }

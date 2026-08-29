@@ -62,37 +62,17 @@ object VarArgsBuilder:
   @inline
   private final class JSVarArgsBuilder[T] extends VarArgsBuilder[T]:
     private val array: js.Array[T] = js.Array()
-    /** Pushes `elem` onto the end of the backing `js.Array`.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     def add(elem: T): this.type =
       array.push(elem)
       this
-    /** Pushes each element of `elems`, in order, onto the end of the backing
-     *  `js.Array`.
-     *
-     *  @param elems the sequence of elements to add
-     *  @return this builder
-     */
     def addSeq(elems: Seq[T]): this.type =
       for elem <- elems do
         add(elem)
       this
-    /** Pushes each element of `elems`, in order, onto the end of the backing
-     *  `js.Array`.
-     *
-     *  @param elems the array of elements to add
-     *  @return this builder
-     */
     def addArray(elems: Array[T]): this.type =
       for elem <- elems do
         add(elem)
       this
-    /** Returns the backing `js.Array` converted to a `Seq` by
-     *  `scala.scalajs.runtime.toScalaVarArgs`.
-     */
     def result(): Seq[T] =
       toScalaVarArgs(array)
 
@@ -115,38 +95,17 @@ object VarArgsBuilder:
   @inline
   private final class GenericVarArgsBuilder[T](n: Int) extends VarArgsBuilder[T]:
     private val xs = new Array[AnyRef](n)
-    /** Returns the backing array wrapped in an `ArraySeq.ofRef` cast to
-     *  `ArraySeq[T]`, without copying.
-     */
     def result(): Seq[T] = ArraySeq.ofRef(xs).asInstanceOf[ArraySeq[T]]
     private var i = 0
-    /** Writes `elem`, cast to `AnyRef`, into the next free slot of the backing
-     *  array.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     def add(elem: T): this.type =
       xs(i) = elem.asInstanceOf[AnyRef]
       i += 1
       this
-    /** Writes each element of `elems`, cast to `AnyRef`, in order into
-     *  successive slots of the backing array.
-     *
-     *  @param elems the sequence of elements to add
-     *  @return this builder
-     */
     def addSeq(elems: Seq[T]): this.type =
       for elem <- elems do
         xs(i) = elem.asInstanceOf[AnyRef]
         i += 1
       this
-    /** Writes each element of `elems`, cast to `AnyRef`, in order into
-     *  successive slots of the backing array.
-     *
-     *  @param elems the array of elements to add
-     *  @return this builder
-     */
     def addArray(elems: Array[T]): this.type =
       for elem <- elems do
         xs(i) = elem.asInstanceOf[AnyRef]
@@ -170,37 +129,17 @@ object VarArgsBuilder:
   @inline
   private final class RefVarArgsBuilder[T <: AnyRef](n: Int) extends VarArgsBuilder[T]:
     private val xs = new Array[AnyRef](n)
-    /** Returns the backing array wrapped in an `ArraySeq.ofRef` cast to
-     *  `ArraySeq[T]`, without copying.
-     */
     def result(): Seq[T] = ArraySeq.ofRef(xs).asInstanceOf[ArraySeq[T]]
     private var i = 0
-    /** Writes `elem` into the next free slot of the backing array.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     def add(elem: T): this.type =
       xs(i) = elem
       i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the sequence of elements to add
-     *  @return this builder
-     */
     def addSeq(elems: Seq[T]): this.type =
       for elem <- elems do
         xs(i) = elem
         i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the array of elements to add
-     *  @return this builder
-     */
     def addArray(elems: Array[T]): this.type =
       for elem <- elems do
         xs(i) = elem
@@ -223,35 +162,17 @@ object VarArgsBuilder:
   @inline
   private final class ByteVarArgsBuilder(n: Int) extends VarArgsBuilder[Byte]:
     private val xs = new Array[Byte](n)
-    /** Returns the backing array wrapped in an `ArraySeq.ofByte`, without copying. */
     def result(): Seq[Byte] = ArraySeq.ofByte(xs)
     private var i = 0
-    /** Writes `elem` into the next free slot of the backing array.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     def add(elem: Byte): this.type =
       xs(i) = elem
       i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the sequence of elements to add
-     *  @return this builder
-     */
     def addSeq(elems: Seq[Byte]): this.type =
       for elem <- elems do
         xs(i) = elem
         i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the array of elements to add
-     *  @return this builder
-     */
     def addArray(elems: Array[Byte]): this.type =
       for elem <- elems do
         xs(i) = elem
@@ -274,35 +195,17 @@ object VarArgsBuilder:
   @inline
   private final class ShortVarArgsBuilder(n: Int) extends VarArgsBuilder[Short]:
     private val xs = new Array[Short](n)
-    /** Returns the backing array wrapped in an `ArraySeq.ofShort`, without copying. */
     def result(): Seq[Short] = ArraySeq.ofShort(xs)
     private var i = 0
-    /** Writes `elem` into the next free slot of the backing array.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     def add(elem: Short): this.type =
       xs(i) = elem
       i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the sequence of elements to add
-     *  @return this builder
-     */
     def addSeq(elems: Seq[Short]): this.type =
       for elem <- elems do
         xs(i) = elem
         i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the array of elements to add
-     *  @return this builder
-     */
     def addArray(elems: Array[Short]): this.type =
       for elem <- elems do
         xs(i) = elem
@@ -325,35 +228,17 @@ object VarArgsBuilder:
   @inline
   private final class CharVarArgsBuilder(n: Int) extends VarArgsBuilder[Char]:
     private val xs = new Array[Char](n)
-    /** Returns the backing array wrapped in an `ArraySeq.ofChar`, without copying. */
     def result(): Seq[Char] = ArraySeq.ofChar(xs)
     private var i = 0
-    /** Writes `elem` into the next free slot of the backing array.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     def add(elem: Char): this.type =
       xs(i) = elem
       i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the sequence of elements to add
-     *  @return this builder
-     */
     def addSeq(elems: Seq[Char]): this.type =
       for elem <- elems do
         xs(i) = elem
         i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the array of elements to add
-     *  @return this builder
-     */
     def addArray(elems: Array[Char]): this.type =
       for elem <- elems do
         xs(i) = elem
@@ -376,35 +261,17 @@ object VarArgsBuilder:
   @inline
   private final class IntVarArgsBuilder(n: Int) extends VarArgsBuilder[Int]:
     private val xs = new Array[Int](n)
-    /** Returns the backing array wrapped in an `ArraySeq.ofInt`, without copying. */
     def result(): Seq[Int] = ArraySeq.ofInt(xs)
     private var i = 0
-    /** Writes `elem` into the next free slot of the backing array.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     def add(elem: Int): this.type =
       xs(i) = elem
       i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the sequence of elements to add
-     *  @return this builder
-     */
     def addSeq(elems: Seq[Int]): this.type =
       for elem <- elems do
         xs(i) = elem
         i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the array of elements to add
-     *  @return this builder
-     */
     def addArray(elems: Array[Int]): this.type =
       for elem <- elems do
         xs(i) = elem
@@ -427,35 +294,17 @@ object VarArgsBuilder:
   @inline
   private final class LongVarArgsBuilder(n: Int) extends VarArgsBuilder[Long]:
     private val xs = new Array[Long](n)
-    /** Returns the backing array wrapped in an `ArraySeq.ofLong`, without copying. */
     def result(): Seq[Long] = ArraySeq.ofLong(xs)
     private var i = 0
-    /** Writes `elem` into the next free slot of the backing array.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     def add(elem: Long): this.type =
       xs(i) = elem
       i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the sequence of elements to add
-     *  @return this builder
-     */
     def addSeq(elems: Seq[Long]): this.type =
       for elem <- elems do
         xs(i) = elem
         i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the array of elements to add
-     *  @return this builder
-     */
     def addArray(elems: Array[Long]): this.type =
       for elem <- elems do
         xs(i) = elem
@@ -478,35 +327,17 @@ object VarArgsBuilder:
   @inline
   private final class FloatVarArgsBuilder(n: Int) extends VarArgsBuilder[Float]:
     private val xs = new Array[Float](n)
-    /** Returns the backing array wrapped in an `ArraySeq.ofFloat`, without copying. */
     def result(): Seq[Float] = ArraySeq.ofFloat(xs)
     private var i = 0
-    /** Writes `elem` into the next free slot of the backing array.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     def add(elem: Float): this.type =
       xs(i) = elem
       i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the sequence of elements to add
-     *  @return this builder
-     */
     def addSeq(elems: Seq[Float]): this.type =
       for elem <- elems do
         xs(i) = elem
         i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the array of elements to add
-     *  @return this builder
-     */
     def addArray(elems: Array[Float]): this.type =
       for elem <- elems do
         xs(i) = elem
@@ -529,35 +360,17 @@ object VarArgsBuilder:
   @inline
   private final class DoubleVarArgsBuilder(n: Int) extends VarArgsBuilder[Double]:
     private val xs = new Array[Double](n)
-    /** Returns the backing array wrapped in an `ArraySeq.ofDouble`, without copying. */
     def result(): Seq[Double] = ArraySeq.ofDouble(xs)
     private var i = 0
-    /** Writes `elem` into the next free slot of the backing array.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     def add(elem: Double): this.type =
       xs(i) = elem
       i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the sequence of elements to add
-     *  @return this builder
-     */
     def addSeq(elems: Seq[Double]): this.type =
       for elem <- elems do
         xs(i) = elem
         i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the array of elements to add
-     *  @return this builder
-     */
     def addArray(elems: Array[Double]): this.type =
       for elem <- elems do
         xs(i) = elem
@@ -580,35 +393,17 @@ object VarArgsBuilder:
   @inline
   private final class BooleanVarArgsBuilder(n: Int) extends VarArgsBuilder[Boolean]:
     private val xs = new Array[Boolean](n)
-    /** Returns the backing array wrapped in an `ArraySeq.ofBoolean`, without copying. */
     def result(): Seq[Boolean] = ArraySeq.ofBoolean(xs)
     private var i = 0
-    /** Writes `elem` into the next free slot of the backing array.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     def add(elem: Boolean): this.type =
       xs(i) = elem
       i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the sequence of elements to add
-     *  @return this builder
-     */
     def addSeq(elems: Seq[Boolean]): this.type =
       for elem <- elems do
         xs(i) = elem
         i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the array of elements to add
-     *  @return this builder
-     */
     def addArray(elems: Array[Boolean]): this.type =
       for elem <- elems do
         xs(i) = elem
@@ -631,35 +426,17 @@ object VarArgsBuilder:
   @inline
   private final class UnitVarArgsBuilder(n: Int) extends VarArgsBuilder[Unit]:
     private val xs = new Array[Unit](n)
-    /** Returns the backing array wrapped in an `ArraySeq.ofUnit`, without copying. */
     def result(): Seq[Unit] = ArraySeq.ofUnit(xs)
     private var i = 0
-    /** Writes `elem` into the next free slot of the backing array.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     def add(elem: Unit): this.type =
       xs(i) = elem
       i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the sequence of elements to add
-     *  @return this builder
-     */
     def addSeq(elems: Seq[Unit]): this.type =
       for elem <- elems do
         xs(i) = elem
         i += 1
       this
-    /** Writes each element of `elems`, in order, into successive slots of the
-     *  backing array.
-     *
-     *  @param elems the array of elements to add
-     *  @return this builder
-     */
     def addArray(elems: Array[Unit]): this.type =
       for elem <- elems do
         xs(i) = elem

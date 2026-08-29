@@ -28,10 +28,6 @@ import scala.collection.{IntStepper, Stepper}
 private[collection] final class RangeStepper(protected var myNext: Int, myStep: Int, _i0: Int, _iN: Int)
 extends IndexedStepperBase[IntStepper, RangeStepper](_i0, _iN)
 with IntStepper {
-  /** Returns the next value of the range and advances to the following one, `myStep` further on.
-   *
-   *  @throws NoSuchElementException if no elements remain
-   */
   def nextStep(): Int =
     if (hasStep) {
       val ans = myNext
@@ -40,20 +36,7 @@ with IntStepper {
       ans
     }
     else Stepper.throwNSEE()
-  /** Creates a new `RangeStepper` producing the values at indices `i0` (inclusive) to
-   *  `half` (exclusive), starting from the current `myNext` value.  The caller
-   *  (`trySplit`) advances this stepper's `myNext` past the split-off values.
-   *
-   *  @param half the ending index (exclusive) of the new stepper's range
-   *  @return a stepper over the prefix `[i0, half)`
-   */
   protected def semiclone(half: Int): RangeStepper = new RangeStepper(myNext, myStep, i0, half)
-  /** Splits as in `IndexedStepperBase`, additionally advancing `myNext` past the values
-   *  handed off to the returned prefix stepper.
-   *
-   *  @return the stepper over the first half of the remaining values, or `null` if fewer
-   *          than two values remain
-   */
   override def trySplit(): IntStepper | Null = {
     val old_i0 = i0
     val ans = super.trySplit()

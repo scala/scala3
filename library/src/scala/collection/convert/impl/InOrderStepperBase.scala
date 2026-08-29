@@ -38,35 +38,14 @@ extends EfficientSplit {
    */
   protected def findNext(): Boolean
 
-  /** Creates a stepper of the concrete subtype covering the index range from `i0`
-   *  (inclusive) to `half` (exclusive), carrying over whatever internal state the
-   *  subclass needs.  Called by `trySplit`, which then advances this stepper's
-   *  `i0` to `half`.
-   *
-   *  @param half the ending index (exclusive) of the new stepper's range
-   *  @return a stepper over the prefix `[i0, half)`
-   */
   protected def semiclone(half: Int): Semi
 
-  /** Returns `true` if at least one element remains, advancing `i0` past any gaps to find it. */
   final def hasStep: Boolean = found || findNext()
 
-  /** Returns the Java `Spliterator` characteristics: `ORDERED` only, since gaps make
-   *  the number of remaining elements inexact.
-   */
   def characteristics: Int = Spliterator.ORDERED
 
-  /** Returns `iN - i0`, an upper bound on the number of elements remaining (gaps may
-   *  make the true count smaller).
-   */
   def estimateSize: Long = iN - i0
 
-  /** Splits the remaining index range in half, if possible: returns a new stepper over
-   *  the first half, `[i0, half)`, and advances this stepper to cover `[half, iN)`.
-   *  Because of gaps, the two halves may hold different numbers of elements.
-   *
-   *  @return the stepper over the prefix, or `null` if fewer than two indices remain
-   */
   def trySplit(): Sub | Null = {
     if (iN-1 > i0) {
       val half = (i0 + iN) >>> 1

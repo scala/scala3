@@ -31,13 +31,7 @@ import scala.scalajs.LinkingInfo
 sealed abstract class ArrayBuilder[T]
   extends ReusableBuilder[T, Array[T]]
     with Serializable {
-  /** The number of elements this builder can hold without resizing, typically
-   *  the length of `elems`; 0 while no backing array is allocated.
-   */
   protected[this] var capacity: Int = 0
-  /** The backing array, holding the first `size` elements added to this
-   *  builder, or `null` while no array is allocated.
-   */
   protected[this] def elems: Array[T] | Null // may not be allocated at size = capacity = 0
   /** The number of elements added to this builder so far. */
   protected var size: Int = 0
@@ -48,15 +42,6 @@ sealed abstract class ArrayBuilder[T]
   /** Current number of elements. */
   override def knownSize: Int = size
 
-  /** Grows the backing array, if necessary, so that it can hold at least
-   *  `size` elements.
-   *
-   *  When growing is needed, the capacity starts at 16 and doubles until it
-   *  reaches at least `size`. The initial array is also allocated when none
-   *  exists yet, even for a `size` of 0.
-   *
-   *  @param size the required minimum capacity
-   */
   protected[this] final def ensureSize(size: Int): Unit = {
     if (capacity < size || capacity == 0) {
       var newsize = if (capacity == 0) 16 else capacity * 2
@@ -82,11 +67,6 @@ sealed abstract class ArrayBuilder[T]
    */
   def clear(): Unit = size = 0
 
-  /** Resizes this builder to the new capacity `size`; builders backed by an
-   *  array reallocate it to that length, preserving the elements added so far.
-   *
-   *  @param size the new capacity
-   */
   protected[this] def resize(size: Int): Unit
 
   /** Adds all elements of an array.
@@ -191,29 +171,13 @@ object ArrayBuilder {
   private final class generic[T](elementClass: Class[_]) extends ArrayBuilder[T] {
 
     private val isCharArrayBuilder = classOf[Char] == elementClass
-    /** Never called: this builder overrides every operation that would use a
-     *  backing array, storing its elements in a JavaScript array instead.
-     *
-     *  @throws Error always, if called anyway
-     */
     protected[this] def elems: Array[T] = throw new Error("unreachable")
     private var jsElems: js.Array[Any] = js.Array()
 
-    /** Current number of elements. */
     override def length: Int = jsElems.length
 
-    /** Current number of elements. */
     override def knownSize: Int = jsElems.length
 
-    /** Adds a single element to this builder.
-     *
-     *  Characters are stored as integers, and a `null` element is replaced by
-     *  the zero value of the element class (e.g. 0 for numeric types, `false`
-     *  for `Boolean`, `null` for references).
-     *
-     *  @param elem the element to add
-     *  @return this builder with `elem` appended
-     */
     def addOne(elem: T): this.type = {
       val unboxedElem =
         if (isCharArrayBuilder) elem.asInstanceOf[Char].toInt
@@ -240,11 +204,6 @@ object ArrayBuilder {
       this
     }
 
-    /** Adds all elements of an iterable collection, one by one.
-     *
-     *  @param xs the collection whose elements are added
-     *  @return this builder with the elements of `xs` appended
-     */
     override def addAll(xs: IterableOnce[T]): this.type = {
       val it = xs.iterator
       while (it.hasNext) {
@@ -253,24 +212,11 @@ object ArrayBuilder {
       this
     }
 
-    /** Discards all elements added so far by replacing the underlying
-     *  JavaScript array with a fresh empty one.
-     */
     override def clear(): Unit =
       jsElems = js.Array()
 
-    /** Does nothing: the underlying JavaScript array grows automatically.
-     *
-     *  @param size never used
-     */
     protected[this] def resize(size: Int): Unit = ()
 
-    /** Returns a new array containing all elements added to this builder.
-     *
-     *  The array's element class is the one given at construction, with
-     *  `Unit` mapped to `BoxedUnit` and `Null` and `Nothing` mapped to
-     *  `Object`. This builder's contents are left unchanged.
-     */
     def result(): Array[T] = {
       val elemRuntimeClass =
         if (classOf[Unit] == elementClass) classOf[BoxedUnit]
@@ -279,7 +225,6 @@ object ArrayBuilder {
       genericArrayBuilderResult(elemRuntimeClass, jsElems)
     }
 
-    /** Returns the string `"ArrayBuilder.generic"`. */
     override def toString(): String = "ArrayBuilder.generic"
   }
 
@@ -342,11 +287,6 @@ object ArrayBuilder {
       else java.util.Arrays.copyOf[T](elems, size)
     }
 
-    /** Reallocates the backing array to length `size`, copying the elements
-     *  added so far, and updates `capacity`.
-     *
-     *  @param size the new capacity
-     */
     protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
@@ -426,11 +366,6 @@ object ArrayBuilder {
       newelems
     }
 
-    /** Reallocates the backing array to length `size`, copying the elements
-     *  added so far, and updates `capacity`.
-     *
-     *  @param size the new capacity
-     */
     protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
@@ -500,11 +435,6 @@ object ArrayBuilder {
       newelems
     }
 
-    /** Reallocates the backing array to length `size`, copying the elements
-     *  added so far, and updates `capacity`.
-     *
-     *  @param size the new capacity
-     */
     protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
@@ -574,11 +504,6 @@ object ArrayBuilder {
       newelems
     }
 
-    /** Reallocates the backing array to length `size`, copying the elements
-     *  added so far, and updates `capacity`.
-     *
-     *  @param size the new capacity
-     */
     protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
@@ -648,11 +573,6 @@ object ArrayBuilder {
       newelems
     }
 
-    /** Reallocates the backing array to length `size`, copying the elements
-     *  added so far, and updates `capacity`.
-     *
-     *  @param size the new capacity
-     */
     protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
@@ -722,11 +642,6 @@ object ArrayBuilder {
       newelems
     }
 
-    /** Reallocates the backing array to length `size`, copying the elements
-     *  added so far, and updates `capacity`.
-     *
-     *  @param size the new capacity
-     */
     protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
@@ -796,11 +711,6 @@ object ArrayBuilder {
       newelems
     }
 
-    /** Reallocates the backing array to length `size`, copying the elements
-     *  added so far, and updates `capacity`.
-     *
-     *  @param size the new capacity
-     */
     protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
@@ -870,11 +780,6 @@ object ArrayBuilder {
       newelems
     }
 
-    /** Reallocates the backing array to length `size`, copying the elements
-     *  added so far, and updates `capacity`.
-     *
-     *  @param size the new capacity
-     */
     protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
@@ -944,11 +849,6 @@ object ArrayBuilder {
       newelems
     }
 
-    /** Reallocates the backing array to length `size`, copying the elements
-     *  added so far, and updates `capacity`.
-     *
-     *  @param size the new capacity
-     */
     protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
@@ -1075,10 +975,6 @@ object ArrayBuilder {
       case _ => false
     }
 
-    /** Does nothing: this builder stores no elements and tracks no capacity.
-     *
-     *  @param size never used
-     */
     protected[this] def resize(size: Int): Unit = ()
 
     /** Returns the string `"ArrayBuilder.ofUnit"`. */

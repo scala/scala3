@@ -503,9 +503,6 @@ sealed class NumericRange[T](
     s"${empty}NumericRange $start $preposition $end$stepped"
   }
 
-  /** The name `"NumericRange"`, used as the collection-name prefix in string
-   *  representations.
-   */
   override protected[this] def className = "NumericRange"
 }
 
@@ -730,14 +727,8 @@ object NumericRange {
     private[this] var _hasNext = !self.isEmpty
     private[this] var _next: T = self.start
     private[this] val lastElement: T = if (_hasNext) self.last else self.start
-    /** The number of elements this iterator will still return, or 0 if it is exhausted. */
     override def knownSize: Int = if (_hasNext) num.toInt((lastElement - _next) / self.step) + 1 else 0
-    /** Returns `true` if this iterator has more elements. */
     def hasNext: Boolean = _hasNext
-    /** Returns the next element of the range and advances this iterator.
-     *
-     *  @throws NoSuchElementException if this iterator is exhausted
-     */
     def next(): T = {
       if (!_hasNext) Iterator.empty.next()
       val value = _next

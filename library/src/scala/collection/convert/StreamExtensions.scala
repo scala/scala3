@@ -736,7 +736,6 @@ object StreamExtensions {
     implicit def anyAccumulatorFactoryInfo[A]: AccumulatorFactoryInfo[A, AnyAccumulator[A]] = anyAccumulatorFactoryInfoPrototype.asInstanceOf[AccumulatorFactoryInfo[A, AnyAccumulator[A]]]
 
     private object anyAccumulatorFactoryInfoPrototype extends AccumulatorFactoryInfo[AnyRef, AnyAccumulator[AnyRef]] {
-      /** The [[scala.jdk.AnyAccumulator]] companion object. */
       val companion: AnyRef | Null = AnyAccumulator
     }
 
