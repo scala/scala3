@@ -428,7 +428,6 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
 
     private var index = 0
 
-    /** Returns `true` if at least one entry remains, advancing past empty and vacated slots. */
     def hasNext: Boolean = index < hz.length && {
       var h = hz(index)
       while (h+h == 0) {
@@ -439,11 +438,6 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
       true
     }
 
-    /** Returns the result computed by `nextResult` for the next entry, and advances the iterator.
-     *
-     *  @return the result for the next entry
-     *  @throws NoSuchElementException if no entries remain
-     */
     def next(): A = {
       if (hasNext) {
         val ans = nextResult(kz(index).asInstanceOf[K], vz(index).asInstanceOf[V])
@@ -453,12 +447,6 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
       else throw new NoSuchElementException("next")
     }
 
-    /** Computes this iterator's result for one entry.
-     *
-     *  @param k the entry's key
-     *  @param v the entry's value
-     *  @return the result to produce for the entry `k -> v`
-     */
     protected def nextResult(k: K, v: V): A
   }
 
@@ -719,11 +707,6 @@ object AnyRefMap {
   private final val MissVacant = 0xC0000000
 
   private class ExceptionDefault extends (Any => Nothing) with Serializable {
-    /** Always throws `NoSuchElementException` reporting the missing key; never returns normally.
-     *
-     *  @param k the key that was not found; rendered as `"(null)"` if `null`
-     *  @throws NoSuchElementException always
-     */
     def apply(k: Any): Nothing = throw new NoSuchElementException(if (k == null) "(null)" else k.toString)
   }
   private val exceptionDefault = new ExceptionDefault
@@ -859,13 +842,7 @@ object AnyRefMap {
 
   @SerialVersionUID(3L)
   private object ToFactory extends Factory[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] with Serializable {
-    /** Builds an `AnyRefMap` from a collection of key/value pairs.
-     *
-     *  @param it the key/value pairs
-     *  @return a new `AnyRefMap` containing the pairs of `it`
-     */
     def fromSpecific(it: IterableOnce[(AnyRef, AnyRef)]^): AnyRefMap[AnyRef, AnyRef] = AnyRefMap.from[AnyRef, AnyRef](it)
-    /** Returns a new empty builder for an `AnyRefMap`. */
     def newBuilder: Builder[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] = AnyRefMap.newBuilder[AnyRef, AnyRef]
   }
 
@@ -879,18 +856,7 @@ object AnyRefMap {
    */
   implicit def toBuildFrom[K <: AnyRef, V](factory: AnyRefMap.type): BuildFrom[Any, (K, V), AnyRefMap[K, V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (K, V), AnyRefMap[K, V]]]
   private object ToBuildFrom extends BuildFrom[Any, (AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] {
-    /** Builds an `AnyRefMap` from a collection of key/value pairs.
-     *
-     *  @param from the source collection; never used
-     *  @param it the key/value pairs
-     *  @return a new `AnyRefMap` containing the pairs of `it`
-     */
     def fromSpecific(from: Any)(it: IterableOnce[(AnyRef, AnyRef)]^): AnyRefMap[AnyRef, AnyRef] = AnyRefMap.from(it)
-    /** Returns a new empty builder for an `AnyRefMap`.
-     *
-     *  @param from the source collection; never used
-     *  @return a new reusable builder producing an `AnyRefMap`
-     */
     def newBuilder(from: Any): ReusableBuilder[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] = AnyRefMap.newBuilder[AnyRef, AnyRef]
   }
 

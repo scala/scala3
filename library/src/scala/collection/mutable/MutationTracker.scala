@@ -71,20 +71,10 @@ private object MutationTracker {
   final class CheckedIterator[A](underlying: Iterator[A], mutationCount: => Int) extends AbstractIterator[A] {
     private val expectedCount = mutationCount
 
-    /** Returns `true` if the underlying iterator has more elements, after first
-     *  checking that the collection has not been mutated since this iterator was
-     *  created.
-     *
-     *  @throws ConcurrentModificationException if the mutation count has changed
-     *          since this iterator was created
-     */
     def hasNext: Boolean = {
       checkMutationsForIteration(expectedCount, mutationCount)
       underlying.hasNext
     }
-    /** Returns the next element of the underlying iterator. This method performs
-     *  no mutation check itself; the check happens in `hasNext`.
-     */
     def next(): A = underlying.next()
   }
 }

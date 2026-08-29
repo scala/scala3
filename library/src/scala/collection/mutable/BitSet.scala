@@ -82,23 +82,11 @@ class BitSet(protected[collection] final var elems: Array[Long])
    */
   override def unsorted: Set[Int] = this
 
-  /** The number of 64-bit words currently allocated in the underlying array. */
   protected[collection] final def nwords: Int = elems.length
 
-  /** Returns the word at the given index of the underlying array.
-   *
-   *  @param idx the word index
-   *  @return the word at index `idx`, or `0L` if `idx` is beyond the allocated words
-   */
   protected[collection] final def word(idx: Int): Long =
     if (idx < nwords) elems(idx) else 0L
 
-  /** Creates a new mutable bitset backed directly by the given array, without copying.
-   *
-   *  @param elems the array of `Long` words representing the bits; used as the
-   *               backing array of the result unless empty
-   *  @return a new bitset backed by `elems`, or the empty bitset if `elems` is empty
-   */
   protected[collection] def fromBitMaskNoCopy(elems: Array[Long]): BitSet =
     if (elems.length == 0) empty
     else new BitSet(elems)
@@ -612,7 +600,6 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   @SerialVersionUID(3L)
   private final class SerializationProxy(coll: BitSet) extends scala.collection.BitSet.SerializationProxy(coll) {
-    /** Reconstitutes the bitset from the deserialized words during Java deserialization. */
     protected def readResolve(): Any = BitSet.fromBitMaskNoCopy(elems)
   }
 }

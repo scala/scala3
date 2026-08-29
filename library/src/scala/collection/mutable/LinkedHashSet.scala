@@ -176,18 +176,8 @@ class LinkedHashSet[A]
 
   private abstract class LinkedHashSetIterator[T] extends AbstractIterator[T] {
     private var cur: Entry | Null = firstEntry
-    /** Returns the iterator's result value for the given entry.
-     *
-     *  @param nd the entry to extract the value from
-     *  @return the value this iterator produces for `nd`
-     */
     def extract(nd: Entry): T
-    /** Tests whether there are more entries to visit. */
     def hasNext: Boolean = cur ne null
-    /** Returns the value for the next entry in insertion order.
-     *
-     *  @throws NoSuchElementException if no more entries remain
-     */
     def next(): T =
       if (hasNext) { val r = extract(cur.nn); cur = cur.nn.later; r }
       else Iterator.empty.next()
@@ -449,22 +439,10 @@ object LinkedHashSet extends IterableFactory[LinkedHashSet] {
    *  @param hash the hash value of `key`
    */
   private[mutable] final class Entry[A](val key: A, val hash: Int) {
-    /** The previous entry in insertion order, or `null` if this is the first entry. */
     @annotation.stableNull var earlier: Entry[A] | Null = null
-    /** The next entry in insertion order, or `null` if this is the last entry. */
     @annotation.stableNull var later: Entry[A] | Null = null
-    /** The next entry in the same hash bucket, or `null` if this is the last one. */
     @annotation.stableNull var next: Entry[A] | Null = null
 
-    /** Searches this entry and its bucket successors for a key.
-     *
-     *  Buckets are sorted by ascending hash, so the search stops early once the
-     *  entries' hashes exceed `h`.
-     *
-     *  @param k the key to find
-     *  @param h the improved hash code of `k`
-     *  @return the entry with key `k`, or `null` if the bucket contains none
-     */
     @tailrec
     final def findEntry(k: A, h: Int): Entry[A] | Null =
       if (h == hash && k == key) this

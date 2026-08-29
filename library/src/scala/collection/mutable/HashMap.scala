@@ -355,16 +355,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     private var node: Node[K, V] | Null = null
     private val len = table.length
 
-    /** Extracts the value this iterator yields for the given node.
-     *
-     *  @param nd the node currently visited
-     *  @return the value derived from `nd` (for instance its key)
-     */
     protected def extract(nd: Node[K, V]): A
 
-    /** Returns `true` if there are more nodes to visit, advancing to the next non-empty
-     *  bucket if the current chain is exhausted.
-     */
     def hasNext: Boolean = {
       if(node ne null) true
       else {
@@ -377,10 +369,6 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
       }
     }
 
-    /** Returns the value extracted from the next node.
-     *
-     *  @throws NoSuchElementException if no more nodes remain
-     */
     def next(): A =
       if(!hasNext) Iterator.empty.next()
       else {
@@ -848,70 +836,36 @@ object HashMap extends MapFactory[HashMap] {
 
   @SerialVersionUID(3L)
   private final class DeserializationFactory[K, V](val tableLength: Int, val loadFactor: Double) extends Factory[(K, V), HashMap[K, V]], Serializable {
-    /** Creates a new `HashMap` with the recorded table length and load factor, containing the
-     *  key-value pairs of `it`.
-     *
-     *  @param it the deserialized key-value pairs to add
-     *  @return a new `HashMap` containing the key-value pairs of `it`
-     */
     def fromSpecific(it: IterableOnce[(K, V)]^): HashMap[K, V] = new HashMap[K, V](tableLength, loadFactor).addAll(it)
-    /** Returns a new builder for a `HashMap` with the recorded table length and load factor. */
     def newBuilder: Builder[(K, V), HashMap[K, V]] = HashMap.newBuilder(tableLength, loadFactor)
   }
 
   private[collection] final class Node[K, V](_key: K, _hash: Int, private var _value: V, @annotation.stableNull private var _next: Node[K, V] | Null) {
-    /** Returns the key stored in this node. */
     def key: K = _key
-    /** Returns the improved hash code of `key`, cached when the node was created. */
     def hash: Int = _hash
-    /** Returns the value currently bound to `key` in this node. */
     def value: V = _value
-    /** Sets the value bound to `key` in this node to `v`. */
     def value_= (v: V): Unit = _value = v
-    /** Returns the next node in this bucket's chain, or `null` if this is the last one. */
     def next: Node[K, V] | Null = _next
-    /** Sets the next node in this bucket's chain to `n`. */
     def next_= (n: Node[K, V] | Null): Unit = _next = n
 
-    /** Finds the node for key `k` in the chain starting at this node. Because chains are
-     *  sorted in ascending hash order, the search stops as soon as a node with a larger hash
-     *  is seen.
-     *
-     *  @param k the key to look for
-     *  @param h the improved hash code of `k`
-     *  @return the node whose key equals `k`, or `null` if the chain contains no such node
-     */
     @tailrec
     def findNode(k: K, h: Int): Node[K, V] | Null =
       if(h == _hash && k == _key) this
       else if((_next eq null) || (_hash > h)) null
       else _next.findNode(k, h)
 
-    /** Applies `f` to the key-value pair of this node and of every following node in the
-     *  chain, passed as a tuple.
-     *
-     *  @tparam U the result type of `f`, which is discarded
-     *  @param f the function to apply to each key-value pair
-     */
     @tailrec
     def foreach[U](f: ((K, V)) => U): Unit = {
       f((_key, _value))
       if(_next ne null) _next.foreach(f)
     }
 
-    /** Applies `f` to the key and value of this node and of every following node in the
-     *  chain, passed as two separate arguments.
-     *
-     *  @tparam U the result type of `f`, which is discarded
-     *  @param f the function to apply to each key and value
-     */
     @tailrec
     def foreachEntry[U](f: (K, V) => U): Unit = {
       f(_key, _value)
       if(_next ne null) _next.foreachEntry(f)
     }
 
-    /** Returns a string rendering this node's key, value and hash followed by the rest of the chain. */
     override def toString() = s"Node($key, $value, $hash) -> $next"
   }
 }

@@ -32,57 +32,23 @@ private[collection] object RedBlackTree {
   // Therefore, while obtaining the size of the whole tree is O(1), knowing the number of entries inside a range is O(n)
   // on the size of the range.
 
-  /** A mutable red-black tree, consisting of a root node and an entry count.
-   *
-   *  Leaves are represented by `null` references instead of sentinel nodes, so an empty tree has a `null` root. The
-   *  entry count is kept only here, not in the nodes, which makes reading the size of the whole tree O(1) while
-   *  counting the entries of a subtree or range remains O(n).
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param root the root node of the tree, or `null` if the tree is empty
-   *  @param size the number of entries in the tree
-   */
   final class Tree[A, B](var root: Node[A, B] | Null, var size: Int) {
-    /** Returns an independent copy of this tree, created by copying every node; the keys and values are shared */
     def treeCopy(): Tree[A, B] = new Tree(copyTree(root), size)
   }
 
-  /** A mutable node of a red-black tree, holding one key-value entry, the node's color, and references to its
-   *  children and parent. A `null` child reference stands for a leaf.
-   *
-   *  @tparam A the type of the key stored in this node
-   *  @tparam B the type of the value stored in this node
-   *  @param key the key of this node's entry
-   *  @param value the value of this node's entry
-   *  @param red `true` if this node is red, `false` if it is black
-   *  @param left the left child of this node, or `null` if there is none
-   *  @param right the right child of this node, or `null` if there is none
-   *  @param parent the parent of this node, or `null` if this node is a root
-   */
   final class Node[A, B](
-      /** The key of this node's entry; `value` holds the associated value, and `red` is `true` if this node is red, `false` if black */
       var key: A, var value: B, var red: Boolean,
-      /** The left child of this node; `null` stands for a leaf */
       @annotation.stableNull
       var left: Node[A, B] | Null,
-      /** The right child of this node; `null` stands for a leaf */
       @annotation.stableNull
       var right: Node[A, B] | Null,
-      /** The parent of this node, or `null` if this node is a root */
       @annotation.stableNull
       var parent: Node[A, B] | Null
     ) {
-    /** Returns a string representation of this node showing its key, value, color, and left and right subtrees; the parent is omitted */
     override def toString(): String = "Node(" + key + ", " + value + ", " + red + ", " + left + ", " + right + ")"
   }
 
   object Tree {
-    /** Returns a new, empty tree, with a `null` root and size 0.
-     *
-     *  @tparam A the key type of the tree entries
-     *  @tparam B the value type of the tree entries
-     */
     def empty[A, B]: Tree[A, B] = new Tree(null, 0)
   }
 
@@ -95,62 +61,23 @@ private[collection] object RedBlackTree {
     @`inline` def leaf[A, B](key: A, value: B, red: Boolean, parent: Node[A, B] | Null): Node[A, B] =
       new Node(key, value, red, null, null, parent)
 
-    /** Destructures the node `t` into its key, value, left child, right child, and parent; the color is not exposed.
-     *
-     *  @tparam A the key type of the node
-     *  @tparam B the value type of the node
-     *  @param t the node to destructure
-     */
     def unapply[A, B](t: Node[A, B]) = Some((t.key, t.value, t.left, t.right, t.parent))
   }
 
   // ---- getters ----
 
-  /** Returns `true` if `node` is red; a `null` leaf is not red.
-   *
-   *  @param node the node to test, or `null` for a leaf
-   */
   def isRed(node: Node[?, ?] | Null) = (node ne null) && node.red
-  /** Returns `true` if `node` is black; a `null` leaf counts as black.
-   *
-   *  @param node the node to test, or `null` for a leaf
-   */
   def isBlack(node: Node[?, ?] | Null) = (node eq null) || !node.red
 
   // ---- size ----
 
-  /** Returns the number of nodes in the subtree rooted at `node`, counted by traversing the subtree in O(n) time.
-   *
-   *  @param node the root of the subtree to count, or `null` for an empty subtree
-   *  @return the number of nodes in the subtree; 0 if `node` is `null`
-   */
   def size(node: Node[?, ?] | Null): Int = if (node eq null) 0 else 1 + size(node.left) + size(node.right)
-  /** Returns the number of entries in `tree`, read from its size field in O(1) time.
-   *
-   *  @param tree the tree whose number of entries to return
-   */
   def size(tree: Tree[?, ?]): Int = tree.size
-  /** Returns `true` if `tree` contains no entries, that is, if its root is `null`.
-   *
-   *  @param tree the tree to test for emptiness
-   */
   def isEmpty(tree: Tree[?, ?]) = tree.root eq null
-  /** Removes all entries from `tree`, by setting its root to `null` and its size to 0.
-   *
-   *  @param tree the tree to clear
-   */
   def clear(tree: Tree[?, ?]): Unit = { tree.root = null; tree.size = 0 }
 
   // ---- search ----
 
-  /** Returns the value associated with `key` in `tree`.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to search
-   *  @param key the key to look up
-   *  @return a `Some` containing the value associated with `key`, or `None` if the key is not present
-   */
   def get[A: Ordering, B](tree: Tree[A, B], key: A): Option[B] = getNode(tree.root, key) match {
     case null => None
     case node => Some(node.value)
@@ -165,32 +92,13 @@ private[collection] object RedBlackTree {
       else node
     }
 
-  /** Returns `true` if `tree` contains an entry whose key is equal to `key` under the implicit ordering.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @param tree the red-black tree to search
-   *  @param key the key to look for
-   */
   def contains[A: Ordering](tree: Tree[A, ?], key: A): Boolean = getNode(tree.root, key) ne null
 
-  /** Returns the entry with the smallest key in `tree`.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to search
-   *  @return a `Some` containing the key-value pair with the smallest key, or `None` if the tree is empty
-   */
   def min[A, B](tree: Tree[A, B]): Option[(A, B)] = minNode(tree.root) match {
     case null => None
     case node => Some((node.key, node.value))
   }
 
-  /** Returns the smallest key in `tree`.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @param tree the red-black tree to search
-   *  @return a `Some` containing the smallest key, or `None` if the tree is empty
-   */
   def minKey[A](tree: Tree[A, ?]): Option[A] = minNode(tree.root) match {
     case null => None
     case node => Some(node.key)
@@ -199,35 +107,14 @@ private[collection] object RedBlackTree {
   private def minNode[A, B](node: Node[A, B] | Null): Node[A, B] | Null =
     if (node eq null) null else minNodeNonNull(node)
 
-  /** Returns the leftmost node of the subtree rooted at `node`, that is, the node holding the smallest key of the
-   *  subtree. Returns `node` itself if it has no left child.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param node the non-null root of the subtree to search
-   *  @return the leftmost node of the subtree
-   */
   @tailrec def minNodeNonNull[A, B](node: Node[A, B]): Node[A, B] =
     if (node.left eq null) node else minNodeNonNull(node.left)
 
-  /** Returns the entry with the largest key in `tree`.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to search
-   *  @return a `Some` containing the key-value pair with the largest key, or `None` if the tree is empty
-   */
   def max[A, B](tree: Tree[A, B]): Option[(A, B)] = maxNode(tree.root) match {
     case null => None
     case node => Some((node.key, node.value))
   }
 
-  /** Returns the largest key in `tree`.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @param tree the red-black tree to search
-   *  @return a `Some` containing the largest key, or `None` if the tree is empty
-   */
   def maxKey[A](tree: Tree[A, ?]): Option[A] = maxNode(tree.root) match {
     case null => None
     case node => Some(node.key)
@@ -236,14 +123,6 @@ private[collection] object RedBlackTree {
   private def maxNode[A, B](node: Node[A, B] | Null): Node[A, B] | Null =
     if (node eq null) null else maxNodeNonNull(node)
 
-  /** Returns the rightmost node of the subtree rooted at `node`, that is, the node holding the largest key of the
-   *  subtree. Returns `node` itself if it has no right child.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param node the non-null root of the subtree to search
-   *  @return the rightmost node of the subtree
-   */
   @tailrec def maxNodeNonNull[A, B](node: Node[A, B]): Node[A, B] =
     if (node.right eq null) node else maxNodeNonNull(node.right)
 
@@ -263,14 +142,6 @@ private[collection] object RedBlackTree {
       case node => Some((node.key, node.value))
     }
 
-  /** Returns the first (lowest) key equal or greater than `key`. Returns `None` if there is no such key.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @param tree the red-black tree to search
-   *  @param key the lower bound (inclusive) for the key lookup
-   *  @param ord the ordering used to compare keys
-   *  @return a `Some` containing the smallest key greater than or equal to `key`, or `None` if no such key exists
-   */
   def minKeyAfter[A](tree: Tree[A, ?], key: A)(implicit ord: Ordering[A]): Option[A] =
     minNodeAfter(tree.root, key) match {
       case null => None
@@ -308,14 +179,6 @@ private[collection] object RedBlackTree {
       case node => Some((node.key, node.value))
     }
 
-  /** Returns the last (highest) key smaller than `key`. Returns `None` if there is no such key.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @param tree the red-black tree to search
-   *  @param key the upper bound (exclusive) for the key lookup
-   *  @param ord the ordering used to compare keys
-   *  @return a `Some` containing the largest key strictly less than `key`, or `None` if no such key exists
-   */
   def maxKeyBefore[A](tree: Tree[A, ?], key: A)(implicit ord: Ordering[A]): Option[A] =
     maxNodeBefore(tree.root, key) match {
       case null => None
@@ -340,18 +203,6 @@ private[collection] object RedBlackTree {
 
   // ---- insertion ----
 
-  /** Inserts the entry `key -> value` into `tree`. If the tree already contains an entry with a key equal to `key`
-   *  under `ord`, that entry's value is replaced with `value` and the tree structure and size are unchanged. Otherwise
-   *  a new red leaf node is added, the red-black invariants are restored by recolorings and rotations, and the tree's
-   *  size grows by one.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to insert into
-   *  @param key the key of the entry to insert
-   *  @param value the value to associate with `key`
-   *  @param ord the ordering used to compare keys
-   */
   def insert[A, B](tree: Tree[A, B], key: A, value: B)(implicit ord: Ordering[A]): Unit = {
     var y: Node[A, B] | Null = null
     var x = tree.root
@@ -417,17 +268,6 @@ private[collection] object RedBlackTree {
 
   // ---- deletion ----
 
-  /** Removes the entry with key `key` from `tree`, if one exists; otherwise does nothing. When an entry is removed,
-   *  its node is unlinked (a node with two children is first replaced by its in-order successor), the red-black
-   *  invariants are restored by recolorings and rotations if a black node was unlinked, and the tree's size shrinks by
-   *  one.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to remove from
-   *  @param key the key of the entry to remove
-   *  @param ord the ordering used to compare keys
-   */
   def delete[A, B](tree: Tree[A, B], key: A)(implicit ord: Ordering[A]): Unit = {
     val z = getNode(tree.root, key)
     if (z ne null) {
@@ -624,14 +464,6 @@ private[collection] object RedBlackTree {
 
   // ---- tree traversal ----
 
-  /** Applies `f` to each key-value pair of `tree`, in ascending order of keys.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @tparam U the result type of `f`, which is discarded
-   *  @param tree the red-black tree to traverse
-   *  @param f the function applied to each key-value pair
-   */
   def foreach[A, B, U](tree: Tree[A, B], f: ((A, B)) => U): Unit = foreachNode(tree.root, f)
 
   private def foreachNode[A, B, U](node: Node[A, B] | Null, f: ((A, B)) => U): Unit =
@@ -643,13 +475,6 @@ private[collection] object RedBlackTree {
     if (node.right ne null) foreachNodeNonNull(node.right, f)
   }
 
-  /** Applies `f` to each key of `tree`, in ascending order.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam U the result type of `f`, which is discarded
-   *  @param tree the red-black tree to traverse
-   *  @param f the function applied to each key
-   */
   def foreachKey[A, U](tree: Tree[A, ?], f: A => U): Unit = {
     def g(node: Node[A, ?]): Unit = {
       val l = node.left
@@ -662,15 +487,6 @@ private[collection] object RedBlackTree {
     if(r ne null) g(r)
   }
 
-  /** Applies `f` to the key and value of each entry of `tree`, in ascending order of keys. Unlike `foreach`, `f`
-   *  receives the key and value as separate arguments, so no tuple is allocated per entry.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @tparam U the result type of `f`, which is discarded
-   *  @param tree the red-black tree to traverse
-   *  @param f the function applied to the key and value of each entry
-   */
   def foreachEntry[A, B, U](tree: Tree[A, B], f: (A, B) => U): Unit = {
     def g(node: Node[A, B]): Unit = {
       val l = node.left
@@ -683,14 +499,6 @@ private[collection] object RedBlackTree {
     if(r ne null) g(r)
   }
 
-  /** Replaces the value of every entry of `tree`, in place, with the result of applying `f` to the entry's key and
-   *  current value, visiting the entries in ascending order of keys. The keys and the tree structure are unchanged.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to transform
-   *  @param f the function computing the new value from each key and current value
-   */
   def transform[A, B](tree: Tree[A, B], f: (A, B) => B): Unit = transformNode(tree.root, f)
 
   private def transformNode[A, B, U](node: Node[A, B] | Null, f: (A, B) => B): Unit =
@@ -702,59 +510,22 @@ private[collection] object RedBlackTree {
     if (node.right ne null) transformNodeNonNull(node.right, f)
   }
 
-  /** Returns an iterator over the key-value pairs of `tree` whose keys are within the given bounds, in ascending
-   *  order of keys.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to iterate over
-   *  @param start the lower bound (inclusive) on the keys of the entries to return, or `None` for no lower bound
-   *  @param end the upper bound (exclusive) on the keys of the entries to return, or `None` for no upper bound
-   *  @return an iterator over the entries whose keys are greater than or equal to `start` (if defined) and smaller than `end` (if defined)
-   */
   def iterator[A: Ordering, B](tree: Tree[A, B], start: Option[A] = None, end: Option[A] = None): Iterator[(A, B)] =
     new EntriesIterator(tree, start, end)
 
-  /** Returns an iterator over the keys of `tree` that are within the given bounds, in ascending order.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @param tree the red-black tree to iterate over
-   *  @param start the lower bound (inclusive) on the keys to return, or `None` for no lower bound
-   *  @param end the upper bound (exclusive) on the keys to return, or `None` for no upper bound
-   *  @return an iterator over the keys that are greater than or equal to `start` (if defined) and smaller than `end` (if defined)
-   */
   def keysIterator[A: Ordering](tree: Tree[A, ?], start: Option[A] = None, end: Option[A] = None): Iterator[A] =
     new KeysIterator(tree, start, end)
 
-  /** Returns an iterator over the values of the entries of `tree` whose keys are within the given bounds, in
-   *  ascending order of the associated keys.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to iterate over
-   *  @param start the lower bound (inclusive) on the keys of the entries whose values to return, or `None` for no lower bound
-   *  @param end the upper bound (exclusive) on the keys of the entries whose values to return, or `None` for no upper bound
-   *  @return an iterator over the values of the entries whose keys are greater than or equal to `start` (if defined) and smaller than `end` (if defined)
-   */
   def valuesIterator[A: Ordering, B](tree: Tree[A, B], start: Option[A] = None, end: Option[A] = None): Iterator[B] =
     new ValuesIterator(tree, start, end)
 
   private abstract class TreeIterator[A, B, R](tree: Tree[A, B], start: Option[A], end: Option[A])
                                                     (implicit ord: Ordering[A]) extends AbstractIterator[R] {
 
-    /** Returns the value this iterator yields for `node`.
-     *
-     *  @param node the tree node to extract the result value from
-     */
     protected def nextResult(node: Node[A, B]): R
 
-    /** Returns `true` if there are more nodes within the iteration bounds */
     def hasNext: Boolean = nextNode ne null
 
-    /** Returns the result value for the next node within the iteration bounds and advances past it.
-     *
-     *  @throws NoSuchElementException if there are no more nodes within the bounds
-     */
     @throws[NoSuchElementException]
     def next(): R = nextNode match {
       case null => throw new NoSuchElementException("next on empty iterator")
@@ -778,30 +549,18 @@ private[collection] object RedBlackTree {
   private final class EntriesIterator[A: Ordering, B](tree: Tree[A, B], start: Option[A], end: Option[A])
     extends TreeIterator[A, B, (A, B)](tree, start, end) {
 
-    /** Returns the key-value pair stored in `node`.
-     *
-     *  @param node the tree node to extract the entry from
-     */
     def nextResult(node: Node[A, B]) = (node.key, node.value)
   }
 
   private final class KeysIterator[A: Ordering, B](tree: Tree[A, B], start: Option[A], end: Option[A])
     extends TreeIterator[A, B, A](tree, start, end) {
 
-    /** Returns the key stored in `node`.
-     *
-     *  @param node the tree node to extract the key from
-     */
     def nextResult(node: Node[A, B]) = node.key
   }
 
   private final class ValuesIterator[A: Ordering, B](tree: Tree[A, B], start: Option[A], end: Option[A])
     extends TreeIterator[A, B, B](tree, start, end) {
 
-    /** Returns the value stored in `node`.
-     *
-     *  @param node the tree node to extract the value from
-     */
     def nextResult(node: Node[A, B]) = node.value
   }
 
@@ -946,14 +705,6 @@ private[collection] object RedBlackTree {
     new Tree(f(1, size), size)
   }
 
-  /** Returns a copy of the subtree rooted at `n`: every node is copied along with its key, value, and color, while
-   *  the keys and values themselves are shared with the original. The `parent` of the returned root is `null`.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param n the root of the subtree to copy, or `null` for an empty subtree
-   *  @return the root of the copied subtree, or `null` if `n` is `null`
-   */
   def copyTree[A, B](n: Node[A, B] | Null): Node[A, B] | Null =
     if(n eq null) null else {
       val c = new Node(n.key, n.value, n.red, copyTree(n.left), copyTree(n.right), null)

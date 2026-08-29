@@ -295,66 +295,23 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
       afterFrom && beforeUntil
     }
 
-    /** Returns a new projection of the underlying map whose range is the intersection of this projection's range and
-     *  the given one: on each side, the more constraining of the two bounds is kept.
-     *
-     *  @param from the lower bound (inclusive) of the new range wrapped in a `Some`, or `None` for no additional lower bound
-     *  @param until the upper bound (exclusive) of the new range wrapped in a `Some`, or `None` for no additional upper bound
-     *  @return a new projection over the same underlying tree, restricted to the intersection of the two ranges
-     */
     override def rangeImpl(from: Option[K], until: Option[K]): TreeMap[K, V] =
       new TreeMapProjection(pickLowerBound(from), pickUpperBound(until))
 
-    /** Returns a `Some` containing the value associated with `key`, or `None` if `key` is outside this projection's
-     *  bounds or has no entry in the underlying map.
-     *
-     *  @param key the key to look up
-     */
     override def get(key: K) = if (isInsideViewBounds(key)) RB.get(tree, key) else None
 
-    /** Returns an iterator over the entries of the underlying map whose keys are within this projection's bounds, in ascending order of keys */
     override def iterator: Iterator[(K, V)] = if (RB.size(tree) == 0) Iterator.empty else RB.iterator(tree, from, until)
-    /** Returns an iterator over the keys of the underlying map that are within this projection's bounds, in ascending order */
     override def keysIterator: Iterator[K] = if (RB.size(tree) == 0) Iterator.empty else RB.keysIterator(tree, from, until)
-    /** Returns an iterator over the values of the entries of the underlying map whose keys are within this projection's bounds, in ascending order of the associated keys */
     override def valuesIterator: Iterator[V] = if (RB.size(tree) == 0) Iterator.empty else RB.valuesIterator(tree, from, until)
-    /** Returns an iterator over the keys within this projection's bounds that are greater than or equal to `start`,
-     *  in ascending order.
-     *
-     *  @param start the lower bound (inclusive) on the keys to return, in addition to this projection's own bounds
-     */
     override def keysIteratorFrom(start: K) = if (RB.size(tree) == 0) Iterator.empty else RB.keysIterator(tree, pickLowerBound(Some(start)), until)
-    /** Returns an iterator over the entries within this projection's bounds whose keys are greater than or equal to
-     *  `start`, in ascending order of keys.
-     *
-     *  @param start the lower bound (inclusive) on the keys of the entries to return, in addition to this projection's own bounds
-     */
     override def iteratorFrom(start: K) = if (RB.size(tree) == 0) Iterator.empty else RB.iterator(tree, pickLowerBound(Some(start)), until)
-    /** Returns an iterator over the values of the entries within this projection's bounds whose keys are greater
-     *  than or equal to `start`, in ascending order of the associated keys.
-     *
-     *  @param start the lower bound (inclusive) on the keys of the entries whose values to return, in addition to this projection's own bounds
-     */
     override def valuesIteratorFrom(start: K) = if (RB.size(tree) == 0) Iterator.empty else RB.valuesIterator(tree, pickLowerBound(Some(start)), until)
-    /** Returns the number of entries within this projection's bounds, counted by iterating over them in O(n) time */
     override def size = if (RB.size(tree) == 0) 0 else iterator.length
-    /** Returns 0 if the underlying map is empty, and -1 otherwise, because the number of entries within the bounds is not tracked */
     override def knownSize: Int = if (RB.size(tree) == 0) 0 else -1
-    /** Returns `true` if no entry of the underlying map has a key within this projection's bounds */
     override def isEmpty = RB.size(tree) == 0 || !iterator.hasNext
-    /** Returns `true` if `key` is within this projection's bounds and the underlying map contains an entry with that
-     *  key.
-     *
-     *  @param key the key to look for
-     */
     override def contains(key: K) = isInsideViewBounds(key) && RB.contains(tree, key)
 
-    /** Returns the entry with the smallest key within this projection's bounds.
-     *
-     *  @throws NoSuchElementException if this projection contains no entries
-     */
     override def head = headOption.get
-    /** Returns a `Some` containing the entry with the smallest key within this projection's bounds, or `None` if there is no such entry */
     override def headOption = {
       val entry = if (from.isDefined) RB.minAfter(tree, from.get) else RB.min(tree)
       (entry, until) match {
@@ -363,12 +320,7 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
       }
     }
 
-    /** Returns the entry with the largest key within this projection's bounds.
-     *
-     *  @throws NoSuchElementException if this projection contains no entries
-     */
     override def last = lastOption.get
-    /** Returns a `Some` containing the entry with the largest key within this projection's bounds, or `None` if there is no such entry */
     override def lastOption = {
       val entry = if (until.isDefined) RB.maxBefore(tree, until.get) else RB.max(tree)
       (entry, from) match {
@@ -380,16 +332,8 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     // Using the iterator should be efficient enough; if performance is deemed a problem later, specialized
     // `foreach(f, from, until)` and `transform(f, from, until)` methods can be created in `RedBlackTree`. See
     // https://github.com/scala/scala/pull/4608#discussion_r34307985 for a discussion about this.
-    /** Applies `f` to each entry within this projection's bounds, in ascending order of keys, for its side effects.
-     *
-     *  @tparam U the result type of `f`, which is discarded
-     *  @param f the function to apply to each key-value pair
-     */
     override def foreach[U](f: ((K, V)) => U): Unit = iterator.foreach(f)
 
-    /** Returns a copy of this projection: a projection with the same bounds over a new tree map that contains only
-     *  this projection's entries and shares no structure with the original underlying map.
-     */
     override def clone() = super.clone().rangeImpl(from, until)
   }
 

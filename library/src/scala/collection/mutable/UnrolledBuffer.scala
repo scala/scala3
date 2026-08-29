@@ -717,12 +717,6 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
 // This is used by scala.collection.parallel.mutable.UnrolledParArrayCombiner:
 // Todo -- revisit whether inheritance is the best way to achieve this functionality
 private[collection] class DoublingUnrolledBuffer[T](implicit t: ClassTag[T]) extends UnrolledBuffer[T]()(using t) {
-  /** Returns the array length for the next node: double `sz` while `sz` is
-   *  below 10000, and `sz` itself from then on.
-   *
-   *  @param sz the array length of the most recently allocated node
-   */
   override def calcNextLength(sz: Int) = if (sz < 10000) sz * 2 else sz
-  /** Creates a new, empty node associated with this buffer, holding an array of 4 elements. */
   override protected def newUnrolled = new UnrolledBuffer.Unrolled[T](0, new Array[T](4), null, this)
 }

@@ -222,45 +222,19 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
       afterFrom && beforeUntil
     }
 
-    /** Returns a new projection of the underlying set whose range is the intersection of this projection's range and
-     *  the given one: on each side, the more constraining of the two bounds is kept.
-     *
-     *  @param from the lower bound (inclusive) of the new range wrapped in a `Some`, or `None` for no additional lower bound
-     *  @param until the upper bound (exclusive) of the new range wrapped in a `Some`, or `None` for no additional upper bound
-     *  @return a new projection over the same underlying tree, restricted to the intersection of the two ranges
-     */
     override def rangeImpl(from: Option[A], until: Option[A]): TreeSet[A] =
       new TreeSetProjection(pickLowerBound(from), pickUpperBound(until))
 
-    /** Returns `true` if `key` is within this projection's bounds and the underlying set contains an element equal
-     *  to it.
-     *
-     *  @param key the element to look for
-     */
     override def contains(key: A) = isInsideViewBounds(key) && RB.contains(tree, key)
 
-    /** Returns an iterator over the elements of the underlying set that are within this projection's bounds, in ascending order */
     override def iterator = RB.keysIterator(tree, from, until)
-    /** Returns an iterator over the elements within this projection's bounds that are greater than or equal to
-     *  `start`, in ascending order.
-     *
-     *  @param start the lower bound (inclusive) on the elements to return, in addition to this projection's own bounds
-     */
     override def iteratorFrom(start: A) = RB.keysIterator(tree, pickLowerBound(Some(start)), until)
 
-    /** Returns the number of elements within this projection's bounds, counted by iterating over them in O(n) time */
     override def size = if (RB.size(tree) == 0) 0 else iterator.length
-    /** Returns 0 if the underlying set is empty, and -1 otherwise, because the number of elements within the bounds is not tracked */
     override def knownSize: Int = if (RB.size(tree) == 0) 0 else -1
-    /** Returns `true` if no element of the underlying set lies within this projection's bounds */
     override def isEmpty: Boolean = RB.size(tree) == 0 || !iterator.hasNext
 
-    /** Returns the smallest element within this projection's bounds.
-     *
-     *  @throws NoSuchElementException if this projection contains no elements
-     */
     override def head: A = headOption.get
-    /** Returns a `Some` containing the smallest element within this projection's bounds, or `None` if there is no such element */
     override def headOption: Option[A] = {
       val elem = if (from.isDefined) RB.minKeyAfter(tree, from.get) else RB.minKey(tree)
       (elem, until) match {
@@ -269,12 +243,7 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
       }
     }
 
-    /** Returns the largest element within this projection's bounds.
-     *
-     *  @throws NoSuchElementException if this projection contains no elements
-     */
     override def last: A = lastOption.get
-    /** Returns a `Some` containing the largest element within this projection's bounds, or `None` if there is no such element */
     override def lastOption = {
       val elem = if (until.isDefined) RB.maxKeyBefore(tree, until.get) else RB.maxKey(tree)
       (elem, from) match {
@@ -286,16 +255,8 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
     // Using the iterator should be efficient enough; if performance is deemed a problem later, a specialized
     // `foreachKey(f, from, until)` method can be created in `RedBlackTree`. See
     // https://github.com/scala/scala/pull/4608#discussion_r34307985 for a discussion about this.
-    /** Applies `f` to each element within this projection's bounds, in ascending order, for its side effects.
-     *
-     *  @tparam U the result type of `f`, which is discarded
-     *  @param f the function to apply to each element
-     */
     override def foreach[U](f: A => U): Unit = iterator.foreach(f)
 
-    /** Returns a copy of this projection: a projection with the same bounds over a new tree set that contains only
-     *  this projection's elements and shares no structure with the original underlying set.
-     */
     override def clone(): mutable.TreeSet[A] = super.clone().rangeImpl(from, until)
 
   }

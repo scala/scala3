@@ -336,18 +336,8 @@ class LinkedHashMap[K, V]
 
   private abstract class LinkedHashMapIterator[T] extends AbstractIterator[T] {
     private var cur: Entry | Null = firstEntry
-    /** Returns the iterator's result value for the given entry.
-     *
-     *  @param nd the entry to extract the value from
-     *  @return the value this iterator produces for `nd`
-     */
     def extract(nd: Entry): T
-    /** Tests whether there are more entries to visit. */
     def hasNext: Boolean = cur ne null
-    /** Returns the value for the next entry in insertion order.
-     *
-     *  @throws NoSuchElementException if no more entries remain
-     */
     def next(): T =
       if (hasNext) { val r = extract(cur.nn); cur = cur.nn.later; r }
       else Iterator.empty.next()
@@ -694,22 +684,10 @@ object LinkedHashMap extends MapFactory[LinkedHashMap] {
    *  @param value the value associated with `key`
    */
   private[mutable] final class LinkedEntry[K, V](val key: K, val hash: Int, var value: V) {
-    /** The previous entry in insertion order, or `null` if this is the first entry. */
     var earlier: LinkedEntry[K, V] | Null = null
-    /** The next entry in insertion order, or `null` if this is the last entry. */
     var later: LinkedEntry[K, V] | Null = null
-    /** The next entry in the same hash bucket, or `null` if this is the last one. */
     var next: LinkedEntry[K, V] | Null = null
 
-    /** Searches this entry and its bucket successors for a key.
-     *
-     *  Buckets are sorted by ascending hash, so the search stops early once the
-     *  entries' hashes exceed `h`.
-     *
-     *  @param k the key to find
-     *  @param h the improved hash code of `k`
-     *  @return the entry with key `k`, or `null` if the bucket contains none
-     */
     @tailrec
     final def findEntry(k: K, h: Int): LinkedEntry[K, V] | Null =
       if (h == hash && k == key) this

@@ -291,27 +291,13 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
   }
 
   private abstract class MapIterator[R] extends AbstractIterator[R] {
-    /** Extracts the value this iterator yields for the given linked-list node.
-     *
-     *  @param node the list node currently visited
-     *  @return the value derived from `node` (for instance its key)
-     */
     protected def extract(node: LLNode): R
-    /** Extracts the value this iterator yields for the given red-black tree node.
-     *
-     *  @param node the tree node currently visited
-     *  @return the value derived from `node` (for instance its key)
-     */
     protected def extract(node: RBNode): R
 
     private var i = 0
     private var node: Node | Null = null
     private val len = table.length
 
-    /** Returns `true` if there are more nodes to visit, advancing to the next non-empty
-     *  bucket if the current bucket is exhausted. On entering a tree bucket, positions the
-     *  iterator at the node with the minimal key.
-     */
     def hasNext: Boolean = {
       if(node ne null) true
       else {
@@ -332,11 +318,6 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
       }
     }
 
-    /** Returns the value extracted from the next node, advancing to the next node in the
-     *  chain within a list bucket and to the in-order successor within a tree bucket.
-     *
-     *  @throws NoSuchElementException if no more nodes remain
-     */
     def next(): R =
       if(!hasNext) Iterator.empty.next()
       else node.nn match {
@@ -995,20 +976,10 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
 
   @SerialVersionUID(3L)
   private final class DeserializationFactory[K, V](val tableLength: Int, val loadFactor: Double, val ordering: Ordering[K]) extends Factory[(K, V), CollisionProofHashMap[K, V]], Serializable {
-    /** Creates a new `CollisionProofHashMap` with the recorded table length, load factor and
-     *  key ordering, containing the key-value pairs of `it`.
-     *
-     *  @param it the deserialized key-value pairs to add
-     *  @return a new `CollisionProofHashMap` containing the key-value pairs of `it`
-     */
     def fromSpecific(it: IterableOnce[(K, V)]^): CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V](tableLength, loadFactor)(using ordering) ++= it
-    /** Returns a new builder for a `CollisionProofHashMap` with the recorded table length, load factor and key ordering. */
     def newBuilder: Builder[(K, V), CollisionProofHashMap[K, V]] = CollisionProofHashMap.newBuilder(tableLength, loadFactor)(using ordering)
   }
 
-  /** Compares `key` and `hash` against a list node, by the difference of the improved hashes
-   *  first and by `ord` on ties. Never called (list nodes are searched via `LLNode.getNode`).
-   */
   @unused @`inline` private def compare[K, V](key: K, hash: Int, node: LLNode[K, V])(implicit ord: Ordering[K]): Int = {
     val i = hash - node.hash
     if(i != 0) i else ord.compare(key, node.key)
@@ -1143,13 +1114,8 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   private final class RBNodesIterator[A, B](tree: RBNode[A, B] | Null)(implicit @unused ord: Ordering[A]) extends AbstractIterator[RBNode[A, B]] {
     private var nextNode: RBNode[A, B] | Null = if(tree eq null) null else minNodeNonNull(tree)
 
-    /** Returns `true` if more tree nodes remain. */
     def hasNext: Boolean = nextNode ne null
 
-    /** Returns the next node of the tree in ascending key order (in-order traversal).
-     *
-     *  @throws NoSuchElementException if no more nodes remain
-     */
     @throws[NoSuchElementException]
     def next(): RBNode[A, B] = nextNode match {
       case null => Iterator.empty.next()
@@ -1162,54 +1128,27 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   /////////////////////////// Linked List Node
 
   private final class LLNode[K, V](var key: K, var hash: Int, var value: V, @annotation.stableNull var next: LLNode[K, V] | Null) extends Node {
-    /** Returns a string rendering this node's key, value and hash followed by the rest of the chain. */
     override def toString() = s"LLNode($key, $value, $hash) -> $next"
 
     private def eq(a: Any, b: Any): Boolean =
       if(a.asInstanceOf[AnyRef] eq null) b.asInstanceOf[AnyRef] eq null else a.asInstanceOf[AnyRef].equals(b)
 
-    /** Finds the node for key `k` in the chain starting at this node. Keys are compared with
-     *  null-safe `equals`, and because chains are sorted in ascending hash order, the search
-     *  stops as soon as a node with a larger hash is seen.
-     *
-     *  @param k the key to look for
-     *  @param h the improved hash of `k`
-     *  @param ord the ordering for keys; never used
-     *  @return the node whose key equals `k`, or `null` if the chain contains no such node
-     */
     @tailrec def getNode(k: K, h: Int)(implicit ord: Ordering[K]): LLNode[K, V] | Null = {
       if(h == hash && eq(k, key) /*ord.compare(k, key) == 0*/) this
       else if((next eq null) || (hash > h)) null
       else next.getNode(k, h)
     }
 
-    /** Applies `f` to the key-value pair of this node and of every following node in the
-     *  chain, passed as a tuple.
-     *
-     *  @tparam U the result type of `f`, which is discarded
-     *  @param f the function to apply to each key-value pair
-     */
     @tailrec def foreach[U](f: ((K, V)) => U): Unit = {
       f((key, value))
       if(next ne null) next.foreach(f)
     }
 
-    /** Applies `f` to the key and value of this node and of every following node in the
-     *  chain, passed as two separate arguments.
-     *
-     *  @tparam U the result type of `f`, which is discarded
-     *  @param f the function to apply to each key and value
-     */
     @tailrec def foreachEntry[U](f: (K, V) => U): Unit = {
       f(key, value)
       if(next ne null) next.foreachEntry(f)
     }
 
-    /** Applies `f` to this node and to every following node in the chain.
-     *
-     *  @tparam U the result type of `f`, which is discarded
-     *  @param f the function to apply to each node
-     */
     @tailrec def foreachNode[U](f: LLNode[K, V] => U): Unit = {
       f(this)
       if(next ne null) next.foreachNode(f)

@@ -79,14 +79,6 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
 {
 
   private class ResizableArrayAccess[A0] extends ArrayBuffer[A0] {
-    /** Replaces each stored element with the result of applying a function to it.
-     *
-     *  Starts at index 1 because the enclosing priority queue does not use
-     *  index 0 of the array.
-     *
-     *  @param f the function applied to each element
-     *  @return this buffer
-     */
     override def mapInPlace(f: A0 => A0): this.type = {
       var i = 1 // see "we do not use array(0)" comment below (???)
       val siz = this.size
@@ -94,29 +86,11 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
       this
     }
 
-    /** Exposes the buffer's protected `size0`: the number of used array slots,
-     *  one more than the number of queue elements because index 0 is unused.
-     */
     def p_size0 = size0
-    /** Sets the buffer's protected `size0`, the number of used array slots. */
     def p_size0_=(s: Int) = size0 = s
-    /** Exposes the buffer's protected backing array, which holds the heap. */
     def p_array: Array[AnyRef | Null] = array.asInstanceOf[Array[AnyRef | Null]]
-    /** Grows the backing array, if needed, to hold at least `n` slots.
-     *
-     *  @param n the required number of array slots
-     */
     def p_ensureSize(n: Int) = super.ensureSize(n)
-    /** Grows the backing array, if needed, to hold `n` more slots beyond those in use.
-     *
-     *  @param n the number of additional array slots required
-     */
     def p_ensureAdditionalSize(n: Int) = super.ensureSize(size0 + n)
-    /** Swaps the elements at two indices of the backing array.
-     *
-     *  @param a the index of the first element
-     *  @param b the index of the second element
-     */
     def p_swap(a: Int, b: Int): Unit = {
       val h = array(a)
       array(a) = array(b)

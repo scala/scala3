@@ -332,27 +332,14 @@ class OpenHashMap[Key, Value](initialSize : Int)
       while((index <= mask) && (table(index) == null || table(index).value == None)) index+=1
     }
 
-    /** Returns `true` if an occupied slot remains, advancing the cursor past empty and deleted slots.
-     *
-     *  @throws ConcurrentModificationException if an entry was inserted into the map after this iterator was created
-     */
     def hasNext = {advance(); index <= mask }
 
-    /** Returns the result for the next occupied slot and advances the cursor past it.
-     *
-     *  @throws ConcurrentModificationException if an entry was inserted into the map after this iterator was created
-     */
     def next() = {
       advance()
       val result = table(index)
       index += 1
       nextResult(result)
     }
-    /** Extracts this iterator's result from a hash table entry.
-     *
-     *  @param node the occupied entry to extract the result from
-     *  @return the part of `node` this iterator produces: its key, its value, or both
-     */
     protected def nextResult(node: Entry): A
   }
 
