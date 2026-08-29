@@ -422,19 +422,12 @@ private[jdk] class AnyAccumulatorStepper[A](private val acc: AnyAccumulator[A]) 
     i = 0
   }
 
-  /** Returns the characteristics of this stepper: `ORDERED`, `SIZED` and `SUBSIZED`. */
   def characteristics: Int = ORDERED | SIZED | SUBSIZED
 
-  /** Returns the exact number of elements remaining in this stepper. */
   def estimateSize: Long = N
 
-  /** Returns `true` if at least one element remains in this stepper. */
   def hasStep: Boolean = N > 0
 
-  /** Returns the next element and advances this stepper.
-   *
-   *  @throws NoSuchElementException if no elements remain
-   */
   def nextStep(): A =
     if (N <= 0) throw new NoSuchElementException("Next in empty Stepper")
     else {
@@ -445,12 +438,6 @@ private[jdk] class AnyAccumulatorStepper[A](private val acc: AnyAccumulator[A]) 
       ans
     }
 
-  /** Splits the remaining elements in half, returning a stepper over the first half and leaving
-   *  this stepper positioned on the second half, or `null` if fewer than two elements remain.
-   *
-   *  @return a stepper over the first half of the remaining elements, or `null` if fewer than
-   *          two elements remain, in which case this stepper is left unchanged
-   */
   def trySplit(): AnyStepper[A] | Null =
     if (N <= 1) null
     else {
@@ -476,13 +463,6 @@ private[jdk] class AnyAccumulatorStepper[A](private val acc: AnyAccumulator[A]) 
       ans
     }
 
-  /** Returns a [[java.util.Spliterator]] over the remaining elements of this stepper, which
-   *  advances this stepper as it is consumed.
-   *
-   *  @tparam B a supertype of the element type `A`
-   *  @return a `Spliterator` whose `tryAdvance` and `forEachRemaining` read the accumulator's
-   *          blocks directly, rather than going through `nextStep()`
-   */
   override def spliterator[B >: A]: Spliterator[B] = new AnyStepper.AnyStepperSpliterator[B](this) {
     // Overridden for efficiency
     override def tryAdvance(c: Consumer[? >: B]): Boolean = {

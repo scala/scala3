@@ -537,21 +537,12 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
     i = 0
   }
 
-  /** Returns the characteristics of this stepper: `ORDERED`, `SIZED`, `SUBSIZED` and `NONNULL`. */
   def characteristics: Int = ORDERED | SIZED | SUBSIZED | NONNULL
 
-  /** Returns the exact number of elements remaining in this stepper. */
   def estimateSize: Long = N
 
-  /** Returns `true` if at least one element remains in this stepper. */
   def hasStep: Boolean = N > 0
 
-  /** Returns the next element and advances this stepper.
-   *
-   *  Call this only while [[hasStep]] is `true`.
-   *
-   *  @throws NoSuchElementException if this stepper was created from an empty accumulator
-   */
   def nextStep(): Double =
     if (n <= 0) throw new NoSuchElementException("next on empty Stepper")
     else {
@@ -562,12 +553,6 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
       ans
     }
 
-  /** Splits the remaining elements in half, returning a stepper over the first half and leaving
-   *  this stepper positioned on the second half, or `null` if fewer than two elements remain.
-   *
-   *  @return a stepper over the first half of the remaining elements, or `null` if fewer than two
-   *          elements remain, in which case this stepper is left unchanged
-   */
   def trySplit(): DoubleStepper | Null =
     if (N <= 1) null
     else {
@@ -593,14 +578,6 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
       ans
     }
 
-  /** Returns a [[java.util.Spliterator]] of primitive `Double`s over the remaining elements of
-   *  this stepper, which advances this stepper as it is consumed.
-   *
-   *  @tparam B a supertype of `Double`; it does not affect the result, which is always a
-   *         `Spliterator.OfDouble`
-   *  @return a `Spliterator` whose `tryAdvance` and `forEachRemaining` read the accumulator's
-   *          blocks directly, rather than going through `nextStep()`
-   */
   override def spliterator[B >: Double]: Spliterator.OfDouble = new DoubleStepper.DoubleStepperSpliterator(this) {
     // Overridden for efficiency
     override def tryAdvance(c: DoubleConsumer): Boolean =

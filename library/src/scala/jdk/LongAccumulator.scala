@@ -546,21 +546,12 @@ private[jdk] class LongAccumulatorStepper(private val acc: LongAccumulator) exte
     i = 0
   }
 
-  /** Returns the characteristics of this stepper: `ORDERED`, `SIZED`, `SUBSIZED` and `NONNULL`. */
   def characteristics: Int = ORDERED | SIZED | SUBSIZED | NONNULL
 
-  /** Returns the exact number of elements remaining in this stepper. */
   def estimateSize: Long = N
 
-  /** Returns `true` if at least one element remains in this stepper. */
   def hasStep: Boolean = N > 0
 
-  /** Returns the next element and advances this stepper.
-   *
-   *  Call this only while [[hasStep]] is `true`.
-   *
-   *  @throws NoSuchElementException if this stepper was created from an empty accumulator
-   */
   def nextStep(): Long =
     if (n <= 0) throw new NoSuchElementException("next on empty Stepper")
     else {
@@ -571,9 +562,6 @@ private[jdk] class LongAccumulatorStepper(private val acc: LongAccumulator) exte
       ans
     }
 
-  /** Splits the remaining elements in half, returning a stepper over the first half and leaving
-   *  this stepper positioned on the second half, or `null` if fewer than two elements remain.
-   */
   def trySplit(): LongStepper | Null =
     if (N <= 1) null
     else {
@@ -599,13 +587,6 @@ private[jdk] class LongAccumulatorStepper(private val acc: LongAccumulator) exte
       ans
     }
 
-  /** Returns a `java.util.Spliterator.OfLong` over the remaining elements of this stepper, which
-   *  advances this stepper as it is consumed.
-   *
-   *  @tparam B a supertype of `Long` (never used, the result is always an `OfLong`)
-   *  @return a `Spliterator.OfLong` whose `tryAdvance` and `forEachRemaining` read the
-   *          accumulator's blocks directly, rather than going through `nextStep()`
-   */
   override def spliterator[B >: Long]: Spliterator.OfLong = new LongStepper.LongStepperSpliterator(this) {
     // Overridden for efficiency
     override def tryAdvance(c: LongConsumer): Boolean =

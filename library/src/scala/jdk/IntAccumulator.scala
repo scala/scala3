@@ -551,19 +551,12 @@ private[jdk] class IntAccumulatorStepper(private val acc: IntAccumulator) extend
     i = 0
   }
 
-  /** Returns the characteristics of this stepper: `ORDERED`, `SIZED`, `SUBSIZED` and `NONNULL`. */
   def characteristics: Int = ORDERED | SIZED | SUBSIZED | NONNULL
 
-  /** Returns the exact number of elements remaining in this stepper. */
   def estimateSize: Long = N
 
-  /** Returns `true` if at least one element remains in this stepper. */
   def hasStep: Boolean = N > 0
 
-  /** Returns the next element and advances this stepper.
-   *
-   *  @throws NoSuchElementException if no elements remain
-   */
   def nextStep(): Int =
     if (N <= 0) throw new NoSuchElementException("next on empty Stepper")
     else {
@@ -574,9 +567,6 @@ private[jdk] class IntAccumulatorStepper(private val acc: IntAccumulator) extend
       ans
     }
 
-  /** Splits the remaining elements in half, returning a stepper over the first half and leaving
-   *  this stepper positioned on the second half, or `null` if fewer than two elements remain.
-   */
   def trySplit(): IntStepper | Null =
     if (N <= 1) null
     else {
@@ -602,13 +592,6 @@ private[jdk] class IntAccumulatorStepper(private val acc: IntAccumulator) extend
       ans
     }
 
-  /** Returns a `java.util.Spliterator.OfInt` over the remaining elements of this stepper, which
-   *  advances this stepper as it is consumed.
-   *
-   *  @tparam B a supertype of `Int` (never used, the result is always an `OfInt`)
-   *  @return a `Spliterator.OfInt` whose `tryAdvance` and `forEachRemaining` read the
-   *          accumulator's blocks directly, rather than going through `nextStep()`
-   */
   override def spliterator[B >: Int]: Spliterator.OfInt = new IntStepper.IntStepperSpliterator(this) {
     // Overridden for efficiency
     override def tryAdvance(c: IntConsumer): Boolean =

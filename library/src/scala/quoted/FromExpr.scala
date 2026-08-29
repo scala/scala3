@@ -91,15 +91,6 @@ object FromExpr {
    *  @tparam T the primitive or `String` type to extract from the quoted literal
    */
   private class PrimitiveFromExpr[T <: Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends FromExpr[T] {
-    /** Returns `Some` of the constant value of `expr`, or `None` if it has no constant value.
-     *
-     *  The value is read from the type of the underlying term, so any expression whose type is
-     *  a constant type matches, not only literals. Blocks without statements, `Inlined` nodes
-     *  without bindings, and type ascriptions are looked through; any other wrapping of the
-     *  constant makes the extraction fail.
-     *
-     *  @param expr the quoted expression to extract a constant value from
-     */
     def unapply(expr: Expr[T])(using Quotes) =
       import quotes.reflect.*
       def rec(tree: Term): Option[T] = tree match {
