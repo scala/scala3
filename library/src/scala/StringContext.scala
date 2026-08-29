@@ -331,16 +331,6 @@ object StringContext {
     } index $index in "$str". Use \\\\ for literal \\."""
   )
 
-  /** An exception that is thrown if a string contains a backslash (`\`) character
-   *  followed by one or more `u` characters that do not start a valid four hex-digit
-   *  Unicode escape sequence.
-   *
-   *  @param str the offending string
-   *  @param escapeStart the index in `str` of the first `u` character of the offending escape sequence
-   *  @param index the position in `str` at which the escape sequence was found to be invalid.
-   *               This can be equal to `str.length` if the escape sequence is truncated by the
-   *               end of the string, as in `"\\u1"`.
-   */
   protected[scala] class InvalidUnicodeEscapeException(str: String, val escapeStart: Int, val index: Int) extends IllegalArgumentException(
     s"""invalid unicode escape at index $index of $str"""
   )
@@ -417,15 +407,6 @@ object StringContext {
       case  i => replace(str, i)
     }
 
-  /** Returns the given string with its Unicode escape sequences replaced by the
-   *  characters they denote.
-   *  A `\u` sequence is processed as an escape only when preceded by an odd number of
-   *  backslashes; otherwise the backslash is taken to be literal.
-   *  A sequence that is processed as an escape but is not a well-formed four
-   *  hex-digit Unicode escape raises an `InvalidUnicodeEscapeException`.
-   *
-   *  @param str a string that may contain Unicode escape sequences
-   */
   protected[scala] def processUnicode(str: String): String =
     str.indexOf("\\u") match {
       case -1 => str
