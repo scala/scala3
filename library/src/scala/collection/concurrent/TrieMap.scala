@@ -32,44 +32,14 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
 
   WRITE(bn)
 
-  /** Initializes a new INode with the specified generation and equivalence relation, setting its main node to null.
-   *
-   *  @param g the generation to use for this INode
-   *  @param equiv the equivalence relation for comparing keys
-   */
   def this(g: Gen, equiv: Equiv[K]) = this(null, g, equiv)
 
-  /** Writes the given main node reference to this INode, with the memory
-   *  effects of a volatile write.
-   *
-   *  @param nval the new main node value to set
-   */
   def WRITE(nval: MainNode[K, V] | Null) = INodeBase.updater.set(this, nval)
 
-  /** Atomically replaces the main node of this INode with `n`, provided the
-   *  current main node is `old`.
-   *
-   *  @param old the expected current main node value
-   *  @param n the new main node value to set
-   *  @return `true` if the main node was `old` and has been replaced by `n`, `false` otherwise
-   */
   def CAS(old: MainNode[K, V], n: MainNode[K, V]) = INodeBase.updater.compareAndSet(this, old, n)
 
-  /** Returns the main node of this INode, as read by the GCAS (Generalized
-   *  Compare-And-Set) protocol. Equivalent to `GCAS_READ`.
-   *
-   *  @param ct the TrieMap instance
-   *  @return the current main node
-   */
   def gcasRead(ct: TrieMap[K, V]): MainNode[K, V] | Null = GCAS_READ(ct)
 
-  /** Returns the main node of this INode, first completing or aborting any
-   *  GCAS update still pending on it.
-   *
-   *  @param ct the TrieMap instance, whose current root generation decides
-   *            whether a pending update is committed or aborted
-   *  @return the current main node
-   */
   def GCAS_READ(ct: TrieMap[K, V]): MainNode[K, V] | Null = {
     val m = /*READ*/mainnode
     val prevval: MainNode[K, V] | Null = /*READ*/m.prev
@@ -110,16 +80,6 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
     }
   }
 
-  /** Attempts to replace the main node `old` of this INode with `n`, using
-   *  the GCAS (Generalized Compare-And-Set) protocol: the update is committed
-   *  only if this i-node's generation matches that of the current root and the
-   *  TrieMap is not read-only, and is rolled back otherwise.
-   *
-   *  @param old the expected current main node value
-   *  @param n the new main node value to set
-   *  @param ct the TrieMap instance
-   *  @return `true` if the update was committed, `false` if it failed and must be retried
-   */
   def GCAS(old: MainNode[K, V], n: MainNode[K, V], ct: TrieMap[K, V]): Boolean = {
     n.WRITE_PREV(old)
     if (CAS(old, n)) {
@@ -136,14 +96,6 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
     nin
   }
 
-  /** Creates a copy of this INode with the specified generation. The copy
-   *  shares this i-node's current main node, read via GCAS; the main node
-   *  itself is not copied. Used by snapshot operations.
-   *
-   *  @param ngen the new generation to use for the copied INode
-   *  @param ct the TrieMap instance
-   *  @return a new INode in generation `ngen` referring to the same main node
-   */
   def copyToGen(ngen: Gen, ct: TrieMap[K, V]) = {
     val nin = new INode[K, V](ngen, equiv)
     val main = GCAS_READ(ct)
@@ -473,33 +425,15 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
     }
   }
 
-  /** Returns `true` if the main node of this INode, as read via GCAS, is `null`.
-   *
-   *  @param ct the TrieMap instance
-   */
   def isNullInode(ct: TrieMap[K, V]) = GCAS_READ(ct) eq null
 
-  /** Returns the size of the subtree rooted at this INode, computing and
-   *  caching it if it is not already cached.
-   *
-   *  @param ct the TrieMap instance
-   */
   def cachedSize(ct: TrieMap[K, V]): Int =
     GCAS_READ(ct).nn.cachedSize(ct)
 
-  /** Returns the known size of the subtree rooted at this INode, or -1 if
-   *  the size is not already known.
-   *
-   *  @param ct the TrieMap instance
-   */
   def knownSize(ct: TrieMap[K, V]): Int =
     GCAS_READ(ct).nn.knownSize()
 
   /* this is a quiescent method! */
-  /** Returns a string representation of this INode.
-   *
-   *  @param lev the current level in the trie
-   */
   def string(lev: Int): String = {
     val spaces = "  " * lev
     val rhs = mainnode match {
@@ -519,22 +453,10 @@ private[concurrent] object INode {
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // Arguments for `cond` argument in TrieMap#rec_insertif
   ////////////////////////////////////////////////////////////////////////////////////////////////////
-  /** A condition value indicating that the key must be present for the operation to succeed.
-   */
   final val KEY_PRESENT = new AnyRef
-  /** A condition value indicating that the key must be absent for the operation to succeed.
-   */
   final val KEY_ABSENT = new AnyRef
-  /** A condition value indicating that the operation should succeed regardless of whether the key is present or absent.
-   */
   final val KEY_PRESENT_OR_ABSENT = new AnyRef
 
-  /** Creates a new root node for a TrieMap.
-   *
-   *  @tparam K the type of keys
-   *  @tparam V the type of values
-   *  @param equiv the equivalence relation for comparing keys
-   */
   def newRootNode[K, V](equiv: Equiv[K]) = {
     val gen = new Gen
     val cn = new CNode[K, V](0, new Array(0), gen)
@@ -546,89 +468,39 @@ private[concurrent] object INode {
 private[concurrent] final class FailedNode[K, V](p: MainNode[K, V]) extends MainNode[K, V] {
   WRITE_PREV(p)
 
-  /** Throws `UnsupportedOperationException` because FailedNode is an internal transient state and does not support string representation.
-   *
-   *  @param lev the current level in the trie (never used)
-   *  @throws UnsupportedOperationException always
-   */
   def string(lev: Int): Nothing = throw new UnsupportedOperationException
 
-  /** Throws `UnsupportedOperationException` because FailedNode is an internal transient state and does not support size queries.
-   *
-   *  @param ct unused
-   *  @throws UnsupportedOperationException always
-   */
   def cachedSize(ct: AnyRef): Int = throw new UnsupportedOperationException
 
-  /** Always throws `UnsupportedOperationException`; FailedNode does not support size queries.
-   *
-   *  @throws UnsupportedOperationException always
-   */
   def knownSize: Int = throw new UnsupportedOperationException
 
-  /** Returns a string representation of this FailedNode.
-   */
   override def toString(): String = s"FailedNode($p)"
 }
 
 
 private[concurrent] trait KVNode[K, V] {
-  /** Returns the key-value pair stored in this node.
-   */
   def kvPair: (K, V)
 }
 
 
 private[collection] final class SNode[K, V](final val k: K, final val v: V, final val hc: Int)
   extends BasicNode with KVNode[K, V] {
-  /** Creates a copy of this SNode.
-   */
   def copy = new SNode(k, v, hc)
-  /** Creates a tombed copy of this SNode: a `TNode` with the same key, value, and hash code.
-   */
   def copyTombed = new TNode(k, v, hc)
-  /** Creates a copy of this SNode (an SNode is already untombed).
-   */
   def copyUntombed = new SNode(k, v, hc)
-  /** Returns the key-value pair stored in this node.
-   */
   def kvPair = (k, v)
-  /** Returns a string representation of this SNode.
-   *
-   *  @param lev the current level in the trie
-   *  @return a string representation
-   */
   def string(lev: Int): String = ("  " * lev) + s"SNode($k, $v, ${hc.toHexString})"
 }
 
 // Tomb Node, used to ensure proper ordering during removals
 private[collection] final class TNode[K, V](final val k: K, final val v: V, final val hc: Int)
   extends MainNode[K, V] with KVNode[K, V] {
-  /** Creates a copy of this TNode.
-   */
   def copy = new TNode(k, v, hc)
-  /** Creates a copy of this TNode (a TNode is already tombed).
-   */
   def copyTombed = new TNode(k, v, hc)
-  /** Creates an untombed SNode copy of this TNode, restoring it to a live state.
-   */
   def copyUntombed = new SNode(k, v, hc)
-  /** Returns the key-value pair stored in this node.
-   */
   def kvPair = (k, v)
-  /** Returns 1: a TNode always holds exactly one key-value pair.
-   *
-   *  @param ct never used
-   */
   def cachedSize(ct: AnyRef): Int = 1
-  /** Returns 1: a TNode always holds exactly one key-value pair.
-   */
   def knownSize: Int = 1
-  /** Returns a string representation of this TNode.
-   *
-   *  @param lev the current level in the trie
-   *  @return a string representation
-   */
   def string(lev: Int): String = ("  " * lev) + s"TNode($k, $v, ${hc.toHexString}, !)"
 }
 
@@ -636,33 +508,11 @@ private[collection] final class TNode[K, V](final val k: K, final val v: V, fina
 private[collection] final class LNode[K, V](val entries: List[(K, V)], equiv: Equiv[K])
   extends MainNode[K, V] {
 
-  /** Initializes a new LNode with a single key-value pair to handle hash collisions.
-   *
-   *  @param k the key
-   *  @param v the value
-   *  @param equiv the equivalence relation for comparing keys
-   */
   def this(k: K, v: V, equiv: Equiv[K]) = this((k -> v) :: Nil, equiv)
 
-  /** Initializes a new LNode with two key-value pairs, keeping only the second pair if the two keys are equivalent per `equiv`.
-   *
-   *  @param k1 the first key
-   *  @param v1 the first value
-   *  @param k2 the second key
-   *  @param v2 the second value
-   *  @param equiv the equivalence relation for comparing keys
-   */
   def this(k1: K, v1: V, k2: K, v2: V, equiv: Equiv[K]) =
     this(if (equiv.equiv(k1, k2)) (k2 -> v2) :: Nil else (k1 -> v1) :: (k2 -> v2) :: Nil, equiv)
 
-  /** Creates a new LNode with the given key-value pair inserted, replacing
-   *  the value of any existing pair whose key is equivalent to `k` (in that
-   *  case the existing key instance is kept, not `k`).
-   *
-   *  @param k the key to insert
-   *  @param v the value to associate with the key
-   *  @return a new LNode containing the updated entries
-   */
   def inserted(k: K, v: V) = {
     var k0: K = k
     @tailrec
@@ -677,12 +527,6 @@ private[collection] final class LNode[K, V](val entries: List[(K, V)], equiv: Eq
     new LNode((k0 -> v) :: e, equiv)
   }
 
-  /** Removes the key-value pair with the specified key, returning a TNode if the LNode would contain only one pair.
-   *
-   *  @param k the key to remove
-   *  @param ct the TrieMap instance
-   *  @return the new main node after removal: an LNode, or a TNode if only one pair remains
-   */
   def removed(k: K, ct: TrieMap[K, V]): MainNode[K, V] = {
     val updmap = entries.filterNot(entry => equiv.equiv(entry._1, k))
     if (updmap.sizeIs > 1) new LNode(updmap, equiv)
@@ -692,28 +536,12 @@ private[collection] final class LNode[K, V](val entries: List[(K, V)], equiv: Eq
     }
   }
 
-  /** Returns the value associated with the specified key.
-   *
-   *  @param k the key to look up
-   *  @return the value associated with the key, or `None` if the key is not present
-   */
   def get(k: K): Option[V] = entries.find(entry => equiv.equiv(entry._1, k)).map(_._2)
 
-  /** Returns the number of entries in this LNode.
-   *
-   *  @param ct never used
-   */
   def cachedSize(ct: AnyRef): Int = entries.size
 
-  /** Returns -1 to indicate that the size of this LNode is not precomputed due to the underlying list structure.
-   */
   def knownSize: Int = -1 // shouldn't ever be empty, and the size of a list is not known
 
-  /** Returns a string representation of this LNode.
-   *
-   *  @param lev the current level in the trie
-   *  @return a string representation
-   */
   def string(lev: Int): String = (" " * lev) + s"LNode(${entries.mkString(", ")})"
 
 }
@@ -721,11 +549,6 @@ private[collection] final class LNode[K, V](val entries: List[(K, V)], equiv: Eq
 // Ctrie Node, contains bitmap and array of references to branch nodes
 private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[BasicNode], val gen: Gen) extends CNodeBase[K, V] {
   // this should only be called from within read-only snapshots
-  /** Returns the cached size of the subtree rooted at this CNode, computing
-   *  and caching it first if it has not been computed yet.
-   *
-   *  @param ct the TrieMap instance
-   */
   def cachedSize(ct: AnyRef): Int = {
     val currsz = READ_SIZE()
     if (currsz != -1) currsz
@@ -736,8 +559,6 @@ private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[Ba
     }
   }
 
-  /** Returns the cached size of this CNode, or -1 if it has not been computed yet.
-   */
   def knownSize: Int = READ_SIZE() // this should only ever return -1 if unknown
 
   // lends itself towards being parallelizable by choosing
@@ -765,13 +586,6 @@ private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[Ba
     sz
   }
 
-  /** Creates a new CNode with the given node at position `pos`, keeping this
-   *  CNode's bitmap and using the given generation.
-   *
-   *  @param pos the position to update
-   *  @param nn the new node to insert
-   *  @param gen the generation to use for the new CNode
-   */
   def updatedAt(pos: Int, nn: BasicNode, gen: Gen) = {
     val len = array.length
     val narr = new Array[BasicNode](len)
@@ -780,12 +594,6 @@ private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[Ba
     new CNode[K, V](bitmap, narr, gen)
   }
 
-  /** Creates a new CNode with the node at the specified position removed, updating the bitmap accordingly.
-   *
-   *  @param pos the position to remove
-   *  @param flag the flag corresponding to the position
-   *  @param gen the generation to use for the new CNode
-   */
   def removedAt(pos: Int, flag: Int, gen: Gen) = {
     val arr = array
     val len = arr.length
@@ -795,15 +603,6 @@ private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[Ba
     new CNode[K, V](bitmap ^ flag, narr, gen)
   }
 
-  /** Creates a new CNode with the specified key-value pair inserted at the given position, updating the bitmap to include the new flag.
-   *
-   *  @param pos the position to insert at
-   *  @param flag the flag corresponding to the position
-   *  @param k the key to insert
-   *  @param v the value to associate with the key
-   *  @param hc the hash code of the key
-   *  @param gen the generation to use for the new CNode
-   */
   def insertedAt(pos: Int, flag: Int, k: K, v: V, hc: Int, gen: Gen) = {
     val len = array.length
     val bmp = bitmap
@@ -840,12 +639,6 @@ private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[Ba
     case _ => inode
   }
 
-  /** Returns this CNode unless it is at a non-root level and holds a single
-   *  SNode, in which case that SNode is returned as a tombed TNode.
-   *
-   *  @param lev the current level in the trie
-   *  @return the contracted node: a tombed copy of the single child, or this CNode
-   */
   def toContracted(lev: Int): MainNode[K, V] = if (array.length == 1 && lev > 0) array(0) match {
     case sn: SNode[K, V] @uc => sn.copyTombed
     case _ => this
@@ -857,14 +650,6 @@ private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[Ba
   //   returns the version of this node with at least some null-inodes
   //   removed (those existing when the op began)
   // - if there are only null-i-nodes below, returns null
-  /** Returns a compressed version of this CNode: i-node children whose main
-   *  node is a tombed TNode are replaced by live SNodes, and the result is
-   *  contracted via `toContracted`.
-   *
-   *  @param ct the TrieMap instance
-   *  @param lev the current level in the trie
-   *  @param gen the generation to use for the new node
-   */
   def toCompressed(ct: TrieMap[K, V], lev: Int, gen: Gen) = {
     val bmp = bitmap
     var i = 0
@@ -887,15 +672,8 @@ private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[Ba
     new CNode[K, V](bmp, tmparray, gen).toContracted(lev)
   }
 
-  /** Returns a string representation of this CNode.
-   *
-   *  @param lev the current level in the trie
-   *  @return a string representation
-   */
   def string(lev: Int): String = s"CNode ${bitmap.toHexString}\n" + array.map(_.string(lev + 1)).mkString("\n")
 
-  /** Returns a string representation of this CNode.
-   */
   override def toString() = {
     def elems: Seq[String] = array.flatMap {
       case sn: SNode[K, V] @uc => Iterable.single(sn.kvPair._2.toString)
@@ -908,19 +686,6 @@ private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[Ba
 
 private[concurrent] object CNode {
 
-  /** Creates a new node combining `x` and `y`, choosing an LNode if hash bits are exhausted (lev >= 35) to avoid further branching.
-   *
-   *  @tparam K the type of keys
-   *  @tparam V the type of values
-   *  @param x the first single node
-   *  @param xhc the hash code of `x`'s key
-   *  @param y the second single node
-   *  @param yhc the hash code of `y`'s key
-   *  @param lev the current level in the trie
-   *  @param gen the generation to use for the new node
-   *  @param equiv the equivalence relation for comparing keys
-   *  @return the new node
-   */
   def dual[K, V](x: SNode[K, V], xhc: Int, y: SNode[K, V], yhc: Int, lev: Int, gen: Gen, equiv: Equiv[K]): MainNode[K, V] = if (lev < 35) {
     val xidx = (xhc >>> lev) & 0x1f
     val yidx = (yhc >>> lev) & 0x1f
@@ -941,8 +706,6 @@ private[concurrent] object CNode {
 
 
 private[concurrent] case class RDCSS_Descriptor[K, V](old: INode[K, V], expectedmain: MainNode[K, V] | Null, nv: INode[K, V]) {
-  /** Indicates whether this RDCSS descriptor has been committed.
-   */
   @volatile var committed = false
 }
 
@@ -1480,25 +1243,10 @@ object TrieMap extends MapFactory[TrieMap] {
   }
 
   private[concurrent] object RemovalPolicy {
-    /** A removal policy: remove the entry regardless of its current value.
-     */
     final val Always = 0
-    /** A removal policy: remove the entry only if its current value equals (`==`) the expected value.
-     */
     final val FullEquals = 1
-    /** A removal policy: remove the entry only if its current value is reference-equal (`eq`) to the expected value.
-     */
     final val ReferenceEq = 2
 
-    /** Returns `true` if removal should proceed under the given policy:
-     *  always for `Always`, if `a == b` for `FullEquals`, or if `a eq b` for
-     *  `ReferenceEq`.
-     *
-     *  @tparam V the type of values
-     *  @param removalPolicy the removal policy to use
-     *  @param a one value to compare
-     *  @param b the other value to compare
-     */
     def shouldRemove[V](removalPolicy: Int)(a: V, b: V): Boolean =
       removalPolicy match {
         case Always      => true
@@ -1519,14 +1267,8 @@ private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: 
 
   if (mustInit) initialize()
 
-  /** Checks if there are more elements in this iterator.
-   */
   def hasNext = (current ne null) || (subiter ne null)
 
-  /** Returns the next element in this iterator.
-   *
-   *  @throws NoSuchElementException if this iterator has no more elements
-   */
   def next(): (K, V) = {
     if (subiter ne null) {
       val r = subiter.next()
@@ -1567,8 +1309,6 @@ private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: 
     readin(r)
   }
 
-  /** Advances this iterator to the next element.
-   */
   @tailrec
   final def advance(): Unit = if (depth >= 0) {
     val npos = stackpos(depth) + 1
@@ -1585,22 +1325,8 @@ private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: 
     }
   } else current = null
 
-  /** Creates a new iterator with the specified parameters.
-   *
-   *  @param _lev the current level in the trie
-   *  @param _ct the TrieMap instance
-   *  @param _mustInit whether the iterator must be initialized
-   *  @return a new iterator
-   */
   protected def newIterator(_lev: Int, _ct: TrieMap[K, V], _mustInit: Boolean): TrieMapIterator[K, V] = new TrieMapIterator[K, V](_lev, _ct, _mustInit)
 
-  /** Copies the state of this iterator into `it`. When this iterator has an
-   *  active sub-iterator over the entries of an LNode, the remaining entries
-   *  are materialized into a list and the sub-iterators of both this iterator
-   *  and `it` are replaced by fresh iterators over that list.
-   *
-   *  @param it the iterator to copy this iterator's state into
-   */
   protected def dupTo(it: TrieMapIterator[K, V]): Unit = {
     it.level = this.level
     it.ct = this.ct
