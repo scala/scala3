@@ -33,10 +33,6 @@ final class ByteswapHashing[T] extends Hashing[T] {
 object ByteswapHashing {
 
   private class Chained[T](h: Hashing[T]) extends Hashing[T] {
-    /** Computes the hash code of a value by applying the byteswap32 algorithm to the result of another hashing function.
-     *
-     *  @param v the value to be hashed
-     */
     def hash(v: T) = byteswap32(h.hash(v))
   }
 

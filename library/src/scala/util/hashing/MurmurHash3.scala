@@ -85,13 +85,6 @@ private[hashing] class MurmurHash3 {
   // In this case, the `seed` already has the case class name mixed in and `ignorePrefix` is set to true.
   // Case classes compiled before 2.13.17 call this method with `productSeed` and `ignorePrefix = false`.
   // See `productHashCode` in `SyntheticMethods` for details.
-  /** Computes the hash code of a Product instance.
-   *
-   *  @param x the Product instance to hash
-   *  @param seed the initial seed for the hash computation
-   *  @param ignorePrefix whether to ignore the product prefix in the hash computation
-   *  @return the hash code of `x`, derived from the product prefix (if not ignored) and each product element
-   */
   final def productHash(x: Product, seed: Int, ignorePrefix: Boolean = false): Int = {
     val arr = x.productArity
     if (arr == 0)

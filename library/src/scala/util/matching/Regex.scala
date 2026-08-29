@@ -785,7 +785,6 @@ object Regex {
    *  @param _groupNames the names of the capturing groups, if any, used to look up groups by name
    */
   class Match(val source: CharSequence,
-              /** The underlying `Matcher` that performed the match. */
               protected[matching] val matcher: Matcher,
               _groupNames: Seq[String]) extends MatchData {
 
@@ -895,7 +894,6 @@ object Regex {
     @deprecated("groupNames does not include inline group names, and should not be used anymore", "2.13.7")
     val groupNames: Seq[String] = _groupNames
 
-    /** The underlying `Matcher` used to find matches. */
     protected[Regex] val matcher = regex.pattern.matcher(source)
 
     // 0 = not yet matched, 1 = matched, 2 = advanced to match, 3 = no more matches
@@ -978,25 +976,17 @@ object Regex {
 
   /** Internal trait used by `replaceAllIn` and `replaceSomeIn`. */
   private[matching] trait Replacement {
-    /** The underlying `Matcher` used for replacement. */
     protected def matcher: Matcher
 
     private val sb = new java.lang.StringBuilder
 
     // Appends the remaining input and returns the result text.
-    /** Returns the final string after all replacements have been made. */
     def replaced = {
       matcher.appendTail(sb)
       sb.toString
     }
 
     // Appends the input prefix and the replacement text.
-    /** Appends the input text preceding the current match, followed by the
-     *  replacement text, to the result buffer.
-     *
-     *  @param replacement the replacement text, in which `$` may reference capturing groups
-     *  @return the matcher
-     */
     def replace(replacement: String): Matcher = matcher.appendReplacement(sb, replacement)
   }
 

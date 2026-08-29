@@ -274,7 +274,6 @@ object Using {
     def apply[A](op: Manager => A): Try[A] = Try { (new Manager).manage(op) }
 
     private final class Resource[R](resource: R)(implicit releasable: Releasable[R]) {
-      /** Releases the wrapped resource using its `Releasable` instance. */
       def release(): Unit = releasable.release(resource)
     }
   }

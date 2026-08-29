@@ -217,13 +217,6 @@ package concurrent {
     }
 
     private object FutureValue {
-      /** Extracts the completed result of an `Awaitable` that is a `Future`.
-       *
-       *  @tparam T the type of the value contained in the `Future`
-       *  @param a the `Awaitable` to extract the value from
-       *  @return `Some` of the `Try` result if `a` is a `Future` that has already been completed,
-       *          otherwise `None` (when `a` is not a `Future`, or is a `Future` not yet completed)
-       */
       def unapply[T](a: Awaitable[T]): Option[Try[T]] = a match {
         case f: Future[T @unchecked] => f.value
         case _ => None

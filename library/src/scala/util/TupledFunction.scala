@@ -28,14 +28,6 @@ sealed trait TupledFunction[F, G]:
 
 @experimental
 private[scala] object TupledFunction:
-  /** Creates a `TupledFunction` instance from the given conversion functions.
-   *
-   *  @tparam F the function type to convert from
-   *  @tparam G the tupled function type to convert to
-   *  @param tupledImpl the function that converts from `F` to `G`
-   *  @param untupledImpl the function that converts from `G` to `F`
-   *  @return a `TupledFunction` instance that uses the provided conversion functions
-   */
   def apply[F, G](tupledImpl: F => G, untupledImpl: G => F): TupledFunction[F, G]^{tupledImpl, untupledImpl} =
     new TupledFunction[F, G]:
       def tupled(f: F): G = tupledImpl(f)
