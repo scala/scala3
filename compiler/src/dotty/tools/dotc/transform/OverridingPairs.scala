@@ -88,7 +88,7 @@ object OverridingPairs:
     private val subParents = MutableSymbolMap[BitSet]()
 
     for bc <- base.info.baseClasses do
-      val bits = BitSet.empty
+      var bits = BitSet.empty
       for i <- 0 until parents.length do
         if parents(i).derivesFrom(bc) && isSubParent(parents(i), bc)
         then bits += i
