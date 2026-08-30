@@ -376,7 +376,7 @@ jobs:
 
       - name: Generate the provenance attestation
         id: provenance
-        uses: carabiner-dev/actions/slsa/generate@36a39ef667efe7112df8b1a534a4e37f35fad6fd # v1.2.6
+        uses: carabiner-dev/actions/slsa/generate@32587e82f960d49b36101e8c45d1956e511965d3 # v1.2.9
         with:
           # publish_release has finished by the time this job starts, naming it
           # keeps tejolote from waiting on the unrelated jobs of the run
