@@ -2116,7 +2116,7 @@ object Parsers {
           if in.token == LBRACE
           then makeRetaining(t, captureSet(), tpnme.retains)
           else makeRetaining(t, Nil, tpnme.retainsCap)
-      else if in.isIdent(nme.?) && Feature.magicEnabled && isPostfixQmark(isType = true) then
+      else if in.isIdent(nme.?) && Feature.maybeEnabled && isPostfixQmark(isType = true) then
         atSpan(t.span.start):
           PostfixOp(t, typeIdent())
       else
@@ -2678,7 +2678,7 @@ object Parsers {
 
     def expr1(location: Location = Location.Elsewhere): Tree = in.token match
       case IF =>
-        ifExpr(in.offset, If, canOmitThen = Feature.magicEnabled && location == Location.InBlock)
+        ifExpr(in.offset, If, canOmitThen = Feature.maybeEnabled && location == Location.InBlock)
       case WHILE =>
         atSpan(in.skipToken()) {
           val cond = condExpr(DO)
@@ -3127,7 +3127,7 @@ object Parsers {
         case USCORE =>
           atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
         case _ =>
-          if in.isIdent(nme.?) && Feature.magicEnabled && isPostfixQmark(isType = false) then
+          if in.isIdent(nme.?) && Feature.maybeEnabled && isPostfixQmark(isType = false) then
             atSpan(t.span.start):
               PostfixOp(t, termIdent())
           else if in.isColon && location == Location.InParens && followingIsLambdaParams() then

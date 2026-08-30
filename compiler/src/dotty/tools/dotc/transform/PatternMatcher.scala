@@ -894,7 +894,7 @@ object PatternMatcher {
             false
 
         override def apply(plan: SeqPlan): Plan = {
-          if Feature.magicEnabled then
+          if Feature.maybeEnabled then
             plan.head = apply(plan.head)
             plan.tail = apply(plan.tail)
             plan.head match

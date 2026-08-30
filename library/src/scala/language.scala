@@ -270,7 +270,7 @@ object language {
     object erasedDefinitions
 
     /** Experimental support for specialized traits
-     * 
+     *
      * @see [[docs/_docs/internals/specialized-traits.md]]
      */
     @compileTimeOnly("`specializedTraits` can only be used at compile time in import statements")
@@ -425,7 +425,11 @@ object language {
     @compileTimeOnly("`magic` can only be used at compile time in import statements")
     object magic
 
-    
+    /** Experimental support for maybe types `T?` and result types `T ? E`.
+     */
+    @compileTimeOnly("`maybe` can only be used at compile time in import statements")
+    object maybe
+
     /** Experimental support for inline traits
       */
     @compileTimeOnly("`inlineTraits` can only be used at compile time in import statements")

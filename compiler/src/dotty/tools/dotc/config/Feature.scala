@@ -45,6 +45,7 @@ object Feature:
   val magic = experimental("magic")
   val inlineTraits = experimental("inlineTraits")
   val specializedTraits = experimental("specializedTraits")
+  val maybe = experimental("maybe")
 
   val nonViralExperimentalFeatures: Set[TermName] =
     Set(captureChecking, separationChecking, safe, magic)
@@ -86,6 +87,7 @@ object Feature:
     (magic, "Enable extensions for working with coding agents"),
     (inlineTraits, "Allow inline traits"),
     (specializedTraits, "Allow specialized traits"),
+    (maybe, "Allow T? and T ? E types"),
   )
 
   /** Features that are now standard; the language import / -language choice is
@@ -193,10 +195,13 @@ object Feature:
     || enabledBySetting(specializedTraits)
     || ctx.compilationUnit.knowsInlineTraits
 
+  def maybeEnabled(using Context) =
+    enabled(maybe) || magicEnabled
+
   /** Is pureFunctions enabled for this compilation unit? */
   def pureFunsEnabled(using Context) =
     enabledBySetting(pureFunctions)
-    || ctx.compilationUnit.knowsPureFuns
+    || ctx.originalCompilationUnit.knowsPureFuns
     || ccEnabled
 
   /** Is capture checking enabled by a command-line setting? */
