@@ -29,7 +29,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Report MiMa issues in `scala-library-nonbootstrapped`
         run: ./project/scripts/sbt scala-library-nonbootstrapped/mimaReportBinaryIssues
 
@@ -47,7 +47,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Report MiMa issues in `scala3-interfaces`
         run: ./project/scripts/sbt scala3-interfaces/mimaReportBinaryIssues
 
@@ -65,7 +65,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Report MiMa issues in `tasty-core-nonbootstrapped`
         run: ./project/scripts/sbt tasty-core-nonbootstrapped/mimaReportBinaryIssues
 
@@ -83,7 +83,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Report MiMa issues in `scala-library-bootstrapped`
         run: ./project/scripts/sbt scala-library-bootstrapped/mimaReportBinaryIssues
 
@@ -104,7 +104,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Report MiMa issues in `tasty-core-bootstrapped`
         run: ./project/scripts/sbt tasty-core-bootstrapped/mimaReportBinaryIssues
 
@@ -122,6 +122,6 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Report MiMa issues in `scala-library-sjs`
         run: ./project/scripts/sbt scala-library-sjs/mimaReportBinaryIssues
