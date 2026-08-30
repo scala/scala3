@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 class IntList(val hd: Int, val tl: IntList)
 object NilIL extends IntList(0, null.asInstanceOf[IntList])
 object IntList {

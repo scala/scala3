@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 object Matcher {
   // Chained Match
   val chained_match_xs: List[Any] = List(1, 2, 3)

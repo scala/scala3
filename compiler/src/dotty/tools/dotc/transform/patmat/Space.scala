@@ -417,7 +417,7 @@ object SpaceEngine {
         // into a space of its own for `null` (see `maybeParts`), `Err...)` has to cover
         // it explicitly.
         pat.tpe.widen.dealias match
-          case MagicMaybeType(_, _, /*nullable=*/true) if fun.symbol == defn.Magic_ErrUnapply =>
+          case MaybeType(_, _, /*nullable=*/true) if fun.symbol == defn.Err_unapply =>
             Or(prod :: nullSpace :: Nil)
           case _ =>
             prod
@@ -455,8 +455,8 @@ object SpaceEngine {
   private def maybeParts(resTp: Type, errTp: Type, nullable: Boolean)(using Context): List[Type] =
     val errPart =
       if nullable then ConstantType(Constant(null))
-      else MagicMaybeType(defn.NothingType, errTp)
-    MagicMaybeType(resTp, defn.NothingType) :: errPart :: Nil
+      else MaybeType(defn.NothingType, errTp)
+    MaybeType(resTp, defn.NothingType) :: errPart :: Nil
 
   private def unapplySeqInfo(resTp: Type, pos: SrcPos)(using Context): (Int, Type, Type) = {
     var resultTp = resTp
@@ -588,8 +588,8 @@ object SpaceEngine {
     // the component that is not extracted cannot be constrained from the scrutinee type,
     // which would make the inferred component type `Any`.
     scrutineeTp.dealias match
-      case MagicMaybeType(resTp, _, _) if unapp.symbol == defn.Magic_OkUnapply  => resTp :: Nil
-      case MagicMaybeType(_, errTp, _) if unapp.symbol == defn.Magic_ErrUnapply => errTp :: Nil
+      case MaybeType(resTp, _, _) if unapp.symbol == defn.Ok_unapply  => resTp :: Nil
+      case MaybeType(_, errTp, _) if unapp.symbol == defn.Err_unapply => errTp :: Nil
       case _ => extractorSignature(unapp, scrutineeTp, argLen)
 
   /** Return term parameter types of the extractor `unapp`.
@@ -694,9 +694,9 @@ object SpaceEngine {
       // `Ok(_)` covers a maybe type without error values, `Err(_)` covers a maybe type
       // without result values. These are the two spaces a maybe type decomposes into,
       // see `maybeParts`.
-      case MagicMaybeType(resTp, errTp, _) =>
-        unapp.symbol == defn.Magic_OkUnapply && errTp.isNothingType
-        || unapp.symbol == defn.Magic_ErrUnapply && resTp.isNothingType
+      case MaybeType(resTp, errTp, _) =>
+        unapp.symbol == defn.Ok_unapply && errTp.isNothingType
+        || unapp.symbol == defn.Err_unapply && resTp.isNothingType
       case _ => false
   }
 
@@ -716,7 +716,7 @@ object SpaceEngine {
           case tp if !TypeComparer.provablyDisjoint(tp, tpB) => AndType(tp, tpB)
 
       case OrType(tp1, tp2)                            => List(tp1, tp2)
-      case MagicMaybeType(resTp, errTp, nullable)
+      case MaybeType(resTp, errTp, nullable)
       if !resTp.isNothingType && !errTp.isNothingType  => maybeParts(resTp, errTp, nullable)
       case tp if tp.isRef(defn.BooleanClass)           => List(ConstantType(Constant(true)), ConstantType(Constant(false)))
       case tp if tp.isRef(defn.UnitClass)              => ConstantType(Constant(())) :: Nil
@@ -912,7 +912,7 @@ object SpaceEngine {
       case Typ(tp: TermRef, _) =>
         if (flattenList && tp <:< defn.NilType) ""
         else tp.symbol.showName
-      case Typ(MagicMaybeType(resTp, errTp, _), _) if resTp.isNothingType ^ errTp.isNothingType =>
+      case Typ(MaybeType(resTp, errTp, _), _) if resTp.isNothingType ^ errTp.isNothingType =>
         // the spaces a maybe type decomposes into, see `maybeParts`
         if resTp.isNothingType then "Err(_)" else "Ok(_)"
       case Typ(tp, decomposed) =>
@@ -1145,7 +1145,7 @@ object SpaceEngine {
   def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)"):
     val selTyp = toUnderlying(m.selector.tpe).dealias
     val isNullable = selTyp match
-      case MagicMaybeType(_, _, nullable) => nullable
+      case MaybeType(_, _, nullable) => nullable
       case _: FlexibleType => true
       case _ => selTyp.classSymbol.isNullableClass
     val targetSpace = trace(i"targetSpace($selTyp)"):

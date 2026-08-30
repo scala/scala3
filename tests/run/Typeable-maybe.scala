@@ -17,8 +17,9 @@
  *  it's unclear whether this should expand to `C[T].unapply(x)`, (as it does now)
  *  or to `C.unapply[T](x)` (which is what TypeLevel Scala 4 did, I believe)
  */
-import language.experimental.magic
-import scala.magic.*
+import language.experimental.errorHandling
+import scala.util.{Ok, Err}
+
 trait Typeable[T]:
   def cast(x: Any): Option[T]
   def describe: String

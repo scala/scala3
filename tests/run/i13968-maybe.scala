@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 object Bar {
   def unapply(x: Any): (Int *: Int *: EmptyTuple)? = 1 *: 2 *: Tuple()
 }

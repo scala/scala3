@@ -1,6 +1,6 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
-import scala.magic.Ok
+import language.experimental.errorHandling
+import scala.util.{Ok, Err}
 import scala.compiletime.erasedValue
 
 class MyRegex[Pattern <: String & Singleton/*Literal constant*/]:

@@ -1,7 +1,7 @@
 //> using options -Yexplicit-nulls
 
 
-import language.experimental.magic
+import language.experimental.errorHandling
 import scala.quoted.{given, *}
 import deriving.*,  compiletime.*
 

@@ -1662,18 +1662,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedIf(tree: untpd.If, pt: Type)(using Context): Tree = {
     if tree.thenp.isEmpty then
-      assert(Feature.magicEnabled)
+      assert(Feature.errorHandlingEnabled)
       val elsep1 =
         if tree.elsep.isEmpty then tpd.unitLiteral else typed(tree.elsep)
-      val labelType = defn.Magic_CanErr.typeRef.appliedTo(elsep1.tpe.widen)
+      val labelType = defn.maybe_CanErr.typeRef.appliedTo(elsep1.tpe.widen)
       inferImplicit(labelType, EmptyTree, tree.span) match
         case fail: SearchFailure if !fail.isAmbiguous =>
           errorTree(tree, em"`if` without `then` is illegal here since no given of type $labelType is available.")
         case _ =>
         val desugared =
           if tree.elsep.isEmpty
-          then cpy.Apply(tree)(untpd.ref(defn.Magic_provided1), tree.cond :: Nil)
-          else cpy.Apply(tree)(untpd.ref(defn.Magic_provided2), tree.cond :: untpd.TypedSplice(elsep1) :: Nil)
+          then cpy.Apply(tree)(untpd.ref(defn.maybe_provided1), tree.cond :: Nil)
+          else cpy.Apply(tree)(untpd.ref(defn.maybe_provided2), tree.cond :: untpd.TypedSplice(elsep1) :: Nil)
         typedApply(desugared, pt)
     else
       val cond1 = typed(tree.cond, defn.BooleanType)
@@ -3809,8 +3809,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedAppliedTypeTree(
           if op.name == tpnme.throws && Feature.enabled(Feature.saferExceptions) then
             desugar.throws(l, op, r)
-          else if op.name == tpnme.? && Feature.magicEnabled then
-            cpy.AppliedTypeTree(tree)(untpd.ref(defn.MagicMaybeClass.typeRef), l :: r :: Nil)
+          else if op.name == tpnme.? && Feature.errorHandlingEnabled then
+            cpy.AppliedTypeTree(tree)(untpd.ref(defn.MaybeClass.typeRef), l :: r :: Nil)
           else
             cpy.AppliedTypeTree(tree)(op, l :: r :: Nil))
       else if (ctx.mode.is(Mode.Pattern))

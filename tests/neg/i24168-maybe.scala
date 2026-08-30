@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 trait Generic extends Selectable:
   def applyDynamic(name: String)(args: Any*): Any = ()
 

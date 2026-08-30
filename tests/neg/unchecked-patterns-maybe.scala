@@ -1,6 +1,8 @@
 //> using options -Werror -Yexplicit-nulls
 
-import language.experimental.magic
+import language.experimental.errorHandling
+import language.future
+
 object Test {
 
   val (y1: Some[Int]) = Some(1): Option[Int] @unchecked  // OK

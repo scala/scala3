@@ -731,7 +731,7 @@ object Inlines:
             return unitLiteral.withSpan(call.span)
           else if inlinedMethod == defn.Compiletime_codeOf then
             return Intrinsics.codeOf(arg, call.srcPos)
-          else if inlinedMethod == defn.Magic_OkApply && arg.tpe.isNotNullNorMaybe then
+          else if inlinedMethod == defn.Ok_unapply && arg.tpe.isNotNullNorMaybe then
             return arg
         case _ =>
 

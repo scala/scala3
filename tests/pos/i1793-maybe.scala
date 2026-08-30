@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 object Test {
   import scala.ref.WeakReference
   def unapply[T <: AnyRef](wr: WeakReference[T]): T? = {

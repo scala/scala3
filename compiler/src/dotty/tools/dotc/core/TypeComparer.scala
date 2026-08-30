@@ -857,7 +857,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         tp2 match
           case OrNull(tp2a) =>
             tp1w match
-              case MagicMaybeType(tp1a, errArg, _) =>
+              case MaybeType(tp1a, errArg, _) =>
                 if errArg.isRef(defn.UnitClass) && tp1a.isNotNullNorMaybe then
                   return recur(tp1a, tp2a)
               case _ =>
@@ -1050,7 +1050,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 // Same as above; this.type is also a singleton type in spec language
                 !ctx.explicitNulls && isNullable(tp.underlying)
               case tp: RefinedOrRecType => isNullable(tp.parent)
-              case AppliedType(tycon, _ :: errArg :: Nil) if tycon.isRef(defn.MagicMaybeClass) =>
+              case AppliedType(tycon, _ :: errArg :: Nil) if tycon.isRef(defn.MaybeClass) =>
                 isSubType(defn.UnitType, errArg)
               case tp: AppliedType => isNullable(tp.tycon)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
@@ -1518,7 +1518,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
       /** T <: T? if T is not null */
       def byMaybeWidening: Boolean = tp2 match
-        case MagicMaybeType(res2, err2, _) if tp1.isNotNullNorMaybe =>
+        case MaybeType(res2, err2, _) if tp1.isNotNullNorMaybe =>
           recur(tp1, res2)
         case _ => false
 

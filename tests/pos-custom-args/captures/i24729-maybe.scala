@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 import scala.collection.SeqOps
 
 inline def foo[A, B](self: A, y: B): (A, B) = (self, y)

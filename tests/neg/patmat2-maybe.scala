@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 import java.io.IOException
 import java.lang.NullPointerException
 import java.lang.IllegalArgumentException

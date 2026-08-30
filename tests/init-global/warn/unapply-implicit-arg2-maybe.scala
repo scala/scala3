@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 object Bar {
   class Foo {
     def m1(i: Int) = i+1

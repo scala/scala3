@@ -1,4 +1,4 @@
-package scala.magic.runtime
+package scala.runtime
 
 import annotation.experimental
 

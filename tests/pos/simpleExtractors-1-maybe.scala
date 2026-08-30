@@ -1,6 +1,7 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
-import scala.magic.*
+import language.experimental.errorHandling
+import scala.util.{Ok, Err}
+
 class Foo {
   def bar(x: Any): Unit = x match {
     case Bar(a) => println(a)

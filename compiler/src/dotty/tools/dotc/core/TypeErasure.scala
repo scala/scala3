@@ -84,7 +84,7 @@ object TypeErasure:
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
     sym == defn.ArrayClass
     || sym == defn.PairClass
-    || sym == defn.MagicMaybeClass
+    || sym == defn.MaybeClass
     || sym.isDerivedValueClass
     || sym.isSpecializedTrait
 
@@ -809,7 +809,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else if (tycon.isRef(defn.PairClass)) erasePair(tp)
         else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = sourceLanguage.isJava))
         else if (semiEraseVCs && tycon.classSymbol.isDerivedValueClass) eraseDerivedValueClass(tp)
-        else if tycon.isRef(defn.MagicMaybeClass) then eraseMaybe(tp)
+        else if tycon.isRef(defn.MaybeClass) then eraseMaybe(tp)
         else this(checkedSuperType(tp))
       case tp: TermRef =>
         this(underlyingOfTermRef(tp))

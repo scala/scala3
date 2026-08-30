@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 object Test {
   object NF {
     def unapply(t: Throwable): Throwable? = null

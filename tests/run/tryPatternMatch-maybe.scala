@@ -1,7 +1,7 @@
 //> using options -Yexplicit-nulls
 // scalajs: --compliant-semantics
 
-import language.experimental.magic
+import language.experimental.errorHandling
 import java.io.IOException
 import java.util.concurrent.TimeoutException
 

@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 object Foo:
   def unapplySeq(f: Int): (String *: Seq[Int] *: EmptyTuple)? = ???
 

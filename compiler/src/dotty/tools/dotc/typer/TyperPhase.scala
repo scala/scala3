@@ -46,8 +46,8 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     try
       if !unit.suspended then ctx.profiler.onUnit(ctx.phase, unit):
         unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
-        if unit.magic && !ctx.explicitNulls then
-          report.error(em"magic can be enabled only if -Yexplicit-nulls is also set", unit.tpdTree.srcPos.startPos)
+        if Feature.errorHandlingEnabled && !ctx.explicitNulls then
+          report.error(em"errorHandling can be enabled only if -Yexplicit-nulls is also set", unit.tpdTree.srcPos.startPos)
         typr.println("typed: " + unit.source)
         record("retained untyped trees", unit.untpdTree.treeSize)
         record("retained typed trees after typer", unit.tpdTree.treeSize)

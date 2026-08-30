@@ -484,25 +484,28 @@ class Definitions {
   // Magic stuff
   @tu lazy val MagicPackage: Symbol = requiredPackage("scala.magic")
   @tu lazy val MagicPackageClass: ClassSymbol = MagicPackage.moduleClass.asClass
-  @tu lazy val MagicMaybeClass: ClassSymbol = requiredClass("scala.magic.compiletime.Maybe")
-  @tu lazy val MagicValidClass: ClassSymbol = requiredClass("scala.magic.runtime.Valid")
-  @tu lazy val MagicFailClass: ClassSymbol = requiredClass("scala.magic.runtime.Fail")
-    @tu lazy val Magic_provided1: Symbol = MagicPackage.info.member(termName("provided")).suchThat(_.info.isInstanceOf[MethodType]).symbol
-    @tu lazy val Magic_provided2: Symbol = MagicPackage.info.member(termName("provided")).suchThat(_.info.isInstanceOf[PolyType]).symbol
-    @tu lazy val Magic_CanErr: Symbol = MagicPackageClass.requiredType("CanErr")
-
-  @tu lazy val MagicOkModule: Symbol = requiredModule("scala.magic.Ok")
-    @tu lazy val Magic_OkApply: Symbol = MagicOkModule.requiredMethod(nme.apply)
-    @tu lazy val Magic_OkUnapply: Symbol = MagicOkModule.requiredMethod(nme.unapply)
-
-  @tu lazy val MagicErrModule: Symbol = requiredModule("scala.magic.Err")
-    @tu lazy val Magic_ErrUnapply: Symbol = MagicErrModule.requiredMethod(nme.unapply)
 
   @tu lazy val MagicCompiletimePackage: Symbol = requiredPackage("scala.magic.compiletime")
     @tu lazy val Magic_spec: Symbol = MagicCompiletimePackage.requiredMethod("$spec")
     @tu lazy val Magic_wrappedType: Symbol = MagicCompiletimePackage.requiredMethod("$wrappedType")
 
   @tu lazy val MagicRuntimePackageClass = requiredPackage("scala.magic.runtime").moduleClass.asClass
+
+  // Maybe-related
+  @tu lazy val MaybeClass: ClassSymbol = requiredClass("scala.compiletime.Maybe")
+  @tu lazy val ValidClass: ClassSymbol = requiredClass("scala.runtime.Valid")
+  @tu lazy val FailClass: ClassSymbol = requiredClass("scala.runtime.Fail")
+  @tu lazy val maybeModule: Symbol = requiredModule("scala.maybe")
+    @tu lazy val maybe_provided1: Symbol = maybeModule.info.member(termName("provided")).suchThat(_.info.isInstanceOf[MethodType]).symbol
+    @tu lazy val maybe_provided2: Symbol = maybeModule.info.member(termName("provided")).suchThat(_.info.isInstanceOf[PolyType]).symbol
+    @tu lazy val maybe_CanErr: Symbol = maybeModule.requiredType("CanErr")
+
+  @tu lazy val OkModule: Symbol = requiredModule("scala.util.Ok")
+    @tu lazy val Ok_apply: Symbol = OkModule.requiredMethod(nme.apply)
+    @tu lazy val Ok_unapply: Symbol = OkModule.requiredMethod(nme.unapply)
+
+  @tu lazy val ErrModule: Symbol = requiredModule("scala.util.Err")
+    @tu lazy val Err_unapply: Symbol = ErrModule.requiredMethod(nme.unapply)
 
   // More synthetic symbols
   @tu lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))
@@ -2240,7 +2243,7 @@ class Definitions {
     m(TupleClass) = ProductClass
     m(NonEmptyTupleClass) = ProductClass
     m(PairClass) = ObjectClass
-    m(MagicMaybeClass) = ObjectClass
+    m(MaybeClass) = ObjectClass
     m
 
   // ----- Initialization ---------------------------------------------------

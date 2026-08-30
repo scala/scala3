@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 trait Extractor {
   inline def unapplySeq(inline tn: String): Seq[String]?
 }

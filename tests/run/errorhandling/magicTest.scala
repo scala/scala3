@@ -1,9 +1,10 @@
 //> using options -Yexplicit-nulls
 package magicTest
 
-import scala.util.*, boundary.break
+import scala.util.boundary, boundary.break
+import test.util.*
 import caps.any
-import language.experimental.magic
+import language.experimental.errorHandling
 
 /** boundary/break as a replacement for non-local returns */
 def indexOf[T](xs: List[T], elem: T): Int =

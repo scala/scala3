@@ -1,7 +1,7 @@
 //> using options -Yexplicit-nulls
 
   // Trait of all extractors with unapply methods
-import language.experimental.magic
+import language.experimental.errorHandling
   trait Matcher[A, B]:
     def unapply(x: A): B?
 

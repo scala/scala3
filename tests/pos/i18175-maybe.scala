@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 import scala.compiletime.ops.int.{ +, -, Max }
 import scala.compiletime.ops.string.{ Substring, Length, Matches, CharAt }
 

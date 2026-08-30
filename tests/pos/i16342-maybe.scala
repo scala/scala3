@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.maybe
+import language.experimental.errorHandling
 type Opaque = Base & Tag
 
 type Base = Any {

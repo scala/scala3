@@ -427,8 +427,8 @@ object language {
 
     /** Experimental support for maybe types `T?` and result types `T ? E`.
      */
-    @compileTimeOnly("`maybe` can only be used at compile time in import statements")
-    object maybe
+    @compileTimeOnly("`errorHandling` can only be used at compile time in import statements")
+    object errorHandling
 
     /** Experimental support for inline traits
       */

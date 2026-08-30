@@ -1,7 +1,7 @@
 //> using options -Yexplicit-nulls
 package i8577
 
-import language.experimental.magic
+import language.experimental.errorHandling
 type A; given A: A = ???;
 type B; given B: B = ???;
 type C; given C: C = ???;

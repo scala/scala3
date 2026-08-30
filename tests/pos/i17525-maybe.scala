@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 object Extract {
   transparent inline def unapply(value: String): Tuple? = (1, "two")
 }

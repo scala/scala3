@@ -101,19 +101,24 @@ val experimentalDefinitionInLibrary = Set(
   "scala.specialize.Specialized",
   "scala.specialize.Specialized$",
 
+  // New feature: maybe
+  "scala.compiletime.Maybe",
+  "scala.compiletime.Maybe$",
+  "scala.util.Ok",
+  "scala.util.Ok$",
+  "scala.util.Err",
+  "scala.util.Err$",
+  "scala.runtime.Fail",
+  "scala.runtime.Fail$",
+  "scala.runtime.Valid",
+  "scala.runtime.Valid$",
+  "scala.runtime.MaybeCase",
+  "scala.maybe",
+  "scala.maybe$",
+
   // New feature: magic
-  "scala.magic.Ok",
-  "scala.magic.Ok$",
-  "scala.magic.compiletime.Maybe",
   "scala.magic.compiletime.package$.$spec",
   "scala.magic.compiletime.package$.$wrappedType",
-  "scala.magic.Err",
-  "scala.magic.Err$",
-  "scala.magic.runtime.Fail",
-  "scala.magic.runtime.Fail$",
-  "scala.magic.runtime.Valid",
-  "scala.magic.runtime.Valid$",
-  "scala.magic.runtime.MaybeCase",
 )
 
 

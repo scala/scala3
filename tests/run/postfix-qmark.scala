@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 
 case class C(elem: Int):
   def ? (y: Int) = C(elem + y)

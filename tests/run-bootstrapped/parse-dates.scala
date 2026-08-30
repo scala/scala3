@@ -1,6 +1,7 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
-import scala.magic.*
+import language.experimental.errorHandling
+import scala.util.{Ok, Err}
+
 
 extension (str: String) def parseInt: Int? =
   try str.toInt

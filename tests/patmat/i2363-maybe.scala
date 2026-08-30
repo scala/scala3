@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 sealed trait Expr
 class IntExpr extends Expr
 class BooleanExpr extends Expr

@@ -1,7 +1,7 @@
-package scala.magic
+package scala.util
 
-import scala.magic.runtime.{MaybeCase, Valid}
-import scala.magic.compiletime.Maybe
+import scala.runtime.{MaybeCase, Valid}
+import scala.compiletime.Maybe
 import annotation.experimental
 
 @experimental

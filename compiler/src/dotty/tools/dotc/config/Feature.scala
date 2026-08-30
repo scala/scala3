@@ -45,7 +45,7 @@ object Feature:
   val magic = experimental("magic")
   val inlineTraits = experimental("inlineTraits")
   val specializedTraits = experimental("specializedTraits")
-  val maybe = experimental("maybe")
+  val errorHandling = experimental("errorHandling")
 
   val nonViralExperimentalFeatures: Set[TermName] =
     Set(captureChecking, separationChecking, safe, magic)
@@ -87,7 +87,7 @@ object Feature:
     (magic, "Enable extensions for working with coding agents"),
     (inlineTraits, "Allow inline traits"),
     (specializedTraits, "Allow specialized traits"),
-    (maybe, "Allow T? and T ? E types"),
+    (errorHandling, "Allow error handling using T? and T ? E types"),
   )
 
   /** Features that are now standard; the language import / -language choice is
@@ -195,8 +195,10 @@ object Feature:
     || enabledBySetting(specializedTraits)
     || ctx.compilationUnit.knowsInlineTraits
 
-  def maybeEnabled(using Context) =
-    enabled(maybe) || magicEnabled
+  def errorHandlingEnabled(using Context) =
+    ctx.originalCompilationUnit.newErrorHandling
+    || enabledBySetting(errorHandling)
+    || enabledBySetting(magic)
 
   /** Is pureFunctions enabled for this compilation unit? */
   def pureFunsEnabled(using Context) =
@@ -283,7 +285,7 @@ object Feature:
       || sym.exists && defn.ccExperimental.contains(sym.owner))
 
   private def magicException(sym: Symbol)(using Context): Boolean =
-    Feature.magicEnabled && sym.isContainedIn(defn.MagicPackageClass)
+    Feature.magicEnabled // magic enables all experimental definitions
 
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
     val experimentalSym =
@@ -354,11 +356,15 @@ object Feature:
       case `magic` =>
         enableCC()
         ctx.compilationUnit.magic = true
+        ctx.compilationUnit.newErrorHandling = true
         ctx.compilationUnit.sourceVersion = Some(SourceVersion.future)
         true
       case `inlineTraits` =>
         ctx.compilationUnit.knowsInlineTraits = true
         if ctx.run != null then ctx.run.nn.inlineTraitsImportEncountered = true
+        true
+      case `errorHandling` =>
+        ctx.compilationUnit.newErrorHandling = true
         true
       case _ =>
         false

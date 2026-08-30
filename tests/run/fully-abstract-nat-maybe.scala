@@ -1,8 +1,9 @@
 //> using options -Yexplicit-nulls
 import language.experimental.magic
-import scala.magic.*
+
 import scala.reflect.ClassTag
 import language.implicitConversions
+import util.Ok
 
 object Test {
   def main(args: Array[String]): Unit = {

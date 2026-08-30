@@ -1,7 +1,7 @@
-import language.experimental.magic
+import language.experimental.errorHandling
 import language.future
-import scala.magic.*
-import scala.util.Either
+
+import scala.util.{Either, Ok, Err}
 
 def toEither[T, E](x: T ? E): Either[E, T] = x match
   case Ok(y) => Right(y)

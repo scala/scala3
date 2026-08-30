@@ -134,7 +134,7 @@ object Checking {
           report.errorOrMigrationWarning(
             showInferred(UnreducibleApplication(tycon), tp, tpt),
             tree.srcPos, MigrationVersion.Scala2to3)
-        else if tp.typeSymbol == defn.MagicMaybeClass then
+        else if tp.typeSymbol == defn.MaybeClass then
           report.error(em"Maybe type may not contain wildcard arguments", tree.srcPos)
       case _ =>
     }

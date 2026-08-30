@@ -1,7 +1,6 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
-import scala.magic.*
-
+import language.experimental.errorHandling
+import util.Ok
 
 class C:
   def toOptionAny[T](x: Any): Option[Any] = x match

@@ -1,7 +1,7 @@
 //> using options -Yexplicit-nulls
 
-import language.experimental.magic
-import scala.magic.*
+import language.experimental.errorHandling
+
 
 val x: String ? String = null // error
 

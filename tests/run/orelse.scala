@@ -2,9 +2,9 @@
 // scalajs needs to be diasabled since `null` gives an Err(undefined) instead of an Err(())
 // TODO: Figure out how to fix this under scalajs
 //> using options -Yexplicit-nulls
-import language.experimental.magic
-import scala.magic.*
-import scala.util.Either
+import language.experimental.errorHandling
+
+import scala.util.{Either, Ok, Err}
 
 class C:
   def toEitherAny[T](x: Any): Either[Any, Any] = x match

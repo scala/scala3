@@ -1,5 +1,5 @@
 //> using options -Werror -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 extension (sc: StringContext)
   def m: StringContext = sc
   def unapply(string: String): String? =

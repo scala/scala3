@@ -1,5 +1,6 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
+import language.future
 object Test {
   // refutable extractor
   object Positive { def unapply(i: Int): Int? = if i > 0 then i else null }

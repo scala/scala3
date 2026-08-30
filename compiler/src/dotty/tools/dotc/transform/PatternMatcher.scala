@@ -386,13 +386,13 @@ object PatternMatcher {
       def getOfGetMatch(gm: Tree, isErrMatch: Boolean = false) =
         val getSelection = gm.select(nme.get, _.info.isParameterless)
         gm.tpe.widen match
-          case MagicMaybeType(res, _, _) =>
+          case MaybeType(res, _, _) =>
             if isErrMatch then
-              val MagicMaybeType(_, errArg, nullable) = gm.tpe.widen.runtimeChecked
+              val MaybeType(_, errArg, nullable) = gm.tpe.widen.runtimeChecked
               if errArg.isRef(defn.UnitClass) then
                 unitLiteral
               else
-                val select = gm.asInstance(defn.MagicFailClass.typeRef.appliedTo(defn.AnyType))
+                val select = gm.asInstance(defn.FailClass.typeRef.appliedTo(defn.AnyType))
                   .select(nme.elem)
                 if nullable then
                   If(gm.nullTest(cond = true),
@@ -403,7 +403,7 @@ object PatternMatcher {
               val tested =
                 if res.isNotNullNorMaybe then gm
                 else
-                  val validTpe = defn.MagicValidClass.typeRef
+                  val validTpe = defn.ValidClass.typeRef
                   If(gm.isInstance(validTpe), gm.asInstance(validTpe).select(nme.elem), gm)
               tested.asInstance(getSelection.tpe.widen)
           case _ =>
@@ -442,9 +442,9 @@ object PatternMatcher {
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
         else
           unapp match
-            case Apply(fn, arg :: Nil) if fn.symbol == defn.Magic_OkUnapply =>
+            case Apply(fn, arg :: Nil) if fn.symbol == defn.Ok_unapply =>
               unappResultPlan(unapp, args, arg.symbol, unappType, wasUnaryNamedTupleSelectArgForNamedTuple, IsOkTest)
-            case Apply(fn, arg :: Nil) if fn.symbol == defn.Magic_ErrUnapply =>
+            case Apply(fn, arg :: Nil) if fn.symbol == defn.Err_unapply =>
               unappResultPlan(unapp, args, arg.symbol, unappType, wasUnaryNamedTupleSelectArgForNamedTuple, IsErrTest)
             case _ =>
               letAbstract(unapp): unappResult =>
@@ -532,7 +532,7 @@ object PatternMatcher {
         case UnApply(extractor, implicits, args) =>
           val mt @ MethodType(_) = extractor.tpe.widen.runtimeChecked
           val admitsNull = mt.paramInfos.headOption match
-            case Some(MagicMaybeType(_, _, nullable)) => nullable
+            case Some(MaybeType(_, _, nullable)) => nullable
             case _ => false
           val unappPlan = if (scrutinee.info.isBottomType)
             // Generate a throwaway but type-correct plan.
@@ -894,7 +894,7 @@ object PatternMatcher {
             false
 
         override def apply(plan: SeqPlan): Plan = {
-          if Feature.maybeEnabled then
+          if Feature.errorHandlingEnabled then
             plan.head = apply(plan.head)
             plan.tail = apply(plan.tail)
             plan.head match
@@ -931,19 +931,19 @@ object PatternMatcher {
       (plan.test: @unchecked) match
         case NonEmptyTest | IsOkTest =>
           scrutinee.tpe.widenDealias match
-            case MagicMaybeType(_, errArg, _) =>
+            case MaybeType(_, errArg, _) =>
               val test = scrutinee.nullTest(cond = false)
               if errArg.isRef(defn.UnitClass)
               then test
-              else test.and(scrutinee.isInstance(defn.MagicFailClass.typeRef).not)
+              else test.and(scrutinee.isInstance(defn.FailClass.typeRef).not)
             case _ =>
               constToLiteral(
                 scrutinee
                   .select(nme.isEmpty, _.info.isParameterless)
                   .select(nme.UNARY_!, _.info.isParameterless))
         case IsErrTest =>
-          val MagicMaybeType(_, _, nullable) = scrutinee.tpe.widen.runtimeChecked
-          val typeTest = scrutinee.isInstance(defn.MagicFailClass.typeRef)
+          val MaybeType(_, _, nullable) = scrutinee.tpe.widen.runtimeChecked
+          val typeTest = scrutinee.isInstance(defn.FailClass.typeRef)
           if nullable then scrutinee.nullTest(cond = true).or(typeTest)
           else typeTest
         case NonNullTest =>

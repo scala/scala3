@@ -1,16 +1,6 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
-import scala.magic.*
-
-extension [A, E](x: A ? E)
-
-  def map[B](f: A => B): B ? E = x match
-    case Ok(y) => Ok(f(y))
-    case Err(e) => Err(e)
-
-  def flatMap[B](f: A => B ? E): B ? E = x match
-    case Ok(y) => f(y)
-    case Err(e) => Err(e)
+import language.experimental.errorHandling
+import scala.util.{Ok, Err}
 
 extension (str: String) def parseInt: Int? =
   try str.toInt

@@ -1,8 +1,6 @@
-package scala.magic
+package scala.util
 
-import language.experimental.magic
-import scala.magic.runtime
-import scala.magic.compiletime.Maybe
+import compiletime.Maybe
 import annotation.experimental
 
 @experimental

@@ -1,6 +1,6 @@
 //> using options -Yexplicit-nulls
 
-import language.experimental.magic
+import language.experimental.errorHandling
 object Test {
   def main(args: Array[String]): Unit = {
       println("CaseNums")

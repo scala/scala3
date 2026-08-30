@@ -1,6 +1,6 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
-import scala.magic.*
+import language.experimental.errorHandling
+import scala.util.{Ok, Err}
 
 def foo(x: Int): Int? =
   if x > 0 && x < 10 then x else null
@@ -57,13 +57,13 @@ def baz(x: Int ? String) =
         {
           val y: Int =
             {
-              val x$proxy1: Object = scala.magic.withErr(x, "not an int")
+              val x$proxy1: Object = scala.withErr(x, "not an int")
               matchResult2[Int]:
                 {
                   case val x6: Object = x$proxy1
                   if
                     (null == x6).unary_!() &&
-                      x6.isInstanceOf[scala.magic.runtime.Fail].unary_!()
+                      x6.isInstanceOf[scala.runtime.Fail].unary_!()
                    then
                     {
                       case val x9: Int = Int.unbox(x6:Object)
@@ -73,18 +73,18 @@ def baz(x: Int ? String) =
                    else ()
                   {
                     case val x7: Object =
-                      x6.asInstanceOf[scala.magic.runtime.Fail].elem()
+                      x6.asInstanceOf[scala.runtime.Fail].elem()
                     case val e: String = x7.asInstanceOf[String]
                     return[matchResult2]
                       return[boundary2]
-                        new scala.magic.runtime.Fail(e):Object:Object
+                        new scala.runtime.Fail(e):Object:Object
                   }
                   throw new MatchError(x6)
                 }
             }
           if (y > 0).unary_!() then
             return[boundary2]
-              new scala.magic.runtime.Fail("not positive"):Object:Object
+              new scala.runtime.Fail("not positive"):Object:Object
            else ()
           Int.box(y:Int)
         }

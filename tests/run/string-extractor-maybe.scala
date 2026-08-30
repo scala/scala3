@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 final class StringExtract(val s: String) extends AnyVal {
   def length                      = s.length
   def lengthCompare(n: Int)       = s.length compare n

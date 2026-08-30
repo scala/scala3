@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 object Macro:
   opaque type StrCtx = StringContext
   def apply(ctx: StringContext): StrCtx = ctx

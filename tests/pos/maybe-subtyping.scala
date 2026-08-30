@@ -1,5 +1,5 @@
 //> using options -Yexplicit-nulls
-import language.experimental.magic
+import language.experimental.errorHandling
 
 var x: String? = "hi"
 var y: String | Null = "ho"

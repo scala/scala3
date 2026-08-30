@@ -13,7 +13,7 @@
 
 package scala
 
-import language.experimental.magic
+import language.experimental.errorHandling
 import java.lang.StringBuilder as JLSBuilder
 import scala.annotation.tailrec
 
