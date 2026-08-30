@@ -29,7 +29,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
 
       - name: Test `scala3-compiler-nonbootstrapped`
         run: ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
@@ -53,7 +53,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
 
       - name: Test `scala3-compiler-bootstrapped`
         run: ./project/scripts/sbt scala3-compiler-bootstrapped/test
@@ -76,7 +76,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Test `scala3-sbt-bridge-nonbootstrapped`
         run: ./project/scripts/sbt scala3-sbt-bridge-nonbootstrapped/test
 
@@ -93,7 +93,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Test `scala3-sbt-bridge-bootstrapped`
         run: ./project/scripts/sbt scala3-sbt-bridge-bootstrapped/test
 
@@ -110,7 +110,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Test `tasty-core-nonbootstrapped`
         run: ./project/scripts/sbt tasty-core-nonbootstrapped/test
 
@@ -127,7 +127,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Test `tasty-core-bootstrapped`
         run: ./project/scripts/sbt tasty-core-bootstrapped/test
 
@@ -143,7 +143,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Test `scala3-directives-parser-nonbootstrapped`
         run: ./project/scripts/sbt scala3-directives-parser-nonbootstrapped/test
 
@@ -159,7 +159,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Test `scala3-directives-parser-bootstrapped`
         run: ./project/scripts/sbt scala3-directives-parser-bootstrapped/test
 
@@ -179,7 +179,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24.x'
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Scala.js compiler tests
         run: ./project/scripts/sbt "sjsCompilerTests/test"
       - name: Scala.js sandbox
@@ -215,7 +215,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
       - uses: VirtusLab/scala-cli-setup@8db5313925605c20e292348c1749e80dac7eed0f # v1.16.0
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Test REPL on JDK ${{ matrix.jdk }}
         env:
           DOTTY_REPL_TEST_JAVA_HOME: ${{ steps.jdk.outputs.path }}
@@ -235,7 +235,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Test Presentation Compiler
         run: ./project/scripts/sbt scala3-presentation-compiler/test
 
@@ -252,6 +252,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Test Language Server
         run: ./project/scripts/sbt scala3-language-server/test

@@ -26,7 +26,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - run: ./project/scripts/sbt scala-library-nonbootstrapped/test
 
   test-scala-library-bootstrapped:
@@ -40,7 +40,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - run: ./project/scripts/sbt scala-library-bootstrapped/test
 
   scala-library-docs:
@@ -57,6 +57,6 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       - name: Generate Documentation of the Standard Library
         run: ./project/scripts/sbt scala-library-bootstrapped/doc
