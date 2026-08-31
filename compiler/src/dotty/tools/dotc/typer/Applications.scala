@@ -1921,7 +1921,7 @@ trait Applications extends Compatibility {
           if componentTypes.isEmpty then defn.BooleanType
           else if isVararg then
             val defn.ArrayOf(elemType) = componentTypes.last.runtimeChecked
-            val wrapperType = defn.ArrayModuleClass.requiredType("UnapplySeqWrapper").typeRef.appliedTo(elemType)
+            val wrapperType = defn.Array_UnapplySeqWrapper.typeRef.appliedTo(elemType)
             // For `Rec(T*)` we do `Array.UnapplySeqWrapper[T]`
             if componentTypes.length == 1 then wrapperType
             // For `Rec(T1, ..., Tn, T*)` we do `(T1, ..., Tn, Array.UnapplySeqWrapper[T])`

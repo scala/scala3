@@ -630,6 +630,7 @@ class Definitions {
 
   @tu lazy val ArrayModule: Symbol = requiredModule("scala.Array")
   def ArrayModuleClass: Symbol = ArrayModule.moduleClass
+    @tu lazy val Array_UnapplySeqWrapper : Symbol = ArrayModuleClass.requiredType("UnapplySeqWrapper")
 
   @tu lazy val IArrayModule: Symbol = requiredModule("scala.IArray")
   def IArrayModuleClass: Symbol = IArrayModule.moduleClass
