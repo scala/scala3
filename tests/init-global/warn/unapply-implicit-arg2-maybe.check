@@ -1,0 +1,12 @@
+-- Warning: tests/init-global/warn/unapply-implicit-arg2-maybe.scala:9:40 ----------------------------------------------
+9 |    if i == 0 then f1.m1(i1) else f1.m2(i2) // warn
+  |                                        ^^
+  |                       Access uninitialized field value i2. Calling trace:
+  |                       ├── object Bar {	[ unapply-implicit-arg2-maybe.scala:3 ]
+  |                       │   ^
+  |                       ├── case Bar(i) => i	[ unapply-implicit-arg2-maybe.scala:14 ]
+  |                       │        ^^^^^^
+  |                       ├── def unapply(using f1: Foo)(i: Int): Int? =	[ unapply-implicit-arg2-maybe.scala:8 ]
+  |                       │   ^
+  |                       └── if i == 0 then f1.m1(i1) else f1.m2(i2) // warn	[ unapply-implicit-arg2-maybe.scala:9 ]
+  |                                                               ^^

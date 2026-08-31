@@ -86,7 +86,7 @@ class InterceptedMethods extends MiniPhase {
     val sym = tree.fun.symbol
 
     if sym == defn.Any_!= then
-      qual.select(defn.Any_==).appliedToTermArgs(tree.args).select(defn.Boolean_!).withSpan(tree.span)
+      qual.select(defn.Any_==).appliedToTermArgs(tree.args).not.withSpan(tree.span)
     else if ctx.explicitNulls then
       if sym == defn.Any_toString && !qual.tpe.isNotNull then
         ref(defn.Objects_toString).appliedTo(qual)

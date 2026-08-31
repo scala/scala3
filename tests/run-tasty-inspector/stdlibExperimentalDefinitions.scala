@@ -99,7 +99,22 @@ val experimentalDefinitionInLibrary = Set(
   
   // New feature: Specialized traits
   "scala.specialize.Specialized",
-  "scala.specialize.Specialized$"
+  "scala.specialize.Specialized$",
+
+  // New feature: maybe
+  "scala.compiletime.Maybe",
+  "scala.compiletime.Maybe$",
+  "scala.util.Ok",
+  "scala.util.Ok$",
+  "scala.util.Err",
+  "scala.util.Err$",
+  "scala.runtime.Fail",
+  "scala.runtime.Fail$",
+  "scala.runtime.Valid",
+  "scala.runtime.Valid$",
+  "scala.runtime.MaybeCase",
+  "scala.maybe",
+  "scala.maybe$",
 )
 
 
