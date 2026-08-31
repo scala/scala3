@@ -418,16 +418,6 @@ object PatternMatcher {
         def isSyntheticScala2Unapply(sym: Symbol) =
           sym.is(Synthetic) && sym.owner.is(Scala2x)
 
-        def tupleApp(i: Int, receiver: Tree) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
-          ref(defn.RuntimeTuplesModule)
-            .select(defn.RuntimeTuples_apply)
-            .appliedTo(
-              receiver.ensureConforms(defn.NonEmptyTupleTypeRef), // If scrutinee is a named tuple, cast to underlying tuple
-              Literal(Constant(i)))
-
-        def getOfGetMatch(gm: Tree) = gm.select(nme.get, _.info.isParameterless)
-        // Disable Scala2Unapply optimization if the argument is a named argument for a single-element named tuple to
-        // enable selecting the field. See i23131.scala for test cases.
         val wasUnaryNamedTupleSelectArgForNamedTuple =
           args.length == 1 && args.head.removeAttachment(FirstTransform.WasNamedArg).isDefined &&
             isGetMatch(unappType) && getOfGetMatch(unapp).tpe.widenDealias.isNamedTupleType
@@ -862,6 +852,76 @@ object PatternMatcher {
       Inliner(plan)
     }
 
+    /** Drop tests that are oposites of previously established tests.
+     *
+     *  When we have the following shape:
+     *
+     *  if testA then plan1
+     *  if testB then plan2
+     *  nextPlan?
+     *
+     *  where testA is a dual of testB and plan1 is test-free, transform it to
+     *
+     *  if testA then plan1
+     *  plan2
+     *  nextPlan?
+     *
+     *  "Dual" means:
+     *    - one of the tests is an IsOKTest, the other is an
+     *      IsErrTest or an "== null" test,
+     *    - the two tests have the same scrutinee.
+     */
+    def dropOpposites(plan: Plan): Plan = {
+
+      object Dropper extends PlanTransform {
+
+        def isTestFree(plan: Plan): Boolean = plan match
+          case _: TestPlan => false
+          case _: ReturnPlan => true
+          case _: ResultPlan => true
+          case LetPlan(_, expr) => isTestFree(expr)
+          case LabeledPlan(_, expr) => isTestFree(expr)
+          case SeqPlan(hd, tl) => isTestFree(hd) && isTestFree(tl)
+
+        def isDual(test1: Test, test2: Test) = test1 match
+          case IsOkTest =>
+            test2 match
+              case IsErrTest => true
+              case EqualTest(tree) => tree.tpe.isRef(defn.NullClass)
+              case _ => false
+          case _ =>
+            false
+
+        override def apply(plan: SeqPlan): Plan = {
+          if Feature.errorHandlingEnabled then
+            plan.head = apply(plan.head)
+            plan.tail = apply(plan.tail)
+            plan.head match
+              case TestPlan(test1, scrut1, _, follow1) =>
+                def tryDropTest(plan: Plan) = plan match
+                  case TestPlan(test2, scrut2, _, follow2) =>
+                    (scrut1, scrut2) match
+                      case (_: Ident, _: Ident)
+                      if scrut1.symbol == scrut2.symbol
+                          && (isDual(test1, test2) || isDual(test2, test1))
+                          && isTestFree(follow1) =>
+                        follow2
+                      case _ => plan
+                  case _ =>
+                    plan
+
+                plan.tail match
+                  case tail @ SeqPlan(tailHead, tailTail) =>
+                    tail.head = tryDropTest(tailHead)
+                  case tail =>
+                    plan.tail = tryDropTest(tail)
+              case _ =>
+          plan
+        }
+      }
+      Dropper(plan)
+    }
+
     // ----- Generating trees from plans ---------------
 
     /** The condition a test plan rewrites to */
@@ -891,7 +951,7 @@ object PatternMatcher {
         case GuardTest =>
           scrutinee
         case EqualTest(tree) =>
-          tree.equal(scrutinee)
+          inlines.Inliner.reduceUnitEQ(tree.equal(scrutinee))
         case LengthTest(len, exact) =>
           val lengthCompareSym = defn.Seq_lengthCompare.matchingMember(scrutinee.tpe)
           if (lengthCompareSym.exists)
@@ -1106,7 +1166,7 @@ object PatternMatcher {
                     if (acc.isEmpty) emitCondWithPos(otherPlan)
                     else acc.select(nme.ZAND).appliedTo(emitCondWithPos(otherPlan))
                   }
-                If(conditions, emit(plan.onSuccess), unitLiteral)
+                conditional(conditions, emit(plan.onSuccess), unitLiteral)
             }
           }
           emitWithMashedConditions(plan :: Nil)
@@ -1213,7 +1273,8 @@ object PatternMatcher {
 
     val optimizations: List[(String, Plan => Plan)] = List(
       "mergeTests" -> mergeTests,
-      "inlineVars" -> inlineVars
+      "inlineVars" -> inlineVars,
+      "dropOpposites" -> dropOpposites
     )
 
     /** Translate pattern match to sequence of tests. */
