@@ -15,6 +15,7 @@ object MiMaFilters {
       Versions.mimaPreviousVersion -> Seq(
         // new annotation carrying the component names of Java records
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$errorHandling$"),
       ),
 
       // Additions since last LTS

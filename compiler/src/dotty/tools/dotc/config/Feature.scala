@@ -45,6 +45,7 @@ object Feature:
   val magic = experimental("magic")
   val inlineTraits = experimental("inlineTraits")
   val specializedTraits = experimental("specializedTraits")
+  val errorHandling = experimental("errorHandling")
 
   val nonViralExperimentalFeatures: Set[TermName] =
     Set(captureChecking, separationChecking, safe)
@@ -86,6 +87,7 @@ object Feature:
     (magic, "Enable extensions for working with coding agents"),
     (inlineTraits, "Allow inline traits"),
     (specializedTraits, "Allow specialized traits"),
+    (errorHandling, "Allow error handling using T? and T ? E types"),
   )
 
   /** Features that are now standard; the language import / -language choice is
@@ -187,16 +189,21 @@ object Feature:
 
   def quotedPatternsWithPolymorphicFunctionsEnabled(using Context) =
     enabled(quotedPatternsWithPolymorphicFunctions)
-  
-  def inlineTraitsEnabled(using Context) = 
+
+  def inlineTraitsEnabled(using Context) =
     enabledBySetting(inlineTraits)
     || enabledBySetting(specializedTraits)
     || ctx.compilationUnit.knowsInlineTraits
-  
+
+  def errorHandlingEnabled(using Context) =
+    ctx.originalCompilationUnit.newErrorHandling
+    || enabledBySetting(errorHandling)
+    || enabledBySetting(magic)
+
   /** Is pureFunctions enabled for this compilation unit? */
   def pureFunsEnabled(using Context) =
     enabledBySetting(pureFunctions)
-    || ctx.compilationUnit.knowsPureFuns
+    || ctx.originalCompilationUnit.knowsPureFuns
     || ccEnabled
 
   /** Is capture checking enabled by a command-line setting? */
@@ -324,24 +331,24 @@ object Feature:
    *  @return true iff the import was handled
    */
   def handleGlobalLanguageImport(prefix: TermName, imported: Name)(using Context): Boolean =
+    def enableCC() =
+      ctx.compilationUnit.needsCaptureChecking = true
+      if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
     QualifiedName(prefix, imported.asTermName) match
       case `pureFunctions` =>
         ctx.compilationUnit.knowsPureFuns = true
         if ctx.run != null then ctx.run.nn.pureFunsImportEncountered = true
         true
       case `captureChecking` =>
-        ctx.compilationUnit.needsCaptureChecking = true
-        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
+        enableCC()
         true
       case `separationChecking` =>
-        ctx.compilationUnit.needsCaptureChecking = true
+        enableCC()
         ctx.compilationUnit.needsSeparationChecking = true
-        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
         true
       case `safe` =>
-        ctx.compilationUnit.needsCaptureChecking = true
+        enableCC()
         ctx.compilationUnit.safeMode = true
-        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
         true
       case `magic` =>
         ctx.compilationUnit.magic = true
@@ -349,6 +356,9 @@ object Feature:
       case `inlineTraits` =>
         ctx.compilationUnit.knowsInlineTraits = true 
         if ctx.run != null then ctx.run.nn.inlineTraitsImportEncountered = true
+        true
+      case `errorHandling` =>
+        ctx.compilationUnit.newErrorHandling = true
         true
       case _ =>
         false
