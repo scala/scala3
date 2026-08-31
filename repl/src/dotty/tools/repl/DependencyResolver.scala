@@ -1,7 +1,5 @@
 package dotty.tools.repl
 
-import scala.language.unsafeNulls
-
 import java.io.File
 import java.net.{URL, URLClassLoader}
 import scala.jdk.CollectionConverters.*

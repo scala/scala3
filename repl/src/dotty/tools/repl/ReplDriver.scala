@@ -1,7 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
 import scala.util.control.NonFatal
 
 import java.io.{File => JFile, PrintStream}
@@ -424,8 +423,9 @@ class ReplDriver(settings: Array[String],
 
       case SyntaxErrors(_, errs, _) =>
         // if there is a Run that is tracking suspended parse warnings, ignore (drop) them when erroring
-        if state.context.run != null then
-          state.context.run.suppressions.initSuspendedMessages(oldRun = null)
+        val run = state.context.run
+        if run != null then
+          run.suppressions.initSuspendedMessages(oldRun = null)
         displayErrors(errs, state)
 
       case CommandThenCode(cmd, code) =>
