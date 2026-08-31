@@ -3793,9 +3793,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val result =
       if (ctx.mode.is(Mode.Type))
         typedAppliedTypeTree(
-          if op.name == tpnme.throws && Feature.enabled(Feature.saferExceptions)
-          then desugar.throws(l, op, r)
-          else cpy.AppliedTypeTree(tree)(op, l :: r :: Nil))
+          if op.name == tpnme.throws && Feature.enabled(Feature.saferExceptions) then
+            desugar.throws(l, op, r)
+          else if op.name == tpnme.? && Feature.errorHandlingEnabled then
+            cpy.AppliedTypeTree(tree)(untpd.ref(defn.MaybeClass.typeRef), l :: r :: Nil)
+          else
+            cpy.AppliedTypeTree(tree)(op, l :: r :: Nil))
       else if (ctx.mode.is(Mode.Pattern))
         typedUnApply(cpy.Apply(tree)(op, l :: r :: Nil), pt)
       else {

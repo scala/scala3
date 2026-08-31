@@ -8,6 +8,7 @@ import Phases.*
 import Contexts.*
 import Symbols.*
 import ImportInfo.withRootImports
+import Decorators.em
 import parsing.{Parser => ParserPhase}
 import config.Printers.typr
 import inlines.PrepareInlineable
@@ -45,6 +46,8 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     try
       if !unit.suspended then ctx.profiler.onUnit(ctx.phase, unit):
         unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
+        if Feature.errorHandlingEnabled && !ctx.explicitNulls then
+          report.error(em"errorHandling can be enabled only if -Yexplicit-nulls is also set", unit.tpdTree.srcPos.startPos)
         typr.println("typed: " + unit.source)
         record("retained untyped trees", unit.untpdTree.treeSize)
         record("retained typed trees after typer", unit.tpdTree.treeSize)

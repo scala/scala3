@@ -2093,6 +2093,11 @@ object Parsers {
       || !canStartInfixTypeTokens.contains(ahead.token)
       || ahead.lineOffset > 0
 
+    private def isPostfixQmark(isType: Boolean) =
+      val ahead = in.lookahead
+      !(if isType then canStartInfixTypeTokens else canStartInfixExprTokens).contains(ahead.token)
+      || ahead.lineOffset > 0
+
     inline def gobbleHat(): Boolean =
       if Feature.ccEnabled && isIdent(nme.UPARROW) then
         in.nextToken()
@@ -2105,12 +2110,15 @@ object Parsers {
         refinedTypeRest(atSpan(startOffset(t)) {
           RefinedTypeTree(rejectWildcardType(t), refinement(indentOK = true))
         })
-      else if Feature.ccEnabled && in.isIdent(nme.UPARROW) && isCaptureUpArrow then
+      else if in.isIdent(nme.UPARROW) && Feature.ccEnabled && isCaptureUpArrow then
         atSpan(t.span.start):
           in.nextToken()
           if in.token == LBRACE
           then makeRetaining(t, captureSet(), tpnme.retains)
           else makeRetaining(t, Nil, tpnme.retainsCap)
+      else if in.isIdent(nme.?) && Feature.errorHandlingEnabled && isPostfixQmark(isType = true) then
+        atSpan(t.span.start):
+          PostfixOp(t, typeIdent())
       else
         t
     }
@@ -3102,7 +3110,10 @@ object Parsers {
         case USCORE =>
           atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
         case _ =>
-          if in.isColon && location == Location.InParens && followingIsLambdaParams() then
+          if in.isIdent(nme.?) && Feature.errorHandlingEnabled && isPostfixQmark(isType = false) then
+            atSpan(t.span.start):
+              PostfixOp(t, termIdent())
+          else if in.isColon && location == Location.InParens && followingIsLambdaParams() then
             t match
               case id @ Ident(name) =>
                 if name.is(WildcardParamName) then

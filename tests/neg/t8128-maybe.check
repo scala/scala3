@@ -1,0 +1,4 @@
+-- Error: tests/neg/t8128-maybe.scala:6:23 -----------------------------------------------------------------------------
+6 |  def unapply(m: Any): Maybe[?, Unit] = Ok("")  // error
+  |                       ^^^^^^^^^^^^^^
+  |                       Maybe type may not contain wildcard arguments
