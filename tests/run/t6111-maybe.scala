@@ -1,0 +1,32 @@
+//> using options -Yexplicit-nulls
+// SI-6675 DEPRECATED AUTO-TUPLING BECAUSE BAD IDEA -- MEAMAXIMACULPA
+// TODO: remove this test case in 2.12, when the deprecation will go into effect and this will no longer compile
+// slightly overkill, but a good test case for implicit resolution in extractor calls,
+// along with the real fix: an extractor pattern with 1 sub-pattern should type check for all extractors
+// that return Option[T], whatever T (even if it's a tuple)
+import language.experimental.errorHandling
+import util.Ok
+
+object Foo {
+  def unapply[S, T](scrutinee: S)(using evidence: FooHasType[S, T]): T? = scrutinee match {
+    case i: Int => Ok((i, i).asInstanceOf[T])
+  }
+}
+
+class FooHasType[S, T]
+object FooHasType {
+  given int: FooHasType[Int, (Int, Int)] = new FooHasType[Int, (Int, Int)]
+}
+
+// resurrected from neg/t997
+object Foo997 { def unapply(x : String): (String, String)? = (x, x) }
+
+object Test extends App {
+  val x = 8
+  println(x match {
+    case Foo(p) => p // p should be a pair of Int
+  })
+
+  // Prints '{x, x}'
+  "x" match { case Foo997(a) => println(a) }
+}

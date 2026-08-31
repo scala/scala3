@@ -493,6 +493,23 @@ class Definitions {
   }
   def AnyKindType: TypeRef = AnyKindClass.typeRef
 
+  // Maybe-related
+  @tu lazy val MaybeClass: ClassSymbol = requiredClass("scala.compiletime.Maybe")
+  @tu lazy val ValidClass: ClassSymbol = requiredClass("scala.runtime.Valid")
+  @tu lazy val FailClass: ClassSymbol = requiredClass("scala.runtime.Fail")
+  @tu lazy val maybeModule: Symbol = requiredModule("scala.maybe")
+    @tu lazy val maybe_provided1: Symbol = maybeModule.info.member(termName("provided")).suchThat(_.info.isInstanceOf[MethodType]).symbol
+    @tu lazy val maybe_provided2: Symbol = maybeModule.info.member(termName("provided")).suchThat(_.info.isInstanceOf[PolyType]).symbol
+    @tu lazy val maybe_CanErr: Symbol = maybeModule.requiredType("CanErr")
+
+  @tu lazy val OkModule: Symbol = requiredModule("scala.util.Ok")
+    @tu lazy val Ok_apply: Symbol = OkModule.requiredMethod(nme.apply)
+    @tu lazy val Ok_unapply: Symbol = OkModule.requiredMethod(nme.unapply)
+
+  @tu lazy val ErrModule: Symbol = requiredModule("scala.util.Err")
+    @tu lazy val Err_unapply: Symbol = ErrModule.requiredMethod(nme.unapply)
+
+  // More synthetic symbols
   @tu lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))
   @tu lazy val orType: TypeSymbol = enterBinaryAlias(tpnme.OR, OrType(_, _, soft = false))
 
@@ -1596,6 +1613,8 @@ class Definitions {
   @tu lazy val erasedValueMethods =
     capsErasedValueMethods + Compiletime_erasedValue
 
+  @tu lazy val unitSuperClasses: Set[Symbol] = Set(UnitClass, AnyValClass, AnyClass)
+
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(using Context): Symbol = AbstractFunctionClassPerRun()(using ctx)(n)
@@ -2219,6 +2238,7 @@ class Definitions {
     m(TupleClass) = ProductClass
     m(NonEmptyTupleClass) = ProductClass
     m(PairClass) = ObjectClass
+    m(MaybeClass) = ObjectClass
     m
 
   // ----- Initialization ---------------------------------------------------
