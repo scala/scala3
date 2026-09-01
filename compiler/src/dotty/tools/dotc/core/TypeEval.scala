@@ -55,7 +55,7 @@ object TypeEval:
         case ConstantType(_) => Some(true)
         // constant if the term is constant
         case t: TermRef =>
-          if t.denot.symbol.flagsUNSAFE.is(Flags.Param) then
+          if t.symbol.flagsUNSAFE.is(Flags.Param) then
             // might be substituted later
             None
           else

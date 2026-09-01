@@ -13,8 +13,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.config.ScalaSettings
 
 import io.AbstractFile

@@ -512,11 +512,11 @@ object Erasure {
   class Typer(erasurePhase: DenotTransformer) extends typer.ReTyper with NoChecking {
     import Boxing.*
 
-    def isErased(tree: Tree)(using Context): Boolean = tree match {
-      case TypeApply(Select(qual, _), _) if tree.symbol == defn.Any_typeCast =>
-        isErased(qual)
-      case _ => tree.symbol.isEffectivelyErased
-    }
+    def isErased(tree: Tree)(using Context): Boolean =
+      val sym = tree.symbol
+      tree match
+        case TypeApply(Select(qual, _), _) if sym == defn.Any_typeCast => isErased(qual)
+        case _ => sym.isEffectivelyErased
 
     /** Check that
      *    - erased values are not referred to from normal code

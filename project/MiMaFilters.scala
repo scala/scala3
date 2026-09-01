@@ -4,6 +4,10 @@ import com.typesafe.tools.mima.core._
 
 object MiMaFilters {
 
+  // By default, you should include new filters under Versions.mimaPreviousVersion
+  // MiMa does collect all filters based on semantic versioning, so we don't need to duplicate them for each version
+  // Entries in mimaPreviousVersion would be moved to mimaPreviousLTSVersion or it's own dedicated version when new minor version is released
+
   object ScalaLibrary {
 
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
@@ -670,11 +674,11 @@ object MiMaFilters {
       Versions.mimaPreviousVersion -> Seq.empty,
 
       // Additions since last LTS
-      Versions.mimaPreviousLTSVersion -> Seq(
+      Versions.mimaPreviousLTSVersion -> Seq.empty,
+    ).mapValues(_ ++ Seq(
         // No .class files generated in the artifacts, only `scala.scalajs.*` files might be present
         ProblemFilters.exclude[MissingClassProblem]("scala.*"),
-      ),
-    )
+      ))
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // We should never break backwards compatibility

@@ -21,13 +21,14 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   override def description: String = TupleOptimizations.description
 
   override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree =
-    if (!tree.symbol.exists || tree.symbol.owner != defn.RuntimeTuplesModuleClass) tree
-    else if (tree.symbol == defn.RuntimeTuples_cons) transformTupleCons(tree)
-    else if (tree.symbol == defn.RuntimeTuples_tail) transformTupleTail(tree)
-    else if (tree.symbol == defn.RuntimeTuples_size) transformTupleSize(tree)
-    else if (tree.symbol == defn.RuntimeTuples_concat) transformTupleConcat(tree)
-    else if (tree.symbol == defn.RuntimeTuples_apply) transformTupleApply(tree)
-    else if (tree.symbol == defn.RuntimeTuples_toArray) transformTupleToArray(tree)
+    val sym = tree.symbol
+    if (!sym.exists || sym.owner != defn.RuntimeTuplesModuleClass) tree
+    else if (sym == defn.RuntimeTuples_cons) transformTupleCons(tree)
+    else if (sym == defn.RuntimeTuples_tail) transformTupleTail(tree)
+    else if (sym == defn.RuntimeTuples_size) transformTupleSize(tree)
+    else if (sym == defn.RuntimeTuples_concat) transformTupleConcat(tree)
+    else if (sym == defn.RuntimeTuples_apply) transformTupleApply(tree)
+    else if (sym == defn.RuntimeTuples_toArray) transformTupleToArray(tree)
     else tree
 
   private def transformTupleCons(tree: tpd.Apply)(using Context): Tree = {

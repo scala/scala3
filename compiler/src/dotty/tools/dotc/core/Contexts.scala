@@ -535,7 +535,7 @@ object Contexts {
      * If not, make sure this is called in a stack where a previous call had a meaningful position,
      * or the final error won't have one.
      */
-    final inline def handleRecursive[T](title: String, details: RecursiveOperationDetails, pos: SrcPos | Null = null, weight: Int = 1)(inline block: T): T =
+    final inline def handleRecursive[T](title: String, details: RecursiveOperationDetails, pos: SrcPos | Null = null)(inline block: T): T =
       // This method is hot, as it must be called every so often in potentially recursive operations
       // to catch stack overflows before they actually happen.
       // Thus, it's important for it not to allocate or do any unnecessary work,
@@ -546,13 +546,12 @@ object Contexts {
       val depth = base.recursiveDepth
       val ops = base.recursiveOperations
       if depth >= ops.length then
-        throw RecursionOverflow(ops, title, details, pos, weight)
+        throw RecursionOverflow(ops, title, details, pos)
       if depth >= 0 then
         base.recursiveDepth = depth + 1
         ops(depth).title = title
         ops(depth).details = details
         ops(depth).pos = pos
-        ops(depth).weight = weight
       try block
       finally base.recursiveDepth = depth
 
