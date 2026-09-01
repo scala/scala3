@@ -351,10 +351,13 @@ object Feature:
         ctx.compilationUnit.safeMode = true
         true
       case `magic` =>
+        enableCC()
         ctx.compilationUnit.magic = true
+        ctx.compilationUnit.newErrorHandling = true
+        ctx.compilationUnit.sourceVersion = Some(SourceVersion.future)
         true
       case `inlineTraits` =>
-        ctx.compilationUnit.knowsInlineTraits = true 
+        ctx.compilationUnit.knowsInlineTraits = true
         if ctx.run != null then ctx.run.nn.inlineTraitsImportEncountered = true
         true
       case `errorHandling` =>

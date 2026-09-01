@@ -925,7 +925,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // Otherwise, under magic, if selector is `$spec`, convert to spec string representation.
     def trySpecString(tree: untpd.Select, qual: Tree) =
       if selName == nme.SPEC then
-        ref(defn.Compiletime_spec).appliedTo(qual).withSpan(tree.span)
+        ref(defn.Magic_spec).appliedTo(qual).withSpan(tree.span)
       else EmptyTree
 
     // Otherwise, try a GADT approximation if we're trying to select a member

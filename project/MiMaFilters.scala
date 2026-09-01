@@ -189,6 +189,8 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$specializedTraits$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$specializedTraits$"),
 
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$errorHandling$"),
+
         // scala/scala3#26100: lock-free initialization extracted to a shared base class
         ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyList"),
         ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyListIterable"),
