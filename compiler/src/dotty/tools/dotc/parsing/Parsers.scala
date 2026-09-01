@@ -2675,7 +2675,7 @@ object Parsers {
 
     def expr1(location: Location = Location.Elsewhere): Tree = in.token match
       case IF =>
-        ifExpr(in.offset, If)
+        ifExpr(in.offset, If, canOmitThen = Feature.errorHandlingEnabled && location == Location.InBlock)
       case WHILE =>
         atSpan(in.skipToken()) {
           val cond = condExpr(DO)
@@ -2762,7 +2762,7 @@ object Parsers {
           val start = in.skipToken()
           in.token match
             case IF =>
-              ifExpr(start, InlineIf)
+              ifExpr(start, InlineIf, canOmitThen = false)
             case _ =>
               postfixExpr() match
                 case t @ Match(scrut, cases) =>
@@ -2825,16 +2825,33 @@ object Parsers {
 
     /**    `if' `(' Expr `)' {nl} Expr [[semi] else Expr]  -- Scala 2 compat
      *     `if' Expr `then' Expr [[semi] else Expr]
+     *     ‘if’ Expr [‘else’ Expr]                         -- under magic, if in block
      */
-    def ifExpr(start: Offset, mkIf: (Tree, Tree, Tree) => If): If =
-      atSpan(start, in.skipToken()) {
-        val cond = condExpr(THEN)
-        newLinesOpt()
-        val thenp = subExpr()
-        val elsep = if (in.token == ELSE) { in.nextToken(); subExpr() }
-                    else EmptyTree
-        mkIf(cond, thenp, elsep)
-      }
+    def ifExpr(start: Offset, mkIf: (Tree, Tree, Tree) => If, canOmitThen: Boolean): If =
+      atSpan(start, in.skipToken()):
+        if canOmitThen then
+          val cond = expr()
+          val thenp =
+            if in.token == THEN then
+              in.nextToken()
+              subExpr()
+            else EmptyTree
+          val elsep =
+            if in.token == ELSE then
+              in.nextToken()
+              subExpr()
+            else EmptyTree
+          mkIf(cond, thenp, elsep)
+        else
+          val cond = condExpr(THEN)
+          newLinesOpt()
+          val thenp = subExpr()
+          val elsep =
+            if in.token == ELSE then
+              in.nextToken()
+              subExpr()
+            else EmptyTree
+          mkIf(cond, thenp, elsep)
 
     /* When parsing (what will become) a sub sub match, that is,
      * when in a guard of case of a match, in a guard of case of a match;
@@ -4171,8 +4188,6 @@ object Parsers {
             if allSourceVersionNames.contains(imported) && prefix.isEmpty then
               if !outermost then
                 syntaxError(em"source version import is only allowed at the toplevel", id.span)
-              else if ctx.compilationUnit.sourceVersion.isDefined then
-                syntaxError(em"duplicate source version import", id.span)
               else if illegalSourceVersionNames.contains(imported) then
                 val candidate =
                   val nonMigration = imported.toString.replace("-migration", "")
@@ -4183,7 +4198,12 @@ object Parsers {
                   case _ => baseMsg
                 syntaxError(msg, id.span)
               else
-                ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
+                val sourceVersion = SourceVersion.valueOf(imported.toString)
+                ctx.compilationUnit.sourceVersion match
+                  case Some(existing) if existing != sourceVersion =>
+                    syntaxError(em"conflicting source version import: $existing and $sourceVersion", id.span)
+                  case _ =>
+                    ctx.compilationUnit.sourceVersion = Some(sourceVersion)
         case None =>
       imp
 
@@ -5247,6 +5267,7 @@ object Parsers {
      *                 | Annotations LocalModifiers TmplDef
      *                 | Extension
      *                 | Expr1
+     *                 | ‘if’ Expr [‘else’ Expr]
      *                 |
      */
     def blockStatSeq(outermost: Boolean = false): List[Tree] = checkNoEscapingPlaceholders {
