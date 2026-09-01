@@ -311,9 +311,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         CapturingType(OrType(parent1, tp2, tp.isSoft), refs1, tp1.isBoxed)
       case tp @ OrType(tp1, tp2 @ CapturingType(parent2, refs2)) =>
         CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
-      case tp @ AppliedType(tycon, args)
-      if !defn.isFunctionClass(tp.dealias.typeSymbol) && (tp.dealias eq tp) =>
-        tp.derivedAppliedType(tycon, args.mapConserve(_.boxDeeply))
+      case tp @ AppliedType(tycon, args) if tp.dealias eq tp =>
+        val sym = tycon.typeSymbol
+        if !defn.isFunctionClass(sym) && sym != defn.MaybeClass
+        then tp.derivedAppliedType(tycon, args.mapConserve(_.boxDeeply))
+        else tp
       case tp: RealTypeBounds =>
         tp.derivedTypeBounds(tp.lo, tp.hi.boxDeeply)
       case tp: LazyRef =>

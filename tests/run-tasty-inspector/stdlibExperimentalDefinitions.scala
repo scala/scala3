@@ -118,6 +118,10 @@ val experimentalDefinitionInLibrary = Set(
   "scala.Option.toMaybe",
   "scala.util.Either.toMaybe",
   "scala.util.Either.toResult",
+
+  // New feature: magic
+  "scala.magic.compiletime.package$.$spec",
+  "scala.magic.compiletime.package$.$wrappedType",
 )
 
 

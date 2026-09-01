@@ -226,7 +226,7 @@ object ErrorReporting {
       else ""
 
     /** A subtype log explaining why `found` does not conform to `expected` */
-    def whyNoMatchStr(found: Type, expected: Type): String =
+    def whyNoMatchStr(found: Type, expected: Type, frozen: Boolean = false): String =
       val header =
         i"""I tried to show that
           |  $found
@@ -241,7 +241,9 @@ object ErrorReporting {
         else
           i"""a constraint with:
              |$c"""
-      i"""${TypeComparer.explained(_.isSubType(found, expected), header, short = !ctx.settings.Ydebug.value)}
+      i"""${TypeComparer.explained(
+              if frozen then _.isSubTypeWhenFrozen(found, expected)
+              else _.isSubType(found, expected), header, short = !ctx.settings.Ydebug.value)}
          |
          |The tests were made under $constraintText"""
 
