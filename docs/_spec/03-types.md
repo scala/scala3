@@ -1643,10 +1643,6 @@ The erased LUB is computed as follows:
 The rules for ´eglb(A, B)´ are given below in pseudocode:
 
 ```
-eglb(scala.Nothing, B)          = B
-eglb(A, scala.Nothing)          = A
-eglb(scala.Null, B)             = B                     if B derives from Object
-eglb(A, scala.Null)             = A                     if A derives from Object
 eglb(scala.Array[A], JArray[B]) = scala.Array[eglb(A, B)]
 eglb(scala.Array[T], _)         = scala.Array[T]
 eglb(_, scala.Array[T])         = scala.Array[T]
