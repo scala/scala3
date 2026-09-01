@@ -1,7 +1,7 @@
 scala> 1
 val res0: Int = 1
 
-scala> :settings -Xrepl-disable-display
+scala> :settings -Xrepl-disable-evaluation
 
 scala> 2
 
