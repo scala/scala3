@@ -6,6 +6,11 @@ import scala.language.unsafeNulls
 import org.junit.Assert.*
 import org.junit.Test
 
+import AbstractFileClassLoader.InterruptInstrumentation
+import AbstractFileClassLoader.InterruptInstrumentation.*
+
+class InterruptProbe
+
 class AbstractFileClassLoaderTest:
 
   import dotty.tools.io
@@ -135,4 +140,24 @@ class AbstractFileClassLoaderTest:
     val sut = new AbstractFileClassLoader(fuzz_, p)
     val b = sut.classBytes("buzz/booz.class")
     assertEquals("hello, world", new String(b, UTF8.charSet))
+
+  def probeIsInterruptible(mode: InterruptInstrumentation): Boolean =
+    val parent = classOf[InterruptProbe].getClassLoader
+    val name = classOf[InterruptProbe].getName
+    val root = io.virtualDirectory("replout")
+    val dir = name.split('.').init.foldLeft(root)(_.subdirectoryNamed(_))
+    closing(dir.fileNamed("InterruptProbe.class").output)(_.write(parent.classBytes(name)))
+    val loader = new AbstractFileClassLoader(root, parent, mode)
+    ReplBytecodeInstrumentation.setStopFlag(loader, true)
+    try
+      loader.loadClass(name).getDeclaredConstructor().newInstance()
+      false
+    catch case e: java.lang.reflect.InvocationTargetException => e.getCause.isInstanceOf[ThreadDeath]
+    finally ReplBytecodeInstrumentation.setStopFlag(loader, false)
+
+  @Test def onlyEnabledAndLocalInstrumentReplClasses(): Unit =
+    assertFalse("false", probeIsInterruptible(Disabled))
+    assertTrue("true", probeIsInterruptible(Enabled))
+    assertTrue("local", probeIsInterruptible(Local))
+
 end AbstractFileClassLoaderTest
