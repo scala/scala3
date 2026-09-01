@@ -920,8 +920,9 @@ object TypeOps:
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds, DepParamName.fresh(tparam.paramName)) }
     val protoTp1 = inferThisMap.apply(tp1).appliedTo(tvars)
 
-    if gadtSyms.nonEmpty then
-      ctx.gadtState.addToConstraint(gadtSyms)
+    val missingGadtSyms = gadtSyms.filterNot(ctx.gadt.contains)
+    if missingGadtSyms.nonEmpty then
+      ctx.gadtState.addToConstraint(missingGadtSyms)
 
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to

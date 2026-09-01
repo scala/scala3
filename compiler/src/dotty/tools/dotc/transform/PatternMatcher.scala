@@ -41,6 +41,11 @@ class PatternMatcher extends MiniPhase {
   override def prepareForInlined(tree: Inlined)(using Context): Context =
     if inInlinedCode then ctx
     else ctx.fresh.setProperty(InInlinedCode, true)
+    
+  override def prepareForCaseDef(tree: CaseDef)(using Context): Context =
+    tree.pat.removeAttachment(typer.Typer.InferredGadtConstraints) match
+      case Some(gadt) => ctx.fresh.setGadtState(GadtState(gadt))
+      case None => ctx
 
   override def transformMatch(tree: Match)(using Context): Tree =
     if (tree.isInstanceOf[InlineMatch]) tree
