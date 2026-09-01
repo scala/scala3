@@ -330,6 +330,7 @@ BlockStat         ::=  Import
                     |  Extension
                     |  Expr1
                     |  EndMarker
+                    |  ‘if’ Expr [‘else’ Expr]
 TypeBlock         ::=  {TypeBlockStat semi} Type
 TypeBlockStat     ::=  ‘type’ {nl} TypeDef
 
