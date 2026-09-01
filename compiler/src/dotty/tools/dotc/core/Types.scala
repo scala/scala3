@@ -3489,6 +3489,15 @@ object Types extends TypeUtils {
 
     def isInstance(tp: Type)(using Context): Boolean = unapply(tp).isDefined
 
+    /** Is `tp` the `<FlexibleType>` type constructor itself (possibly eta-expanded)?
+     *  Such a type is an implementation device of explicit nulls; it must never be
+     *  inferred as the instance of a higher-kinded type parameter.
+     */
+    def isTypeConstructor(tp: Type)(using Context): Boolean = tp.stripTypeVar match
+      case tp: TypeRef => tp.symbol eq defn.FlexibleTypeSymbol
+      case tp: HKTypeLambda => isInstance(tp.resType) || isTypeConstructor(tp.resType)
+      case _ => false
+
     def derivedFlexibleType(tp: Type, hi: Type)(using Context): Type =
       tp match
         case FlexibleType(hi0) if hi eq hi0 => tp

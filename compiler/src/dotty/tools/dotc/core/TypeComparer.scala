@@ -683,8 +683,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       }
 
     def thirdTry: Boolean = tp2 match {
-      case FlexibleType(hi2) =>
-        recur(tp1, OrNull(hi2))
       case tp2 @ AppliedType(tycon2, args2) =>
         compareAppliedType2(tp2, tycon2, args2)
       case tp2: NamedType =>
@@ -1012,8 +1010,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       else fourthTry
 
     def fourthTry: Boolean = tp1 match {
-      case FlexibleType(hi1) =>
-        recur(hi1, tp2)
       case tp1: TypeRef =>
         tp1.info match {
           case info1 @ TypeBounds(lo1, hi1) =>
@@ -1277,6 +1273,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *  - Some explanations on how this impacts API design: https://gist.github.com/djspiewak/7a81a395c461fd3a09a6941d4cd040f2
      */
     def compareAppliedTypeParamRef(tycon: TypeParamRef, args: List[Type], other: AppliedType, fromBelow: Boolean): Boolean =
+      // Never infer the `<FlexibleType>` type constructor for a higher-kinded type
+      // parameter. A flexible type is an implementation device of explicit nulls that
+      // should be transparent to type inference; if we allowed `tycon := <FlexibleType>`
+      // here, every `F[A]`-shaped signature would match a flexible-typed value, shadowing
+      // the members of its underlying type (see tests/explicit-nulls/pos/flexible-hk-extension.scala).
+      // Bailing out makes the comparison fall back to looking through the flexible type.
+      if FlexibleType.isTypeConstructor(other.tycon) then return false
+
       def directionalIsSubType(tp1: Type, tp2: Type): Boolean =
         if fromBelow then isSubType(tp2, tp1) else isSubType(tp1, tp2)
       def directionalRecur(tp1: Type, tp2: Type): Boolean =
@@ -1318,7 +1322,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     /** Subtype test for the hk application `tp2 = tycon2[args2]`.
      */
     def compareAppliedType2(tp2: AppliedType, tycon2: Type, args2: List[Type]): Boolean = {
-      if (FlexibleType.isInstance(tp2.widen)) return false
       val tparams = tycon2.typeParams
       if (tparams.isEmpty) return false // can happen for ill-typed programs, e.g. neg/tcpoly_overloaded.scala
 
@@ -1326,7 +1329,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        *  corresponding arguments are subtypes relative to their variance (see `isSubArgs`).
        */
       def isMatchingApply(tp1: Type): Boolean = tp1.widen match {
-        case FlexibleType(_) => false
         case tp1 @ AppliedType(tycon1, args1) =>
           // We intentionally do not automatically dealias `tycon1` or `tycon2` here.
           // `TypeApplications#appliedTo` already takes care of dealiasing type
@@ -1376,7 +1378,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1 match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
-               canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
+               // as in `compareAppliedTypeParamRef`, `<FlexibleType>` is never inferred
+               // as the instance of a type constructor parameter
+               canConstrain(tycon1) && !FlexibleType.isTypeConstructor(tycon2)
+               && isSubType(tycon1, tycon2)) &&
               isSubArgs(args1, args2, tp1, tparams)
             case tycon1: TypeRef =>
               tycon2 match {
@@ -1447,7 +1452,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        */
       def canInstantiate(tycon2: TypeParamRef): Boolean = {
         def appOK(tp1base: Type) = tp1base match {
-          case FlexibleType(_) => false
           case tp1base: AppliedType =>
             compareAppliedTypeParamRef(tycon2, args2, tp1base, fromBelow = true)
           case _ => false
@@ -1547,11 +1551,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     /** Subtype test for the application `tp1 = tycon1[args1]`.
      */
     def compareAppliedType1(tp1: AppliedType, tycon1: Type, args1: List[Type]): Boolean =
-      if (FlexibleType.isInstance(tp1.widen)) return false
       tycon1 match {
         case param1: TypeParamRef =>
           def canInstantiate = tp2 match {
-            case FlexibleType(_) => false
             case tp2base: AppliedType =>
               compareAppliedTypeParamRef(param1, args1, tp2base, fromBelow = false)
             case _ =>
