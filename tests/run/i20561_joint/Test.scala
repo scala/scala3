@@ -1,0 +1,62 @@
+case class Foo(val value: String) extends Comparable[Integer]:
+  override def compareTo(other: Integer) = 0
+
+case class Bar(val value: String) extends Comparable[Bar]:
+  override def compareTo(other: Bar) = 0
+
+@main def Test =
+  val r0 = Rec0()
+  r0 match { case Rec0() => println("empty") }
+
+  val r1 = Rec1("hello")
+  r1 match { case Rec1(s) => println(s) }
+
+  val r2 = Rec2(3, "ha")
+  r2 match { case Rec2(i, s) => println(s * i) }
+
+  // type param (no bounds)
+  val r3a = Rec3(3, "he")
+  r3a match { case Rec3(i, s) => println(s * i) }
+  val r3b = Rec3(3, 7)
+  r3b match { case Rec3(i, j) => println(i * j) }
+
+  // type param with simple bounds
+  val r4 = Rec4(3, Foo("hi"))
+  r4 match { case Rec4(i, f) => println(f.value * i) }
+
+  // type params with recursion / mutual reference
+  val r5 = Rec5(3 : Integer, Foo("h"), Bar("o"))
+  r5 match { case Rec5(i, f, b) => println((f.value + b.value) * i) }
+
+  // predefined unapply takes precedence
+  val r6 = RecUnapply(3, "x")
+  r6 match { case RecUnapply(i, s) => println(s * i) }
+
+  // record with vararg
+  val r7 = RecVar(1, "a", "b")
+  r7 match { case RecVar(x, rest*) => println(s"$x ${rest.mkString(",")}") }
+  r7 match { case RecVar(x, a, b) => println(s"$x $a $b") }
+
+  // record with varargs only
+  val r8 = RecVarOnly("p", "q")
+  r8 match { case RecVarOnly(rest*) => println(rest.mkString("-")) }
+
+  // a vararg pattern with a fixed prefix does not match a shorter sequence
+  val r9 = RecVarOnly()
+  try r9 match { case RecVarOnly(_, rest*) => println("matched") }
+  catch case _: MatchError => println("empty: MatchError")
+
+  // ... but matches a longer one, binding the remainder
+  val r10 = RecVarOnly("x", "y", "z")
+  r10 match { case RecVarOnly(_, rest*) => println(rest.mkString(",")) }
+
+  // the matched vararg is an independent copy: mutating the record's array does not affect it
+  val r11 = RecVar(1, "a", "b")
+  val captured = r11 match { case RecVar(_, rest*) => rest }
+  r11.xs(0) = "!!!"
+  println(s"${r11.xs.mkString(",")} / ${captured.mkString(",")}")
+
+  // a null scrutinee does not match a record pattern
+  try
+    (null: Rec1) match { case Rec1(s) => println("matched null") }
+  catch case _: MatchError => println("null: MatchError")

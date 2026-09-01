@@ -179,6 +179,59 @@ The pattern matches all objects created from constructor invocations ´c(v_1, ..
 A special case arises when ´c´'s formal parameter types end in a repeated parameter.
 This is further discussed [here](#pattern-sequences).
 
+### Record Patterns
+
+```ebnf
+  SimplePattern   ::=  StableId ‘(’ [Patterns] ‘)’
+```
+
+A _record pattern_ ´r(p_1, ..., p_n)´ where ´n \geq 0´ is of the same syntactic form as a constructor pattern.
+However, instead of a case class, the stable identifier ´r´ denotes a class defined in Java as a `record`, with ´n´ components of types ´T_1, ..., T_n´.
+A record pattern applies only if ´r´ does not define an `unapply` or `unapplySeq` method; otherwise the pattern is an [extractor pattern](#extractor-patterns).
+
+If the record class is monomorphic, then it must conform to the expected type of the pattern, and the component types ´T_1, ..., T_n´ are taken as the expected types of the element patterns ´p_1, ..., p_n´.
+If the record class is polymorphic, then its type parameters are instantiated so that the instantiation of ´r´ conforms to the expected type of the pattern.
+The instantiated component types are then taken as the expected types of the element patterns ´p_1, ..., p_n´.
+The pattern matches all instances ´v´ of the record class where each element pattern ´p_i´ matches the corresponding component of ´v´.
+
+A special case arises when ´r´'s last component is a repeated parameter (a Java vararg).
+This is further discussed [here](#pattern-sequences).
+
+###### Example
+
+Given the Java records
+
+```java
+public record Rec1(int x, String y) {}
+public record Rec2<T>(int x, T y) {}
+```
+
+both patterns below are record patterns:
+
+```scala
+(r1: Rec1) match {
+  case Rec1(i, s) => ...   // i: Int, s: String
+}
+(r2: Rec2[String]) match {
+  case Rec2(i, s) => ...   // i: Int, s: String
+}
+```
+
+The pattern `Rec1(i, s)` matches any `Rec1`, binding `i` and `s` to its two components.
+For the polymorphic `Rec2`, the type parameter `T` is instantiated to `String` so that the pattern conforms to the expected type `Rec2[String]`; hence `s` is typed as `String`.
+
+###### Example
+
+If a record additionally declares an extractor, the extractor takes precedence:
+
+```java
+public record RecUnapply(int i, String s) {
+  public static scala.Tuple2<Integer, String> unapply(RecUnapply r) { return new scala.Tuple2<>(1, "other"); }
+}
+```
+
+Here `RecUnapply(i, s)` is an [extractor pattern](#extractor-patterns) using the declared `unapply` method, rather than a record pattern.
+
 ### Tuple Patterns
 
 ```ebnf
@@ -275,9 +328,10 @@ object Extractor {
 SimplePattern ::= StableId ‘(’ [Patterns ‘,’] [varid ‘@’] ‘_’ ‘*’ ‘)’
 ```
 
-A _pattern sequence_ ´p_1, ..., p_n´ appears in two contexts.
+A _pattern sequence_ ´p_1, ..., p_n´ appears in three contexts.
 First, in a constructor pattern ´c(q_1, ..., q_m, p_1, ..., p_n)´, where ´c´ is a case class which has ´m+1´ primary constructor parameters,  ending in a [repeated parameter](04-basic-definitions.html#repeated-parameters) of type `S*`.
 Second, in an extractor pattern ´x(q_1, ..., q_m, p_1, ..., p_n)´ if the extractor object ´x´ does not have an `unapply` method, but it does define an `unapplySeq` method with a result type that is an extractor type for type `(T_1, ... , T_m, Seq[S])` (if `m = 0`, an extractor type for the type `Seq[S]` is also accepted). The expected type for the patterns ´p_i´ is ´S´.
+Third, in a record pattern ´r(q_1, ..., q_m, p_1, ..., p_n)´, where ´r´ is a Java `record` which has ´m+1´ components, ending in a [repeated parameter](04-basic-definitions.html#repeated-parameters) of type `S*` (a Java vararg).
 
 The last pattern in a pattern sequence may be a _sequence wildcard_ `_*`.
 Each element pattern ´p_i´ is type-checked with ´S´ as expected type, unless it is a sequence wildcard.
@@ -327,6 +381,7 @@ A pattern ´p´ is _irrefutable_ for a type ´T´, if one of the following appli
 1.  ´p´ is a variable pattern,
 1.  ´p´ is a typed pattern ´x: T'´, and ´T <: T'´,
 1.  ´p´ is a constructor pattern ´c(p_1, ..., p_n)´, the type ´T´ is an instance of class ´c´, the [primary constructor](05-classes-and-objects.html#class-definitions) of type ´T´ has argument types ´T_1, ..., T_n´, and each ´p_i´ is irrefutable for ´T_i´.
+1.  ´p´ is a record pattern ´r(p_1, ..., p_n)´, the type ´T´ is an instance of the record class ´r´ with component types ´T_1, ..., T_n´, and each ´p_i´ is irrefutable for ´T_i´.
 1.  ´p´ is an extractor pattern for which the extractor type is `Some[´T´]` for some type ´T´
 1.  ´p´ is an extractor pattern for which the extractor types `isEmpty` method is the singleton type `false`
 1.  ´p´ is an extractor pattern for which the return type is the singleton type `true`
@@ -538,7 +593,7 @@ In the interest of efficiency the evaluation of a pattern matching expression ma
 This might affect evaluation through side effects in guards.
 However, it is guaranteed that a guard expression is evaluated only if the pattern it guards matches.
 
-If the selector of a pattern match is an instance of a [`sealed` class](05-classes-and-objects.html#modifiers), a [union type](03-types#union-and-intersection-types), or a combination thereof, the compilation of pattern matching can emit warnings which diagnose that a given set of patterns is not exhaustive, i.e. that there is a possibility of a `MatchError` being raised at run-time.
+If the selector of a pattern match is an instance of a [`sealed` class](05-classes-and-objects.html#modifiers), a [union type](03-types#union-and-intersection-types), a [Java record](#record-patterns), or a combination thereof, the compilation of pattern matching can emit warnings which diagnose that a given set of patterns is not exhaustive, i.e. that there is a possibility of a `MatchError` being raised at run-time.
 
 ###### Example
 

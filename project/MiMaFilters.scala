@@ -12,7 +12,10 @@ object MiMaFilters {
 
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
-      Versions.mimaPreviousVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq(
+        // new annotation carrying the component names of Java records
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
+      ),
 
       // Additions since last LTS
       Versions.mimaPreviousLTSVersion -> Seq(

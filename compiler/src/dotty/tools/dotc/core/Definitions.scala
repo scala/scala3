@@ -630,6 +630,7 @@ class Definitions {
 
   @tu lazy val ArrayModule: Symbol = requiredModule("scala.Array")
   def ArrayModuleClass: Symbol = ArrayModule.moduleClass
+    @tu lazy val Array_UnapplySeqWrapper : Symbol = ArrayModuleClass.requiredType("UnapplySeqWrapper")
 
   @tu lazy val IArrayModule: Symbol = requiredModule("scala.IArray")
   def IArrayModuleClass: Symbol = IArrayModule.moduleClass
@@ -1129,6 +1130,7 @@ class Definitions {
   @tu lazy val UnusedAnnot: ClassSymbol = requiredClass("scala.annotation.unused")
   @tu lazy val UnrollAnnot: ClassSymbol = requiredClass("scala.annotation.unroll")
   @tu lazy val NativeAnnot: ClassSymbol = requiredClass("scala.native")
+  @tu lazy val JavaRecordFieldsAnnot: ClassSymbol = requiredClass("scala.annotation.internal.JavaRecordFields")
   @tu lazy val RepeatedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Repeated")
   @tu lazy val RuntimeCheckedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.RuntimeChecked")
   @tu lazy val SourceFileAnnot: ClassSymbol = requiredClass("scala.annotation.internal.SourceFile")
