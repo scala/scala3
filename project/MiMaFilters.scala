@@ -12,7 +12,10 @@ object MiMaFilters {
 
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
-      Versions.mimaPreviousVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq(
+        // new annotation carrying the component names of Java records
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
+      ),
 
       // Additions since last LTS
       Versions.mimaPreviousLTSVersion -> Seq(
@@ -26,8 +29,6 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.IArray#package#IArray.convertIArrayToFactory"),
         // new annotation encoding capture checking's `x.except[C]` capabilities
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.exceptCapability"),
-        // new annotation carrying the component names of Java records
-        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
 
         // Operations of the `Rich*` wrappers are now also defined on the primitive companions.
         // Listed one by one on purpose: a wildcard here would also hide removals of the
