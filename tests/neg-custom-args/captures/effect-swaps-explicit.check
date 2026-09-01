@@ -5,7 +5,7 @@
    |Capability `contextual$1` outlives its scope: it leaks into outer capture set 's1 which is owned by method fail3.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (contextual$1: boundary.Label[Result[Future[T^'s2]^'s3, E^'s4]^'s5]^) ?->{Result, fr, async}
+   |Found:    (contextual$1: boundary.Label[Result[Future[T^'s2]^'s3, E^'s4]^'s5]^) ?->{fr, async}
    |  Result[Future[T^'s6]^{fr, contextual$1}, E^'s7]^'s8
    |Required: (boundary.Label[Result[Future[T^'s9]^'s1, E^'s10]^'s11]^) ?=> Result[Future[T^'s9]^'s1, E^'s10]^'s11
    |
