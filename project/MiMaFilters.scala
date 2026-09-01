@@ -9,6 +9,8 @@ object MiMaFilters {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
       Versions.mimaPreviousDottyVersion -> Seq(
+        // new annotation carrying the component names of Java records
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
         // new feature: CanEqual support for NamedTuple
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleCanEqual"),
         // IArray integration with Scala Collections:
