@@ -1660,54 +1660,68 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
   }
 
-  def typedIf(tree: untpd.If, pt: Type)(using Context): Tree =
-    if tree.isInline then checkInInlineContext("inline if", tree.srcPos)
-    val cond1 = typed(tree.cond, defn.BooleanType)
+  def typedIf(tree: untpd.If, pt: Type)(using Context): Tree = {
+    if tree.thenp.isEmpty then
+      assert(Feature.errorHandlingEnabled)
+      val elsep1 =
+        if tree.elsep.isEmpty then tpd.unitLiteral else typed(tree.elsep)
+      val labelType = defn.maybe_CanErr.typeRef.appliedTo(elsep1.tpe.widen)
+      inferImplicit(labelType, EmptyTree, tree.span) match
+        case fail: SearchFailure if !fail.isAmbiguous =>
+          errorTree(tree, em"`if` without `then` is illegal here since no given of type $labelType is available.")
+        case _ =>
+        val desugared =
+          if tree.elsep.isEmpty
+          then cpy.Apply(tree)(untpd.ref(defn.maybe_provided1), tree.cond :: Nil)
+          else cpy.Apply(tree)(untpd.ref(defn.maybe_provided2), tree.cond :: untpd.TypedSplice(elsep1) :: Nil)
+        typedApply(desugared, pt)
+    else
+      val cond1 = typed(tree.cond, defn.BooleanType)
 
-    def isIncomplete(tree: untpd.If): Boolean = tree.elsep match
-      case EmptyTree => true
-      case elsep: untpd.If => isIncomplete(elsep)
-      case _ => false
+      def isIncomplete(tree: untpd.If): Boolean = tree.elsep match
+        case EmptyTree => true
+        case elsep: untpd.If => isIncomplete(elsep)
+        case _ => false
 
-    // Insert a GADT cast if the type of the branch does not conform
-    //   to the type assigned to the whole if tree.
-    // This happens when the computation of the type of the if tree
-    //   uses GADT constraints. See #15646.
-    def gadtAdaptBranch(tree: Tree, branchPt: Type): Tree =
-      TypeComparer.testSubType(tree.tpe.widenExpr, branchPt) match {
-        case CompareResult.OKwithGADTUsed =>
-          insertGadtCast(tree, tree.tpe.widen, branchPt)
-        case _ => tree
-      }
+      // Insert a GADT cast if the type of the branch does not conform
+      //   to the type assigned to the whole if tree.
+      // This happens when the computation of the type of the if tree
+      //   uses GADT constraints. See #15646.
+      def gadtAdaptBranch(tree: Tree, branchPt: Type): Tree =
+        TypeComparer.testSubType(tree.tpe.widenExpr, branchPt) match {
+          case CompareResult.OKwithGADTUsed =>
+            insertGadtCast(tree, tree.tpe.widen, branchPt)
+          case _ => tree
+        }
 
-    val branchPt = if isIncomplete(tree) then defn.UnitType else pt.dropIfProto
+      val branchPt = if isIncomplete(tree) then defn.UnitType else pt.dropIfProto
 
-    val result =
-      if tree.elsep.isEmpty then
-        val thenp1 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
-        val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
-        cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
-      else
-        val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
-          val thenp0 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
-          val elsep0 = typed(tree.elsep, branchPt)(using cond1.nullableContextIf(false))
-          thenp0 :: elsep0 :: Nil
-        }: @unchecked
-
-        val resType = thenp1.tpe | elsep1.tpe
-        val thenp2 :: elsep2 :: Nil =
-          (thenp1 :: elsep1 :: Nil) map { t =>
-            // Adapt each branch to ensure that their types conforms to the
-            //   type assigned to the if tree by inserting GADT casts.
-            gadtAdaptBranch(t, resType)
+      val result =
+        if tree.elsep.isEmpty then
+          val thenp1 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
+          val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
+          cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
+        else
+          val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
+            val thenp0 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
+            val elsep0 = typed(tree.elsep, branchPt)(using cond1.nullableContextIf(false))
+            thenp0 :: elsep0 :: Nil
           }: @unchecked
 
-        cpy.If(tree)(cond1, thenp2, elsep2).withType(resType)
+          val resType = thenp1.tpe | elsep1.tpe
+          val thenp2 :: elsep2 :: Nil =
+            (thenp1 :: elsep1 :: Nil) map { t =>
+              // Adapt each branch to ensure that their types conforms to the
+              //   type assigned to the if tree by inserting GADT casts.
+              gadtAdaptBranch(t, resType)
+            }: @unchecked
 
-    def thenPathInfo = cond1.notNullInfoIf(true).seq(result.thenp.notNullInfo)
-    def elsePathInfo = cond1.notNullInfoIf(false).seq(result.elsep.notNullInfo)
-    result.withNotNullInfo(thenPathInfo.alt(elsePathInfo))
-  end typedIf
+          cpy.If(tree)(cond1, thenp2, elsep2).withType(resType)
+
+      def thenPathInfo = cond1.notNullInfoIf(true).seq(result.thenp.notNullInfo)
+      def elsePathInfo = cond1.notNullInfoIf(false).seq(result.elsep.notNullInfo)
+      result.withNotNullInfo(thenPathInfo.alt(elsePathInfo))
+  }
 
   /** Decompose function prototype into a list of parameter prototypes and a result
    *  prototype tree, using WildcardTypes where a type is not known.
