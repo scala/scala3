@@ -155,9 +155,13 @@ class AbstractFileClassLoaderTest:
     catch case e: java.lang.reflect.InvocationTargetException => e.getCause.isInstanceOf[ThreadDeath]
     finally ReplBytecodeInstrumentation.setStopFlag(loader, false)
 
-  @Test def onlyEnabledAndLocalInstrumentReplClasses(): Unit =
-    assertFalse("false", probeIsInterruptible(Disabled))
-    assertTrue("true", probeIsInterruptible(Enabled))
-    assertTrue("local", probeIsInterruptible(Local))
+  @Test def replClassesAreNotInstrumentedWhenDisabled(): Unit =
+    assertFalse(probeIsInterruptible(Disabled))
+
+  @Test def replClassesAreInstrumentedWhenEnabled(): Unit =
+    assertTrue(probeIsInterruptible(Enabled))
+
+  @Test def replClassesAreInstrumentedWhenLocal(): Unit =
+    assertTrue(probeIsInterruptible(Local))
 
 end AbstractFileClassLoaderTest
