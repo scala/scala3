@@ -173,6 +173,8 @@ class ReplDriver(settings: Array[String],
 
   private[repl] def replRootContext: Context = rootCtx
 
+  private[repl] def replShouldStart: Boolean = shouldStart
+
   private var rootCtx: Context = uninitialized
   private var shouldStart: Boolean = uninitialized
   private var compiler: ReplCompiler = uninitialized
