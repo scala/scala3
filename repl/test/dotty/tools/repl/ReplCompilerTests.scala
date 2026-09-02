@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import java.util.regex.Pattern
 
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}

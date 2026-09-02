@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import org.junit.Test
 import org.junit.Assert.assertEquals
 
