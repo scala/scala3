@@ -425,7 +425,6 @@ object Types extends TypeUtils {
         case AppliedType(tycon, args) => tycon.unusableForInference || args.exists(_.unusableForInference)
         case RefinedType(parent, _, rinfo) => parent.unusableForInference || rinfo.unusableForInference
         case TypeBounds(lo, hi) => lo.unusableForInference || hi.unusableForInference
-        case FlexibleType(hi) => hi.unusableForInference
         case tp: AndOrType => tp.tp1.unusableForInference || tp.tp2.unusableForInference
         case tp: LambdaType => tp.resultType.unusableForInference || tp.paramInfos.exists(_.unusableForInference)
         case WildcardType(optBounds) => optBounds.unusableForInference
@@ -1902,8 +1901,6 @@ object Types extends TypeUtils {
         t
       case t @ SAMType(_, _) =>
         t
-      case FlexibleType(hi) =>
-        hi.findFunctionType
       case _ =>
         NoType
 
@@ -6077,8 +6074,6 @@ object Types extends TypeUtils {
         samClass(tp.underlying)
       case tp: AnnotatedType =>
         samClass(tp.underlying)
-      case FlexibleType(hi) =>
-        samClass(hi)
       case _ =>
         NoSymbol
 
