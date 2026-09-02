@@ -16,6 +16,8 @@ object MiMaFilters {
         // new annotation carrying the component names of Java records
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$errorHandling$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.compiletime.package"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.compiletime.package$"),
       ),
 
       // Additions since last LTS
