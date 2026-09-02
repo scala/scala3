@@ -2,18 +2,18 @@ def f(s: String) =
   val s2 = s.trim()
   s2 match
     case s3: String =>
-    case _ => // warn: null only
+    case _ => // ok
 
 
 def f2(s: String | Null) =
   val s2 = s.nn.trim()
   s2 match
     case s3: String =>
-    case _ => // warn: null only
+    case _ => // ok
 
 def f3(s: String | Null) = s match
   case s2: String =>
-  case _ => // warn: null only
+  case _ => // ok
 
 def f5(s: String) = s match
   case _: String =>
