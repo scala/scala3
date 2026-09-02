@@ -1246,6 +1246,19 @@ class Inliner(val call: tpd.Tree)(using Context):
         case _ =>
           tree
 
+    /** Replace, in `tp`, every skolem that a (non by-name) argument proxy of this
+     *  call stands for (see `externalParamProxySkolem`) by a reference to that proxy.
+     */
+    private def skolemsToProxies(tp: Type)(using Context): Type =
+      new TypeMap:
+        def apply(t: Type): Type = t match
+          case t: SkolemType =>
+            externalParamProxySkolem.collectFirst:
+              case (sym, sk) if !sym.is(Method) && sk.info.frozen_=:=(t.info) => sym.termRef
+            .getOrElse(t)
+          case _ => mapOver(t)
+      .apply(tp)
+
     override def healAdapt(tree: Tree, pt: Type)(using Context): Tree = (tree, pt) match
       /* Given `(x: T)` with expected type `x.type`, replace the tree with `x`. */
       case (Typed(tree1, _), pt: SingletonType) if tree1.tpe <:< pt => tree1
@@ -1253,6 +1266,14 @@ class Inliner(val call: tpd.Tree)(using Context):
        * E.g. We need to keep the skolem in tests/pos/i26885.scala but expect it widened in tests/pos/i26031.scala.
        */
       case (_, sk: SkolemType) if externalParamProxySkolem.get(tree.symbol).contains(sk) => tree.cast(sk)
+      /* An argument proxy's type may still mention a skolem (nested in its type)
+       * that another proxy of the same call now stands for (see tests/pos/i26958.scala).
+       * If replacing those skolems by their proxies makes the type conform, cast.
+       */
+      case _ if externalParamProxySkolem.nonEmpty =>
+        val wtp = tree.tpe.widen
+        val substed = skolemsToProxies(wtp)
+        if (substed ne wtp) && (substed <:< pt) then tree.cast(pt) else tree
       case _ => tree
   end InlineTyper
 
