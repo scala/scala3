@@ -197,7 +197,7 @@ object GenericSignatures {
                     builder.append("*")
                 else
                   // For bounded arguments, we can't translate it cleanly so emit an erased type
-                  jsig(erasure(a.tycon))
+                  boxedSig(erasure(a.tycon))
               case res if res.isPrimitiveValueType =>
                 // value classes cannot appear as generic arguments
                 jsig(defn.boxedType(res))
