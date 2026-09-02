@@ -12,17 +12,13 @@ import dotty.tools.dotc.printing.Printer
 import dotty.tools.dotc.printing.Texts.{Text, given}
 import dotty.tools.dotc.report
 
+/** A qualifier annotation. The case-class `equals`/`hashCode` are load-bearing:
+ *  `AnnotatedType` hash-consing relies on them to identify structurally-equal
+ *  qualifiers, otherwise equivalent qualifiers would produce distinct
+ *  `AnnotatedType` instances and break ENode structural equality on embedded
+ *  type-args.
+ */
 case class QualifiedAnnotation(qualifier: ENode.Lambda) extends Annotation:
-
-  // Override hash/eql so that AnnotatedType hash-consing recognises two
-  // structurally-equal qualifier annotations as equal. The default
-  // Annotation implementation uses reference identity, which would
-  // produce distinct AnnotatedType instances for equivalent qualifiers
-  // and break ENode structural equality on embedded type-args.
-  override def hash: Int = qualifier.hashCode
-  override def eql(that: Annotation): Boolean = that match
-    case that: QualifiedAnnotation => qualifier == that.qualifier
-    case _ => false
 
   /** The annotation tree, in the standard `New(QualifiedAnnot)(lambda)` shape
    *  so that `annotClass` recovers `defn.QualifiedAnnot` and TASTy round-trip
