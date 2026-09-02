@@ -69,8 +69,11 @@ class ANF extends MacroTransform, IdentityDenotTransformer:
   override def description: String = ANF.description
   override def changesMembers: Boolean = true
 
-  override def isRunnable(using Context): Boolean =
-    super.isRunnable && ctx.settings.YqualifiedTypesAnf.value
+  // Dropped from the phase plan when disabled: phase ids are scarce (`Recheck`
+  // phases must fit in 64), and each standalone phase costs one, plus a
+  // `TreeChecker` under `-Ycheck:all`.
+  override def isEnabled(using Context): Boolean =
+    ctx.settings.YqualifiedTypesAnf.value
 
   def newTransformer(using Context): Transformer = new Transformer:
     override def transform(tree: Tree)(using Context): Tree = tree match
