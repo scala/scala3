@@ -803,6 +803,7 @@ object TypeOps:
     TraverseTp2.traverse(tp2)
     val singletons = TraverseTp2.singletons
     val gadtSyms   = TraverseTp2.gadtSyms.toList
+    val initialGadt = ctx.gadt
 
     // Prefix inference, given `p.C.this.Child`:
     //   1. return it as is, if `C.this` is found in `tp`, i.e. the scrutinee; or
@@ -868,18 +869,19 @@ object TypeOps:
             tref
 
         case tp: TypeRef if !tp.symbol.isClass =>
-          val lookup = boundTypeParams.lookup(tp)
-          if lookup != null then lookup
+          if initialGadt.contains(tp.symbol) then tp
           else
-            val TypeBounds(lo, hi) = tp.underlying.bounds
-            val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
-            boundTypeParams(tp) = tv
-            assert(tv <:< apply(hi))
-            apply(lo) <:< tv //  no assert, since bounds might conflict
-            tv
+            val lookup = boundTypeParams.lookup(tp)
+            if lookup != null then lookup
+            else
+              val TypeBounds(lo, hi) = tp.underlying.bounds
+              val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
+              boundTypeParams(tp) = tv
+              assert(tv <:< apply(hi))
+              apply(lo) <:< tv //  no assert, since bounds might conflict
+              tv
 
         case tp @ AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass && !tp.isMatchAlias =>
-
           // In tests/patmat/i3645g.scala, we need to tell whether it's possible
           // that K1 <: K[Foo]. If yes, we issue a warning; otherwise, no
           // warnings.
@@ -900,7 +902,10 @@ object TypeOps:
           // Note that `HKTypeLambda.resType` may contain TypeParamRef that are
           // bound in the HKTypeLambda. This is fine, as the TypeComparer will
           // recurse on the bounds of `TypeParamRef`.
-          val bounds: TypeBounds = tycon.underlying match {
+          val tyconBounds = initialGadt.bounds(tycon.symbol) match
+            case tb @ (TypeBounds(_: HKTypeLambda, _) | TypeBounds(_, _: HKTypeLambda)) => tb
+            case _ => tycon.underlying
+          val bounds: TypeBounds = tyconBounds match {
             case TypeBounds(tl1: HKTypeLambda, tl2: HKTypeLambda) =>
               TypeBounds(tl1.resType, tl2.resType)
             case TypeBounds(tl1: HKTypeLambda, tp2) =>
@@ -920,8 +925,9 @@ object TypeOps:
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds, DepParamName.fresh(tparam.paramName)) }
     val protoTp1 = inferThisMap.apply(tp1).appliedTo(tvars)
 
-    if gadtSyms.nonEmpty then
-      ctx.gadtState.addToConstraint(gadtSyms)
+    val missingGadtSyms = gadtSyms.filterNot(initialGadt.contains)
+    if missingGadtSyms.nonEmpty then
+      ctx.gadtState.addToConstraint(missingGadtSyms)
 
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to
