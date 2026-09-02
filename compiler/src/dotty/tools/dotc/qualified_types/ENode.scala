@@ -868,6 +868,19 @@ object ENode:
     trace(i"substParamRefs($tp, $paramSyms, $paramTps)", Printers.qualifiedTypes):
       tp.subst(paramSyms, paramTps.zipWithIndex.map((tp, i) => ENodeVar.BoundParam(i)(tp)).toList)
 
+  /** The qualifier `(x: tp) => x == tp` for the singleton type `tp`.
+   *
+   *  Total, unlike the tree-based overload: [[singleton]] wraps
+   *  non-representable parts (e.g. non-singleton prefixes) in fresh skolems
+   *  instead of failing.
+   */
+  def selfify(tp: SingletonType)(using Context): ENode.Lambda =
+    ENode.Lambda(
+      List(tp),
+      defn.BooleanType,
+      OpApply(ENode.Op.Equal, List(singleton(tp), ENode.Atom(ENodeVar.BoundParam(0)(tp))))
+    )
+
   def selfify(tree: tpd.Tree)(using Context): Option[ENode.Lambda] =
     trace(i"ENode.selfify $tree", Printers.qualifiedTypes):
       fromTree(tree) match
