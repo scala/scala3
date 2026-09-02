@@ -20,7 +20,10 @@ final class LiftArgs extends MiniPhase:
   override def description: String =
     "Lift arguments in qualified types used for runtime checks. This is needed so that there values can actually be used at runtime, without having to re-evaluate them."
 
-  override def isRunnable(using Context) = super.isRunnable && Feature.qualifiedTypesEnabled
+  // Gated on the language setting at plan assembly: phase ids are scarce
+  // (see `ANF.isEnabled`), and upstream's test configurations already use
+  // all 127 under `-Wall -Ycheck:all -coverage-out`.
+  override def isEnabled(using Context): Boolean = Feature.enabledBySetting(Feature.qualifiedTypes)
 
   override def transformApply(tree: Apply)(using Context): Tree =
     if !tree.args.exists(QualifiedTypes.readSkolemIndexAnnot(_).isDefined) then

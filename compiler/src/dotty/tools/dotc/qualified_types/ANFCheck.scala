@@ -20,8 +20,9 @@ class ANFCheck extends Phase:
   override def phaseName: String = ANFCheck.name
   override def description: String = ANFCheck.description
 
-  override def isRunnable(using Context): Boolean =
-    super.isRunnable && ctx.settings.YqualifiedTypesAnf.value
+  // See `ANF.isEnabled`.
+  override def isEnabled(using Context): Boolean =
+    ctx.settings.YqualifiedTypesAnf.value
 
   /** Appended to every warning: these residual cases are not yet handled (e.g.
    *  skolems in a method's own result qualifier, or in a function type), so we
