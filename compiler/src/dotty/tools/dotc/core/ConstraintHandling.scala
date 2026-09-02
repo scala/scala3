@@ -832,6 +832,14 @@ trait ConstraintHandling {
    */
   protected def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(using Context): Boolean =
     if !bound.isValueTypeOrLambda then return false
+    // Never infer the `<FlexibleType>` type constructor for a higher-kinded type
+    // parameter. A flexible type is an implementation device of explicit nulls that
+    // should be transparent to type inference; if we allowed `param := <FlexibleType>`,
+    // every `F[A]`-shaped signature would match a flexible-typed value, shadowing the
+    // members of its underlying type (see tests/explicit-nulls/pos/flexible-hk-extension.scala).
+    // Refusing the constraint makes the comparison fall back to looking through the
+    // flexible type.
+    if FlexibleType.isTypeConstructor(bound) then return false
 
     /** When comparing lambdas we might get constraints such as
      *  `A <: X0` or `A = List[X0]` where `A` is a constrained parameter
