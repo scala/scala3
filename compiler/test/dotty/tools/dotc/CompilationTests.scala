@@ -211,7 +211,9 @@ class CompilationTests {
       compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
       compileFilesInDir("tests/run-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes")),
       // Same suite with skolem ANF lifting enabled, to check runtime behavior is preserved.
-      compileFilesInDir("tests/run-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes", "-Yqualified-types-anf")),
+      // Own group: the output directory is derived from the group and source
+      // path, so compiling the same files twice in one group races.
+      compileFilesInDir("tests/run-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes", "-Yqualified-types-anf"))(using TestGroup("runAll/qualified-types-anf")),
       // Run tests for legacy lazy vals.
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
     ))
