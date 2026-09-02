@@ -36,7 +36,7 @@ class AbstractFileClassLoaderTest:
   // cf ScalaClassLoader#classBytes
   extension (loader: ClassLoader)
     // An InputStream representing the given class name, or null if not found.
-    def classAsStream(className: String): InputStream = loader.getResourceAsStream {
+    def classAsStream(className: String): InputStream | Null = loader.getResourceAsStream {
       if className.endsWith(".class") then className
       else s"${className.replace('.', '/')}.class"  // classNameToPath
     }
@@ -121,7 +121,7 @@ class AbstractFileClassLoaderTest:
     val x = new AbstractFileClassLoader(fuzz, NoClassLoader)
     val r = x.getResourceAsStream("buzz/booz.class")
     assertNotNull(r)
-    assertEquals("hello, world", closing(r)(is => Source.fromInputStream(is).mkString))
+    assertEquals("hello, world", closing(r.nn)(is => Source.fromInputStream(is).mkString))
 
   @Test def afclGetsClassBytes(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
