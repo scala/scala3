@@ -37,6 +37,7 @@ import dotty.tools.dotc.core.Types.{
   OrType,
   ParamRef,
   QualSkolemType,
+  SingletonType,
   TermRef,
   Type,
   TypeMap,
@@ -409,11 +410,8 @@ object QualifiedTypes:
       typeImpliesRec(tp1, qualifier2, solver)
 
   def typeImpliesRec(tp1: Type, qualifier2: ENode.Lambda, solver: QualifierSolver)(using Context): Boolean =
-    def trySelfifyType() =
-      val ENode.Lambda(List(paramTp), _, _) = qualifier2: @unchecked
-      ENode.selfify(tpd.singleton(tp1)) match
-        case Some(qualifier1) => solver.implies(qualifier1, qualifier2)
-        case None => false
+    def trySelfifyType(tp1: SingletonType) =
+      solver.implies(ENode.selfify(tp1), qualifier2)
     trace(i"typeImpliesRec $tp1  -->  ${qualifier2.body}", Printers.qualifiedTypes):
       tp1 match
         case QualifiedType(parent1, qualifier1) =>
@@ -422,10 +420,10 @@ object QualifiedTypes:
           def trySelfifyRef() =
             tp1.underlying match
               case QualifiedType(_, _) => false
-              case _ => trySelfifyType()
+              case _ => trySelfifyType(tp1)
           typeImpliesRec(tp1.underlying, qualifier2, solver) || trySelfifyRef()
         case tp1: ConstantType =>
-          trySelfifyType()
+          trySelfifyType(tp1)
         case tp1: TypeProxy =>
           typeImpliesRec(tp1.underlying, qualifier2, solver)
         case AndType(tp11, tp12) =>
