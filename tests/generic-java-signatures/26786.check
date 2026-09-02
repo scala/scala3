@@ -1,1 +1,1 @@
-public Check<java.lang.Boolean> X.foo()
+public Check<java.lang.Object> X.foo()

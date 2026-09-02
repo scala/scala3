@@ -925,7 +925,24 @@ class Inliner(val call: tpd.Tree)(using Context):
           val rhs = typed(vdef.rhs)
           sym.info = rhs.tpe
           untpd.cpy.ValDef(vdef)(vdef.name, untpd.TypeTree(rhs.tpe), untpd.TypedSplice(rhs))
-        else vdef
+        else
+          // If the declared type is a still-undisambiguated singleton reference over
+          // an overloaded member, typing the RHS below would use it as the
+          // expected type, and `typedSelect`'s raw member lookup can install an
+          // ambiguous denotation onto it as a side effect, later failing the conformance
+          // check. Settle it to the sole non-method alternative up front instead, inverting
+          // the TreePickler pickling optimisation for NotAMethod TermRefs (where, like here,
+          // they aren't assigned a Signature, and aren't tied to a Symbol, using Name
+          // designator instead).
+          vdef.tpt.typeOpt match
+            case tp: TermRef if tp.designator.isInstanceOf[Name] =>
+              tp.prefix.member(tp.name).altsWith(_.info.isParameterless) match
+                case alt :: Nil =>
+                  val fixed = TermRef(tp.prefix, tp.name, alt)
+                  sym.info = fixed
+                  untpd.cpy.ValDef(vdef)(vdef.name, untpd.TypeTree(fixed), vdef.rhs)
+                case _ => vdef
+            case _ => vdef
       super.typedValDef(vdef1, sym)
 
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
