@@ -903,7 +903,7 @@ object ENode:
             OpApply(ENode.Op.Equal, List(Atom(ENodeVar.Skolem(owner, id)(SkolemType(tp.widen))), singleton(tp)))
           val defTree = tp.symbol.defTree
           val valAssumptions = defTree match
-            case valDef: tpd.ValDef if !valDef.rhs.isEmpty && !valDef.symbol.is(Flags.Lazy) =>
+            case valDef: tpd.ValDef if !valDef.rhs.isEmpty && !valDef.symbol.isOneOf(Flags.Lazy | Flags.Mutable) =>
               fromTree(valDef.rhs) match
                 case Some(treeNode) => OpApply(ENode.Op.Equal, List(treeNode, singleton(tp))) :: assumptions(treeNode)
                 case None => Nil
