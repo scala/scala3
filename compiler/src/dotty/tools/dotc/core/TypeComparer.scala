@@ -1273,14 +1273,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *  - Some explanations on how this impacts API design: https://gist.github.com/djspiewak/7a81a395c461fd3a09a6941d4cd040f2
      */
     def compareAppliedTypeParamRef(tycon: TypeParamRef, args: List[Type], other: AppliedType, fromBelow: Boolean): Boolean =
-      // Never infer the `<FlexibleType>` type constructor for a higher-kinded type
-      // parameter. A flexible type is an implementation device of explicit nulls that
-      // should be transparent to type inference; if we allowed `tycon := <FlexibleType>`
-      // here, every `F[A]`-shaped signature would match a flexible-typed value, shadowing
-      // the members of its underlying type (see tests/explicit-nulls/pos/flexible-hk-extension.scala).
-      // Bailing out makes the comparison fall back to looking through the flexible type.
-      if FlexibleType.isTypeConstructor(other.tycon) then return false
-
       def directionalIsSubType(tp1: Type, tp2: Type): Boolean =
         if fromBelow then isSubType(tp2, tp1) else isSubType(tp1, tp2)
       def directionalRecur(tp1: Type, tp2: Type): Boolean =
@@ -1378,10 +1370,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1 match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
-               // as in `compareAppliedTypeParamRef`, `<FlexibleType>` is never inferred
-               // as the instance of a type constructor parameter
-               canConstrain(tycon1) && !FlexibleType.isTypeConstructor(tycon2)
-               && isSubType(tycon1, tycon2)) &&
+               canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
               isSubArgs(args1, args2, tp1, tparams)
             case tycon1: TypeRef =>
               tycon2 match {
