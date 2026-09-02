@@ -2028,8 +2028,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case SAMType(_, _) => true
         case tp: AndOrType =>
           containsFunctionType(tp.tp1) || containsFunctionType(tp.tp2)
-        case FlexibleType(hi) =>
-          containsFunctionType(hi)
         case _ => false
       containsFunctionType(bounds.lo) || containsFunctionType(bounds.hi)
 
