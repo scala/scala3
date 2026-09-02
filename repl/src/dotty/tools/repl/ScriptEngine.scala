@@ -22,7 +22,7 @@ class ScriptEngine extends AbstractScriptEngine {
       "-classpath", "", // Avoid the default "."
       "-usejavacp",
       "-color:never",
-      "-Xrepl-disable-display",
+      "-Xrepl-disable-evaluation",
       "-Xrepl-interrupt-instrumentation",
       "false"
     ))

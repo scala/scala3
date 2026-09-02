@@ -494,7 +494,7 @@ class ReplDriver(settings: Array[String],
 
           inContext(newState.context):
             val (updatedState, definitions) =
-              if (!ctx.settings.XreplDisableDisplay.value)
+              if (!ctx.settings.XreplDisableEvaluation.value)
                 renderDefinitions(unit.tpdTree, newestWrapper)(using newStateWithImports)
               else
                 (newStateWithImports, Seq.empty)
