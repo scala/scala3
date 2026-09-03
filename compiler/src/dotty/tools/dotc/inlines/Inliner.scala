@@ -1253,6 +1253,19 @@ class Inliner(val call: tpd.Tree)(using Context):
        * E.g. We need to keep the skolem in tests/pos/i26885.scala but expect it widened in tests/pos/i26031.scala.
        */
       case (_, sk: SkolemType) if externalParamProxySkolem.get(tree.symbol).contains(sk) => tree.cast(sk)
+      /* Same as above, but for nested types (see tests/pos/i26958.scala).
+       */
+      case _ if externalParamProxySkolem.nonEmpty =>
+        val wtp = tree.tpe.widen
+        val substed = new TypeMap:
+          def apply(t: Type): Type = t match
+            case t: SkolemType =>
+              externalParamProxySkolem.collectFirst:
+                case (sym, `t`) => sym.termRef
+              .getOrElse(t)
+            case _ => mapOver(t)
+        .apply(wtp)
+        if (substed ne wtp) && (substed <:< pt) then tree.cast(pt) else tree
       case _ => tree
   end InlineTyper
 
