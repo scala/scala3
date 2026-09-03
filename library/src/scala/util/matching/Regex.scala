@@ -785,6 +785,7 @@ object Regex {
    *  @param _groupNames the names of the capturing groups, if any, used to look up groups by name
    */
   class Match(val source: CharSequence,
+              /** The underlying `Matcher` that performed the match. */
               protected[matching] val matcher: Matcher,
               _groupNames: Seq[String]) extends MatchData {
 
@@ -894,6 +895,7 @@ object Regex {
     @deprecated("groupNames does not include inline group names, and should not be used anymore", "2.13.7")
     val groupNames: Seq[String] = _groupNames
 
+    /** The underlying `Matcher` used to find matches. */
     protected[Regex] val matcher = regex.pattern.matcher(source)
 
     // 0 = not yet matched, 1 = matched, 2 = advanced to match, 3 = no more matches
