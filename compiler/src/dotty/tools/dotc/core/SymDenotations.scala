@@ -944,7 +944,8 @@ object SymDenotations {
       // `Null` derives from `AnyVal` under explicit nulls, so it would be excluded by
       // `!isValueClass`, even though `null` is of course a value of it.
       isClass && {
-        if isValueClass then symbol == defn.NullClass || symbol == defn.AnyValClass
+        if isValueClass then
+          symbol == defn.NullClass || ctx.explicitNulls && symbol == defn.AnyValClass
         else !is(ModuleClass) && symbol != defn.NothingClass
       }
 
