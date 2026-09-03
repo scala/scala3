@@ -1254,7 +1254,7 @@ class Inliner(val call: tpd.Tree)(using Context):
         def apply(t: Type): Type = t match
           case t: SkolemType =>
             externalParamProxySkolem.collectFirst:
-              case (sym, sk) if !sym.is(Method) && sk.info.frozen_=:=(t.info) => sym.termRef
+              case (sym, sk) if sk == t => sym.termRef
             .getOrElse(t)
           case _ => mapOver(t)
       .apply(tp)
@@ -1266,9 +1266,7 @@ class Inliner(val call: tpd.Tree)(using Context):
        * E.g. We need to keep the skolem in tests/pos/i26885.scala but expect it widened in tests/pos/i26031.scala.
        */
       case (_, sk: SkolemType) if externalParamProxySkolem.get(tree.symbol).contains(sk) => tree.cast(sk)
-      /* An argument proxy's type may still mention a skolem (nested in its type)
-       * that another proxy of the same call now stands for (see tests/pos/i26958.scala).
-       * If replacing those skolems by their proxies makes the type conform, cast.
+      /* Same as above, but for nested types (see tests/pos/i26958.scala).
        */
       case _ if externalParamProxySkolem.nonEmpty =>
         val wtp = tree.tpe.widen
