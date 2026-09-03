@@ -258,7 +258,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
    *
    *  Calling this method evaluates the expression using reflection
    */
-  private def valueOf(sym: Symbol, prefixLength: Int)(using Context): Option[fansi.Str] =
+  private[repl] def valueOf(sym: Symbol, prefixLength: Int)(using Context): Option[fansi.Str] =
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())
     val symValue = resObj
