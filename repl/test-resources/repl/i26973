@@ -1,0 +1,9 @@
+scala> { println("a"); 42 }
+a
+val res1: Int = 42
+
+scala> 1
+val res2: Int = 1
+
+scala> res1 + 1
+val res3: Int = 43
