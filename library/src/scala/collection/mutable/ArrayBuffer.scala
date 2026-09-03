@@ -64,6 +64,9 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   @transient private var mutationCount: Int = 0
 
   // needs to be `private[collection]` or `protected[collection]` for parallel-collections
+  /** The backing array, holding the buffer's elements at indices `0` until
+   *  `size0`, erased to `AnyRef`. The remaining slots are unused and `null`.
+   */
   protected[collection] var array: Array[AnyRef] = initialElements
   /** The number of elements in this buffer. */
   protected var size0 = initialSize
