@@ -8,8 +8,10 @@ import scala.language.unsafeNulls
 
 object Test:
   val n: Null = null
+  val n2: AnyVal = null
 
   val s = n.nn // no warning: the qualifier really can be null
+  val s2 = n2.nn // no warning: the qualifier really can be null
 
   def typeTest = null match
     case _: AnyRef => 1

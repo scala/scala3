@@ -943,8 +943,10 @@ object SymDenotations {
     final def isNullableClassAfterErasure(using Context): Boolean =
       // `Null` derives from `AnyVal` under explicit nulls, so it would be excluded by
       // `!isValueClass`, even though `null` is of course a value of it.
-      symbol == defn.NullClass
-      || isClass && !isValueClass && !is(ModuleClass) && symbol != defn.NothingClass
+      isClass && {
+        if isValueClass then symbol == defn.NullClass || symbol == defn.AnyValClass
+        else !is(ModuleClass) && symbol != defn.NothingClass
+      }
 
     /** Is `pre` the same as C.this, where C is exactly the owner of this symbol,
      *  or, if this symbol is protected, a subclass of the owner?
