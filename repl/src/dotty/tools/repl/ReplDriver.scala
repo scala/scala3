@@ -572,7 +572,10 @@ class ReplDriver(settings: Array[String],
           ++ defs.map(rendering.renderMethod)
           ++ renderedVals
         val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
-        val reclaimed = vals.toList.reverse.takeWhile(resAndUnit).length
+        val reclaimed = vals.toList.reverse
+          .filter(_.symbol.name.show.startsWith(str.REPL_RES_PREFIX))
+          .takeWhile(resAndUnit)
+          .length
         (state.copy(valIndex = state.valIndex - reclaimed), diagnostics)
     }
     else (state, Seq.empty)
