@@ -403,7 +403,7 @@ class WorksheetSessionTest:
     assertEquals(1, second.statements.length)
     assertEquals("res0: Int = 4", second.statements.head.details)
 
-  @Test def keepsValueNumberingAfterAFailedSuffix(): Unit =
+  @Test def keepsValueNumberingAcrossAFailedAppend(): Unit =
     val initial = "val x = 1\n"
     assertEquals(Nil, driver.evaluate("numbering.worksheet.scala", initial).diagnostics)
 
