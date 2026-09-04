@@ -1,4 +1,4 @@
-//> using options -Yexplicit-nulls -Yno-flexible-types
+//> using options -language:safeNulls -Yno-flexible-types
 
 import scala.jdk.CollectionConverters.*
 

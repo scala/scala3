@@ -197,12 +197,12 @@ class CompletionTest {
 
   @Test def importJavaStaticMethod: Unit = {
     code"""import java.lang.System.lineSep${m1}"""
-      .completion(("lineSeparator", Method, "(): String"))
+      .completion(("lineSeparator", Method, "(): (String)?"))
   }
 
   @Test def importJavaStaticField: Unit = {
     code"""import java.lang.System.ou${m1}"""
-      .completion(("out", Field, "java.io.PrintStream"))
+      .completion(("out", Field, "(java.io.PrintStream)?"))
   }
 
   @Test def importFromExplicitAndSyntheticPackageObject: Unit = {

@@ -1,3 +1,5 @@
+//> using options -Yno-explicit-nulls
+
 object Test {
   import scala.ref.WeakReference
   def unapply[T <: AnyVal](wr: WeakReference[T]): Option[T] = {

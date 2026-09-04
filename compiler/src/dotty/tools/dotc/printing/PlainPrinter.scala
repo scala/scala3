@@ -243,6 +243,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
         ParamRefNameString(tp) ~ hashStr(tp.binder) ~ suffix
       case tp: SingletonType =>
         toTextSingleton(tp)
+      case FlexibleType(tpe) =>
+        if (ctx.settings.YhideFlexibleTypes.value) then
+          toText(tpe)
+        else
+          "(" ~ toText(tpe) ~ ")?"
       case AppliedType(tycon, args) =>
         (toTextLocal(tycon) ~ "[" ~ argsText(args) ~ "]").close
       case tp: RefinedType =>
@@ -332,8 +337,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
             toText(tpe)
           case _ =>
             toTextLocal(tpe) ~ " " ~ toText(annot)
-      case FlexibleType(_, tpe) =>
-        "(" ~ toText(tpe) ~ ")?"
       case tp: TypeVar =>
         def toTextCaret(tp: Type) = if printDebug then toTextLocal(tp) ~ Str("^") else toText(tp)
         if (tp.isInstantiated)
