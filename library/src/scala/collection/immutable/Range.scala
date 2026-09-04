@@ -62,8 +62,11 @@ import scala.util.hashing.MurmurHash3
  */
 @SerialVersionUID(4L)
 sealed abstract class Range(
+  /** The start value of this range; its first element when this range is non-empty. */
   val start: Int,
+  /** The end value of this range; not necessarily an element of it (see `last` for the last actual element). */
   val end: Int,
+  /** The difference between successive elements of this range; never zero. */
   val step: Int
 )
   extends AbstractSeq[Int]
@@ -73,8 +76,19 @@ sealed abstract class Range(
     with IterableFactoryDefaults[Int, IndexedSeq]
     with Serializable { range =>
 
+  /** Returns a new iterator over all elements of this range, from first to last. */
   final override def iterator: Iterator[Int] = new RangeIterator(start, step, lastElement, isEmpty)
 
+  /** Returns a [[scala.collection.Stepper]] for the elements of this range.
+   *
+   *  @tparam S the type of the stepper, determined by `shape`
+   *  @param shape an implicit value determining the type of stepper to create:
+   *         an `IntStepper` for the primitive `Int` shape, or a boxing
+   *         `AnyStepper` for the reference shape
+   *  @return a stepper over the elements of this range; it supports efficient splitting
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
+   */
   override final def stepper[S <: Stepper[?]](implicit shape: StepperShape[Int, S]): S & EfficientSplit = {
     val st = new RangeStepper(start, step, 0, length)
     val r =
@@ -86,8 +100,21 @@ sealed abstract class Range(
     r.asInstanceOf[S & EfficientSplit]
   }
 
+  /** Returns `true` if this range is inclusive (built with `to` or
+   *  `Range.inclusive`), `false` if it is exclusive (built with `until` or
+   *  `Range.apply`).
+   *
+   *  Even in an inclusive range, `end` is an element only if it is reachable
+   *  from `start` in `step` increments.
+   */
   def isInclusive: Boolean
 
+  /** Whether this range contains no elements.
+   *
+   *  A range is empty when `step` leads from `start` away from `end`, or when
+   *  it is exclusive with `start == end`. This value is computed once at
+   *  construction.
+   */
   final override val isEmpty: Boolean = (
     if (isInclusive)
       (if (step >= 0) start > end else start < end)
@@ -127,6 +154,11 @@ sealed abstract class Range(
     if (isInclusive || (absStep * div != gap)) div + 1 else div
   }
 
+  /** Returns the number of elements in this range, in constant time.
+   *
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
+   */
   final def length: Int =
     if (isEmpty) 0
     else if (numRangeElements > 0) numRangeElements
@@ -189,6 +221,10 @@ sealed abstract class Range(
    */
   final override def last: Int =
     if (isEmpty) throw Range.emptyRangeError("last") else lastElement
+  /** Returns the first element of this range, which is always `start`.
+   *
+   *  @throws NoSuchElementException if this range is empty
+   */
   final override def head: Int =
     if (isEmpty) throw Range.emptyRangeError("head") else start
 
@@ -214,11 +250,31 @@ sealed abstract class Range(
     else new Range.Exclusive(start + step, end, step)
   }
 
+  /** Builds a new indexed sequence by applying a function to all elements of
+   *  this range.
+   *
+   *  @tparam B the element type of the returned collection
+   *  @param f the function to apply to each element
+   *  @return a new indexed sequence containing the results of applying `f` to
+   *          each element of this range, in order
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
+   */
   override def map[B](f: Int => B): IndexedSeq[B] = {
     validateMaxLength()
     super.map(f)
   }
 
+  /** Creates a new range from the given values, each of which defaults to the
+   *  corresponding value of this range.
+   *
+   *  @param start the start value of the new range
+   *  @param end the end value of the new range
+   *  @param step the step of the new range; must be non-zero
+   *  @param isInclusive whether the new range includes its `end` value
+   *  @return a new `Range.Inclusive` if `isInclusive` is `true`, otherwise
+   *          a new `Range.Exclusive`
+   */
   final protected def copy(start: Int = start, end: Int = end, step: Int = step, isInclusive: Boolean = isInclusive): Range =
     if(isInclusive) new Range.Inclusive(start, end, step) else new Range.Exclusive(start, end, step)
 
@@ -242,6 +298,14 @@ sealed abstract class Range(
   private def description = s"$start ${if (isInclusive) "to" else "until"} $end by $step"
   private def fail() = throw new IllegalArgumentException(description + ": seqs cannot contain more than Int.MaxValue elements.")
 
+  /** Returns the element at index `idx`, that is, `start + step * idx`, in
+   *  constant time.
+   *
+   *  @param idx the index of the element to return
+   *  @throws IndexOutOfBoundsException if `idx` is negative or not less than `length`
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
+   */
   @throws[IndexOutOfBoundsException]
   final def apply(idx: Int): Int = {
     /* If length is not valid, numRangeElements <= 0, so the condition is always true.
@@ -267,6 +331,16 @@ sealed abstract class Range(
     }
   }
 
+  /** Returns the index of the first occurrence of `elem` at or after index
+   *  `from`, or `-1` if `elem` does not occur at or after that index.
+   *
+   *  When `elem` is an `Int`, its position is computed arithmetically in
+   *  constant time instead of by searching; this is possible because each
+   *  value occurs at most once in a range.
+   *
+   *  @param elem the element to search for
+   *  @param from the start index for the search
+   */
   override final def indexOf[@specialized(Int) B >: Int](elem: B, from: Int = 0): Int =
     elem match {
       case i: Int =>
@@ -275,6 +349,18 @@ sealed abstract class Range(
       case _ => super.indexOf(elem, from)
     }
 
+  /** Returns the index of the last occurrence of `elem` at or before index
+   *  `end`, or `-1` if `elem` does not occur at or before that index.
+   *
+   *  When `elem` is an `Int`, its position is computed arithmetically in
+   *  constant time instead of by searching; this is possible because each
+   *  value occurs at most once in a range.
+   *
+   *  @param elem the element to search for
+   *  @param end the end index for the search
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
+   */
   override final def lastIndexOf[@specialized(Int) B >: Int](elem: B, end: Int = length - 1): Int =
     elem match {
       case i: Int =>
@@ -286,6 +372,17 @@ sealed abstract class Range(
   private def posOf(i: Int): Int =
     if (contains(i)) (i - start) / step else -1
 
+  /** Returns `true` if this range contains the same elements as `that`, in
+   *  the same order.
+   *
+   *  When `that` is also a `Range`, the answer is computed in constant time
+   *  from the two ranges' lengths, starts, and steps, without iterating.
+   *
+   *  @tparam B the element type of `that`
+   *  @param that the collection to compare with
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
+   */
   override def sameElements[B >: Int](that: IterableOnce[B]^): Boolean = that match {
     case other: Range =>
       (this.length : @annotation.switch) match {
@@ -368,6 +465,13 @@ sealed abstract class Range(
     }
   }
 
+  /** Returns the longest prefix of this range whose elements all satisfy `p`.
+   *
+   *  The result is itself a range; the predicate is evaluated on successive
+   *  elements until it first fails.
+   *
+   *  @param p the predicate used to test elements
+   */
   final override def takeWhile(p: Int => Boolean): Range = {
     val stop = argTakeWhile(p)
     if (stop==start) newEmptyRange(start)
@@ -378,6 +482,14 @@ sealed abstract class Range(
     }
   }
 
+  /** Returns the remainder of this range after the longest prefix whose
+   *  elements all satisfy `p`.
+   *
+   *  The result is itself a range; the predicate is evaluated on successive
+   *  elements until it first fails.
+   *
+   *  @param p the predicate used to test elements
+   */
   final override def dropWhile(p: Int => Boolean): Range = {
     val stop = argTakeWhile(p)
     if (stop == start) this
@@ -388,6 +500,15 @@ sealed abstract class Range(
     }
   }
 
+  /** Splits this range into the longest prefix whose elements all satisfy `p`
+   *  and the remainder.
+   *
+   *  Equivalent to `(takeWhile(p), dropWhile(p))`, but more efficient: the
+   *  predicate is evaluated at most once per element.
+   *
+   *  @param p the predicate used to test elements
+   *  @return a pair of ranges `(this.takeWhile(p), this.dropWhile(p))`
+   */
   final override def span(p: Int => Boolean): (Range, Range) = {
     val border = argTakeWhile(p)
     if (border == start) (newEmptyRange(start), this)
@@ -417,6 +538,13 @@ sealed abstract class Range(
     }
 
   // Overridden only to refine the return type
+  /** Splits this range into a prefix/suffix pair at a given index.
+   *
+   *  $doesNotUseBuilders
+   *
+   *  @param n the index at which to split
+   *  @return a pair of ranges `(this.take(n), this.drop(n))`
+   */
   final override def splitAt(n: Int): (Range, Range) = (take(n), drop(n))
 
   // When one drops everything.  Can't ever have unchecked operations
@@ -435,6 +563,13 @@ sealed abstract class Range(
     if (isInclusive) this
     else new Range.Inclusive(start, end, step)
 
+  /** Returns `true` if `x` is an element of this range.
+   *
+   *  This is a constant-time operation: membership is decided with a bounds
+   *  check and a divisibility test rather than a search.
+   *
+   *  @param x the value to test for membership
+   */
   final def contains(x: Int): Boolean = {
     if (isEmpty) false
     else if (step > 0) {
@@ -447,11 +582,33 @@ sealed abstract class Range(
     }
   }
   /* Seq#contains has a type parameter so the optimised contains above doesn't override it */
+  /** Returns `true` if `elem` is an element of this range.
+   *
+   *  When `elem` is an `Int`, this delegates to the constant-time
+   *  `contains(x: Int)` overload; otherwise it falls back to a linear search.
+   *
+   *  @tparam B the type of `elem`
+   *  @param elem the value to test for membership
+   */
   override final def contains[B >: Int](elem: B): Boolean = elem match {
     case i: Int => this.contains(i)
     case _      => super.contains(elem)
   }
 
+  /** Returns the sum of the elements of this range.
+   *
+   *  For the default `Int` numeric, the sum is computed in constant time with
+   *  the arithmetic-series formula, and the result wraps around on overflow
+   *  exactly as repeated `Int` addition would. For any other `Numeric`, the
+   *  elements are added one by one and the result is converted back to `Int`
+   *  with `num.toInt`.
+   *
+   *  @tparam B a supertype of `Int` for which the addition is defined
+   *  @param num the numeric instance used to add elements
+   *  @return the sum of all elements, or zero if this range is empty
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
+   */
   final override def sum[B >: Int](implicit num: Numeric[B]): Int = {
     if (num eq scala.math.Numeric.IntIsIntegral) {
       // this is normal integer range with usual addition. arithmetic series formula can be used
@@ -474,6 +631,20 @@ sealed abstract class Range(
     }
   }
 
+  /** Returns the smallest element of this range.
+   *
+   *  For the standard `Int` ordering or its reverse, the result is `head` or
+   *  `last`, depending on the ordering and the sign of `step`, found in
+   *  constant time; for any other ordering, the elements are scanned.
+   *
+   *  @tparam A1 a supertype of `Int` over which `ord` compares
+   *  @param ord the ordering used to compare elements
+   *  @return the smallest element of this range with respect to `ord`
+   *  @throws NoSuchElementException if this range is empty and `ord` is the
+   *          `Int` ordering or its reverse
+   *  @throws UnsupportedOperationException if this range is empty and `ord` is
+   *          any other ordering
+   */
   final override def min[A1 >: Int](implicit ord: Ordering[A1]): Int =
     if (ord eq Ordering.Int) {
       if (step > 0) head
@@ -483,6 +654,20 @@ sealed abstract class Range(
       else head
     } else super.min(using ord)
 
+  /** Returns the largest element of this range.
+   *
+   *  For the standard `Int` ordering or its reverse, the result is `head` or
+   *  `last`, depending on the ordering and the sign of `step`, found in
+   *  constant time; for any other ordering, the elements are scanned.
+   *
+   *  @tparam A1 a supertype of `Int` over which `ord` compares
+   *  @param ord the ordering used to compare elements
+   *  @return the largest element of this range with respect to `ord`
+   *  @throws NoSuchElementException if this range is empty and `ord` is the
+   *          `Int` ordering or its reverse
+   *  @throws UnsupportedOperationException if this range is empty and `ord` is
+   *          any other ordering
+   */
   final override def max[A1 >: Int](implicit ord: Ordering[A1]): Int =
     if (ord eq Ordering.Int) {
       if (step > 0) last
@@ -492,6 +677,13 @@ sealed abstract class Range(
       else last
     } else super.max(using ord)
 
+  /** Returns an iterator over all the tails of this range, starting with this
+   *  range itself and ending with an empty range.
+   *
+   *  Each tail is itself a range, produced in constant time by `drop`.
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
+   */
   override def tails: Iterator[Range] =
     new AbstractIterator[Range] {
       private var i = 0
@@ -507,6 +699,13 @@ sealed abstract class Range(
       }
     }
 
+  /** Returns an iterator over all the inits of this range, starting with this
+   *  range itself and ending with an empty range.
+   *
+   *  Each init is itself a range, produced in constant time by `dropRight`.
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
+   */
   override def inits: Iterator[Range] =
     new AbstractIterator[Range] {
       private var i = 0
@@ -521,8 +720,22 @@ sealed abstract class Range(
         }
       }
     }
+  /** The maximum length below which indexed access via `apply` is preferred
+   *  over `iterator` when scanning elements; always `Int.MaxValue` because
+   *  `apply` is constant-time for ranges.
+   */
   override protected final def applyPreferredMaxLength: Int = Int.MaxValue
 
+  /** Returns `true` if `other` is equal to this range.
+   *
+   *  Another `Range` is equal to this one if both are empty, or if both have
+   *  the same `start` and last element and, unless they contain a single
+   *  element, the same `step`; this is decided in constant time and works even
+   *  for ranges of more than `Int.MaxValue` elements. Any other object is
+   *  compared with generic sequence equality.
+   *
+   *  @param other the object to compare with
+   */
   final override def equals(other: Any): Boolean = other match {
     case x: Range =>
       // Note: this must succeed for overfull ranges (length > Int.MaxValue)
@@ -538,10 +751,26 @@ sealed abstract class Range(
       super.equals(other)
   }
 
+  /** Returns a hash code value consistent with `equals`.
+   *
+   *  For ranges of two or more elements, the hash is computed directly from
+   *  `start`, `step`, and the last element; smaller ranges use the generic
+   *  sequence hash.
+   *
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
+   */
   final override def hashCode(): Int =
     if(length >= 2) MurmurHash3.rangeHash(start, step, lastElement)
     else super.hashCode
 
+  /** Returns a string representation of this range, such as
+   *  `Range 0 until 10` or `Range 1 to 9 by 2`.
+   *
+   *  The `by` clause is omitted when `step` is `1`. The prefix `empty ` marks
+   *  an empty range, and the prefix `inexact ` marks a non-empty range whose
+   *  `end` is not an exact multiple of `step` away from `start`.
+   */
   final override def toString(): String = {
     val preposition = if (isInclusive) "to" else "until"
     val stepped = if (step == 1) "" else s" by $step"
@@ -554,10 +783,23 @@ sealed abstract class Range(
     s"${prefix}Range $start $preposition $end$stepped"
   }
 
+  /** The name of this collection type, `"Range"`, used in string representations. */
   override protected def className = "Range"
 
+  /** Returns this range: the elements of a range are always pairwise distinct. */
   override def distinct: Range = this
 
+  /** Partitions the elements of this range into fixed-size groups.
+   *
+   *  Each group is itself a range, produced in constant time by `slice`.
+   *
+   *  @param size the number of elements per group
+   *  @return an iterator over the groups; every group has `size` elements,
+   *          except possibly the last, which may have fewer
+   *  @throws IllegalArgumentException if `size` is less than `1`
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
+   */
   override def grouped(size: Int): Iterator[Range] = {
     require(size >= 1, s"size=$size, but size must be positive")
     if (isEmpty) {
@@ -579,6 +821,17 @@ sealed abstract class Range(
     }
   }
 
+  /** Returns the elements of this range in sorted order according to an
+   *  ordering.
+   *
+   *  For the standard `Int` ordering, the result is this range itself when
+   *  `step` is positive, or its `reverse` when `step` is negative, computed in
+   *  constant time; for any other ordering, a generic sort is performed.
+   *
+   *  @tparam B a supertype of `Int` over which `ord` compares
+   *  @param ord the ordering used to compare elements
+   *  @return an indexed sequence containing the elements of this range, sorted
+   */
   override def sorted[B >: Int](implicit ord: Ordering[B]): IndexedSeq[Int] =
     if (ord eq Ordering.Int) {
       if (step > 0) {
@@ -631,6 +884,18 @@ object Range {
       }
     }
   }
+  /** Counts the number of elements of an exclusive range with the given
+   *  start, end, and step.
+   *
+   *  Equivalent to `count(start, end, step, isInclusive = false)`.
+   *
+   *  @param start the start value of the range
+   *  @param end the exclusive end value of the range
+   *  @param step the step value between consecutive elements, must be non-zero
+   *  @return the number of elements in the range, `0` if the range is empty,
+   *          or a negative value (modular wrap) if the count exceeds `Int.MaxValue`
+   *  @throws IllegalArgumentException if `step` is `0`
+   */
   def count(start: Int, end: Int, step: Int): Int =
     count(start, end, step, isInclusive = false)
 
@@ -670,24 +935,73 @@ object Range {
    */
   def inclusive(start: Int, end: Int): Range.Inclusive = new Range.Inclusive(start, end, 1)
 
+  /** A `Range` that includes its `end` value, as built by `to` or
+   *  `Range.inclusive`.
+   *
+   *  `end` is an element of the range only if it is reachable from `start` in
+   *  `step` increments.
+   *
+   *  @param start the start value of the range
+   *  @param end the inclusive end value of the range
+   *  @param step the step value between consecutive elements, must be non-zero
+   */
   @SerialVersionUID(4L)
   final class Inclusive(start: Int, end: Int, step: Int) extends Range(start, end, step) {
+    /** Returns `true`: this range is inclusive, so `end` is one of its elements if it
+     *  is reachable from `start` in `step` increments.
+     */
     def isInclusive: Boolean = true
   }
 
+  /** A `Range` that excludes its `end` value, as built by `until` or
+   *  `Range.apply`.
+   *
+   *  @param start the start value of the range
+   *  @param end the exclusive end value of the range
+   *  @param step the step value between consecutive elements, must be non-zero
+   */
   @SerialVersionUID(4L)
   final class Exclusive(start: Int, end: Int, step: Int) extends Range(start, end, step) {
+    /** Returns `false`: this range excludes its `end` value. */
     def isInclusive: Boolean = false
   }
 
   // BigInt and Long are straightforward generic ranges.
   object BigInt {
+    /** Creates an exclusive range of `BigInt` values.
+     *
+     *  @param start the start value of the range
+     *  @param end the exclusive end value of the range
+     *  @param step the step value between consecutive elements, must be non-zero
+     *  @return an exclusive `NumericRange` from `start` until `end` in increments of `step`
+     */
     def apply(start: BigInt, end: BigInt, step: BigInt): NumericRange.Exclusive[BigInt] = NumericRange(start, end, step)
+    /** Creates an inclusive range of `BigInt` values.
+     *
+     *  @param start the start value of the range
+     *  @param end the inclusive end value of the range
+     *  @param step the step value between consecutive elements, must be non-zero
+     *  @return an inclusive `NumericRange` from `start` to `end` in increments of `step`
+     */
     def inclusive(start: BigInt, end: BigInt, step: BigInt): NumericRange.Inclusive[BigInt] = NumericRange.inclusive(start, end, step)
   }
 
   object Long {
+    /** Creates an exclusive range of `Long` values.
+     *
+     *  @param start the start value of the range
+     *  @param end the exclusive end value of the range
+     *  @param step the step value between consecutive elements, must be non-zero
+     *  @return an exclusive `NumericRange` from `start` until `end` in increments of `step`
+     */
     def apply(start: Long, end: Long, step: Long): NumericRange.Exclusive[Long] = NumericRange(start, end, step)
+    /** Creates an inclusive range of `Long` values.
+     *
+     *  @param start the start value of the range
+     *  @param end the inclusive end value of the range
+     *  @param step the step value between consecutive elements, must be non-zero
+     *  @return an inclusive `NumericRange` from `start` to `end` in increments of `step`
+     */
     def inclusive(start: Long, end: Long, step: Long): NumericRange.Inclusive[Long] = NumericRange.inclusive(start, end, step)
   }
 
@@ -697,18 +1011,52 @@ object Range {
   // imprecision or surprises might result from anything, although this may
   // not yet be fully implemented.
   object BigDecimal {
+    /** The implicit numeric instance used to build `BigDecimal` ranges; it
+     *  treats `BigDecimal` as if it were an integral type (see
+     *  `scala.math.Numeric.BigDecimalAsIfIntegral`).
+     */
     implicit val bigDecAsIntegral: Numeric.BigDecimalAsIfIntegral = Numeric.BigDecimalAsIfIntegral
 
+    /** Creates an exclusive range of `BigDecimal` values.
+     *
+     *  @param start the start value of the range
+     *  @param end the exclusive end value of the range
+     *  @param step the step value between consecutive elements, must be non-zero
+     *  @return an exclusive `NumericRange` from `start` until `end` in increments of `step`
+     */
     def apply(start: BigDecimal, end: BigDecimal, step: BigDecimal): NumericRange.Exclusive[BigDecimal] =
       NumericRange(start, end, step)
+    /** Creates an inclusive range of `BigDecimal` values.
+     *
+     *  @param start the start value of the range
+     *  @param end the inclusive end value of the range
+     *  @param step the step value between consecutive elements, must be non-zero
+     *  @return an inclusive `NumericRange` from `start` to `end` in increments of `step`
+     */
     def inclusive(start: BigDecimal, end: BigDecimal, step: BigDecimal): NumericRange.Inclusive[BigDecimal] =
       NumericRange.inclusive(start, end, step)
   }
 
   // As there is no appealing default step size for not-really-integral ranges,
   // we offer a partially constructed object.
+  /** A partially constructed range that still lacks its step value.
+   *
+   *  Range constructions with no sensible default step, such as `until` and
+   *  `to` on `BigDecimal`, return a `Partial`; calling `by` supplies the step
+   *  and yields the finished range.
+   *
+   *  @tparam T the type of the step
+   *  @tparam U the type of the completed range
+   *  @param f the function that builds the completed range from a step value
+   */
   class Partial[T, U](private val f: T => U) extends AnyVal { self: Partial[T, U]^ =>
+    /** Completes this partially constructed range with the given step value.
+     *
+     *  @param x the step value
+     *  @return the completed range, `f(x)`
+     */
     def by(x: T): U = f(x)
+    /** Returns the string `"Range requires step"`, indicating that this is not yet a complete range. */
     override def toString() = "Range requires step"
   }
 
@@ -717,7 +1065,31 @@ object Range {
   // indefinitely, for performance and because the compiler seems to bootstrap
   // off it and won't do so with our parameterized version without modifications.
   object Int {
+    /** Creates an exclusive `NumericRange` of `Int` values, a generic alternative
+     *  to `Range` that produces the same elements.
+     *
+     *  It is not a drop-in replacement: it renders differently as a string, and its
+     *  `equals` forces `length`, so it cannot compare a range of more than
+     *  `Int.MaxValue` elements without throwing.
+     *
+     *  @param start the start value of the range
+     *  @param end the exclusive end value of the range
+     *  @param step the step value between consecutive elements, must be non-zero
+     *  @return an exclusive `NumericRange` from `start` until `end` in increments of `step`
+     */
     def apply(start: Int, end: Int, step: Int): NumericRange.Exclusive[Int] = NumericRange(start, end, step)
+    /** Creates an inclusive `NumericRange` of `Int` values, a generic alternative
+     *  to `Range` that produces the same elements.
+     *
+     *  It is not a drop-in replacement: it renders differently as a string, and its
+     *  `equals` forces `length`, so it cannot compare a range of more than
+     *  `Int.MaxValue` elements without throwing.
+     *
+     *  @param start the start value of the range
+     *  @param end the inclusive end value of the range
+     *  @param step the step value between consecutive elements, must be non-zero
+     *  @return an inclusive `NumericRange` from `start` to `end` in increments of `step`
+     */
     def inclusive(start: Int, end: Int, step: Int): NumericRange.Inclusive[Int] = NumericRange.inclusive(start, end, step)
   }
 
