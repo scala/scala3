@@ -7,6 +7,7 @@ import dotc.ast.tpd.TreeOps
 import dotc.core.Contexts.*
 import dotc.core.CompilationUnitInfo
 import dotc.core.Decorators.*
+import dotc.core.Denotations.SingleDenotation
 import dotc.core.Flags.*
 import dotc.core.NameKinds.SimpleNameKind
 import dotc.core.Names.*
@@ -288,6 +289,17 @@ class ReplCompiler extends Compiler:
 object ReplCompiler:
   val ReplState: Property.StickyKey[State] = Property.StickyKey()
   val objectNames = mutable.Map.empty[Int, TermName]
+
+  def reclaimableResults(fields: Seq[SingleDenotation], valIndex: Int)(using Context): Int =
+    def reclaimable(denotation: SingleDenotation) =
+      val number = denotation.symbol.name.show.drop(str.REPL_RES_PREFIX.length)
+      number.toIntOption.exists(_ < valIndex)
+        && denotation.symbol.info == defn.UnitType
+
+    fields.toList.reverse
+      .filter(_.symbol.name.show.startsWith(str.REPL_RES_PREFIX))
+      .takeWhile(reclaimable)
+      .length
 end ReplCompiler
 
 class ReplCompilationUnit(source: SourceFile) extends CompilationUnit(source, CompilationUnitInfo(source.file)):

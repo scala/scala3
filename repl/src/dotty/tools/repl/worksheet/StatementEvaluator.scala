@@ -123,7 +123,9 @@ private final class StatementEvaluator(startup: ReplStartup, runner: StatementRu
               .removeBufferedMessages(using nextState.context)
               .map(diagnostic)
             val reclaimed =
-              StatementEvaluator.reclaimableResults(nextState.objectIndex)(using nextState.context)
+              StatementEvaluator.reclaimableResults(nextState.objectIndex, nextState.valIndex)(using
+                nextState.context
+              )
             Right(
               CompiledStatement(
                 statement,
@@ -160,10 +162,7 @@ private object StatementEvaluator:
         current.importContext(imported, imported.symbol(using current))
       )
 
-  private def reclaimableResults(objectIndex: Int)(using Context): Int =
+  private def reclaimableResults(objectIndex: Int, valIndex: Int)(using Context): Int =
     atPhase(typerPhase.next):
       val path = nme.EMPTY_PACKAGE ++ "." ++ ReplCompiler.objectNames(objectIndex)
-      requiredModule(path).info.fields.toList.reverse
-        .filter(_.symbol.name.show.startsWith(str.REPL_RES_PREFIX))
-        .takeWhile(_.symbol.info == defn.UnitType)
-        .length
+      ReplCompiler.reclaimableResults(requiredModule(path).info.fields, valIndex)
