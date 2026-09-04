@@ -39,6 +39,8 @@ private[worksheet] final class WorksheetSession(
             current.close()
             SessionState.initial(settings, screenWidth)
 
+        current = baseSession
+
         val appended = inputStatements.drop(baseSession.inputStatements.length)
         val evaluation = baseSession.evaluator.evaluate(appended, baseSession.state)
         val accepted = baseSession.inputStatements ::: evaluation.accepted
