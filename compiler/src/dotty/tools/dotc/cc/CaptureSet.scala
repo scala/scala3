@@ -15,6 +15,7 @@ import printing.{Showable, Printer}
 import printing.Texts.*
 import util.{SimpleIdentitySet, MutableIdentitySet, Property, EqHashMap}
 import scala.collection.{mutable, immutable}
+import scala.annotation.tailrec
 import CCState.*
 import TypeOps.AvoidMap
 import compiletime.uninitialized
@@ -254,9 +255,129 @@ sealed abstract class CaptureSet extends Showable:
       val suffix = if ctx.settings.YccVerbose.value then i" with ${x.captureSetOfInfo}" else ""
       i"$this accountsFor $x$suffix"
 
+    // Classifier splitting: a projection is accounted for when no single element
+    // subsumes it but same-base projections in this set collectively cover its
+    // classifier region. Start with that region and subtract every peer; it is
+    // covered exactly when no remainder is left. This is union subtraction from
+    // "Classifying Capabilities" (Fig. 3).
+    def classifierSplit(using Context): Boolean =
+      type Subtree = (ClassSymbol, List[ClassSymbol])
+      case class Projection(
+          base: CoreCapability | RootCapability,
+          only: ClassSymbol,
+          except: List[ClassSymbol],
+          readOnly: Boolean,
+          maybe: Boolean)
+
+      // Only elements with a classified core can be splitting peers — a same-base
+      // element without one subsumes the source outright.
+      @tailrec def hasClassifiedCore(cap: Capability): Boolean = cap match
+        case Classified(_, only, _) => only != defn.NothingClass
+        case ReadOnly(cap1) => hasClassifiedCore(cap1)
+        case Maybe(cap1) => hasClassifiedCore(cap1)
+        case _ => false
+
+      @tailrec def projectionOf(
+          cap: Capability,
+          readOnly: Boolean = false,
+          maybe: Boolean = false): Option[Projection] = cap match
+        case ReadOnly(cap1) => projectionOf(cap1, readOnly = true, maybe = maybe)
+        case Maybe(cap1) => projectionOf(cap1, readOnly = readOnly, maybe = true)
+        case Classified(base, only, except) =>
+          Some(Projection(base, only, except, readOnly, maybe))
+        // Do not inspect a bare RootCapability here. Local roots can still acquire a
+        // classifier in the existing accountsFor fallback, and querying their transitive
+        // classifiers early would cache an open classification.
+        case base: CoreCapability =>
+          Some(Projection(base, defn.AnyClass, Nil, readOnly, maybe))
+        case _ => None
+
+      def sourceSubtrees(
+          base: CoreCapability | RootCapability,
+          only: ClassSymbol,
+          except: List[ClassSymbol]): List[Subtree] =
+        def intersectRoot(root: ClassSymbol): Option[Subtree] =
+          val restricted =
+            if only.isTopClassifier || root.isSubClass(only) then root
+            else if only.isSubClass(root) then only
+            else defn.NothingClass
+          if restricted == defn.NothingClass || except.exists(restricted.isSubClass) then None
+          else Some((restricted, except.filter(_.isSubClass(restricted))))
+
+        if only == defn.NothingClass then Nil
+        else if base.isInstanceOf[RootCapability] then
+          intersectRoot(defn.AnyClass).toList
+        else base.transClassifiers match
+          case ClassifiedAs(roots) => roots.flatMap(intersectRoot)
+          case _ => intersectRoot(defn.AnyClass).toList
+
+      // The gate keeps the common miss path free of allocations and
+      // transClassifiers queries.
+      elems.exists(hasClassifiedCore)
+      && projectionOf(x).exists: source =>
+        val initial = sourceSubtrees(source.base, source.only, source.except)
+        if initial.isEmpty then true
+        else
+          def overlapsSource(
+              source: Subtree,
+              only: ClassSymbol,
+              except: List[ClassSymbol]) =
+            val (sourceOnly, sourceExcept) = source
+            (only.isSubClass(sourceOnly) || sourceOnly.isSubClass(only))
+            && !sourceExcept.exists(only.isSubClass)
+            && !except.exists(sourceOnly.isSubClass)
+
+          def containsSourceRoot(sourceOnly: ClassSymbol, peer: Subtree) =
+            val (only, except) = peer
+            sourceOnly.isSubClass(only) && !except.exists(sourceOnly.isSubClass)
+
+          def compatible(peer: Projection) =
+            (!peer.readOnly || source.readOnly) && (!peer.maybe || source.maybe)
+
+          val peers = elems.toList.flatMap: elem =>
+            if !hasClassifiedCore(elem) then Nil
+            else projectionOf(elem) match
+              case Some(peer)
+              if (peer.base eq source.base)
+                  && peer.only != defn.NothingClass
+                  && compatible(peer)
+                  && initial.exists(overlapsSource(_, peer.only, peer.except)) =>
+                (peer.only, peer.except) :: Nil
+              case _ => Nil
+
+          // Pairwise `subsumes` above catches most single-peer coverage, but not
+          // regions narrowed by the base's classifiers, so subtract from one peer up.
+          // The root of every initial subtree belongs to it, hence one compatible
+          // peer must contain each root.
+          if peers.isEmpty then false
+          else if !initial.forall((only, _) =>
+              peers.exists(peer => containsSourceRoot(only, peer)))
+          then false
+          else
+            // Bare subtrees cannot split a remainder. Applying them first keeps the
+            // common `(C - C1 - ... - Cn) union C1 union ... union Cn` shape to one
+            // live piece for as long as possible. Fewer-hole peers come next.
+            val ordered = peers.sortBy((_, except) => except.length)
+
+            // Remainder subtrees stay disjoint. On a classifier tree, each peer
+            // exclusion can add at most one new piece, so their number grows additively
+            // with the exclusions, rather than multiplying at every subtraction.
+            @tailrec def subtractAll(remainder: List[Subtree], rest: List[Subtree]): Boolean =
+              remainder match
+                case Nil => true
+                case _ => rest match
+                  case Nil => false
+                  case (only, except) :: rest1 =>
+                    subtractAll(
+                      remainder.flatMap((o, e) => subtractClassifiers(o, e, only, except)),
+                      rest1)
+
+            subtractAll(initial, ordered)
+
     def test(using Context) = reporting.trace(debugInfo):
       TypeComparer.noNotes: // Any failures in accountsFor should not lead to error notes
         elems.exists(_.subsumes(x))
+        || classifierSplit
         || // Even though subsumes already follows captureSetOfInfo, this is not enough.
            // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
           !x.isTerminalCapability
