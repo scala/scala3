@@ -15,17 +15,12 @@ import dotty.tools.repl.State
 import dotty.tools.repl.SyntaxErrors
 import dotty.tools.dotc.reporting.Diagnostic
 
-private final case class RetainedPrefix(
-    inputs: List[InputStatement],
-    statements: List[WorksheetStatement],
-    diagnostics: List[WorksheetDiagnostic],
-    state: State
-)
-
 private final case class WorksheetEvaluation(
     statements: List[WorksheetStatement],
+    accepted: List[InputStatement],
+    state: State,
     diagnostics: List[WorksheetDiagnostic],
-    retained: RetainedPrefix
+    failure: List[WorksheetDiagnostic]
 )
 
 private final case class CompiledStatement(
@@ -43,43 +38,26 @@ private final class StatementEvaluator(startup: ReplStartup, runner: StatementRu
   ): WorksheetEvaluation =
     if statements.nonEmpty then runner.beginRun(state)
 
-    def prefix(
-        accepted: List[InputStatement],
-        rendered: List[WorksheetStatement],
-        diagnostics: List[WorksheetDiagnostic],
-        currentState: State
-    ) = RetainedPrefix(accepted.reverse, rendered.reverse, diagnostics, currentState)
-
-    def resumable(snapshot: RetainedPrefix, finalState: State): RetainedPrefix =
-      val discarded = (snapshot.state.objectIndex + 1) to finalState.objectIndex
-      snapshot.copy(state =
-        snapshot.state.copy(
-          objectIndex = finalState.objectIndex,
-          valIndex = finalState.valIndex,
-          invalidObjectIndexes = finalState.invalidObjectIndexes ++ discarded
-        )
-      )
-
     @annotation.tailrec
     def loop(
         remaining: List[InputStatement],
         currentState: State,
         accepted: List[InputStatement],
         rendered: List[WorksheetStatement],
-        diagnostics: List[WorksheetDiagnostic],
-        retained: Option[RetainedPrefix]
+        diagnostics: List[WorksheetDiagnostic]
     ): WorksheetEvaluation =
-      def evaluation(stop: Option[RetainedPrefix]) =
+      def stop(nextState: State, failure: List[WorksheetDiagnostic]) =
         WorksheetEvaluation(
           rendered.reverse,
+          accepted.reverse,
+          nextState,
           diagnostics,
-          stop.fold(prefix(accepted, rendered, diagnostics, currentState))(
-            resumable(_, currentState)
-          )
+          failure
         )
 
       remaining match
-        case Nil => evaluation(retained)
+        case Nil =>
+          WorksheetEvaluation(rendered.reverse, accepted.reverse, currentState, diagnostics, Nil)
         case statement :: tail =>
           compileOne(statement, currentState) match
             case Left((failedState, failedDiagnostics)) =>
@@ -90,36 +68,23 @@ private final class StatementEvaluator(startup: ReplStartup, runner: StatementRu
                     invalidObjectIndexes =
                       failedState.invalidObjectIndexes + failedState.objectIndex
                   )
-              loop(
-                tail,
-                nextState,
-                statement :: accepted,
-                rendered,
-                diagnostics ::: failedDiagnostics,
-                retained.orElse(Some(prefix(accepted, rendered, diagnostics, currentState)))
-              )
+              stop(nextState, failedDiagnostics)
             case Right((compiled, warnings)) =>
               val outcome = runner.runOne(compiled, compiled.state)
               val next = outcome.rendered.fold(rendered)(_ :: rendered)
-              val reported = diagnostics ::: warnings ::: outcome.failure.toList
-              if outcome.cancelled then
-                val snapshot = prefix(accepted, rendered, diagnostics, currentState)
-                WorksheetEvaluation(
-                  next.reverse,
-                  reported,
-                  resumable(retained.getOrElse(snapshot), outcome.state)
-                )
-              else
-                loop(
-                  tail,
-                  outcome.state,
-                  statement :: accepted,
-                  next,
-                  reported,
-                  retained
-                )
+              outcome.failure match
+                case Some(failure) =>
+                  WorksheetEvaluation(
+                    next.reverse,
+                    accepted.reverse,
+                    outcome.state,
+                    diagnostics ::: warnings,
+                    failure :: Nil
+                  )
+                case None =>
+                  loop(tail, outcome.state, statement :: accepted, next, diagnostics ::: warnings)
 
-    loop(statements, state, Nil, Nil, Nil, None)
+    loop(statements, state, Nil, Nil, Nil)
 
   private def compileOne(
       statement: InputStatement,
