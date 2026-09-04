@@ -1920,7 +1920,7 @@ trait Applications extends Compatibility {
           // For `Rec()` we do `Boolean`
           if componentTypes.isEmpty then defn.BooleanType
           else if isVararg then
-            val defn.ArrayOf(elemType) = componentTypes.last.runtimeChecked
+            val defn.ArrayOf(elemType) = componentTypes.last.stripNull().runtimeChecked
             val wrapperType = defn.Array_UnapplySeqWrapper.typeRef.appliedTo(elemType)
             // For `Rec(T*)` we do `Array.UnapplySeqWrapper[T]`
             if componentTypes.length == 1 then wrapperType
@@ -1948,7 +1948,7 @@ trait Applications extends Compatibility {
           if fields.isEmpty then Literal(Constant(true))
           else if isVararg then
             val lastField = accessor(fields.last)
-            val defn.ArrayOf(lastElemType) = lastField.tpe.runtimeChecked
+            val defn.ArrayOf(lastElemType) = lastField.tpe.stripNull().runtimeChecked
             val lastFieldSeq = ref(defn.ArrayModule.requiredMethod(nme.unapplySeq))
               .appliedToType(lastElemType).appliedTo(lastField)
             if fields.length == 1 then lastFieldSeq
