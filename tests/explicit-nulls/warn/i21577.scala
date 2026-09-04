@@ -2,14 +2,14 @@ def f(s: String) =
   val s2 = s.trim()
   s2 match
     case s3: String =>
-    case _ => // ok
+    case _ => // warn: null only
 
 
 def f2(s: String | Null) =
   val s2 = s.nn.trim()
   s2 match
     case s3: String =>
-    case _ => // ok
+    case _ => // warn: null only
 
 def f3(s: String | Null) = s match
   case s2: String =>

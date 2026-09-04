@@ -1144,13 +1144,13 @@ object SpaceEngine {
               if isSubspace(covered, prev) then
                 report.warning(MatchCaseUnreachable(), pat.srcPos)
               else if isNullable
-                && !ctx.mode.is(Mode.SafeNulls)
+                && (!ctx.mode.is(Mode.SafeNulls) || selTyp.isInstanceOf[FlexibleType])
                 && isWildcardArg(pat)
                 && isSubspace(covered, Or(prev :: nullSpace :: Nil))
                 && !hadNullOnly
               then
                 // Issue OnlyNull warning only if:
-                // 0. Explicit nulls are disabled
+                // 0. Explicit nulls are disabled or the type of the selector is a flexible type;
                 // 1. The target space is nullable;
                 // 2. OnlyNull warning has not been issued before;
                 // 3. The pattern is a wildcard pattern;
