@@ -43,7 +43,8 @@ class Compiler {
     List(new UnrollDefinitions) ::  // Unroll annotated methods if detected in PostTyper
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
-    List(new DesugarSpecializedTraits,  // Process Specialized traits
+    List(CheckInlineTraits(),           // Check for inline traits
+         new DesugarSpecializedTraits,  // Process Specialized traits
          new SpecializeInlineTraits) :: // Inline the code of inline traits into their children
     Nil
 

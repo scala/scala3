@@ -32,7 +32,8 @@ class PruneInlineTraits extends MiniPhase with SymTransformer { thisTransform =>
     else sym
 
   override def transformTemplate(tree: Template)(using Context): Tree = 
-    cpy.Template(tree)(body = tree.body.flatMap({
+    if !ctx.compilationUnit.hasSpecializations then tree 
+    else cpy.Template(tree)(body = tree.body.flatMap({
       case stmt: ValDef if isEraseable(stmt.symbol) => Some(cpy.ValDef(stmt)(rhs = EmptyTree))
       case stmt: DefDef if isEraseable(stmt.symbol) => Some(cpy.DefDef(stmt)(rhs = EmptyTree))
       case stmt: (ValDef | DefDef) if isDeletable(stmt.symbol) => None
@@ -40,14 +41,14 @@ class PruneInlineTraits extends MiniPhase with SymTransformer { thisTransform =>
     }))
 
   private def isEraseable(sym: SymDenotation)(using Context): Boolean =
-    !sym.isType
+    sym.exists
+    && sym.owner.isInlineTrait
+    && !sym.isType
     && !sym.isConstructor
     && !sym.is(Param)
     && !sym.is(ParamAccessor)
     && !sym.is(Local)
     && !sym.isLocalDummy
-    && sym.exists
-    && sym.owner.isInlineTrait
 
   private def isDeletable(sym: SymDenotation)(using Context): Boolean = 
     !sym.isType
