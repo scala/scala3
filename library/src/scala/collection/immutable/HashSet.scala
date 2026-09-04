@@ -40,6 +40,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     with IterableFactoryDefaults[A, HashSet]
     with DefaultSerializable {
 
+  /** Creates an empty hash set, backed by the shared empty root node. */
   def this() = this(SetNode.empty)
 
   // This release fence is present because rootNode may have previously been mutated during construction.
@@ -48,14 +49,26 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
   private def newHashSetOrThis(newRootNode: BitmapIndexedSetNode[A]): HashSet[A] =
     if (rootNode eq newRootNode) this else new HashSet(newRootNode)
 
+  /** Returns the [[HashSet]] companion object, the factory used to build new sets of this kind. */
   override def iterableFactory: IterableFactory[HashSet] = HashSet
 
+  /** Returns the number of elements in this set. The size of a `HashSet` is always
+   *  known, cached in the root node, so this never returns -1.
+   */
   override def knownSize: Int = rootNode.size
 
+  /** Returns the number of elements in this set, read from the root node's cache
+   *  in constant time.
+   */
   override def size: Int = rootNode.size
 
+  /** Returns `true` if this set contains no elements. Constant time. */
   override def isEmpty: Boolean = rootNode.size == 0
 
+  /** Returns an iterator over the elements of this set, traversing the hash trie
+   *  depth-first. The resulting order depends on the elements' hash codes and is
+   *  effectively unspecified.
+   */
   def iterator: Iterator[A] = {
     if (isEmpty) Iterator.empty
     else new SetIterator[A](rootNode)
@@ -63,6 +76,15 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
 
   protected[immutable] def reverseIterator: Iterator[A] = new SetReverseIterator[A](rootNode)
 
+  /** Returns a stepper for the elements of this set, choosing a champ-trie stepper
+   *  specialized to `Int`, `Long`, or `Double` when the element type allows it, and
+   *  a reference stepper otherwise. The stepper supports efficient splitting, for
+   *  use with parallel processing.
+   *
+   *  @tparam S the type of the stepper, determined by the element type via `shape`
+   *  @param shape implicit evidence of the stepper type appropriate for element type `A`
+   *  @return a stepper over the elements of this set that can be split efficiently
+   */
   override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import convert.impl._
     val s = shape.shape match {
@@ -74,12 +96,25 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     s.asInstanceOf[S & EfficientSplit]
   }
 
+  /** Returns `true` if this set contains `element`. Elements are compared by their
+   *  hash codes (`##`) and `==`. Expected constant time: at most seven trie levels
+   *  are descended.
+   *
+   *  @param element the element to look for
+   */
   def contains(element: A): Boolean = {
     val elementUnimprovedHash = element.##
     val elementHash = improve(elementUnimprovedHash)
     rootNode.contains(element, elementUnimprovedHash, elementHash, 0)
   }
 
+  /** Returns a set that contains `element` and all elements of this set. Returns
+   *  this set itself if it already contains `element`; otherwise the result shares
+   *  all unaffected trie nodes with this set.
+   *
+   *  @param element the element to add
+   *  @return a set containing all elements of this set plus `element`
+   */
   def incl(element: A): HashSet[A] = {
     val elementUnimprovedHash = element.##
     val elementHash = improve(elementUnimprovedHash)
@@ -87,6 +122,13 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     newHashSetOrThis(newRootNode)
   }
 
+  /** Returns a set that contains all elements of this set except `element`. Returns
+   *  this set itself if it does not contain `element`; otherwise the result shares
+   *  all unaffected trie nodes with this set.
+   *
+   *  @param element the element to remove
+   *  @return a set containing all elements of this set except `element`
+   */
   def excl(element: A): HashSet[A] = {
     val elementUnimprovedHash = element.##
     val elementHash = improve(elementUnimprovedHash)
@@ -94,6 +136,18 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     newHashSetOrThis(newRootNode)
   }
 
+  /** Returns a set containing all elements of this set and of `that`. When `that`
+   *  is also an immutable `HashSet` the two tries are merged structurally, sharing
+   *  unchanged subtrees; when it is a `mutable.HashSet` or `mutable.LinkedHashSet`
+   *  its cached element hashes are reused instead of being recomputed. In every
+   *  case, if `that` contributes no new elements this set itself is returned. The one
+   *  exception comes first: when this set is empty and `that` is an immutable
+   *  `HashSet`, `that` is returned, even where both are empty and so are distinct
+   *  instances of the same set.
+   *
+   *  @param that the elements to add
+   *  @return a set containing the union of this set and `that`
+   */
   override def concat(that: IterableOnce[A]^): HashSet[A] =
     (that: @unchecked) match {
       case hs: HashSet[A] =>
@@ -176,14 +230,38 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
         this
     }
 
+  /** Returns a set containing all elements of this set except `head`, the first
+   *  element in iteration order.
+   *
+   *  @throws NoSuchElementException if this set is empty
+   */
   override def tail: HashSet[A] = this - head
 
+  /** Returns a set containing all elements of this set except `last`, the last
+   *  element in iteration order.
+   *
+   *  @throws NoSuchElementException if this set is empty
+   */
   override def init: HashSet[A] = this - last
 
+  /** Returns the first element in the iteration order of this set.
+   *
+   *  @throws NoSuchElementException if this set is empty
+   */
   override def head: A = iterator.next()
 
+  /** Returns the last element in the iteration order of this set.
+   *
+   *  @throws NoSuchElementException if this set is empty
+   */
   override def last: A = reverseIterator.next()
 
+  /** Applies `f` to each element of this set, for its side effects. Traverses the
+   *  trie directly, without allocating an iterator.
+   *
+   *  @tparam U the result type of `f`; results are discarded
+   *  @param f the function to apply to each element
+   */
   override def foreach[U](f: A => U): Unit = rootNode.foreach(f)
 
   /** Applies a function f to each element, and its corresponding **original** hash, in this Set.
@@ -201,21 +279,50 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
 
   // For binary compatibility, the method used to have this signature by mistake.
   // protected is public in bytecode.
+  /** Returns `true` if this set is a subset of `that`. This overload, restricted to
+   *  immutable sets, exists only for binary compatibility (see the comment above);
+   *  it forwards to the `collection.Set` overload.
+   *
+   *  @param that the set to test against
+   *  @return `true` if every element of this set is contained in `that`
+   */
   protected def subsetOf(that: Set[A]): Boolean = subsetOf(that: collection.Set[A])
 
+  /** Returns `true` if this set is a subset of `that`, i.e. every element of this
+   *  set is contained in `that`. The empty set is a subset of every set. When
+   *  `that` is also a `HashSet` the two tries are compared structurally, level by
+   *  level, instead of testing each element individually.
+   *
+   *  @param that the set to test against
+   *  @return `true` if every element of this set is contained in `that`
+   */
   override def subsetOf(that: collection.Set[A]): Boolean = isEmpty || !that.isEmpty && (that match {
     case set: HashSet[A] => rootNode.subsetOf(set.rootNode, 0)
     case _ => super.subsetOf(that)
   })
 
+  /** Returns `true` if `that` is a set containing the same elements as this set.
+   *  When `that` is also an immutable `HashSet` the root nodes are compared
+   *  structurally (with fast rejection on cached sizes and hash codes); any other
+   *  value is compared with the generic set equality inherited from `Set`.
+   *
+   *  @param that the value to compare with
+   *  @return `true` if `that` is an equal set
+   */
   override def equals(that: Any): Boolean =
     that match {
       case set: HashSet[?] => (this eq set) || (this.rootNode == set.rootNode)
       case _ => super.equals(that)
     }
 
+  /** Returns `"HashSet"`, the collection name used as the prefix in `toString`. */
   override protected def className = "HashSet"
 
+  /** Returns a hash code consistent with `equals`: an unordered MurmurHash3 hash
+   *  over the elements' original hash codes, which are read from the trie's cache
+   *  rather than recomputed. Equal to the hash code of any other `Set` with the
+   *  same elements.
+   */
   override def hashCode(): Int = {
     val it = new SetHashIterator(rootNode)
     val hash = MurmurHash3.unorderedHash(it, MurmurHash3.setSeed)
@@ -223,6 +330,16 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     hash
   }
 
+  /** Returns a set containing the elements of this set that are not contained in
+   *  `that`. When `that` is also an immutable `HashSet` the tries are diffed
+   *  structurally, sharing unchanged subtrees; when it is a `mutable.HashSet` its
+   *  cached element hashes are reused; otherwise a size heuristic chooses between
+   *  removing `that`'s elements from this set and filtering this set by
+   *  `that.contains`. Returns this set itself when nothing is removed.
+   *
+   *  @param that the set of elements to remove
+   *  @return a set containing the elements of this set not present in `that`
+   */
   override def diff(that: collection.Set[A]): HashSet[A] = {
     if (isEmpty) {
       this
@@ -317,6 +434,16 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     this
   }
 
+  /** Returns a set containing the elements of this set that are not contained in
+   *  `that`. Delegates to `diff` when `that` is a set. For a `Range` with more
+   *  elements than this set, filters this set's `Int` elements by range membership
+   *  (keeping any non-`Int` elements) instead of iterating the whole range.
+   *  Otherwise removes `that`'s elements one by one, mutating only privately
+   *  created nodes.
+   *
+   *  @param that the elements to remove
+   *  @return a set containing the elements of this set not present in `that`
+   */
   override def removedAll(that: IterableOnce[A]^): HashSet[A] = (that: @unchecked) match {
     case set: scala.collection.Set[A] => diff(set)
     case range: Range if range.length > size =>
@@ -329,12 +456,29 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
       removedAllWithShallowMutations(that)
   }
 
+  /** Returns a pair of sets: the elements of this set that satisfy `p`, and those
+   *  that do not. This override only forwards to the inherited implementation; it
+   *  exists so that an optimized implementation can be introduced in a minor
+   *  release without breaking binary compatibility.
+   *
+   *  @param p the predicate on which to partition
+   *  @return a pair of sets: (elements satisfying `p`, elements not satisfying `p`)
+   */
   override def partition(p: A => Boolean): (HashSet[A], HashSet[A]) = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.partition(p)
   }
 
+  /** Returns a pair of sets: the longest prefix of this set's iteration order whose
+   *  elements all satisfy `p`, and the rest of the elements. This override only
+   *  forwards to the inherited implementation; it exists so that an optimized
+   *  implementation can be introduced in a minor release without breaking binary
+   *  compatibility.
+   *
+   *  @param p the predicate used to test elements
+   *  @return a pair of sets: (longest prefix satisfying `p`, remaining elements)
+   */
   override def span(p: A => Boolean): (HashSet[A], HashSet[A]) = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
@@ -348,42 +492,106 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     else new HashSet(newRootNode)
   }
 
+  /** Returns a set containing the elements of this set that are also contained in
+   *  `that`. This override only forwards to the inherited implementation; it exists
+   *  so that an optimized implementation can be introduced in a minor release
+   *  without breaking binary compatibility.
+   *
+   *  @param that the set to intersect with
+   *  @return a set containing the elements common to this set and `that`
+   */
   override def intersect(that: collection.Set[A]): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.intersect(that)
   }
 
+  /** Returns a set containing the first `n` elements of this set's iteration
+   *  order, or this whole set if it has at most `n` elements. This override only
+   *  forwards to the inherited implementation; it exists so that an optimized
+   *  implementation can be introduced in a minor release without breaking binary
+   *  compatibility.
+   *
+   *  @param n the number of elements to take; a negative value is treated as 0
+   *  @return a set containing the first `n` elements, all of them if there are fewer
+   *          than `n`, or the empty set if `n` is not positive
+   */
   override def take(n: Int): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.take(n)
   }
 
+  /** Returns a set containing the last `n` elements of this set's iteration order,
+   *  or this whole set if it has at most `n` elements. This override only forwards
+   *  to the inherited implementation; it exists so that an optimized implementation
+   *  can be introduced in a minor release without breaking binary compatibility.
+   *
+   *  @param n the number of elements to take; a negative value is treated as 0
+   *  @return a set containing the last `n` elements, all of them if there are fewer
+   *          than `n`, or the empty set if `n` is not positive
+   */
   override def takeRight(n: Int): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.takeRight(n)
   }
 
+  /** Returns a set containing the longest prefix of this set's iteration order
+   *  whose elements all satisfy `p`. This override only forwards to the inherited
+   *  implementation; it exists so that an optimized implementation can be
+   *  introduced in a minor release without breaking binary compatibility.
+   *
+   *  @param p the predicate used to test elements
+   *  @return a set containing the longest prefix whose elements satisfy `p`
+   */
   override def takeWhile(p: A => Boolean): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.takeWhile(p)
   }
 
+  /** Returns a set containing all elements of this set except the first `n` of its
+   *  iteration order, or the empty set if this set has at most `n` elements. This
+   *  override only forwards to the inherited implementation; it exists so that an
+   *  optimized implementation can be introduced in a minor release without breaking
+   *  binary compatibility.
+   *
+   *  @param n the number of elements to drop; a negative value is treated as 0
+   *  @return a set containing all but the first `n` elements, or this whole set if `n`
+   *          is not positive
+   */
   override def drop(n: Int): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.drop(n)
   }
 
+  /** Returns a set containing all elements of this set except the last `n` of its
+   *  iteration order, or the empty set if this set has at most `n` elements. This
+   *  override only forwards to the inherited implementation; it exists so that an
+   *  optimized implementation can be introduced in a minor release without breaking
+   *  binary compatibility.
+   *
+   *  @param n the number of elements to drop; a negative value is treated as 0
+   *  @return a set containing all but the last `n` elements, or this whole set if `n`
+   *          is not positive
+   */
   override def dropRight(n: Int): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.dropRight(n)
   }
 
+  /** Returns a set containing all elements of this set except the longest prefix
+   *  of its iteration order whose elements all satisfy `p`. This override only
+   *  forwards to the inherited implementation; it exists so that an optimized
+   *  implementation can be introduced in a minor release without breaking binary
+   *  compatibility.
+   *
+   *  @param p the predicate used to test elements
+   *  @return a set containing the elements after the longest prefix satisfying `p`
+   */
   override def dropWhile(p: A => Boolean): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
@@ -1941,9 +2149,24 @@ object HashSet extends IterableFactory[HashSet] {
   @transient
   private final val EmptySet = new HashSet(SetNode.empty)
 
+  /** Returns the empty immutable hash set. Always the same cached instance, cast
+   *  to the requested element type; the cast is safe because the set contains no
+   *  elements.
+   *
+   *  @tparam A the element type of the set
+   *  @return the empty `HashSet`
+   */
   def empty[A]: HashSet[A] =
     EmptySet.asInstanceOf[HashSet[A]]
 
+  /** Returns a `HashSet` containing the elements of `source`. Returns `source`
+   *  itself if it already is a `HashSet`, and the shared empty set if `source` is
+   *  known to be empty; otherwise builds a new set.
+   *
+   *  @tparam A the element type of the set
+   *  @param source the elements of the resulting set
+   *  @return a `HashSet` containing the elements of `source`
+   */
   def from[A](source: collection.IterableOnce[A]^): HashSet[A] =
     (source: @unchecked) match {
       case hs: HashSet[A] => hs
