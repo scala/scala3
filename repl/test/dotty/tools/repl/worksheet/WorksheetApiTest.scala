@@ -49,6 +49,45 @@ class WorksheetApiTest:
       System.clearProperty(property)
       if !worker.isAlive then evaluator.shutdown()
 
+  @Test def cancelsAnEvaluationThatReplacedAnEarlierSession(): Unit =
+    val property = s"scala3.worksheet.cancel-reset.${java.util.UUID.randomUUID()}"
+    val evaluator = new WorksheetDriver()
+    val outcome = new AtomicReference[interfaces.EvaluatedWorksheet]()
+    val worker = new Thread(() =>
+      outcome.set(
+        evaluator.evaluate(
+          "second.worksheet.scala",
+          s"""val before = 1
+             |System.setProperty("$property", "running")
+             |var spin = 0L
+             |while true do spin += 1
+             |""".stripMargin
+        )
+      )
+    )
+    worker.setDaemon(true)
+    System.clearProperty(property)
+    try
+      evaluator.evaluate("first.worksheet.scala", "val unrelated = 1\n")
+
+      worker.start()
+      val ready = System.currentTimeMillis() + 60000
+      while System.getProperty(property) == null && System.currentTimeMillis() < ready do
+        Thread.sleep(50)
+      assertEquals("the worksheet never started running", "running", System.getProperty(property))
+
+      val deadline = System.currentTimeMillis() + 60000
+      while worker.isAlive && System.currentTimeMillis() < deadline do
+        evaluator.cancel()
+        Thread.sleep(100)
+
+      assertFalse("the evaluation did not stop", worker.isAlive)
+      val messages = outcome.get.diagnostics.asScala.map(_.message).toList
+      assertTrue(messages.mkString("\n"), messages.exists(_.contains("cancelled")))
+    finally
+      System.clearProperty(property)
+      if !worker.isAlive then evaluator.shutdown()
+
   @Test def startsACompilerSessionOnlyWhenAWorksheetIsEvaluated(): Unit =
     val evaluator = new WorksheetDriver()
     try
