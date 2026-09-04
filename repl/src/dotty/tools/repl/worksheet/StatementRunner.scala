@@ -27,8 +27,7 @@ import scala.util.control.NonFatal
 private final case class StatementOutcome(
     rendered: Option[WorksheetStatement],
     state: State,
-    failure: Option[WorksheetDiagnostic],
-    cancelled: Boolean = false
+    failure: Option[WorksheetDiagnostic]
 )
 
 private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
@@ -66,9 +65,9 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
           )
         case Left(exception) =>
           val cause = Rendering.rootCause(exception)
-          val cancelled = cause.isInstanceOf[ThreadDeath]
           val message =
-            if cancelled then "The worksheet evaluation was cancelled."
+            if cause.isInstanceOf[ThreadDeath] then
+              "The worksheet evaluation was cancelled."
             else
               s"${cause.getClass.getName}: ${Option(cause.getMessage).getOrElse("")}"
                 .stripSuffix(": ")
@@ -81,8 +80,7 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
                 message,
                 WorksheetDiagnosticSeverity.Error
               )
-            ),
-            cancelled
+            )
           )
 
   private def binders(objectIndex: Int)(using Context): List[RenderedBinder] =
