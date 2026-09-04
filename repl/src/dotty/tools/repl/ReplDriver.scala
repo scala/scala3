@@ -16,7 +16,6 @@ import dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotc.core.Contexts.*
 import dotc.core.Decorators.*
 import dotc.core.Phases.{unfusedPhases, typerPhase, checkCapturesPhase}
-import dotc.core.Denotations.Denotation
 import dotc.core.Flags.*
 import dotc.core.Mode
 import dotc.core.NameKinds.SimpleNameKind
@@ -521,17 +520,6 @@ class ReplDriver(settings: Array[String],
   private def renderDefinitions(tree: tpd.Tree, newestWrapper: Name)(using state: State): (State, Seq[Diagnostic]) = {
     given Context = state.context
 
-    def resAndUnit(denot: Denotation)(using Context) = {
-      import scala.util.{Success, Try}
-      val sym = denot.symbol
-      val name = sym.name.show
-      val hasValidNumber = Try(name.drop(3).toInt) match {
-        case Success(num) => num < state.valIndex
-        case _ => false
-      }
-      name.startsWith(str.REPL_RES_PREFIX) && hasValidNumber && sym.info == defn.UnitType
-    }
-
     def extractAndFormatMembers(symbol: Symbol)(using Context): (State, Seq[Diagnostic]) = if (tree.symbol.info.exists) {
       val info = symbol.info
       val defs =
@@ -576,10 +564,7 @@ class ReplDriver(settings: Array[String],
           ++ defs.map(rendering.renderMethod)
           ++ renderedVals
         val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
-        val reclaimed = vals.toList.reverse
-          .filter(_.symbol.name.show.startsWith(str.REPL_RES_PREFIX))
-          .takeWhile(resAndUnit)
-          .length
+        val reclaimed = ReplCompiler.reclaimableResults(vals, state.valIndex)
         (state.copy(valIndex = state.valIndex - reclaimed), diagnostics)
     }
     else (state, Seq.empty)
