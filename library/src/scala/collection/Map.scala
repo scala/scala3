@@ -33,8 +33,17 @@ trait Map[K, +V]
     with Equals
     with caps.Pure {
 
+  /** Returns the `Map` companion object as the factory for maps of this kind. */
   def mapFactory: scala.collection.MapFactory[Map] = Map
 
+  /** Tests whether this map can equal the given object.
+   *
+   *  Always `true` here; [[equals]] consults this method so that subclasses can restrict
+   *  equality to specific map types.
+   *
+   *  @param that the value being probed for possible equality; not examined by this implementation
+   *  @return `true`
+   */
   def canEqual(that: Any): Boolean = true
 
   /** Equality of maps is implemented using the lookup method [[get]]. This method returns `true` if
@@ -73,17 +82,39 @@ trait Map[K, +V]
         false
     })
 
+  /** Returns a hash code value consistent with [[equals]]: computed with
+   *  [[scala.util.hashing.MurmurHash3.mapHash]], it does not depend on the order in which
+   *  this map enumerates its bindings.
+   */
   override def hashCode(): Int = MurmurHash3.mapHash(this)
 
   // These two methods are not in MapOps so that MapView is not forced to implement them
+  /** Returns a new map containing all bindings of this map except the one with the given key.
+   *
+   *  @param key the key to remove
+   */
   @deprecated("Use - or removed on an immutable Map", "2.13.0")
   def - (key: K): Map[K, V]
+  /** Returns a new map containing all bindings of this map except those with the given keys.
+   *
+   *  @param key1 the first key to remove
+   *  @param key2 the second key to remove
+   *  @param keys the remaining keys to remove
+   */
   @deprecated("Use -- or removedAll on an immutable Map", "2.13.0")
   def - (key1: K, key2: K, keys: K*): Map[K, V]
 
+  /** Returns `"Map"`, the prefix used by `toString`. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix: String = "Map"
 
+  /** Returns a string representation of this map, of the form `Map(k1 -> v1, k2 -> v2, ...)`,
+   *  with the prefix taken from `stringPrefix`, so a `SeqMap` or `SortedMap` names itself
+   *  instead.
+   *
+   *  Reinstates `Iterable`'s `toString`, which the `toString` inherited through `Function1`
+   *  would otherwise replace.
+   */
   override def toString(): String = super[Iterable].toString() // Because `Function1` overrides `toString` too
 }
 
@@ -104,6 +135,9 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
   extends IterableOps[(K, V), Iterable, C]
     with PartialFunction[K, V] { self: MapOps[K, V, CC, C]^ =>
 
+  /** Returns a [[MapView]] over the key-value pairs of this map; operations on the view are
+   *  evaluated lazily, on access.
+   */
   override def view: MapView[K, V]^{this} = new MapView.Id(this)
 
   /** Returns a [[Stepper]] for the keys of this map. See method [[stepper]].
@@ -225,6 +259,10 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
   /** The implementation class of the set returned by `keySet`. */
   @deprecated("KeySet is no longer used in the .keySet implementation", since = "3.8.0")
   protected class KeySet extends AbstractSet[K] with GenKeySet with DefaultSerializable {
+    /** Returns a new set containing the keys of this set that are not also contained in `that`.
+     *
+     *  @param that the set of keys to exclude
+     */
     def diff(that: Set[K]): Set[K] = fromSpecific(this.view.filterNot(that))
   }
 
@@ -236,10 +274,19 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
   protected trait GenKeySet @retains[MapOps.this.type]() {
     this: Set[K] =>
     import caps.unsafe.{unsafeDiscardUses, unsafeAssumePure}
+    /** Returns an iterator over the keys of the underlying map. */
     def iterator: Iterator[K] = unsafeDiscardUses(MapOps.this).keysIterator.unsafeAssumePure
+    /** Tests whether the underlying map contains a binding for the given key.
+     *
+     *  @param key the key to look up
+     *  @return `true` if the underlying map has a binding for `key`, `false` otherwise
+     */
     def contains(key: K): Boolean = unsafeDiscardUses(MapOps.this).contains(key)
+    /** Returns the number of keys, which equals the size of the underlying map. */
     override def size: Int = unsafeDiscardUses(MapOps.this).size
+    /** Returns the size of the underlying map if it can be computed cheaply, -1 otherwise. */
     override def knownSize: Int = unsafeDiscardUses(MapOps.this).knownSize
+    /** Tests whether the underlying map is empty. */
     override def isEmpty: Boolean = unsafeDiscardUses(MapOps.this).isEmpty
   }
 
@@ -406,13 +453,37 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
    */
   /*@`inline` final*/ def ++ [V2 >: V](xs: collection.IterableOnce[(K, V2)]^): CC[K, V2]^{this, xs} = concat(xs)
 
+  /** Appends all bindings of this $coll to a string builder using start, separator, and end
+   *  strings, rendering each binding as `key -> value`.
+   *
+   *  @param sb the string builder to which bindings are appended
+   *  @param start the starting string
+   *  @param sep the separator string
+   *  @param end the ending string
+   *  @return the string builder `sb` to which the bindings were appended
+   */
   override def addString(sb: StringBuilder, start: String, sep: String, end: String): sb.type =
     iterator.map { case (k, v) => s"$k -> $v" }.addString(sb, start, sep, end)
 
+  /** Returns a new $coll containing all bindings of this $coll together with the binding `kv`;
+   *  if this $coll already contains a binding for the key `kv._1`, the new binding replaces it.
+   *
+   *  @tparam V1 the value type of the returned $coll, a supertype of `V`
+   *  @param kv the key-value pair to add
+   */
   @deprecated("Consider requiring an immutable Map or fall back to Map.concat.", "2.13.0")
   def + [V1 >: V](kv: (K, V1)): CC[K, V1]^{this} =
     mapFactory.from(new View.Appended(this, kv))
 
+  /** Returns a new $coll containing all bindings of this $coll together with the given
+   *  key-value pairs; a pair later in the argument list overrides any earlier binding
+   *  with the same key.
+   *
+   *  @tparam V1 the value type of the returned $coll, a supertype of `V`
+   *  @param elem1 the first key-value pair to add
+   *  @param elem2 the second key-value pair to add
+   *  @param elems the remaining key-value pairs to add
+   */
   @deprecated("Use ++ with an explicit collection argument instead of + with varargs", "2.13.0")
   def + [V1 >: V](elem1: (K, V1), elem2: (K, V1), elems: (K, V1)*): CC[K, V1]^{this} =
     mapFactory.from(new View.Concat(new View.Appended(new View.Appended(this, elem1), elem2), elems))
@@ -423,6 +494,13 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
     fromSpecific(this.view.filterKeys(k => !keysSet.contains(k)))
   }
 
+  /** Returns a new $coll containing the elements of `that` followed by the elements of this
+   *  $coll; if a key has a binding in both, the resulting $coll contains the binding of this
+   *  $coll, whose elements are added last.
+   *
+   *  @tparam V1 the value type of the returned $coll, a supertype of `V`
+   *  @param that the iterable of key-value pairs to prepend
+   */
   @deprecated("Use ++ instead of ++: for collections of type Iterable", "2.13.0")
   def ++: [V1 >: V](that: IterableOnce[(K,V1)]^): CC[K,V1]^{this, that} = {
     val thatIterable: Iterable[(K, V1)]^{that} = that match {
@@ -445,12 +523,35 @@ object MapOps {
     p: ((K, V)) => Boolean
   ) extends IterableOps.WithFilter[(K, V), IterableCC](self, p) with Serializable {
 
+    /** Builds a new $coll by applying a function to all elements of the filtered outer $coll.
+     *
+     *  @tparam K2 the key type of the returned $coll
+     *  @tparam V2 the value type of the returned $coll
+     *  @param f the function to apply to each element
+     *  @return a new $coll resulting from applying `f` to each element of the filtered outer
+     *          $coll and collecting the results
+     */
     def map[K2, V2](f: ((K, V)) => (K2, V2)): CC[K2, V2]^{this, f} =
       self.mapFactory.from(new View.Map(filtered, f))
 
+    /** Builds a new $coll by applying a collection-valued function to all elements of the
+     *  filtered outer $coll and concatenating the results.
+     *
+     *  @tparam K2 the key type of the returned $coll
+     *  @tparam V2 the value type of the returned $coll
+     *  @param f the collection-valued function to apply to each element
+     *  @return a new $coll resulting from applying `f` to each element of the filtered outer
+     *          $coll and concatenating the results
+     */
     def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^): CC[K2, V2]^{this, f} =
       self.mapFactory.from(new View.FlatMap(filtered, f))
 
+    /** Further refines the filter of this `WithFilter`.
+     *
+     *  @param q the predicate to combine with the existing filter
+     *  @return a new `WithFilter` whose operations apply to the elements of the outer $coll
+     *          that satisfy both the existing predicate and `q`
+     */
     override def withFilter(q: ((K, V)) => Boolean): WithFilter[K, V, IterableCC, CC]^{this, q} =
       new WithFilter[K, V, IterableCC, CC](self, (kv: (K, V)) => p(kv) && q(kv))
 
