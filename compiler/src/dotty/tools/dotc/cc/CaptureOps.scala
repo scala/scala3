@@ -900,18 +900,31 @@ class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) ext
 /** Drop retains annotations in the inferred type if CC is not enabled
  *  or transform them into retains annotations with Nothing (i.e. empty set) as
  *   argument if CC is enabled (we need to do that to keep by-name status).
+ *  Retains annotations that refer to a type lambda binder enclosing them in
+ *  the mapped type itself are kept, since they cannot be re-inferred later.
+ *  See issue #26000.
  */
 class CleanupRetains(using Context) extends TypeMap:
   var retainsFound: Boolean = false
+
+  /** The type lambdas enclosing the currently mapped part of the type */
+  private var localBinders: List[TypeLambda] = Nil
+
   def apply(tp: Type): Type = tp match
     case tp @ AnnotatedType(parent, annot: RetainingAnnotation) =>
       if Feature.ccEnabled then
         retainsFound = true
-        if annot.symbol == defn.RetainsCapAnnot then tp
+        if annot.symbol == defn.RetainsCapAnnot || annot.refersToParamOf(localBinders) then tp
         else AnnotatedType(this(parent), RetainingAnnotation(annot.symbol.asClass, defn.NothingType))
       else this(parent)
     case tp @ AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
       tp
+    case tp: TypeLambda if Feature.ccEnabled =>
+      // Don't clean the parameter bounds: like the kept annotations above, they
+      // are transformed as declared types when the enclosing type is inferred.
+      localBinders = tp :: localBinders
+      try tp.derivedLambdaType(resType = this(tp.resType))
+      finally localBinders = localBinders.tail
     case _ => mapOver(tp)
 
 /** A base class for extractors that match annotated types with a specific
