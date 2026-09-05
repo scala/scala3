@@ -5213,17 +5213,30 @@ object Types extends TypeUtils {
       def setReductionContext(): Unit =
         new TypeTraverser:
           var footprint: Set[Type] = Set()
-          var deep: Boolean = true
+
+          /** Should type parameter references be added to the footprint?
+           *  True for the scrutinee and the patterns, which together decide
+           *  which case is selected; their GADT bounds therefore matter.
+           *  False for the right hand sides of cases: a case body does not
+           *  influence the choice of case, so the only way it can invalidate a
+           *  cached reduction is by mentioning something that the typer state
+           *  can still change, i.e. a type variable or a constrained parameter
+           *  reference. Those are recorded either way. Adding the parameters
+           *  of the enclosing classes and methods as well would make the
+           *  footprint - and with it the cost of every cache hit - grow with
+           *  the size of the case bodies, for no gain in precision. See
+           *  bench-micro/tests/matchTypeHeavyBody.scala.
+           */
+          var trackTypeParams: Boolean = true
+
           val seen = util.HashSet[Type]()
           def traverse(tp: Type) =
             if !seen.contains(tp) then
               seen += tp
               tp match
                 case tp: NamedType =>
-                  if tp.symbol.is(TypeParam) then footprint += tp
+                  if trackTypeParams && tp.symbol.is(TypeParam) then footprint += tp
                   traverseChildren(tp)
-                case _: AppliedType | _: RefinedType =>
-                  if deep then traverseChildren(tp)
                 case TypeBounds(lo, hi) =>
                   traverse(hi)
                 case tp: TypeVar =>
@@ -5235,9 +5248,30 @@ object Types extends TypeUtils {
                   traverseChildren(tp)
           end traverse
 
+          /** Traverse the parameter bounds and the pattern of case `tp`. */
+          def traversePattern(tp: Type): Unit = tp match
+            case tp: HKTypeLambda =>
+              tp.paramInfos.foreach(traverse)
+              traversePattern(tp.resType)
+            case defn.MatchCase(pat, _) =>
+              traverse(pat)
+            case _ =>
+              traverse(tp)
+
+          /** Traverse the right hand side of case `tp`. */
+          def traverseBody(tp: Type): Unit = tp match
+            case tp: HKTypeLambda =>
+              traverseBody(tp.resType)
+            case defn.MatchCase(_, body) =>
+              traverse(body)
+            case _ =>
+
           traverse(scrutinee)
-          deep = false
-          cases.foreach(traverse)
+          // Patterns before bodies, so that a type occurring in both is seen
+          // first with `trackTypeParams` still set.
+          cases.foreach(traversePattern)
+          trackTypeParams = false
+          cases.foreach(traverseBody)
           reductionContext = util.HashMap()
           for tp <- footprint do
             reductionContext.nn(tp) = contextInfo(tp)
@@ -5275,6 +5309,14 @@ object Types extends TypeUtils {
       //else println(i"no change for $this $hashCode / $myReduced")
       myReduced.nn
     }
+
+    /** The types the last computed reduction of this match type depends on, or
+     *  Nil if no reduction was computed yet. Every call to `reduced` revalidates
+     *  the cached reduction against these, so this is also what a cache hit
+     *  costs. Exposed for testing.
+     */
+    private[core] def reductionFootprint: List[Type] =
+      if reductionContext == null then Nil else reductionContext.nn.keysIterator.toList
 
     /** True if the reduction uses GADT constraints. */
     def reducesUsingGadt(using Context): Boolean =
