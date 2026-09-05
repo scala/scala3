@@ -33,10 +33,13 @@ sealed abstract class ArrayBuilder[T]
     with Serializable {
   protected[this] var capacity: Int = 0
   protected[this] def elems: Array[T] | Null // may not be allocated at size = capacity = 0
+  /** The number of elements added to this builder so far. */
   protected var size: Int = 0
 
+  /** Current number of elements. */
   def length: Int = size
 
+  /** Current number of elements. */
   override def knownSize: Int = size
 
   protected[this] final def ensureSize(size: Int): Unit = {
@@ -47,9 +50,21 @@ sealed abstract class ArrayBuilder[T]
     }
   }
 
+  /** Grows the backing array to hold at least `size` elements.
+   *
+   *  Does nothing if the current capacity suffices; otherwise resizes to
+   *  exactly `size`, avoiding the over-allocation of the doubling strategy
+   *  when the final number of elements is known in advance.
+   *
+   *  @param size the expected number of elements
+   */
   override final def sizeHint(size: Int): Unit =
     if (capacity < size) resize(size)
 
+  /** Discards all elements added so far, leaving this builder empty.
+   *
+   *  Any backing array is kept at its current capacity and reused.
+   */
   def clear(): Unit = size = 0
 
   protected[this] def resize(size: Int): Unit
@@ -75,6 +90,15 @@ sealed abstract class ArrayBuilder[T]
     this
   }
 
+  /** Adds all elements of an iterable collection.
+   *
+   *  If `xs` has a known size, the backing array is grown once up front and
+   *  the elements are copied in bulk; otherwise the elements are added one by
+   *  one.
+   *
+   *  @param xs the collection whose elements are added
+   *  @return this builder with the elements of `xs` appended
+   */
   override def addAll(xs: IterableOnce[T]): this.type = {
     val k = xs.knownSize
     if(k > 0) {
@@ -252,6 +276,9 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofRef[T <: AnyRef | Null](implicit ct: ClassTag[T]) extends ArrayBuilder[T] {
 
+    /** The backing array; `null` until storage is first allocated, and reset
+     *  to `null` when `result()` hands the array off without copying.
+     */
     protected var elems: Array[T] | Null = null
 
     private def mkArray(size: Int): Array[T] = {
@@ -265,6 +292,11 @@ object ArrayBuilder {
       capacity = size
     }
 
+    /** Adds a single element to this builder.
+     *
+     *  @param elem the element to add
+     *  @return this builder with `elem` appended
+     */
     def addOne(elem: T): this.type = {
       ensureSize(size + 1)
       elems.nn(size) = elem
@@ -272,6 +304,14 @@ object ArrayBuilder {
       this
     }
 
+    /** Returns an array containing all elements added to this builder.
+     *
+     *  If the elements added exactly fill the backing array, that array is
+     *  returned directly, without copying, and this builder gives it up;
+     *  otherwise the elements are copied into a new array of exactly the
+     *  right length. After this call, `clear()` must be called before this
+     *  builder is used again.
+     */
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
@@ -282,16 +322,32 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
+    /** Discards all elements added so far, leaving this builder empty.
+     *
+     *  The backing array is kept at its current capacity, but its cells are
+     *  nulled out so that the discarded elements can be garbage collected.
+     */
     override def clear(): Unit = {
       super.clear()
       if(elems ne null) java.util.Arrays.fill(elems.asInstanceOf[Array[AnyRef]], null)
     }
 
+    /** Tests this builder for equality with `other`.
+     *
+     *  True only if `other` is an `ofRef` builder with the same number of
+     *  elements and the same backing array instance (or with neither builder
+     *  having allocated one); elements are not compared individually.
+     *
+     *  @param other the value to compare with
+     *  @return `true` if `other` is an `ofRef` builder equal to this one,
+     *          `false` otherwise
+     */
     override def equals(other: Any): Boolean = other match {
       case x: ofRef[_] => (size == x.size) && (elems == x.elems)
       case _ => false
     }
 
+    /** Returns the string `"ArrayBuilder.ofRef"`. */
     override def toString = "ArrayBuilder.ofRef"
   }
 
@@ -299,6 +355,9 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofByte extends ArrayBuilder[Byte] {
 
+    /** The backing array; `null` until storage is first allocated, and reset
+     *  to `null` when `result()` hands the array off without copying.
+     */
     protected var elems: Array[Byte] | Null = null
 
     private def mkArray(size: Int): Array[Byte] = {
@@ -312,6 +371,11 @@ object ArrayBuilder {
       capacity = size
     }
 
+    /** Adds a single element to this builder.
+     *
+     *  @param elem the element to add
+     *  @return this builder with `elem` appended
+     */
     def addOne(elem: Byte): this.type = {
       ensureSize(size + 1)
       elems.nn(size) = elem
@@ -319,6 +383,14 @@ object ArrayBuilder {
       this
     }
 
+    /** Returns an array containing all elements added to this builder.
+     *
+     *  If the elements added exactly fill the backing array, that array is
+     *  returned directly, without copying, and this builder gives it up;
+     *  otherwise the elements are copied into a new array of exactly the
+     *  right length. After this call, `clear()` must be called before this
+     *  builder is used again.
+     */
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
@@ -329,11 +401,22 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
+    /** Tests this builder for equality with `other`.
+     *
+     *  True only if `other` is a builder of the same class with the same
+     *  number of elements and the same backing array instance (or with
+     *  neither builder having allocated one); elements are not compared
+     *  individually.
+     *
+     *  @param other the value to compare with
+     *  @return `true` if `other` is equal to this builder, `false` otherwise
+     */
     override def equals(other: Any): Boolean = other match {
       case x: ofByte => (size == x.size) && (elems == x.elems)
       case _ => false
     }
 
+    /** Returns the string `"ArrayBuilder.ofByte"`. */
     override def toString = "ArrayBuilder.ofByte"
   }
 
@@ -341,6 +424,9 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofShort extends ArrayBuilder[Short] {
 
+    /** The backing array; `null` until storage is first allocated, and reset
+     *  to `null` when `result()` hands the array off without copying.
+     */
     protected var elems: Array[Short] | Null = null
 
     private def mkArray(size: Int): Array[Short] = {
@@ -354,6 +440,11 @@ object ArrayBuilder {
       capacity = size
     }
 
+    /** Adds a single element to this builder.
+     *
+     *  @param elem the element to add
+     *  @return this builder with `elem` appended
+     */
     def addOne(elem: Short): this.type = {
       ensureSize(size + 1)
       elems.nn(size) = elem
@@ -361,6 +452,14 @@ object ArrayBuilder {
       this
     }
 
+    /** Returns an array containing all elements added to this builder.
+     *
+     *  If the elements added exactly fill the backing array, that array is
+     *  returned directly, without copying, and this builder gives it up;
+     *  otherwise the elements are copied into a new array of exactly the
+     *  right length. After this call, `clear()` must be called before this
+     *  builder is used again.
+     */
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
@@ -371,11 +470,22 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
+    /** Tests this builder for equality with `other`.
+     *
+     *  True only if `other` is a builder of the same class with the same
+     *  number of elements and the same backing array instance (or with
+     *  neither builder having allocated one); elements are not compared
+     *  individually.
+     *
+     *  @param other the value to compare with
+     *  @return `true` if `other` is equal to this builder, `false` otherwise
+     */
     override def equals(other: Any): Boolean = other match {
       case x: ofShort => (size == x.size) && (elems == x.elems)
       case _ => false
     }
 
+    /** Returns the string `"ArrayBuilder.ofShort"`. */
     override def toString = "ArrayBuilder.ofShort"
   }
 
@@ -383,6 +493,9 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofChar extends ArrayBuilder[Char] {
 
+    /** The backing array; `null` until storage is first allocated, and reset
+     *  to `null` when `result()` hands the array off without copying.
+     */
     protected var elems: Array[Char] | Null = null
 
     private def mkArray(size: Int): Array[Char] = {
@@ -396,6 +509,11 @@ object ArrayBuilder {
       capacity = size
     }
 
+    /** Adds a single element to this builder.
+     *
+     *  @param elem the element to add
+     *  @return this builder with `elem` appended
+     */
     def addOne(elem: Char): this.type = {
       ensureSize(size + 1)
       elems.nn(size) = elem
@@ -403,6 +521,14 @@ object ArrayBuilder {
       this
     }
 
+    /** Returns an array containing all elements added to this builder.
+     *
+     *  If the elements added exactly fill the backing array, that array is
+     *  returned directly, without copying, and this builder gives it up;
+     *  otherwise the elements are copied into a new array of exactly the
+     *  right length. After this call, `clear()` must be called before this
+     *  builder is used again.
+     */
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
@@ -413,11 +539,22 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
+    /** Tests this builder for equality with `other`.
+     *
+     *  True only if `other` is a builder of the same class with the same
+     *  number of elements and the same backing array instance (or with
+     *  neither builder having allocated one); elements are not compared
+     *  individually.
+     *
+     *  @param other the value to compare with
+     *  @return `true` if `other` is equal to this builder, `false` otherwise
+     */
     override def equals(other: Any): Boolean = other match {
       case x: ofChar => (size == x.size) && (elems == x.elems)
       case _ => false
     }
 
+    /** Returns the string `"ArrayBuilder.ofChar"`. */
     override def toString = "ArrayBuilder.ofChar"
   }
 
@@ -425,6 +562,9 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofInt extends ArrayBuilder[Int] {
 
+    /** The backing array; `null` until storage is first allocated, and reset
+     *  to `null` when `result()` hands the array off without copying.
+     */
     protected var elems: Array[Int] | Null = null
 
     private def mkArray(size: Int): Array[Int] = {
@@ -438,6 +578,11 @@ object ArrayBuilder {
       capacity = size
     }
 
+    /** Adds a single element to this builder.
+     *
+     *  @param elem the element to add
+     *  @return this builder with `elem` appended
+     */
     def addOne(elem: Int): this.type = {
       ensureSize(size + 1)
       elems.nn(size) = elem
@@ -445,6 +590,14 @@ object ArrayBuilder {
       this
     }
 
+    /** Returns an array containing all elements added to this builder.
+     *
+     *  If the elements added exactly fill the backing array, that array is
+     *  returned directly, without copying, and this builder gives it up;
+     *  otherwise the elements are copied into a new array of exactly the
+     *  right length. After this call, `clear()` must be called before this
+     *  builder is used again.
+     */
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
@@ -455,11 +608,22 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
+    /** Tests this builder for equality with `other`.
+     *
+     *  True only if `other` is a builder of the same class with the same
+     *  number of elements and the same backing array instance (or with
+     *  neither builder having allocated one); elements are not compared
+     *  individually.
+     *
+     *  @param other the value to compare with
+     *  @return `true` if `other` is equal to this builder, `false` otherwise
+     */
     override def equals(other: Any): Boolean = other match {
       case x: ofInt => (size == x.size) && (elems == x.elems)
       case _ => false
     }
 
+    /** Returns the string `"ArrayBuilder.ofInt"`. */
     override def toString = "ArrayBuilder.ofInt"
   }
 
@@ -467,6 +631,9 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofLong extends ArrayBuilder[Long] {
 
+    /** The backing array; `null` until storage is first allocated, and reset
+     *  to `null` when `result()` hands the array off without copying.
+     */
     protected var elems: Array[Long] | Null = null
 
     private def mkArray(size: Int): Array[Long] = {
@@ -480,6 +647,11 @@ object ArrayBuilder {
       capacity = size
     }
 
+    /** Adds a single element to this builder.
+     *
+     *  @param elem the element to add
+     *  @return this builder with `elem` appended
+     */
     def addOne(elem: Long): this.type = {
       ensureSize(size + 1)
       elems.nn(size) = elem
@@ -487,6 +659,14 @@ object ArrayBuilder {
       this
     }
 
+    /** Returns an array containing all elements added to this builder.
+     *
+     *  If the elements added exactly fill the backing array, that array is
+     *  returned directly, without copying, and this builder gives it up;
+     *  otherwise the elements are copied into a new array of exactly the
+     *  right length. After this call, `clear()` must be called before this
+     *  builder is used again.
+     */
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
@@ -497,11 +677,22 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
+    /** Tests this builder for equality with `other`.
+     *
+     *  True only if `other` is a builder of the same class with the same
+     *  number of elements and the same backing array instance (or with
+     *  neither builder having allocated one); elements are not compared
+     *  individually.
+     *
+     *  @param other the value to compare with
+     *  @return `true` if `other` is equal to this builder, `false` otherwise
+     */
     override def equals(other: Any): Boolean = other match {
       case x: ofLong => (size == x.size) && (elems == x.elems)
       case _ => false
     }
 
+    /** Returns the string `"ArrayBuilder.ofLong"`. */
     override def toString = "ArrayBuilder.ofLong"
   }
 
@@ -509,6 +700,9 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofFloat extends ArrayBuilder[Float] {
 
+    /** The backing array; `null` until storage is first allocated, and reset
+     *  to `null` when `result()` hands the array off without copying.
+     */
     protected var elems: Array[Float] | Null = null
 
     private def mkArray(size: Int): Array[Float] = {
@@ -522,6 +716,11 @@ object ArrayBuilder {
       capacity = size
     }
 
+    /** Adds a single element to this builder.
+     *
+     *  @param elem the element to add
+     *  @return this builder with `elem` appended
+     */
     def addOne(elem: Float): this.type = {
       ensureSize(size + 1)
       elems.nn(size) = elem
@@ -529,6 +728,14 @@ object ArrayBuilder {
       this
     }
 
+    /** Returns an array containing all elements added to this builder.
+     *
+     *  If the elements added exactly fill the backing array, that array is
+     *  returned directly, without copying, and this builder gives it up;
+     *  otherwise the elements are copied into a new array of exactly the
+     *  right length. After this call, `clear()` must be called before this
+     *  builder is used again.
+     */
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
@@ -539,11 +746,22 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
+    /** Tests this builder for equality with `other`.
+     *
+     *  True only if `other` is a builder of the same class with the same
+     *  number of elements and the same backing array instance (or with
+     *  neither builder having allocated one); elements are not compared
+     *  individually.
+     *
+     *  @param other the value to compare with
+     *  @return `true` if `other` is equal to this builder, `false` otherwise
+     */
     override def equals(other: Any): Boolean = other match {
       case x: ofFloat => (size == x.size) && (elems == x.elems)
       case _ => false
     }
 
+    /** Returns the string `"ArrayBuilder.ofFloat"`. */
     override def toString = "ArrayBuilder.ofFloat"
   }
 
@@ -551,6 +769,9 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofDouble extends ArrayBuilder[Double] {
 
+    /** The backing array; `null` until storage is first allocated, and reset
+     *  to `null` when `result()` hands the array off without copying.
+     */
     protected var elems: Array[Double] | Null = null
 
     private def mkArray(size: Int): Array[Double] = {
@@ -564,6 +785,11 @@ object ArrayBuilder {
       capacity = size
     }
 
+    /** Adds a single element to this builder.
+     *
+     *  @param elem the element to add
+     *  @return this builder with `elem` appended
+     */
     def addOne(elem: Double): this.type = {
       ensureSize(size + 1)
       elems.nn(size) = elem
@@ -571,6 +797,14 @@ object ArrayBuilder {
       this
     }
 
+    /** Returns an array containing all elements added to this builder.
+     *
+     *  If the elements added exactly fill the backing array, that array is
+     *  returned directly, without copying, and this builder gives it up;
+     *  otherwise the elements are copied into a new array of exactly the
+     *  right length. After this call, `clear()` must be called before this
+     *  builder is used again.
+     */
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
@@ -581,11 +815,22 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
+    /** Tests this builder for equality with `other`.
+     *
+     *  True only if `other` is a builder of the same class with the same
+     *  number of elements and the same backing array instance (or with
+     *  neither builder having allocated one); elements are not compared
+     *  individually.
+     *
+     *  @param other the value to compare with
+     *  @return `true` if `other` is equal to this builder, `false` otherwise
+     */
     override def equals(other: Any): Boolean = other match {
       case x: ofDouble => (size == x.size) && (elems == x.elems)
       case _ => false
     }
 
+    /** Returns the string `"ArrayBuilder.ofDouble"`. */
     override def toString = "ArrayBuilder.ofDouble"
   }
 
@@ -593,6 +838,9 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   class ofBoolean extends ArrayBuilder[Boolean] {
 
+    /** The backing array; `null` until storage is first allocated, and reset
+     *  to `null` when `result()` hands the array off without copying.
+     */
     protected var elems: Array[Boolean] | Null = null
 
     private def mkArray(size: Int): Array[Boolean] = {
@@ -606,6 +854,11 @@ object ArrayBuilder {
       capacity = size
     }
 
+    /** Adds a single element to this builder.
+     *
+     *  @param elem the element to add
+     *  @return this builder with `elem` appended
+     */
     def addOne(elem: Boolean): this.type = {
       ensureSize(size + 1)
       elems.nn(size) = elem
@@ -613,6 +866,14 @@ object ArrayBuilder {
       this
     }
 
+    /** Returns an array containing all elements added to this builder.
+     *
+     *  If the elements added exactly fill the backing array, that array is
+     *  returned directly, without copying, and this builder gives it up;
+     *  otherwise the elements are copied into a new array of exactly the
+     *  right length. After this call, `clear()` must be called before this
+     *  builder is used again.
+     */
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
@@ -623,11 +884,22 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
+    /** Tests this builder for equality with `other`.
+     *
+     *  True only if `other` is a builder of the same class with the same
+     *  number of elements and the same backing array instance (or with
+     *  neither builder having allocated one); elements are not compared
+     *  individually.
+     *
+     *  @param other the value to compare with
+     *  @return `true` if `other` is equal to this builder, `false` otherwise
+     */
     override def equals(other: Any): Boolean = other match {
       case x: ofBoolean => (size == x.size) && (elems == x.elems)
       case _ => false
     }
 
+    /** Returns the string `"ArrayBuilder.ofBoolean"`. */
     override def toString = "ArrayBuilder.ofBoolean"
   }
 
@@ -635,23 +907,53 @@ object ArrayBuilder {
   @SerialVersionUID(3L)
   final class ofUnit extends ArrayBuilder[Unit] {
 
+    /** Not supported: this builder stores no elements, only their count.
+     *
+     *  @throws UnsupportedOperationException always
+     */
     protected def elems: Array[Unit] | Null = throw new UnsupportedOperationException()
 
+    /** Adds a single unit value by incrementing the element count.
+     *
+     *  @param elem never used, as all unit values are identical
+     *  @return this builder with its size increased by 1
+     */
     def addOne(elem: Unit): this.type = {
       size += 1
       this
     }
 
+    /** Adds all elements of a collection by increasing the element count by
+     *  its size.
+     *
+     *  @param xs the collection whose elements are counted; it is iterated
+     *            fully to compute its size, but its elements are not stored
+     *  @return this builder with its size increased by the size of `xs`
+     */
     override def addAll(xs: IterableOnce[Unit]): this.type = {
       size += xs.iterator.size
       this
     }
 
+    /** Adds `length` unit values by increasing the element count, without
+     *  inspecting the array.
+     *
+     *  @param xs the array whose elements are counted; never used
+     *  @param offset the start index of the slice; never used
+     *  @param length the number of elements to add, applied as is and without
+     *                bounds checks; a negative value decreases the count
+     *  @return this builder with its size increased by `length`
+     */
     override def addAll(xs: Array[_ <: Unit], offset: Int, length: Int): this.type = {
       size += length
       this
     }
 
+    /** Returns a new array of `size` unit values.
+     *
+     *  A fresh array is allocated and filled on each call; this builder's
+     *  count is left unchanged.
+     */
     def result() = {
       val ans = new Array[Unit](size)
       var i = 0
@@ -659,6 +961,15 @@ object ArrayBuilder {
       ans
     }
 
+    /** Tests this builder for equality with `other`.
+     *
+     *  True only if `other` is an `ofUnit` builder with the same number of
+     *  elements.
+     *
+     *  @param other the value to compare with
+     *  @return `true` if `other` is an `ofUnit` builder of the same size,
+     *          `false` otherwise
+     */
     override def equals(other: Any): Boolean = other match {
       case x: ofUnit => (size == x.size)
       case _ => false
@@ -666,6 +977,7 @@ object ArrayBuilder {
 
     protected[this] def resize(size: Int): Unit = ()
 
+    /** Returns the string `"ArrayBuilder.ofUnit"`. */
     override def toString = "ArrayBuilder.ofUnit"
   }
 }
