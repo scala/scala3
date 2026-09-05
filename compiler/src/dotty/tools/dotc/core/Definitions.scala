@@ -252,6 +252,7 @@ class Definitions {
   @tu lazy val SysPackage : Symbol = requiredModule("scala.sys.package")
     @tu lazy val Sys_error: Symbol = SysPackage.moduleClass.requiredMethod(nme.error)
 
+
   @tu lazy val ScalaXmlPackageClass: Symbol = getPackageClassIfDefined("scala.xml")
 
   @tu lazy val CompiletimePackageClass: Symbol = requiredPackage("scala.compiletime").moduleClass
@@ -267,8 +268,6 @@ class Definitions {
     @tu lazy val Compiletime_summonFrom   : Symbol = CompiletimePackageClass.requiredMethod("summonFrom")
     @tu lazy val Compiletime_summonInline : Symbol = CompiletimePackageClass.requiredMethod("summonInline")
     @tu lazy val Compiletime_summonAll    : Symbol = CompiletimePackageClass.requiredMethod("summonAll")
-    @tu lazy val Compiletime_spec         : Symbol = CompiletimePackageClass.requiredMethod("$spec")
-    @tu lazy val Compiletime_wrappedType  : Symbol = CompiletimePackageClass.requiredMethod("$wrappedType")
   @tu lazy val CompiletimeTestingPackage: Symbol = requiredPackage("scala.compiletime.testing")
     @tu lazy val CompiletimeTesting_typeChecks: Symbol = CompiletimeTestingPackage.requiredMethod("typeChecks")
     @tu lazy val CompiletimeTesting_typeCheckErrors: Symbol = CompiletimeTestingPackage.requiredMethod("typeCheckErrors")
@@ -482,6 +481,33 @@ class Definitions {
   }
   def AnyKindType: TypeRef = AnyKindClass.typeRef
 
+  // Magic stuff
+  @tu lazy val MagicPackage: Symbol = requiredPackage("scala.magic")
+  @tu lazy val MagicPackageClass: ClassSymbol = MagicPackage.moduleClass.asClass
+
+  @tu lazy val MagicCompiletimePackage: Symbol = requiredPackage("scala.magic.compiletime")
+    @tu lazy val Magic_spec: Symbol = MagicCompiletimePackage.requiredMethod("$spec")
+    @tu lazy val Magic_wrappedType: Symbol = MagicCompiletimePackage.requiredMethod("$wrappedType")
+
+  @tu lazy val MagicRuntimePackageClass = requiredPackage("scala.magic.runtime").moduleClass.asClass
+
+  // Maybe-related
+  @tu lazy val MaybeClass: ClassSymbol = requiredClass("scala.compiletime.Maybe")
+  @tu lazy val ValidClass: ClassSymbol = requiredClass("scala.runtime.Valid")
+  @tu lazy val FailClass: ClassSymbol = requiredClass("scala.runtime.Fail")
+  @tu lazy val maybeModule: Symbol = requiredModule("scala.maybe")
+    @tu lazy val maybe_provided1: Symbol = maybeModule.info.member(termName("provided")).suchThat(_.info.isInstanceOf[MethodType]).symbol
+    @tu lazy val maybe_provided2: Symbol = maybeModule.info.member(termName("provided")).suchThat(_.info.isInstanceOf[PolyType]).symbol
+    @tu lazy val maybe_CanErr: Symbol = maybeModule.requiredType("CanErr")
+
+  @tu lazy val OkModule: Symbol = requiredModule("scala.util.Ok")
+    @tu lazy val Ok_apply: Symbol = OkModule.requiredMethod(nme.apply)
+    @tu lazy val Ok_unapply: Symbol = OkModule.requiredMethod(nme.unapply)
+
+  @tu lazy val ErrModule: Symbol = requiredModule("scala.util.Err")
+    @tu lazy val Err_unapply: Symbol = ErrModule.requiredMethod(nme.unapply)
+
+  // More synthetic symbols
   @tu lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))
   @tu lazy val orType: TypeSymbol = enterBinaryAlias(tpnme.OR, OrType(_, _, soft = false))
 
@@ -1594,6 +1620,8 @@ class Definitions {
   @tu lazy val erasedValueMethods =
     capsErasedValueMethods + Compiletime_erasedValue
 
+  @tu lazy val unitSuperClasses: Set[Symbol] = Set(UnitClass, AnyValClass, AnyClass)
+
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(using Context): Symbol = AbstractFunctionClassPerRun()(using ctx)(n)
@@ -1770,7 +1798,7 @@ class Definitions {
   private val PredefImportFns: RootRef =
     RootRef(() => ScalaPredefModule.termRef)
 
-  // The new Specialized lives in scala.specialize. 
+  // The new Specialized lives in scala.specialize.
   // This is to avoid conflict with the Scala2 specialized annotation.
   // It is not imported by default with the scala package, so we additionally import it here.
   private val SpecializeImportFns: RootRef =
@@ -2217,6 +2245,7 @@ class Definitions {
     m(TupleClass) = ProductClass
     m(NonEmptyTupleClass) = ProductClass
     m(PairClass) = ObjectClass
+    m(MaybeClass) = ObjectClass
     m
 
   // ----- Initialization ---------------------------------------------------

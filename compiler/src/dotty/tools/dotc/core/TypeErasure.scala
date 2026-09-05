@@ -79,10 +79,14 @@ end SourceLanguage
  */
 object TypeErasure:
 
-  private val DisallowSpecialized = Property.Key[Unit] 
+  private val DisallowSpecialized = Property.Key[Unit]
 
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
-    sym == defn.ArrayClass || sym == defn.PairClass || sym.isDerivedValueClass || sym.isSpecializedTrait
+    sym == defn.ArrayClass
+    || sym == defn.PairClass
+    || sym == defn.MaybeClass
+    || sym.isDerivedValueClass
+    || sym.isSpecializedTrait
 
   /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs.
    *
@@ -214,7 +218,7 @@ object TypeErasure:
   /** The current context but with Foo[Int] erasing to Foo instead of
    *  Foo$sp$Int when Foo is a specialized trait. */
   def disallowSpecializedCtx(using Context) = ctx.fresh.setProperty(DisallowSpecialized, ())
-  
+
   /** The current context but with Foo[Int] erasing to Foo$sp$Int instead of
    *  Foo when Foo is a specialized trait. */
   def allowSpecializedCtx(using Context) = ctx.fresh.dropProperty(DisallowSpecialized)
@@ -789,12 +793,12 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else if semiEraseVCs && sym.isDerivedValueClass then eraseDerivedValueClass(tp)
         else if defn.isSyntheticFunctionClass(sym) then defn.functionTypeErasure(sym)
         else eraseNormalClassRef(tp)
-      case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) // At the beginning the $sp$ trait symbols are not present so up until 
+      case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) // At the beginning the $sp$ trait symbols are not present so up until
                                                                                    // erasure need to consider the signature of def foo(x: Foo[Int]): Int as
                                                                                    // foo(Foo):Int. Only at erasure do the symbols swap. This ensures
                                                                                    // the signatures don't change before erasure which is required (meta-ordering
                                                                                    // constraint in Compiler.scala)
-                                    && spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty) => 
+                                    && spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty) =>
         val specName = spec.newSpecializedTraitName
         val interfaceSymbol = spec.symbol.owner.enclosingPackageClass.info.decls.lookup(specName)
         assert(interfaceSymbol.exists && interfaceSymbol.isClass)
@@ -805,6 +809,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else if (tycon.isRef(defn.PairClass)) erasePair(tp)
         else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = sourceLanguage.isJava))
         else if (semiEraseVCs && tycon.classSymbol.isDerivedValueClass) eraseDerivedValueClass(tp)
+        else if tycon.isRef(defn.MaybeClass) then eraseMaybe(tp)
         else this(checkedSuperType(tp))
       case tp: TermRef =>
         this(underlyingOfTermRef(tp))
@@ -897,7 +902,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
             if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
             else
               // Match corresponding tree erasure in Erasure::typedClassDef
-              val parents1 = 
+              val parents1 =
                 if cls.isSpecializedTraitInterface then // {source: inline trait Bar[T: Specialized] extends Foo[T] both specialized traits} inline trait Bar$sp$Int extends Object, Bar, Foo$sp$Int
                   val (obj :: originalTrait :: inheritedParents) = parents : @unchecked
                   eraseParent(obj) :: apply(originalTrait)(using disallowSpecializedCtx) :: inheritedParents.mapConserve(eraseParent(_)(using allowSpecializedCtx))
@@ -909,7 +914,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
 
                 // {source: class Bar extends Foo[Int](10) with Baz[Int](10)}
                 // class Bar extends Object, Foo(10), Baz(10), Foo$sp$Int, Baz$sp$Int
-                  parents.mapConserve(p => if p.typeSymbol.isSpecializedTrait then 
+                  parents.mapConserve(p => if p.typeSymbol.isSpecializedTrait then
                                              apply(p)(using disallowSpecializedCtx)
                                            else eraseParent(p)) ::: originalSpecializedTraits
               parents1 match {
@@ -989,6 +994,18 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     else if arity <= Definitions.MaxTupleArity then defn.TupleType(arity).nn
     else defn.TupleXXLClass.typeRef
   }
+
+  /** The erasure of `T ? E`. A value of that type is represented at runtime either
+   *  as a value of type `T`, or, if `E` is `Unit`, as `null`, or otherwise as a
+   *  `runtime.Fail` wrapping the error. So we can erase to the erasure of `T` only
+   *  if `T` cannot be `null` and no `Fail` can arise, i.e. `E` is `Unit`.
+   */
+  private def eraseMaybe(tp: AppliedType)(using Context): Type =
+    val arg :: errArg :: Nil = tp.args: @unchecked
+    if arg.isNotNull && arg.derivesFrom(defn.ObjectClass)
+       && (errArg.isRef(defn.UnitClass) || errArg.isRef(defn.NothingClass))
+    then apply(arg)
+    else defn.ObjectType
 
   /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s and
    *  `PolyType`s are treated. `eraseInfo` maps them to method types, whereas `apply` maps them
