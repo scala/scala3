@@ -27,16 +27,10 @@ case class CommonTastyHeader(
     this(h.uuid, h.majorVersion, h.minorVersion, h.experimentalVersion, h.toolingVersion)
 
 object TastyUnpickler {
+  type NameTable = mutable.ArrayBuffer[TermName]
 
   abstract class SectionUnpickler[R](val name: String) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): R
-  }
-
-  class NameTable extends (NameRef => TermName) {
-    private val names = new mutable.ArrayBuffer[TermName]
-    def add(name: TermName): mutable.ArrayBuffer[TermName] = names += name
-    def apply(ref: NameRef): TermName = names(ref.index)
-    def contents: Iterable[TermName] = names
   }
 
   trait Scala3CompilerConfig extends UnpicklerConfig:
@@ -82,7 +76,7 @@ class TastyUnpickler(protected val reader: TastyReader, isBestEffortTasty: Boole
   def this(bytes: Array[Byte], isBestEffortTasty: Boolean) = this(new TastyReader(bytes), isBestEffortTasty)
 
   private val sectionReader = new mutable.HashMap[String, TastyReader]
-  val nameAtRef: NameTable = new NameTable
+  val nameAtRef: mutable.ArrayBuffer[TermName] = new mutable.ArrayBuffer[TermName]
 
   private def readName(): TermName = nameAtRef(readNameRef())
   private def readString(): String = readName().toString
@@ -92,7 +86,7 @@ class TastyUnpickler(protected val reader: TastyReader, isBestEffortTasty: Boole
     if (ref < 0)
       ref.abs
     else
-      nameAtRef(NameRef(ref)).toTypeName
+      nameAtRef(ref).toTypeName
   }
 
   private def readNameContents(): TermName = {
@@ -113,7 +107,7 @@ class TastyUnpickler(protected val reader: TastyReader, isBestEffortTasty: Boole
       case QUALIFIED | EXPANDED | EXPANDPREFIX =>
         qualifiedNameKindOfTag(tag)(readName(), readName().asSimpleName)
       case UNIQUE =>
-        val separator = readName().toString
+        val separator = readName()
         val num = readNat()
         val originals = until(end)(readName())
         val original = if (originals.isEmpty) EmptyTermName else originals.head
@@ -143,7 +137,7 @@ class TastyUnpickler(protected val reader: TastyReader, isBestEffortTasty: Boole
       new CommonTastyHeader(new TastyHeaderUnpickler(reader).readFullHeader())
 
   def readNames(): Unit =
-    until(readEnd()) { nameAtRef.add(readNameContents()) }
+    until(readEnd()) { nameAtRef += readNameContents() }
 
   def loadSections(): Unit = {
     while (!isAtEnd) {

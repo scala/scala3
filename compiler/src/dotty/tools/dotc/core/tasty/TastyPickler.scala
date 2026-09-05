@@ -58,14 +58,14 @@ class TastyPickler(val rootCls: ClassSymbol, isBestEffortTasty: Boolean) {
       headerBuffer.length +
       lengthWithLength(nameBuffer) + {
         for ((nameRef, buf) <- sections) yield
-          natSize(nameRef.index) + lengthWithLength(buf)
+          natSize(nameRef) + lengthWithLength(buf)
       }.sum
     val all = new TastyBuffer(totalSize)
     all.writeBytes(headerBuffer.bytes, headerBuffer.length)
     all.writeNat(nameBuffer.length)
     all.writeBytes(nameBuffer.bytes, nameBuffer.length)
     for ((nameRef, buf) <- sections) {
-      all.writeNat(nameRef.index)
+      all.writeNat(nameRef)
       all.writeNat(buf.length)
       all.writeBytes(buf.bytes, buf.length)
     }

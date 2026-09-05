@@ -138,7 +138,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   }
 
   /** Read a natural number and return as a NameRef */
-  def readNameRef(): NameRef = NameRef(readNat())
+  def readNameRef(): NameRef = readNat()
 
   /** Read a natural number and return as an address */
   def readAddr(): Addr = Addr(readNat())

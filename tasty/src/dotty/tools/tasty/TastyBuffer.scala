@@ -32,7 +32,7 @@ object TastyBuffer {
   final val AddrWidth = 4
 
   /** An address referring to a serialized name */
-  case class NameRef(index: Int) extends AnyVal
+  type NameRef = Int
 }
 import TastyBuffer._
 
