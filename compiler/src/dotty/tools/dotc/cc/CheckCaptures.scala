@@ -18,7 +18,7 @@ import typer.ErrorReporting.err
 import typer.ProtoTypes.{LhsProto, WildcardSelectionProto, SelectionProto}
 import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import util.chaining.tap
-import transform.{Recheck, PreRecheck, CapturedVars}
+import transform.{Recheck, PreRecheck, CapturedVars, LiftCoverage}
 import Recheck.*
 import scala.collection.mutable
 import CaptureSet.{withCaptureSetsExplained, IncludeFailure, MutAdaptFailure, VarState}
@@ -2102,12 +2102,18 @@ class CheckCaptures extends Recheck, SymTransformer:
         // Compute the widened type. Drop `@consume` annotations from the type,
         // since they obscure the capturing type.
         val widened = actual.widen.dealiasKeepAnnots.dropAnnot(defn.ConsumeAnnot)
-        val improvedVAR = improveCaptures(widened, actual)
+        // A lifted argument preserves evaluation order but introduces no source-level path.
+        val transparentValue =
+          LiftCoverage.isCoverageLiftedArg(tree.symbol)
+          && !tree.symbol.info.isSingleton
+        val improvedVAR =
+          if transparentValue then widened
+          else improveCaptures(widened, actual)
         val adaptedReadOnly = adaptReadOnly(improvedVAR, actual, expected, tree)
         val adapted = adaptBoxed(adaptedReadOnly, expected, tree,
             covariant = true, alwaysConst = false)
         if adapted eq improvedVAR // no read-only-adaptation, no reaches added, no box-adaptation
-        then actual               // might as well use actual instead of improved widened
+        then if transparentValue then improvedVAR else actual
         else adapted.showing(i"adapt $actual vs $expected = $adapted", capt)
     end adapt
 
