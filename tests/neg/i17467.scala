@@ -1,3 +1,5 @@
+//> using options -Yno-explicit-nulls
+
 object Test:
   def test(): Unit =
     val a1: String = "foo"
