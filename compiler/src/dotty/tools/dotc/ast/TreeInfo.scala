@@ -67,12 +67,16 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
   /** The method part of an application node, possibly enclosed in a block
    *  with only valdefs as statements. the reason for also considering blocks
    *  is that named arguments can transform a call into a block, e.g.
+   *  ```
    *   <init>(b = foo, a = bar)
+   *  ```
    * is transformed to
+   *  ```
    *   { val x$1 = foo
    *     val x$2 = bar
    *     <init>(x$2, x$1)
    *   }
+   *  ```
    */
   def methPart(tree: Tree): Tree = stripApply(tree) match {
     case TypeApply(fn, _) => methPart(fn)

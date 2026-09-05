@@ -19,7 +19,7 @@ import dotty.tools.dotc.util.SrcPos
 /** This transform normalizes type tests and type casts,
  *  also replacing type tests with singleton argument type with reference equality check
  *  Any remaining type tests
- *   - use the object methods $isInstanceOf and $asInstanceOf
+ *   - use the object methods `$isInstanceOf` and `$asInstanceOf`
  *   - have a reference type as receiver
  *   - can be translated directly to machine instructions
  *
@@ -47,7 +47,7 @@ object TypeTestsCasts {
    *     (a) replace `Ts` with fresh type variables `Xs`
    *     (b) constrain `Xs` with `pre.F[Xs] <:< X`
    *     (c) maximize `pre.F[Xs]`
-   *     (d) if !`pre.F[Xs] <:< P`, "its type arguments can't be determined from $X"
+   *     (d) if !`pre.F[Xs] <:< P`, "its type arguments can't be determined from \$X"
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, "it's a refinement type"
    *  8. if `P` is a local class which is not statically reachable from the scope where `X` is defined, "it's a local class"

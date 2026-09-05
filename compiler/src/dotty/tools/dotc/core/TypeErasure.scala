@@ -155,7 +155,7 @@ object TypeErasure:
   }
 
   /** A type representing the semi-erasure of a derived value class, see SIP-15
-   *  where it's called "C$unboxed" for a class C.
+   *  where it's called "C\$unboxed" for a class C.
    *  Derived value classes are erased to this type during Erasure (when
    *  semiEraseVCs = true) and subsequently erased to their underlying type
    *  during ElimErasedValueType. This type is outside the normal Scala class
@@ -211,12 +211,12 @@ object TypeErasure:
   def preErasureCtx(using Context) =
     if (ctx.erasedTypes) ctx.withPhase(erasurePhase) else ctx
 
-  /** The current context but with Foo[Int] erasing to Foo instead of
-   *  Foo$sp$Int when Foo is a specialized trait. */
+  /** The current context but with `Foo[Int]` erasing to `Foo` instead of
+   *  `Foo$sp$Int` when `Foo` is a specialized trait. */
   def disallowSpecializedCtx(using Context) = ctx.fresh.setProperty(DisallowSpecialized, ())
   
-  /** The current context but with Foo[Int] erasing to Foo$sp$Int instead of
-   *  Foo when Foo is a specialized trait. */
+  /** The current context but with `Foo[Int]` erasing to `Foo$sp$Int` instead of
+   *  `Foo` when `Foo` is a specialized trait. */
   def allowSpecializedCtx(using Context) = ctx.fresh.dropProperty(DisallowSpecialized)
 
   /** The standard erasure of a Scala type. Value classes are erased as normal classes.
@@ -275,9 +275,9 @@ object TypeErasure:
 
   /**  The symbol's erased info. This is the type's erasure, except for the following symbols:
    *
-   *   - For $asInstanceOf           : [T]T
-   *   - For $isInstanceOf           : [T]Boolean
-   *   - For all abstract types      : = ?
+   *   - For `$asInstanceOf`         : `[T]T`
+   *   - For `$isInstanceOf`         : `[T]Boolean`
+   *   - For all abstract types      : = `?`
    *
    *   `sourceLanguage`, `isConstructor` and `semiEraseVCs` are set based on the symbol.
    */

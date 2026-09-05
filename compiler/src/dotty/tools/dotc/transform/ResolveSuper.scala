@@ -23,7 +23,9 @@ import reporting.IllegalSuperAccessor
  *
  *  For every superAccessor `<mods> def super$f[Ts](ps1)...(psN): U` in M:
  *
+ *  ```
  *       <mods> def super$f[Ts](ps1)...(psN): U = super[S].f[Ts](ps1)...(psN)
+ *  ```
  *
  *  where `S` is the superclass of `M` in the linearization of `C`.
  *

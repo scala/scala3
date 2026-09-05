@@ -3020,7 +3020,7 @@ class MissingImplicitArgument(
       case Regex.Groups(v: String) => quoteReplacement(translate(v).getOrElse("?" + v)).nn
     )
 
-  /** @param rawMsg           Message template with variables, e.g. "Variable A is ${A}"
+  /** @param rawMsg           Message template with variables, e.g. "Variable A is \${A}"
    *  @param sym              Symbol of the annotated type or of the method whose parameter was annotated
    *  @param paramNames       Names of type parameters to substitute with `args` in the message template
    *  @param args             Resolved type arguments to substitute for `paramNames` in the message template
@@ -3682,7 +3682,7 @@ final class NamedPatternNotApplicable(selectorType: Type)(using Context) extends
 
   override protected def explain(using Context): String = ""
 
-/**  @param reason            The reason for the unnecessary null. The warning given to the user will be i""""Unncessary .nn: $reason"""
+/**  @param reason            The reason for the unnecessary null. The warning given to the user will be i""""Unnecessary .nn: \$reason"""
    *  @param sourcePosition   The sourcePosition of the qualifier
    */
 class UnnecessaryNN(reason: String, sourcePosition: SourcePosition)(using Context) extends SyntaxMsg(UnnecessaryNN) {

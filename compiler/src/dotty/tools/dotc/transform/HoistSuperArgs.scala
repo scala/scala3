@@ -24,15 +24,19 @@ object HoistSuperArgs {
 /** This phase hoists complex arguments of supercalls and this-calls out of the enclosing class.
  *  Example:
  *
+ *  ```
  *      class B(y: Int) extends A({ def f(x: Int) = x * x; f(y)})
+ *  ```
  *
  *  is translated to
  *
+ *  ```
  *      class B(y: Int) extends A(B#B$superArg$1(this.y)) {
  *        private <static> def B$superArg$1(y: Int): Int = {
  *          def f(x: Int): Int = x.*(x); f(y)
  *        }
  *      }
+ *  ```
  *
  *  An argument is complex if it contains a method or template definition, a this or a new,
  *  or it contains an identifier which needs a `this` prefix to be accessed. This is the case

@@ -245,6 +245,7 @@ end LambdaLift
  *  the trait as additional proxy parameters. The difference between local classes
  *  and local traits is illustrated by the two rewritings below.
  *
+ *  ```
  *     def f(x: Int) = {           def f(x: Int) = new C(x).f2
  *       class C {          ==>    class C(x$1: Int) {
  *         def f2 = x                def f2 = x$1
@@ -259,6 +260,7 @@ end LambdaLift
  *       class C extends T         class C extends T
  *       new C().f2
  *     }
+ *  ```
  */
 class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import LambdaLift.*

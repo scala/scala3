@@ -370,7 +370,7 @@ object Settings:
     * It contains all necessary information to deprecate given option.
     * Scala Settings are considered deprecated when this object is present at their creation site.
     *
-    * @param msg           deprecation message that will be displayed in following format: s"Option $name is deprecated: $msg"
+    * @param msg           deprecation message that will be displayed in following format: s"Option \$name is deprecated: \$msg"
     * @param replacedBy    option that is substituting current option
     */
   case class Deprecation(
