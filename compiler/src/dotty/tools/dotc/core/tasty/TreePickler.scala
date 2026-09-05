@@ -149,7 +149,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       writeLongInt(java.lang.Double.doubleToRawLongBits(c.doubleValue))
     case StringTag =>
       writeByte(STRINGconst)
-      pickleName(c.stringValue.toTermName)
+      writeNat(pickler.nameBuffer.stringLiteralIndex(c.stringValue).index)
     case NullTag =>
       writeByte(NULLconst)
     case ClazzTag =>
