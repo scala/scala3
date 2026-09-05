@@ -3,8 +3,7 @@ package tools
 package vulpix
 
 import org.junit.AfterClass
-import java.io.{BufferedReader, IOException, InputStreamReader, PrintStream, File as JFile}
-import java.nio.file.Paths
+import java.io.{BufferedReader, IOException, InputStreamReader, PrintStream}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.{Duration, DurationInt}
@@ -14,6 +13,8 @@ import scala.collection.mutable
 import ChildJVMMain.{MessageEnd, MessageStart}
 import Status.*
 import dotty.tools.debug.{Debugger, ExpressionEvaluator}
+import dotty.tools.io.ClassPath
+import dotty.tools.nio.FileContainer
 
 import java.lang.management.ManagementFactory
 import scala.jdk.CollectionConverters.ListHasAsScala
@@ -189,11 +190,11 @@ trait RunnerOrchestration:
      */
     private def createProcess(): RunnerProcess =
       val url = classOf[ChildJVMMain.type].getProtectionDomain.getCodeSource.getLocation
-      val cp = Paths.get(url.toURI).toString + JFile.pathSeparator + Properties.scalaLibrary
-      val javaBin = Paths.get(sys.props("java.home"), "bin", "java").toString
+      val cp = FileContainer.getOrCreateOnDisk(url.toURI.toString).path + ClassPath.pathSeparator + Properties.scalaLibrary
+      val javaBin = FileContainer.getOnDisk(sys.props("java.home").nn).get.getContainer("bin").get.getFile("java").get
       val args = Seq("-ea", "-Dfile.encoding=UTF-8", "-Duser.language=en", "-Duser.country=US", "-Xmx1g", "-cp", cp) ++
         (if debugMode then Seq("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,quiet=n") else Seq.empty)
-      val command = (javaBin +: args) :+ "dotty.tools.vulpix.ChildJVMMain"
+      val command = (javaBin.path +: args) :+ "dotty.tools.vulpix.ChildJVMMain"
       val process = new ProcessBuilder(command*)
         .redirectErrorStream(true)
         .redirectInput(ProcessBuilder.Redirect.PIPE)

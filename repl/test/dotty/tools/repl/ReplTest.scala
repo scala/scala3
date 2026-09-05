@@ -4,7 +4,6 @@ package repl
 import vulpix.TestConfiguration
 import vulpix.FileDiff
 import dotty.tools.ToolName
-import dotty.tools.readLines
 import dotty.tools.toolArgsFor
 
 import java.lang.System.{lineSeparator => EOL}
@@ -14,6 +13,7 @@ import java.nio.charset.StandardCharsets
 import scala.io.Source
 import scala.util.Using
 import scala.collection.mutable.ArrayBuffer
+import scala.jdk.CollectionConverters.*
 
 import dotc.core.Contexts.Context
 import dotc.reporting.MessageRendering
@@ -61,7 +61,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
     testScript(name, str.linesIterator.toList).foreach(fail)
 
   private def testFile(f: JFile): Option[String] =
-    testScript(f.toString, readLines(f), Some(f))
+    testScript(f.toString, java.nio.file.Files.readAllLines(f.toPath).asScala.toList, Some(f))
 
   /** Returns failures: None if all is well, Some for an error */
   private def testScript(name: => String, lines: List[String], scriptFile: Option[JFile] = None): Option[String] = {
