@@ -1,0 +1,46 @@
+-- [E165] Type Warning: tests/warn/maybe-typetest.scala:8:12 -----------------------------------------------------------
+8 |    case y: String? => println(y)       // warn typetest // warn unmatchable
+  |            ^^^^^^^
+  |            pattern selector should be an instance of Matchable,
+  |            but it has unmatchable type T instead
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E165] Type Warning: tests/warn/maybe-typetest.scala:14:12 ----------------------------------------------------------
+14 |    case y: Option[String] => println(y)// warn typetest // warn unmatchable
+   |            ^^^^^^^^^^^^^^
+   |            pattern selector should be an instance of Matchable,
+   |            but it has unmatchable type T instead
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E030] Match case Unreachable Warning: tests/warn/maybe-typetest.scala:12:9 -----------------------------------------
+12 |    case _ =>                           // warn unreachable
+   |         ^
+   |         Unreachable case
+-- [E030] Match case Unreachable Warning: tests/warn/maybe-typetest.scala:18:9 -----------------------------------------
+18 |    case _ =>                           // warn unreachable
+   |         ^
+   |         Unreachable case
+-- [E092] Pattern Match Unchecked Warning: tests/warn/maybe-typetest.scala:8:9 -----------------------------------------
+8 |    case y: String? => println(y)       // warn typetest // warn unmatchable
+  |         ^
+  |      the type test for String? cannot be checked at runtime because its type arguments can't be determined from T
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E092] Pattern Match Unchecked Warning: tests/warn/maybe-typetest.scala:11:9 ----------------------------------------
+11 |    case y: String? => println(y)       // warn typetest?
+   |         ^
+   |the type test for String? cannot be checked at runtime because its type arguments can't be determined from T ? Nothing
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E092] Pattern Match Unchecked Warning: tests/warn/maybe-typetest.scala:14:9 ----------------------------------------
+14 |    case y: Option[String] => println(y)// warn typetest // warn unmatchable
+   |         ^
+   |the type test for Option[String] cannot be checked at runtime because its type arguments can't be determined from T
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E092] Pattern Match Unchecked Warning: tests/warn/maybe-typetest.scala:17:9 ----------------------------------------
+17 |    case y: Option[String] => println(y)// warn typetest
+   |         ^
+   |the type test for Option[String] cannot be checked at runtime because its type arguments can't be determined from Some[T]
+   |
+   | longer explanation available when compiling with `-explain`

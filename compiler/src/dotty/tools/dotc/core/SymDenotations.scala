@@ -635,7 +635,8 @@ object SymDenotations {
       case myInfo: ModuleCompleter =>
         // Instead of completing the ModuleCompleter, we can check whether
         // the module class is absent, which might require less completions.
-        myInfo.moduleClass.isAbsent(canForce)
+        val mcls: Symbol = myInfo.moduleClass
+        !mcls.exists || mcls.isAbsent(canForce)
       case _: SymbolLoader if canForce =>
          // Completing a SymbolLoader might call `markAbsent()`
         completeOnce()
@@ -675,9 +676,9 @@ object SymDenotations {
     final def isSpecializedTraitImplementationClass(using Context): Boolean =
       isClass && name.isSpecializedTraitImplementationName
 
-    /** Is this symbol a specialized trait implementation class that 
+    /** Is this symbol a specialized trait implementation class that
      * was generated from a specialization using only top classes / Nothing
-     * and is therefore not subject to a specialized interface */ 
+     * and is therefore not subject to a specialized interface */
     final def isRawSpecializedTraitImplementationClass(using Context): Boolean =
       isClass && name.isSpecializedTraitImplementationName
 
@@ -933,7 +934,10 @@ object SymDenotations {
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
       if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes
-      then symbol == defn.NullClass || symbol == defn.AnyClass || symbol == defn.AnyValClass || symbol == defn.MatchableClass
+      then symbol == defn.NullClass
+        || symbol == defn.AnyClass
+        || symbol == defn.AnyValClass
+        || symbol == defn.MatchableClass
       else isNullableClassAfterErasure
 
     /** Is this symbol a class of which `null` is a value after erasure?
@@ -1092,11 +1096,11 @@ object SymDenotations {
 
     def isInlineTrait(using Context): Boolean =
       isAllOf(InlineTrait)
-    
-    def isSpecializedMethod(using Context): Boolean = 
+
+    def isSpecializedMethod(using Context): Boolean =
       Specialization.isSpecializedMethod(symbol)
 
-    def isSpecializedTrait(using Context): Boolean = 
+    def isSpecializedTrait(using Context): Boolean =
       Specialization.isSpecializedTrait(symbol)
 
     /** Does this method or field need to be retained at runtime */

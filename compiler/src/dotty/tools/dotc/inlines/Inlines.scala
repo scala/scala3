@@ -129,15 +129,15 @@ object Inlines:
   private def inlineTraitAncestors(cls: TypeDef)(using Context): List[Tree] = cls match {
     case tpd.TypeDef(_, tmpl: Template) =>
       val parentTrees: Map[Symbol, Tree] = tmpl.parents.map(par => symbolFromParent(par) -> par).toMap.filter(_._1.isInlineTrait)
-      
+
       // TODO: We need to stop inlining if there is a non-inline trait or class that sits between the inline trait and the current class.
-      // Because we also inline into other inline traits, it should be possible to do this by just 
+      // Because we also inline into other inline traits, it should be possible to do this by just
       // looking at the direct parents of the class instead of also needing to look at the indirect parents (baseClasses).
       // See inline-trait-non-inline-blocks-inlining.scala
       val ancestors: List[ClassSymbol] =
          cls.tpe.baseClasses.filter(sym => sym != cls.symbol && sym.isInlineTrait
             && !(cls.symbol.asClass.ownersIterator.toList.tail.exists(p => p.isInlineTrait)) // We can skip anything that would be inlined into a class that lives somewhere inside an inline trait
-                                                                                             // because it must be on the RHS of a member definition in the inline trait and so pruned out later                                                                                            
+                                                                                             // because it must be on the RHS of a member definition in the inline trait and so pruned out later
         )
 
       ancestors.flatMap(ancestor =>
@@ -151,7 +151,7 @@ object Inlines:
               report.error(s"unknown base type ${baseTpe.show} for ancestor ${ancestor.show} of ${cls.symbol.show}")
               None
         parentTrees.get(ancestor).orElse(baseTree.map(_.withSpan(cls.span)))
-      ).flatMap { tree => 
+      ).flatMap { tree =>
         tree.tpe match {
           case Specialization(spec) if spec.hasSpecializedParams && !spec.isFullySpecialized => None // these can only exist in cases where we don't want to inline because:
                                                                                                    // 1) they will be pruned out later anyway and if we inline them we will create a loop (as in tests/pos/specialized-trait-inlining-causes-implementation-required-loop-bad.scala)
@@ -286,7 +286,7 @@ object Inlines:
     tree3
   end inlineCall
 
-  private def updateFlagsFromInlinedParent(child: FlagSet, parent: FlagSet): FlagSet = 
+  private def updateFlagsFromInlinedParent(child: FlagSet, parent: FlagSet): FlagSet =
     var updatedFlags = child
     // Parent needs to be initialised so child must also as initialisers have been inlined
     if (!parent.is(NoInits))
@@ -297,8 +297,8 @@ object Inlines:
       updatedFlags &~= PureInterface
     updatedFlags
 
-  private def checkInnerClasses(tmpl: Template)(using Context) = 
-    tmpl.body.foreach { 
+  private def checkInnerClasses(tmpl: Template)(using Context) =
+    tmpl.body.foreach {
       // If we want to add these back, some work was done on this in the original Master Thesis
       // (https://infoscience.epfl.ch/server/api/core/bitstreams/9413f583-46bc-4106-b994-0be32f20eeba/content)
       case innerClass: TypeDef if innerClass.symbol.isClass => report.error("Inline traits may not define inner classes or traits.", innerClass.srcPos)
@@ -320,13 +320,13 @@ object Inlines:
   end checkAndTransformInlineTrait
 
 
-  private def checkInlineTraitOverrides(clsSym: ClassSymbol)(using Context) = 
-    // We need to enforce `override` modifier constraints to ensure that the behaviour is the same as ordinary traits. 
+  private def checkInlineTraitOverrides(clsSym: ClassSymbol)(using Context) =
+    // We need to enforce `override` modifier constraints to ensure that the behaviour is the same as ordinary traits.
     // The usual checks only apply in refChecks which is too late for us.
     def checkInlineTraitOverride(member: Symbol, other: Symbol) =
       if !member.is(Override) && !other.is(Deferred) && member.owner == clsSym then
         report.error(
-          OverrideError("needs `override` modifier", 
+          OverrideError("needs `override` modifier",
                         other.info,
                         member,
                         other,
@@ -336,11 +336,11 @@ object Inlines:
         )
       else if member.owner != clsSym && other.owner != clsSym
           && !other.owner.derivesFrom(member.owner)
-          && !(member.isAnyOverride || member.hasAnnotation(defn.UncheckedOverrideAnnot)) 
-          && (!other.is(Deferred) || other.isAllOf(Given | HasDefault)) 
-          && !member.is(Deferred) 
+          && !(member.isAnyOverride || member.hasAnnotation(defn.UncheckedOverrideAnnot))
+          && (!other.is(Deferred) || other.isAllOf(Given | HasDefault))
+          && !member.is(Deferred)
           && !other.name.is(DefaultGetterName) then
-        
+
         report.error(
           OverrideError(
             s"${clsSym} inherits conflicting members:\n  "
@@ -355,7 +355,7 @@ object Inlines:
           ,
           clsSym.srcPos
         )
-    OverridingPairsChecker(clsSym, clsSym.thisType).checkAll(checkInlineTraitOverride) 
+    OverridingPairsChecker(clsSym, clsSym.thisType).checkAll(checkInlineTraitOverride)
 
   def inlineParentInlineTraits(cls: Tree)(using Context): Tree =
     cls match {
@@ -367,31 +367,31 @@ object Inlines:
         if cls.symbol.isAnonymousClass && ancestors.exists(tree => Specialization.unapply(tree.tpe).exists(anc => anc.isSpecialized || anc.isFullySpecializedToTopClassesOrNothing)) then
           // No need to inline into specialized trait anonymous class instances; these will later be replaced by $impl$ classes.
           return cls
-          
+
         val cycleFound = ancestors.exists { parent =>
           val parentSym = symbolFromParent(parent)
-          val errorPos = 
+          val errorPos =
             // Trying to inline into the tree which defines parentSym (need to catch this separately
-            // as need to catch it before we inline the second time to avoid tripping an assertion) 
+            // as need to catch it before we inline the second time to avoid tripping an assertion)
             if cls.symbol.ownersIterator.contains(parentSym) then
-              Some(cls.srcPos)                                                                            
-            else if ctx.inlineTraitState.inlineOrigins(cls.symbol).contains(parentSym) then 
+              Some(cls.srcPos)
+            else if ctx.inlineTraitState.inlineOrigins(cls.symbol).contains(parentSym) then
               // Select the user code that caused this error so we get two errors if there are two problematic inlines, not one
-              val userPos = tpd.enclosingInlineds.last.srcPos 
+              val userPos = tpd.enclosingInlineds.last.srcPos
               // Trying to inline into the inlined body of parentSym not in the defn tree
-              Some(userPos) 
+              Some(userPos)
             else None // Fine
-            
+
           errorPos.foreach(pos =>
             report.error(s"Inlining of inline traits looped. Tried to inline ${parentSym} into its own body.", pos)
           )
-          
+
           errorPos.nonEmpty
         }
 
-        if cycleFound then 
+        if cycleFound then
           return cls
-        
+
         val newDefs = inContext(ctx.withOwner(cls.symbol)) {
           ancestors.foldLeft((List.empty[Tree], impl.body)) {
             case ((inlineDefs, childDefs), parent) =>
@@ -400,10 +400,10 @@ object Inlines:
               val overriddenSymbols = clsOverriddenSyms ++ inlineDefs.flatMap(_.symbol.allOverriddenSymbols)
               // Need to put the new defs first because we process in linearization order to make overridees correct,
               // but we want parent definitions to come first so that if child inline traits refer to values defined in a parent
-              // inline trait these are defined. 
-              val inlinedDefs1 = parentTraitInliner.expandDefs(overriddenSymbols) ::: inlineDefs 
+              // inline trait these are defined.
+              val inlinedDefs1 = parentTraitInliner.expandDefs(overriddenSymbols) ::: inlineDefs
               cls.symbol.flags = updateFlagsFromInlinedParent(cls.symbol.flags, parent.symbol.flags)
-                    
+
               val childDefs1 = parentTraitInliner.adaptSuperCalls(childDefs)
               (parentTraitInliner.adaptSuperCalls(inlinedDefs1), childDefs1)
           }
@@ -411,11 +411,11 @@ object Inlines:
 
         val newbody = newDefs._1 ::: newDefs._2
         val paramAccessors = newbody.filter(_.symbol.is(ParamAccessor))
-            
+
         for pacc <- paramAccessors
             otherstat <- newbody if !otherstat.symbol.is(ParamAccessor) && otherstat.denot.matches(pacc.denot.asSingleDenotation)
-        do report.error(s"Inlining of inline trait created name conflict on ${pacc.denot.name}. Constructor parameters of inline receivers may not collide with members of inline traits.", pacc.srcPos) 
-          
+        do report.error(s"Inlining of inline trait created name conflict on ${pacc.denot.name}. Constructor parameters of inline receivers may not collide with members of inline traits.", pacc.srcPos)
+
         val impl1 = cpy.Template(impl)(body = newbody)
 
         cpy.TypeDef(cls)(rhs = impl1)
@@ -721,7 +721,7 @@ object Inlines:
     /** The Inlined node representing the inlined call */
     def expand(rhsToInline: Tree): Tree =
 
-      // Special handling of `requireConst` and `codeOf`
+      // Special handling of `requireConst`, `codeOf`, and `Ok`
       callValueArgss match
         case (arg :: Nil) :: Nil =>
           if inlinedMethod == defn.Compiletime_requireConst then
@@ -731,6 +731,8 @@ object Inlines:
             return unitLiteral.withSpan(call.span)
           else if inlinedMethod == defn.Compiletime_codeOf then
             return Intrinsics.codeOf(arg, call.srcPos)
+          else if inlinedMethod == defn.Ok_unapply && arg.tpe.isNotNullNorMaybe then
+            return arg
         case _ =>
 
       // Special handling of `constValue[T]`, `constValueOpt[T]`, `constValueTuple[T]`, `summonInline[T]` and `summonAll[T]`
@@ -919,11 +921,11 @@ object Inlines:
       }
     end expandDefs
 
-    def adaptSuperCalls(defs: List[Tree]) = 
+    def adaptSuperCalls(defs: List[Tree]) =
       val ttmap = TreeTypeMap(treeMap = {
         // We go through all ancestor inline traits so eventually we will find the one with matching parentSym
         case sel@Select(Super(qual, mix), name) if sel.symbol.owner == parentSym =>
-            // At that point either the method is overridden so needs mangling (and we just copied and mangled it in this inlining phase), 
+            // At that point either the method is overridden so needs mangling (and we just copied and mangled it in this inlining phase),
             // or not, in which case call directly by original name. In both cases we are calling the method resulting from inlining, on the
             // inline receiver class.
             Select(This(ctx.owner.asClass), paramAccessorsMapper.getParamAccessorName(sel.symbol.owner, name).getOrElse(name))
@@ -979,11 +981,11 @@ object Inlines:
     }
 
     override protected val inlinerTypeMap: InlinerTypeMap = InlineTraitTypeMap()
-    
+
     override protected val inlinerTreeMap: InlinerTreeMap = InlineTraitTreeMap()
 
     override protected def computeThisBindings(): Unit = ()
-    
+
     override protected def canElideThis(tpe: ThisType): Boolean = true
 
     override protected def inlineCtx(inlineTyper: InlineTyper)(using Context): Context =
@@ -1026,7 +1028,7 @@ object Inlines:
         paramAccessorsMapper
           .getParamAccessorRhs(vdef.symbol.owner, vdef.symbol.name)
           .getOrElse(inlinedRhs(vdef, inlinedSym))
-      
+
       val rhs1 = rhs.changeNonLocalOwners(inlinedSym)
 
       tpd.ValDef(inlinedSym.asTerm, rhs1).withSpan(parent.span)
@@ -1051,7 +1053,7 @@ object Inlines:
         ctx.typeAssigner.assignType(untpd.TypeDef(inlinedSym.name.asTypeName, TypeTree(inlinedRhsType)), inlinedSym).withSpan(parent.span)
       else
         tpd.TypeDef(inlinedSym.asType).withSpan(parent.span)
-      
+
 
     private def inlinedRhs(vddef: ValOrDefDef, inlinedSym: Symbol)(using Context): Tree =
       val rhs = vddef.rhs.changeOwner(vddef.symbol, inlinedSym)
@@ -1062,14 +1064,14 @@ object Inlines:
         rhs
       else
         val symbolMap = mutable.Map[Symbol, Symbol]()
-        // TODO: This inlines also some calls to inline defs that were made in the inline trait body, is that ok? 
+        // TODO: This inlines also some calls to inline defs that were made in the inline trait body, is that ok?
         val rhs1 = Inlined(tpd.ref(parentSym).withSpan(parent.span), Nil, inlined(rhs)._2.withSpan(parent.span).cloneIn(parentSym.source)).withSpan(parent.span)
-        
+
         // In case of nested inline trait inlines, because BodyAnnotation is out of date,
         // body inlined misses nested expansion, but we have the symbols for the items that should be there
         // Remove them so that they can be inlined properly later.
         val ttmap = TreeTypeMap(treeMap = {
-          case tree@TypeDef(name, tmpl: Template) if Inlines.needsInlining(tree) => 
+          case tree@TypeDef(name, tmpl: Template) if Inlines.needsInlining(tree) =>
             val newSym = tree.symbol.copy(coord = spanCoord(tree.span))  // Coord should correspond to original location because we will inline from there.
             newSym.info = ClassInfo(tree.symbol.owner.thisType, newSym.asClass, tree.symbol.asClass.parentTypes, Scopes.newScope)
 
@@ -1155,7 +1157,7 @@ object Inlines:
 
   class InlineTraitState(
     // For a class symbol created during inlining of an inline trait,
-    // the chain of inlined traits which produced it. We don't actually care about the order. 
+    // the chain of inlined traits which produced it. We don't actually care about the order.
     // Used as a "seen list" for cycle checking. Persists across invocations of InlineParentTrait
     val inlineOrigins: mutable.Map[Symbol, Set[Symbol]] = mutable.HashMap[Symbol, Set[Symbol]]().withDefaultValue(Set.empty),
     val inlineTraitsPhase: InlineTraitState.InlineContext = InlineTraitState.InlineContext.None
