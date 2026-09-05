@@ -71,7 +71,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
   val earlyCommonResources: Seq[Resource] =
     List(
-      "scripts/theme.js"
+      "scripts/theme.js",
+      "scripts/featureToggles.js"
     ).map(dottyRes)
 
   val commonResources: Seq[Resource] = {
