@@ -571,7 +571,8 @@ object SymDenotations {
       myTargetName = name
 
     def hasTargetName(name: Name)(using Context): Boolean =
-      targetName.matchesTargetName(name)
+      // Don't bother looking at annotations if we're looking for a name that will always match
+      name.isEmpty || targetName.matchesTargetName(name)
 
     /** The name given in a `@targetName` annotation if one is present, `name` otherwise */
     def targetName(using Context): Name =

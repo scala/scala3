@@ -165,7 +165,7 @@ class TreeUnpickler(reader: TastyReader,
                 using ctx.withOwner(owner).withModeBits(mode).withSource(source))
           catch
             case ex: CyclicReference => throw ex
-            case NonFatal(ex) => throw UnpicklingError(denot, where, ex)
+            case NonFatal(ex) if !ex.isInstanceOf[RecursionOverflow] => throw UnpicklingError(denot, where, ex)
           finally
             cleanup()
   }
@@ -1854,7 +1854,7 @@ class TreeUnpickler(reader: TastyReader,
      */
     def sourceChangeContext(addr: Addr = currentAddr)(using Context): Context = {
       val path = sourcePathAt(addr)
-      if (path.nonEmpty) {
+      if (!path.isEmpty) {
         val sourceFile = ctx.getSource(path)
         posUnpicklerOpt match
           case Some(posUnpickler) if !sourceFile.initialized =>

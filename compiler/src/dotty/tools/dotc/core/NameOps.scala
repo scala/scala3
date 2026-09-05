@@ -196,9 +196,9 @@ object NameOps {
       }
     }
 
-    /** Do two target names match? An empty target name matchws any other name. */
+    /** Do two target names match? An empty target name matches any other name. */
     def matchesTargetName(other: Name) =
-      name == other || name.isEmpty || other.isEmpty
+      name.isEmpty || other.isEmpty || name == other
 
     private def functionSuffixStart: Int =
       val first = name.firstPart

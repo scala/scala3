@@ -57,7 +57,7 @@ object MarkupParsers {
     import Tokens.{ LBRACE, RBRACE }
 
     type PositionType = Span
-    type InputType    = CharArrayReader
+    type InputType    = StringReader
     type ElementType  = Tree
     type AttributesType = mutable.Map[String, Tree]
     type NamespaceType = Any  // namespaces ignored
@@ -71,7 +71,7 @@ object MarkupParsers {
       if (ch == SU) throw TruncatedXMLControl
       else reportSyntaxError(msg)
 
-    var input : CharArrayReader = uninitialized
+    var input : StringReader = uninitialized
     def lookahead(): BufferedIterator[Char] =
       (input.buf drop input.charOffset).iterator.buffered
 

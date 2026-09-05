@@ -6,9 +6,9 @@ import util.Chars.*
 
 import scala.compiletime.uninitialized
 
-abstract class CharArrayReader { self =>
+abstract class StringReader { self =>
 
-  val buf: Array[Char]
+  val buf: String
   val endIdx: Int  // up to where `buf` should be read
 
   protected def startFrom: Int = 0
@@ -44,7 +44,7 @@ abstract class CharArrayReader { self =>
     if (idx >= endIdx)
       ch = SU
     else {
-      val c = buf(idx)
+      val c = buf.charAt(idx)
       ch = c
       if (c == '\\') potentialUnicode()
       else if (c < ' ') { skipCR(); potentialLineEnd() }
@@ -64,7 +64,7 @@ abstract class CharArrayReader { self =>
     if (idx >= endIdx)
       ch = SU
     else {
-      val c = buf(idx)
+      val c = buf.charAt(idx)
       ch = c
       if (c == '\\') potentialUnicode()
     }
@@ -74,7 +74,7 @@ abstract class CharArrayReader { self =>
   private def potentialUnicode(): Unit = {
     def evenSlashPrefix: Boolean = {
       var p = charOffset - 2
-      while (p >= 0 && buf(p) == '\\') p -= 1
+      while (p >= 0 && buf.charAt(p) == '\\') p -= 1
       (charOffset - p) % 2 == 0
     }
     def udigit: Int =
@@ -86,15 +86,15 @@ abstract class CharArrayReader { self =>
         SU
       }
       else {
-        val d = digit2int(buf(charOffset), 16)
+        val d = digit2int(buf.charAt(charOffset), 16)
         if (d >= 0) charOffset += 1
         else error("error in unicode escape", charOffset)
         d
       }
-    if (charOffset < endIdx && buf(charOffset) == 'u' && decodeUni && evenSlashPrefix) {
+    if (charOffset < endIdx && buf.charAt(charOffset) == 'u' && decodeUni && evenSlashPrefix) {
       while ({
         charOffset += 1
-        charOffset < endIdx && buf(charOffset) == 'u'
+        charOffset < endIdx && buf.charAt(charOffset) == 'u'
       })
       ()
       val code = udigit << 12 | udigit << 8 | udigit << 4 | udigit
@@ -106,7 +106,7 @@ abstract class CharArrayReader { self =>
   /** replace CR;LF by LF */
   private def skipCR(): Unit =
     if (ch == CR)
-      if (charOffset < endIdx && buf(charOffset) == LF) {
+      if (charOffset < endIdx && buf.charAt(charOffset) == LF) {
         charOffset += 1
         ch = LF
       }
@@ -118,12 +118,12 @@ abstract class CharArrayReader { self =>
   def isAtEnd: Boolean = charOffset >= endIdx
 
   /** A new reader that takes off at the current character position */
-  def lookaheadReader(): CharArrayLookaheadReader = new CharArrayLookaheadReader
+  def lookaheadReader(): StringLookaheadReader = new StringLookaheadReader
 
   def lookaheadChar(): Char = lookaheadReader().getc()
 
-  class CharArrayLookaheadReader extends CharArrayReader {
-    val buf: Array[Char] = self.buf
+  class StringLookaheadReader extends StringReader {
+    val buf: String = self.buf
     val endIdx = self.endIdx
     charOffset = self.charOffset
     ch = self.ch

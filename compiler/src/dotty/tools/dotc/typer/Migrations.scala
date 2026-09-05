@@ -88,7 +88,7 @@ trait Migrations:
     }
     val mversion = mv.FunctionUnderscore
     def remedy =
-      if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
+      if ((prefix + suffix).isEmpty) "simply leave out the trailing ` _`"
       else s"use `$prefix<function>$suffix` instead"
     def rewrite = Message.rewriteNotice("This construct", mversion.patchFrom)
     report.errorOrMigrationWarning(
@@ -167,9 +167,11 @@ trait Migrations:
     val ptSpan = pt.args.head.span
     ptSpan.exists
     && tree.span.exists
-    && ctx.source.content
-      .slice(tree.span.end, ptSpan.start)
-      .exists(_ == '(')
+    && {
+      val content = ctx.source.textContent()
+      val idx = content.indexOf('(', from = tree.span.end)
+      0 <= idx && idx < ptSpan.start
+    }
 
   private def patchImplicitParams(tree: Tree, pt: FunProto)(using Context): Unit =
     patch(Span(pt.args.head.span.start), "using ")
@@ -348,7 +350,7 @@ trait Migrations:
      */
     private def wrapIntoMain(cdef: untpd.TypeDef, appParent: tpd.Tree, stmts: List[tpd.Tree])(using Context): Option[String] =
       val src = ctx.source
-      val content = src.content()
+      val content = src.textContent()
       val appStart = appParent.span.start
       val appEnd = appParent.span.end
 
@@ -359,7 +361,7 @@ trait Migrations:
         val ls = src.startOfLine(offset)
         var k = ls
         while k < content.length && isHSpace(content(k)) do k += 1
-        String(content, ls, k - ls)
+        content.substring(ls, k)
 
       // Is `offset` preceded on its line only by whitespace?
       def startsOwnLine(offset: Int): Boolean =

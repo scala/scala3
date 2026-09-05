@@ -44,7 +44,7 @@ object WrappedSourceFile:
         val result =
           if magicHeader.isEmpty then NoHeader
           else
-            val text = new String(sourceFile.content)
+            val text = sourceFile.textContent()
             val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
             val regex = s"(?m)^$headerQuoted:(.+)$$".r
             regex.findFirstMatchIn(text) match
@@ -64,20 +64,24 @@ object WrappedSourceFile:
       case result => result
 
 class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec: Codec) extends interfaces.SourceFile {
-  private var myContent: Array[Char] | Null = null
+  private var myContent: String | Null = null
 
   private var _maybeIncomplete: Boolean = false
 
   def maybeIncomplete: Boolean = _maybeIncomplete
 
+  @deprecated("Use `textContent` to not require a copy of the data.")
+  override def content(): Array[Char] =
+    textContent().toCharArray
+
   /** The contents of the original source file. Note that this can be empty, for example when
    * the source is read from Tasty. */
-  def content(): Array[Char] =
-    if file == null then Array.emptyCharArray
+  override def textContent(): String =
+    if file == null then ""
     else
       initialize(myContent, myContent = _,
-        try new String(file.toByteArray, codec.charSet).toCharArray
-        catch case _: FileSystemException => Array.empty[Char]
+        try new String(file.toByteArray, codec.charSet)
+        catch case _: FileSystemException => ""
       )
 
   override def name: String =
@@ -123,14 +127,14 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
 
   override def hashCode: Int = if file eq null then 0 else file.hashCode
 
-  def apply(idx: Int): Char = content().apply(idx)
+  def apply(idx: Int): Char = textContent().charAt(idx)
 
   /** length of the original source file
-   * Note that when the source is from Tasty, content() could be empty even though length > 0.
-   * Use content().length to determine the length of content(). */
+   * Note that when the source is from Tasty, textContent() could be empty even though length > 0.
+   * Use textContent().length to determine the length of content(). */
   def length: Int =
     if lineIndicesCache ne null then lineIndicesCache.last
-    else content().length
+    else textContent().length
 
   /** true for all source files except `NoSource` */
   def exists: Boolean = true
@@ -140,7 +144,7 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
     else NoSourcePosition
 
   private def calculateLineIndicesFromContents() = {
-    val cs = content()
+    val cs = textContent()
     val buf = new ArrayBuffer[Int]
     buf += 0
     var i = 0
@@ -209,7 +213,7 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
 
   /** The content of the line containing position `offset` */
   def lineContent(offset: Int): String =
-    content.slice(startOfLine(offset), nextLine(offset)).mkString
+    textContent.substring(startOfLine(offset), nextLine(offset))
 
   /** The column corresponding to `offset`, starting at 0 */
   def column(offset: Int): Int = {
@@ -222,7 +226,7 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
     var idx = startOfLine(offset)
     val pad = new StringBuilder
     while (idx != offset) {
-      pad.append(if (idx < content().length && content()(idx) == '\t') '\t' else ' ')
+      pad.append(if (idx < textContent().length && textContent()(idx) == '\t') '\t' else ' ')
       idx += 1
     }
     pad.result()
