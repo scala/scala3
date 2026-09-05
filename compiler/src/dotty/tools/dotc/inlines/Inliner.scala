@@ -353,7 +353,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       if bindingFlags.is(Inline) && argIsBottom then
         newArg = Typed(newArg, TypeTree(formal.widenExpr)) // type ascribe RHS to avoid type errors in expansion. See i8612.scala
       if isByName then DefDef(boundSym, newArg)
-      else ValDef(boundSym, newArg, inferred = true)
+      else ValDef(boundSym, newArg)
     }.withSpan(boundSym.span)
     if !argIsBottom then // Record typer skolem on the proxy ValDef, so the `avoidingType` can avoid proxy to skolem.
       skolem.foreach(binding.putAttachment(TypeAssigner.InlineProxySkolem, _))
@@ -810,7 +810,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     // corresponding arguments or proxies on the type and term level. It also changes
     // the owner from the inlined method to the current owner.
 
-    // This is reused through InlineTraitAncestors for inline traits, so inlinedMethod might not exist there  
+    // This is reused through InlineTraitAncestors for inline traits, so inlinedMethod might not exist there
     val oldOwners = if (inlinedMethod.exists) then inlinedMethod :: Nil else Nil
     val newOwners = if (inlinedMethod.exists) then ctx.owner :: Nil else Nil
 
