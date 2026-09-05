@@ -130,7 +130,7 @@ object Checking {
 
     def checkWildcardApply(tp: Type): Unit = tp match {
       case tp @ AppliedType(tycon, _) =>
-        if tp.isUnreducibleWild then
+        if tp.isUnreducibleWild(isInferred = !tpt.isEmpty) then
           report.errorOrMigrationWarning(
             showInferred(UnreducibleApplication(tycon), tp, tpt),
             tree.srcPos, MigrationVersion.Scala2to3)
