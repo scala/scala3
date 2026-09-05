@@ -986,7 +986,18 @@ class Inliner(val call: tpd.Tree)(using Context):
       // For instance in tests/pos/i22070 when we type `Featureful[?]#toFeatures`,
       // `selectionType` will skolemize the prefix, find the denotation,
       // and then set that denotation for the `TermRef(Featureful[?], symbol toFeatures)`.
-      val reselectedType = selectionType(tree, qual1)
+      // But skip it when it cannot select anything else than what we already have: for an
+      // unstable prefix `selectionType` creates a *fresh* skolem on every call (see
+      // `maybeSkolemizePrefix`), and since the `NamedType` it returns is shared, computing
+      // it again silently changes the meaning of the types that were derived from the
+      // previous denotation. That is how the same selection ended up carrying two different
+      // skolems in i26681.
+      val reselectedType = tree.typeOpt match
+        case tpe: NamedType
+        if tpe.denotationIsCurrent
+           && skolemizesPrefix(tpe.prefix, tree.name)
+           && tpe.prefix == qual1.tpe.widenIfUnstable => tpe
+        case _ => selectionType(tree, qual1)
 
       def isConcreteImplementationOf(reselected: Symbol, overridden: Symbol)(using Context): Boolean =
         reselected.isTerm
