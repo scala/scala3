@@ -3497,6 +3497,37 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         body ++ givenImpls
     end implementDeferredGivens
 
+    /** For an abstract member of `cls` that is only implemented indirectly, by an inline
+     *  method from an unrelated base class (i.e. that method's own hierarchy doesn't
+     *  directly override the abstract member), synthesize a private, non-inline helper
+     *  in `cls` whose body inline-expands a call to that method. When the referenced inline
+     *  method is erased, the helper will take it's place for runtime invocations.
+     */
+    def addIndirectInlineRetainers(body: List[Tree]): List[Tree] =
+      if ctx.isAfterTyper || cls.isRefinementClass then body
+      else
+        def hasMatchingInlineMethod(cls: ClassSymbol, sym: Symbol) =
+          cls.baseClasses.tail.exists(_.info.decl(sym.name).symbol.isInlineMethod)
+        def alreadyHandledByBaseClass(cls: ClassSymbol, sym: Symbol, impl: Symbol) =
+          cls.baseClasses.tail.exists(bc => bc.derivesFrom(sym.owner) && bc.derivesFrom(impl.owner))
+        val indirectBodyRetainers =
+          for
+            bc <- cls.baseClasses.tail
+            sym <- bc.info.decls.toList
+            if sym.is(DeferredTerm) && !sym.is(JavaDefined)
+              && hasMatchingInlineMethod(cls, sym)
+              && !RefChecks.ignoreDeferred(cls, sym, checkJavaErasedOverriding = false)
+            impl = RefChecks.implementationOf(cls, sym).toDenot(cls.thisType).symbol
+            if impl.exists
+              && !impl.owner.flags.is(Flags.Inline) // let's not interfere with inline traits
+              && !impl.allOverriddenSymbols.contains(sym)
+              && impl.isInlineMethod
+              && !alreadyHandledByBaseClass(cls, sym, impl)
+          yield Inlines.indirectBodyRetainer(sym, impl, cls)
+
+        body ++ indirectBodyRetainers
+    end addIndirectInlineRetainers
+
     ensureCorrectSuperClass()
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
@@ -3527,10 +3558,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     else {
       val dummy = localDummy(cls, impl)
       val body1 =
-        implementDeferredGivens(
-          addParentRefinements(
-            addAccessorDefs(cls,
-              typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)))
+        addIndirectInlineRetainers(
+          implementDeferredGivens(
+            addParentRefinements(
+              addAccessorDefs(cls,
+                typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1))))
 
       if !ctx.isAfterTyper && cls.isInlineTrait then
         body1.map(_.symbol).filter(_.isInlineTrait).foreach(innerInlTrait =>
