@@ -30,6 +30,11 @@ import scala.collection.mutable.Builder
 @SerialVersionUID(3L)
 final class DefaultSerializationProxy[A](factory: Factory[A, Any], @transient private val coll: Iterable[A]^) extends Serializable {
 
+  /** A transient builder used during deserialization to reconstruct the collection.
+    *
+    *  This builder is initialized in `readObject` and populated with deserialized
+    *  elements before being converted to the final collection in `readResolve`.
+    */
   @transient protected var builder: Builder[A, Any] = compiletime.uninitialized
 
   private def writeObject(out: ObjectOutputStream): Unit = {
@@ -65,6 +70,11 @@ final class DefaultSerializationProxy[A](factory: Factory[A, Any], @transient pr
     }
   }
 
+  /** Returns the reconstructed collection after deserialization.
+    *
+    *  This method is called automatically during deserialization to convert the
+    *  populated builder into the final collection instance.
+    */
   protected def readResolve(): Any = builder.result()
 }
 
@@ -78,6 +88,14 @@ private[collection] case object SerializeEnd
   * serialization scheme.
   */
 transparent trait DefaultSerializable extends Serializable { this: scala.collection.Iterable[?]^ =>
+  /** Returns a serialization proxy for this collection.
+    *
+    *  This method is called during serialization to replace the collection with
+    *  a `DefaultSerializationProxy` that handles the serialization and
+    *  deserialization process. The proxy uses the appropriate factory based on
+    *  the collection type (e.g., `iterableFactory`, `mapFactory`, etc.) to ensure
+    *  correct reconstruction during deserialization.
+    */
   protected def writeReplace(): AnyRef^{this} = {
     val f: Factory[Any, Any] = this match {
       case it: scala.collection.SortedMap[?, ?] => it.sortedMapFactory.sortedMapFactory[Any, Any](using it.ordering.asInstanceOf[Ordering[Any]]).asInstanceOf[Factory[Any, Any]]

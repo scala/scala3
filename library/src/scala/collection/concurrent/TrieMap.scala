@@ -732,10 +732,19 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
   private var equalityobj = ef
   @transient
   private var rootupdater: AtomicReferenceFieldUpdater[TrieMap[K, V], AnyRef] | Null = rtupd
+  /** Returns the hashing function used to compute hash codes for keys in this TrieMap.
+   */
   def hashing = hashingobj
+  /** Returns the equivalence relation used by this TrieMap.
+   */
   def equality = equalityobj
   @volatile private var root = r
 
+  /** Initializes a new TrieMap with the specified hashing function and equivalence relation for key comparison.
+   *
+   *  @param hashf the hashing function
+   *  @param ef the equivalence relation
+   */
   def this(hashf: Hashing[K], ef: Equiv[K]) = this(
     INode.newRootNode(ef),
     AtomicReferenceFieldUpdater.newUpdater(classOf[TrieMap[K, V]], classOf[AnyRef], "root"),
@@ -743,8 +752,12 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
     ef
   )
 
+  /** Initializes a new TrieMap with default universal equivalence and hashing for key comparison.
+   */
   def this() = this(Hashing.default, Equiv.universal)
 
+  /** Returns the TrieMap companion object as the factory for creating new TrieMap instances.
+   */
   override def mapFactory: MapFactory[TrieMap] = TrieMap
 
   /* internal methods */
@@ -871,12 +884,18 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
   }
 
 
+  /** Returns a string representation of the trie structure rooted at this TrieMap's root node.
+   */
   def string: String = RDCSS_READ_ROOT().string(0)
 
   /* public methods */
 
+  /** Returns `true` if this TrieMap is a read-only snapshot (its root updater is `null`).
+   */
   def isReadOnly = rootupdater eq null
 
+  /** Returns `true` if this TrieMap is mutable (its root updater is not `null`).
+   */
   def nonReadOnly = rootupdater ne null
 
   /** Returns a snapshot of this TrieMap.
@@ -918,13 +937,25 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
     else readOnlySnapshot()
   }
 
+  /** Atomically removes all key-value pairs from this TrieMap by swapping in
+   *  a fresh empty root node, retrying until the swap succeeds.
+   */
   @tailrec override def clear(): Unit = {
     val r = RDCSS_READ_ROOT()
     if (!RDCSS_ROOT(r, r.gcasRead(this), INode.newRootNode[K, V](equality))) clear()
   }
 
+  /** Computes the hash code for the specified key using this TrieMap's hashing function.
+   *
+   *  @param k the key to compute the hash code for
+   */
   def computeHash(k: K) = hashingobj.hash(k)
 
+  /** Looks up the value associated with the key, returning `null` if the key is not present.
+   *
+   *  @param k the key to look up
+   *  @return the value associated with the key, or `null` if the key is not present
+   */
   @deprecated("Use getOrElse(k, null) instead.", "2.13.0")
   def lookup(k: K): V = {
     val hc = computeHash(k)
@@ -933,6 +964,12 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
     res.asInstanceOf[V]
   }
 
+  /** Returns the value associated with the specified key.
+   *
+   *  @param k the key to look up
+   *  @return the value associated with the key
+   *  @throws NoSuchElementException if the key is not present
+   */
   override def apply(k: K): V = {
     val hc = computeHash(k)
     val res = lookuphc(k, hc)
@@ -940,37 +977,72 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
     else res.asInstanceOf[V]
   }
 
+  /** Returns the value associated with the specified key.
+   *
+   *  @param k the key to look up
+   *  @return the value associated with the key, or `None` if the key is not present
+   */
   def get(k: K): Option[V] = {
     val hc = computeHash(k)
     val res = lookuphc(k, hc)
     if (res eq INodeBase.NO_SUCH_ELEMENT_SENTINEL) None else Some(res).asInstanceOf[Option[V]]
   }
 
+  /** Inserts or overwrites the key-value pair, returning the previous value if any.
+   *
+   *  @param key the key to insert
+   *  @param value the value to associate with the key
+   *  @return the previous value associated with the key, or `None` if the key was not present
+   */
   override def put(key: K, value: V): Option[V] = {
     val hc = computeHash(key)
     insertifhc(key, hc, value, INode.KEY_PRESENT_OR_ABSENT, fullEquals = false /* unused */)
   }
 
+  /** Inserts or updates the value associated with the specified key.
+   *
+   *  @param k the key to update
+   *  @param v the new value to associate with the key
+   */
   override def update(k: K, v: V): Unit = {
     val hc = computeHash(k)
     inserthc(k, hc, v)
   }
 
+  /** Adds the given key-value pair to this TrieMap, returning this TrieMap.
+   *
+   *  @param kv the key-value pair to add
+   */
   def addOne(kv: (K, V)) = {
     update(kv._1, kv._2)
     this
   }
 
+  /** Removes the key-value pair with the specified key unconditionally, returning the previous value if any.
+   *
+   *  @param k the key to remove
+   *  @return the previous value associated with the key, or `None` if the key was not present
+   */
   override def remove(k: K): Option[V] = {
     val hc = computeHash(k)
     removehc(k = k, v = null.asInstanceOf[V], RemovalPolicy.Always, hc = hc)
   }
 
+  /** Removes the entry with the specified key from this TrieMap, if present, returning this TrieMap.
+   *
+   *  @param k the key to remove
+   */
   def subtractOne(k: K) = {
     remove(k)
     this
   }
 
+  /** Inserts the key-value pair only if the key is not already present, returning the previous value if any.
+   *
+   *  @param k the key to insert
+   *  @param v the value to associate with the key
+   *  @return the previous value associated with the key, or `None` if the key was not present
+   */
   def putIfAbsent(k: K, v: V): Option[V] = {
     val hc = computeHash(k)
     insertifhc(k, hc, v, INode.KEY_ABSENT, fullEquals = false /* unused */)
@@ -1006,6 +1078,12 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
     }
   }
 
+  /** Removes the key-value pair only if the current value matches `v`, returning true if removed.
+   *
+   *  @param k the key to remove
+   *  @param v the value to compare against the current value associated with the key
+   *  @return true if the key-value pair was removed, false otherwise
+   */
   def remove(k: K, v: V): Boolean = {
     val hc = computeHash(k)
     removehc(k, v, RemovalPolicy.FullEquals, hc).nonEmpty
@@ -1016,6 +1094,13 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
     removehc(k, v, RemovalPolicy.ReferenceEq, hc).nonEmpty
   }
 
+  /** Replaces the value associated with the key only if the current value matches `oldvalue`, returning true if replaced.
+   *
+   *  @param k the key to replace
+   *  @param oldvalue the expected old value
+   *  @param newvalue the new value to associate with the key
+   *  @return true if the replacement was successful, false otherwise
+   */
   def replace(k: K, oldvalue: V, newvalue: V): Boolean = {
     val hc = computeHash(k)
     insertifhc(k, hc, newvalue, oldvalue.asInstanceOf[AnyRef], fullEquals = true).nonEmpty
@@ -1026,11 +1111,19 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
     insertifhc(k, hc, newValue, oldValue.asInstanceOf[AnyRef], fullEquals = false).nonEmpty
   }
 
+  /** Replaces the value associated with the key only if the key is present, returning the previous value if any.
+   *
+   *  @param k the key to replace
+   *  @param v the new value to associate with the key
+   *  @return the previous value associated with the key, or `None` if the key was not present
+   */
   def replace(k: K, v: V): Option[V] = {
     val hc = computeHash(k)
     insertifhc(k, hc, v, INode.KEY_PRESENT, fullEquals = false /* unused */)
   }
 
+  /** Returns an iterator over the key-value pairs, using a read-only snapshot if the TrieMap is mutable.
+   */
   def iterator: Iterator[(K, V)] = {
     if (nonReadOnly) readOnlySnapshot().iterator
     else new TrieMapIterator(0, this)
@@ -1043,35 +1136,62 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
   // view of the data if there is a concurrent writer
   // Note that the we don't need overrides for keysIterator or valuesIterator
   // TrieMapTest validates the behaviour.
+  /** Returns an iterable over the values, using a read-only snapshot if the TrieMap is mutable.
+   */
   override def values: Iterable[V] = {
     if (nonReadOnly) readOnlySnapshot().values
     else super.values
   }
+  /** Returns a set of the keys, using a read-only snapshot if the TrieMap is mutable.
+   */
   override def keySet: Set[K] = {
     if (nonReadOnly) readOnlySnapshot().keySet
     else super.keySet
   }
 
+  /** Returns a view of this TrieMap, using a read-only snapshot if the TrieMap is mutable.
+   */
   override def view: MapView[K, V] = if (nonReadOnly) readOnlySnapshot().view else super.view
 
+  /** Returns a view of this TrieMap with keys filtered by the specified predicate.
+   *
+   *  @param p the predicate to filter keys by
+   */
   @deprecated("Use .view.filterKeys(f). A future version will include a strict version of this method (for now, .view.filterKeys(p).toMap).", "2.13.0")
   override def filterKeys(p: K => Boolean): collection.MapView[K, V]^{p} = view.filterKeys(p)
 
+  /** Returns a view of this TrieMap with values transformed by the specified function.
+   *
+   *  @tparam W the type of the transformed values
+   *  @param f the function to transform values with
+   */
   @deprecated("Use .view.mapValues(f). A future version will include a strict version of this method (for now, .view.mapValues(f).toMap).", "2.13.0")
   override def mapValues[W](f: V => W): collection.MapView[K, W]^{f} = view.mapValues(f)
   // END extra overrides
   ///////////////////////////////////////////////////////////////////
 
+  /** Returns the size of this TrieMap, using a read-only snapshot if the TrieMap is mutable.
+   */
   override def size: Int =
     if (nonReadOnly) readOnlySnapshot().size
     else RDCSS_READ_ROOT().cachedSize(this)
+  /** Returns the known size of this TrieMap: always -1 if this TrieMap is
+   *  mutable (it may be modified concurrently), otherwise the cached size of
+   *  the read-only snapshot's root, or -1 if that has not been computed yet.
+   */
   override def knownSize: Int =
     if (nonReadOnly) -1
     else RDCSS_READ_ROOT().knownSize(this)
+  /** Returns `true` if this TrieMap contains no key-value pairs, using a read-only snapshot if the TrieMap is mutable.
+   */
   override def isEmpty: Boolean =
     (if (nonReadOnly) readOnlySnapshot() else this).sizeIs == 0 // sizeIs checks knownSize
+  /** Returns the class name of this TrieMap for use in string representation.
+   */
   override protected def className = "TrieMap"
 
+  /** Returns the last key-value pair of this TrieMap, or `None` if this TrieMap is empty or the last element cannot be retrieved because of a concurrent modification.
+   */
   override def lastOption: Option[(K, V)] = if (isEmpty) None else Try(last).toOption
 }
 
@@ -1079,16 +1199,46 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
 @SerialVersionUID(3L)
 object TrieMap extends MapFactory[TrieMap] {
 
+  /** Returns a new empty TrieMap with default hashing and equivalence.
+   *
+   *  @tparam K the type of keys
+   *  @tparam V the type of values
+   *  @return an empty TrieMap
+   */
   def empty[K, V]: TrieMap[K, V] = new TrieMap[K, V]
 
+  /** Creates a new TrieMap populated with the key-value pairs from the specified iterable.
+   *
+   *  @tparam K the type of keys
+   *  @tparam V the type of values
+   *  @param it the iterable to create the TrieMap from
+   *  @return a new TrieMap containing the key-value pairs from the iterable
+   */
   def from[K, V](it: IterableOnce[(K, V)]^): TrieMap[K, V] = new TrieMap[K, V]() ++= it
 
+  /** Returns a new builder for constructing TrieMaps from key-value pairs.
+   *
+   *  @tparam K the type of keys
+   *  @tparam V the type of values
+   *  @return a new builder for TrieMap
+   */
   def newBuilder[K, V]: mutable.GrowableBuilder[(K, V), TrieMap[K, V]] = new GrowableBuilder(empty[K, V])
 
+  /** The atomic field updater used to update the `mainnode` field of `INodeBase` instances.
+   */
   @transient
   val inodeupdater: AtomicReferenceFieldUpdater[INodeBase[?, ?], MainNode[?, ?]] = AtomicReferenceFieldUpdater.newUpdater(classOf[INodeBase[?, ?]], classOf[MainNode[?, ?]], "mainnode")
 
+  /** A hashing function that mangles the hash code of keys.
+   *
+   *  @tparam K the type of keys
+   */
   class MangledHashing[K] extends Hashing[K] {
+    /** Computes and mangles the hash code of the key for better distribution in the TrieMap.
+     *
+     *  @param k the key to compute the hash code for
+     *  @return the hash code
+     */
     def hash(k: K): Int = scala.util.hashing.byteswap32(k.##)
   }
 
