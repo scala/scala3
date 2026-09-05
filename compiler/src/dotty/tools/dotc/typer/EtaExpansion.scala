@@ -13,6 +13,8 @@ import NameKinds.UniqueName
 import util.Spans.*
 import collection.mutable
 import Trees.*
+import qualified_types.QualifiedTypes
+import config.Feature
 
 /** A class that handles argument lifting. Argument lifting is needed in the following
  *  scenarios:
@@ -58,7 +60,7 @@ abstract class Lifter {
   protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: Tree)(using Context): Tree =
     ref(lifted.termRef)
 
-  private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
+  private[typer] def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
     else {
       val name = UniqueName.fresh(prefix)
@@ -73,6 +75,23 @@ abstract class Lifter {
         .withSpan(expr.span)
         .changeNonLocalOwners(lifted)
         .setDefTree
+      if Feature.qualifiedTypesEnabled then
+        // Only transfer an existing skolem index from `expr` to the lifted
+        // symbol. If `expr` doesn't already carry one (no qualified-type
+        // machinery touched it), no caller will consult the lifted symbol,
+        // so we skip stamping — keeps the annotation out of unrelated
+        // output (e.g. quoted `Expr.show` in staging tests).
+        QualifiedTypes.treeSkolemIndexOpt(expr, QualifiedTypes.skolemOwner) match
+          case Some((_, idx)) =>
+            lifted.addAnnotation(
+              Annotations.Annotation(
+                defn.QualifierSkolemIndexAnnot,
+                tpd.Literal(Constants.Constant(idx)),
+                expr.span
+              )
+            )
+          case None =>
+            ()
       onLiftedDef(liftedTree)
       defs += liftedTree
       liftedRef(lifted, liftedType, expr).withSpan(expr.span.focus)
@@ -95,7 +114,7 @@ abstract class Lifter {
   }
 
   /** Lift a function argument, stripping any NamedArg wrapper and repeated Typed trees */
-  private def liftArg(defs: mutable.ListBuffer[Tree], arg: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
+  def liftArg(defs: mutable.ListBuffer[Tree], arg: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     arg match {
       case arg @ NamedArg(name, arg1) => cpy.NamedArg(arg)(name, lift(defs, arg1, prefix))
       case arg @ Typed(arg1, tpt) if tpt.typeOpt.isRepeatedParam => cpy.Typed(arg)(lift(defs, arg1, prefix), tpt)
@@ -194,6 +213,9 @@ class LiftComplex extends Lifter {
   def noLift(expr: tpd.Tree)(using Context): Boolean = tpd.isPurePath(expr)
 }
 object LiftComplex extends LiftComplex
+
+object LiftUnstable extends Lifter:
+  def noLift(expr: tpd.Tree)(using Context): Boolean = expr.tpe.isStable
 
 /** Lifter for eta expansion */
 object EtaExpansion extends LiftImpure {
