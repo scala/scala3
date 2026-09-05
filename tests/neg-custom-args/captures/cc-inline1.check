@@ -1,0 +1,108 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-inline1.scala:51:41 -----------------------------------
+51 |  val leaked1 = Fs.useFile(f => llist.map({x => f.write(x); x + 1})) // error
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                Found:    scala.collection.immutable.LazyListIterable[Int]^{f}
+   |                                Required: scala.collection.immutable.LazyListIterable[Int]
+   |
+   |                                Note that capability `f` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-inline1.scala:52:32 -----------------------------------
+52 |  val leaked2 = Fs.useFile(l => l) // error
+   |                                ^
+   |Found:    (l : Fs.FileHandle^{any})
+   |Required: Fs.FileHandle
+   |
+   |Note that capability `any` cannot flow into capture set {}.
+   |
+   |where:    any is a root capability created in anonymous function of type (l²: Fs.FileHandle^): Fs.FileHandle of parameter parameter l of method $anonfun
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-inline1.scala:53:32 -----------------------------------
+53 |  val leaked3 = Fs.useFile(f => () => f.write(42)) // error
+   |                                ^^^^^^^^^^^^^^^^^
+   |                                Found:    () ->{f} Unit
+   |                                Required: () -> Unit
+   |
+   |                                Note that capability `f` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-inline1.scala:55:56 -----------------------------------
+55 |    val proxy: (f: Fs.FileHandle^) -> () -> Unit = f => () => f.write(42) // error
+   |                                                        ^^^^^^^^^^^^^^^^^
+   |                                                       Found:    () ->{f} Unit
+   |                                                       Required: () -> Unit
+   |
+   |                                                       Note that capability `f` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-inline1.scala:61:33 -----------------------------------
+61 |  val _: LazyListIterable[Int] = leaked1 // error
+   |                                 ^^^^^^^
+   |                                 Found:    (leaked1 :
+   |                                   scala.collection.immutable.LazyListIterable[Int]{
+   |                                     val lazyState:
+   |                                       (scala.collection.immutable.LazyListIterable.EmptyMarker.type | (() ->
+   |                                         scala.collection.immutable.LazyListIterable[Int]^))^²
+   |                                   }^{any}
+   |                                 )
+   |                                 Required: scala.collection.immutable.LazyListIterable[Int]
+   |
+   |                                 Note that capability `any` cannot flow into capture set {}.
+   |
+   |                                 where:    ^   refers to a root capability in the type of value leaked1
+   |                                           ^²  refers to a root capability in the type of value lazyState
+   |                                           any is a root capability in the type of value leaked1
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-inline1.scala:63:25 -----------------------------------
+63 |  val _: Fs.FileHandle = leaked2 // error
+   |                         ^^^^^^^
+   |                         Found:    (leaked2 : Fs.FileHandle^{any})
+   |                         Required: Fs.FileHandle
+   |
+   |                         Note that capability `any` cannot flow into capture set {}.
+   |
+   |                         where:    any is a root capability in the type of value leaked2
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-inline1.scala:65:22 -----------------------------------
+65 |  val _: () -> Unit = leaked3 // error
+   |                      ^^^^^^^
+   |                      Found:    (leaked3 : () ->{any} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `any` cannot flow into capture set {}.
+   |
+   |                      where:    any is a root capability in the type of value leaked3
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-inline1.scala:69:42 -----------------------------------
+69 |  val leaked1 = Fs.useFile2(f => llist.map({x => f.write(x); x + 1})) // error
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                 Found:    scala.collection.immutable.LazyListIterable[Int]^{f}
+   |                                 Required: scala.collection.immutable.LazyListIterable[Int]
+   |
+   |                                 Note that capability `f` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-inline1.scala:70:33 -----------------------------------
+70 |  val leaked2 = Fs.useFile2(l => l) // error
+   |                                 ^
+   |Found:    (l : Fs.FileHandle^{any})
+   |Required: Fs.FileHandle
+   |
+   |Note that capability `any` cannot flow into capture set {}.
+   |
+   |where:    any is a root capability created in anonymous function of type (l²: Fs.FileHandle^): Fs.FileHandle of parameter parameter l of method $anonfun
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-inline1.scala:71:33 -----------------------------------
+71 |  val leaked3 = Fs.useFile2(f => () => f.write(42)) // error
+   |                                 ^^^^^^^^^^^^^^^^^
+   |                                 Found:    () ->{f} Unit
+   |                                 Required: () -> Unit
+   |
+   |                                 Note that capability `f` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
