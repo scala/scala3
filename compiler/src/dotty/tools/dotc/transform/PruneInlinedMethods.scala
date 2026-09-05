@@ -21,20 +21,20 @@ class PruneInlinedMethods extends MiniPhase with InfoTransformer { thisTransform
   override def description: String = PruneInlinedMethods.description
 
   override def transformInfo(tp: Type, sym: Symbol)(using Context) = tp match {
-    case clsInfo: ClassInfo if sym.isClass && !sym.is(Package) && !sym.is(JavaDefined) => 
+    case clsInfo: ClassInfo if sym.isClass && !sym.is(Package) && !sym.is(JavaDefined) && sym.isDefinedInCurrentRun =>
       clsInfo.derivedClassInfo(decls =
           clsInfo.decls.filteredScope(!isDeletable(_))
       )
     case _ => tp
   }
 
-  override def transformTemplate(tree: Template)(using Context): Tree = 
+  override def transformTemplate(tree: Template)(using Context): Tree =
     cpy.Template(tree)(body = tree.body.flatMap({
       case stmt: DefDef if isDeletable(stmt.symbol) => None
       case stmt => Some(stmt)
     }))
 
-  private def isDeletable(sym: Symbol)(using Context): Boolean = 
+  private def isDeletable(sym: Symbol)(using Context): Boolean =
     Specialization.isSpecializedMethod(sym)
 }
 
