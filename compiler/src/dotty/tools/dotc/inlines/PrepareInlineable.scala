@@ -184,6 +184,7 @@ object PrepareInlineable {
           def addQualType(tp: Type): Type = tp match {
             case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
             case tp: ExprType => addQualType(tp.resultType)
+            case tp if qualType.typeSymbol.is(Package) => MethodType(Nil, tp)
             case tp => MethodType(qualType.simplified :: Nil, tp)
           }
 
@@ -206,7 +207,8 @@ object PrepareInlineable {
           val (leadingTypeArgs, otherArgss) = splitArgs(argss)
           val argss1 = joinArgs(
             localRefs.map(TypeTree(_)) ++ leadingTypeArgs, // TODO: pass type parameters in two sections?
-            (qual :: Nil) :: otherArgss
+            if qualType.typeSymbol.is(Package) then Nil :: otherArgss
+            else (qual :: Nil) :: otherArgss
           )
           ref(accessor).appliedToArgss(argss1).withSpan(tree.span)
 
