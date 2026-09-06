@@ -23,13 +23,36 @@ final class Symbol private (val name: String) extends Serializable {
 
   @throws(classOf[java.io.ObjectStreamException])
   private def readResolve(): Any = Symbol.apply(name)
+  /** Returns the hash code of this symbol's name. Throws a `NullPointerException`
+   *  if this symbol was created with a `null` name.
+   */
   override def hashCode() = name.hashCode()
+  /** Tests whether `other` is this very symbol. Because symbols are interned,
+   *  reference equality coincides with equality of names.
+   *
+   *  @param other the value to compare with this symbol
+   */
   override def equals(other: Any) = this eq other.asInstanceOf[AnyRef]
 }
 
 object Symbol extends UniquenessCache[String, Symbol] {
+  /** Returns the unique symbol with the given name, creating and caching it if
+   *  no such symbol exists yet.
+   *
+   *  @param name the name of the symbol
+   */
   override def apply(name: String): Symbol = super.apply(name)
+  /** Constructs a fresh symbol with the given name, without consulting the cache.
+   *
+   *  @param name the name of the symbol to create
+   *  @return a newly allocated `Symbol` for the cache to intern
+   */
   protected def valueFromKey(name: String): Symbol = new Symbol(name)
+  /** Returns the cache key under which `sym` is interned, namely its name.
+   *
+   *  @param sym the symbol to take the key from
+   *  @return the symbol's name, always wrapped in `Some`
+   */
   protected def keyFromValue(sym: Symbol): Option[String] = Some(sym.name)
 }
 

@@ -16,4 +16,5 @@ import scala.language.`2.13`
 import scala.annotation.meta._
 
 @field
+/** Marks a field as transient, so that it is not included in the serialized form of its enclosing instance. */
 final class transient extends scala.annotation.StaticAnnotation
