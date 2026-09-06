@@ -5,7 +5,7 @@ package reporting
 import dotty.tools.dotc.config.Settings.Setting
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interfaces.Diagnostic.{ERROR, INFO, WARNING}
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.dotc.util.SourcePosition.inlinePosStack
 import dotty.tools.dotc.util.chaining.*
 
@@ -14,6 +14,19 @@ import scala.jdk.CollectionConverters.*
 import core.Decorators.toMessage
 
 object Diagnostic:
+
+  /** A context-independent description of a failed symbol load.
+   *  Linked roots invalidated by the same load share one instance so a reporter can
+   *  suppress duplicate diagnostics.
+   */
+  private[tools] final class LoadingFailure private (val message: Message)
+
+  private[tools] object LoadingFailure:
+    def apply(message: Message): LoadingFailure = new LoadingFailure(message.persist)
+
+  /** An error whose `failure` identifies a failed symbol load. */
+  private[tools] final class LoadingError(val failure: LoadingFailure)
+      extends Error(failure.message, NoSourcePosition)
 
   /** Message attached to each inline call-site exposed as related information (scalameta/metals#3214).
    *  The clickable location is carried by `position()`; the text only has to explain why the

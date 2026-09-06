@@ -13,31 +13,36 @@ case class ID(value: String) derives WrapperVariable
 // Obtained with:
 // query {
 //   organization(login: "scala") {
-//     projectV2(number: 2) {
-//       id
-//     }
+//     projectV2(number: 2) { id }  // 3.3 LTS
+//     projectV2(number: 9) { id }  // 3.9 LTS
 //   }
 // }
-val PROJECT_ID = ID("PVT_kwDN3uPOAHewkg")
+val PROJECT33_ID = ID("PVT_kwDN3uPOAHewkg")
+val PROJECT39_ID = ID("PVT_kwDN3uPOAYfwdg")
 
 // Obtained with:
 // query {
 //   organization(login: "scala") {
-//     projectV2(number: 2) {
+//     projectV2(number: N) {
 //       field(name: "Merged at") {
-//         ... on ProjectV2FieldCommon {
-//           id
-//         }
+//         ... on ProjectV2FieldCommon { id }
 //       }
 //     }
 //   }
 // }
-val FIELD_ID = ID("PVTF_lADN3uPOAHewks4E3B1I")
+val FIELD33_ID = ID("PVTF_lADN3uPOAHewks4E3B1I")
+val FIELD39_ID = ID("PVTF_lADN3uPOAYfwds4YOKnv")
+
+val PROJECTS = List(
+  (PROJECT33_ID, FIELD33_ID),
+  (PROJECT39_ID, FIELD39_ID)
+)
 
 @main def run(commitSha: String) =
   val (id, date) = getPrData(commitSha)
-  val newId = addItem(id)
-  timestampItem(newId, date)
+  for (projectId, fieldId) <- PROJECTS do
+    val newId = addItem(projectId, id)
+    timestampItem(projectId, fieldId, newId, date)
 
 def getPrData(commitSha: String): (ID, String) =
   val res = query"""
@@ -65,13 +70,13 @@ def getPrData(commitSha: String): (ID, String) =
   val pr = res.repository.`object`.asCommit.get.associatedPullRequests.nodes.head
   (ID(pr.id), pr.mergedAt)
 
-def timestampItem(id: ID, date: String) =
+def timestampItem(projectId: ID, fieldId: ID, id: ID, date: String) =
   query"""
     |mutation editField {
     |  updateProjectV2ItemFieldValue(input: {
-    |    projectId: $PROJECT_ID,
+    |    projectId: $projectId,
     |    itemId: $id,
-    |    fieldId: $FIELD_ID,
+    |    fieldId: $fieldId,
     |    value: { text: $date }
     |  }) {
     |    projectV2Item {
@@ -85,11 +90,11 @@ def timestampItem(id: ID, date: String) =
       apiToken
     )
 
-def addItem(id: ID) =
+def addItem(projectId: ID, id: ID) =
   val res = query"""
     |mutation addItem {
     |  addProjectV2ItemById(input: {
-    |    projectId: $PROJECT_ID,
+    |    projectId: $projectId,
     |    contentId: $id
     |  }) {
     |    item {

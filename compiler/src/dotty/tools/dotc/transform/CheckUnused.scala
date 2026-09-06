@@ -2,14 +2,13 @@ package dotty.tools.dotc
 package transform
 
 import ast.*, desugar.{ForArtifact, PatternVar}, tpd.*, untpd.ImportSelector
-import config.ScalaSettings
 import core.*, Contexts.*, Decorators.*, Flags.*
 import Names.{Name, SimpleName, DerivedName, TermName, termName}
-import NameKinds.{BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
-import NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
+import NameKinds.{BodyRetainerName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
+import NameOps.{isReplWrapperName, setterName}
 import Scopes.newScope
 import StdNames.nme
-import Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
+import Symbols.{NoSymbol, Symbol, defn, isDeprecated}
 import Types.*
 import reporting.{CodeAction, Diagnostic, UnusedSymbol}
 import rewrites.Rewrites.ActionPatch
@@ -17,14 +16,14 @@ import rewrites.Rewrites.ActionPatch
 import MegaPhase.MiniPhase
 import typer.{ImportInfo, Typer, TyperPhase}
 import typer.Deriving.OriginalTypeClass
-import typer.Implicits.{ContextualImplicits, RenamedImplicitRef}
+import typer.Implicits.RenamedImplicitRef
 import util.{Property, Spans, SrcPos}, Spans.Span
 import util.Chars.{isLineBreakChar, isWhitespace}
 import util.chaining.*
 
 import java.util.IdentityHashMap
 
-import scala.collection.mutable, mutable.{ArrayBuilder, ListBuffer, Stack}
+import scala.collection.mutable, mutable.ArrayBuilder
 
 import CheckUnused.*
 
@@ -441,10 +440,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       val cur = ctxs.next()
       if cur.owner.userSymbol == sym && !sym.is(Package) then
         enclosed = true // found enclosing definition, don't record the reference
-      if cur.isImportContext then
-        val sel = matchingSelector(cur.importInfo.nn)
+      val importInfo = cur.importInfoIfImportContext
+      if importInfo `ne` null then
+        val sel = matchingSelector(importInfo)
         if sel != null then
-          if cur.importInfo.nn.isRootImport then
+          if importInfo.isRootImport then
             if precedence.weakerThan(OtherUnit) then
               precedence = OtherUnit
               candidate = cur
@@ -484,27 +484,27 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
    *  Avoid cached ctx.implicits because it needs the precise import context that introduces the given.
    */
   def resolveScoped(tp: Type, pos: SrcPos)(using Context): Unit =
-    var done = false
     val ctxs = ctx.outersIterator
-    while !done && ctxs.hasNext do
+    while ctxs.hasNext do
       val cur = ctxs.next()
+      val importInfo = cur.importInfoIfImportContext
       val implicitRefs: List[ImplicitRef] =
         if (cur.isClassDefContext) cur.owner.thisType.implicitMembers
-        else if (cur.isImportContext) cur.importInfo.nn.importedImplicits
+        else if (importInfo `ne` null) importInfo.importedImplicits
         else if (cur.isNonEmptyScopeContext) cur.scope.implicitDecls
         else Nil
       implicitRefs.find(ref => ref.underlyingRef.widen <:< tp) match
       case Some(found: TermRef) =>
-        refUsage(found.denot.symbol, pos)
-        if cur.isImportContext then
-          cur.importInfo.nn.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
+        refUsage(found.symbol, pos)
+        if importInfo `ne` null then
+          importInfo.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
           case Some(sel) =>
             refInfos.sels.put(sel, ())
           case _ =>
         return
-      case Some(found: RenamedImplicitRef) if cur.isImportContext =>
-        refUsage(found.underlyingRef.denot.symbol, pos)
-        cur.importInfo.nn.selectors.find(sel => sel.rename == found.implicitName) match
+      case Some(found: RenamedImplicitRef) if importInfo `ne` null =>
+        refUsage(found.underlyingRef.symbol, pos)
+        importInfo.selectors.find(sel => sel.rename == found.implicitName) match
         case Some(sel) =>
           refInfos.sels.put(sel, ())
         case _ =>
@@ -687,8 +687,10 @@ object CheckUnused:
            m.isDeprecated
         || m.is(Synthetic) && !m.isAnonymousFunction
         || m.hasAnnotation(defn.UnusedAnnot) // param of unused method
+        || sym.name.startsWith("_") // convenient syntax to avoid needing @unused
         || sym.info.isSingleton
         || m.isConstructor && m.owner.thisType.baseClasses.contains(defn.AnnotationClass)
+        || sym.isErased // erased param may be unused by design
       def checkExplicit(): Unit =
         // A class param is unused if its param accessor is unused.
         // (The class param is not assigned to a field until constructors.)
@@ -755,6 +757,7 @@ object CheckUnused:
              tps.hasAnnotation(dd.LanguageFeatureMetaAnnot)
         || sym.info.isSingleton // DSL friendly
         || sym.info.dealias.isInstanceOf[RefinedType] // can't be expressed as a context bound
+        || sym.isErased // erased param is unused by design
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
         && !m.isEffectivelyOverride
@@ -1111,7 +1114,7 @@ object CheckUnused:
     def namePos: SrcPos =
       sym.srcPos.sourcePos.withSpan:
         val span = sym.span
-        Span(span.start, span.start + sym.name.toString.length)
+        Span(span.start, span.start + sym.name.length)
 
   extension (sel: ImportSelector)
     def boundTpe: Type = sel.bound match

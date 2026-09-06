@@ -45,7 +45,12 @@ trait TypeAssigner {
   }
 
   def avoidingType(expr: Tree, bindings: List[Tree])(using Context): Type =
-    TypeOps.avoid(expr.tpe, localSyms(bindings).filterConserve(_.isTerm))
+    val syms = localSyms(bindings).filterConserve(_.isTerm)
+    val replacements = bindings.flatMap { b =>
+      b.getAttachment(InlineProxySkolem).map(b.symbol -> _)
+    }
+    if replacements.isEmpty then TypeOps.avoid(expr.tpe, syms)
+    else TypeOps.avoid(expr.tpe, syms, replacements.toMap)
 
   def avoidPrivateLeaks(sym: Symbol)(using Context): Type =
     if sym.owner.isClass && !sym.isOneOf(JavaOrPrivateOrSynthetic)
@@ -620,6 +625,13 @@ object TypeAssigner extends TypeAssigner:
    *  same skolems for path-dependent types in the expansion (see #26153).
    */
   private[dotc] val SkolemizedArgs = new Property.StickyKey[Map[tpd.Tree, SkolemType]]
+
+  /** Sticky attachment on an inline argument proxy ValDef, the typer skolem
+   *  that this proxy stands for (#26153 / #26810). Proxy itself keeps a widened
+   *  type and `avoidingType` recovers the skolem when eliminating the proxy from
+   *  the Inlined result type.
+   */
+  private[dotc] val InlineProxySkolem = new Property.StickyKey[SkolemType]
 
   def seqLitType(tree: untpd.SeqLiteral, elemType: Type)(using Context) = tree match
     case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemType)

@@ -122,7 +122,10 @@ class CompletionSuite extends BaseCompletionSuite:
          |->[B](inline that: B): (List.type, B)
          |fromSpecific(from: Any)(it: IterableOnce[Nothing]): List[Nothing]
          |fromSpecific(it: IterableOnce[Nothing]): List[Nothing]
+         |newBuilder(from: Any): Builder[Nothing, List[Nothing]]
+         |newBuilder: Builder[Nothing, List[Nothing]]
          |toFactory(from: Any): Factory[Nothing, List[Nothing]]
+         |apply(from: Any): Builder[Nothing, List[Nothing]]
          |iterableFactory[A]: Factory[A, List[A]]
          |asInstanceOf[X0]: X0
          |equals(x$0: Any): Boolean

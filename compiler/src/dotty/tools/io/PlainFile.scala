@@ -27,19 +27,18 @@ class PlainFile(givenPath: Path) extends AbstractFile {
 
   override def name: String = givenPath.name
 
-  // Interned for fast hashcode and equals
-  override val path: String = givenPath.normalize.path.intern
+  override val path: String = givenPath.normalize.path
 
   override def container: Option[AbstractFile] = Some(new PlainFile(givenPath.parent))
   override def input: InputStream = givenPath.toFile.inputStream()
   override def output: OutputStream = givenPath.toFile.outputStream()
   override def toURL: Option[URL] = Some(jpath.toUri.toURL)
 
-  override def hashCode(): Int = System.identityHashCode(path)
-  override def equals(that: Any): Boolean = that match {
+  override def hashCode(): Int = path.hashCode
+  override def equals(that: Any): Boolean = (this `eq` that.asInstanceOf[Object]) || (that match {
     case x: PlainFile => path `eq` x.path
     case _            => false
-  }
+  })
 
   /** Is this abstract file a directory? */
   override val isDirectory: Boolean = givenPath.isDirectory // cached for performance on Windows

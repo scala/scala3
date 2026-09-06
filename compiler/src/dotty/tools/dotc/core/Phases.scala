@@ -67,14 +67,14 @@ object Phases {
     final def phasePlan: List[List[Phase]] = this.phasesPlan
     final def setPhasePlan(phasess: List[List[Phase]]): Unit = this.phasesPlan = phasess
 
-    /** Squash TreeTransform's beloning to same sublist to a single TreeTransformer
+    /** Squash TreeTransform's belonging to same sublist to a single TreeTransformer
       * Each TreeTransform gets own period,
       * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
       */
     final def fusePhases(phasess: List[List[Phase]],
-                           phasesToSkip: List[String],
-                           stopBeforePhases: List[String],
-                           YCheckAfter: List[String])(using Context): List[Phase] = {
+                         phasesToSkip: List[String],
+                         stopBeforePhases: List[String],
+                         YCheckAfter: List[String])(using Context): List[Phase] = {
       val fusedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
 
@@ -234,6 +234,8 @@ object Phases {
     private var mySbtExtractAPIPhase: Phase = uninitialized
     private var myPicklerPhase: Phase = uninitialized
     private var mySetRootTreePhase: Phase = uninitialized
+    private var mySpecializeInlineTraitsPhase: Phase = uninitialized
+    private var myDesugarSpecializedTraitsPhase: Phase = uninitialized
     private var myInliningPhase: Phase = uninitialized
     private var myStagingPhase: Phase = uninitialized
     private var mySplicingPhase: Phase = uninitialized
@@ -266,6 +268,8 @@ object Phases {
     final def sbtExtractAPIPhase: Phase = mySbtExtractAPIPhase
     final def picklerPhase: Phase = myPicklerPhase
     final def setRootTreePhase: Phase = mySetRootTreePhase
+    final def specializeInlineTraitsPhase: Phase = mySpecializeInlineTraitsPhase
+    final def desugarSpecializedTraitsPhase: Phase = myDesugarSpecializedTraitsPhase
     final def inliningPhase: Phase = myInliningPhase
     final def stagingPhase: Phase = myStagingPhase
     final def splicingPhase: Phase = mySplicingPhase
@@ -298,6 +302,8 @@ object Phases {
       mySbtExtractAPIPhase = phaseOfClass(classOf[sbt.ExtractAPI])
       mySetRootTreePhase = phaseOfClass(classOf[SetRootTree])
       myPicklerPhase = phaseOfClass(classOf[Pickler])
+      mySpecializeInlineTraitsPhase = phaseOfClass(classOf[SpecializeInlineTraits])
+      myDesugarSpecializedTraitsPhase = phaseOfClass(classOf[DesugarSpecializedTraits])
       myInliningPhase = phaseOfClass(classOf[Inlining])
       myStagingPhase = phaseOfClass(classOf[Staging])
       mySplicingPhase = phaseOfClass(classOf[Splicing])
@@ -560,6 +566,8 @@ object Phases {
   def sbtExtractDependenciesPhase(using Context): Phase = ctx.base.sbtExtractDependenciesPhase
   def sbtExtractAPIPhase(using Context): Phase          = ctx.base.sbtExtractAPIPhase
   def picklerPhase(using Context): Phase                = ctx.base.picklerPhase
+  def specializeInlineTraitsPhase(using Context): Phase = ctx.base.specializeInlineTraitsPhase
+  def desugarSpecializedTraitsPhase(using Context): Phase = ctx.base.desugarSpecializedTraitsPhase
   def inliningPhase(using Context): Phase               = ctx.base.inliningPhase
   def stagingPhase(using Context): Phase                = ctx.base.stagingPhase
   def splicingPhase(using Context): Phase               = ctx.base.splicingPhase

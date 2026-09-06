@@ -110,7 +110,7 @@ object Load extends ArgCommand[Load] {
   val command: String = ":load"
 }
 
-/** `:require` is a deprecated alias for :jar`
+/** `:require` is a deprecated alias for `:jar`
  */
 case class Require(path: String) extends Command:
   override def replayLine = Some(s"${Require.command} $path")
@@ -124,6 +124,22 @@ case class JarCmd(path: String) extends Command:
   override def replayLine = Some(s"${JarCmd.command} $path")
 object JarCmd extends ArgCommand[JarCmd] {
   val command: String = ":jar"
+}
+
+/** `:toolkit <version>` resolves a toolkit and adds it to the classpath
+ */
+case class ToolkitCmd(coordinates: String) extends Command:
+  override def replayLine = Some(s"${ToolkitCmd.command} $coordinates")
+object ToolkitCmd extends ArgCommand[ToolkitCmd] {
+  val command: String = ":toolkit"
+}
+
+/** `:repository <url>|<alias>` adds repositories used to resolve dependencies
+ */
+case class RepoCmd(repositories: String) extends Command:
+  override def replayLine = Some(s"${RepoCmd.command} $repositories")
+object RepoCmd extends ArgCommand[RepoCmd] {
+  val command: String = ":repository"
 }
 
 /** `:kind <type>` display the kind of a type. see also :help kind
@@ -361,7 +377,13 @@ object ParseResult {
   }
 
   def apply(sourceCode: String)(using state: State): ParseResult =
-    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode))
+    maybeIncomplete(sourceCode, maybeIncomplete = true)
+
+  def complete(sourceCode: String)(using state: State): ParseResult =
+    maybeIncomplete(sourceCode, maybeIncomplete = false)
+
+  private def maybeIncomplete(sourceCode: String, maybeIncomplete: Boolean)(using state: State): ParseResult =
+    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode, maybeIncomplete = maybeIncomplete))
 
   def isCommand(line: String): Boolean =
     line match
@@ -426,7 +448,7 @@ object ParseResult {
         val code = codeAfterLeadingCommands(sourceCode, extractedDirectives)
         code.nonEmpty && {
           val reporter = newStoreReporter
-          val source   = SourceFile.virtual("<incomplete-handler>", code)
+          val source   = SourceFile.virtual("<incomplete-handler>", code, maybeIncomplete = true)
           val unit     = CompilationUnit(source, mustExistIfNotNull = false)
           val localCtx = ctx.fresh
                             .setCompilationUnit(unit)

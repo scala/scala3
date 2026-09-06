@@ -9,4 +9,6 @@ import Diagnostic.*
 class TestingReporter extends StoreReporter(null, fromTyperState = false):
   infos = new mutable.ListBuffer[Diagnostic]
   override def hasUnreportedErrors: Boolean = infos.nn.exists(_.isInstanceOf[Error])
-  def reset(): Unit = infos.nn.clear()
+  def reset(): Unit =
+    infos.nn.clear()
+    clearReportedLoadingFailures()

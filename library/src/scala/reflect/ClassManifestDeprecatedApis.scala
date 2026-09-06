@@ -14,6 +14,7 @@ package scala
 package reflect
 
 import scala.language.`2.13`
+import scala.annotation.unused
 import scala.collection.mutable.{ArrayBuilder, ArraySeq}
 import java.lang.{Class => jClass}
 
@@ -242,7 +243,7 @@ object ClassManifestFactory {
    *  @param clazz the runtime `Class` for the upper bound of the abstract type, used for erasure
    *  @param args the manifests for the type arguments of the abstract type (note: currently unused in the implementation)
    */
-  def abstractType[T](prefix: OptManifest[?], name: String, clazz: jClass[?], args: OptManifest[?]*): ClassManifest[T] =
+  def abstractType[T](prefix: OptManifest[?], name: String, clazz: jClass[?], @unused args: OptManifest[?]*): ClassManifest[T] =
     new AbstractTypeClassManifest(prefix, name, clazz)
 
   /** ClassManifest for the abstract type `prefix # name`. `upperBound` is not
@@ -256,7 +257,7 @@ object ClassManifestFactory {
    *  @param upperbound the `ClassManifest` for the upper bound, whose `runtimeClass` is used for erasure
    *  @param args the manifests for the type arguments of the abstract type (note: currently unused in the implementation)
    */
-  def abstractType[T](prefix: OptManifest[?], name: String, upperbound: ClassManifest[?], args: OptManifest[?]*): ClassManifest[T] =
+  def abstractType[T](prefix: OptManifest[?], name: String, upperbound: ClassManifest[?], @unused args: OptManifest[?]*): ClassManifest[T] =
     new AbstractTypeClassManifest(prefix, name, upperbound.runtimeClass)
 }
 

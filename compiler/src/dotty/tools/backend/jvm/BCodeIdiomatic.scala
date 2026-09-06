@@ -31,7 +31,7 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
 
   abstract class JCodeMethodN {
 
-    def jmethod: asm.tree.MethodNode
+    protected def jmethod: asm.tree.MethodNode
 
     import asm.Opcodes
 
@@ -243,6 +243,9 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
     final def nullconst(): Unit =
       jmethod.visitInsn(Opcodes.ACONST_NULL)
 
+    final def newobj(internalName: String): Unit =
+      jmethod.visitTypeInsn(asm.Opcodes.NEW, internalName)
+
     // can-multi-thread
     final def newarray(elem: BType): Unit = {
       elem match {
@@ -274,6 +277,7 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
     final def iinc( idx: Int, increment: Int): Unit = jmethod.visitIincInsn(idx, increment) // can-multi-thread
 
     final def aload( tk: BType): Unit = { emitTypeBased(JCodeMethodN.aloadOpcodes,  tk) } // can-multi-thread
+    final def aloadThis(): Unit = { jmethod.visitVarInsn(Opcodes.ALOAD, 0) } // can-multi-thread
     final def astore(tk: BType): Unit = { emitTypeBased(JCodeMethodN.astoreOpcodes, tk) } // can-multi-thread
 
     final def neg(tk: BType): Unit = { emitPrimitive(JCodeMethodN.negOpcodes, tk) } // can-multi-thread
@@ -300,12 +304,19 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
       emitInvoke(Opcodes.INVOKEVIRTUAL, owner, name, desc, itf = false, pos)
     }
 
+    final def invokedynamic(methodName: String, desc: String, bootstrapMethodHandle: asm.Handle, bootstrapMethodArguments: Seq[Any]): Unit = {
+      jmethod.visitInvokeDynamicInsn(methodName, desc, bootstrapMethodHandle, bootstrapMethodArguments*)
+    }
+
     private def emitInvoke(opcode: Int, owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null)(using Context): Unit = {
       val node = new MethodInsnNode(opcode, owner, name, desc, itf)
       jmethod.instructions.add(node)
       recordCallsitePosition(node, pos)
     }
 
+
+    final def throwex(): Unit =
+      jmethod.visitInsn(Opcodes.ATHROW)
 
     // can-multi-thread
     final def goTo(label: asm.Label): Unit = { jmethod.visitJumpInsn(Opcodes.GOTO, label) }

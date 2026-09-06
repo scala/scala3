@@ -17,22 +17,13 @@ import scala.io.Codec
  * A compiler component that adds support for parsing Scala and Java source files and finding out
  * the logical package structure of the whole source path.
  */
-class LogicalPackagesProvider(sourcePath: String){
-
-  // We only use it for parser
-  private given Context = new ContextBase().initialCtx
-
-  // TODO: Forward the compiler's encoding argument here instead of always using UTF8
-  private lazy val sourceRoots: Seq[SourceFile] =
-    allSources(sourcePath).map(f => SourceFile(f, Codec.UTF8))
-
-  lazy val root: LogicalPackage = parseSourcePath()
-
+class LogicalPackagesProvider(sourcePath: String) {
   /**
    * Parse all source files in the sourcepath and build the logical package structure.
    */
-  def parseSourcePath(): LogicalPackage =
+  def root(using Context): LogicalPackage =
     val pkg: ParsedLogicalPackage = newPackage()
+    val sourceRoots = allSources(sourcePath).map(f => SourceFile(f, ctx.settings.sourceroot.value, Codec(ctx.settings.encoding.value)))
     for sourceFile <- sourceRoots do
       try
         parseSourceFile(sourceFile, pkg)
@@ -44,20 +35,14 @@ class LogicalPackagesProvider(sourcePath: String){
   private def newPackage(): ParsedLogicalPackage =
     new ParsedLogicalPackage("", None)
 
-  private def parseSourceFile(
-      sourceFile: SourceFile,
-      rootPackage: ParsedLogicalPackage
-  ): Unit =
+  private def parseSourceFile(sourceFile: SourceFile, rootPackage: ParsedLogicalPackage)(using Context): Unit =
     val fileName = sourceFile.path
     if sourceFile.ext ==  FileExtension.Scala then
       parseScalaSourceFile(sourceFile, rootPackage)
     else if sourceFile.ext == FileExtension.Java then
       parseJavaSourceFile(sourceFile, rootPackage)
 
-  private def parseScalaSourceFile(
-      sourceFile: SourceFile,
-      rootPackage: ParsedLogicalPackage
-  ): Unit =
+  private def parseScalaSourceFile(sourceFile: SourceFile, rootPackage: ParsedLogicalPackage)(using Context): Unit =
     try
       // Use OutlineParser for fast parsing that skips method bodies
       val parser = new Parsers.OutlineParser(sourceFile)
@@ -68,10 +53,7 @@ class LogicalPackagesProvider(sourcePath: String){
       case e: Exception =>
         // Silently ignore parsing errors
 
-  private def parseJavaSourceFile(
-      sourceFile: SourceFile,
-      rootPackage: ParsedLogicalPackage
-  ): Unit =
+  private def parseJavaSourceFile(sourceFile: SourceFile, rootPackage: ParsedLogicalPackage)(using Context): Unit =
     try
       // Use OutlineJavaParser for fast parsing
       val parser = new JavaParsers.OutlineJavaParser(sourceFile)
@@ -136,7 +118,7 @@ class LogicalPackagesProvider(sourcePath: String){
   /**
    * Return all Scala and Java sources from the given sourcepath string.
    */
-  private def allSources(srcPath: String): Seq[AbstractFile] = {
+  private def allSources(srcPath: String)(using Context): Seq[AbstractFile] = {
     val entries = ClassPath.split(srcPath)
     def isRelevantFile(path: String) =
       path.endsWith(FileExtension.Scala.withDot) || path.endsWith(FileExtension.Java.withDot)
@@ -147,7 +129,7 @@ class LogicalPackagesProvider(sourcePath: String){
       if isRelevantFile(e)
       f <- Option(AbstractFile.getFile(e))
     } yield f
-    rootFiles ++ rootDirs.flatMap{ dir =>
+    rootFiles ++ rootDirs.flatMap { dir =>
       Option(AbstractFile.getDirectory(dir, ctx.settings.javaOutputVersion.value)).toSeq.flatMap(sourcesIn(_, FileExtension.Scala.toLowerCase, FileExtension.Java.toLowerCase))
     }
   }
@@ -155,10 +137,7 @@ class LogicalPackagesProvider(sourcePath: String){
   /**
    * Recursively find all source files with given extensions in a directory.
    */
-  private def sourcesIn(
-      dir: AbstractFile,
-      extensions: String*
-  ): Seq[AbstractFile] =
+  private def sourcesIn(dir: AbstractFile, extensions: String*)(using Context): Seq[AbstractFile] =
     dir.iterator.toSeq.flatMap { file =>
       if (file.isDirectory) sourcesIn(file, extensions*)
       else if (extensions.exists(ext => file.name.endsWith(s".$ext"))) Seq(file)

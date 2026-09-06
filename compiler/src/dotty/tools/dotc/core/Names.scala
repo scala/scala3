@@ -65,6 +65,9 @@ object Names {
     /** Convert to string after mangling */
     def mangledString: String
 
+    /** This name's length */
+    def length: Int
+
     /** Apply rewrite rule given by `f` to some part of this name, skipping and rewrapping
      *  other decorators.
      *  Stops at DerivedNames with infos of kind QualifiedInfo.
@@ -138,9 +141,6 @@ object Names {
     /** Append `other` to the last part of this name */
     def ++ (other: Name): ThisName = ++ (other.toString)
     def ++ (other: String): ThisName = mapLast(n => termName(n.toString + other))
-
-    /** Replace all occurrences of `from` to `to` in this name */
-    def replace(from: Char, to: Char): ThisName = mapParts(_.replace(from, to))
 
     /** Is this name empty? */
     def isEmpty: Boolean
@@ -273,7 +273,7 @@ object Names {
   }
 
   /** A simple name is essentially an interned string */
-  final class SimpleName(val start: Int, val length: Int) extends TermName {
+  final class SimpleName(val start: Int, override val length: Int) extends TermName {
 
   /** The n'th character */
     def apply(n: Int): Char = chrs(start + n)
@@ -332,6 +332,10 @@ object Names {
       assert(0 <= from && from <= end && end <= length)
       Array.copy(chrs, start + from, dst, dstStart, end - from)
 
+    def toUTF8Bytes(): Array[Byte] =
+      if length == 0 then Array.emptyByteArray
+      else Codec.toUTF8(chrs, start, length)
+
     override def asSimpleName: SimpleName = this
     override def toSimpleName: SimpleName = this
     override final def mangle: SimpleName = encode
@@ -369,14 +373,6 @@ object Names {
       while i <= suffix.length && i <= length && apply(length - i) == suffix(suffix.length - i) do i += 1
       i > suffix.length
 
-    override def replace(from: Char, to: Char): SimpleName = {
-      val cs = new Array[Char](length)
-      System.arraycopy(chrs, start, cs, 0, length)
-      for (i <- 0 until length)
-        if (cs(i) == from) cs(i) = to
-      termName(cs, 0, length)
-    }
-
     override def firstPart: SimpleName = this
     override def lastPart: SimpleName = this
 
@@ -404,6 +400,7 @@ object Names {
     override def mangled: TypeName = toTermName.mangled.toTypeName
     override def mangledString: String = toTermName.mangledString
 
+    override def length: Int = toTermName.length
     override def replace(f: PartialFunction[Name, Name]): ThisName = toTermName.replace(f).toTypeName
     override def collect[T](f: PartialFunction[Name, T]): Option[T] = toTermName.collect(f)
     override def mapLast(f: SimpleName => SimpleName): TypeName = toTermName.mapLast(f).toTypeName
@@ -435,7 +432,10 @@ object Names {
     override def asSimpleName: Nothing = throw new UnsupportedOperationException(s"$debugString is not a simple name")
 
     override def toSimpleName: SimpleName = termName(toString)
-    override final def mangle: SimpleName = encode.toSimpleName
+    override def mangle: SimpleName = encode.toSimpleName
+
+    override def length: Int =
+      toString.length
 
     override def replace(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this))
@@ -492,7 +492,7 @@ object Names {
 
   /** Memory to store all names sequentially. */
   @sharable // because it's only mutated in synchronized block of enterIfNew
-  private[dotty] var chrs: Array[Char] = new Array[Char](InitialNameSize)
+  private var chrs: Array[Char] = new Array[Char](InitialNameSize)
 
   /** The number of characters filled. */
   @sharable // because it's only mutated in synchronized block of enterIfNew

@@ -278,14 +278,14 @@ final case class Failure[+T](exception: Throwable) extends Try[T] { self: Failur
   override def recover[U >: T](pf: PartialFunction[Throwable, U]^): Try[U]^{this, pf.only[Control]} = {
     val marker = Statics.pfMarker
     try {
-      val v: U | marker.type = pf.applyOrElse(exception, (x: Throwable) => marker)
+      val v: U | marker.type = pf.applyOrElse(exception, (_: Throwable) => marker)
       if (marker ne v.asInstanceOf[AnyRef]) Success(v.asInstanceOf[U]) else this
     } catch { case NonFatal(e) => Failure(e) }
   }
   override def recoverWith[U >: T](pf: PartialFunction[Throwable, Try[U]^]^): Try[U]^{this, pf} = {
     val marker = Statics.pfMarker
     try {
-      val v = pf.applyOrElse[Throwable, Any /* Should be Try[U]^{pf*} | marker.type */](exception, (x: Throwable) => marker)
+      val v = pf.applyOrElse[Throwable, Any /* Should be Try[U]^{pf*} | marker.type */](exception, (_: Throwable) => marker)
       if (marker ne v.asInstanceOf[AnyRef]) v.asInstanceOf[Try[U]] else this
     } catch { case NonFatal(e) => Failure(e) }
   }
@@ -312,7 +312,7 @@ final case class Success[+T](value: T) extends Try[T] {
   override def collect[U](pf: PartialFunction[T, U]^): Try[U]^{pf.only[Control]} = {
     val marker = Statics.pfMarker
     try {
-      val v = pf.applyOrElse(value, ((x: T) => marker).asInstanceOf[Function[T, U]])
+      val v = pf.applyOrElse(value, ((_: T) => marker).asInstanceOf[Function[T, U]])
       if (marker ne v.asInstanceOf[AnyRef]) Success(v)
       else Failure(new NoSuchElementException("Predicate does not hold for " + value))
     } catch { case NonFatal(e) => Failure(e) }

@@ -491,8 +491,13 @@ trait ConstraintHandling {
     }
   }
 
-  final def isSubTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean = inFrozenConstraint(isSub(tp1, tp2))
-  final def isSameTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean = inFrozenConstraint(isSame(tp1, tp2))
+  final def isSubTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
+    ctx.handleRecursive("are subtypes when frozen?", () => i"$tp1 <:< $tp2"):
+      inFrozenConstraint(isSub(tp1, tp2))
+
+  final def isSameTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
+    ctx.handleRecursive("are same type when frozen?", () => i"$tp1 =:= $tp2"):
+      inFrozenConstraint(isSame(tp1, tp2))
 
   /** Test whether the lower bounds of all parameters in this
    *  constraint are a solution to the constraint.

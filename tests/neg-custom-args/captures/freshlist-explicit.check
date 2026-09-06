@@ -38,7 +38,7 @@
 -- Error: tests/neg-custom-args/captures/freshlist-explicit.scala:55:20 ------------------------------------------------
 55 |      case FreshCons(h, t) => FreshCons(h, t) // error separation // error separation
    |                    ^
-   |Separation failure: Illegal access to (x10 : (xs : FreshList[Ref^{}]^)), which was passed as a consume parameter to method unapply
+   |Separation failure: Illegal access to (x11 : FreshCons[Any]^{x10, any}), which was passed as a consume parameter to method unapply
    |on line 49 and therefore is no longer available.
    |
-   |where:    ^ refers to a root capability in the type of value xs
+   |where:    any is a root capability in the type of value x11

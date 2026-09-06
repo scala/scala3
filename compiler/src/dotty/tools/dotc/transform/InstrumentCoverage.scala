@@ -165,7 +165,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     val coverageFilePath = Serializer.coverageFilePath(outputPath)
     val previousCoverage =
       if Files.exists(coverageFilePath) then
-        Serializer.deserialize(coverageFilePath, ctx.settings.sourceroot.value)
+        Serializer.deserialize(coverageFilePath)
       else Coverage()
 
     // Initialize coverage patterns once
@@ -205,21 +205,21 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     // Serialize once at the end with merged coverage
     val mergedCoverage = Coverage()
-    val currentFiles = units.map(_.source.jfile.get.toPath.toAbsolutePath)
+    val currentFiles = units.map(_.source.pathRelativeToSourceRoot)
 
     // Add statements from previous coverage that aren't from recompiled files
     // and whose source files still exist
     previousCoverage.statements
       .filterNot(stmt =>
         val source = stmt.location.sourcePath
-        currentFiles.contains(source) || !Files.exists(source)
+        currentFiles.contains(source) || !Files.exists(Path.of(ctx.settings.sourceroot.value.path).resolve(source))
       )
       .foreach(mergedCoverage.addStatement)
 
     // Add all new statements from this compilation
     ctx.base.coverage.nn.statements.foreach(mergedCoverage.addStatement)
 
-    Serializer.serialize(mergedCoverage, outputPath, ctx.settings.sourceroot.value)
+    Serializer.serialize(mergedCoverage, outputPath)
 
     result
 
@@ -328,7 +328,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       else if erasedArgs.isEmpty then transform(trees)
       else trees.lazyZip(erasedArgs).map { (arg, isErased) =>
         if isErased then arg else transform(arg)
-      }.toList
+      }
 
     private def transformInnerApply(tree: Tree)(using Context): Tree = tree match
       case a: Apply if a.fun.symbol == defn.StringContextModule_apply =>

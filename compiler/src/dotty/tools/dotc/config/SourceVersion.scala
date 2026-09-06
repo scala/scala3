@@ -53,6 +53,9 @@ enum SourceVersion:
 
   def requiresNewSyntax = isAtLeast(future)
 
+  def warnOnConversion = isAtLeast(`3.10`)
+  def errorOnConversion = isAtLeast(`3.11`)
+
 object SourceVersion extends Property.Key[SourceVersion]:
 
   /* The default source version used by the built compiler */

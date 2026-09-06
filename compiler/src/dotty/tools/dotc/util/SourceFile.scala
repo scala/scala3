@@ -9,15 +9,18 @@ import core.Decorators.*
 
 import scala.io.Codec
 import Chars.*
+
 import scala.annotation.internal.sharable
 import scala.collection.mutable.ArrayBuffer
 import scala.compiletime.uninitialized
+import dotty.tools.dotc.util.chaining.*
 
 import java.io.File.separator
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.{FileSystemException, Paths}
 import java.util.Optional
+import scala.annotation.threadUnsafe
 
 object WrappedSourceFile:
   enum MagicHeaderInfo:
@@ -60,8 +63,12 @@ object WrappedSourceFile:
         result
       case result => result
 
-class SourceFile (val file: AbstractFile | Null, codec: Codec) extends interfaces.SourceFile {
+class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec: Codec) extends interfaces.SourceFile {
   private var myContent: Array[Char] | Null = null
+
+  private var _maybeIncomplete: Boolean = false
+
+  def maybeIncomplete: Boolean = _maybeIncomplete
 
   /** The contents of the original source file. Note that this can be empty, for example when
    * the source is read from Tasty. */
@@ -79,6 +86,30 @@ class SourceFile (val file: AbstractFile | Null, codec: Codec) extends interface
     if file eq null then FileExtension.Empty else file.ext
   override def path: String =
     if file eq null then "" else file.path
+  @threadUnsafe lazy val pathRelativeToSourceRoot: String =
+    if file eq null then
+      // While this should not happen, it currently does due to known definitions being loaded without a source file
+      ""
+    else if file.isVirtual || sourceRoot.isVirtual then
+      // This can happen when evaluating debug expressions with fake in-memory files
+      file.path
+    else
+      val sourcePath = file.jpath.nn.toAbsolutePath.normalize
+      val refPath = sourceRoot.jpath.nn.toAbsolutePath.normalize
+      if sourcePath.startsWith(refPath) then
+        // On Windows we can only relativize paths if root component matches:
+        //     try refPath.relativize(sourcePath).toString
+        //     catch case _: IllegalArgumentException => sourcePath.toString
+        // As we already check that the prefix matches, the special handling for
+        // Windows is not needed.
+        //
+        // Also, consistently use '/' as separator so any path loaded from anywhere
+        // is guaranteed to have the same separator, otherwise we'd see, e.g., "a\path",
+        // and wonder "is this a Windows 2-part path, or a non-Windows file name with a backslash in it?"
+        refPath.relativize(sourcePath).toString.replace(java.io.File.separatorChar, '/')
+      else
+        file.path
+
   override def jfile: Optional[JFile] =
     if file eq null then Optional.empty() else file.jfile
 
@@ -131,7 +162,7 @@ class SourceFile (val file: AbstractFile | Null, codec: Codec) extends interface
       lineIndicesCache = calculateLineIndicesFromContents()
     lineIndicesCache
 
-  def initialized = lineIndicesCache != null
+  def initialized: Boolean = lineIndicesCache != null
 
   def setLineIndicesFromLineSizes(sizes: Array[Int]): Unit =
     val lines = sizes.length
@@ -182,7 +213,7 @@ class SourceFile (val file: AbstractFile | Null, codec: Codec) extends interface
 
   /** The column corresponding to `offset`, starting at 0 */
   def column(offset: Int): Int = {
-    var idx = startOfLine(offset)
+    val idx = startOfLine(offset)
     offset - idx
   }
 
@@ -206,52 +237,17 @@ object SourceFile {
   /** A source file with an underlying virtual file. The path is taken as a file system path
    *  with the local separator converted to "/". The last element of the path will be the simple name of the file.
    */
-  def virtual(name: String, content: String) =
-    new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), Codec.UTF8)
+  def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
+    new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), new VirtualFile("_root_", Array.emptyByteArray), Codec.UTF8)
+      .tap(_._maybeIncomplete = maybeIncomplete)
 
   /** A helper method to create a virtual source file for given URI.
    */
   def virtual(uri: URI, content: String): SourceFile =
     virtual(java.nio.file.Path.of(uri).toString, content)
-
-  /** Returns the relative path of `source` within the `reference` path
-   *
-   *  It returns the current path under `source.file.jpath` if it is not contained in `reference`.
-   */
-  def relativePath(source: SourceFile, reference: String): String = {
-    val file = source.file
-    val jpath = if file == null then null else file.jpath
-    if jpath eq null then
-      "" // repl and other custom tests use abstract files with no path
-    else
-      val sourcePath = jpath.toAbsolutePath.normalize
-      val refPath = java.nio.file.Paths.get(reference).toAbsolutePath.normalize
-
-      if sourcePath.startsWith(refPath) then
-        // On Windows we can only relativize paths if root component matches
-        // (see implementation of sun.nio.fs.WindowsPath#relativize)
-        //
-        //     try refPath.relativize(sourcePath).toString
-        //     catch case _: IllegalArgumentException => sourcePath.toString
-        //
-        // As we already check that the prefix matches, the special handling for
-        // Windows is not needed.
-
-        // We also consistently use forward slashes as path element separators
-        // for relative paths. If we didn't do that, it'd be impossible to parse
-        // them back, as one would need to know whether they were created on Windows
-        // and use both slashes as separators, or on other OS and use forward slash
-        // as separator, backslash as file name character.
-
-        import scala.jdk.CollectionConverters.*
-        val path = refPath.relativize(sourcePath)
-        path.iterator.asScala.mkString("/")
-      else
-        jpath.toString
-  }
 }
 
-@sharable object NoSource extends SourceFile(null, Codec.UTF8) {
+@sharable object NoSource extends SourceFile(null, new VirtualFile("_root_", Array.emptyByteArray), Codec.UTF8) {
   override def exists: Boolean = false
   override def atSpan(span: Span): SourcePosition = NoSourcePosition
 }

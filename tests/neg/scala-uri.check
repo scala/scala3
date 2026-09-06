@@ -4,8 +4,8 @@
    |No best given instance of type QueryKeyValue[(String, None.type)] was found for parameter x of method summon in object Predef.
    |I found:
    |
-   |    QueryKeyValue.tuple2QueryKeyValue[String, None.type](QueryKey.stringQueryKey,
-   |      QueryValue.optionQueryValue[A](
+   |    QueryKeyValue.tuple2QueryKeyValue[String, None.type](using QueryKey.stringQueryKey,
+   |      QueryValue.optionQueryValue[A](using
    |        /* ambiguous: both given instance stringQueryValue in trait QueryValueInstances1 and given instance noneQueryValue in trait QueryValueInstances1 match type QueryValue[A] */
    |          summon[QueryValue[A]]
    |      )

@@ -89,7 +89,7 @@ class DottyLanguageServer extends LanguageServer
             .update("-d", config.classDirectory.getAbsolutePath)
             .update("-classpath", (config.classDirectory +: config.dependencyClasspath).mkString(File.pathSeparator))
             .update("-sourcepath", config.sourceDirectories.mkString(File.pathSeparator))
-        myDrivers(config) = new InteractiveDriver(settings)
+        myDrivers(config) = new InteractiveDriver(settings, CachedLogicalPackage.none)
       }
     myDrivers
   }
@@ -98,7 +98,7 @@ class DottyLanguageServer extends LanguageServer
   private def restart() = thisServer.synchronized {
     interactiv.println("restarting presentation compiler")
     val driverConfigs = for ((config, driver) <- myDrivers.toList) yield
-      (config, new InteractiveDriver(driver.settings), driver.openedFiles)
+      (config, new InteractiveDriver(driver.settings, CachedLogicalPackage.none), driver.openedFiles)
     for ((config, driver, _) <- driverConfigs)
       myDrivers(config) = driver
     System.gc()

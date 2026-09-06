@@ -5,11 +5,6 @@ def test1 =
     println("hello")
   }
 
-def test2 =
-  this.synchronized { // not an error (should be?)
-    println("hello")
-  }
-
 object MyLib
 
 def test3 =
@@ -107,9 +102,6 @@ trait Test15:
 def test16 =
   wait() // warn
 
-def test17 =
-  this.wait() // not an error (should be?)
-
 def test18 =
   import MyLib.*
   wait() // warn
@@ -120,9 +112,6 @@ def test19 =
 def test20 =
   wait(10) // warn
 
-def test21 =
-  this.wait(10) // not an error (should be?)
-
 def test22 =
   import MyLib.*
   wait(10) // warn
@@ -132,9 +121,6 @@ def test23 =
 
 def test24 =
   hashCode() // warn
-
-def test25 =
-  this.hashCode() // not an error (should be?)
 
 def test26 =
   import MyLib.*

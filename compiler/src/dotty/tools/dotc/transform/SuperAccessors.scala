@@ -156,6 +156,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     val needAccessor =
       name.isTermName                // Types don't need super accessors
       && !sym.isInlineMethod         // Inline methods are not called at runtime so they don't need superaccessors.
+      && !clazz.isInlineTrait        // Inline traits deal with super calls in their own way
       && (clazz != currentClass || !validCurrentClass || mix.name.isEmpty && clazz.is(Trait))
 
     if (needAccessor) atPhase(thisPhase.next)(superAccessorCall(sel, mix.name))

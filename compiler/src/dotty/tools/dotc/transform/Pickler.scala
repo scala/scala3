@@ -379,12 +379,12 @@ class Pickler extends Phase {
   // This can be called inside a Future in a background thread, it must not capture a Context
   def computePickled(pickler: TastyPickler, treePkl: TreePickler, 
                      tree: Tree, unit: CompilationUnit, internalName: String, attributes: Attributes,
-                     reference: String/*ctx.settings.sourceroot.value*/, dropComments: Boolean/*ctx.settings.XdropComments.value*/): Array[Byte] =
+                     dropComments: Boolean/*ctx.settings.XdropComments.value*/): Array[Byte] =
     serialized.run { scratch =>
       treePkl.compactify(scratch)
       if tree.span.exists then
         PositionPickler.picklePositions(
-          pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
+          pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots,
           unit.source, tree :: Nil,
           scratch.positionBuffer, scratch.pickledIndices)
 
@@ -430,16 +430,13 @@ class Pickler extends Phase {
       if ctx.settings.YtestPickler.value then beforePickling(cls) =
         tree.show(using printerContext(unit.typedAsJava))
 
-      val sourceRelativePath =
-        val reference = ctx.settings.sourceroot.value
-        util.SourceFile.relativePath(unit.source, reference)
       val isJavaAttr = unit.isJava // we must always set JAVAattr when pickling Java sources
       if isJavaAttr then
         // assert that Java sources didn't reach Pickler without `-Xjava-tasty`.
         assert(ctx.settings.XjavaTasty.value, "unexpected Java source file without -Xjava-tasty")
       val isOutline = isJavaAttr // TODO: later we may want outline for Scala sources too
       val attributes = Attributes(
-        sourceFile = sourceRelativePath,
+        sourceFile = unit.source.pathRelativeToSourceRoot,
         scala2StandardLibrary = Feature.shouldBehaveAsScala2,
         explicitNulls = ctx.settings.YexplicitNulls.value,
         captureChecked = Feature.ccEnabled,
@@ -463,11 +460,10 @@ class Pickler extends Phase {
       val internalName = if fastDoAsyncTasty then computeInternalName(cls) else ""
 
       if successful then
-        val sourceroot = ctx.settings.sourceroot.value
         val dropComments = ctx.settings.XdropComments.value
         // must not depend on a Context as it's passed to the executor, so we fetch settings before
         def doComputePickled() =
-          computePickled(pickler, treePkl, tree, unit, internalName, attributes, sourceroot, dropComments)
+          computePickled(pickler, treePkl, tree, unit, internalName, attributes, dropComments)
         /** A function that returns the pickled bytes. Depending on `Pickler.ParallelPickling`
          *  either computes the pickled data in a future or eagerly before constructing the
          *  function value.

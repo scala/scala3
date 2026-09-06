@@ -1,0 +1,20 @@
+-- Error: tests/neg/this-toplevel.scala:20:12 --------------------------------------------------------------------------
+20 |    val x = this // error
+   |            ^^^^
+   |            Top-level definitions cannot refer to this
+-- Error: tests/neg/this-toplevel.scala:24:12 --------------------------------------------------------------------------
+24 |    val x = this // error
+   |            ^^^^
+   |            Top-level definitions cannot refer to this
+-- Error: tests/neg/this-toplevel.scala:2:10 ---------------------------------------------------------------------------
+2 |  val x = this // error
+  |          ^^^^
+  |          Top-level definitions cannot refer to this
+-- Error: tests/neg/this-toplevel.scala:6:10 ---------------------------------------------------------------------------
+6 |  val x = this // error
+  |          ^^^^
+  |          Top-level definitions cannot refer to this
+-- Error: tests/neg/this-toplevel.scala:10:14 --------------------------------------------------------------------------
+10 |  val l: List[this.type] = ??? // error
+   |              ^^^^
+   |              Top-level definitions cannot refer to this

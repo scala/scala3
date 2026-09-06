@@ -415,8 +415,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
         }
       }
 
-      // We don't need to worry about CallGraph.closureInstantiations and
-      // OptimizerUtils.indyLambdaImplMethods, the removed instructions are not IndyLambdas
+      // We don't need to worry about CallGraph.closureInstantiations, the removed instructions are not IndyLambdas
       def removeFromCallGraph(insn: AbstractInsnNode): Unit = insn match {
         case mi: MethodInsnNode => callGraph.removeCallsite(mi, method)
         case _ =>

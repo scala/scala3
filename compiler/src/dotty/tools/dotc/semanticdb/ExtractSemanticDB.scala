@@ -60,7 +60,6 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
   override def isCheckable: Boolean = false
 
   private def computeDiagnostics(
-      sourceRoot: String,
       warnings: Map[SourceFile, List[dotty.tools.dotc.reporting.Diagnostic]],
       append: ((Path, List[Diagnostic])) => Unit)(using Context): Boolean = monitor(phaseName) {
     val unit = ctx.compilationUnit
@@ -68,21 +67,19 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
       val outputDir =
         ExtractSemanticDB.semanticdbPath(
           unit.source,
-          ExtractSemanticDB.semanticdbOutDir,
-          sourceRoot
+          ExtractSemanticDB.semanticdbOutDir
         )
       append((outputDir, ws.map(_.toSemanticDiagnostic)))
     }
   }
 
-  private def extractSemanticDB(sourceRoot: String, writeSemanticdbText: Boolean)(using Context): Boolean =
+  private def extractSemanticDB(writeSemanticdbText: Boolean)(using Context): Boolean =
     monitor(phaseName) {
       val unit = ctx.compilationUnit
       val outputDir =
         ExtractSemanticDB.semanticdbPath(
           unit.source,
-          ExtractSemanticDB.semanticdbOutDir,
-          sourceRoot
+          ExtractSemanticDB.semanticdbOutDir
         )
       val extractor = ExtractSemanticDB.Extractor()
       extractor.extract(unit.tpdTree)
@@ -92,20 +89,18 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
         extractor.symbolInfos.toList,
         extractor.synthetics.toList,
         outputDir,
-        sourceRoot,
         writeSemanticdbText
       )
     }
 
   override def runOn(units: List[CompilationUnit])(using ctx: Context): List[CompilationUnit] = {
-    val sourceRoot = ctx.settings.sourceroot.value
     val appendDiagnostics = phaseMode == ExtractSemanticDB.PhaseMode.AppendDiagnostics
     val unitContexts = units.map(ctx.fresh.setCompilationUnit(_).withRootImports)
     if (appendDiagnostics)
       val warningsAndInfos = (ctx.reporter.allWarnings ++ ctx.reporter.allInfos).groupBy(w => w.pos.source)
       val buf = mutable.ListBuffer.empty[(Path, Seq[Diagnostic])]
       val units0 =
-        for unitCtx <- unitContexts if computeDiagnostics(sourceRoot, warningsAndInfos, buf += _)(using unitCtx)
+        for unitCtx <- unitContexts if computeDiagnostics(warningsAndInfos, buf += _)(using unitCtx)
         yield unitCtx.compilationUnit
       cancellable {
         buf.toList.asJava.parallelStream().forEach { case (out, diagnostics) =>
@@ -115,7 +110,7 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
       units0
     else
       val writeSemanticdbText = ctx.settings.semanticdbText.value
-      for unitCtx <- unitContexts if extractSemanticDB(sourceRoot, writeSemanticdbText)(using unitCtx)
+      for unitCtx <- unitContexts if extractSemanticDB(writeSemanticdbText)(using unitCtx)
       yield unitCtx.compilationUnit
   }
 
@@ -159,14 +154,13 @@ private[semanticdb] object ExtractSemanticDB:
     symbolInfos: List[SymbolInformation],
     synthetics: List[Synthetic],
     outpath: Path,
-    sourceRoot: String,
     semanticdbText: Boolean
   ): Unit =
     Files.createDirectories(outpath.getParent())
     val doc: TextDocument = TextDocument(
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
-      uri = Tools.mkURIstring(Paths.get(relPath(source, sourceRoot))),
+      uri = Tools.mkURIstring(Path.of(source.pathRelativeToSourceRoot)),
       text = if semanticdbText then String(source.content) else "",
       md5 = internal.MD5.compute(String(source.content)),
       symbols = symbolInfos,
@@ -201,14 +195,11 @@ private[semanticdb] object ExtractSemanticDB:
       case Success(_) => // success to update semanticdb, say nothing
   end appendDiagnostics
 
-  private def relPath(source: SourceFile, sourceRoot: String) =
-    SourceFile.relativePath(source, sourceRoot)
-
-  private def semanticdbPath(source: SourceFile, base: Path, sourceRoot: String): Path =
+  private def semanticdbPath(source: SourceFile, base: Path): Path =
     absolutePath(base)
       .resolve("META-INF")
       .resolve("semanticdb")
-      .resolve(relPath(source, sourceRoot))
+      .resolve(source.pathRelativeToSourceRoot)
       .resolveSibling(source.name + ".semanticdb")
 
   /** Extractor of symbol occurrences from trees */
@@ -389,9 +380,9 @@ private[semanticdb] object ExtractSemanticDB:
           for arg <- tree.args do
             arg match
               case tree @ NamedArg(name, arg) =>
-                traverse(localBodies.get(arg.symbol).getOrElse(arg))
+                traverse(localBodies.getOrElse(arg.symbol, arg))
                 genParamSymbol(name).foreach(
-                  registerUse(_, tree.span.startPos.withEnd(tree.span.start + name.toString.length), tree.source)
+                  registerUse(_, tree.span.startPos.withEnd(tree.span.start + name.length), tree.source)
                 )
               case _ => traverse(arg)
         case tree: Assign =>
