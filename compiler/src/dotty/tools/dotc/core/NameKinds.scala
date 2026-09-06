@@ -396,6 +396,13 @@ object NameKinds {
     case BothBounds extends AvoidNameKind(AVOIDBOTH, "(avoid)")
 
   val BodyRetainerName: SuffixNameKind = new SuffixNameKind(BODYRETAINER, "$retainedBody")
+
+  // Built on a plain string to avoid using a tag byte and messing with TASTy,
+  // since those methods are built before the pickler. 
+  val IndirectBodyRetainerSuffix: String = "$indirectRetainedBody"
+  def indirectRetainerName(name: TermName): TermName =
+    (name.toString + IndirectBodyRetainerSuffix).toTermName
+
   val FieldName: SuffixNameKind = new SuffixNameKind(FIELD, "$$local") {
       override def mkString(underlying: TermName, info: ThisInfo) = underlying.toString
   }

@@ -495,6 +495,31 @@ object Inlines:
         ref(meth).appliedToArgss(prefss).withSpan(mdef.rhs.span.startPos))(
         using ctx.withOwner(retainer)))
     .showing(i"retainer for $meth: $result", inlining)
+  
+  /** Similar to `bodyRetainer`, a method that keeps track of the body that is kept at runtime,
+   *  except synthesised for indirect overrides, and put into a downstream class, e.g. in:
+   *  
+   *    class Foo:
+   *      inline def bar = True
+   *    class Bar:
+   *      def bar
+   *      def test = bar
+   *    class Test extends Foo, Bar
+   * 
+   * `bar$indirectRetainedBody` is added to `Test`, and rewritten to `bar` in erasure.
+   */
+  def indirectBodyRetainer(sym: Symbol, impl: Symbol, cls: ClassSymbol)(using Context): DefDef =
+    val retainer = impl.asTerm.copy(
+        owner = cls,
+        name = NameKinds.indirectRetainerName(sym.name.asTermName),
+        flags = (impl.flags &~ (Inline | Macro | Override | AbsOverride)) | Private,
+        info = sym.info.asSeenFrom(cls.thisType, sym.owner),
+        coord = cls.coord
+      ).asTerm.entered
+      DefDef(retainer, prefss =>
+        inlineCall(
+          This(cls).select(impl).appliedToArgss(prefss).withSpan(cls.span))(
+            using ctx.withOwner(retainer)))
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: Inlined)(using Context): Tree =
