@@ -11,7 +11,7 @@ import Names.Name
 import StdNames.nme
 import config.Feature
 
-class TypeUtils:
+class TypeUtils extends TypeApplications:
   /** A decorator that provides methods on types
    *  that are needed in the transformer pipeline.
    */
