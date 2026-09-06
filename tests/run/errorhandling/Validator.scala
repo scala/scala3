@@ -1,74 +1,91 @@
 //> using options -language:experimental.captureChecking,experimental.separationChecking
 package scala.util
-import boundary.{break, Label}
+
+import language.experimental.{captureChecking, separationChecking}
+
+import scala.util.boundary, boundary.{break, Label}
+
 import collection.mutable
 import caps.Control
 import caps.fresh
 import caps.any
 import caps.Control
 
-import Validation.{Validated, Checked}
+import Validation.{Checked, Validated, Tested, CanCheck}
+import scala.annotation.publicInBinary
+import Validation.Step
 
 object Validation {
-  object Abort
-  type Abort = Abort.type
 
-  type Checked[+T] = Label[Abort] ?-> T
+  type Validated[+T, E] = Result[T, List[E]]
+  type Tested[+T] = Result[T, Unit]
+  type CanCheck = boundary.Label[Err[Unit]]
+  type Checked[+T] = CanCheck ?=> T
+  type Step[+T, E] = (CanCheck, Validation[E]^) ?=> T
+  def scope[E](using scope: Validation[E]^): scope.type = scope
 
-  inline def validate[T, E](inline op: Validation[E]^ -> Checked[T]): Result[T, List[E]] =
-    val scope: Validation[E]^ = new Validation[E]
-    val userResult =
-      boundary[Validated[T]]:
-        Validated.success(op(scope))
-    caps.freeze(scope)
-    val errors = scope.snapshot
-    userResult match
-      case ok: Ok[?] if errors.isEmpty => ok
-      case _ => Err(errors)
+  inline def validate[T, E](inline step: Step[T, E]): Validated[T, E] =
+    given (Validation[E]^)()
+    scope.result(step)
 
+  val invalid: Err[Unit] = Err(())
 
-  opaque type Validated[+A] = Ok[A] | Abort
-  object Validated:
-    def failure: Validated[Nothing] = Abort
-    def success[A](value: A): Validated[A] = Ok(value)
-    def fromOk[A](value: Ok[A]): Validated[A] = value
-    extension [A](c: Validated[A])
-      inline def valid: Checked[A] = c match
-        case ok: Ok[?] => ok.value
-        case _ => scala.util.boundary.break(Abort)
 }
 
-class Validation[E] extends caps.Mutable:
+class Validation[E] extends caps.Stateful, caps.ExclusiveCapability:
   self: Validation[E]^{any} =>
 
   private val errors = mutable.ListBuffer[E]()
 
-  def snapshot: List[E] = errors.toList
+  consume def close(): List[E] = {
+    val es = errors.toList
+    errors.clear()
+    es
+  }
 
-  update def appendOne(e: E): Unit =
+  @publicInBinary
+  private[Validation] update def appendOne(e: E): Unit =
     errors += e
 
-  update inline def test(inline cond: Boolean, inline error: E): Unit =
+  @publicInBinary
+  private[Validation] update def appendAll(es: List[E]): Unit =
+    errors ++= es
+
+  update inline def test(cond: Boolean, inline error: E): Unit =
     if !cond then
       appendOne(error)
 
-  update inline def test[A](inline cond: Result[A, E]): Validated[A] =
-    cond match
-      case ok: Ok[?] =>
-        Validated.fromOk(ok)
-      case Err(e) =>
-        appendOne(e)
-        Validated.failure
-
-  update inline def require(inline cond: Boolean, inline error: E): Checked[Unit] =
+  update inline def require(cond: Boolean, inline error: E): Checked[Unit] = (lbl: CanCheck) ?=>
     if !cond then
       appendOne(error)
-      break(Validation.Abort)
+      break(Validation.invalid)
 
-  update inline def require[A](inline cond: Result[A, E]): Checked[A] =
+  update def test[A](cond: Result[A, E]): Tested[A] =
     cond match
       case ok: Ok[?] =>
-        ok.value
+        ok
       case Err(e) =>
         appendOne(e)
-        break(Validation.Abort)
+        Validation.invalid
+
+  inline update def testStep[A](inline cond: Step[A, E]): Tested[A] =
+    val scope: Validation[E]^{this} = this
+    val tested = boundary[Tested[A]] { lbl ?=>
+      Ok(cond(using lbl, scope))
+    }
+    tested
+
+  update def testAll[A](validated: Validated[A, E]): Tested[A] =
+    validated match
+      case ok: Ok[?] =>
+        ok
+      case Err(es) =>
+        appendAll(es)
+        Validation.invalid
+
+  inline consume def result[A](inline cond: Step[A, E]): Validated[A, E] =
+    val validated = testStep(cond)
+    val errs = close()
+    validated match
+      case ok @ Ok(_) if errs.isEmpty => ok
+      case _ => Err(errs)
