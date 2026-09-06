@@ -869,14 +869,19 @@ class JSCodeGen()(using genCtx: Context) {
 
     assert(moduleClass.is(ModuleClass), moduleClass)
 
+    /* Unlike the JVM backend, we detect conflicts based on full signatures,
+     * not just simple names. Moreover, we only issue conflicts with *static*
+     * methods. In principle, this means we never have actual conflicts, and
+     * we can generate forwarders for all candidate methods.
+     *
+     * This is particularly important when we use Scala `object`s as
+     * implementations for Java static methods.
+     */
     val existingPublicStaticMethodNames = existingMethods.collect {
       case js.MethodDef(flags, name, _, _, _, _)
           if flags.namespace == js.MemberNamespace.PublicStatic =>
         name.name
     }.toSet
-
-    val staticNames = moduleClass.companionClass.info.allMembers
-      .collect { case d if d.name.isTermName && d.symbol.isScalaStatic => d.name }.toSet
 
     val members = {
       moduleClass.info.membersBasedOnFlags(required = Flags.Method,
@@ -900,7 +905,6 @@ class JSCodeGen()(using genCtx: Context) {
         || hasAccessBoundary
         || isOfJLObject
         || m.hasAnnotation(jsdefn.JSNativeAnnot) || isDefaultParamOfJSNativeDef // #4557
-        || staticNames(m.name)
     }
 
     val forwarders = for {
