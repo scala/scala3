@@ -18,6 +18,7 @@ import NameKinds.{WildcardParamName, QualifiedName}
 import NameOps.*
 import ast.{Positioned, Trees}
 import ast.Trees.*
+import ast.untpd
 import StdNames.*
 import util.Spans.*
 import util.chaining.*
@@ -1766,6 +1767,9 @@ object Parsers {
         case _: Match => in.token == MATCH
         case _: New => in.token == NEW
         case _: (ForYield | ForDo) => in.token == FOR
+        case apply: Apply if in.featureEnabled(Feature.methodBlockEndMarkers) =>
+          val name = apply.srcName
+          !name.isEmpty && in.isIdent && in.name.nn == name.toTermName
         case _ => false
 
       def endName = if in.token == IDENTIFIER then in.name.toString else tokenString(in.token)
@@ -3193,6 +3197,15 @@ object Parsers {
     def mkApply(fn: Tree, args: (List[Tree], Boolean)): Tree =
       val res = Apply(fn, args._1)
       if args._2 then res.setApplyKind(ApplyKind.Using)
+      // `Apply.srcName` already reads the name off a `Select`/`Ident` callee, so an
+      // attachment is only needed for a nested `Apply` (e.g. `test("arg"):`), whose
+      // own name would otherwise be out of reach.
+      if in.featureEnabled(Feature.methodBlockEndMarkers) then
+        fn match
+          case fn: Apply =>
+            val name = fn.srcName
+            if !name.isEmpty then res.putAttachment(untpd.MethodName, name)
+          case _ =>
       res
 
     val argumentExpr: () => Tree = () => expr(Location.InArgs) match
