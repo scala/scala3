@@ -25,8 +25,27 @@ object NamedTuple:
     => (@unused eqV: CanEqual[V1, V2])
     => CanEqual[NamedTuple[N1, V1], NamedTuple[N2, V2]] = CanEqual.derived
 
+  /** Creates a named tuple with the names `N` and the element values of the tuple `x`.
+   *
+   *  @tparam N the tuple of name types labelling the elements; for named tuples written
+   *            in source code these are literal string types, but the signature only
+   *            requires a tuple
+   *  @tparam V the tuple of element value types
+   *  @param x the tuple holding the element values
+   *  @return the named tuple that pairs the names `N` with the element values of `x`
+   */
   def apply[N <: Tuple, V <: Tuple](x: V): NamedTuple[N, V] = x
 
+  /** Decomposes a named tuple into its element values, so that a pattern match on a
+   *  named tuple binds the values without their names. The match always succeeds.
+   *
+   *  @tparam N the tuple of name types labelling the elements; for named tuples written
+   *            in source code these are literal string types, but the signature only
+   *            requires a tuple
+   *  @tparam V the tuple of element value types
+   *  @param x the named tuple to decompose
+   *  @return `Some` wrapping the underlying tuple of element values of `x`
+   */
   def unapply[N <: Tuple, V <: Tuple](x: NamedTuple[N, V]): Some[V] = Some(x)
 
   /** A named tuple expression will desugar to a call to `build`. For instance,
@@ -251,6 +270,19 @@ object NamedTupleDecomposition:
 
   @publicInBinary
   private[NamedTupleDecomposition]
+  /** Creates a map from field names to element values, preserving the order of the fields.
+   *
+   *  If the two tuples have different sizes, the extra elements of the larger tuple will
+   *  be disregarded.
+   *
+   *  @tparam N the tuple of field name types; this is not checked, but callers must pass
+   *            only string names, because the result is cast to a map with `String` keys
+   *  @tparam V the tuple of element value types
+   *  @param names the field names, in field order
+   *  @param values the element values, in the same order as `names`
+   *  @return a [[scala.collection.immutable.SeqMap]] that maps each name to the value at
+   *          the same position
+   */
   def createSeqMap[N <: Tuple, V <: Tuple](names: N, values: V): SeqMap[String, Tuple.Union[V]] =
     SeqMap.newBuilder
       .addAll(names.productIterator.zip(values.productIterator))

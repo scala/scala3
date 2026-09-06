@@ -130,8 +130,35 @@ object Console extends AnsiColor {
   private val inVar  = new DynamicVariable[BufferedReader](
     new BufferedReader(new InputStreamReader(java.lang.System.in)))
 
+  /** Sets the default output stream for the current thread by changing the
+   *  current binding directly, discarding the previously bound stream. Unlike
+   *  `withOut`, this method does not itself restore the previous stream; note,
+   *  however, that if it is called inside a `withOut` body, that enclosing
+   *  scope will restore its own saved stream when it exits.
+   *
+   *  @param out the new output stream to install as the default for the
+   *             current thread
+   */
   protected def setOutDirect(out: PrintStream): Unit  = outVar.value = out
+  /** Sets the default error stream for the current thread by changing the
+   *  current binding directly, discarding the previously bound stream. Unlike
+   *  `withErr`, this method does not itself restore the previous stream; note,
+   *  however, that if it is called inside a `withErr` body, that enclosing
+   *  scope will restore its own saved stream when it exits.
+   *
+   *  @param err the new error stream to install as the default for the
+   *             current thread
+   */
   protected def setErrDirect(err: PrintStream): Unit  = errVar.value = err
+  /** Sets the default input reader for the current thread by changing the
+   *  current binding directly, discarding the previously bound reader. Unlike
+   *  `withIn`, this method does not itself restore the previous reader; note,
+   *  however, that if it is called inside a `withIn` body, that enclosing
+   *  scope will restore its own saved reader when it exits.
+   *
+   *  @param in the new input reader to install as the default for the
+   *            current thread
+   */
   protected def setInDirect(in: BufferedReader): Unit = inVar.value = in
 
   /** The default output, can be overridden by `withOut`.
