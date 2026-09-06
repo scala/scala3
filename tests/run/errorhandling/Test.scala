@@ -81,6 +81,17 @@ def validateTest() = {
   import Validation.validate
   import Validation.scope
 
+  locally {
+    // FIXME: leaker!
+
+    class ParseErr
+
+    Validation.validate[() => Validation[ParseErr]^, ParseErr] {
+      val v = scope
+      () => v
+    }
+  }
+
   case class Email private (value: String)
   object Email:
     def from(raw: String): Result[Email, String] =
