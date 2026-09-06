@@ -21,6 +21,8 @@
    |                                          ^
    |No given instance of type testObjectInstance.Zip[Option] was found for a context parameter of method traverse in trait Traverse
    |
+   |Note: the missing arg is not a leading implicit of `traverse`; it is not used to construct the extension.
+   |
    |The following import might fix the problem:
    |
    |  import testObjectInstance.instances.zipOption
