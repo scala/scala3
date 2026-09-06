@@ -49,6 +49,24 @@ class RetainingAnnotation(tpe: Type) extends CompactAnnotation(tpe) {
     if myCaptureSet == null then
       myCaptureSet = CaptureSet(retainedType.retainedElements*)
     myCaptureSet.nn
+
+  /** Does this annotation refer to a parameter of one of the type lambdas
+   *  in `binders`? This is used when transforming inferred types, where
+   *  capture sets referring to a type lambda binder enclosing them in the
+   *  inferred type itself must be kept: they cannot be re-inferred since
+   *  capture set variables would live outside the type lambda's binder,
+   *  so level checking would exclude the parameter from them.
+   *  The check goes through `retainedElementsRaw` since binder references
+   *  can be nested inside further retaining annotations, as in
+   *  `retains[CapSet^{C}]`, where `existsPart` alone would not see them.
+   *  See issue #26000.
+   */
+  def refersToParamOf(binders: List[TypeLambda])(using Context): Boolean =
+    binders.nonEmpty
+    && retainedType.retainedElementsRaw.exists:
+        _.existsPart:
+          case tp: TypeParamRef => binders.exists(_ eq tp.binder)
+          case _ => false
 }
 object RetainingAnnotation {
 

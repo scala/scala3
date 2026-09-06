@@ -337,7 +337,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     *  4. Add capture set variables to all types that can be tracked
     *  5. Perform normalizeCaptures
     *
-    *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
+    *  Type lambda parameter bounds and retains annotations referring to a type
+    *  lambda binder in the mapped type itself are treated as explicitly declared
+    *  types; they are transformed with `transformExplicitType` instead.
     *  @param tp            the type to transform
     *  @param sym           the definition to which this type belongs
     *  @param typeArgFormal if `tp` is an an inferred type argument, the formal parameter info,
@@ -350,6 +352,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       variance = initialVariance
       var refiningNames: Set[Name] = Set()
+
+      /** The type lambdas enclosing the currently mapped part of the type */
+      var localBinders: List[TypeLambda] = Nil
 
       /** Refine a possibly applied class type C where the class has tracked parameters
        *  x_1: T_1, ..., x_n: T_n to C { val x_1: T_1^{CV_1}, ..., val x_n: T_n^{CV_n} }
@@ -389,6 +394,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       def innerApply(tp: Type) =
         tp match
+          case tp @ AnnotatedType(parent, annot: RetainingAnnotation)
+          if annot.isStrict && annot.refersToParamOf(localBinders) =>
+            // Keep retains annotations that refer to a type lambda binder that is
+            // local to the mapped type; they cannot be re-inferred. See issue #26000.
+            transformExplicitType(tp, sym, initialVariance = variance)
           case AnnotatedType(parent, annot)
           if annot.symbol.isRetains || annot.symbol == defn.InferredAnnot =>
             // Drop explicit retains and @inferred annotations
@@ -401,6 +411,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             refiningNames += rname
             val parent1 = try this(parent) finally refiningNames = saved
             addVar(tp.derivedRefinedType(parent1, rname, this(rinfo)), tp)
+          case tp: TypeLambda =>
+            // The parameter bounds of a type lambda embedded in an inferred type
+            // are declared types coming from the source; keep them instead of
+            // re-inferring them, which is not possible for capture set bounds
+            // such as `[C^ <: {io}]`. See issue #26000.
+            val paramInfos1 = tp.paramInfos.mapConserve: info =>
+              transformExplicitType(info, sym, initialVariance = -variance).bounds
+            localBinders = tp :: localBinders
+            val resType1 = try this(tp.resType) finally localBinders = localBinders.tail
+            tp.derivedLambdaType(paramInfos = paramInfos1, resType = resType1)
           case _ =>
             addVar(mapFollowingAliases(tp), tp)
     }
@@ -528,6 +548,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             else if ann.symbol == defn.InferredAnnot then
               transformInferredType(parent, sym, initialVariance = variance)
                 // typeArgFormal is NoType here since we are inferring inside an argument, not at the toplevel
+            else if ann.symbol == defn.DeclaredAnnot then
+              // @declared annotations only inform the transformation of inferred types;
+              // in an explicitly transformed part of a type they can be dropped.
+              this(parent)
             else
               t.derivedAnnotatedType(this(parent), ann)
           case throwsAlias(res, exc) =>
