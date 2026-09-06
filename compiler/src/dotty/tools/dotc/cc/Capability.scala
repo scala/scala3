@@ -734,13 +734,28 @@ object Capabilities:
           if self.derivesFromCapability then self.derivesFrom(cls)
           else captureSetOfInfo.tryClassifyAs(cls)
 
-    /** Is every part of this capability provably classified as `cls` or a subclass? */
-    // Ignores exclusions: sound but loose.
-    // TODO: when attempting classifier-splitting, tighten for the remainder algorithm.
+    /** Is every part of this capability provably classified as `cls` or a subclass?
+     *  (Subkinding: the classifier kind subtracts to empty against `cls`, exclusions included.)
+     */
     def isKnownClassifiedAs(cls: ClassSymbol)(using Context): Boolean =
-      transClassifiers match
-        case ClassifiedAs(cs) => cs.forall(_.isSubClass(cls))
-        case _ => false
+      def emptyUnder(roots: List[ClassSymbol], except: List[ClassSymbol]) =
+        // The right-hand side is the bare `cls` subtree, so subtraction is empty iff
+        // the root lies below `cls`, or an outer exclusion already removed that root.
+        // This is the no-allocation specialization of `subtractClassifiers`.
+        roots.forall(k => k.isSubClass(cls) || except.exists(e => k.isSubClass(e)))
+      this match
+        case Classified(_, only, except) if only != defn.AnyClass =>
+          emptyUnder(only :: Nil, except)
+        case Classified(ref, _, except) => // only == AnyClass
+          ref.transClassifiers match
+            case ClassifiedAs(cs) => emptyUnder(cs, except)
+            case _ => false
+        case ReadOnly(ref) => ref.isKnownClassifiedAs(cls)
+        case Maybe(ref) => ref.isKnownClassifiedAs(cls)
+        case _ =>
+          transClassifiers match
+            case ClassifiedAs(cs) => emptyUnder(cs, Nil)
+            case _ => false
 
     /** Is this capability provably free of any parts classified under `cls`?
      *  True if all its classifiers are on branches unrelated to `cls`, or an exclusion
@@ -1063,6 +1078,55 @@ object Capabilities:
     if cls1.isSubClass(cls2) then cls1
     else if cls2.isSubClass(cls1) then cls2
     else defn.NothingClass
+
+  /** The classifier subtrees making up the kind subtraction
+   *  `(only1 - except1) \ (only2 - except2)`, i.e. the remainder of the first classifier
+   *  projection after subtracting the second, as a union of `(only, except)` subtrees.
+   *
+   *  Both inputs are normalized subtrees: their exclusions are antichains strictly below
+   *  their roots. Results keep the exclusions relevant and dominator-pruned; their order
+   *  is immaterial to the remainder computation. The computation uses
+   *
+   *    A \ (B \ E) = (A \ B) union (A intersect E)
+   *
+   *  so it first cuts out the bare `only2` subtree, then adds back the parts under the
+   *  exclusions of the second operand. Empty and irrelevant subtrees are dropped, and
+   *  at most `except2.size + 1` subtrees are returned.
+   *  Follows the kind subtraction of "Classifying Capabilities" (Fig. 3).
+   */
+  def subtractClassifiers(only1: ClassSymbol, except1: List[ClassSymbol],
+      only2: ClassSymbol, except2: List[ClassSymbol])(using Context): List[(ClassSymbol, List[ClassSymbol])] =
+    val lhs = (only1, except1)
+
+    def rootsDisjoint(cls1: ClassSymbol, cls2: ClassSymbol) =
+      !cls1.isSubClass(cls2) && !cls2.isSubClass(cls1)
+
+    if only1 == defn.NothingClass || except1.exists(only1.isSubClass) then
+      Nil
+    else if only2 == defn.NothingClass || except2.exists(only2.isSubClass) then
+      lhs :: Nil
+    else if rootsDisjoint(only1, only2)
+        || except1.exists(only2.isSubClass) // the RHS lies in a hole of the LHS
+        || except2.exists(only1.isSubClass) // the LHS lies in a hole of the RHS
+    then
+      lhs :: Nil
+    else
+      // A \ B. Since the roots overlap, either B covers A, or B becomes a new
+      // exclusion of A. In the latter case, remove exclusions now dominated by B.
+      val outsideRoot =
+        if only1.isSubClass(only2) then Nil
+        else
+          val kept = except1.filterNot(_.isSubClass(only2))
+          (only1, only2 :: kept) :: Nil
+
+      // A intersect E. A RHS exclusion that is below A contributes one remainder.
+      // Keep only LHS exclusions below its new root; the others are irrelevant.
+      except2.foldRight(outsideRoot): (excluded, result) =>
+        if excluded.isSubClass(only1)
+            && !except1.exists(excluded.isSubClass)
+        then
+          (excluded, except1.filter(_.isSubClass(excluded))) :: result
+        else result
 
   /** The least classifier that both `cls1` and `cls2` extend, or `AnyClass`,
    *  if `cls1` and `cls2` don't have a common ancestor classifier. It is
