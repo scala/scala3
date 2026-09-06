@@ -3035,7 +3035,10 @@ class JSCodeGen()(using genCtx: Context) {
           else externalEqualsNumObject
         } else externalEquals
       }
-      genApplyStatic(equalsMethod, List(lsrc, rsrc))
+
+      // Force the non-module class, to be consistent with the JVM
+      js.ApplyStatic(js.ApplyFlags.empty, BoxesRunTimeClassName,
+          encodeMethodSym(equalsMethod), List(lsrc, rsrc))(jstpe.BooleanType)
     } else {
       // if (lsrc eq null) rsrc eq null else lsrc.equals(rsrc)
       if (lsym == defn.StringClass) {
@@ -5257,6 +5260,7 @@ object JSCodeGen {
 
   private val AbstractFunction0ClassName = ClassName("scala.runtime.AbstractFunction0")
   private val AbstractFunction1ClassName = ClassName("scala.runtime.AbstractFunction1")
+  private val BoxesRunTimeClassName = ClassName("scala.runtime.BoxesRunTime")
   private val Function0ClassName = ClassName("scala.Function0")
   private val Function1ClassName = ClassName("scala.Function1")
   private val Tuple2ClassName = ClassName("scala.Tuple2")
