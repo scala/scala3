@@ -1,0 +1,15 @@
+-- Error: tests/neg/i26350.scala:10:9 ----------------------------------------------------------------------------------
+10 |val a: 1 / 0 = 5           // error
+   |         ^
+   |         / by zero
+-- Error: tests/neg/i26350.scala:11:7 ----------------------------------------------------------------------------------
+11 |val b: AnInt[String] = ??? // error
+   |       ^
+   |       / by zero
+-- [E007] Type Mismatch Error: tests/neg/i26350.scala:15:16 ------------------------------------------------------------
+15 |  case _   => 1 / 0        // error
+   |              ^^^^^
+   |              Found:    (1 : Int) / (0 : Int)
+   |              Required: String
+   |
+   | longer explanation available when compiling with `-explain`

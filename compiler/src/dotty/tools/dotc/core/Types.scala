@@ -4754,7 +4754,10 @@ object Types extends TypeUtils {
       if myEvalRunId == ctx.runId then myEvalued
       else
         val res = TypeEval.tryCompiletimeConstantFold(this)
-        if !isProvisional then
+        // Don't cache while `SuppressFoldErrors` is set (typing a match-type case
+        // body): a failed fold yields a context-dependent `NoType` there, which
+        // must not poison genuine uses elsewhere in the same run.
+        if !isProvisional && ctx.property(TypeEval.SuppressFoldErrors).isEmpty then
           myEvalRunId = ctx.runId
           myEvalued = res
         res

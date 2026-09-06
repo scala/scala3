@@ -78,7 +78,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case tp: LazyRef =>
           homogenize(tp.ref)
         case tp @ AppliedType(tycon, args) =>
-          if (defn.isCompiletimeAppliedType(tycon.typeSymbol)) tp.tryCompiletimeConstantFold
+          // Printing must never crash: a `compiletime.ops` application whose
+          // constant folding fails (e.g. `1 / 0`) is shown unreduced.
+          if (defn.isCompiletimeAppliedType(tycon.typeSymbol))
+            try tp.tryCompiletimeConstantFold catch case _: TypeError => tp
           else if !tycon.typeSymbol.isOpaqueAlias then tycon.dealias.appliedTo(args)
           else tp
         case tp: NamedType =>
