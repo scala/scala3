@@ -416,9 +416,9 @@ class ReplDriver(settings: Array[String],
         for diag <- parsed.directiveDiagnostics do
           out.println(s"[warn] ${diag.message}")
         val src = parsed.source.textContent()
-        val classified = ReplDirectives.classify(src)
-        if classified.hasDirectives then
-          val stateAfterDirectives = interpretDirectives(classified)
+        val declared = ReplDirectives.read(src)
+        if declared.nonEmpty then
+          val stateAfterDirectives = interpretDirectives(declared)
           if parsed.trees.nonEmpty then
             propagateLanguageImports(parsed.trees)
             compile(parsed, stateAfterDirectives)
@@ -827,15 +827,15 @@ class ReplDriver(settings: Array[String],
       state
   }
 
-  private def interpretDirectives(classified: ReplDirectives.DirectiveClassification)(using state: State): State =
+  private def interpretDirectives(declared: ReplDirectives.DirectiveLines)(using state: State): State =
     import ReplDirectives.ReplDirective.*
 
-    classified.warnings.foreach(warning => out.println(warning.toString))
-    val dependencies = classified.directives.collect:
+    declared.warnings.foreach(warning => out.println(warning.toString))
+    val dependencies = declared.directives.collect:
       case Dependency(coordinate) => coordinate
-    val jars = classified.directives.collect:
+    val jars = declared.directives.collect:
       case Jar(path) => path
-    val repositories = classified.directives.collect:
+    val repositories = declared.directives.collect:
       case Repository(repository) => repository
     val resources = classified.directives.collect:
       case Resource(path) => path
