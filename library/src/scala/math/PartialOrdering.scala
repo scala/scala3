@@ -43,8 +43,8 @@ import scala.language.`2.13`
  *  @tparam T the type of elements being ordered
  */
 
-trait PartialOrdering[T] extends Equiv[T] {
-  outer: PartialOrdering[T] =>
+trait PartialOrdering[T] extends Equiv[T], caps.Pure {
+  outer =>
 
   /** Result of comparing `x` with operand `y`.
    *  Returns `None` if operands are not comparable.
