@@ -759,7 +759,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         val logProgress = !Properties.isRunByCI && sourceCount > 1 && !suppressAllOutput
         val start = System.currentTimeMillis()
         if logProgress then
-          realStdout.println(s"Testing ${Console.BOLD}${filteredSources.head.name}${Console.RESET}")
+          realStdout.println(s"Testing ${Console.BOLD}${Console.BLUE}${filteredSources.head.name}${Console.RESET}")
           timer.schedule((() => updateProgressMonitor(start)): TimerTask, 100/*ms*/, 200/*ms*/)
 
         val eventualResults = for target <- filteredSources yield
