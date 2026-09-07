@@ -15,9 +15,8 @@ package math
 
 import scala.language.`2.13`
 import java.util.Comparator
-
 import scala.language.implicitConversions
-import scala.annotation.migration
+import scala.annotation.{migration, targetName}
 import scala.annotation.unchecked.uncheckedOverride
 
 /** Ordering is a trait whose instances each represent a strategy for sorting
@@ -247,6 +246,19 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
     if (res1 != 0) res1 else ord.compare(f(x), f(y))
   }
 
+  extension (lhs: T) {
+    def <(rhs: T): Boolean = lt(lhs, rhs)
+    def <=(rhs: T): Boolean = lteq(lhs, rhs)
+    def >(rhs: T): Boolean = gt(lhs, rhs)
+    def >=(rhs: T): Boolean = gteq(lhs, rhs)
+    @targetName("equivInfix")
+    def equiv(rhs: T): Boolean = outer.equiv(lhs, rhs)
+    @targetName("maxInfix")
+    def max(rhs: T): T = outer.max(lhs, rhs)
+    @targetName("minInfix")
+    def min(rhs: T): T = outer.min(lhs, rhs)
+  }
+
   /** This inner class defines comparison operators available for `T`.
    *
    *  It can't extend `AnyVal` because it is not a top-level class
@@ -254,6 +266,7 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *
    *  @param lhs the left-hand side value for infix comparison operations
    */
+  @deprecated("use the extension methods available instead", since = "3.10.0")
   class OrderingOps(lhs: T) {
     def <(rhs: T): Boolean = lt(lhs, rhs)
     def <=(rhs: T): Boolean = lteq(lhs, rhs)
@@ -270,7 +283,8 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *  @param lhs the value to enrich with ordering operators
    *  @return an `OrderingOps` wrapping `lhs` and providing infix comparison operators
    */
-  implicit def mkOrderingOps(lhs: T): OrderingOps = new OrderingOps(lhs)
+  @deprecated("use the extension methods available instead", since = "3.10.0")
+  def mkOrderingOps(lhs: T): OrderingOps = new OrderingOps(lhs)
 }
 
 trait LowPriorityOrderingImplicits {
@@ -395,7 +409,8 @@ object Ordering extends LowPriorityOrderingImplicits {
      *  @param ord the implicit `Ordering` instance for type `T`
      *  @return an `OrderingOps` instance providing infix comparison operators
      */
-    implicit def infixOrderingOps[T](x: T)(implicit ord: Ordering[T]): Ordering[T]#OrderingOps = new ord.OrderingOps(x)
+    @deprecated("use the extension methods available instead", since = "3.10.0")
+    def infixOrderingOps[T](x: T)(implicit ord: Ordering[T]): Ordering[T]#OrderingOps = new ord.OrderingOps(x)
   }
 
   /** An object containing implicits which are not in the default scope. */

@@ -910,10 +910,12 @@ class LazyListLazinessTest {
         override def negate(x: CustomLong) = I.negate(x.value)
         override def fromInt(x: Int) = I.fromInt(x)
         override def parseString(str: String) = I.parseString(str).map(CustomLong.apply)
-        override def toInt(x: CustomLong) = I.toInt(x.value)
-        override def toLong(x: CustomLong) = I.toLong(x.value)
-        override def toFloat(x: CustomLong) = I.toFloat(x.value)
-        override def toDouble(x: CustomLong) = I.toDouble(x.value)
+        extension (x: CustomLong) {
+          override def toInt: Int = I.toInt(x.value)
+          override def toLong: Long = I.toLong(x.value)
+          override def toFloat: Float = I.toFloat(x.value)
+          override def toDouble: Double = I.toDouble(x.value)
+        }
         override def compare(x: CustomLong, y: CustomLong) = I.compare(x.value, y.value)
       }
     }
