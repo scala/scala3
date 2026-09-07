@@ -114,7 +114,8 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
       )
 
   def close(): Unit =
-    runtime.foreach((parent, _) => parent.close())
+    runtime.foreach: (parent, loaded) =>
+      WorksheetClassLoaders.closeCreated(Option(loaded.myClassLoader).getOrElse(parent))
     runtime = None
 
 private object StatementRunner:
