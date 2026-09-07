@@ -173,6 +173,9 @@ class ReplDriver(settings: Array[String],
 
   private[repl] def replShouldStart: Boolean = shouldStart
 
+  private[repl] def replRenderingClassLoader: Option[ClassLoader] =
+    Option(rendering).flatMap(loaded => Option(loaded.myClassLoader))
+
   private var rootCtx: Context = uninitialized
   private var shouldStart: Boolean = uninitialized
   private var compiler: ReplCompiler = uninitialized
