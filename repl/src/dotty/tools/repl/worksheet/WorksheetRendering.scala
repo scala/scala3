@@ -1,6 +1,8 @@
 package dotty.tools.repl.worksheet
 
-private final case class RenderedBinder(name: String, tpe: String, value: String)
+private enum RenderedBinder:
+  case Value(name: String, tpe: String, value: String)
+  case Declaration(text: String)
 
 private object WorksheetRendering:
   def render(
@@ -11,23 +13,20 @@ private object WorksheetRendering:
   ): Option[WorksheetStatement] =
     val outputLines = output.linesIterator.toList
     val details =
-      values.map(value => s"${value.name}: ${value.tpe} = ${value.value}") :::
-        outputLines.map(line => s"// $line")
+      values.map(detailsOf) ::: outputLines.map(line => s"// $line")
     val margin = math.max(20, screenWidth - position.endColumn)
     val summary =
       values match
         case Nil => outputLines.headOption.getOrElse("")
-        case value :: Nil => s": ${value.tpe} = ${oneLine(value.value)}"
+        case value :: Nil => summaryOf(value, includeName = false)
         case multiple =>
-          multiple
-            .map(value => s"${value.name}: ${value.tpe} = ${oneLine(value.value)}")
-            .mkString(", ")
+          multiple.map(value => summaryOf(value, includeName = true)).mkString(", ")
 
     if summary.isEmpty && details.isEmpty then None
     else
       val omitsDetails =
         if values.isEmpty then outputLines.sizeIs > 1
-        else outputLines.nonEmpty || values.exists(_.value.contains('\n'))
+        else outputLines.nonEmpty || values.exists(isMultiline)
       Some(
         WorksheetStatement(
           position,
@@ -36,6 +35,20 @@ private object WorksheetRendering:
           !omitsDetails && summary.length <= margin
         )
       )
+
+  private def detailsOf(binder: RenderedBinder): String = binder match
+    case RenderedBinder.Value(name, tpe, value) => s"$name: $tpe = $value"
+    case RenderedBinder.Declaration(text) => text
+
+  private def summaryOf(binder: RenderedBinder, includeName: Boolean): String = binder match
+    case RenderedBinder.Value(name, tpe, value) =>
+      val namePrefix = if includeName then s"$name: " else ": "
+      s"$namePrefix$tpe = ${oneLine(value)}"
+    case RenderedBinder.Declaration(text) => text
+
+  private def isMultiline(binder: RenderedBinder): Boolean = binder match
+    case RenderedBinder.Value(_, _, value) => value.contains('\n')
+    case RenderedBinder.Declaration(_) => false
 
   private def oneLine(value: String): String =
     value.replaceAll("\\s+", " ")

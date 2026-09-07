@@ -6,7 +6,12 @@ import org.junit.Test
 class WorksheetRenderingTest:
   private def summaryOf(value: String, screenWidth: Int): String =
     WorksheetRendering
-      .render(WorksheetPosition(0, 0, 0, 9), List(RenderedBinder("x", "String", value)), "", screenWidth)
+      .render(
+        WorksheetPosition(0, 0, 0, 9),
+        List(RenderedBinder.Value("x", "String", value)),
+        "",
+        screenWidth
+      )
       .get
       .summary
 
