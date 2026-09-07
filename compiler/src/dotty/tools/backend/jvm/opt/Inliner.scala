@@ -952,13 +952,6 @@ final class InlinerImpl(callGraph: OptimizerCallGraph, classBTypeCache: ClassBTy
   }
 }
 
-object DisabledInliner extends Inliner {
-  override def run(issueSink: OptimizerIssue => Unit): Unit =
-    ()
-  override def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit =
-    ()
-}
-
 object Inliner {
   /**
    * Check if a type is accessible to some class, as defined in JVMS 5.4.4.
