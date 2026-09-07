@@ -54,5 +54,6 @@ trait Function2[@specialized(Specializable.Args) -T1, @specialized(Specializable
   @annotation.unspecialized def tupled: ((T1, T2)) => R = {
     case ((x1, x2)) => apply(x1, x2)
   }
+  /** Returns the string `"<function2>"`. */
   override def toString(): String = "<function2>"
 }

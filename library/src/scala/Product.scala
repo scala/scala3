@@ -31,7 +31,7 @@ transparent trait Product extends Any with Equals {
    *
    *  @param    n   the index of the element to return
    *  @throws       IndexOutOfBoundsException if the `n` is out of range(n < 0 || n >= productArity).
-   *  @return       the element `n` elements after the first element
+   *  @return       the element `n` elements after the 1st element
    */
   def productElement(n: Int): Any
 
