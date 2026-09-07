@@ -12,6 +12,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.StdNames.str
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.repl.Rendering
+import dotty.tools.repl.Rendering.showUser
 import dotty.tools.repl.ReplBytecodeInstrumentation
 import dotty.tools.repl.ReplCompiler
 import dotty.tools.repl.ScalaClassLoader.fromURLsParallelCapable
@@ -94,7 +95,6 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
         .filterNot(_.symbol.isOneOf(ParamAccessor | Private | Synthetic | Artifact | Module))
         .filter(_.symbol.name.is(SimpleNameKind))
         .toList
-        .filterNot(_.symbol.is(Lazy))
         .flatMap(binder)
     }
 
@@ -102,9 +102,11 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
     val symbol = denotation.symbol
     val name = symbol.name.show.stripSuffix(str.REPL_ASSIGN_SUFFIX)
     val tpe = symbol.info.widen.show
-    rendering
-      .valueOf(symbol, s"$name: $tpe = ".length)
-      .map(value => RenderedBinder.Value(name, tpe, value.plainText))
+    if symbol.is(Lazy) then Some(RenderedBinder.Declaration(symbol.showUser))
+    else
+      rendering
+        .valueOf(symbol, s"$name: $tpe = ".length)
+        .map(value => RenderedBinder.Value(name, tpe, value.plainText))
 
   def cancel(): Unit =
     runtime.foreach: (_, loaded) =>
