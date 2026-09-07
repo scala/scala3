@@ -10,7 +10,7 @@ def candidates(store: Store[_, _]) =
   store match {
     case sc: SplitCollection[_, _, _] =>
       sc.searching match {
-        case os: OpenSearchStore[_, _] => os
+        case os: OpenSearchStore[_, _] => os // error
         case _ => null
       }
   }
