@@ -2031,7 +2031,7 @@ object desugar {
    *  or if `isGenericTuple`
    *
    *  ```
-   *    (x$1: (T1, ... Tn) => {
+   *    (x$1: (T1, ... Tn)) => {
    *      val x1: T1 = x$1.apply(0)
    *      ...
    *      val xn: Tn = x$1.apply(n-1)
