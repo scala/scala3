@@ -1,4 +1,4 @@
-//> using options -Xmax-fuel:20
+//> using options -Xmax-fuel:30
 // (because we store the errors caused by a recursive overflow, so if the fuel is too high,
 //  the error is too much text for a JVM string constant)
 
