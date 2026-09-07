@@ -507,6 +507,14 @@ class WorksheetSessionTest:
     assertTrue(result.diagnostics.toString, result.diagnostics.nonEmpty)
     assertEquals(List("before: Int = 2"), result.statements.map(_.details))
 
+  @Test def ignoresACancellationRequestedWhileNothingRuns(): Unit =
+    driver.cancel()
+
+    val result = driver.evaluate("idle-cancel.worksheet.scala", "1 + 1\n")
+
+    assertEquals(result.diagnostics.toString, Nil, result.diagnostics)
+    assertEquals(List("res0: Int = 2"), result.statements.map(_.details))
+
   @Test def reportsReplCommandsAsUnsupported(): Unit =
     val result = driver.evaluate("command.worksheet.scala", ":quit\n")
 

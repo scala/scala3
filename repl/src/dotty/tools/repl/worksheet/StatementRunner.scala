@@ -34,6 +34,12 @@ private final case class StatementOutcome(
 private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
   @volatile private var runtime: Option[(URLClassLoader, Rendering)] = None
 
+  @volatile private var cancelRequested = false
+
+  def beginEvaluation(): Unit = cancelRequested = false
+
+  def isCancelled: Boolean = cancelRequested
+
   private def rendering: Rendering = runtime match
     case Some((_, loaded)) => loaded
     case None =>
@@ -47,7 +53,10 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
       loaded
 
   def beginRun(state: State): Unit =
-    ReplBytecodeInstrumentation.setStopFlag(rendering.classLoader()(using state.context), false)
+    ReplBytecodeInstrumentation.setStopFlag(
+      rendering.classLoader()(using state.context),
+      cancelRequested
+    )
 
   def runOne(compiled: CompiledStatement, state: State): StatementOutcome =
     val loader = rendering.classLoader()(using state.context)
@@ -67,8 +76,7 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
         case Left(exception) =>
           val cause = Rendering.rootCause(exception)
           val message =
-            if cause.isInstanceOf[ThreadDeath] then
-              "The worksheet evaluation was cancelled."
+            if cause.isInstanceOf[ThreadDeath] then WorksheetDiagnostic.cancelled
             else
               s"${cause.getClass.getName}: ${Option(cause.getMessage).getOrElse("")}"
                 .stripSuffix(": ")
@@ -113,6 +121,7 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
         .map(value => RenderedBinder.Value(name, tpe, value.plainText))
 
   def cancel(): Unit =
+    cancelRequested = true
     runtime.foreach: (_, loaded) =>
       ReplBytecodeInstrumentation.setStopFlag(
         loaded.classLoader()(using startup.initialState.context),
