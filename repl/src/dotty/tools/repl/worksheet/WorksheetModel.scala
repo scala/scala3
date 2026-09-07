@@ -24,6 +24,8 @@ private[worksheet] final case class WorksheetDiagnostic(
 )
 
 private[worksheet] object WorksheetDiagnostic:
+  val cancelled = "The worksheet evaluation was cancelled."
+
   def fromCompiler(diagnostic: Diagnostic): WorksheetDiagnostic =
     fromCompiler(diagnostic, WorksheetPosition.fromCompiler(diagnostic.pos))
 
