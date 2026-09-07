@@ -26,7 +26,7 @@ class ScalaCommandTest:
     val file = tempDir.getOrCreateFile("config")
     val sourceRoot = tempDir.getOrCreateContainer("src")
     file.writeText(s"-sourceroot ${sourceRoot.path} someMoreFiles", Codec.UTF8)
-    val args = Array("-cp", "path/to/classes1:other/path/to/classes2", file.path, "someFiles")
+    val args = Array("-cp", "path/to/classes1:other/path/to/classes2", "@" + file.path, "someFiles")
     val summary = ScalacCommand.distill(args, settings)()
     file.delete()
 
