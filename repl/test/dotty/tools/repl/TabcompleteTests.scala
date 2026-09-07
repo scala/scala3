@@ -279,8 +279,8 @@ class TabcompleteTests extends ReplTest {
       List(
         "(separator: Char): Array[String]",
         "(separators: Array[Char]): Array[String]",
-        "(x$0: String): Array[String]",
-        "(x$0: String, x$1: Int): Array[String]"
+        "(x$0: (String)?): (Array[(String)?])?",
+        "(x$0: (String)?, x$1: Int): (Array[(String)?])?"
       ),
       tabCompleteSignatures(""""".split""", "split")
     )
