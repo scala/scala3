@@ -102,10 +102,10 @@ private[worksheet] object WorksheetSession:
       text: String,
       parserDiagnostics: List[UsingDirectiveDiagnostic]
   ): List[WorksheetDiagnostic] =
-    val classification = ReplDirectives.classify(text)
+    val declared = ReplDirectives.read(text)
     val ignoredDirectives =
-      Option.when(classification.hasDirectives)(
-        IgnoredDirectives -> classification.directiveLines.minOption
+      Option.when(declared.nonEmpty)(
+        IgnoredDirectives -> declared.lines.map(_.number).minOption
       )
     val parsed = parserDiagnostics.map(diagnostic =>
       diagnostic.message -> Some(diagnostic.position.line)
