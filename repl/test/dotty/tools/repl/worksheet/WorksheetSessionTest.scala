@@ -31,6 +31,32 @@ class WorksheetSessionTest:
     assertEquals(": Int = 84", result.statements(2).summary)
     assertEquals("res0: Int = 84", result.statements(2).details)
 
+  @Test def reportsLazyValuesAndGivensWithoutEvaluatingThem(): Unit =
+    val lazyProperty = s"scala3.worksheet.lazy.${java.util.UUID.randomUUID()}"
+    val givenProperty = s"scala3.worksheet.given.${java.util.UUID.randomUUID()}"
+    try
+      val result = driver.evaluate(
+        "lazy.worksheet.scala",
+        s"""lazy val value: Unit = System.setProperty("$lazyProperty", "evaluated")
+           |given ordering: Ordering[Int] =
+           |  System.setProperty("$givenProperty", "evaluated")
+           |  Ordering.Int
+           |""".stripMargin
+      )
+
+      assertEquals(Nil, result.diagnostics)
+      assertEquals(
+        List("lazy val value: Unit", "lazy val ordering: Ordering[Int]"),
+        result.statements.map(_.details)
+      )
+      assertEquals(result.statements.map(_.details), result.statements.map(_.summary))
+      assertTrue(result.statements.forall(_.isSummaryComplete))
+      assertNull(System.getProperty(lazyProperty))
+      assertNull(System.getProperty(givenProperty))
+    finally
+      System.clearProperty(lazyProperty)
+      System.clearProperty(givenProperty)
+
   @Test def assignsOutputToTheStatementThatProducedIt(): Unit =
     val result = driver.evaluate(
       "output.worksheet.scala",
