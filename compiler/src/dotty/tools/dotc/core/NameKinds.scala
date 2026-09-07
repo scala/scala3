@@ -297,7 +297,7 @@ object NameKinds {
    *  becomes:
    *
    *  ```
-   *      def foo[T](...)(using evidence\$1: A[T]): ...
+   *      def foo[T](...)(using evidence$1: A[T]): ...
    *  ```
    *
    *  The `evidence$` prefix is a convention copied from Scala 2.
