@@ -42,4 +42,6 @@ private final class ReplStartup(settings: Array[String]):
       )
       .toList
 
-  def close(): Unit = sink.close()
+  def close(): Unit =
+    driver.replRenderingClassLoader.foreach(WorksheetClassLoaders.closeCreated)
+    sink.close()
