@@ -473,6 +473,40 @@ class WorksheetSessionTest:
     assertEquals(": String = \"a b\"", result.statements.head.summary)
     assertFalse(result.statements.head.summary, result.statements.head.isSummaryComplete)
 
+  @Test def runsCompleteStatementsBeforeASyntaxError(): Unit =
+    val filename = "prefix.worksheet.scala"
+    assertEquals(
+      List("before: Int = 1"),
+      driver.evaluate(filename, "val before = 1\n").statements.map(_.details)
+    )
+
+    val result = driver.evaluate(
+      filename,
+      """val before = 1
+        |val after = 2
+        |val oops = (
+        |""".stripMargin
+    )
+
+    assertTrue(result.diagnostics.toString, result.diagnostics.nonEmpty)
+    assertEquals(
+      List("before: Int = 1", "after: Int = 2"),
+      result.statements.map(_.details)
+    )
+
+  @Test def runsCompleteStatementsOfANewWorksheetBeforeASyntaxError(): Unit =
+    assertEquals(Nil, driver.evaluate("earlier.worksheet.scala", "val unrelated = 1\n").diagnostics)
+
+    val result = driver.evaluate(
+      "later.worksheet.scala",
+      """val before = 2
+        |val bad = (
+        |""".stripMargin
+    )
+
+    assertTrue(result.diagnostics.toString, result.diagnostics.nonEmpty)
+    assertEquals(List("before: Int = 2"), result.statements.map(_.details))
+
   @Test def reportsReplCommandsAsUnsupported(): Unit =
     val result = driver.evaluate("command.worksheet.scala", ":quit\n")
 

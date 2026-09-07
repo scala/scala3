@@ -1,6 +1,7 @@
 package dotty.tools.repl.worksheet
 
 import dotty.tools.directives.UsingDirectiveDiagnostic
+import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.repl.ParseResult
 import dotty.tools.repl.Parsed
@@ -26,51 +27,30 @@ private[worksheet] final class WorksheetSession(
   private def evaluateParsed(filename: String, text: String): WorksheetResult =
     given State = current.state
     ParseResult.complete(text) match
-      case Parsed(source, trees, _, directiveDiagnostics) =>
-        val original = SourceFile.virtual(filename, text)
-        val inputStatements =
-          WorksheetSource.statements(original, trees)
-        val directiveWarnings =
+      case Parsed(_, trees, _, directiveDiagnostics) =>
+        val statements = WorksheetSource.statements(SourceFile.virtual(filename, text), trees)
+        if !current.canAppend(filename, text, statements) then
+          current.close()
+          current = SessionState.initial(settings, screenWidth)
+        evaluateStatements(
+          filename,
+          text,
+          statements,
+          parsesWhole = true,
           WorksheetSession.directiveWarnings(text, directiveDiagnostics.toList)
-
-        val baseSession =
-          if current.canAppend(filename, text, inputStatements) then current
-          else
-            current.close()
-            SessionState.initial(settings, screenWidth)
-
-        current = baseSession
-
-        val appended = inputStatements.drop(baseSession.inputStatements.length)
-        val evaluation = baseSession.evaluator.evaluate(appended, baseSession.state)
-        val accepted = baseSession.inputStatements ::: evaluation.accepted
-        val accumulated = baseSession.diagnostics ::: evaluation.diagnostics
-        current = baseSession.copy(
-          filename = Some(filename),
-          text =
-            if evaluation.accepted.length == appended.length then text
-            else accepted.lastOption.fold("")(last => text.take(last.end)),
-          inputStatements = accepted,
-          evaluatedStatements = baseSession.evaluatedStatements ::: evaluation.statements,
-          state = evaluation.state,
-          diagnostics = accumulated
-        )
-        WorksheetResult(
-          directiveWarnings ::: accumulated ::: evaluation.failure,
-          baseSession.evaluatedStatements ::: evaluation.statements
         )
 
-      case SyntaxErrors(_, diagnostics, _) =>
-        val retainsPrefix =
-          !current.stale &&
-            current.filename == Some(filename) &&
-            text.startsWith(current.text)
-        if !retainsPrefix then current = current.copy(stale = true)
-        val previousDiagnostics = if retainsPrefix then current.diagnostics else Nil
-        val previousStatements = if retainsPrefix then current.evaluatedStatements else Nil
-        WorksheetResult(
-          previousDiagnostics ::: diagnostics.map(WorksheetDiagnostic.fromCompiler),
-          previousStatements
+      case SyntaxErrors(_, errors, trees) =>
+        val statements = completeStatements(filename, text, trees)
+        if !current.canAppend(filename, text, statements) then
+          current.close()
+          current = SessionState.initial(settings, screenWidth)
+        evaluateStatements(
+          filename,
+          text,
+          statements,
+          parsesWhole = false,
+          errors.map(WorksheetDiagnostic.fromCompiler)
         )
 
       case _ =>
@@ -87,6 +67,46 @@ private[worksheet] final class WorksheetSession(
             ),
             Nil
           )
+
+  private def completeStatements(
+      filename: String,
+      text: String,
+      trees: List[untpd.Tree]
+  )(using State): List[InputStatement] =
+    WorksheetSource
+      .statements(SourceFile.virtual(filename, text), trees)
+      .takeWhile: statement =>
+        ParseResult.complete(statement.source) match
+          case _: Parsed => true
+          case _ => false
+
+  private def evaluateStatements(
+      filename: String,
+      text: String,
+      statements: List[InputStatement],
+      parsesWhole: Boolean,
+      parseDiagnostics: List[WorksheetDiagnostic]
+  ): WorksheetResult =
+    val baseSession = current
+    val appended = statements.drop(baseSession.inputStatements.length)
+    val evaluation = baseSession.evaluator.evaluate(appended, baseSession.state)
+    val accepted = baseSession.inputStatements ::: evaluation.accepted
+    val accumulated = baseSession.diagnostics ::: evaluation.diagnostics
+    val ranWholeText = parsesWhole && evaluation.accepted.length == appended.length
+    current = baseSession.copy(
+      filename = Some(filename),
+      text =
+        if ranWholeText then text
+        else accepted.lastOption.fold("")(last => text.take(last.end)),
+      inputStatements = accepted,
+      evaluatedStatements = baseSession.evaluatedStatements ::: evaluation.statements,
+      state = evaluation.state,
+      diagnostics = accumulated
+    )
+    WorksheetResult(
+      parseDiagnostics ::: accumulated ::: evaluation.failure,
+      baseSession.evaluatedStatements ::: evaluation.statements
+    )
 
   def cancel(): Unit = current.runner.cancel()
 
