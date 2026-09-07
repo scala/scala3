@@ -446,6 +446,26 @@ class WorksheetSessionTest:
     assertEquals(Nil, fixed.diagnostics)
     assertEquals("res0: Int = 2", fixed.statements(1).details)
 
+  @Test def runsStatementsThatBindNothing(): Unit =
+    val wildcard = s"scala3.worksheet.wildcard.${java.util.UUID.randomUUID()}"
+    val ascribed = s"scala3.worksheet.ascribed.${java.util.UUID.randomUUID()}"
+    System.clearProperty(wildcard)
+    System.clearProperty(ascribed)
+    try
+      val result = driver.evaluate(
+        "no-binder.worksheet.scala",
+        s"""val _ = { System.setProperty("$wildcard", "ran"); 1 }
+           |val _: Int = { System.setProperty("$ascribed", "ran"); 2 }
+           |""".stripMargin
+      )
+
+      assertEquals(result.diagnostics.toString, Nil, result.diagnostics)
+      assertEquals("ran", System.getProperty(wildcard))
+      assertEquals("ran", System.getProperty(ascribed))
+    finally
+      System.clearProperty(wildcard)
+      System.clearProperty(ascribed)
+
   @Test def reportsReplCommandsAsUnsupported(): Unit =
     val result = driver.evaluate("command.worksheet.scala", ":quit\n")
 

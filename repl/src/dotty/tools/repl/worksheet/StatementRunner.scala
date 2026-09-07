@@ -91,11 +91,15 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
 
     atPhase(renderPhase) {
       val path = nme.EMPTY_PACKAGE ++ "." ++ ReplCompiler.objectNames(objectIndex)
-      requiredModule(path).info.fields
+      val module = requiredModule(path)
+      val rendered = module.info.fields
         .filterNot(_.symbol.isOneOf(ParamAccessor | Private | Synthetic | Artifact | Module))
         .filter(_.symbol.name.is(SimpleNameKind))
         .toList
         .flatMap(binder)
+      if rendered.isEmpty then
+        Class.forName(module.moduleClass.fullName.encode.toString, true, rendering.classLoader())
+      rendered
     }
 
   private def binder(denotation: Denotation)(using Context): Option[RenderedBinder] =
