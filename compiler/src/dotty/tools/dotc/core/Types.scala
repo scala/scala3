@@ -384,6 +384,8 @@ object Types extends TypeUtils {
     final def isNotNull(using Context): Boolean = this match {
       case tp: ConstantType => tp.value.value != null
       case tp: FlexibleType => false
+      case tp: ThisType => true
+      case tp: SuperType => true
       case tp: ClassInfo => !tp.cls.isNullableClass && !tp.isNothingType
       case tp: AppliedType => tp.superType.isNotNull
       case tp: TypeBounds => tp.hi.isNotNull
