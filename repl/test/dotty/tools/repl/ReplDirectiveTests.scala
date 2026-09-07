@@ -13,7 +13,7 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
     val dependency = "com.lihaoyi::os-lib:0.11.3"
     val aliases = List("dep", "deps", "dependency", "dependencies")
     aliases.foreach: alias =>
-      val result = ReplDirectives.classify(s"//> using $alias $dependency")
+      val result = ReplDirectives.read(s"//> using $alias $dependency")
       assertEquals(List(Dependency(dependency)), result.directives)
       assertEquals(Nil, result.warnings)
     assertTrue(ReplDirectives.helpText.contains("Aliases: deps, dependency, dependencies"))
@@ -22,7 +22,7 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
     val dependencies = List("org.scalameta::munit:1.1.1", "org.typelevel::cats-effect:3.6.3")
     val aliases = List("test.dep", "test.deps", "test.dependency", "test.dependencies")
     aliases.foreach: alias =>
-      val result = ReplDirectives.classify(s"//> using $alias ${dependencies.mkString(" ")}")
+      val result = ReplDirectives.read(s"//> using $alias ${dependencies.mkString(" ")}")
       assertEquals(dependencies.map(Dependency(_)), result.directives)
       assertEquals(List(Warning.NoSeparateTestScope), result.warnings)
     assertTrue(ReplDirectives.helpText.contains("Aliases: test.deps, test.dependency, test.dependencies"))
@@ -30,7 +30,7 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
   @Test def `jar directive aliases are supported`: Unit =
     val jars = List("lib/first.jar", "lib/second.jar")
     List("jar", "jars").foreach: alias =>
-      val result = ReplDirectives.classify(s"//> using $alias ${jars.mkString(" ")}")
+      val result = ReplDirectives.read(s"//> using $alias ${jars.mkString(" ")}")
       assertEquals(jars.map(Jar(_)), result.directives)
       assertEquals(Nil, result.warnings)
     assertTrue(ReplDirectives.helpText.contains("Aliases: jars"))
@@ -38,14 +38,14 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
   @Test def `repository directive aliases are supported`: Unit =
     val repositories = List("m2Local", "https://jitpack.io")
     List("repository", "repositories").foreach: alias =>
-      val result = ReplDirectives.classify(s"//> using $alias ${repositories.mkString(" ")}")
+      val result = ReplDirectives.read(s"//> using $alias ${repositories.mkString(" ")}")
       assertEquals(repositories.map(Repository(_)), result.directives)
       assertEquals(Nil, result.warnings)
     assertTrue(ReplDirectives.helpText.contains("Aliases: repositories"))
 
   @Test def `directives without a value are reported and act on nothing`: Unit =
     List("dep", "test.dep", "jar", "toolkit", "test.toolkit", "repository").foreach: key =>
-      val result = ReplDirectives.classify(s"//> using $key")
+      val result = ReplDirectives.read(s"//> using $key")
       assertEquals(key, Nil, result.directives)
       assertEquals(key, List(Warning.ValueMissing(key)), result.warnings)
 
@@ -63,7 +63,7 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
     )
     expected.foreach:
       case (coordinates, (org, version)) =>
-        val result = ReplDirectives.classify(s"//> using toolkit $coordinates")
+        val result = ReplDirectives.read(s"//> using toolkit $coordinates")
         assertEquals(
           coordinates,
           List(Dependency(s"$org::toolkit:$version"), Dependency(s"$org::toolkit-test:$version")),
@@ -72,13 +72,13 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
 
   @Test def `toolkit directive rejects values of any other shape`: Unit =
     List(":", "::", "typelevel:", ":default", "a:b:c", "typelevel::default").foreach: coordinates =>
-      val result = ReplDirectives.classify(s"//> using toolkit $coordinates")
+      val result = ReplDirectives.read(s"//> using toolkit $coordinates")
       assertEquals(coordinates, Nil, result.directives)
       assertEquals(coordinates, List(Warning.MalformedValue("toolkit", coordinates)), result.warnings)
 
   @Test def `toolkit directives reject more than one value`: Unit =
     List("toolkit", "test.toolkit").foreach: key =>
-      val result = ReplDirectives.classify(s"//> using $key default typelevel:default")
+      val result = ReplDirectives.read(s"//> using $key default typelevel:default")
       assertEquals(key, Nil, result.directives)
       assertEquals(key, List(Warning.TooManyValues(key)), result.warnings)
 

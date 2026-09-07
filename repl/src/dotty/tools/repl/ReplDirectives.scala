@@ -39,12 +39,16 @@ private[repl] object ReplDirectives:
     case Jar(path: String)
     case Repository(repository: String)
 
-  case class DirectiveClassification(
+  case class DirectiveLine(
+    number: Int,
     directives: List[ReplDirective],
-    warnings: List[Warning],
-    hasDirectives: Boolean,
-    directiveLines: List[Int] = Nil
+    warnings: List[Warning]
   )
+
+  case class DirectiveLines(lines: List[DirectiveLine]):
+    def directives: List[ReplDirective] = lines.flatMap(_.directives)
+    def warnings: List[Warning] = lines.flatMap(_.warnings).distinct
+    def nonEmpty: Boolean = lines.nonEmpty
 
   private def resolveVersion(rawVersion: String, default: String): String = rawVersion match
     case "default" => default
@@ -168,7 +172,7 @@ private[repl] object ReplDirectives:
     case DirectiveValue.EmptyVal(_) => true
     case _ => false
 
-  private def classifyDirective(directive: UsingDirective): (List[ReplDirective], List[Warning]) =
+  private def readDirective(directive: UsingDirective): (List[ReplDirective], List[Warning]) =
     val UsingDirective(key, values, _) = directive
     handlersByKey.get(key) match
       case None => (Nil, List(Warning.UnsupportedDirective(key)))
@@ -181,15 +185,13 @@ private[repl] object ReplDirectives:
           case Nil => (Nil, List(Warning.MalformedValue(key, values.map(_.stringValue).mkString(" "))))
           case directives => (directives, handler.warnings)
 
-  def classify(sourceCode: String): DirectiveClassification =
+  def read(sourceCode: String): DirectiveLines =
     try
-      val parsed = UsingDirectivesParser.parse(sourceCode).directives
-      val (directives, warnings) = parsed.map(classifyDirective).unzip
-      DirectiveClassification(
-        directives.flatten.toList,
-        warnings.flatten.distinct.toList,
-        parsed.nonEmpty,
-        parsed.map(_.keyPosition.line).toList
+      DirectiveLines(
+        UsingDirectivesParser.parse(sourceCode).directives.map { directive =>
+          val (directives, warnings) = readDirective(directive)
+          DirectiveLine(directive.keyPosition.line, directives, warnings)
+        }.toList
       )
     catch
-      case NonFatal(_) => DirectiveClassification(Nil, Nil, false)
+      case NonFatal(_) => DirectiveLines(Nil)
