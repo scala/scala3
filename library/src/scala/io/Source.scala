@@ -208,6 +208,10 @@ object Source {
   /** Reads data from inputStream with a buffered reader, using the encoding
    *  in implicit parameter codec.
    *
+   *  Capture-checking notes: `reset` and `close` are internally stored by a BufferedSource, and hence its capture set cannot be extended later,
+   *  without proper capture variables.
+   *  For compatibility, this means the safe choice is to make `reset` and `close` pure.
+   *
    *  @param  inputStream  the input stream from which to read
    *  @param  bufferSize   buffer size (defaults to Source.DefaultBufSize)
    *  @param  reset        a () => Source which resets the stream (if unset, reset() will throw an Exception)
