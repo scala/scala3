@@ -78,6 +78,24 @@ object Setup:
         case _ => false
     case _ => None
 
+  /** Parameter getters for which inferred capture refinements would be added to `tp`. */
+  private[dotc] def inferredCaptureRefiningGetters(
+    tp: Type,
+    refiningNames: Set[Name],
+    inCaptureRefinement: Boolean = false
+  )(using Context): List[Symbol] =
+    if inCaptureRefinement || tp.typeParams.nonEmpty then Nil
+    else tp match
+      case _: TypeRef | _: AppliedType =>
+        tp.typeSymbol match
+          case cls: ClassSymbol if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
+            cls.paramGetters.filter: getter =>
+              atPhase(checkCapturesPhase)(getter.hasTrackedParts)
+              && getter.isRefiningParamAccessor
+              && !refiningNames.contains(getter.name)
+          case _ => Nil
+      case _ => Nil
+
   /** Add `caps.internal.paramAlias annotation("x")` to secondary constructor
    *  parameters that get forwarded in the constructor's super call to a primary
    *  constructor parameter named "x". Example:
@@ -355,26 +373,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
        *  x_1: T_1, ..., x_n: T_n to C { val x_1: T_1^{CV_1}, ..., val x_n: T_n^{CV_n} }
        *  where CV_1, ..., CV_n are fresh capture set variables.
        */
-      def addCaptureRefinements(tp: Type): Type = tp match
-        case _: TypeRef | _: AppliedType if !inCaptureRefinement && tp.typeParams.isEmpty =>
-          tp.typeSymbol match
-            case cls: ClassSymbol
-            if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
-              cls.paramGetters.foldLeft(tp): (core, getter) =>
-                if atPhase(thisPhase.next)(getter.hasTrackedParts)
-                    && getter.isRefiningParamAccessor
-                    && !refiningNames.contains(getter.name) // Don't add a refinement if we have already an explicit one for the same name
-                then
-                  val getterType =
-                    mapInferred(inCaptureRefinement = true)(tp.memberInfo(getter)).strippedDealias
-                  RefinedType.precise(core, getter.name,
-                      CapturingType(getterType,
-                        CaptureSet.VarInTypeTree(ctx.owner, isRefining = true)))
-                    .showing(i"add capture refinement $tp --> $result", capt)
-                else
-                  core
-            case _ => tp
-        case _ => tp
+      def addCaptureRefinements(tp: Type): Type =
+        inferredCaptureRefiningGetters(tp, refiningNames, inCaptureRefinement).foldLeft(tp): (core, getter) =>
+          val getterType =
+            mapInferred(inCaptureRefinement = true)(tp.memberInfo(getter)).strippedDealias
+          RefinedType.precise(core, getter.name,
+              CapturingType(getterType,
+                CaptureSet.VarInTypeTree(ctx.owner, isRefining = true)))
+            .showing(i"add capture refinement $tp --> $result", capt)
 
       /** Normalize `tp1` and add a capture set variable to it if necessary. */
       def addVar(tp1: Type, orig: Type) =
