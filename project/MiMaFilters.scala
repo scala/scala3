@@ -15,6 +15,9 @@ object MiMaFilters {
       Versions.mimaPreviousVersion -> Seq(
         // new annotation carrying the component names of Java records
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$errorHandling$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.compiletime.package"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.compiletime.package$"),
       ),
 
       // Additions since last LTS
@@ -187,6 +190,8 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$magic$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$specializedTraits$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$specializedTraits$"),
+
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$errorHandling$"),
 
         // scala/scala3#26100: lock-free initialization extracted to a shared base class
         ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyList"),

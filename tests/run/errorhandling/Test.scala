@@ -1,4 +1,5 @@
-import scala.util.*, boundary.break
+import scala.util.boundary, boundary.break
+import test.util.*
 
 import caps.any
 

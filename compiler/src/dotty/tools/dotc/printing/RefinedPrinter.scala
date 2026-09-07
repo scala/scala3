@@ -189,7 +189,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     changePrec(GlobalPrec):
       val argStr: Text = args match
         case arg :: Nil if !defn.isDirectTupleNType(arg) && !isContextual =>
-          atPrec(InfixPrec):
+          changePrec(InfixPrec):
             argText(arg)
         case _=>
           "("
@@ -274,6 +274,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     def appliedText(tp: Type): Text = tp match
+      case AppliedType(tycon, r :: e :: Nil) if tycon.isRef(defn.MaybeClass) =>
+        if e.isRef(defn.UnitClass) then
+          toTextLocal(r) ~ "?"
+        else
+          changePrec(InfixPrec):
+            toText(r) ~ " ? " ~ toText(e)
       case tp @ AppliedType(tycon, args) =>
         val namedElems =
           try tp.namedTupleElementTypesUpTo(200, false, normalize = false)
@@ -638,6 +644,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             && !printDebug && tree.typeOpt.exists
         then
           toText(tree.typeOpt)
+        else if tpt.symbol == defn.MaybeClass && args.length == 2 then
+          if unsplice(args(1)).symbol == defn.UnitClass then
+            toTextLocal(args(0)) ~ "?"
+          else
+            changePrec(InfixPrec):
+              toText(args(0)) ~ " ? " ~ toText(args(1))
         else args match
           case arg :: _ if arg.isTerm =>
             toTextLocal(tpt) ~ "(" ~ Text(args.map(argText), ", ") ~ ")"

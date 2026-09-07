@@ -98,6 +98,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def If(cond: Tree, thenp: Tree, elsep: Tree)(using Context): If =
     ta.assignType(untpd.If(cond, thenp, elsep), thenp, elsep)
 
+  /** A smart version of this that returns one of the branches if the condition
+   *  is a boolean literal.
+   */
+  def conditional(cond: Tree, thenp: Tree, elsep: Tree)(using Context): Tree =
+    cond match
+      case Literal(Constant(true)) => thenp
+      case Literal(Constant(false)) => elsep
+      case _ => If(cond, thenp, elsep)
+
   def InlineIf(cond: Tree, thenp: Tree, elsep: Tree)(using Context): If =
     ta.assignType(untpd.InlineIf(cond, thenp, elsep), thenp, elsep)
 
@@ -1094,6 +1103,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       receiver.select(defn.Object_ne).appliedTo(nullLit).withSpan(tree.span)
     }
 
+    /** `null == tree` if cond, else `null != tree`
+     *  Simpler than `testNotNull`. TODO: Can we replace testNotNull with this?
+     */
+    def nullTest(cond: Boolean)(using Context) =
+      nullLiteral.select(if cond then defn.Any_== else defn.Any_!=)
+        .appliedTo(tree)
+
     /** If inititializer tree is `_`, the default value of its type,
      *  otherwise the tree itself.
      */
@@ -1103,6 +1119,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     /** `this && that`, for boolean trees `this`, `that` */
     def and(that: Tree)(using Context): Tree =
       tree.select(defn.Boolean_&&).appliedTo(that)
+
+    /** `!this`, for boolean tree `this` */
+    def not(using Context): Tree =
+      tree.select(defn.Boolean_!)
 
     /** `this || that`, for boolean trees `this`, `that` */
     def or(that: Tree)(using Context): Tree =

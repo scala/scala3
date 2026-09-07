@@ -1535,9 +1535,10 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       val saved = curEnv
       curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
+      val selfType = cls.classInfo.selfType
       try
         // (2) Capture set of self type includes capture set of class
-        val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
+        val thisSet = selfType.captureSet.withDescription(i"of the self type of $cls")
         withGlobalCapAsRoot: // OK? We need this here since self types use GlobalAny instead of a LocalCap
           checkSubset(localSet, thisSet, tree.srcPos)
 
@@ -1576,8 +1577,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       finally
         if cls.is(ModuleClass) then
           interpolate(cls.sourceModule.info, cls.sourceModule)
+          interpolate(selfType, cls)
         else
-          capt.println(i"Use set of $cls = ${cls.useSet}, self type: ${cls.classInfo.selfType}")
+          capt.println(i"Use set of $cls = ${cls.useSet}, self type: $selfType")
         completed += cls
         curEnv = saved
     end recheckClassDef

@@ -1,0 +1,20 @@
+1/1/2000
+Date(1,1,2000)
+Date(1,1,2000)
+Date(1,1,2000)
+Date(1,1,2000)
+1/1-2000
+null
+Fail(Date not in format day/month/year)
+Fail(Date not in format day/month/year)
+null
+1/jan/2000
+null
+Fail(malformed month: jan)
+Fail(malformed month: jan)
+null
+1/13/2000
+Date(1,13,2000)
+Date(1,13,2000)
+Fail(month 13 outside allowed range 1..12)
+null
