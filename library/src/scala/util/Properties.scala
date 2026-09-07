@@ -21,7 +21,9 @@ import language.experimental.captureChecking
 
 /** Loads `library.properties` from the jar. */
 object Properties extends PropertiesTrait {
+  /** The category of properties to load, used to construct the properties file name. */
   protected def propCategory = "library"
+  /** The class used to determine which JAR contains the properties file. */
   protected def pickJarBasedOn: Class[Option[?]] = classOf[Option[?]]
 
   /** Scala manifest attributes.
