@@ -16,7 +16,7 @@ import Periods.*
 import Phases.*
 import Symbols.*
 import Flags.Module
-import reporting.{Message, Profile, ThrowingReporter}
+import reporting.{Message, Profile}
 import collection.mutable
 import util.concurrent.Executor
 
