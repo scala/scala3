@@ -1,10 +1,10 @@
-package dotty.tools.io
+package dotty.tools.dotc.classpath
 
+import dotty.tools.dotc.classpath.ClassPath
 import org.junit.Test
 
 import java.io.File
 import java.nio.file.{Files, Paths}
-import dotty.tools.io.ClassPath
 
 class ClasspathTest {
 

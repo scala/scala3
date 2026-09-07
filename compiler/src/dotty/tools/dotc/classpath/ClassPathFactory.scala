@@ -3,7 +3,7 @@
  */
 package dotty.tools.dotc.classpath
 
-import dotty.tools.io.{AbstractFile, ClassPath, Directory, File, Path, VirtualDirectory}
+import dotty.tools.io.{AbstractFile, Directory, File, Path, VirtualDirectory}
 import dotty.tools.dotc.classpath.FileUtils.isClassContainer
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.LogicalSourcePath
@@ -34,7 +34,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
         yield ClassPathFactory.newSourcePath(dir)
     }
 
-  def expandPath(path: String, expandStar: Boolean = true): List[String] = dotty.tools.io.ClassPath.expandPath(path, expandStar)
+  def expandPath(path: String, expandStar: Boolean = true): List[String] = ClassPath.expandPath(path, expandStar)
 
   /** Expand dir out to contents, a la extdir */
   private def expandDir(extdir: String)(using Context): List[String] =
