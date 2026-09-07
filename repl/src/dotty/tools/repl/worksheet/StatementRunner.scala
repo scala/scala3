@@ -104,7 +104,7 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
     val tpe = symbol.info.widen.show
     rendering
       .valueOf(symbol, s"$name: $tpe = ".length)
-      .map(value => RenderedBinder(name, tpe, value.plainText))
+      .map(value => RenderedBinder.Value(name, tpe, value.plainText))
 
   def cancel(): Unit =
     runtime.foreach: (_, loaded) =>
