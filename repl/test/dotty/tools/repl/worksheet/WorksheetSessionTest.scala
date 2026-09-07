@@ -466,6 +466,13 @@ class WorksheetSessionTest:
       System.clearProperty(wildcard)
       System.clearProperty(ascribed)
 
+  @Test def marksASummaryThatDropsFormattingAsIncomplete(): Unit =
+    val result = driver.evaluate("spaced.worksheet.scala", "val spaced = \"a  b\"\n")
+
+    assertEquals("spaced: String = \"a  b\"", result.statements.head.details)
+    assertEquals(": String = \"a b\"", result.statements.head.summary)
+    assertFalse(result.statements.head.summary, result.statements.head.isSummaryComplete)
+
   @Test def reportsReplCommandsAsUnsupported(): Unit =
     val result = driver.evaluate("command.worksheet.scala", ":quit\n")
 

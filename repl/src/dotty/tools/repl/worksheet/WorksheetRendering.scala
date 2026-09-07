@@ -26,7 +26,7 @@ private object WorksheetRendering:
     else
       val omitsDetails =
         if values.isEmpty then outputLines.sizeIs > 1
-        else outputLines.nonEmpty || values.exists(isMultiline)
+        else outputLines.nonEmpty || values.exists(losesFormatting)
       Some(
         WorksheetStatement(
           position,
@@ -46,9 +46,9 @@ private object WorksheetRendering:
       s"$namePrefix$tpe = ${oneLine(value)}"
     case RenderedBinder.Declaration(text) => text
 
-  private def isMultiline(binder: RenderedBinder): Boolean = binder match
-    case RenderedBinder.Value(_, _, value) => value.contains('\n')
-    case RenderedBinder.Declaration(_) => false
+  private def losesFormatting(binder: RenderedBinder): Boolean = binder match
+    case RenderedBinder.Value(_, _, value) => oneLine(value) != value
+    case RenderedBinder.Declaration(text) => oneLine(text) != text
 
   private def oneLine(value: String): String =
     value.replaceAll("\\s+", " ")
