@@ -15,13 +15,34 @@ private[worksheet] final class WorksheetSession(
 ):
   @volatile private var current = SessionState.initial(settings, screenWidth)
 
+  @volatile private var evaluating: Option[Thread] = None
+
   def evaluate(filename: String, text: String): WorksheetResult = synchronized:
     if !current.startup.isUsable then WorksheetResult(current.startup.diagnostics, Nil)
     else
-      val evaluated = evaluateParsed(filename, text)
+      current.runner.beginEvaluation()
+      evaluating = Some(Thread.currentThread)
+      val evaluated =
+        try evaluateParsed(filename, text)
+        finally
+          evaluating = None
+          Thread.interrupted()
+
       WorksheetResult(
-        current.startup.diagnostics ::: evaluated.diagnostics,
+        current.startup.diagnostics ::: evaluated.diagnostics ::: cancellation(evaluated, text),
         evaluated.statements
+      )
+
+  private def cancellation(evaluated: WorksheetResult, text: String): List[WorksheetDiagnostic] =
+    if !current.runner.isCancelled then Nil
+    else if evaluated.diagnostics.exists(_.message == WorksheetDiagnostic.cancelled) then Nil
+    else
+      List(
+        WorksheetDiagnostic(
+          WorksheetSession.lineRange(text, 0),
+          WorksheetDiagnostic.cancelled,
+          WorksheetDiagnosticSeverity.Error
+        )
       )
 
   private def evaluateParsed(filename: String, text: String): WorksheetResult =
@@ -108,7 +129,9 @@ private[worksheet] final class WorksheetSession(
       baseSession.evaluatedStatements ::: evaluation.statements
     )
 
-  def cancel(): Unit = current.runner.cancel()
+  def cancel(): Unit =
+    current.runner.cancel()
+    evaluating.foreach(_.interrupt())
 
   def shutdown(): Unit =
     cancel()
