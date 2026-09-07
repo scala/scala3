@@ -13,6 +13,7 @@
 package scala
 
 import scala.language.`2.13`
+import scala.annotation.unused
 
 /** A common supertype for companions of specializable types.
  *  Should not be extended in user code.
@@ -24,7 +25,7 @@ object Specializable {
   trait SpecializedGroup
 
   // Smuggle a list of types by way of a tuple upon which Group is parameterized.
-  class Group[T](value: T) extends SpecializedGroup
+  class Group[T](@unused value: T) extends SpecializedGroup
 
   final val Primitives:  Group[(Byte, Short, Int, Long, Char, Float, Double, Boolean, Unit)] = null.asInstanceOf[Group[(Byte, Short, Int, Long, Char, Float, Double, Boolean, Unit)]]
   final val Everything:  Group[(Byte, Short, Int, Long, Char, Float, Double, Boolean, Unit, AnyRef)] = null.asInstanceOf[Group[(Byte, Short, Int, Long, Char, Float, Double, Boolean, Unit, AnyRef)]]

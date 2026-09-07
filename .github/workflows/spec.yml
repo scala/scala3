@@ -10,6 +10,9 @@ on:
   merge_group:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   DOTTY_CI_RUN: true
 

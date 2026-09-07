@@ -25,7 +25,7 @@ public final class ProgressCallbackImpl implements ProgressCallback {
 
   @Override
   public void informUnitStarting(String phase, CompilationUnit unit) {
-    _progress.startUnit(phase, unit.source().file().path());
+    _progress.startUnit(phase, unit.source().path());
   }
 
   @Override

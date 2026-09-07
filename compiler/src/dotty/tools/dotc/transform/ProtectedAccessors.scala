@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 package transform
 
+import ast.tpd.*
 import core.Contexts.*
 import core.NameKinds.*
 import core.Symbols.*
@@ -37,21 +38,24 @@ object ProtectedAccessors {
    *  is not in a subclass or subtrait of `sym`?
    */
   def needsAccessorIfNotInSubclass(sym: Symbol)(using Context): Boolean =
-    sym.isTerm && sym.is(Protected) && !sym.hasPublicInBinary &&
+    sym.is(Protected) && !sym.hasPublicInBinary &&
     !sym.owner.is(Trait) && // trait methods need to be handled specially, are currently always public
     !insideBoundaryOf(sym)
 
-  /** Do we need a protected accessor for accessing sym from the current context's owner? */
-  def needsAccessor(sym: Symbol)(using Context): Boolean =
-    needsAccessorIfNotInSubclass(sym) &&
-    !needsAccessorIsSubclass(sym)
-
   def needsAccessorIsSubclass(sym: Symbol)(using Context): Boolean =
     ctx.owner.enclosingClass.derivesFrom(sym.owner)
+
+  /** Do we need a protected accessor for accessing tree.symbol from the current context's owner? */
+  def needsAccessor(tree: Tree)(using Context): Boolean = tree match
+    // Cheap checks first! Only fetch the symbol if it may actually be needed
+    case _: Select | _: Ident if tree.isTerm =>
+      val sym = tree.symbol
+      needsAccessorIfNotInSubclass(sym) && !needsAccessorIsSubclass(sym)
+    case _ =>
+      false
 }
 
 class ProtectedAccessors extends MiniPhase {
-  import ast.tpd.*
 
   override def phaseName: String = ProtectedAccessors.name
 
@@ -68,7 +72,7 @@ class ProtectedAccessors extends MiniPhase {
   private class Accessors extends AccessProxies {
     val insert: Insert = new Insert {
       def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName = ProtectedAccessorName(name)
-      def needsAccessor(refTree: RefTree | Apply | TypeApply)(using Context) = ProtectedAccessors.needsAccessor(refTree.symbol)
+      def needsAccessor(refTree: RefTree | Apply | TypeApply)(using Context) = ProtectedAccessors.needsAccessor(refTree)
 
       override def ifNoHost(reference: RefTree)(using Context): Tree = {
         val curCls = ctx.owner.enclosingClass

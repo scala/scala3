@@ -12,9 +12,9 @@ import dotty.tools.dotc.util.NoSourcePosition
 
 import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import core.Decorators.{em, toMessage}
-import core.handleRecursive
 
 object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
@@ -99,6 +99,19 @@ abstract class Reporter extends interfaces.ReporterResult {
   private var _errorCount = 0
   private var _warningCount = 0
   private var _infoCount = 0
+  // The last run that reported each loading failure through this reporter.
+  private var reportedLoadingFailures: mutable.WeakHashMap[LoadingFailure, Int] | Null = null
+
+  private def reportedLoadingFailuresMap: mutable.WeakHashMap[LoadingFailure, Int] =
+    val reported = reportedLoadingFailures
+    if reported != null then reported
+    else
+      val fresh = mutable.WeakHashMap.empty[LoadingFailure, Int]
+      reportedLoadingFailures = fresh
+      fresh
+
+  protected final def clearReportedLoadingFailures(): Unit =
+    reportedLoadingFailures = null
 
   /** The number of errors reported by this reporter (ignoring outer reporters) */
   def errorCount: Int = _errorCount
@@ -169,12 +182,8 @@ abstract class Reporter extends interfaces.ReporterResult {
       addUnreported(key, 1)
     case _                                                  =>
       if !isHidden(dia) then // avoid isHidden test for summarized warnings so that message is not forced
-        try
+        ctx.handleRecursive("error reporting", () => dia.message):
           withMode(Mode.Printing)(doReport(dia))
-        catch case ex: Throwable =>
-          // #20158: Don't increment the error count, otherwise we might suppress
-          // the RecursiveOverflow error and not print any error at all.
-          handleRecursive("error reporting", dia.message, ex)
         dia match {
           case w: Warning =>
             if w.isInstanceOf[LintWarning] then
@@ -272,8 +281,16 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** Should this diagnostic not be reported at all? */
   def isHidden(dia: Diagnostic)(using Context): Boolean =
     ctx.mode.is(Mode.Printing)
+    || (dia match
+      case error: LoadingError =>
+        val reported = reportedLoadingFailures
+        reported != null && reported.get(error.failure).contains(ctx.runId)
+      case _ => false)
 
-  def markReported(dia: Diagnostic)(using Context): Unit = ()
+  def markReported(dia: Diagnostic)(using Context): Unit = dia match
+    case error: LoadingError =>
+      reportedLoadingFailuresMap(error.failure) = ctx.runId
+    case _ =>
 
   /** Does this reporter contain errors that have yet to be reported by its outer reporter ?
    *  Note: this is always false when there is no outer reporter.

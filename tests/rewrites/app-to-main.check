@@ -1,0 +1,32 @@
+object Hello:
+  def main(args: Array[String]): Unit =
+    println("Hello, world!")
+    println("Goodbye")
+
+object WithArgs:
+  def main(args: Array[String]): Unit =
+    if args.nonEmpty then println(args(0))
+
+object Config:
+  val name = "app"
+  def greet() = println(name)
+  def main(args: Array[String]): Unit =
+    greet()
+    println("done")
+
+class Api:
+  def hello() = println("hi")
+
+object Exporter:
+  val api = new Api
+  export api.*
+  def main(args: Array[String]): Unit =
+    println("run")
+
+// an inline def appends a synthetic accessor to the typed body; the source layout
+// split must ignore it (otherwise the trailing statement looks interleaved)
+object Logger:
+  private def secret = 42
+  inline def reveal = secret
+  def main(args: Array[String]): Unit =
+    println(reveal)

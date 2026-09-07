@@ -12,6 +12,7 @@ import ContextFunctionResults.{contextResultCount, contextFunctionResultTypeAfte
 import StdNames.nme
 import Constants.Constant
 import TypeErasure.transformInfo
+import TypeErasure.disallowSpecializedCtx
 import Erasure.Boxing.adaptClosure
 
 /** A helper class for generating bridge methods in class `root`. */
@@ -19,7 +20,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd.*
 
   assert(ctx.phase == erasurePhase.next)
-  private val preErasureCtx = ctx.withPhase(erasurePhase)
+  private val preErasureCtx = disallowSpecializedCtx(using ctx.withPhase(erasurePhase.prev))
   private lazy val elimErasedCtx = ctx.withPhase(elimErasedValueTypePhase.next)
 
   private class BridgesCursor(using Context) extends OverridingPairs.Cursor(root) {

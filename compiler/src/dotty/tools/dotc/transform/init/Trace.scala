@@ -61,7 +61,7 @@ object Trace:
       val line =
         if pos.exists then
           // Show more information for external code without source
-          val file = if hasSource then pos.source.file.name else pos.source.file.path
+          val file = if hasSource then pos.source.name else pos.source.path
           val loc = file + ":" + (pos.line + 1)
           val code =
             if hasSource then

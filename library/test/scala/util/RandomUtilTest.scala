@@ -6,9 +6,9 @@ import tools.AssertUtil.assertThrows
 class RandomUtilTest {
   @Test def testBetween(): Unit = {
     val rand = new Random()
-    Assert.assertTrue("Random between Int must be inclusive-exclusive", rand.between(0, 1).equals(0))
-    Assert.assertTrue("Random between Long must be inclusive-exclusive", rand.between(0L, 1L).equals(0L))
-    Assert.assertTrue("Random nextLong must be inclusive-exclusive", rand.nextLong(1L).equals(0L))
+    Assert.assertTrue("Random between Int must be inclusive-exclusive", rand.between(0, 1) == 0)
+    Assert.assertTrue("Random between Long must be inclusive-exclusive", rand.between(0L, 1L) == 0L)
+    Assert.assertTrue("Random nextLong must be inclusive-exclusive", rand.nextLong(1L) == 0L)
     val float: Float = rand.between(0.0f, 1.0f)
     Assert.assertTrue("Float Random should be inclusive-exclusive", 0.0f <= float && float < 1.0f)
     val double: Double = rand.between(0.0f.toDouble, 1.0f.toDouble)

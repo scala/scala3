@@ -19,6 +19,7 @@ import liqp.TemplateContext
 import liqp.tags.Tag
 import liqp.nodes.LNode
 import scala.jdk.CollectionConverters._
+import dotty.tools.io.{Directory, PlainDirectory}
 
 import scala.io.Source
 import dotty.tools.scaladoc.snippets._
@@ -78,7 +79,7 @@ case class TemplateFile(
     lazy val snippetCheckingFunc: SnippetChecker.SnippetCheckingFunc =
       val path = Some(Paths.get(file.getAbsolutePath))
       val pathBasedArg = ssctx.snippetCompilerArgs.get(path)
-      val sourceFile = dotty.tools.dotc.util.SourceFile(dotty.tools.io.AbstractFile.getFile(path.get).nn, scala.io.Codec.UTF8)
+      val sourceFile = dotty.tools.dotc.util.SourceFile(dotty.tools.io.AbstractFile.getFile(path.get), new PlainDirectory(Directory(".")), scala.io.Codec.UTF8)
       (snippet: SnippetSource, argOverride: Option[SnippetCompilerArg]) =>
         val arg = argOverride.fold(pathBasedArg)(pathBasedArg.merge(_))
         val compilerData = SnippetCompilerData("staticsitesnippet", SnippetCompilerData.Position(configOffset - 1, 0))

@@ -11,9 +11,7 @@ class CharBuffer(initialSize: Int = 1024):
 
   def append(ch: Char): Unit =
     if len == cs.length then
-      val cs1 = new Array[Char](len * 2)
-      Array.copy(cs, 0, cs1, 0, len)
-      cs = cs1
+      cs = Array.copyOf(cs, len * 2)
     cs(len) = ch
     len += 1
 

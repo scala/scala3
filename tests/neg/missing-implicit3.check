@@ -4,7 +4,7 @@
    |     No given instance of type ord.Ord[ord.Foo] was found for a context parameter of method sort in package ord.
    |     I found:
    |
-   |         ord.Ord.ordered[ord.Foo](/* missing */summon[ord.Foo => Comparable[? >: ord.Foo]])
+   |         ord.Ord.ordered[ord.Foo](using /* missing */summon[ord.Foo => Comparable[? >: ord.Foo]])
    |
    |     But no implicit values were found that match type ord.Foo => Comparable[? >: ord.Foo].
    |

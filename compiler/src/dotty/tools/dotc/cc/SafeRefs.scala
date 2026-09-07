@@ -23,7 +23,7 @@ object SafeRefs {
 
   val assumedSafePackages = List(
     "scala", "scala.runtime", "scala.collection.immutable", "scala.compiletime.ops",
-    "scala.math", "scala.util", "scala.caps", "java.math", "java.time",
+    "scala.math", "scala.util", "scala.util.matching", "scala.caps", "java.math", "java.time",
     "java.util.function", "java.util.regex", "java.util.stream"
   )
 
@@ -126,7 +126,7 @@ object SafeRefs {
       "newInstance", "cast", "toGenericString"))
     assumeSafe("java.util.Locale", except = List("setDefault"))
     assumeSafe("java.util.TimeZone", except = List("setDefault", "setID", "setRawOffset"))
-    assumeSafe("java.util.UUID", except = List("randomUIID"))
+    assumeSafe("java.util.UUID", except = List("randomUUID"))
     assumeSafe("java.util.Objects")
     assumeSafe("java.util.Optional")
     assumeSafe("java.util.OptionalInt")

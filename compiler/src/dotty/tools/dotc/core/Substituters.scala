@@ -110,7 +110,7 @@ object Substituters:
       case tp: ThisType =>
         if (tp.cls eq from) to else tp
       case tp: NamedType =>
-        if (tp.currentSymbol.isStaticOwner || (tp.prefix `eq` NoPrefix)) tp
+        if (tp.currentSymbol.originDenotation.isStaticOwner || (tp.prefix `eq` NoPrefix)) tp
         else tp.derivedSelect(substThis(tp.prefix, from, to, theMap))
       case _: BoundType =>
         tp

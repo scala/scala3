@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import java.io.{Reader, StringWriter}
 import javax.script.{AbstractScriptEngine, Bindings, ScriptContext, ScriptEngine => JScriptEngine, ScriptEngineFactory, ScriptException, SimpleBindings}
 import dotc.core.StdNames.str
@@ -24,7 +22,7 @@ class ScriptEngine extends AbstractScriptEngine {
       "-classpath", "", // Avoid the default "."
       "-usejavacp",
       "-color:never",
-      "-Xrepl-disable-display",
+      "-Xrepl-disable-evaluation",
       "-Xrepl-interrupt-instrumentation",
       "false"
     ))
@@ -83,7 +81,7 @@ object ScriptEngine {
 
     def getOutputStatement(toDisplay: String): String = s"""print("$toDisplay")"""
 
-    def getParameter(key: String): Object = key match {
+    def getParameter(key: String): Object | Null = key match {
       case JScriptEngine.ENGINE           => getEngineName
       case JScriptEngine.ENGINE_VERSION   => getEngineVersion
       case JScriptEngine.LANGUAGE         => getLanguageName

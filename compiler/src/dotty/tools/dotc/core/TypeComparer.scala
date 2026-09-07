@@ -26,7 +26,10 @@ import Capabilities.Capability
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
 import reporting.Message.Note
+import reporting.IllegalVarianceInSpecializedTraitsNote
 import scala.util.boundary, boundary.break
+import dotty.tools.dotc.transform.Specialization
+import dotty.tools.dotc.transform.DesugarSpecializedTraits
 
 /** Provides methods to compare types.
  */
@@ -50,6 +53,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     GADTused = false
     opaquesUsed = false
     recCount = 0
+    appliedRecCount = 0
+    appliedMonitored = false
     needsGc = false
     maxErrorLevel = -1
     errorNotes = Nil
@@ -58,6 +63,33 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
+  /** Tracks the `(tycon, args, other, fromBelow, constraint)` tuples currently
+   *  being compared by [[compareAppliedTypeParamRef]] to guard against infinite recursion.
+   *  See https://github.com/scala/scala3/issues/24537.
+   */
+  private var pendingAppliedTypeParamRefs:
+    util.MutableSet[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)] | Null = null
+  private var appliedRecCount = 0
+  private var appliedMonitored = false
+
+  private inline def guardAppliedTypeParamRef(
+      tycon: TypeParamRef, args: List[Type], other: AppliedType, fromBelow: Boolean)(inline op: Boolean): Boolean =
+    def monitoredAppliedTypeParamRef =
+      if pendingAppliedTypeParamRefs == null then
+        pendingAppliedTypeParamRefs = util.HashSet[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)]()
+      val key = (tycon, args, other, fromBelow, constraint)
+      !pendingAppliedTypeParamRefs.nn.contains(key) && {
+        pendingAppliedTypeParamRefs.nn += key
+        try op finally pendingAppliedTypeParamRefs.nn -= key
+      }
+
+    appliedRecCount += 1
+    try
+      if appliedRecCount >= Config.LogPendingAppliedTypeParamRefsThreshold then
+        appliedMonitored = true
+      if appliedMonitored then monitoredAppliedTypeParamRef else op
+    finally appliedRecCount -= 1
+
   private var recCount = 0
   private var monitored = false
 
@@ -111,6 +143,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     pendingSubTypes match
       case null => ()
       case ps => assert(ps.isEmpty)
+    pendingAppliedTypeParamRefs match
+      case null => ()
+      case ps => assert(ps.isEmpty)
     assert(canCompareAtoms == true)
     assert(successCount == 0)
     assert(totalCount == 0)
@@ -160,7 +195,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def testSubType(tp1: Type, tp2: Type): CompareResult =
     GADTused = false
     opaquesUsed = false
-    if !topLevelSubType(tp1, tp2) then CompareResult.Fail(Nil)
+    errorNotes = Nil
+    if !topLevelSubType(tp1, tp2) then CompareResult.Fail(errorNotes.map(_._2))
     else if GADTused then CompareResult.OKwithGADTUsed
     else if opaquesUsed then CompareResult.OKwithOpaquesUsed // we cast on GADTused, so handles if both are used
     else CompareResult.OK
@@ -225,14 +261,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       this.leftRoot = tp1
     }
     else this.approx = a
-    try recur(tp1, tp2)
-    catch {
-      case ex: Throwable => handleRecursive("subtype", i"$tp1 <:< $tp2", ex, weight = 2)
-    }
-    finally {
+    try
+      recur(tp1, tp2)
+    finally
       this.approx = savedApprox
       this.leftRoot = savedLeftRoot
-    }
   }
 
   def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, ApproxState.Fresh)
@@ -1273,9 +1306,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 tl => otherTycon.appliedTo(bodyArgs(tl)))
             else
               otherTycon
-          rollbackConstraintsUnless:
-            (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon))
-              && directionalRecur(adaptedTycon.appliedTo(args), other)
+          /** Break the i24537 cycle when neither the comparison nor its constraint changes. */
+          guardAppliedTypeParamRef(tycon, args, other, fromBelow):
+            rollbackConstraintsUnless:
+              (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon))
+                && directionalRecur(adaptedTycon.appliedTo(args), other)
         }
       }
     end compareAppliedTypeParamRef
@@ -1636,9 +1671,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           rollBack(savedLogSize)
       val savedSuccessCount = successCount
       try
-        val result = inNestedLevel:
-          if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
-          if monitored then monitoredIsSubType else firstTry
+        val result =
+          ctx.handleRecursive("is subtype?", () => i"$tp1 <:< $tp2"):
+            inNestedLevel:
+              if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
+              if monitored then monitoredIsSubType else firstTry
         if !result then restore()
         else if recCount == 0 && needsGc then
           state.gc()
@@ -1938,8 +1975,31 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                    && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
-                if v < 0 then isSubType(arg2, arg1)
-                else if v > 0 then isSubType(arg1, arg2)
+                if v < 0 then 
+                  val isValidSubtype = isSubType(arg2, arg1)
+                  // Specialized traits have special variance rules because they have special erasure
+                  if tp1.classSymbol.isSpecializedTrait
+                     && Specialization.traitParamIsSpecialized(tp1.classSymbol, tparam.paramRef.typeSymbol)
+                     && isValidSubtype
+                     && !(DesugarSpecializedTraits.isSameErasureBucket(arg1, arg2))
+                  then
+                    addErrorNote(IllegalVarianceInSpecializedTraitsNote())
+                    false
+                  else // Normal contravariance case
+                    isValidSubtype
+                else if v > 0 then 
+                  val isValidSubtype = isSubType(arg1, arg2)
+                  // Specialized traits have special variance rules because they have special erasure
+                  if tp1.classSymbol.isSpecializedTrait
+                     && Specialization.traitParamIsSpecialized(tp1.classSymbol, tparam.paramRef.typeSymbol)
+                     && isValidSubtype
+                     && (arg1 ne arg2)
+                     && (arg1.classSymbol == defn.NothingClass)
+                  then
+                    addErrorNote(IllegalVarianceInSpecializedTraitsNote())
+                    false
+                  else // Normal covariance case
+                    isValidSubtype
                 else isSameType(arg2, arg1)
 
         val arg1 = args1.head
@@ -2069,7 +2129,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       // check whether `op2` generates a weaker constraint than `op1`
       val leftConstraint = constraint
       constraint = preConstraint
-      val res = try op catch case _: TypeError => false
+      // See tests/pos-deep-subtype/i21015.scala for an example of why this try/catch is needed
+      val res =
+        try
+          op
+        catch
+          case _: RecursionOverflow => false
       if !(res && subsumes(leftConstraint, constraint, preConstraint)) then
         if constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint) then
           constr.println(i"CUT - prefer $leftConstraint over $constraint")
@@ -3359,18 +3424,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           || (cannotBeNothing(tp1) || cannotBeNothing(tp2))
       }
 
-    args1.lazyZip(args2).lazyZip(cls.typeParams).exists {
-      (arg1, arg2, tparam) =>
-        val v = tparam.paramVarianceSign
-        if (v > 0)
-          covariantDisjoint(arg1, arg2, tparam)
-        else if (v < 0)
-          // Contravariant case: a value where this type parameter is
-          // instantiated to `Any` belongs to both types.
-          false
-        else
-          invariantDisjoint(arg1, arg2, tparam)
-    }
+    ctx.handleRecursive("are args provably disjoint for", cls):
+      args1.lazyZip(args2).lazyZip(cls.typeParams).exists {
+        (arg1, arg2, tparam) =>
+          val v = tparam.paramVarianceSign
+          if (v > 0)
+            covariantDisjoint(arg1, arg2, tparam)
+          else if (v < 0)
+            // Contravariant case: a value where this type parameter is
+            // instantiated to `Any` belongs to both types.
+            false
+          else
+            invariantDisjoint(arg1, arg2, tparam)
+      }
   end provablyDisjointTypeArgs
 
   protected def explainingTypeComparer(short: Boolean) = ExplainingTypeComparer(comparerContext, short)

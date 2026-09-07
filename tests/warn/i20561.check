@@ -1,0 +1,56 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20561/Test.scala:1:22 ----------------------------------------
+1 |def f(r: Rec): Unit = r match // warn
+  |                      ^
+  |                      match may not be exhaustive.
+  |
+  |                      It would fail on pattern case: Rec(false)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20561/Test.scala:11:31 ---------------------------------------
+11 |def i(x: Rec | String): Unit = x match // warn
+   |                               ^
+   |                               match may not be exhaustive.
+   |
+   |                               It would fail on pattern case: _: String
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20561/Test.scala:14:31 ---------------------------------------
+14 |def j(x: Rec | String): Unit = x match // warn
+   |                               ^
+   |                               match may not be exhaustive.
+   |
+   |                               It would fail on pattern case: _: Rec
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20561/Test.scala:20:32 ---------------------------------------
+20 |def l(x: Rec0 | String): Unit = x match // warn
+   |                                ^
+   |                                match may not be exhaustive.
+   |
+   |                                It would fail on pattern case: _: String
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20561/Test.scala:26:25 ---------------------------------------
+26 |def n(r: RecVar): Unit = r match // warn
+   |                         ^
+   |                         match may not be exhaustive.
+   |
+   |                         It would fail on pattern case: RecVar(false, _: List)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20561/Test.scala:29:25 ---------------------------------------
+29 |def o(r: RecVar): Unit = r match // warn
+   |                         ^
+   |                 match may not be exhaustive.
+   |
+   |                 It would fail on pattern case: RecVar(_, List(_, _, _, _*)), RecVar(_, List(_)), RecVar(_, Nil)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20561/Test.scala:36:29 ---------------------------------------
+36 |def q(r: RecVarOnly): Unit = r match // warn
+   |                             ^
+   |                             match may not be exhaustive.
+   |
+   |                             It would fail on pattern case: RecVarOnly(Nil)
+   |
+   | longer explanation available when compiling with `-explain`

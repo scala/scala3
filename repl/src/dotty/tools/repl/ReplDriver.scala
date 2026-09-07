@@ -1,7 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
 import scala.util.control.NonFatal
 
 import java.io.{File => JFile, PrintStream}
@@ -11,7 +10,7 @@ import java.util.regex.Pattern
 
 import dotc.ast.Trees.*
 import dotc.ast.{tpd, untpd}
-import dotc.classpath.ClassPathFactory
+import dotc.classpath.{ClassPath, ClassPathFactory}
 import dotc.config.CommandLineParser.tokenize
 import dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotc.core.Contexts.*
@@ -49,7 +48,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm.ClassReader
+import org.objectweb.asm.ClassReader
 import scala.util.Using
 
 /** The state of the REPL contains necessary bindings instead of having to have
@@ -73,6 +72,7 @@ import scala.util.Using
  *  @param quiet       whether we print evaluation results
  *  @param context     the latest compiler context
  *  @param pastInputs  the replayable inputs of the session, most recent first
+ *  @param repositories the repositories added to dependency resolution, in the order they were added
  */
 case class State(objectIndex: Int,
                  valIndex: Int,
@@ -80,7 +80,8 @@ case class State(objectIndex: Int,
                  invalidObjectIndexes: Set[Int],
                  quiet: Boolean,
                  context: Context,
-                 pastInputs: List[String] = Nil):
+                 pastInputs: List[String] = Nil,
+                 repositories: List[coursierapi.Repository] = Nil):
   def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
 
   def recordInput(input: String): State = copy(pastInputs = input :: pastInputs)
@@ -105,6 +106,7 @@ class ReplDriver(settings: Array[String],
   /** Create a fresh and initialized context with IDE mode enabled */
   private def initialCtx(settings: List[String]) = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive)
+    rootCtx.setRetainedSymbolLoadingFailures(mutable.WeakHashMap.empty)
     rootCtx.setSetting(rootCtx.settings.XcookComments, true)
     rootCtx.setSetting(rootCtx.settings.XreadComments, true)
     setupRootCtx(this.settings ++ settings, rootCtx)
@@ -215,7 +217,7 @@ class ReplDriver(settings: Array[String],
             /* complete = */ false  // if true adds space when completing
           )
         }
-        val comps = completions(line.cursor, line.line, state)
+        val comps = completions(line.cursor, line.line, state, lineReader.printAbove(_))
         candidates.addAll(comps.map(_.label).distinct.map(makeCandidate).asJava)
         val lineWord = line.word()
         comps.filter(c => c.label == lineWord && c.symbols.nonEmpty) match
@@ -291,7 +293,7 @@ class ReplDriver(settings: Array[String],
   }
 
   final def run(input: String)(using state: State): State = runBody {
-    interpret(ParseResult(input))
+    interpret(ParseResult.complete(input))
   }
 
   protected def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
@@ -361,16 +363,24 @@ class ReplDriver(settings: Array[String],
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected final def completions(cursor: Int, expr: String, state0: State): List[Completion] =
+    completions(cursor, expr, state0, out.println(_))
+
+  private def completions(
+    cursor: Int,
+    expr: String,
+    state0: State,
+    displayLoadingErrors: String => Unit
+  ): List[Completion] =
     if expr.startsWith(":") then
-      ParseResult.commands.collect {
-        case command if command._1.startsWith(expr) => Completion(command._1, "", List())
-      }
+      ReplCommands.names.collect:
+        case command if command.startsWith(expr) => Completion(command, "", List())
     else
+      val typecheckReporter = newStoreReporter
       given state: State = newRun(state0)
-      compiler
-        .typeCheck(expr, errorsAllowed = true)
+      val result = compiler
+        .typeCheck(expr, errorsAllowed = true, reporter = typecheckReporter)
         .map { (untpdTree, tpdTree) =>
-          val file = SourceFile.virtual("<completions>", expr)
+          val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
           val unit = CompilationUnit(file)(using state.context)
           unit.untpdTree = untpdTree
           unit.tpdTree = tpdTree
@@ -382,6 +392,15 @@ class ReplDriver(settings: Array[String],
             List(Completion("<Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues>", "", Nil))
         }
         .getOrElse(Nil)
+      // Candidate discovery can load symbols unrelated to the qualifier. Discard its
+      // diagnostics; failed loads are retained and reported if the symbol is requested later.
+      state.context.reporter.removeBufferedMessages(using state.context)
+      val loadingErrors = typecheckReporter.removeBufferedMessages(using state.context).collect:
+        case error: Diagnostic.LoadingError => error
+      if loadingErrors.nonEmpty then
+        given Context = state.context
+        displayLoadingErrors(loadingErrors.map(ReplConsoleReporter.messageAndPos).mkString("\n"))
+      result
   end completions
 
   protected def interpret(res: ParseResult)(using state: State): State = {
@@ -390,7 +409,7 @@ class ReplDriver(settings: Array[String],
         for diag <- parsed.directiveDiagnostics do
           out.println(s"[warn] ${diag.message}")
         val src = parsed.source.content().mkString
-        val classified = DependencyResolver.classifyDirectives(src)
+        val classified = ReplDirectives.classify(src)
         if classified.hasDirectives then
           val stateAfterDirectives = interpretDirectives(classified)
           if parsed.trees.nonEmpty then
@@ -403,6 +422,10 @@ class ReplDriver(settings: Array[String],
         else state
 
       case SyntaxErrors(_, errs, _) =>
+        // if there is a Run that is tracking suspended parse warnings, ignore (drop) them when erroring
+        val run = state.context.run
+        if run != null then
+          run.suppressions.initSuspendedMessages(oldRun = null)
         displayErrors(errs, state)
 
       case CommandThenCode(cmd, code) =>
@@ -455,42 +478,39 @@ class ReplDriver(settings: Array[String],
           displayErrors(errs, errState)
           istate.afterFailedCompilation(errState.objectIndex)
         ,
-        {
-          case (unit: CompilationUnit, newState: State) =>
-            val newestWrapper = extractNewestWrapper(unit.untpdTree)
-            val newImports = extractTopLevelImports(newState.context)
-            var allImports = newState.imports
-            if (newImports.nonEmpty)
-              allImports += (newState.objectIndex -> newImports)
-            val newStateWithImports = newState.copy(
-              imports = allImports,
-              context = contextWithNewImports(newState.context, newImports)
-            )
+        (unit, newState) =>
+          val newestWrapper = extractNewestWrapper(unit.untpdTree)
+          val newImports = extractTopLevelImports(newState.context)
+          var allImports = newState.imports
+          if (newImports.nonEmpty)
+            allImports += (newState.objectIndex -> newImports)
+          val newStateWithImports = newState.copy(
+            imports = allImports,
+            context = contextWithNewImports(newState.context, newImports)
+          )
 
-            val warnings = newState.context.reporter
-              .removeBufferedMessages(using newState.context)
+          val warnings = newState.context.reporter
+            .removeBufferedMessages(using newState.context)
 
-            inContext(newState.context) {
-              val (updatedState, definitions) =
-                if (!ctx.settings.XreplDisableDisplay.value)
-                  renderDefinitions(unit.tpdTree, newestWrapper)(using newStateWithImports)
-                else
-                  (newStateWithImports, Seq.empty)
+          inContext(newState.context):
+            val (updatedState, definitions) =
+              if (!ctx.settings.XreplDisableEvaluation.value)
+                renderDefinitions(unit.tpdTree, newestWrapper)(using newStateWithImports)
+              else
+                (newStateWithImports, Seq.empty)
 
-              // output is printed in the order it was put in. warnings should be
-              // shown before infos (eg. typedefs) for the same line. column
-              // ordering is mostly to make tests deterministic
-              given Ordering[Diagnostic] =
-                Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
+            // output is printed in the order it was put in. warnings should be
+            // shown before infos (e.g. typedefs) for the same line.
+            // column ordering is mostly to make tests deterministic
+            given Ordering[Diagnostic] =
+              Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
 
-              (if istate.quiet then warnings else definitions ++ warnings)
-                .sorted
-                .foreach(printDiagnostic)
+            (if istate.quiet then warnings else definitions ++ warnings)
+              .sorted
+              .foreach(printDiagnostic)
 
-              if updatedState.invalidObjectIndexes.contains(updatedState.objectIndex) then updatedState
-              else updatedState.recordInput(parsed.source.content().mkString)
-            }
-        }
+            if updatedState.invalidObjectIndexes.contains(updatedState.objectIndex) then updatedState
+            else updatedState.recordInput(parsed.source.content().mkString)
       )
   }
 
@@ -552,7 +572,11 @@ class ReplDriver(settings: Array[String],
           ++ defs.map(rendering.renderMethod)
           ++ renderedVals
         val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
-        (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), diagnostics)
+        val reclaimed = vals.toList.reverse
+          .filter(_.symbol.name.show.startsWith(str.REPL_RES_PREFIX))
+          .takeWhile(resAndUnit)
+          .length
+        (state.copy(valIndex = state.valIndex - reclaimed), diagnostics)
     }
     else (state, Seq.empty)
 
@@ -788,20 +812,58 @@ class ReplDriver(settings: Array[String],
         state.copy(context = rootCtx)
 
     case Silent => state.copy(quiet = !state.quiet)
+
     case Dep(dep) => resolveAndAddDeps(List(dep))
+
+    case RepoCmd(repositories) => repositories.split("\\s+").filter(_.nonEmpty).toList match
+      case Nil =>
+        out.println(s"${RepoCmd.command} <url>|<alias> ...")
+        state
+      case repositoryStrings => addRepositories(repositoryStrings)
+
+    case ToolkitCmd(coordinates) =>
+      val singleValue = coordinates.split("\\s+").filter(_.nonEmpty).toList match
+        case coords :: Nil => Some(coords)
+        case _ => None
+      singleValue.flatMap(ReplDirectives.toolkitCoordinates) match
+        case Some(dependencies) =>
+          out.println(ReplDirectives.Warning.NoSeparateTestScope.toString)
+          resolveAndAddDeps(dependencies)
+        case None =>
+          out.println(
+            s"""${ToolkitCmd.command} expects a single version or <flavor>:<version>.
+               |Example: ${ToolkitCmd.command} default""".stripMargin)
+          state
 
     case Quit =>
       // end of the world!
       state
   }
 
-  private def interpretDirectives(classified: DependencyResolver.ClassifiedDirectives)(using state: State): State =
-    classified.unsupportedKeys.foreach: key =>
-      out.println(
-        s"""[warn] The `using $key` directive is not supported in the REPL.
-           |To use it, re-run with the `scala` command and pass the directive inside an input.""".stripMargin
-      )
-    resolveAndAddDeps(classified.deps)
+  private def interpretDirectives(classified: ReplDirectives.DirectiveClassification)(using state: State): State =
+    import ReplDirectives.ReplDirective.*
+
+    classified.warnings.foreach(warning => out.println(warning.toString))
+    val dependencies = classified.directives.collect:
+      case Dependency(coordinate) => coordinate
+    val jars = classified.directives.collect:
+      case Jar(path) => path
+    val repositories = classified.directives.collect:
+      case Repository(repository) => repository
+    val stateWithRepositories = addRepositories(repositories)
+    val stateWithDependencies = resolveAndAddDeps(dependencies)(using stateWithRepositories)
+    jars.foldLeft(stateWithDependencies): (currentState, path) =>
+      interpretCommand(JarCmd(path))(using currentState)
+
+  private def addRepositories(repositoryStrings: List[String])(using state: State): State =
+    repositoryStrings.foldLeft(state): (currentState, repositoryString) =>
+      DependencyResolver.parseRepository(repositoryString) match
+        case Some(repository) =>
+          out.println(s"Added repository '$repositoryString'.")
+          currentState.copy(repositories = (currentState.repositories :+ repository).distinct)
+        case None =>
+          out.println(s"Unable to parse repository '$repositoryString'.")
+          currentState
 
   private def resolveAndAddDeps(depStrings: List[String])(using state: State): State =
     if depStrings.isEmpty then state
@@ -809,7 +871,7 @@ class ReplDriver(settings: Array[String],
       val deps = depStrings.flatMap(DependencyResolver.parseDependency)
       if deps.isEmpty then state
       else
-        DependencyResolver.resolveDependencies(deps) match
+        DependencyResolver.resolveDependencies(deps, state.repositories) match
           case Right(files) =>
             if files.nonEmpty then
               val classpathState = newRun(state)

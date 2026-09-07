@@ -41,7 +41,7 @@ import cc.{isCaptureChecking, RetainingAnnotation, isRetainsLike, isDisallowedIn
 import cc.Mutability.isUpdateMethod
 
 import collection.mutable
-import reporting.*
+import reporting.*, report.Severity
 import Annotations.ExperimentalAnnotation
 
 object Checking {
@@ -142,7 +142,7 @@ object Checking {
   }
 
   /** Check all applied type trees in inferred type `tpt` for well-formedness */
-  def checkAppliedTypesIn(tpt: TypeTree)(using Context): Unit =
+  def checkAppliedTypesIn(tpt: TypeTree)(using Context): Unit = ctx.handleRecursive("checking applied types in", tpt, tpt):
     val checker = new TypeTraverser:
       def traverse(tp: Type) =
         tp.normalized match
@@ -361,7 +361,11 @@ object Checking {
 
           if isInteresting(pre) then
             CyclicReference.trace(i"explore ${tp.symbol} for cyclic references"):
-              val pre1 = atVariance(variance max 0)(this(pre, false, false))
+              val nestedCycleOkInPrefix =
+                // generated symbols like primary constructor may not have JavaDefined,
+                // even when the corresponding file is java - also check the owner
+                if sym.is(JavaDefined) || sym.maybeOwner.is(JavaDefined) then nestedCycleOK else false
+              val pre1 = atVariance(variance max 0)(this(pre, false, nestedCycleOkInPrefix))
               if locked.contains(tp)
                   || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter]
                   && tp.symbol == sym
@@ -491,7 +495,6 @@ object Checking {
 
   /** Check type members inherited from different `parents` of `joint` type for cycles,
    *  unless a type with the same name already appears in `decls`.
-   *  @return    true iff no cycles were detected
    */
   def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SrcPos)(using Context): Unit = {
     // If we don't have more than one parent, then there's nothing to check
@@ -509,17 +512,15 @@ object Checking {
           val mbr = joint.member(name)
           mbr.info match
             case bounds: TypeBounds =>
-              !checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
+              checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
             case _ =>
-              true
-        catch case _: RecursionOverflow | _: CyclicReference =>
+        catch case _: CyclicReference =>
           report.error(em"cyclic reference involving type $name", pos)
-          false
     }
   }
 
   def checkScala2Implicit(sym: Symbol)(using Context): Unit =
-    def migration(msg: Message) =
+    def migration(msg: => Message) =
       report.errorOrMigrationWarning(msg, sym.srcPos, MigrationVersion.Scala2Implicits)
     def info = sym match
       case sym: ClassSymbol => sym.primaryConstructor.info
@@ -689,7 +690,9 @@ object Checking {
     if (sym.isConstructor && !sym.isPrimaryConstructor && sym.owner.is(Trait, butNot = JavaDefined))
       val addendum = if ctx.settings.Ydebug.value then s" ${sym.owner.flagsString}" else ""
       fail(em"Traits cannot have secondary constructors$addendum")
-    checkApplicable(Inline, sym.isTerm && !sym.is(Module) && !sym.isMutableVarOrAccessor)
+    if (!Feature.inlineTraitsEnabledSomewhere && sym.isAllOf(Inline | Trait))
+      fail(em"Inline traits are experimental and must be enabled")
+    checkApplicable(Inline, sym.isTerm && !sym.is(Module) && !sym.isMutableVarOrAccessor || sym.is(Trait))
     checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
     if (sym.isType && !sym.isOneOf(Deferred | JavaDefined))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
@@ -1275,7 +1278,13 @@ trait Checking {
         case Select(qual, _) => qual.symbol.orElse(sym.owner)
         case _ => sym.owner
       checkFeature(nme.implicitConversions,
-        i"Use of implicit conversion ${conv.showLocated}", NoSymbol, tree.srcPos)
+        i"""Implicit conversion to type $expected is not to an `into[...]` type.
+           |Therefore, the use of the implicit conversion ${conv.showLocated}""",
+        NoSymbol, tree.srcPos,
+        severity =
+          if sourceVersion.errorOnConversion then Severity.Error
+          else if sourceVersion.warnOnConversion then Severity.WarningThenError
+          else Severity.FeatureWarning)
 
   private def infixOKSinceFollowedBy(tree: untpd.Tree): Boolean = tree match {
     case _: untpd.Block | _: untpd.Match => true
@@ -1325,9 +1334,10 @@ trait Checking {
   def checkFeature(name: TermName,
                    description: => String,
                    featureUseSite: Symbol,
-                   pos: SrcPos)(using Context): Unit =
+                   pos: SrcPos,
+                   severity: Severity = Severity.FeatureWarning)(using Context): Unit =
     if !Feature.enabled(name) then
-      report.featureWarning(name.toString, description, featureUseSite, required = false, pos)
+      report.featureWarning(name.toString, description, featureUseSite, severity, pos)
 
   /** Check that `tp` is a class type and that any top-level type arguments in this type
    *  are feasible, i.e. that their lower bound conforms to their upper bound. If a type
@@ -1810,7 +1820,7 @@ trait ReChecking extends Checking {
   override def checkCanThrow(tp: Type, span: Span)(using Context): Tree = EmptyTree
   override def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = ()
   override def checkNoContextFunctionType(tree: Tree)(using Context): Unit = ()
-  override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
+  override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos, severity: Severity)(using Context): Unit = ()
 }
 
 trait NoChecking extends ReChecking {

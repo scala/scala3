@@ -4,7 +4,7 @@ import dotty.DottyBytecodeTest
 
 import org.junit.Test
 
-import scala.tools.asm.Opcodes
+import org.objectweb.asm.Opcodes
 import Opcodes.*
 
 class LabelBytecodeTests extends DottyBytecodeTest {

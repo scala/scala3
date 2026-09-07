@@ -37,7 +37,7 @@ object SyntaxHighlighting {
       val source = SourceFile.virtual(VirtualSourceName, in)
 
       given Context = freshCtx
-        .setCompilationUnit(CompilationUnit(source, mustExist = false)(using freshCtx))
+        .setCompilationUnit(CompilationUnit(source, mustExistIfNotNull = false)(using freshCtx))
 
       val colorAt = Array.fill(in.length)(NoColor)
 
@@ -129,7 +129,7 @@ object SyntaxHighlighting {
         }
       }
 
-      try
+      ctx.handleRecursive("syntax highlighting", () => in):
         val parser = new Parser(source)
         val trees = parser.blockStatSeq()
         TreeHighlighter.highlight(trees)
@@ -149,9 +149,6 @@ object SyntaxHighlighting {
           highlighted.append(NoColor)
 
         highlighted.toString
-      catch
-        case e: StackOverflowError =>
-          in
     }
   }
 

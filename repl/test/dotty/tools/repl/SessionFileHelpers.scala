@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import java.io.FileOutputStream
 import java.nio.file.{Path, Files}
 import java.util.jar.JarOutputStream

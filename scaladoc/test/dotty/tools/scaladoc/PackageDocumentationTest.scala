@@ -4,10 +4,11 @@ import org.junit.Assert._
 import com.vladsch.flexmark.util.{ast => mdu, sequence}
 import com.vladsch.flexmark.{ast => mda}
 import scala.jdk.CollectionConverters._
-
+import org.junit.Test
 
 class PackageDocumentationTest extends ScaladocTest("packageobjdocs"):
-  override def runTest: Unit = withModule { module =>
+  @Test
+  def runTest(): Unit = withModule { module =>
     module.members.values.find {
       case member if member.kind == Kind.Package => true
       case _ => false

@@ -20,7 +20,7 @@ trait MemberLookup {
 
   def lookupOpt(using Quotes, DocContext)(
     query: Query,
-    ownerOpt: Option[reflect.Symbol],
+    ownerOpt: Option[reflect.Symbol]
   ): Option[(reflect.Symbol, String, Option[reflect.Symbol])] =
     try
       import reflect._
@@ -73,6 +73,7 @@ trait MemberLookup {
                 val ql = query.asList
                 toplevelLookup(ql)
                 .orElse(relativeLookup(ql, nearest))
+                .orElse(downwardLookup(ql, nearestPkg))
                 .map(memberLookupResult(_, query.join, _))
             }
 
@@ -171,13 +172,13 @@ trait MemberLookup {
   }
 
   private def downwardLookup(using Quotes)(
-    query: List[String], owner: reflect.Symbol
+    query: List[String], owner: reflect.Symbol, neverForce: Boolean = false
   ): Option[(reflect.Symbol, Option[reflect.Symbol])] = {
     import reflect._
-    query match {
+    val result = query match {
       case Nil => None
       case q :: Nil =>
-        val sel = MemberLookup.Selector.fromString(q)
+        val sel = MemberLookup.Selector.fromString(q, neverForce)
         val res = sel.kind match {
           case MemberLookup.SelectorKind.NoForce =>
             // Extract just the method name from the signature (removing type params and param list)
@@ -219,27 +220,29 @@ trait MemberLookup {
             Some(sym -> externalOwner)
         }
       case q :: qs =>
-        val sel = MemberLookup.Selector.fromString(q)
+        val sel = MemberLookup.Selector.fromString(q, neverForce)
         val lookedUp = localLookup(sel, owner).toSeq
-
-        if lookedUp.isEmpty then None else {
-          // tm/tp - term/type symbols which we looked up and which allow further lookup
-          // pk - package symbol
-          // Note: packages collide with both term and type definitions
-          // Note: classes and types collide
-          var pk: Option[Symbol] = None
-          var tp: Option[Symbol] = None
-          var tm: Option[Symbol] = None
-          lookedUp.foreach { s =>
-            if s.isPackageDef then pk = Some(s)
-            else if s.flags.is(Flags.Module) then tm = Some(s)
-            else if s.isClassDef || s.isTypeDef then tp = Some(s)
-          }
-          pk.flatMap(downwardLookup(qs, _))
-          .orElse(tp.flatMap(downwardLookup(qs, _)))
-          .orElse(tm.flatMap(downwardLookup(qs, _)))
+        // tm/tp - term/type symbols which we looked up and which allow further lookup
+        // pk - package symbol
+        // Note: packages collide with both term and type definitions
+        // Note: classes and types collide
+        var pk: Option[Symbol] = None
+        var tp: Option[Symbol] = None
+        var tm: Option[Symbol] = None
+        lookedUp.foreach { s =>
+          if s.isPackageDef then pk = Some(s)
+          else if s.flags.is(Flags.Module) then tm = Some(s)
+          else if s.isClassDef || s.isTypeDef then tp = Some(s)
         }
+        pk.flatMap(downwardLookup(qs, _, neverForce))
+        .orElse(tp.flatMap(downwardLookup(qs, _, neverForce)))
+        .orElse(tm.flatMap(downwardLookup(qs, _, neverForce)))
     }
+    // Ensure that if someone declared, e.g., `foo!`,
+    // we first try with the "! means force type" syntax,
+    // then retry to just look for it
+    if neverForce then result
+    else result.orElse(downwardLookup(query, owner, neverForce = true))
   }
 
   /** Parse parameter types from a method signature.
@@ -356,11 +359,13 @@ object MemberLookup extends MemberLookup {
 
   case class Selector(ident: String, kind: SelectorKind)
   object Selector {
-    def fromString(str: String) = {
+    def fromString(str: String, neverForce: Boolean) = {
       // Scaladoc overloading support allows terminal * (and they're meaningless)
       val cleanStr = str.stripSuffix("*")
 
-      if cleanStr.endsWith("$") then
+      if neverForce then
+        Selector(cleanStr, SelectorKind.NoForce)
+      else if cleanStr.endsWith("$") then
         Selector(cleanStr.init, SelectorKind.ForceTerm)
       else if cleanStr.endsWith("!") then
         Selector(cleanStr.init, SelectorKind.ForceType)

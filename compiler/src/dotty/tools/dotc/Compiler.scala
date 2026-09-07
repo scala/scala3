@@ -43,17 +43,19 @@ class Compiler {
     List(new UnrollDefinitions) ::  // Unroll annotated methods if detected in PostTyper
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
+    List(new DesugarSpecializedTraits,  // Process Specialized traits
+         new SpecializeInlineTraits) :: // Inline the code of inline traits into their children
     Nil
 
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
-    List(new Pickler) ::            // Generate TASTY info
-    List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
-    List(new Inlining) ::           // Inline and execute macros
-    List(new PostInlining) ::       // Add mirror support for inlined code
-    List(new Staging) ::            // Check staging levels and heal staged types
-    List(new Splicing) ::           // Replace level 1 splices with holes
-    List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
+    List(new Pickler) ::                    // Generate TASTY info
+    List(new sbt.ExtractAPI) ::             // Sends a representation of the API of classes to sbt via callbacks
+    List(new Inlining) ::                   // Inline and execute macros
+    List(new PostInlining) ::               // Add mirror support for inlined code
+    List(new Staging) ::                    // Check staging levels and heal staged types
+    List(new Splicing) ::                   // Replace level 1 splices with holes
+    List(new PickleQuotes) ::               // Turn quoted trees into explicit run-time data structures
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
@@ -81,7 +83,9 @@ class Compiler {
          new ForwardDepChecks,       // Check that there are no forward references to local vals
          new SpecializeApplyMethods, // Adds specialized methods to FunctionN
          new TryCatchPatterns,       // Compile cases in try/catch
-         new PatternMatcher) ::      // Compile pattern matches
+         new PatternMatcher,         // Compile pattern matches
+         new PruneInlinedMethods,    // Remove methods which have already been inlined
+         new PruneInlineTraits) ::   // Remove right-hand side of definitions in inline traits
     List(new TestRecheck.Pre) ::     // Test only: run rechecker, enabled under -Yrecheck-test
     List(new TestRecheck) ::         // Test only: run rechecker, enabled under -Yrecheck-test
     List(new cc.Setup) ::            // Preparations for check captures phase, enabled under captureChecking
@@ -94,12 +98,12 @@ class Compiler {
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
          new StringInterpolatorOpt,  // Optimizes raw and s and f string interpolators by rewriting them to string concatenations or formats
          new DropBreaks) ::          // Optimize local Break throws by rewriting them
-    List(new PruneErasedDefs,        // Make erased symbols private
+    List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
          new UninitializedDefs,      // Replaces `compiletime.uninitialized` by `_`
          new InlinePatterns,         // Remove placeholders of inlined patterns
          new VCInlineMethods,        // Inlines calls to value class methods
          new SeqLiterals,            // Express vararg arguments as arrays
-         new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods
+         new InterceptedMethods,     // Special handling of `!=`, `##`, `toString()` and `getClass()` methods
          new Getters,                // Replace non-private vals and vars with getter defs (fields are added later)
          new SpecializeFunctions,    // Specialized Function{0,1,2} by replacing super with specialized super
          new SpecializeTuples,       // Specializes Tuples by replacing tuple construction and selection trees
@@ -110,7 +114,8 @@ class Compiler {
          new ParamForwarding,        // Add forwarders for aliases of superclass parameters
          new TupleOptimizations,     // Optimize generic operations on tuples
          new LetOverApply,           // Lift blocks from receivers of applications
-         new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.
+         new ArrayConstructors,      // Intercept creation of (non-generic) arrays and intrinsify.
+         new SimplifySynchronized) ::// Simplify `synchronized` blocks when they surround a method body
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
     List(new ElimErasedValueType,    // Expand erased value types to their underlying implementation types
          new PureStats,              // Remove pure stats from blocks

@@ -198,6 +198,9 @@ object Config {
   /** How many recursive calls to isSubType are performed before logging starts. */
   inline val LogPendingSubTypesThreshold = 50
 
+  /** How many recursive calls to compareAppliedTypeParamRef are performed before logging starts. */
+  inline val LogPendingAppliedTypeParamRefsThreshold = 30
+
   /** How many recursive calls to findMember are performed before logging names starts
    *  Note: this threshold has to be chosen carefully. Too large, and programs
    *  like tests/pos/IterableSelfRec go into polynomial (or even exponential?)

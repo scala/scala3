@@ -5,7 +5,7 @@ package <empty> {
     override def hashCode(): Int = ???
   }
   final class Foo(u: Int) extends AnyVal(), A {
-    override def hashCode(): Int = Foo.this.u.hashCode()
+    override def hashCode(): Int = Foo.this.u
     override def equals(x$0: Any): Boolean =
       x$0 match
         {

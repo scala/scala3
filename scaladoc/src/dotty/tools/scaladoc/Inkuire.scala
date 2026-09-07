@@ -182,7 +182,7 @@ object Inkuire {
     vars:        Set[String],
     constraints: Map[String, Seq[TypeLike]]
   ) {
-    override def hashCode: Int = vars.size.hashCode
+    override def hashCode: Int = vars.size.##
 
     override def equals(obj: Any): Boolean =
       obj match {

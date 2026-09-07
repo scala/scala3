@@ -68,6 +68,15 @@ object TL {
   def readNoEx(): Int = 0
 }
 
+// @throws on class/object/field must be ignored/compiler shouldn't crash.
+@throws(classOf[IOException])
+class ThrowsOnClass
+
+@throws(classOf[IOException])
+object ThrowsOnObject:
+  @throws(classOf[IOException])
+  val field: Int = 0
+
 object Test {
   def main(args: Array[String]): Unit = {
     TestThrows.run(classOf[TestThrows.Foo])

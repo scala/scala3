@@ -5,12 +5,9 @@ import dotty.tools.io.JarArchive
 import dotty.tools.io.PlainFile
 
 import java.io.BufferedOutputStream
-import java.io.DataOutputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.nio.ByteBuffer
 import java.nio.channels.ClosedByInterruptException
-import java.nio.channels.FileChannel
 import java.nio.file.{FileAlreadyExistsException, Files, Path, Paths, StandardOpenOption}
 import java.nio.file.attribute.FileAttribute
 import java.util
@@ -227,28 +224,24 @@ object FileWriters {
     // because there is not an options in the Windows API that corresponds to this so the truncate is applied as a separate call
     // even if the file is new.
     // as this is rare, it's best to always try to create a new file, and it that fails, then open with truncate if that fails
-    private val fastOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
-    private val fallbackOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
+    // TODO: The comment above is very old. It would be good to check this. (Win32's CreateFile can take CREATE_ALWAYS which truncates, so... why would that not be ok?)
+    private val fastOpenOptions = Array(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
+    private val fallbackOpenOptions = Array(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
 
     override def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile = {
       val path = base.resolve(relativePath)
       try {
         ensureDirForPath(base, path)
-        val os = if (isWindows) {
-          try FileChannel.open(path, fastOpenOptions)
-          catch {
-            case _: FileAlreadyExistsException => FileChannel.open(path, fallbackOpenOptions)
-          }
-        } else FileChannel.open(path, fallbackOpenOptions)
-
-        try os.write(ByteBuffer.wrap(bytes), 0L)
-        catch {
+        try
+          if isWindows then
+            try Files.write(path, bytes, fastOpenOptions*)
+            catch case _: FileAlreadyExistsException => Files.write(path, bytes, fallbackOpenOptions*)
+          else Files.write(path, bytes, fallbackOpenOptions*)
+        catch
           case ex: ClosedByInterruptException =>
             try Files.deleteIfExists(path) // don't leave an empty of half-written classfile around after an interrupt
-            catch { case _: java.io.IOException => () }
+            catch case _: java.io.IOException => ()
             throw ex
-        }
-        os.close()
       } catch {
         case e: IOException => throw new IOException(s"Error writing $path: ${e.getClass.getName}: ${e.getMessage}", e)
       }

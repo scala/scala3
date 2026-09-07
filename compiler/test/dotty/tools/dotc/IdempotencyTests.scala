@@ -14,7 +14,7 @@ import vulpix.*
 
 class IdempotencyTests {
   import TestConfiguration.*
-  import IdempotencyTests.*
+  import IdempotencyTests.{*, given}
   import CompilationTest.aggregateTests
 
   // ignore flaky tests
@@ -64,20 +64,4 @@ class IdempotencyTests {
 
 }
 
-object IdempotencyTests extends ParallelTesting {
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 30.seconds
-  def numberOfWorkers = 5
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
-
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def tearDown(): Unit = {
-    super.cleanup()
-    summaryReport.echoSummary()
-  }
-}
+object IdempotencyTests extends ParallelTesting

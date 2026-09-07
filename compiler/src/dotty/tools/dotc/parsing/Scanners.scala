@@ -194,7 +194,7 @@ object Scanners {
     var debugTokenStream = false
     val showLookAheadOnDebug = false
 
-    val rewrite = ctx.settings.rewrite.value.isDefined
+    val rewrite = ctx.settings.rewrite.value
     val oldSyntax = ctx.settings.oldSyntax.value
     val newSyntax = ctx.settings.newSyntax.value || sourceVersion.requiresNewSyntax
 
@@ -792,8 +792,10 @@ object Scanners {
           if lastToken == IDENTIFIER && lastName != null && isIdentifierStart(lastName.head)
               || colonEOLPredecessors.contains(lastToken)
           then token = COLONfollow
-        case RBRACE | RPAREN | RBRACKET | EOF =>
+        case RBRACE | RPAREN | RBRACKET =>
           closeIndented()
+        case EOF =>
+          if !source.maybeIncomplete then closeIndented()
         case _ =>
       }
     }
@@ -1213,6 +1215,13 @@ object Scanners {
 
 // String Parsing -----------------------------------------------------------------
 
+    private def unclosedStringLit(): Unit =
+      error(em"unclosed string literal")
+      // Recover as best we can by pretending the line has ended
+      litBuf.clear()
+      adjustSepRegions(STRINGLIT)
+      token = SEMI
+
     def multiline = delimCount >= 3
 
     def nextStrChar() =
@@ -1224,7 +1233,8 @@ object Scanners {
         setStrVal()
         nextChar()
         token = STRINGLIT
-      else error(em"unclosed string literal")
+      else
+        unclosedStringLit()
 
     private def getMultilineStringLit(): Unit =
       if ch == delimChar then
@@ -1308,7 +1318,7 @@ object Scanners {
           if multiline then
             incompleteInputError(em"unclosed multi-line string literal")
           else
-            error(em"unclosed string literal")
+            unclosedStringLit()
         else
           putChar(ch)
           nextStrChar()
@@ -1334,7 +1344,9 @@ object Scanners {
 
     private def stringPart() =
       getStringPart()
-      currentRegion = InString(delimChar, delimCount, currentRegion)
+      // don't edit the region if we recovered from a parsing error by inserting a semicolon
+      if token != SEMI then
+        currentRegion = InString(delimChar, delimCount, currentRegion)
 
     private def emptyString() =
       if delimChar == '\'' then

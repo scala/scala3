@@ -7,7 +7,7 @@ import dotty.tools.io.AbstractFile
 class CompilationUnitInfo(
   /** The source or class file from which this class or the class containing
    *  this symbol was generated. */
-  val associatedFile: AbstractFile,
+  val associatedFile: AbstractFile | Null,
 
   // Lazy because such information requires reading files, but is not needed from many compilation units.
   tastyInfoLoader: () => Option[TastyInfo] = () => None

@@ -14,14 +14,18 @@
    |    Illegal start of toplevel definition
    |
    | longer explanation available when compiling with `-explain`
--- [E018] Syntax Error: tests/neg/closure-args.scala:18:20 -------------------------------------------------------------
-18 |val e = xs.map: y => // error
+-- Error: tests/neg/closure-args.scala:17:38 ---------------------------------------------------------------------------
+17 |  .map: x => x.toString + xs.dropWhile: y => y > 0 // error
+   |                                      ^
+   |                          Can't have two single line lambdas on the same line, enclose the second in parentheses
+-- [E018] Syntax Error: tests/neg/closure-args.scala:21:20 -------------------------------------------------------------
+21 |val e = xs.map: y => // error
    |                    ^
    |                    expression expected but [31mend of single-line lambda[0m found
    |
    | longer explanation available when compiling with `-explain`
--- [E040] Syntax Error: tests/neg/closure-args.scala:21:41 -------------------------------------------------------------
-21 |val fs: List[List[Int] => Int] = xs.map: x => case y :: ys => y case Nil => -1  // error // error
+-- [E040] Syntax Error: tests/neg/closure-args.scala:24:41 -------------------------------------------------------------
+24 |val fs: List[List[Int] => Int] = xs.map: x => case y :: ys => y case Nil => -1  // error // error
    |                                         ^
    |                                         'case' expected, but identifier found
 -- [E008] Not Found Error: tests/neg/closure-args.scala:10:4 -----------------------------------------------------------
@@ -33,32 +37,32 @@
    |             Note that `*` is treated as an infix operator in Scala 3.
    |             If you do not want that, insert a `;` or empty line in front
    |             or drop any spaces behind the operator.
--- [E006] Not Found Error: tests/neg/closure-args.scala:16:21 ----------------------------------------------------------
-16 |val c = List(xs.map: y => y + y)  // error // error // error // error
+-- [E006] Not Found Error: tests/neg/closure-args.scala:19:21 ----------------------------------------------------------
+19 |val c = List(xs.map: y => y + y)  // error // error // error // error
    |                     ^
    |                     Not found: type y
    |
    | longer explanation available when compiling with `-explain`
--- [E006] Not Found Error: tests/neg/closure-args.scala:16:28 ----------------------------------------------------------
-16 |val c = List(xs.map: y => y + y)  // error // error // error // error
+-- [E006] Not Found Error: tests/neg/closure-args.scala:19:28 ----------------------------------------------------------
+19 |val c = List(xs.map: y => y + y)  // error // error // error // error
    |                            ^
    |                            Not found: type +
    |
    | longer explanation available when compiling with `-explain`
--- [E006] Not Found Error: tests/neg/closure-args.scala:16:26 ----------------------------------------------------------
-16 |val c = List(xs.map: y => y + y)  // error // error // error // error
+-- [E006] Not Found Error: tests/neg/closure-args.scala:19:26 ----------------------------------------------------------
+19 |val c = List(xs.map: y => y + y)  // error // error // error // error
    |                          ^
    |                          Not found: type y
    |
    | longer explanation available when compiling with `-explain`
--- [E006] Not Found Error: tests/neg/closure-args.scala:16:30 ----------------------------------------------------------
-16 |val c = List(xs.map: y => y + y)  // error // error // error // error
+-- [E006] Not Found Error: tests/neg/closure-args.scala:19:30 ----------------------------------------------------------
+19 |val c = List(xs.map: y => y + y)  // error // error // error // error
    |                              ^
    |                              Not found: type y
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/closure-args.scala:21:97 ------------------------------------------------------
-21 |val fs: List[List[Int] => Int] = xs.map: x => case y :: ys => y case Nil => -1  // error // error
+-- [E007] Type Mismatch Error: tests/neg/closure-args.scala:24:97 ------------------------------------------------------
+24 |val fs: List[List[Int] => Int] = xs.map: x => case y :: ys => y case Nil => -1  // error // error
    |                                                                                                 ^
    |                                                                                      Found:    Unit
    |                                                                                      Required: List[Int] => Int

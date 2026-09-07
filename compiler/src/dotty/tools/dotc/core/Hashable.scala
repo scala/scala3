@@ -85,13 +85,13 @@ trait Hashable {
   }
 
 
-  protected final def doHash(x: Any): Int =
+  protected final def doHash(x: AnyRef): Int =
     finishHash(hashing.mix(hashSeed, x.hashCode), 1)
 
   protected final def doHash(bs: Binders, tp: Type): Int =
     finishHash(bs, hashSeed, 0, tp)
 
-  protected final def doHash(bs: Binders, x1: Any, tp2: Type): Int =
+  protected final def doHash(bs: Binders, x1: AnyRef, tp2: Type): Int =
     finishHash(bs, hashing.mix(hashSeed, x1.hashCode), 1, tp2)
 
   protected final def doHash(bs: Binders, x1: Int, tp2: Type): Int =
@@ -103,13 +103,13 @@ trait Hashable {
   protected final def doHash(bs: Binders, tp1: Type, tp2: Type): Int =
     finishHash(bs, hashSeed, 0, tp1, tp2)
 
-  protected final def doHash(bs: Binders, x1: Any, tp2: Type, tp3: Type): Int =
+  protected final def doHash(bs: Binders, x1: AnyRef, tp2: Type, tp3: Type): Int =
     finishHash(bs, hashing.mix(hashSeed, x1.hashCode), 1, tp2, tp3)
 
   protected final def doHash(bs: Binders, tp1: Type, tps2: List[Type]): Int =
     finishHash(bs, hashSeed, 0, tp1, tps2)
 
-  protected final def doHash(bs: Binders, x1: Any, tp2: Type, tps3: List[Type]): Int =
+  protected final def doHash(bs: Binders, x1: AnyRef, tp2: Type, tps3: List[Type]): Int =
     finishHash(bs, hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
 
   protected final def doHash(x1: Int, x2: Int): Int =

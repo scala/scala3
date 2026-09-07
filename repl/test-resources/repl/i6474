@@ -10,9 +10,9 @@ scala> ((1, 2): Foo2.T[Int][Int]): Foo2.T[Any][Int]
 val res1: Foo2.T[Any][Int] = (1, 2)
 scala> (1, 2): Foo3.T[Int][Int]
 -- [E056] Syntax Error: --------------------------------------------------------
-1 | (1, 2): Foo3.T[Int][Int]
-  |         ^^^^^^^^^^^^^^^^
-  |         Missing type parameter for Foo3.T[Int][Int]
+1 |(1, 2): Foo3.T[Int][Int]
+  |        ^^^^^^^^^^^^^^^^
+  |        Missing type parameter for Foo3.T[Int][Int]
 1 error found
 scala> ((1, 2): Foo3.T[Int][Int][Int]): Foo3.T[Any][Int][Int]
 val res2: Foo3.T[Any][Int][Int] = (1, 2)

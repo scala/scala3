@@ -15,7 +15,7 @@ package backend.jvm
 package opt
 
 import scala.collection.mutable
-import scala.tools.asm.*
+import org.objectweb.asm.*
 
 /**
  * This attribute stores the InlineInfo for a ClassBType as an independent classfile attribute.

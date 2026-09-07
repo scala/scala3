@@ -1,10 +1,107 @@
 package dotty.tools
 package repl
 
-import org.junit.Assert.{assertFalse, assertTrue}
+import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 import org.junit.Test
 
-class ReplDirectiveTests extends ReplTest:
+import ReplDirectives.ReplDirective.{Dependency, Jar, Repository}
+import ReplDirectives.Warning
+
+class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
+
+  @Test def `dependency directive aliases are supported`: Unit =
+    val dependency = "com.lihaoyi::os-lib:0.11.3"
+    val aliases = List("dep", "deps", "dependency", "dependencies")
+    aliases.foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias $dependency")
+      assertEquals(List(Dependency(dependency)), result.directives)
+      assertEquals(Nil, result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: deps, dependency, dependencies"))
+
+  @Test def `test dependency directive aliases are supported with a warning`: Unit =
+    val dependencies = List("org.scalameta::munit:1.1.1", "org.typelevel::cats-effect:3.6.3")
+    val aliases = List("test.dep", "test.deps", "test.dependency", "test.dependencies")
+    aliases.foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${dependencies.mkString(" ")}")
+      assertEquals(dependencies.map(Dependency(_)), result.directives)
+      assertEquals(List(Warning.NoSeparateTestScope), result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: test.deps, test.dependency, test.dependencies"))
+
+  @Test def `jar directive aliases are supported`: Unit =
+    val jars = List("lib/first.jar", "lib/second.jar")
+    List("jar", "jars").foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${jars.mkString(" ")}")
+      assertEquals(jars.map(Jar(_)), result.directives)
+      assertEquals(Nil, result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: jars"))
+
+  @Test def `repository directive aliases are supported`: Unit =
+    val repositories = List("m2Local", "https://jitpack.io")
+    List("repository", "repositories").foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${repositories.mkString(" ")}")
+      assertEquals(repositories.map(Repository(_)), result.directives)
+      assertEquals(Nil, result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: repositories"))
+
+  @Test def `directives without a value are reported and act on nothing`: Unit =
+    List("dep", "test.dep", "jar", "toolkit", "test.toolkit", "repository").foreach: key =>
+      val result = ReplDirectives.classify(s"//> using $key")
+      assertEquals(key, Nil, result.directives)
+      assertEquals(key, List(Warning.ValueMissing(key)), result.warnings)
+
+  @Test def `toolkit directive accepts explicit versions and flavors`: Unit =
+    val expected = Map(
+      "0.7.0" -> ("org.scala-lang", "0.7.0"),
+      "latest" -> ("org.scala-lang", "latest.release"),
+      "scala:default" -> ("org.scala-lang", "0.9.2"),
+      "org.scala-lang:0.7.0" -> ("org.scala-lang", "0.7.0"),
+      "typelevel:default" -> ("org.typelevel", "0.2.0"),
+      "typelevel:0.1.29" -> ("org.typelevel", "0.1.29"),
+      "org.typelevel:default" -> ("org.typelevel", "0.2.0"),
+      "com.example:1.2.3" -> ("com.example", "1.2.3"),
+      "com.example:latest" -> ("com.example", "latest.release")
+    )
+    expected.foreach:
+      case (coordinates, (org, version)) =>
+        val result = ReplDirectives.classify(s"//> using toolkit $coordinates")
+        assertEquals(
+          coordinates,
+          List(Dependency(s"$org::toolkit:$version"), Dependency(s"$org::toolkit-test:$version")),
+          result.directives
+        )
+
+  @Test def `toolkit directive rejects values of any other shape`: Unit =
+    List(":", "::", "typelevel:", ":default", "a:b:c", "typelevel::default").foreach: coordinates =>
+      val result = ReplDirectives.classify(s"//> using toolkit $coordinates")
+      assertEquals(coordinates, Nil, result.directives)
+      assertEquals(coordinates, List(Warning.MalformedValue("toolkit", coordinates)), result.warnings)
+
+  @Test def `toolkit directives reject more than one value`: Unit =
+    List("toolkit", "test.toolkit").foreach: key =>
+      val result = ReplDirectives.classify(s"//> using $key default typelevel:default")
+      assertEquals(key, Nil, result.directives)
+      assertEquals(key, List(Warning.TooManyValues(key)), result.warnings)
+
+  @Test def `jars directive adds all JARs to the classpath`: Unit =
+    val firstJar = emptyJar()
+    val secondJar = emptyJar()
+    initially:
+      run(s"//> using jars $firstJar $secondJar")
+      assertEquals(
+        s"""Added '$firstJar' to classpath.
+           |Added '$secondJar' to classpath.""".stripMargin,
+        storedOutput().trim
+      )
+
+  @Test def `test dependency directive warns about the shared REPL scope`: Unit =
+    initially:
+      run("//> using test.dep org.scalameta::munit:1.1.1")
+      assertEquals(
+        """[warn] The REPL does not have a separate test scope. Dependencies that would only be
+          |available to tests are added to the current REPL session.
+          |Resolved a dependency (8 JARs)""".stripMargin,
+        storedOutput().trim
+      )
 
   @Test def `lone dep directive is incomplete until code follows`: Unit = contextually:
     assertTrue(ParseResult.onlyPreambleSoFar("//> using dep com.lihaoyi::os-lib:0.11.3"))

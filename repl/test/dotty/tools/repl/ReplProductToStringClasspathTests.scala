@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import dotc.Driver
 import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.TestReporter
@@ -16,11 +14,12 @@ import org.junit.Assert.{assertFalse, assertTrue}
 import org.junit.{AfterClass, Test}
 
 object ReplProductToStringClasspathTests:
-  private var tempDir: Path = null
+  private var tempDir: Path | Null = null
 
   private lazy val fixtureJar: Path =
-    tempDir = Files.createTempDirectory("repl-product-tostring-classpath")
-    createFixtureJar(tempDir)
+    val dir = Files.createTempDirectory("repl-product-tostring-classpath")
+    tempDir = dir
+    createFixtureJar(dir)
 
   def options: Array[String] =
     ReplTest.createOptions(fixtureJar.toAbsolutePath.toString)

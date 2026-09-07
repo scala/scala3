@@ -20,7 +20,6 @@ import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.Interactive
-import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.profile.Profiler
 import dotty.tools.dotc.util.SourceFile
@@ -46,8 +45,7 @@ object CompletionProvider:
 
 class CompletionProvider(
     search: SymbolSearch,
-    cachingDriver: InteractiveDriver,
-    freshDriver: () => InteractiveDriver,
+    cachingDriver: CachingDriver,
     params: OffsetParams,
     config: PresentationCompilerConfig,
     buildTargetIdentifier: String,
@@ -62,7 +60,7 @@ class CompletionProvider(
     val sourceFile = SourceFile.virtual(uri, code)
 
     /** Creating a new fresh driver is way slower than reusing existing one, but
-     *  runnig a compilation has side effects that modifies the state of the
+     *  running a compilation has side effects that modifies the state of the
      *  driver. We don't want to affect cachingDriver state with compilation
      *  including "CURSOR" suffix.
      *
@@ -72,7 +70,7 @@ class CompletionProvider(
      *  happening.
      */
 
-    val driver = if wasCursorApplied then freshDriver() else cachingDriver
+    val driver = if wasCursorApplied then cachingDriver.freshDriver() else cachingDriver
     driver.run(uri, sourceFile)
 
     given ctx: Context = driver.currentCtx
@@ -176,7 +174,7 @@ class CompletionProvider(
    *  }}}
    *  it's required to modify actual code by additional Ident.
    *
-   *  Otherwise, completion poisition doesn't point at any tree because scala
+   *  Otherwise, the completion position doesn't point at any tree because scala
    *  parser trim end position to the last statement pos.
    */
   private def applyCompletionCursor(params: OffsetParams): (Boolean, String) =

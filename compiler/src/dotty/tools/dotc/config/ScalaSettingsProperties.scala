@@ -6,7 +6,7 @@ import Settings.Setting.ChoiceWithHelp
 object ScalaSettingsProperties:
 
   private val minTargetVersion = 17
-  private val maxTargetVersion = 26
+  private val maxTargetVersion = 27
   private val minReleaseVersion = 17
 
   def supportedTargetVersions: List[String] =

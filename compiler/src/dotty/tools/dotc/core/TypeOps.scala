@@ -32,7 +32,7 @@ object TypeOps:
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
    *  for what this means.
    */
-  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol)(using Context): Type = {
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol)(using Context): Type = ctx.handleRecursive("checking 'as seen from' for", () => i"$tp from $pre and $cls"):
     pre match {
       case pre: QualSkolemType =>
         // When a selection has an unstable qualifier, the qualifier type gets
@@ -52,9 +52,7 @@ object TypeOps:
         Stats.record("asSeenFrom skolem prefix required")
       case _ =>
     }
-
     new AsSeenFromMap(pre, cls).apply(tp)
-  }
 
   /** The TypeMap handling the asSeenFrom */
   class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap {
@@ -472,39 +470,37 @@ object TypeOps:
       case _ => true
 
     override def apply(tp: Type): Type =
-      try
-        tp match
-          case tp: TermRef if toAvoid(tp) =>
-            tp.info.widenExpr.dealiasKeepRefiningAnnots match {
-              case info: SingletonType => apply(info)
-              case info => range(defn.NothingType, apply(info))
-            }
-          case tp: TypeRef if toAvoid(tp) =>
-            tp.info match {
-              case info: AliasingBounds =>
-                apply(info.alias)
-              case TypeBounds(lo, hi) =>
-                range(atVariance(-variance)(apply(lo)), apply(hi))
-              case info: ClassInfo =>
-                range(defn.NothingType, apply(classBound(info)))
-              case _ =>
-                emptyRange // should happen only in error cases
-            }
-          case tp: ThisType =>
-            // ThisType is only used inside a class.
-            // Therefore, either they don't appear in the type to be avoided, or
-            // it must be a class that encloses the block whose type is to be avoided.
-            tp
-          case tp: LazyRef =>
-            if localParamRefs.contains(tp.ref) then tp
-            else if isExpandingBounds then emptyRange
-            else mapOver(tp)
-          case tl: HKTypeLambda =>
-            localParamRefs ++= tl.paramRefs
-            mapOver(tl)
-          case _ =>
-            super.apply(tp)
-      catch case ex: Throwable => handleRecursive("traversing for avoiding local references", s"${tp.show}", ex)
+      tp match
+        case tp: TermRef if toAvoid(tp) =>
+          tp.info.widenExpr.dealiasKeepRefiningAnnots match {
+            case info: SingletonType => apply(info)
+            case info => range(defn.NothingType, apply(info))
+          }
+        case tp: TypeRef if toAvoid(tp) =>
+          tp.info match {
+            case info: AliasingBounds =>
+              apply(info.alias)
+            case TypeBounds(lo, hi) =>
+              range(atVariance(-variance)(apply(lo)), apply(hi))
+            case info: ClassInfo =>
+              range(defn.NothingType, apply(classBound(info)))
+            case _ =>
+              emptyRange // should happen only in error cases
+          }
+        case tp: ThisType =>
+          // ThisType is only used inside a class.
+          // Therefore, either they don't appear in the type to be avoided, or
+          // it must be a class that encloses the block whose type is to be avoided.
+          tp
+        case tp: LazyRef =>
+          if localParamRefs.contains(tp.ref) then tp
+          else if isExpandingBounds then emptyRange
+          else mapOver(tp)
+        case tl: HKTypeLambda =>
+          localParamRefs ++= tl.paramRefs
+          mapOver(tl)
+        case _ =>
+          super.apply(tp)
     end apply
 
     /** Three deviations from standard derivedSelect:
@@ -562,12 +558,17 @@ object TypeOps:
    *  does not update `ctx.nestingLevel` when entering a block so I'm leaving
    *  this as Future Work™.
    */
-  def avoid(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type = {
+  def avoid(tp: Type, symsToAvoid: => List[Symbol],
+      replacements: Map[Symbol, Type] = Map.empty)(using Context): Type = {
     val widenMap = new AvoidMap {
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(tp: NamedType) = forbidden.contains(tp.symbol)
 
       override def apply(tp: Type): Type = tp match
+        case tp: TermRef if toAvoid(tp) =>
+          replacements.get(tp.symbol) match
+            case Some(replacement) => replacement
+            case None => super.apply(tp)
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
           val lo = TypeComparer.instanceType(
             tp.origin,
@@ -790,7 +791,7 @@ object TypeOps:
       val singletons = util.HashMap[Symbol, SingletonType]()
       val gadtSyms = new mutable.ListBuffer[Symbol]
 
-      def traverse(tp: Type) = try
+      def traverse(tp: Type) = ctx.handleRecursive("traverseTp2", tp):
         val tpd = tp.dealias
         if tpd ne tp then traverse(tpd)
         else tp match
@@ -809,10 +810,10 @@ object TypeOps:
             traverseChildren(tp.info)
           case _ =>
             traverseChildren(tp)
-      catch case ex: Throwable => handleRecursive("traverseTp2", tp.show, ex)
     TraverseTp2.traverse(tp2)
     val singletons = TraverseTp2.singletons
     val gadtSyms   = TraverseTp2.gadtSyms.toList
+    val initialGadt = ctx.gadt
 
     // Prefix inference, given `p.C.this.Child`:
     //   1. return it as is, if `C.this` is found in `tp`, i.e. the scrutinee; or
@@ -885,18 +886,19 @@ object TypeOps:
             tref
 
         case tp: TypeRef if !tp.symbol.isClass =>
-          val lookup = boundTypeParams.lookup(tp)
-          if lookup != null then lookup
+          if initialGadt.contains(tp.symbol) then tp
           else
-            val TypeBounds(lo, hi) = tp.underlying.bounds
-            val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
-            boundTypeParams(tp) = tv
-            assert(tv <:< apply(hi))
-            apply(lo) <:< tv //  no assert, since bounds might conflict
-            tv
+            val lookup = boundTypeParams.lookup(tp)
+            if lookup != null then lookup
+            else
+              val TypeBounds(lo, hi) = tp.underlying.bounds
+              val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
+              boundTypeParams(tp) = tv
+              assert(tv <:< apply(hi))
+              apply(lo) <:< tv //  no assert, since bounds might conflict
+              tv
 
         case tp @ AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass && !tp.isMatchAlias =>
-
           // In tests/patmat/i3645g.scala, we need to tell whether it's possible
           // that K1 <: K[Foo]. If yes, we issue a warning; otherwise, no
           // warnings.
@@ -917,7 +919,10 @@ object TypeOps:
           // Note that `HKTypeLambda.resType` may contain TypeParamRef that are
           // bound in the HKTypeLambda. This is fine, as the TypeComparer will
           // recurse on the bounds of `TypeParamRef`.
-          val bounds: TypeBounds = tycon.underlying match {
+          val tyconBounds = initialGadt.bounds(tycon.symbol) match
+            case tb @ (TypeBounds(_: HKTypeLambda, _) | TypeBounds(_, _: HKTypeLambda)) => tb
+            case _ => tycon.underlying
+          val bounds: TypeBounds = tyconBounds match {
             case TypeBounds(tl1: HKTypeLambda, tl2: HKTypeLambda) =>
               TypeBounds(tl1.resType, tl2.resType)
             case TypeBounds(tl1: HKTypeLambda, tp2) =>
@@ -940,8 +945,9 @@ object TypeOps:
       case _               => Nil
     val protoTp1 = prefixInferredTp.appliedTo(tvars)
 
-    if gadtSyms.nonEmpty then
-      ctx.gadtState.addToConstraint(gadtSyms)
+    val missingGadtSyms = gadtSyms.filterNot(initialGadt.contains)
+    if missingGadtSyms.nonEmpty then
+      ctx.gadtState.addToConstraint(missingGadtSyms)
 
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to

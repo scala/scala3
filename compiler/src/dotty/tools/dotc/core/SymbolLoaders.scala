@@ -5,8 +5,8 @@ package core
 import java.io.{IOException, File}
 import java.nio.channels.ClosedByInterruptException
 
-import dotty.tools.dotc.classpath.PackageNameUtils
-import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile, NoAbstractFile }
+import dotty.tools.dotc.classpath.{ClassPath, ClassRepresentation, PackageNameUtils}
+import dotty.tools.io.AbstractFile
 
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
 import NameOps.*
@@ -15,7 +15,8 @@ import classfile.{ClassfileParser, ClassfileTastyUUIDParser}
 import Decorators.*
 
 import util.Stats
-import reporting.trace
+import reporting.{Message, trace}
+import reporting.Diagnostic.LoadingFailure
 
 import ast.desugar
 
@@ -134,7 +135,7 @@ object SymbolLoaders {
    *  All entered symbols are given a source completer of `src` as info.
    */
   def enterToplevelsFromSource(
-      owner: Symbol, name: PreName, src: AbstractFile,
+      owner: Symbol, src: AbstractFile,
       scope: Scope = EmptyScope)(using Context): Unit =
     if src.exists && !src.isDirectory then
       val completer = new SourcefileLoader(src)
@@ -200,8 +201,8 @@ object SymbolLoaders {
    *  Note: We do a name-base comparison here because the method is called before we even
    *  have ReflectPackage defined.
    */
-  def binaryOnly(owner: Symbol, name: TermName)(using Context): Boolean =
-    name == nme.PACKAGEkw &&
+  def binaryOnly(owner: Symbol, name: String)(using Context): Boolean =
+    name == nme.PACKAGE.toString &&
       (owner.name == nme.scala || owner.name == nme.reflect && owner.owner.name == nme.scala)
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
@@ -210,29 +211,21 @@ object SymbolLoaders {
     // module-info is a special class added by JPMS (Java 9+) that cannot be parsed like a normal class
     if classRep.name != "module-info" then
       ((classRep.binary, classRep.source): @unchecked) match {
-      case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, nameOf(classRep)) =>
+      case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
         if (ctx.settings.verbose.value) report.inform("[symloader] picked up newer source file for " + src.path)
-        enterToplevelsFromSource(owner, nameOf(classRep), src)
+        enterToplevelsFromSource(owner, src)
       case (None, Some(src)) =>
         if (ctx.settings.verbose.value) report.inform("[symloader] no class or tasty, picked up source file for " + src.path)
-        enterToplevelsFromSource(owner, nameOf(classRep), src)
+        enterToplevelsFromSource(owner, src)
       case (Some(bin), _) =>
         val completer =
           if bin.ext.isTasty || bin.ext.isBetasty then ctx.platform.newTastyLoader(bin)
           else ctx.platform.newClassLoader(bin)
-        enterClassAndModule(owner, nameOf(classRep), completer)
+        enterClassAndModule(owner, termName(classRep.name), completer)
     }
 
   def needCompile(bin: AbstractFile, src: AbstractFile): Boolean =
     src.lastModified >= bin.lastModified
-
-  private def nameOf(classRep: ClassRepresentation)(using Context): TermName =
-    // avoid forcing `classRep.name` when we just need the length
-    val nameLength = {
-      val ix = classRep.fileName.lastIndexOf('.')
-      if (ix < 0) classRep.fileName.length else ix
-    }
-    classRep.fileName.sliceToTermName(0, nameLength)
 
   /** Load contents of a package
    */
@@ -331,8 +324,7 @@ object SymbolLoaders {
       }
       enterClasses(root, packageName, flat = false)
       if (!root.isEmptyPackage)
-        for (pkg <- classPath.packages(packageName)) {
-          val fullName = pkg.name
+        for (fullName <- classPath.packages(packageName)) {
           val name =
             if (packageName.isEmpty) fullName
             else fullName.substring(packageName.length + 1).nn
@@ -383,11 +375,11 @@ object SymbolLoaders {
     // e.g. scala-parallel-collections adds both classes to scala.collection
     // and the new scala.collection.parallel sub-package.
     for p <- jarClasspath.packages(fullPackageName) do
-      val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
+      val subPackageName = PackageNameUtils.separatePkgAndClassNames(p)._2.toTermName
       val subPackage = packageClass.info.decl(subPackageName).orElse:
         // package does not exist in symbol table, create a new symbol
         enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))
-      mergeNewEntries(subPackage.asSymDenotation.moduleClass.asClass, p.name, jarClasspath, fullClasspath)
+      mergeNewEntries(subPackage.asSymDenotation.moduleClass.asClass, p, jarClasspath, fullClasspath)
   end mergeNewEntries
 }
 
@@ -415,21 +407,21 @@ abstract class SymbolLoader extends LazyType { self =>
 
   private inline def profileCompletion[T](root: SymDenotation)(inline body: T)(using Context): T = {
     val sym = root.symbol
-    def associatedFile = root.symbol.associatedFile match
-      case file: AbstractFile => file
-      case null => NoAbstractFile
-    ctx.profiler.onCompletion(sym, associatedFile)(body)
+    def associatedFileName = root.symbol.associatedFile match
+      case file: AbstractFile => Some(file.name)
+      case null => None
+    ctx.profiler.onCompletion(sym, associatedFileName)(body)
   }
 
   override def complete(root: SymDenotation)(using Context): Unit = profileCompletion(root) {
-    def signalError(ex: Exception): Unit = {
+    def loadingMessage(ex: IOException): Message = {
       if (ctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()
-      report.error(
-        if msg == null then em"i/o error while loading ${root.name}"
-        else em"""error while loading ${root.name},
-                 |$msg""")
+      if msg == null then em"i/o error while loading ${root.name}"
+      else em"""error while loading ${root.name},
+               |$msg"""
     }
+    var failure: Option[LoadingFailure] = None
     try {
       val start = System.currentTimeMillis
       trace.onDebug("loading") {
@@ -441,7 +433,12 @@ abstract class SymbolLoader extends LazyType { self =>
       case ex: ClosedByInterruptException =>
         throw new InterruptedException
       case ex: IOException =>
-        signalError(ex)
+        val message = loadingMessage(ex)
+        if ctx.retainedSymbolLoadingFailures != null then
+          val loadFailure = LoadingFailure(message)
+          failure = Some(loadFailure)
+          report.loadingError(loadFailure)
+        else report.error(message)
       case ex: TypeError =>
         println(s"exception caught when loading $root: ${ex.toMessage}")
         throw ex
@@ -453,11 +450,14 @@ abstract class SymbolLoader extends LazyType { self =>
       def postProcess(denot: SymDenotation, other: Symbol) =
         if !denot.isCompleted &&
            !denot.completer.isInstanceOf[SymbolLoaders.SecondCompleter] then
-          if denot.is(ModuleClass) && NamerOps.needsConstructorProxies(other) then
-            NamerOps.makeConstructorCompanion(denot.sourceModule.asTerm, other.asClass)
-            denot.resetFlag(Touched)
-          else
-            denot.markAbsent()
+          failure match
+            case Some(failure) => denot.markLoadFailed(failure)
+            case None =>
+              if denot.is(ModuleClass) && NamerOps.needsConstructorProxies(other) then
+                NamerOps.makeConstructorCompanion(denot.sourceModule.asTerm, other.asClass)
+                denot.resetFlag(Touched)
+              else
+                denot.markAbsent()
 
       val other = if root.isRoot then NoSymbol else root.scalacLinkedClass
       postProcess(root, other)

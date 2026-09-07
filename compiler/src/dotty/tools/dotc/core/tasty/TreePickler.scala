@@ -80,11 +80,9 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   def addrOfSym(sym: Symbol): Option[Addr] =
     symRefs.get(sym)
 
-  def preRegister(tree: Tree)(using Context): Unit = tree match {
-    case tree: MemberDef =>
-      if (!symRefs.contains(tree.symbol)) symRefs(tree.symbol) = NoAddr
-    case _ =>
-  }
+  def preRegister(tree: Tree)(using Context): Unit = tree match
+    case tree: MemberDef => symRefs.getOrElseUpdate(tree.symbol, NoAddr)
+    case _ => ()
 
   def registerDef(sym: Symbol): Unit =
     symRefs(sym) = currentAddr
@@ -379,7 +377,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       registerDef(sym)
       writeByte(tag)
       val addr = currentAddr
-      try
+      ctx.handleRecursive("tree pickling", mdef, mdef):
         withLength {
           pickleName(sym.name)
           pickleParams
@@ -396,7 +394,6 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             pickleTreeUnlessEmpty(rhs)
           pickleModifiers(sym, mdef)
         }
-      catch case t: Throwable => handleRecursive("tree pickling", mdef.show, t)
       if sym.is(Method) && sym.owner.isClass then
         profile.recordMethodSize(sym, (currentAddr.index - addr.index) max 1, mdef.span)
       for docCtx <- ctx.docCtx do
@@ -475,17 +472,18 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
                 pickleType(tp)
               }
             case _ =>
+              val sym = tree.symbol
+              val ename = sym.targetName
               if passesConditionForErroringBestEffortCode(tree.hasType) then
                 // #19951 The signature of a constructor of a Java annotation is irrelevant
                 val sig =
-                  if name == nme.CONSTRUCTOR && tree.symbol.exists && tree.symbol.owner.is(JavaAnnotation) then Signature.NotAMethod
+                  if name == nme.CONSTRUCTOR && sym.exists && sym.owner.is(JavaAnnotation) then Signature.NotAMethod
                   else tree.tpe.signature
-                var ename = tree.symbol.targetName
                 val selectFromQualifier =
                   name.isTypeName
                   || qual.isInstanceOf[Hole] // holes have no symbol
                   || sig == Signature.NotAMethod // no overload resolution necessary
-                  || !tree.denot.symbol.exists // polymorphic function type
+                  || !sym.exists // polymorphic function type
                   || tree.denot.asSingleDenotation.isRefinedMethod // refined methods have no defining class symbol
                 if selectFromQualifier then
                   writeByte(if name.isTypeName then SELECTtpt else SELECT)
@@ -494,22 +492,22 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
                 else // select from owner
                   writeByte(SELECTin)
                   withLength {
-                    pickleNameAndSig(name, tree.symbol.signature, ename)
+                    pickleNameAndSig(name, sym.signature, ename)
                     pickleTree(qual)
-                    pickleType(tree.symbol.owner.typeRef)
+                    pickleType(sym.owner.typeRef)
                   }
               else
                 writeByte(if name.isTypeName then SELECTtpt else SELECT)
-                val ename = tree.symbol.targetName
                 pickleNameAndSig(name, Signature.NotAMethod, ename)
                 pickleTree(qual)
           }
         case Apply(fun, args) =>
-          if (fun.symbol eq defn.throwMethod) {
+          val funSym = fun.symbol
+          if (funSym eq defn.throwMethod) {
             writeByte(THROW)
             pickleTree(args.head)
           }
-          else if fun.symbol.originalSignaturePolymorphic.exists then
+          else if funSym.originalSignaturePolymorphic.exists then
             writeByte(APPLYsigpoly)
             withLength {
               pickleTree(fun)
@@ -521,7 +519,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             withLength {
               pickleTree(fun)
               // #19951 Do not pickle default arguments to Java annotation constructors
-              if fun.symbol.isClassConstructor && fun.symbol.owner.is(JavaAnnotation) then
+              if funSym.isClassConstructor && funSym.owner.is(JavaAnnotation) then
                 for arg <- args do
                   arg match
                     case NamedArg(_, Ident(nme.WILDCARD)) => ()

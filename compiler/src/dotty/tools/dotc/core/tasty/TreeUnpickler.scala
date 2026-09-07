@@ -38,6 +38,7 @@ import TastyBuffer.*
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable
+import scala.util.control.NonFatal
 import config.Printers.pickling
 
 import dotty.tools.tasty.TastyFormat.*
@@ -156,7 +157,6 @@ class TreeUnpickler(reader: TastyReader,
       def where =
         val f = denot.symbol.associatedFile
         if f == null then "" else s" in $f"
-      def fail(ex: Throwable) = throw UnpicklingError(denot, where, ex)
       treeAtAddr(currentAddr) =
         CyclicReference.trace(i"read the definition of ${denot.symbol}$where"):
           try
@@ -165,8 +165,7 @@ class TreeUnpickler(reader: TastyReader,
                 using ctx.withOwner(owner).withModeBits(mode).withSource(source))
           catch
             case ex: CyclicReference => throw ex
-            case ex: AssertionError => fail(ex)
-            case ex: Exception => fail(ex)
+            case NonFatal(ex) => throw UnpicklingError(denot, where, ex)
           finally
             cleanup()
   }
@@ -928,8 +927,8 @@ class TreeUnpickler(reader: TastyReader,
       def ValDef(tpt: Tree) =
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(using localCtx)), sym)
 
-      def DefDef(paramss: List[ParamClause], tpt: Tree) =
-        sym.setParamssFromDefs(paramss)
+      def DefDef(paramss: List[ParamClause], paramsSyms: List[List[Symbol]], tpt: Tree) =
+        sym.setParamss(paramsSyms)
         ta.assignType(
           untpd.DefDef(sym.name.asTermName, paramss, tpt, readRhs(using localCtx)),
           sym)
@@ -951,18 +950,18 @@ class TreeUnpickler(reader: TastyReader,
         case DEFDEF =>
           val paramDefss = readParamss()(using localCtx)
           val tpt = readTpt()(using localCtx)
-          val paramss = normalizeIfConstructor(
-              paramDefss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
+          val paramss = paramDefss.nestedMap(_.symbol)
+          val normalizedParamss = normalizeIfConstructor(paramss, name == nme.CONSTRUCTOR)
           val resType =
             if name == nme.CONSTRUCTOR then
-              effectiveResultType(sym, paramss)
+              effectiveResultType(sym, normalizedParamss)
             else if sym.isAllOf(Given | Method) && Feature.enabled(Feature.modularity) then
-              addParamRefinements(tpt.tpe, paramss)
+              addParamRefinements(tpt.tpe, normalizedParamss)
             else
               tpt.tpe
-          sym.info = methodType(paramss, resType)
+          sym.info = methodType(normalizedParamss, resType)
           nullify(sym)
-          DefDef(paramDefss, tpt)
+          DefDef(paramDefss, paramss, tpt)
         case VALDEF =>
           val tpt = readTpt()(using localCtx)
           sym.info = tpt.tpe.suppressIntoIfParam(sym)
@@ -1037,8 +1036,8 @@ class TreeUnpickler(reader: TastyReader,
         }
       }
 
-      tree.ensureHasSym(sym)
-      tree.setDefTree
+      val sym1 = tree.ensureHasSym(sym)
+      tree.setDefTree(sym1)
     }
 
     /** Read enough of parent to determine its type, without reading arguments
@@ -1177,8 +1176,26 @@ class TreeUnpickler(reader: TastyReader,
       })
       NamerOps.addConstructorProxies(cls)
       NamerOps.addContextBoundCompanions(cls)
+      
+      // Because opaque types can appear in inline traits and these are only allowed to be completed once (otherwise cyclic reference error)
+      // we need to force the body stats now if we have an inline trait so that we don't complete them twice, once in the LazyBodyAnnot and once
+      // in the main code.
+      val strictOrLazyStats = 
+        if cls.isInlineTrait then
+          val strictStats = lazyStats.complete
+          cls.addAnnotation(LazyBodyAnnotation { (ctx0: Context) ?=>
+            val ctx1 = localContext(cls)(using ctx0).addMode(Mode.ReadPositions)
+            inContext(sourceChangeContext(Addr(0))(using ctx1)) {
+              // avoids space leaks by not capturing the current context
+              val inlinedMembers = strictStats.filter(member => inlines.Inlines.isInlineableFromInlineTrait(cls, member))
+              Block(inlinedMembers, unitLiteral).withSpan(cls.span)
+            }
+          })
+          strictStats
+        else
+          lazyStats
       setSpan(start,
-        untpd.Template(constr, mappedParents, self, lazyStats)
+        untpd.Template(constr, mappedParents, self, strictOrLazyStats)
           .withType(localDummy.termRef))
     }
 
@@ -1513,11 +1530,12 @@ class TreeUnpickler(reader: TastyReader,
               tpd.Super(qual, mixId, mixTpe.typeSymbol)
             case APPLY =>
               val fn = readTree()
+              val sym = fn.symbol
               val args = until(end)(readTree())
-              if fn.symbol.isConstructor then constructorApply(fn, args)
-              else if fn.symbol == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args) // decode pre 3.5.0 encoding
-              else if fn.symbol == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args) // decode pre 3.5.0 encoding
-              else if fn.symbol == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args) // decode pre 3.5.0 encoding
+              if sym.isConstructor then constructorApply(fn, args)
+              else if sym == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args) // decode pre 3.5.0 encoding
+              else if sym == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args) // decode pre 3.5.0 encoding
+              else if sym == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args) // decode pre 3.5.0 encoding
               else if isSpuriousApply(fn, args) then fn
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>

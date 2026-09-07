@@ -1,7 +1,7 @@
 package dotty.tools.scaladoc
 
 import scala.jdk.CollectionConverters.{ListHasAsScala, SeqHasAsJava}
-import org.junit.{Test, Rule}
+import org.junit.Rule
 import org.junit.rules.{TemporaryFolder, ErrorCollector}
 import java.io.File
 
@@ -29,10 +29,6 @@ abstract class ScaladocTest(val name: String):
       projectVersion = Some("1.0"),
       sourceLinks = List("github://scala/scala3/master")
     )
-
-  @Test
-  def runTest: Unit
-
 
   @Rule
   def collector = _collector

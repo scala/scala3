@@ -10,7 +10,7 @@ import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
-import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.StdNames.{nme, str}
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Denotations.StaleSymbol
@@ -549,10 +549,11 @@ class DependencyRecorder {
     def cachedSiblingClass(pf: AbstractFile): Path =
       siblingClassfiles.getOrElseUpdate(pf, {
         val jpath = pf.jpath.nn
-        jpath.getParent.resolve(jpath.getFileName.toString.stripSuffix(".tasty") + ".class")
+        val moduleSuffix = if fromClass.is(Module) then str.MODULE_SUFFIX else ""
+        jpath.getParent.resolve(jpath.getFileName.toString.stripSuffix(".tasty") + moduleSuffix + ".class")
       })
 
-    def binaryDependency(path: Path, binaryClassName: String) =
+    def binaryDependency(path: Path, binaryClassName: String): Unit =
       cb.binaryDependency(path, binaryClassName, fromClassName, sourceFile, depCtx)
 
     val depClass = toClass
@@ -562,7 +563,7 @@ class DependencyRecorder {
       def allowLocal = depCtx == DependencyByInheritance || depCtx == LocalDependencyByInheritance
       val isTastyOrSig = depFile.ext.isTasty
 
-      def processExternalDependency() = {
+      def processExternalDependency(): Unit = {
         val binaryClassName = depClass.binaryClassName
         depFile.enclosing match
           case Some(archive) if archive.jpath != null => // The dependency comes from a JAR

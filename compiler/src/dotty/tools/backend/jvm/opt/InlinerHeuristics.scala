@@ -18,16 +18,17 @@ import java.util.regex.Pattern
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm.Type
-import scala.tools.asm.tree.MethodNode
+import org.objectweb.asm.Type
+import org.objectweb.asm.tree.MethodNode
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.opt.InlinerHeuristics.*
-import dotty.tools.backend.jvm.BCodeUtils.{isStrictfpMethod, isSynchronizedMethod}
+import dotty.tools.backend.jvm.BCodeUtils.isSynchronizedMethod
 import dotty.tools.backend.jvm.analysis.AnalysisUtils
 import dotty.tools.dotc.report
+import OptimizerUtils.*
 
-class InlinerHeuristics(optimizerUtils: OptimizerUtils, byteCodeRepository: BCodeRepository,
-                        callGraph: CallGraph, ts: OptimizerKnownBTypes,
+class InlinerHeuristics(byteCodeRepository: BCodeRepository,
+                        callGraph: OptimizerCallGraph, ts: OptimizerKnownBTypes,
                         settings: OptimizerSettings) {
 
   private lazy val inlineSourceMatcher: InlineSourceMatcher = new InlineSourceMatcher(settings.optInlineFrom)
@@ -53,7 +54,7 @@ class InlinerHeuristics(optimizerUtils: OptimizerUtils, byteCodeRepository: BCod
 
     compilingMethods.map(methodNode => {
       var requests = Set.empty[InlineRequest]
-      callGraph.callsites(methodNode).valuesIterator foreach {
+      callGraph.getCallsites(methodNode).foreach {
         case callsite @ KnownCallsite(_, _, _, Callee(callee, _, _, _, _, _, _, callsiteWarning), _, _, _, pos, _, _) =>
           inlineRequest(callsite) match {
             case Some(Right(req)) => requests += req
@@ -132,10 +133,6 @@ class InlinerHeuristics(optimizerUtils: OptimizerUtils, byteCodeRepository: BCod
       // Could be done by locking on the receiver, wrapping the inlined code in a try and unlocking
       // in finally. But it's probably not worth the effort, scala never emits synchronized methods.
       Some(SynchronizedMethod(calleeDeclarationClass.internalName, callee.name, callee.desc, callsite.isInlineAnnotated))
-    } else if (isStrictfpMethod(callsiteMethod) != isStrictfpMethod(callee)) {
-      Some(StrictfpMismatch(
-        calleeDeclarationClass.internalName, callee.name, callee.desc, callsite.isInlineAnnotated,
-        callsiteClass.internalName, callsiteMethod.name, callsiteMethod.desc))
     } else if (callee.instructions.size == 0) {
       Some(NoBytecode(calleeDeclarationClass.internalName, callee.name, callee.desc, callsite.isInlineAnnotated))
     } else
@@ -183,7 +180,7 @@ class InlinerHeuristics(optimizerUtils: OptimizerUtils, byteCodeRepository: BCod
     // or aliases, because otherwise it's too confusing for users looking at generated code, they will
     // write a small test method and think the inliner doesn't work correctly.
     val isGeneratedForwarder =
-      BCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0
+      BCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && ts.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0
 
     if (isGeneratedForwarder) None
     else {
@@ -222,17 +219,17 @@ class InlinerHeuristics(optimizerUtils: OptimizerUtils, byteCodeRepository: BCod
           def shouldInlineForwarder = Option {
             // In general, we cannot inline calls to methods that contain private calls here.
             // However (scala-dev#618) we should inline them if they call something that is itself trivial, as it will also be inlined.
-            val calleeCallsites = callGraph.callsites(callee.callee)
+            val calleeCallsites = callGraph.getCallsites(callee.callee)
             val allowPrivateCalls = calleeCallsites.size == 1 && (calleeCallsites.head match
-              case (_, nestedCallsite: KnownCallsite) =>
-                optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(
+              case nestedCallsite: KnownCallsite =>
+                ts.looksLikeForwarderOrFactoryOrTrivial(
                   nestedCallsite.callee.callee,
                   nestedCallsite.callee.calleeDeclarationClass.internalName,
                   allowPrivateCalls = false
                 ) > 0
               case _ => false
             )
-            val forwarderKind = optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls)
+            val forwarderKind = ts.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls)
             if (forwarderKind < 0)
               null
             else if (BCodeUtils.isSyntheticMethod(callee.callee) || AnalysisUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))

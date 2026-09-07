@@ -5,9 +5,9 @@ import dotty.tools.dotc.core.Comments.{ContextDoc, ContextDocstrings}
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase, ctx}
 import dotty.tools.vulpix.TestConfiguration
 
-import scala.tools.asm
-import scala.tools.asm.*
-import scala.tools.asm.tree.*
+import org.objectweb.asm
+import org.objectweb.asm.*
+import org.objectweb.asm.tree.*
 import dotty.tools.io
 import dotty.tools.io.AbstractFile
 

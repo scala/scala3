@@ -508,11 +508,11 @@ object Completion:
         def safeExtensionCompletions =
           try extensionCompletions(adjustedQual)
           catch case _: TypeError => Map.empty
-        implicitConversionMemberCompletions(adjustedQual) ++
-        //safeExtensionCompletions ++
-        extensionCompletions(adjustedQual) ++
-        directMemberCompletions(adjustedQual) ++
         namedTupleCompletions(adjustedQual)
+          .withAlternativesFrom(directMemberCompletions(adjustedQual))
+          .withAlternativesFrom(extensionCompletions(adjustedQual))
+          // .withAlternativesFrom(safeExtensionCompletions)
+          .withAlternativesFrom(implicitConversionMemberCompletions(adjustedQual))
       else
         Map.empty
 
@@ -750,6 +750,15 @@ object Completion:
       def apply(pre: Type, name: Name)(using Context): Boolean =
         !name.isConstructorName && name.toTermName.info.kind == SimpleNameKind && matches(name)
       def isStable = true
+
+    extension (preferred: CompletionMap)
+      def withAlternativesFrom(others: CompletionMap)(using Context): CompletionMap =
+        val merged = others.map: (name, otherDenots) =>
+          val preferredDenots = preferred.getOrElse(name, Nil)
+          def isRedundant(d: SingleDenotation) =
+            preferredDenots.exists(p => p.symbol == d.symbol || p.matchesLoosely(d))
+          name -> (preferredDenots ++ otherDenots.filterNot(isRedundant))
+        preferred ++ merged
 
     extension (denotations: Seq[SingleDenotation])
       def groupByName(using Context): CompletionMap = denotations.groupBy(_.name)

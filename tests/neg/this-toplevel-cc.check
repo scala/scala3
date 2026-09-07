@@ -1,0 +1,4 @@
+-- Error: tests/neg/this-toplevel-cc.scala:7:15 ------------------------------------------------------------------------
+7 |  val f: File^{this} = ??? // error
+  |               ^^^^
+  |               Top-level definitions cannot refer to this

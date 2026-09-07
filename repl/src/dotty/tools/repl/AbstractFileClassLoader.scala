@@ -13,8 +13,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.config.ScalaSettings
 
 import io.AbstractFile
@@ -48,7 +46,7 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
   def this(root: AbstractFile, parent: ClassLoader) = this(root, parent, InterruptInstrumentation.fromString(ScalaSettings.XreplInterruptInstrumentation.default))
 
   override protected def defineClass(name: String, bytes: Array[Byte]): Class[?] =
-    if interruptInstrumentation.is(InterruptInstrumentation.Enabled) then defineClassInstrumented(name, bytes)
+    if interruptInstrumentation.isOneOf(InterruptInstrumentation.Enabled, InterruptInstrumentation.Local) then defineClassInstrumented(name, bytes)
     else super.defineClass(name, bytes)
 
   private def defineClassInstrumented(name: String, originalBytes: Array[Byte]) = {

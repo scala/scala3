@@ -46,6 +46,17 @@ case object SigKill extends ParseResult
 sealed trait Command extends ParseResult:
   def replayLine: Option[String]
 
+sealed trait CommandCompanion:
+  def command: String
+  def parse(argument: String): Command
+
+sealed trait ArgCommand[C <: Command] extends CommandCompanion:
+  def apply(argument: String): C
+  final def parse(argument: String): Command = apply(argument)
+
+sealed trait NoArgCommand extends CommandCompanion, Command:
+  final def parse(argument: String): Command = this
+
 /** A command on the first line followed by Scala code, e.g.
  *  ```none
  *  :dep <coords>
@@ -66,7 +77,7 @@ case class UnknownCommand(cmd: String) extends Command:
 
 case class Dep(dep: String) extends Command:
   override def replayLine = Some(s"${Dep.command} $dep")
-object Dep {
+object Dep extends ArgCommand[Dep] {
   val command: String = ":dep"
 }
 /** An ambiguous prefix that matches multiple commands */
@@ -76,7 +87,7 @@ case class AmbiguousCommand(cmd: String, matchingCommands: List[String]) extends
 case class Save(path: String) extends Command:
   override def replayLine = None
 
-object Save {
+object Save extends ArgCommand[Save] {
   val command: String = ":save"
 
   /** `:load` treats a file as a session only when it starts with this header.
@@ -95,15 +106,15 @@ object Save {
  */
 case class Load(path: String) extends Command:
   override def replayLine = Some(s"${Load.command} $path")
-object Load {
+object Load extends ArgCommand[Load] {
   val command: String = ":load"
 }
 
-/** `:require` is a deprecated alias for :jar`
+/** `:require` is a deprecated alias for `:jar`
  */
 case class Require(path: String) extends Command:
   override def replayLine = Some(s"${Require.command} $path")
-object Require {
+object Require extends ArgCommand[Require] {
   val command: String = ":require"
 }
 
@@ -111,15 +122,31 @@ object Require {
  */
 case class JarCmd(path: String) extends Command:
   override def replayLine = Some(s"${JarCmd.command} $path")
-object JarCmd {
+object JarCmd extends ArgCommand[JarCmd] {
   val command: String = ":jar"
+}
+
+/** `:toolkit <version>` resolves a toolkit and adds it to the classpath
+ */
+case class ToolkitCmd(coordinates: String) extends Command:
+  override def replayLine = Some(s"${ToolkitCmd.command} $coordinates")
+object ToolkitCmd extends ArgCommand[ToolkitCmd] {
+  val command: String = ":toolkit"
+}
+
+/** `:repository <url>|<alias>` adds repositories used to resolve dependencies
+ */
+case class RepoCmd(repositories: String) extends Command:
+  override def replayLine = Some(s"${RepoCmd.command} $repositories")
+object RepoCmd extends ArgCommand[RepoCmd] {
+  val command: String = ":repository"
 }
 
 /** `:kind <type>` display the kind of a type. see also :help kind
  */
 case class KindOf(expr: String) extends Command:
   override def replayLine = Some(s"${KindOf.command} $expr")
-object KindOf {
+object KindOf extends ArgCommand[KindOf] {
   val command: String = ":kind"
 }
 
@@ -132,7 +159,7 @@ object KindOf {
  */
 case class TypeOf(expr: String) extends Command:
   override def replayLine = Some(s"${TypeOf.command} $expr")
-object TypeOf {
+object TypeOf extends ArgCommand[TypeOf] {
   val command: String = ":type"
 }
 
@@ -142,21 +169,21 @@ object TypeOf {
  */
 case class DocOf(expr: String) extends Command:
   override def replayLine = Some(s"${DocOf.command} $expr")
-object DocOf {
+object DocOf extends ArgCommand[DocOf] {
   val command: String = ":doc"
 }
 
 /** `:imports` lists the imports that have been explicitly imported during the
  *  session
  */
-case object Imports extends Command {
+case object Imports extends NoArgCommand {
   override def replayLine = Some(command)
   val command: String = ":imports"
 }
 
 case class Settings(arg: String) extends Command:
   override def replayLine = Some(s"${Settings.command} $arg")
-object Settings {
+object Settings extends ArgCommand[Settings] {
   val command: String = ":settings"
 }
 
@@ -165,65 +192,46 @@ object Settings {
  */
 case class Reset(arg: String) extends Command:
   override def replayLine = Some(s"${Reset.command} $arg")
-object Reset {
+object Reset extends ArgCommand[Reset] {
   val command: String = ":reset"
 }
 
 case class Replay(arg: String) extends Command:
   override def replayLine = None
-object Replay {
+object Replay extends ArgCommand[Replay] {
   val command: String = ":replay"
 }
 
 /** `:sh <command line>` run a shell command (result is implicitly => List[String]) */
 case class Sh(expr: String) extends Command:
   override def replayLine = Some(s"${Sh.command} $expr")
-object Sh {
+object Sh extends ArgCommand[Sh] {
   val command: String = ":sh"
 }
 
 /** `:paste` is deprecated; JLine supports multiline editing so it is not needed */
-case object Paste extends Command:
+case object Paste extends NoArgCommand:
   override def replayLine = Some(command)
   val command: String = ":paste"
 
 /** Toggle automatic printing of results */
-case object Silent extends Command:
+case object Silent extends NoArgCommand:
   override def replayLine = Some(command)
   val command: String = ":silent"
 
 /** `:quit` exits the repl */
-case object Quit extends Command {
+case object Quit extends NoArgCommand {
   override def replayLine = None
   val command: String = ":quit"
   val alias: String = ":exit"
 }
 
 /** `:help` shows the different commands implemented by the Dotty repl */
-case object Help extends Command {
+case object Help extends NoArgCommand {
   override def replayLine = Some(command)
   val command: String = ":help"
-  val text: String =
-    """The REPL has several commands available:
-      |
-      |:help                    print this summary
-      |:save <path>             save replayable session to a file
-      |:load <path>             interpret lines in a file
-      |:quit                    exit the interpreter
-      |:type <expression>       evaluate the type of the given expression
-      |:doc <expression>        print the documentation for the given expression
-      |:imports                 show import history
-      |:reset [options]         clear the session and start fresh with the given compiler options
-      |:replay [options]        reset, then re-run the session with the given compiler options
-      |:settings <options>      update compiler options, if possible
-      |:silent                  disable/enable automatic printing of results
-      |:dep <group>::<artifact>:<version>     Resolve a dependency and make it available in the REPL
-      |
-      |Scala CLI `//> using dep` directives are also supported and behave like `:dep`, e.g.:
-      |  //> using dep <group>::<artifact>:<version>
-      |Directives must appear before any Scala code in the input; code on following lines is
-      |evaluated as usual. Other `//> using` directives are not (yet) supported in the REPL.
-    """.stripMargin
+  def text: String =
+    s"${ReplCommands.helpText}\n\n${ReplDirectives.helpText}"
 }
 
 object ParseResult {
@@ -238,39 +246,6 @@ object ParseResult {
     parser.accept(Tokens.EOF)
     stats
   }
-
-  private[repl] val commands: List[(String, String => ParseResult)] = List(
-    Quit.command -> (_ => Quit),
-    Quit.alias -> (_ => Quit),
-    Help.command -> (_  => Help),
-    Reset.command -> (arg  => Reset(arg)),
-    Replay.command -> (arg => Replay(arg)),
-    Imports.command -> (_  => Imports),
-    JarCmd.command -> (arg => JarCmd(arg)),
-    KindOf.command -> (arg => KindOf(arg)),
-    Save.command -> (arg => Save(arg)),
-    Load.command -> (arg => Load(arg)),
-    Require.command -> (arg => Require(arg)),
-    Dep.command -> (arg => Dep(arg)),
-    TypeOf.command -> (arg => TypeOf(arg)),
-    DocOf.command -> (arg => DocOf(arg)),
-    Settings.command -> (arg => Settings(arg)),
-    Sh.command -> (arg => Sh(arg)),
-    Paste.command -> (_ => Paste),
-    Silent.command -> (_ => Silent),
-  )
-
-  /** Resolve a `:command` name (which may be a prefix) and its argument into a `Command`. */
-  private def command(cmd: String, arg: String): Command =
-    commands.filter((command, _) => command.startsWith(cmd)) match {
-      case Nil => UnknownCommand(cmd)
-      case (_, f) :: Nil =>
-        f(arg) match {
-          case matched: Command => matched
-          case _ => UnknownCommand(cmd)
-        }
-      case multiple => AmbiguousCommand(cmd, multiple.map(_._1))
-    }
 
   private def extractDirectives(sourceCode: String): ExtractorResult =
     UsingDirectivesParser.extractLines(sourceCode.toIndexedSeq)
@@ -377,13 +352,13 @@ object ParseResult {
     sourceCode match {
       case "" => Newline
       case _ if mixesCommandsAndDirectives(sourceCode) => MixedCommandsAndDirectives
-      case CommandExtract(cmd: String, arg: String) => command(cmd, arg)
+      case CommandExtract(cmd: String, arg: String) => ReplCommands.parse(cmd, arg)
       case _ =>
         val extracted = extractDirectives(sourceCode)
         leadingCommand(sourceCode, extracted) match {
           case Some((cmd, arg, rest)) =>
-            if rest.exists(!_.isWhitespace) then CommandThenCode(command(cmd, arg), rest)
-            else command(cmd, arg)
+            if rest.exists(!_.isWhitespace) then CommandThenCode(ReplCommands.parse(cmd, arg), rest)
+            else ReplCommands.parse(cmd, arg)
           case None =>
             inContext(state.context) {
               val reporter = newStoreReporter
@@ -402,7 +377,13 @@ object ParseResult {
   }
 
   def apply(sourceCode: String)(using state: State): ParseResult =
-    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode))
+    maybeIncomplete(sourceCode, maybeIncomplete = true)
+
+  def complete(sourceCode: String)(using state: State): ParseResult =
+    maybeIncomplete(sourceCode, maybeIncomplete = false)
+
+  private def maybeIncomplete(sourceCode: String, maybeIncomplete: Boolean)(using state: State): ParseResult =
+    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode, maybeIncomplete = maybeIncomplete))
 
   def isCommand(line: String): Boolean =
     line match
@@ -467,8 +448,8 @@ object ParseResult {
         val code = codeAfterLeadingCommands(sourceCode, extractedDirectives)
         code.nonEmpty && {
           val reporter = newStoreReporter
-          val source   = SourceFile.virtual("<incomplete-handler>", code)
-          val unit     = CompilationUnit(source, mustExist = false)
+          val source   = SourceFile.virtual("<incomplete-handler>", code, maybeIncomplete = true)
+          val unit     = CompilationUnit(source, mustExistIfNotNull = false)
           val localCtx = ctx.fresh
                             .setCompilationUnit(unit)
                             .setReporter(reporter)

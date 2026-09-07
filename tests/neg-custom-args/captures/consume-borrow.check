@@ -1,0 +1,15 @@
+-- Error: tests/neg-custom-args/captures/consume-borrow.scala:8:2 ------------------------------------------------------
+8 |  a.forget() // error
+  |  ^
+  |  Separation failure: call prefix of consume method forget refers to parameter a.
+  |  The parameter needs to be annotated with consume to allow this.
+-- Error: tests/neg-custom-args/captures/consume-borrow.scala:12:2 -----------------------------------------------------
+12 |  b.forget() // error
+   |  ^
+   |  Separation failure: call prefix of consume method forget refers to parameter a.
+   |  The parameter needs to be annotated with consume to allow this.
+-- Error: tests/neg-custom-args/captures/consume-borrow.scala:14:24 ----------------------------------------------------
+14 |def badResult(a: Ref^): Ref^ = a // error
+   |                        ^^^^
+   |                        Separation failure: method badResult's result type Ref^ hides parameter a.
+   |                        The parameter needs to be annotated with consume to allow this.
