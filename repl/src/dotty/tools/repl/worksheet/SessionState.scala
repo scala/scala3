@@ -1,5 +1,6 @@
 package dotty.tools.repl.worksheet
 
+import dotty.tools.repl.ReplDirectives.DirectiveLine
 import dotty.tools.repl.State
 
 private final case class SessionState(
@@ -12,16 +13,22 @@ private final case class SessionState(
     evaluatedStatements: List[WorksheetStatement],
     state: State,
     diagnostics: List[WorksheetDiagnostic],
+    dependencies: List[WorksheetDependency] = Nil,
+    repositories: List[String] = Nil,
+    extraClasspath: List[java.nio.file.Path] = Nil,
+    directiveLines: List[DirectiveLine] = Nil,
     stale: Boolean = false
 ):
   def canAppend(
       nextFilename: String,
       nextText: String,
-      nextStatements: List[InputStatement]
+      nextStatements: List[InputStatement],
+      nextDirectiveLines: List[DirectiveLine]
   ): Boolean =
     !stale &&
       (filename.isEmpty ||
       filename == Some(nextFilename) &&
+      directiveLines == nextDirectiveLines &&
       nextText.startsWith(text) &&
       inputStatements.zip(nextStatements).forall((previous, next) =>
         previous.start == next.start &&

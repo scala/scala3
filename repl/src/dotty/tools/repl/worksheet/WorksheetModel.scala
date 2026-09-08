@@ -7,7 +7,16 @@ import dotty.tools.dotc.util.Spans.Span
 
 private[worksheet] final case class WorksheetResult(
     diagnostics: List[WorksheetDiagnostic],
-    statements: List[WorksheetStatement]
+    statements: List[WorksheetStatement],
+    dependencies: List[WorksheetDependency] = Nil,
+    repositories: List[String] = Nil,
+    classpath: List[java.nio.file.Path] = Nil
+)
+
+private[worksheet] final case class WorksheetDependency(
+    organization: String,
+    moduleName: String,
+    version: String
 )
 
 private[worksheet] final case class WorksheetStatement(
