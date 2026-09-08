@@ -15,6 +15,7 @@ import config.Printers.inlining
 import ErrorReporting.errorTree
 import util.{SimpleIdentitySet, SrcPos}
 import Nullables.computeNullableDeeply
+import config.Printers.transforms
 
 import collection.mutable
 import reporting.trace
@@ -210,6 +211,41 @@ object Inliner:
         rec(rootTree)
       else
         constToLiteral(rootTree)
+
+  /** Can a value of type `tp` be the unit value `()` at runtime? That's the case if
+   *  `tp` is not a class type, since then it could still be instantiated to `Unit`,
+   *  or if it is one of the classes that `()` is an instance of. Note that `()` is
+   *  represented as a `BoxedUnit` where a reference type is expected, so `Object`
+   *  and `java.io.Serializable` have to be counted in as well.
+   */
+  private def canBeUnit(tp: Type)(using Context): Boolean =
+    val cls = tp.widenDealias.typeSymbol
+    !cls.isClass
+    || defn.UnitClass.derivesFrom(cls)
+    || cls == defn.ObjectClass
+    || cls == defn.JavaSerializableClass
+
+  /** If tree is an equality test `==` with known outcome and no side effects, replace it
+   *  by a constant true or false.
+   *  Known outcome means currently: one argument is of Unit type and the other one's
+   *  type tells us whether it can be the unit value or not.
+   */
+  def reduceUnitEQ(tree: Tree)(using Context): Tree = tree match
+    case Apply(sel @ Select(arg1, nme.EQ), arg2 :: Nil) if isPureExpr(arg1) && isPureExpr(arg2) =>
+      def const(b: Boolean) =
+        cpy.Literal(tree)(Constant(b))
+          .showing(i"REDUCE $tree to $result in ${ctx.compilationUnit} in ${ctx.owner.ownersIterator.toList}/${arg1.tpe},${arg2.tpe}", transforms)
+      def reduceUnit(tp1: Type, tp2: Type) =
+        if tp1.isRef(defn.UnitClass) then
+          if tp2.isRef(defn.UnitClass) then const(true)
+          else if !canBeUnit(tp2) then const(false)
+          else EmptyTree
+        else EmptyTree
+      val tp1 = arg1.tpe.widen
+      val tp2 = arg2.tpe.widen
+      reduceUnit(tp1, tp2).orElse(reduceUnit(tp2, tp1)).orElse(tree)
+    case _ =>
+      tree
 
   private[inlines] def newSym(name: Name, flags: FlagSet, info: Type, span: Span)(using Context): Symbol =
     newSymbol(ctx.owner, name, flags, info, coord = span)
@@ -810,7 +846,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     // corresponding arguments or proxies on the type and term level. It also changes
     // the owner from the inlined method to the current owner.
 
-    // This is reused through InlineTraitAncestors for inline traits, so inlinedMethod might not exist there  
+    // This is reused through InlineTraitAncestors for inline traits, so inlinedMethod might not exist there
     val oldOwners = if (inlinedMethod.exists) then inlinedMethod :: Nil else Nil
     val newOwners = if (inlinedMethod.exists) then ctx.owner :: Nil else Nil
 

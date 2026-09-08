@@ -1,0 +1,39 @@
+-- [E051] Reference Error: tests/neg/bad-unapplies-maybe.scala:24:9 ----------------------------------------------------
+24 |    case A("2") => // error (cannot resolve overloading)
+   |         ^
+   |         Ambiguous overload. The overloaded alternatives of method unapply in object A with types
+   |          (x: B): String?
+   |          (x: A): String?
+   |         both match arguments (C)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E127] Pattern Match Error: tests/neg/bad-unapplies-maybe.scala:25:9 ------------------------------------------------
+25 |    case B("2") => // error (cannot be used as an extractor)
+   |         ^
+   |B cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method with the appropriate signature
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E127] Pattern Match Error: tests/neg/bad-unapplies-maybe.scala:26:9 ------------------------------------------------
+26 |    case D("2") => // error (cannot be used as an extractor)
+   |         ^
+   |D cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method with the appropriate signature
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E050] Type Error: tests/neg/bad-unapplies-maybe.scala:27:9 ---------------------------------------------------------
+27 |    case E("2") => // error (value unapply in object E does not take parameters)
+   |         ^
+   |         value unapply in object E does not take parameters
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E107] Syntax Error: tests/neg/bad-unapplies-maybe.scala:28:10 ------------------------------------------------------
+28 |    case F("2") => // error (Wrong number of argument patterns for F; expected: ())
+   |         ^^^^^^
+   |         Wrong number of argument patterns for F; expected: ()
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E189] Not Found Error: tests/neg/bad-unapplies-maybe.scala:29:9 ----------------------------------------------------
+29 |    case G("2") => // error (Not found: G)
+   |         ^
+   |         no pattern match extractor named G was found
+   |
+   | longer explanation available when compiling with `-explain`
