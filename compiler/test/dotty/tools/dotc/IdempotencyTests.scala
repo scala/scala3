@@ -22,31 +22,35 @@ class IdempotencyTests {
 
   @Category(Array(classOf[SlowTests]))
   @Test def idempotency: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("idempotency")
     val opt = defaultOptions
 
-    val posIdempotency = aggregateTests(
-      compileFilesInDir("tests/pos", opt, filter)(using TestGroup("idempotency/posIdempotency1")),
-      compileFilesInDir("tests/pos", opt, filter)(using TestGroup("idempotency/posIdempotency2")),
-    )
+    val posIdempotency = {
+      given TestGroup("idempotency pos")
+      aggregateTests(
+        compileFilesInDir("tests/pos", opt, filter),
+        compileFilesInDir("tests/pos", opt, filter),
+      )
+    }
 
     val orderIdempotency = {
+      given TestGroup("idempotency order")
       val tests =
         for {
           testDir <- new JFile("tests/order-idempotency").listFiles() if testDir.isDirectory
         } yield {
           val sources = TestSources.sources(testDir.toPath)
           aggregateTests(
-            compileList(testDir.getName, sources, opt)(using TestGroup("idempotency/orderIdempotency1")),
-            compileList(testDir.getName, sources.reverse, opt)(using TestGroup("idempotency/orderIdempotency2"))
+            compileList(testDir.getName, sources, opt),
+            compileList(testDir.getName, sources.reverse, opt)
           )
         }
       aggregateTests(tests*)
     }
 
     def check(name: String) = {
+      given TestGroup("idempotency check")
       val files = List(s"tests/idempotency/$name.scala", "tests/idempotency/IdempotencyCheck.scala")
-      compileList(name, files, defaultOptions)(using TestGroup("idempotency/check"))
+      compileList(name, files, defaultOptions)
     }
     val allChecks = aggregateTests(
       check("CheckOrderIdempotency"),
