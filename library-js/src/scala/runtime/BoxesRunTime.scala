@@ -4,12 +4,19 @@ import scala.language.`2.13`
 
 import scala.math.ScalaNumber
 
+import scala.scalajs.LinkingInfo
+import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind}
+
 /* The declaration of the class is only to make the JVM back-end happy when
  * compiling the scalalib.
  */
 final class BoxesRunTime
 
 object BoxesRunTime {
+  // TODO Get this value from 'import scala.scalajs.LinkingInfo.ModuleKind.WasmModule'
+  // when we upgrade to Scala.js 1.23.0+.
+  private final val WasmModule = 4
+
   def boxToBoolean(b: Boolean): java.lang.Boolean =
     b.asInstanceOf[java.lang.Boolean]
 
@@ -50,9 +57,21 @@ object BoxesRunTime {
 
   def unboxToDouble(d: Any): Double = d.asInstanceOf[Double]
 
-  def equals(x: Object, y: Object): Boolean =
-    if (scala.scalajs.js.special.strictEquals(x, y)) true
-    else equals2(x, y)
+  def equals(x: Object, y: Object): Boolean = {
+    linkTimeIf(moduleKind == WasmModule) {
+      if (x eq y) {
+        (x: Any) match {
+          case x: Double => x == x // rejects NaN to align with `strictEquals` semantics.
+          case _         => true
+        }
+      } else {
+        equals2(x, y)
+      }
+    } {
+      if (scala.scalajs.js.special.strictEquals(x, y)) true
+      else equals2(x, y)
+    }
+  }
 
   @inline // only called by equals(), not by codegen
   def equals2(x: Object, y: Object): Boolean = {

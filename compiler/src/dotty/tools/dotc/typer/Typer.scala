@@ -613,7 +613,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *
    *  Example:
    *  If x is a trackable reference and we know x is not null at this point,
-   *  (x: T | Null) => x.$asInstanceOf$[x.type & T]
+   *  `(x: T | Null) => x.$asInstanceOf$[x.type & T]`.
    */
   def toNotNullTermRef(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match
     case ref: TermRef

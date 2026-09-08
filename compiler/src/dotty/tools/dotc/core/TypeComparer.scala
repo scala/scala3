@@ -2602,7 +2602,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   }
 
   /** The greatest lower bound of two types */
-  def glb(tp1: Type, tp2: Type): Type = // trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true):
+  def glb(tp1: Type, tp2: Type): Type = ctx.handleRecursive("find the greatest lower bound of", () => i"$tp1 and $tp2"): // trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true):
     if tp1 eq tp2 then tp1
     else if !tp1.exists || (tp1 eq WildcardType) then tp2
     else if !tp2.exists || (tp2 eq WildcardType) then tp1
