@@ -89,7 +89,7 @@ trait AsScalaExtensions {
 
   implicit class PropertiesHasAsScala(i: ju.Properties) {
     /** Converts a Java `Properties` to a Scala `Map`, see
-      * [[AsScalaConverters.asScala(p:java\.util\.Properties)* `scala.jdk.javaapi.CollectionConverters.asScala`]].
+      * [[AsScalaConverters.asScala(p:java\.util\.Properties)* scala.jdk.javaapi.CollectionConverters.asScala]].
       */
     def asScala: mutable.Map[String, String] = conv.asScala(i)
   }

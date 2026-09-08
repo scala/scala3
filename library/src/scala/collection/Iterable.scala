@@ -300,7 +300,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
 
   /** Returns a value class containing operations for comparing the size of this $coll to a test value.
    *
-   *  These operations are implemented in terms of [[sizeCompare(Int) `sizeCompare(Int)`]], and
+   *  These operations are implemented in terms of [[sizeCompare(Int) sizeCompare(Int)]], and
    *  allow the following more readable usages:
    *
    *  ```
@@ -891,7 +891,7 @@ object IterableOps {
   /** Operations for comparing the size of a collection to a test value.
    *
    *  These operations are implemented in terms of
-   *  [[scala.collection.IterableOps!.sizeCompare(Int):Int* `sizeCompare(Int)`]]
+   *  [[scala.collection.IterableOps!.sizeCompare(Int):Int* sizeCompare(Int)]]
    */
   final class SizeCompareOps private[collection](val it: IterableOps[?, AnyConstr, ?]) extends AnyVal {
     // CC Problem: if we add the logically needed `^`s to the `it` parameter and the
