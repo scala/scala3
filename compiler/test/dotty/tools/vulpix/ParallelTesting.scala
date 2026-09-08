@@ -1039,12 +1039,11 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       def sawDiagnostic(d: Diagnostic): Unit =
         val srcpos = d.pos.nonInlined.adjustedAtEOF
         val path = srcpos.source.path
-        if path != "tasty-reflect" then // ignore the fake compilation unit created by `Inlines.compileForErrors`
-          if srcpos.exists then
-            val key = s"$path:${srcpos.line + 1}"
-            if !seenAt(key) then unexpected += key
-          else
-            if !seenAt("nopos") then unpositioned += path
+        if srcpos.exists then
+          val key = s"$path:${srcpos.line + 1}"
+          if !seenAt(key) then unexpected += key
+        else
+          if !seenAt("nopos") then unpositioned += path
 
       reporterErrors.foreach(sawDiagnostic)
 
