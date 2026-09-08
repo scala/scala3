@@ -1931,7 +1931,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               member.info.substThis(self.classSymbol.asClass, self)
             else
               member.info
-          
+
           // We treat the constructor type parameters as if they were the same as corresponding type members.
           // That's how Scala 2 symbols are unpickled to begin with.
           val memberInfoSubstituted =
@@ -1981,9 +1981,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.subst(from, to)
 
         def typeArgs: List[TypeRepr] = self match
-          // `FlexibleType` is an `AppliedType` here (opaque alias is transparent in this
-          // scope), so check it via the dotc-level extractor to avoid `case AppliedType`.
-          case _ if Types.FlexibleType.isInstance(self) => Types.FlexibleType.unapply(self).get.typeArgs
+          case FlexibleType(tp) => tp.typeArgs
           case AppliedType(_, args) => args
           case AnnotatedType(parent, _) => parent.typeArgs
           case _ => List.empty
