@@ -37,9 +37,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
-env:
-  DOTTY_CI_RUN: true
-
 jobs:
   # Run tests before publishing a release
   stdlib-tests:

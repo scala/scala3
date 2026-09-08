@@ -10,9 +10,6 @@ on:
 permissions:
   contents: read
 
-env:
-  DOTTY_CI_RUN: true
-
 jobs:
 
   test-scala-library-nonbootstrapped:
