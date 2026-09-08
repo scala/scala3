@@ -55,7 +55,11 @@ private object WorksheetDependencies:
 
       val resolution =
         if parsed.isEmpty then Right(Nil)
-        else DependencyResolver.resolveDependencies(parsed, repositories)
+        else
+          try DependencyResolver.resolveDependencies(parsed, repositories)
+          catch
+            case failure: Exception =>
+              Left(Option(failure.getMessage).getOrElse(failure.getClass.getName))
 
       val resolutionDiagnostics = resolution match
         case Right(_) => Nil
