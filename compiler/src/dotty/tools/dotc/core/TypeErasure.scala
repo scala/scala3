@@ -1018,7 +1018,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     // constructor method should not be semi-erased.
     if semiEraseVCs && isConstructor && !tp.isInstanceOf[MethodOrPoly] then
       erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName).eraseResult(tp)
-    else if tp =:= defn.UnitType then
+    else if isErasedToVoid(tp) then
       // This should always be UnitType. However, there is one exception: if we
       // are computing the erasure of a Scala 2 symbol whose result type is a
       // Scala.js pseudo-union type, we must preserve the pseudo-union.
@@ -1034,6 +1034,15 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         defn.UnitType
     else
       apply(tp)
+
+  /** True if a result type should erase to JVM void. */
+  private def isErasedToVoid(tp: Type)(using Context): Boolean =
+    tp.isRef(defn.UnitClass) || nonClassEqUnit(tp)
+
+  private def nonClassEqUnit(tp: Type)(using Context): Boolean = tp.stripTypeVar match
+    case tref: TypeRef if tref.symbol.isClass => false
+    case AnnotatedType(tp1, _) => nonClassEqUnit(tp1)
+    case _ => tp =:= defn.UnitType
 
   /** The name of the type as it is used in `Signature`s.
    *
