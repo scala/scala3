@@ -1879,11 +1879,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         // altMetafactory required to be able to pass the flags and additional arguments if needed
         bc.invokedynamic(methodName, desc, bTypes.jliLambdaMetaFactoryAltMetafactoryHandle, bsmArgs)
         // collect serializable lambdas
-        val metafactoryFlags = bsmArgs(3).asInstanceOf[Integer].toInt
-        val isSerializable = (metafactoryFlags & FLAG_SERIALIZABLE) != 0
         if isSerializable then
-          val implMethod = bsmArgs(1).asInstanceOf[Handle]
-          serializableLambdas ::= implMethod
+          serializableLambdas ::= targetHandle
 
       generatedType
     }
