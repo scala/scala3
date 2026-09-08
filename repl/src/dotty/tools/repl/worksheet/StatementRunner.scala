@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Phases.typerPhase
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.StdNames.str
 import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.repl.DependencyResolver
 import dotty.tools.repl.Rendering
 import dotty.tools.repl.Rendering.showUser
 import dotty.tools.repl.ReplBytecodeInstrumentation
@@ -51,6 +52,16 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
       val loaded = new Rendering(Some(parent))
       runtime = Some((parent, loaded))
       loaded
+
+  def addToClasspath(files: List[java.io.File], state: State): Unit =
+    if files.nonEmpty then
+      given Context = state.context
+      val previous = rendering.classLoader()(using state.context)
+      rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
+        files,
+        previous,
+        state.context.settings.outputDir.value(using state.context)
+      )
 
   def beginRun(state: State): Unit =
     ReplBytecodeInstrumentation.setStopFlag(
