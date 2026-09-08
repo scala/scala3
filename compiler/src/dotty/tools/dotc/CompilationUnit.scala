@@ -57,6 +57,12 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
    */
   var needsInlining: Boolean = false
 
+  /** Set to `true` if there are inline traits (with or without Specialized context bounds)
+   *  This is used by:
+   *  DesugarSpecializedTraits, SpecializeInlineTraits, PruneInlinedMethods, PruneInlineTraits
+   */
+  var hasSpecializations: Boolean = false
+
   var hasMacroAnnotations: Boolean = false
 
   def hasUnrollDefs: Boolean = unrolledClasses.nonEmpty
