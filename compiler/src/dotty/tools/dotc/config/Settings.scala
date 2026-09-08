@@ -106,15 +106,15 @@ object Settings:
     helpArg: String = "",
     choices: Option[Seq[?]] = None,
     prefix: Option[String] = None,
-    val aliases: List[SettingAlias] = Nil,
-    val depends: SettingDependencies = Nil,
+    aliases: List[SettingAlias] = Nil,
+    depends: SettingDependencies = Nil,
     ignoreInvalidArgs: Boolean = false,
     preferPrevious: Boolean = false,
     deprecation: Option[Deprecation] = None,
     // kept only for -Xkind-projector option compatibility
     legacyArgs: Boolean = false,
     // accept legacy choices (for example, valid in Scala 2 but no longer supported)
-    legacyChoices: Option[Seq[?]] = None)(private[Settings] val idx: Int)(using ct: ClassTag[T]):
+    legacyChoices: Option[Seq[?]] = None)(private val idx: Int)(using ct: ClassTag[T]):
 
     validateSettingString(prefix.getOrElse(name))
     for alias <- aliases do
@@ -130,7 +130,7 @@ object Settings:
     // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.<
     assert(!(ct == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
 
-    private val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases.map(_.name)
+    val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases.map(_.name)
 
     def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
 
@@ -154,6 +154,13 @@ object Settings:
       else description
 
     def deprecationMessage: String = deprecation.map(d => s"Option deprecated.\n${d.msg}").getOrElse("")
+
+    def checkDependencies(state: ArgsSummary): ArgsSummary =
+      depends.foldLeft(state)((s, dep) =>
+        val (depSetting, reqValue) = dep
+        if (depSetting.valueIn(s.sstate) == reqValue) s
+        else s.fail(s"incomplete option $name (requires ${depSetting.name})")
+      )
 
     /** Updates the state from the next arg if this setting is applicable. */
     def tryToSet(state0: ArgsSummary): ArgsSummary =
@@ -346,7 +353,7 @@ object Settings:
   object Setting:
     extension [T](setting: Setting[T])
       def value(using Context): T = setting.valueIn(ctx.settingsState)
-      def valueSetByUser(using Context): Option[T] = Option(setting.value).filter(_ != setting.default)
+      def valueSetByUser(using Context): Option[T] = Option.when(setting.wasSetByUser)(setting.value)
       def isDefault(using Context): Boolean = setting.isDefaultIn(ctx.settingsState)
       def wasSetByUser(using Context): Boolean = ctx.settingsState.wasChanged(setting.idx)
 
@@ -399,13 +406,7 @@ object Settings:
       allSettings filterNot (_.isDefaultIn(state))
 
     private def checkDependencies(state: ArgsSummary): ArgsSummary =
-      userSetSettings(state.sstate).foldLeft(state)(checkDependenciesOfSetting)
-
-    private def checkDependenciesOfSetting(state: ArgsSummary, setting: Setting[?]) =
-      setting.depends.foldLeft(state): (s, dep) =>
-        val (depSetting, reqValue) = dep
-        if (depSetting.valueIn(s.sstate) == reqValue) s
-        else s.fail(s"incomplete option ${setting.name} (requires ${depSetting.name})")
+      userSetSettings(state.sstate).foldLeft(state)((st, s) => s.checkDependencies(st))
 
     /** Iterates over the arguments applying them to settings where applicable.
      *  Then verifies setting dependencies are met.
