@@ -3450,17 +3450,6 @@ object Types extends TypeUtils {
    * `T | Null .. T`, so that `T | Null <: FlexibleType(T) <: T`.
    * A flexible type will be erased to its original type `T`.
    */
-  // case class FlexibleType protected(lo: Type, hi: Type) extends CachedProxyType with ValueType {
-
-  //   override def underlying(using Context): Type = hi
-
-  //   def derivedFlexibleType(hi: Type)(using Context): Type =
-  //     if hi eq this.hi then this else FlexibleType.make(hi)
-
-  //   override def computeHash(bs: Binders): Int = doHash(bs, hi)
-
-  //   override final def baseClasses(using Context): List[ClassSymbol] = hi.baseClasses
-  // }
 
   object FlexibleType:
     def apply(tp: Type)(using Context): Type =
@@ -3468,27 +3457,14 @@ object Types extends TypeUtils {
       tp match
         case ft @ FlexibleType(hi) => ft
         case _ => AppliedType(defn.FlexibleTypeType, tp :: Nil)
-          // val tp1 = tp.stripNull()
-          // if tp1.isNullType then
-          //   // (Null)? =:= ? >: Null <: (Object & Null)
-          //   FlexibleType(tp, AndType(defn.ObjectType, defn.NullType))
-          // else
-          //   // (T | Null)? =:= ? >: T | Null <: T
-          //   // (T)? =:= ? >: T | Null <: T
-          //   val hi = tp1
-          //   val lo = if hi eq tp then OrNull(hi) else tp
-          //   FlexibleType(lo, hi)
-          //
-          // The commented out code does more work to analyze the original type to ensure the
-          // flexible type is always a subtype of the original type and the Object type.
-          // It is not necessary according to the use cases, so we choose to use a simpler
-          // rule.
 
-    def unapply(tp: Type)(using Context): Option[Type] = tp match
-      case AppliedType(tycon, args) if tycon.isRef(defn.FlexibleTypeSymbol) => Some(args.head)
-      case _ => None
+    def unapply(tp: AppliedType)(using Context): Option[Type] =
+      if tp.tycon.isRef(defn.FlexibleTypeSymbol) then Some(tp.args.head)
+      else None
 
-    def isInstance(tp: Type)(using Context): Boolean = unapply(tp).isDefined
+    def isInstance(tp: Type)(using Context): Boolean = tp match
+      case FlexibleType(_) => true
+      case _ => false
 
     /** Is `tp` the `<FlexibleType>` type constructor itself (possibly eta-expanded)?
      *  Such a type is an implementation device of explicit nulls; it must never be
