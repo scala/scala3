@@ -16,7 +16,7 @@ import scala.language.unsafeNulls
 import scala.util.Try
 
 final class WorksheetDriver private (configuration: WorksheetConfiguration) extends ApiEvaluator:
-  private var session: Option[WorksheetSession] = None
+  @volatile private var session: Option[WorksheetSession] = None
 
   def this() = this(WorksheetConfiguration.default)
 
@@ -29,7 +29,7 @@ final class WorksheetDriver private (configuration: WorksheetConfiguration) exte
       session = Some(started)
       started
 
-  private[worksheet] def isSessionStarted: Boolean = synchronized(session.isDefined)
+  private[worksheet] def isSessionStarted: Boolean = session.isDefined
 
   override def withClasspath(classpath: JavaList[Path]): WorksheetDriver =
     new WorksheetDriver(configuration.copy(classpath = classpath.asScala.toList))
@@ -45,8 +45,7 @@ final class WorksheetDriver private (configuration: WorksheetConfiguration) exte
     val result = compiler.evaluate(filename, text)
     ApiEvaluationImpl.from(result, configuration.classpath)
 
-  override def cancel(): Unit =
-    synchronized(session).foreach(_.cancel())
+  override def cancel(): Unit = session.foreach(_.cancel())
 
   override def shutdown(): Unit = synchronized:
     session.foreach(_.shutdown())

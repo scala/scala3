@@ -88,6 +88,24 @@ class WorksheetApiTest:
       System.clearProperty(property)
       if !worker.isAlive then evaluator.shutdown()
 
+  @Test def acceptsACancellationWhileTheSessionIsStillStarting(): Unit =
+    val evaluator = new WorksheetDriver()
+      .withScalacOptions(java.util.List.of("-repl-init-script", "Thread.sleep(3000)"))
+    val worker = new Thread(() =>
+      evaluator.evaluate("starting.worksheet.scala", "1 + 1\n")
+      ()
+    )
+    worker.setDaemon(true)
+    try
+      worker.start()
+      Thread.sleep(500)
+
+      evaluator.cancel()
+      assertFalse(evaluator.isSessionStarted)
+    finally
+      worker.join(30000)
+      evaluator.shutdown()
+
   @Test def startsACompilerSessionOnlyWhenAWorksheetIsEvaluated(): Unit =
     val evaluator = new WorksheetDriver()
     try
