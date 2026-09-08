@@ -2,7 +2,7 @@ package dotty.tools.dotc.classpath
 
 import dotty.DottyBytecodeTest
 
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.*
 
 import java.io.{ByteArrayOutputStream, IOException}
 import java.nio.file.{FileSystems, Files, Path}
@@ -34,10 +34,10 @@ class MultiReleaseJarTest extends DottyBytecodeTest {
     val java10BarDef = "package p2; abstract class Bar { def bar1: Int; def bar2: Int }"
 
     def apiMethods(jarPath: Path, release: String): Set[String] = {
-      given ctx: Context = initCtx.fresh
-      ctx.settings.Yusejavacp.update(true)
-      ctx.settings.classpath.update(jarPath.toAbsolutePath.toString)
-      ctx.settings.javaOutputVersion.update(release)
+      given ctx: FreshContext = initCtx.fresh
+      ctx.setSetting(ctx.settings.Yusejavacp, true)
+      ctx.setSetting(ctx.settings.classpath, jarPath.toAbsolutePath.toString)
+      ctx.setSetting(ctx.settings.javaOutputVersion, release)
       ctx.initialize()
       val classNames = Seq("p1.Foo",  "p2.Bar")
       val classFiles = classNames.flatMap(ctx.platform.classPath.findClassFile)
@@ -70,9 +70,9 @@ class MultiReleaseJarTest extends DottyBytecodeTest {
   def ctSymTest(): Unit = {
 
     def classExists(className: String, release: String): Boolean = {
-      given ctx: Context = initCtx.fresh
-      ctx.settings.Yusejavacp.update(true)
-      ctx.settings.javaOutputVersion.update(release)
+      given ctx: FreshContext = initCtx.fresh
+      ctx.setSetting(ctx.settings.Yusejavacp, true)
+      ctx.setSetting(ctx.settings.javaOutputVersion, release)
       ctx.initialize()
       val classFile = ctx.platform.classPath.findClassFile(className)
       classFile.isDefined
