@@ -6,6 +6,7 @@ import dotty.tools.dotc.util.SourceFile
 import dotty.tools.repl.ParseResult
 import dotty.tools.repl.Parsed
 import dotty.tools.repl.ReplDirectives
+import dotty.tools.repl.ReplDirectives.DirectiveLines
 import dotty.tools.repl.State
 import dotty.tools.repl.SyntaxErrors
 
@@ -28,9 +29,9 @@ private[worksheet] final class WorksheetSession(
           evaluating = None
           Thread.interrupted()
 
-      WorksheetResult(
-        current.startup.diagnostics ::: evaluated.diagnostics ::: cancellation(evaluated, text),
-        evaluated.statements
+      evaluated.copy(
+        diagnostics =
+          current.startup.diagnostics ::: evaluated.diagnostics ::: cancellation(evaluated, text)
       )
 
   private def cancellation(evaluated: WorksheetResult, text: String): List[WorksheetDiagnostic] =
@@ -47,15 +48,17 @@ private[worksheet] final class WorksheetSession(
 
   private def evaluateParsed(filename: String, text: String): WorksheetResult =
     given State = current.state
+    val declared = ReplDirectives.read(text)
     ParseResult.complete(text) match
       case Parsed(_, trees, _, directiveDiagnostics) =>
         val statements = WorksheetSource.statements(SourceFile.virtual(filename, text), trees)
-        if !current.canAppend(filename, text, statements) then
+        if !current.canAppend(filename, text, statements, declared.lines) then
           current.close()
           current = SessionState.initial(settings, screenWidth)
         evaluateStatements(
           filename,
           text,
+          declared,
           statements,
           parsesWhole = true,
           WorksheetSession.directiveWarnings(text, directiveDiagnostics.toList)
@@ -63,12 +66,13 @@ private[worksheet] final class WorksheetSession(
 
       case SyntaxErrors(_, errors, trees) =>
         val statements = completeStatements(filename, text, trees)
-        if !current.canAppend(filename, text, statements) then
+        if !current.canAppend(filename, text, statements, declared.lines) then
           current.close()
           current = SessionState.initial(settings, screenWidth)
         evaluateStatements(
           filename,
           text,
+          declared,
           statements,
           parsesWhole = false,
           errors.map(WorksheetDiagnostic.fromCompiler)
@@ -104,11 +108,27 @@ private[worksheet] final class WorksheetSession(
   private def evaluateStatements(
       filename: String,
       text: String,
+      declared: DirectiveLines,
       statements: List[InputStatement],
       parsesWhole: Boolean,
       parseDiagnostics: List[WorksheetDiagnostic]
   ): WorksheetResult =
-    val baseSession = current
+    val baseSession =
+      if current.filename.isDefined then current
+      else
+        val outcome = WorksheetDependencies.resolve(declared, text, current.state)
+        current.runner.addToClasspath(outcome.classpath, outcome.state)
+        current.copy(
+          state = outcome.state,
+          diagnostics = outcome.diagnostics,
+          dependencies = outcome.dependencies,
+          repositories = outcome.repositories,
+          extraClasspath = outcome.classpath.map(_.toPath),
+          directiveLines = declared.lines
+        )
+
+    current = baseSession
+
     val appended = statements.drop(baseSession.inputStatements.length)
     val evaluation = baseSession.evaluator.evaluate(appended, baseSession.state)
     val accepted = baseSession.inputStatements ::: evaluation.accepted
@@ -126,7 +146,10 @@ private[worksheet] final class WorksheetSession(
     )
     WorksheetResult(
       parseDiagnostics ::: accumulated ::: evaluation.failure,
-      baseSession.evaluatedStatements ::: evaluation.statements
+      baseSession.evaluatedStatements ::: evaluation.statements,
+      baseSession.dependencies,
+      baseSession.repositories,
+      baseSession.extraClasspath
     )
 
   def cancel(): Unit =
@@ -139,26 +162,18 @@ private[worksheet] final class WorksheetSession(
       current.close()
 
 private[worksheet] object WorksheetSession:
-  private val IgnoredDirectives = "REPL Worksheet PoC"
-
   private def directiveWarnings(
       text: String,
       parserDiagnostics: List[UsingDirectiveDiagnostic]
   ): List[WorksheetDiagnostic] =
-    val declared = ReplDirectives.read(text)
-    val ignoredDirectives =
-      Option.when(declared.nonEmpty)(
-        IgnoredDirectives -> declared.lines.map(_.number).minOption
-      )
-    val parsed = parserDiagnostics.map(diagnostic =>
-      diagnostic.message -> Some(diagnostic.position.line)
-    )
-    (parsed ::: ignoredDirectives.toList).distinctBy(_._1).map: (message, line) =>
-      WorksheetDiagnostic(
-        line.fold(WorksheetPosition.none)(lineRange(text, _)),
-        message,
-        WorksheetDiagnosticSeverity.Warning
-      )
+    parserDiagnostics
+      .distinctBy(diagnostic => (diagnostic.message, diagnostic.position.line))
+      .map: diagnostic =>
+        WorksheetDiagnostic(
+          lineRange(text, diagnostic.position.line),
+          diagnostic.message,
+          WorksheetDiagnosticSeverity.Warning
+        )
 
   private[worksheet] def lineRange(text: String, line: Int): WorksheetPosition =
     text.linesIterator.drop(line).nextOption() match
