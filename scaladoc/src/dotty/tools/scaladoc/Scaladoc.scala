@@ -197,7 +197,7 @@ object Scaladoc:
       report.inform(
         s"Generating documentation $printableProjectName in $destFile")
 
-      if deprecatedSkipPackages.get.nonEmpty then report.warning(deprecatedSkipPackages.description)
+      if deprecatedSkipPackages.get.nonEmpty then report.warning(deprecatedSkipPackages.description(short = false))
 
       val docArgs = Args(
         projectName.withDefault("root"),
