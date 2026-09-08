@@ -1,3 +1,6 @@
+// scalajs: --skip
+// (JVM-only reflection-based test)
+
 class Outer:
   var x = 0
   class Inner:
