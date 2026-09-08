@@ -40,20 +40,6 @@ concurrency:
 env:
   DOTTY_CI_RUN: true
 
-# In this file, we set `--cpu-shares 4096` on every job. This might seem useless
-# since it means that every container has the same weight which should be
-# equivalent to doing nothing, but it turns out that OpenJDK computes
-# `Runtime.getRuntime.availableProcessors` by dividing the cpu-shares value if
-# it exists by 1024 (cf
-# http://mail.openjdk.java.net/pipermail/hotspot-dev/2019-January/036087.html),
-# so this means that we effectively run every job with 4 cores. This is much
-# nicer than setting `--cpus 4` because the latter enforces CPU quotas and ends
-# up slowing our jobs more than needed. It's equivalent to running the JVM with
-# `-XX:ActiveProcessorCount=4`, but since our tests can spawn new JVM in many
-# places, it would be very hard to ensure that this option is always passed to
-# `java` (we could use the `_JAVA_OPTIONS` environment variable, but this prints
-# text on stderr and so can break tests which check the output of a program).
-
 jobs:
   # Run tests before publishing a release
   stdlib-tests:
@@ -108,16 +94,8 @@ jobs:
   publish_release:
     permissions:
       contents: write  # for GH CLI to create a release
-    # Forks have no self-hosted runners, so the release runs on a normal GitHub runner
-    runs-on: ${{ github.repository == 'scala/scala3' && fromJSON('["self-hosted", "Linux"]') || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     needs: [stdlib-tests, mima-tests, compiler-tests, community-build-tests, misc-tests, build-msi-package]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
     if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
 
     env:
@@ -138,29 +116,20 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
-      ##############################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
-      ##############################################################################################
-      - name: Set JDK 17 as default
-        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Add SBT proxy repositories
-        # The proxies are EPFL-internal Artifactory, forks resolve from Maven Central
-        if: env.IS_ORIGIN == 'true'
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+      ##############################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
+      ##############################################################################################
+      - name: Set up JDK 17
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+
+      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
 
       # Extract the release tag
       - name: Extract the release tag
@@ -257,9 +226,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         shell: bash
         run: |
-          # We need to config safe.directory in every step that might reference git
-          # It is not persisted between steps
-          git config --global --add safe.directory $GITHUB_WORKSPACE
           notesFile="./changelogs/${{ env.RELEASE_TAG }}.md"
           notesArgs=(--notes-file "${notesFile}")
           if [ "${IS_ORIGIN}" != "true" ] && [ ! -f "${notesFile}" ]; then
