@@ -137,7 +137,7 @@ class ScalaSettingsTests:
       (old: Setting[?], fwd: Setting[?]) = test.take(2): @unchecked
       SettingAlias(alias, _) <- old.aliases
     do
-      assert(old.deprecation.isDefined)
+      assert(old.deprecationMessage != "")
       val argString = if test.size > 2 then s"$alias:${test(2)}" else alias
       val argSummary = ArgsSummary(settings.defaultState, arguments = argString :: Nil, errors = Nil, warnings = Nil)
       val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)

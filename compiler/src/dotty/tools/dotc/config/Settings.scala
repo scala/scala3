@@ -94,23 +94,22 @@ object Settings:
 
   case class SettingAlias(name: String, deprecation: Option[Deprecation])
   object SettingAlias:
-    given Conversion[String, SettingAlias] = SettingAlias(_, None)
-    def apply(name: String): SettingAlias = SettingAlias(name, None)
-    def apply(name: String, deprecation: Deprecation): SettingAlias = SettingAlias(name, Some(deprecation))
+    given Conversion[String, SettingAlias] = new SettingAlias(_, None)
+    def apply(name: String): SettingAlias = new SettingAlias(name, None)
+    def apply(name: String, deprecation: Deprecation): SettingAlias = new SettingAlias(name, Some(deprecation))
 
-  case class Setting[T] private[Settings] (
+  class Setting[T] private[Settings] (
     category: SettingCategory,
-    name: String,
+    val name: String,
     description: String,
-    default: T,
+    val default: T,
     helpArg: String = "",
     choices: Option[Seq[?]] = None,
     prefix: Option[String] = None,
-    aliases: List[SettingAlias] = Nil,
-    depends: SettingDependencies = Nil,
+    val aliases: List[SettingAlias] = Nil,
+    val depends: SettingDependencies = Nil,
     ignoreInvalidArgs: Boolean = false,
     preferPrevious: Boolean = false,
-    propertyClass: Option[Class[?]] = None,
     deprecation: Option[Deprecation] = None,
     // kept only for -Xkind-projector option compatibility
     legacyArgs: Boolean = false,
@@ -122,16 +121,16 @@ object Settings:
       validateSettingString(alias.name)
       val msg = "An alias is only \"replaced by\" its primary setting; its deprecation can have only a custom message."
       for dep <- alias.deprecation do
-        assert(!dep.replacedBy.isDefined, msg)
+        assert(dep.replacedBy.isEmpty, msg)
     assert(name.startsWith(s"-${category.prefixLetter}"), s"Setting $name does not start with category -$category")
     assert(legacyArgs || !choices.exists(_.contains("")), s"Empty string is not supported as a choice for setting $name")
     validateSettingTag(ct)
 
     // Without the following assertion, it would be easy to mistakenly try to pass a file to a setting that ignores invalid args.
-    // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
+    // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.<
     assert(!(ct == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
 
-    val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases.map(_.name)
+    private val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases.map(_.name)
 
     def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
 
@@ -141,9 +140,7 @@ object Settings:
 
     def isDefaultIn(state: SettingsState): Boolean = valueIn(state) == default
 
-    def isMultivalue: Boolean = ct == ListTag
-
-    def acceptsNoArg: Boolean = ct == BooleanTag || choices.exists(_.contains(""))
+    private def acceptsNoArg: Boolean = ct == BooleanTag || choices.exists(_.contains(""))
 
     def legalChoices: String =
       choices match
@@ -151,6 +148,12 @@ object Settings:
         case Some(r: Range)         => s"${r.head}..${r.last}"
         case Some(xs)               => xs.mkString(", ")
         case None                   => ""
+
+    def description(short: Boolean): String =
+      if short then description.linesIterator.next()
+      else description
+
+    def deprecationMessage: String = deprecation.map(d => s"Option deprecated.\n${d.msg}").getOrElse("")
 
     /** Updates the state from the next arg if this setting is applicable. */
     def tryToSet(state0: ArgsSummary): ArgsSummary =
@@ -344,7 +347,6 @@ object Settings:
     extension [T](setting: Setting[T])
       def value(using Context): T = setting.valueIn(ctx.settingsState)
       def valueSetByUser(using Context): Option[T] = Option(setting.value).filter(_ != setting.default)
-      def update(x: T)(using Context): SettingsState = setting.updateIn(ctx.settingsState, x)
       def isDefault(using Context): Boolean = setting.isDefaultIn(ctx.settingsState)
       def wasSetByUser(using Context): Boolean = ctx.settingsState.wasChanged(setting.idx)
 
@@ -395,9 +397,6 @@ object Settings:
 
     def userSetSettings(state: SettingsState): Seq[Setting[?]] =
       allSettings filterNot (_.isDefaultIn(state))
-
-    def toConciseString(state: SettingsState): String =
-      userSetSettings(state).mkString("(", " ", ")")
 
     private def checkDependencies(state: ArgsSummary): ArgsSummary =
       userSetSettings(state.sstate).foldLeft(state)(checkDependenciesOfSetting)
@@ -495,7 +494,7 @@ object Settings:
     def PrefixSetting(category: SettingCategory, name0: String, descr: String, deprecation: Option[Deprecation] = None): Setting[List[String]] =
       val name = prependName(name0)
       val prefix = name.takeWhile(_ != '<')
-      publish(Setting(category, name, descr, Nil, prefix = Some(prefix), deprecation = deprecation))
+      publish(Setting(category, name, descr, List.empty[String], prefix = Some(prefix), deprecation = deprecation))
 
     def VersionSetting(category: SettingCategory, name: String, descr: String, default: ScalaVersion = NoScalaVersion, legacyArgs: Boolean = false, deprecation: Option[Deprecation] = None): Setting[ScalaVersion] =
       publish(Setting(category, prependName(name), descr, default, legacyArgs = legacyArgs, deprecation = deprecation))
