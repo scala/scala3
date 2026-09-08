@@ -100,10 +100,15 @@ private object ApiEvaluationImpl:
     new ApiEvaluationImpl(
       immutableJavaList(result.diagnostics.map(ApiDiagnosticImpl(_))),
       immutableJavaList(result.statements.map(ApiStatementImpl(_))),
-      immutableJavaList(configuredClasspath),
-      JavaList.of(),
-      JavaList.of()
+      immutableJavaList(configuredClasspath ::: result.classpath),
+      immutableJavaList(result.repositories),
+      immutableJavaList(result.dependencies.map(ApiDependencyImpl(_)))
     )
+
+private final class ApiDependencyImpl(dependency: WorksheetDependency) extends ApiDependency:
+  override def organization(): String = dependency.organization
+  override def moduleName(): String = dependency.moduleName
+  override def version(): String = dependency.version
 
 private final class ApiStatementImpl(statement: WorksheetStatement) extends ApiStatement:
   private val evaluatedPosition = ApiPositionImpl(statement.position)
