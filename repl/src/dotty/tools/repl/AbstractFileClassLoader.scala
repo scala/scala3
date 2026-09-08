@@ -43,8 +43,6 @@ object AbstractFileClassLoader:
 class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interruptInstrumentation: InterruptInstrumentation)
   extends io.AbstractFileClassLoader(root, parent):
 
-  def this(root: AbstractFile, parent: ClassLoader) = this(root, parent, InterruptInstrumentation.fromString(ScalaSettings.XreplInterruptInstrumentation.default))
-
   override protected def defineClass(name: String, bytes: Array[Byte]): Class[?] =
     if interruptInstrumentation.isOneOf(InterruptInstrumentation.Enabled, InterruptInstrumentation.Local) then defineClassInstrumented(name, bytes)
     else super.defineClass(name, bytes)
