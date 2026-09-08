@@ -86,8 +86,8 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
   end run
 
   override def initCtx: Context =
-    val ictx = contextBase.initialCtx
-    ictx.settings.classpath.update(ClasspathFromClassloader(appClassloader))(using ictx)
+    val ictx = contextBase.initialCtx.fresh
+    ictx.setSetting(ictx.settings.classpath, ClasspathFromClassloader(appClassloader))
     ictx
 
 end QuoteDriver
