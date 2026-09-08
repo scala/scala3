@@ -1094,7 +1094,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         .showing(i"rechecked closure $tree / $pt = $result", capt)
 
     /** Recheck a lambda of the form
+     *  ```
      *      { def $anonfun(...) = ...; closure($anonfun, ...)}
+     *  ```
      */
     override def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
       val anonfun = mdef.symbol

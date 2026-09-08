@@ -54,7 +54,7 @@ object Chars:
   inline def isWhitespace(c: Char): Boolean =
     c == ' ' || c == '\t' || c == CR
 
-  /** Can character form part of a doc comment variable $xxx? */
+  /** Can character form part of a doc comment variable \$xxx? */
   def isVarPart(c: Char): Boolean =
     '0' <= c && c <= '9' || 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z'
 

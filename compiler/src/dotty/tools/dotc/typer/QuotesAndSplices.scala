@@ -375,10 +375,9 @@ object QuotesAndSplices {
     end TreeMapWithVariance
 
   object PolyFunctionOf {
-    /**
-      * Return a poly-type + method type [$typeargs] => ($args) => ($resultType)
-      * where typeargs occur in args and resulttype
-      */
+    /** Return a poly-type + method type `[$typeargs] => ($args) => ($resultType)`
+     *  where typeargs occur in `args` and `resultType`.
+     */
     def apply(typeargs: List[Type], args: List[Type], resultType: Type)(using Context): Type =
       val typeargs1 = PolyType.syntheticParamNames(typeargs.length)
 

@@ -529,6 +529,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *
    *  However, if the last parameter is annotated `@unroll` then we generate:
    *
+   *  ```
    *  def fromProduct(x$0: Product): MirroredMonoType =
    *    val arity = x$0.productArity
    *    val a$1 = x$0.productElement(0).asInstanceOf[U]
@@ -540,6 +541,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *        <default getter for the third parameter of C>
    *    ).asInstanceOf[Seq[String]]
    *    new C[U](a$1, b$1, c$1*)
+   *  ```
    */
   def fromProductBody(caseClass: Symbol, productParam: Tree, optInfo: Option[MirrorImpl.OfProduct])(using Context): Tree =
     val classRef = optInfo match

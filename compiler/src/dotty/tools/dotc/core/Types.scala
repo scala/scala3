@@ -384,6 +384,8 @@ object Types extends TypeUtils {
     final def isNotNull(using Context): Boolean = this match {
       case tp: ConstantType => tp.value.value != null
       case tp: FlexibleType => false
+      case tp: ThisType => true
+      case tp: SuperType => true
       case tp: ClassInfo => !tp.cls.isNullableClass && !tp.isNothingType
       case tp: AppliedType => tp.superType.isNotNull
       case tp: TypeBounds => tp.hi.isNotNull
@@ -1317,8 +1319,10 @@ object Types extends TypeUtils {
     /** `this & that`, but handle CyclicReferences by falling back to `safe_&`.
      */
     def recoverable_&(that: Type)(using Context): Type =
-      try this & that
-      catch {
+      try {
+        ctx.handleRecursive("construction of & with", that):
+          this & that
+      } catch {
         case ex: CyclicReference => this safe_& that
           // A test case where this happens is tests/pos/i536.scala.
           // The & causes a subtype check which calls baseTypeRef again with the same
@@ -4255,10 +4259,10 @@ object Types extends TypeUtils {
     /** Produce method type from parameter symbols, with special mappings for repeated
      *  and inline parameters:
      *   - replace `@repeated` annotations on Seq or Array types by <repeated> types
-     *   - map into annotations to $into annotations
+     *   - map into annotations to \$into annotations
      *   - add `@inlineParam` to inline parameters
      *   - add `@erasedParam` to erased parameters
-     *   - map `T @$into` types to `into[T]`
+     *   - map `T @\$into` types to `into[T]`
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(using Context): MethodType =
       apply(params.map(_.name.asTermName))(

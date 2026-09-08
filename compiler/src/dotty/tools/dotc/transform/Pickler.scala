@@ -16,7 +16,7 @@ import Periods.*
 import Phases.*
 import Symbols.*
 import Flags.Module
-import reporting.{Message, Profile, ThrowingReporter}
+import reporting.{Message, Profile}
 import collection.mutable
 import util.concurrent.Executor
 
@@ -522,7 +522,6 @@ class Pickler extends Phase {
       testUnpickler(
         using ctx2
           .setPeriod(Period(ctx.runId + 1, ctx.base.typerPhase.id))
-          .setReporter(new ThrowingReporter(ctx.reporter))
           .addMode(Mode.ReadPositions)
       )
     if ctx.isBestEffort then

@@ -135,6 +135,7 @@ object PrepareInlineable {
      *  require additional type parameters for the inline accessor. An example is in the
      *  `TestPassing` class in test `run/inline/inlines_1`:
      *
+     *  ```
      *    class C[T](x: T) {
      *      private[inlines] def next[U](y: U): (T, U) = (x, y)
      *    }
@@ -147,13 +148,16 @@ object PrepareInlineable {
      *      val c = new C[A](x)
      *      c.next("")
      *    }
+     *  ```
      *
      *  `C` could be compiled separately, so we cannot place the inline accessor in it.
      *  Instead, the inline accessor goes into `TestPassing` and takes the actual receiver
      *  type as argument:
      *
+     *  ```
      *    def inline$next$i1[A, U](x$0: C[A])(y: U): (A, U) =
      *      x$0.next[U](y)
+     *  ```
      *
      *  Since different calls might have different receiver types, we need to generate one
      *  such accessor per call, so they need to have unique names.
