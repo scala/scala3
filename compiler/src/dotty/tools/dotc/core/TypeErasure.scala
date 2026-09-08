@@ -789,16 +789,17 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else if semiEraseVCs && sym.isDerivedValueClass then eraseDerivedValueClass(tp)
         else if defn.isSyntheticFunctionClass(sym) then defn.functionTypeErasure(sym)
         else eraseNormalClassRef(tp)
-      case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) // At the beginning the $sp$ trait symbols are not present so up until 
-                                                                                   // erasure need to consider the signature of def foo(x: Foo[Int]): Int as
-                                                                                   // foo(Foo):Int. Only at erasure do the symbols swap. This ensures
-                                                                                   // the signatures don't change before erasure which is required (meta-ordering
-                                                                                   // constraint in Compiler.scala)
-                                    && spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty) => 
-        val specName = spec.newSpecializedTraitName
-        val interfaceSymbol = spec.symbol.owner.enclosingPackageClass.info.decls.lookup(specName)
-        assert(interfaceSymbol.exists && interfaceSymbol.isClass)
-        this(interfaceSymbol.typeRef.appliedTo(spec.unspecializedTypeArgs))
+      // At the beginning the $sp$ trait symbols are not present so up until 
+      // erasure need to consider the signature of def foo(x: Foo[Int]): Int as
+      // foo(Foo):Int. Only at erasure do the symbols swap. This ensures
+      // the signatures don't change before erasure which is required (meta-ordering
+      // constraint in Compiler.scala)
+      case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) && 
+        spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty) => 
+          val specName = spec.newSpecializedTraitName
+          val interfaceSymbol = spec.symbol.owner.enclosingPackageClass.info.decls.lookup(specName)
+          assert(interfaceSymbol.exists && interfaceSymbol.isClass)
+          this(interfaceSymbol.typeRef.appliedTo(spec.unspecializedTypeArgs))
       case tp: AppliedType =>
         val tycon = tp.tycon
         if (tycon.isRef(defn.ArrayClass)) eraseArray(tp)

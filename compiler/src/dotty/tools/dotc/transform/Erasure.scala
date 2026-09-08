@@ -1109,7 +1109,8 @@ object Erasure {
     }
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
-      val cdef1 = typedSpecializedClassDef(cdef, cls)
+      val cdef1 = if ctx.compilationUnit.hasSpecializations then typedSpecializedClassDef(cdef, cls) else cdef
+
       val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef1, cls): @unchecked
       // In the case where a trait extends a class, we need to strip any non trait class from the signature
       // and accept the first one (see tests/run/mixins.scala)
