@@ -106,6 +106,32 @@ class WorksheetApiTest:
       worker.join(30000)
       evaluator.shutdown()
 
+  @Test def keepsAConfiguredClasspathOption(): Unit =
+    val configured = java.nio.file.Path.of(System.getProperty("java.io.tmpdir"))
+    val jar = java.nio.file.Path.of(
+      classOf[interfaces.RangePosition].getProtectionDomain.getCodeSource.getLocation.toURI
+    )
+    val evaluator = new WorksheetDriver()
+      .withScalacOptions(java.util.List.of("-classpath", configured.toString))
+    try
+      val result = evaluator.evaluate(
+        "configured-classpath.worksheet.scala",
+        s"""//> using jar $jar
+           |val held = classOf[dotty.tools.repl.worksheet.interfaces.RangePosition].getSimpleName
+           |""".stripMargin
+      )
+
+      assertEquals(
+        result.diagnostics().asScala.map(_.message()).toString,
+        Nil,
+        result.diagnostics().asScala.toList
+      )
+      assertEquals("held: String = \"RangePosition\"", result.statements().get(0).details())
+      val reported = result.classpath().asScala.toList
+      assertTrue(reported.toString, reported.contains(configured))
+      assertTrue(reported.toString, reported.contains(jar))
+    finally evaluator.shutdown()
+
   @Test def startsACompilerSessionOnlyWhenAWorksheetIsEvaluated(): Unit =
     val evaluator = new WorksheetDriver()
     try
