@@ -43,7 +43,7 @@ final class WorksheetDriver private (configuration: WorksheetConfiguration) exte
 
   override def evaluate(filename: String, text: String): ApiEvaluation =
     val result = compiler.evaluate(filename, text)
-    ApiEvaluationImpl.from(result, configuration.classpath)
+    ApiEvaluationImpl.from(result, configuration.declaredClasspath)
 
   override def cancel(): Unit = session.foreach(_.cancel())
 
@@ -56,16 +56,44 @@ private final case class WorksheetConfiguration(
     scalacOptions: List[String],
     screenWidth: Int
 ):
+  def declaredClasspath: List[Path] =
+    val (configured, _) = WorksheetConfiguration.withoutClasspath(scalacOptions)
+    val extra = configured
+      .flatMap(_.split(File.pathSeparator).toList)
+      .filter(_.nonEmpty)
+      .flatMap(entry => Try(Path.of(entry)).toOption)
+    (classpath ::: extra).distinct
+
   def compilerSettings: Array[String] =
-    val compilationClasspath =
-      (classpath ::: WorksheetConfiguration.supportClasspath).distinct
+    val (configured, remaining) = WorksheetConfiguration.withoutClasspath(scalacOptions)
+    val entries =
+      (classpath.map(_.toString)
+        ::: configured
+        ::: WorksheetConfiguration.supportClasspath.map(_.toString)).distinct
     val classpathSettings =
-      if compilationClasspath.isEmpty then "-usejavacp" :: Nil
-      else "-classpath" :: compilationClasspath.mkString(File.pathSeparator) :: Nil
-    (scalacOptions ::: classpathSettings ::: List("-color:never")).toArray
+      if entries.isEmpty then "-usejavacp" :: Nil
+      else "-classpath" :: entries.mkString(File.pathSeparator) :: Nil
+    (remaining ::: classpathSettings ::: List("-color:never")).toArray
 
 private object WorksheetConfiguration:
   val default: WorksheetConfiguration = WorksheetConfiguration(Nil, Nil, 120)
+
+  private val classpathOptions = Set("-classpath", "-cp", "--class-path")
+
+  def withoutClasspath(options: List[String]): (List[String], List[String]) =
+    def loop(
+        remaining: List[String],
+        entries: List[String],
+        kept: List[String]
+    ): (List[String], List[String]) =
+      remaining match
+        case option :: value :: tail if classpathOptions.contains(option) =>
+          loop(tail, entries :+ value, kept)
+        case option :: tail if classpathOptions.exists(name => option.startsWith(s"$name:")) =>
+          loop(tail, entries :+ option.substring(option.indexOf(':') + 1), kept)
+        case option :: tail => loop(tail, entries, kept :+ option)
+        case Nil => (entries, kept)
+    loop(options, Nil, Nil)
 
   val supportClasspath: List[Path] =
     List(
