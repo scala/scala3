@@ -50,7 +50,7 @@ object Dependencies {
   val liqp = "nl.big-o" % "liqp" % "0.9.2.3"
   // otherwise the jackson versions are ancient, with known vulnerabilities
   val liqpDependencyOverrides = Seq(
-    "com.fasterxml.jackson.core" % "jackson-annotations" % "2.22.2",
+    "com.fasterxml.jackson.core" % "jackson-annotations" % "2.22",
     "com.fasterxml.jackson.core" % "jackson-core" % "2.22.2",
     "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.2",
     "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % "2.22.2"
