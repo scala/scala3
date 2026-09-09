@@ -1,4 +1,4 @@
-//> using options -Yexplicit-nulls
+//> using options -language:safeNulls
 import annotation.targetName
 
 class A

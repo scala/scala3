@@ -126,7 +126,7 @@ class EnumTestScala3:
   end testCurrency2
 
   @Test def testOpt(): Unit =
-
+    import scala.language.safeNulls
     def encode[T <: AnyVal](t: Opt[T]): T | Null = t match
       case Opt.Sm(t) => t
       case Opt.Nn    => null

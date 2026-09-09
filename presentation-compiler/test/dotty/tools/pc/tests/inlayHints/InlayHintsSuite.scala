@@ -1270,8 +1270,8 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |""".stripMargin,
       """|object Main {
         |  val str/*: String<<java/lang/String#>>*/ = "hello"
-        |  val sub/*: String<<java/lang/String#>>*/ = str.substring(1, 3)
-        |  val replaced/*: String<<java/lang/String#>>*/ = str.replace('l', 'x')
+        |  val sub/*: (String<<java/lang/String#>>)?*/ = str.substring(1, 3)
+        |  val replaced/*: (String<<java/lang/String#>>)?*/ = str.replace('l', 'x')
         |}
         |""".stripMargin
     )

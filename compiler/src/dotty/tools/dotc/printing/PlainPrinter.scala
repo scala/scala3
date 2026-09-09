@@ -244,7 +244,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: SingletonType =>
         toTextSingleton(tp)
       case FlexibleType(tpe) =>
-        "(" ~ toText(tpe) ~ ")?"
+        if (ctx.settings.YhideFlexibleTypes.value) then
+          toText(tpe)
+        else
+          "(" ~ toText(tpe) ~ ")?"
       case AppliedType(tycon, args) =>
         (toTextLocal(tycon) ~ "[" ~ argsText(args) ~ "]").close
       case tp: RefinedType =>
