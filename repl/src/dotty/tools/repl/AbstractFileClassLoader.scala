@@ -42,6 +42,8 @@ object AbstractFileClassLoader:
 
 class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interruptInstrumentation: InterruptInstrumentation)
   extends io.AbstractFileClassLoader(root, parent):
+  private val stopReplName = classOf[StopRepl].getName
+
 
   def this(root: AbstractFile, parent: ClassLoader) = this(root, parent, InterruptInstrumentation.fromString(ScalaSettings.XreplInterruptInstrumentation.default))
 
@@ -54,8 +56,27 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
     defineClass(name, instrumentedBytes, 0, instrumentedBytes.length)
   }
 
+  private def ownStopRepl(name: String): Class[?] = getClassLoadingLock(name).synchronized:
+    val loaded = findLoadedClass(name)
+    if loaded != null then loaded
+    else
+      // Load StopRepl bytecode from parent but ensure each classloader gets its own copy
+      val classFileName = name.replace('.', '/') + ".class"
+      val is = Option(getParent.getResourceAsStream(classFileName))
+        // Can't get as resource, use the classloader that loaded this AbstractFileClassLoader
+        // class itself, which must have access to StopRepl
+        .getOrElse(classOf[AbstractFileClassLoader].getClassLoader.getResourceAsStream(classFileName))
+      try
+        val bytes = is.readAllBytes()
+        defineClass(name, bytes, 0, bytes.length)
+      finally is.close()
+
   override def loadClass(name: String): Class[?] =
     if interruptInstrumentation.isOneOf(InterruptInstrumentation.Disabled, InterruptInstrumentation.Local) then
+      // `local` delegates what it does not instrument, so the flag would come from the
+      // parent and be shared: cancelling one session would end the others.
+      if interruptInstrumentation == InterruptInstrumentation.Local && name == stopReplName then
+        return ownStopRepl(name)
       return super.loadClass(name)
 
     val loaded = findLoadedClass(name) // Check if already loaded
@@ -73,18 +94,7 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
       case s"org.w3c.dom.$_" => super.loadClass(name) // W3C DOM API (part of java.xml module)
       case s"com.sun.org.apache.$_" => super.loadClass(name) // Internal Xerces implementation
       // Don't instrument StopRepl, which would otherwise cause infinite recursion
-      case "dotty.tools.repl.StopRepl" =>
-        // Load StopRepl bytecode from parent but ensure each classloader gets its own copy
-        val classFileName = name.replace('.', '/') + ".class"
-        val is = Option(getParent.getResourceAsStream(classFileName))
-          // Can't get as resource, use the classloader that loaded this AbstractFileClassLoader
-          // class itself, which must have access to StopRepl
-          .getOrElse(classOf[AbstractFileClassLoader].getClassLoader.getResourceAsStream(classFileName))
-
-        try
-          val bytes = is.readAllBytes()
-          defineClass(name, bytes, 0, bytes.length)
-        finally is.close()
+      case `stopReplName` => ownStopRepl(name)
 
       case _ =>
         try findClass(name)

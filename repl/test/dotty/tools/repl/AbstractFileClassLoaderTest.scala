@@ -166,4 +166,24 @@ class AbstractFileClassLoaderTest:
   @Test def replClassesAreInstrumentedWhenLocal(): Unit =
     assertTrue(probeIsInterruptible(Local))
 
+  @Test def localModeDefinesItsOwnStopFlagOnceUnderConcurrentLoads(): Unit =
+    val name = classOf[StopRepl].getName
+    val loader = new AbstractFileClassLoader(io.virtualDirectory("stop"), getClass.getClassLoader, Local)
+    val start = new java.util.concurrent.CountDownLatch(1)
+    val loaded = java.util.Collections.synchronizedList(new java.util.ArrayList[Any])
+    val threads = (1 to 8).toList.map: _ =>
+      val thread = new Thread(() =>
+        start.await()
+        loaded.add(try loader.loadClass(name) catch case e: Throwable => e)
+        ()
+      )
+      thread.start()
+      thread
+    start.countDown()
+    threads.foreach(_.join(30000))
+
+    assertEquals(8, loaded.size)
+    assertEquals(loaded.toString, 1, new java.util.HashSet(loaded).size)
+    assertNotSame(getClass.getClassLoader.loadClass(name), loaded.get(0))
+
 end AbstractFileClassLoaderTest
