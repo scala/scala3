@@ -326,31 +326,31 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
       var fbounded = false
-      def apply(tp: Type): Type = tp match
-        case tp: TypeParamRef =>
-          constraint.entry(tp) match
-            case bounds: TypeBounds =>
-              if variance < 0 then apply(TypeComparer.fullUpperBound(tp))
-              else if variance > 0 then apply(TypeComparer.fullLowerBound(tp))
-              else tp
-            case NoType => tp
-            case instType => apply(instType)
-        case tp: TypeVar =>
-          apply(tp.stripTypeVar)
-        case tp: LazyRef =>
-          fbounded = true
-          tp
-        case tp @ TypeRef(pre, _) =>
-          if pre != NoPrefix && !pre.member(tp.name).exists then
-            notes ++=
-              i"""
-                 |
-                 |Note that I could not resolve reference $tp.
-                 |${MissingType(pre, tp.name).reason}
-                 """
-          mapOver(tp)
-        case _ =>
-          mapOver(tp)
+      def apply(tp: Type): Type = ctx.handleRecursive("report type mismatch for", tp):
+        tp match
+          case tp: TypeParamRef =>
+            constraint.entry(tp) match
+              case bounds: TypeBounds =>
+                if variance < 0 then apply(TypeComparer.fullUpperBound(tp))
+                else if variance > 0 then apply(TypeComparer.fullLowerBound(tp))
+                else tp
+              case NoType => tp
+              case instType => apply(instType)
+          case tp: TypeVar =>
+            apply(tp.stripTypeVar)
+          case tp: LazyRef =>
+            fbounded = true
+            tp
+          case tp @ TypeRef(pre, _) =>
+            if pre != NoPrefix && !pre.member(tp.name).exists then
+              notes ++=
+                i"""
+                   |
+                   |Note that I could not resolve reference $tp.
+                   |${MissingType(pre, tp.name).reason}"""
+            mapOver(tp)
+          case _ =>
+            mapOver(tp)
     val preface = notes.filter(_.showAsPrefix).map(_.render).mkString
     val found1 = reported(found)
     reported.setVariance(-1)

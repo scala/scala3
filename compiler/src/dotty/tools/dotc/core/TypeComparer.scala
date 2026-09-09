@@ -262,8 +262,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
     else this.approx = a
     try
-      ctx.handleRecursive("subtype", () => i"$tp1 <:< $tp2", weight = 2):
-        recur(tp1, tp2)
+      recur(tp1, tp2)
     finally
       this.approx = savedApprox
       this.leftRoot = savedLeftRoot
@@ -1372,7 +1371,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // is weaker than the first, we keep it in place of the first.
           // Note that if the isSubArgs test fails, we will proceed anyway by
           // dealising by doing a compareLower.
-          def loop(tycon1: Type, args1: List[Type]): Boolean = ctx.handleRecursive("checking for matching apply of", tycon1) { tycon1 match {
+          def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1 match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
                canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
@@ -1434,7 +1433,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               loop(tycon1.underlying, args1)
             case _ =>
               false
-          } }
+          }
           loop(tycon1, args1)
         case _ =>
           false
@@ -1672,9 +1671,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           rollBack(savedLogSize)
       val savedSuccessCount = successCount
       try
-        val result = inNestedLevel:
-          if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
-          if monitored then monitoredIsSubType else firstTry
+        val result =
+          ctx.handleRecursive("is subtype?", () => i"$tp1 <:< $tp2"):
+            inNestedLevel:
+              if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
+              if monitored then monitoredIsSubType else firstTry
         if !result then restore()
         else if recCount == 0 && needsGc then
           state.gc()
@@ -2128,7 +2129,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       // check whether `op2` generates a weaker constraint than `op1`
       val leftConstraint = constraint
       constraint = preConstraint
-      val res = try op catch case _: TypeError => false
+      // See tests/pos-deep-subtype/i21015.scala for an example of why this try/catch is needed
+      val res =
+        try
+          op
+        catch
+          case _: RecursionOverflow => false
       if !(res && subsumes(leftConstraint, constraint, preConstraint)) then
         if constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint) then
           constr.println(i"CUT - prefer $leftConstraint over $constraint")
