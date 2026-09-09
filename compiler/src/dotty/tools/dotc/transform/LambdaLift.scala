@@ -165,12 +165,11 @@ object LambdaLift:
       val qual =
         if (clazz.isStaticOwner || ctx.owner.enclosingClass == clazz)
           singleton(clazz.thisType)
-        else if (ctx.owner.isConstructor)
-          outerParam.get(ctx.owner) match {
+        else
+          val ownerOuterParam = ctx.owner.ownersIterator.filter(_.isConstructor).flatMap(outerParam.get).nextOption()
+          ownerOuterParam match
             case Some(param) => outer.path(start = Ident(param.termRef), toCls = clazz)
             case _ => outer.path(toCls = clazz)
-          }
-        else outer.path(toCls = clazz)
       thisPhase.transformFollowingDeep(qual.select(sym))
     }
 
@@ -290,11 +289,11 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     ctx.fresh.updateStore(Lifter, new Lifter(thisPhase))
 
   override def transformIdent(tree: Ident)(using Context): Tree =
-    val sym = tree.symbol
     tree.tpe match
       case tpe @ TermRef(prefix, _) =>
         val lft = lifter
         if prefix eq NoPrefix then
+          val sym = tree.symbol
           if sym.enclosure != lft.currentEnclosure && !sym.isStatic then
             (if sym.is(Method) then lft.memberRef(sym) else lft.proxyRef(sym)).withSpan(tree.span)
           else if sym.owner.isClass then // sym was lifted out
