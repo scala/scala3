@@ -2487,7 +2487,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object FlexibleType extends FlexibleTypeModule:
       def apply(tp: TypeRepr): FlexibleType = Types.FlexibleType(tp).asInstanceOf[FlexibleType]
-      def unapply(x: FlexibleType): Some[TypeRepr] = Some(Types.FlexibleType.unapply(x).get)
+      def unapply(x: FlexibleType): Option[TypeRepr] = Types.FlexibleType.unapply(x)
     end FlexibleType
 
     given FlexibleTypeMethods: FlexibleTypeMethods with
