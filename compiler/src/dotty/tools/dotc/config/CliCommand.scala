@@ -55,10 +55,7 @@ trait CliCommand:
   protected def availableOptionsMsg(p: Setting[?] => Boolean, shortDescription: Boolean = true, showArgFileMsg: Boolean = true)(using settings: ConcreteSettings)(using SettingsState): String =
     // result is (Option Name, descrption\ndefault: value\nchoices: x, y, z
     def help(s: Setting[?]): (String, String) =
-      // For now, skip the default values that do not make sense for the end user, such as 'false' for the version command.
-      def defaultValue = s.default match
-        case _: Int | _: String => s.default.toString
-        case _ => ""
+      val defaultValue = s.defaultValueToDisplay
       val info = List(s.deprecationMessage, s.description(shortDescription), if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices: ${s.legalChoices}" else "")
       (s.name, info.filter(_.nonEmpty).mkString("\n"))
     end help
