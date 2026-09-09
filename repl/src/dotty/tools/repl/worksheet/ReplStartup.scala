@@ -1,9 +1,11 @@
 package dotty.tools.repl.worksheet
 
 import dotty.tools.repl.ReplDriver
+import dotty.tools.repl.ScalaClassLoader.fromURLsParallelCapable
 import dotty.tools.repl.State
 
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.PrintStream
 import java.nio.charset.StandardCharsets
 
@@ -11,10 +13,16 @@ private final class ReplStartup(settings: Array[String]):
   private val buffer = new ByteArrayOutputStream
   private val sink = new PrintStream(buffer, true, StandardCharsets.UTF_8)
 
+  private val runtimeLoader: ClassLoader = ReplStartup.runtimeLoader(settings)
+
   val driver: ReplDriver =
     Console.withOut(sink):
       Console.withErr(sink):
-        new ReplDriver(settings :+ "-Xrepl-interrupt-instrumentation:local", sink)
+        new ReplDriver(
+          settings :+ "-Xrepl-interrupt-instrumentation:local",
+          sink,
+          Some(runtimeLoader)
+        )
 
   val isUsable: Boolean = driver.replShouldStart
 
@@ -43,5 +51,14 @@ private final class ReplStartup(settings: Array[String]):
       .toList
 
   def close(): Unit =
-    driver.replRenderingClassLoader.foreach(WorksheetClassLoaders.closeCreated)
+    WorksheetClassLoaders.closeCreated(driver.replRenderingClassLoader.getOrElse(runtimeLoader))
     sink.close()
+
+private object ReplStartup:
+  private def runtimeLoader(settings: Array[String]): ClassLoader =
+    val (classpath, _) = WorksheetOptions.withoutClasspath(settings.toList)
+    val entries = classpath.flatMap(_.split(File.pathSeparator)).filter(_.nonEmpty)
+    fromURLsParallelCapable(
+      entries.map(entry => new File(entry).toURI.toURL),
+      getClass.getClassLoader
+    )

@@ -80,3 +80,22 @@ private[worksheet] object WorksheetPosition:
 
   def fromOffsets(source: SourceFile, start: Int, end: Int): WorksheetPosition =
     fromCompiler(source.atSpan(Span(start, end)))
+
+/** Compiler options as the worksheet needs to read and rewrite them. */
+private[worksheet] object WorksheetOptions:
+  private val classpathOptions = Set("-classpath", "-cp", "--class-path")
+
+  def withoutClasspath(options: List[String]): (List[String], List[String]) =
+    def loop(
+        remaining: List[String],
+        entries: List[String],
+        kept: List[String]
+    ): (List[String], List[String]) =
+      remaining match
+        case option :: value :: tail if classpathOptions.contains(option) =>
+          loop(tail, entries :+ value, kept)
+        case option :: tail if classpathOptions.exists(name => option.startsWith(s"$name:")) =>
+          loop(tail, entries :+ option.substring(option.indexOf(':') + 1), kept)
+        case option :: tail => loop(tail, entries, kept :+ option)
+        case Nil => (entries, kept)
+    loop(options, Nil, Nil)
