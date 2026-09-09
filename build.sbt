@@ -3,6 +3,7 @@ val `scala3-nonbootstrapped` = Build.`scala3-nonbootstrapped`
 val `scala3-bootstrapped` = Build.`scala3-bootstrapped`
 
 val `scala3-interfaces` = Build.`scala3-interfaces`
+val `scala3-worksheet-interfaces` = Build.`scala3-worksheet-interfaces`
 
 // Compiler projects
 val `scala3-compiler-nonbootstrapped` = Build.`scala3-compiler-nonbootstrapped`

@@ -419,6 +419,12 @@ object Build {
       customMimaReportBinaryIssues("MiMaFilters.Interfaces"),
     )
 
+  lazy val `scala3-worksheet-interfaces` = project.in(file("worksheet-interfaces")).
+    settings(commonJavaSettings).
+    settings(
+      versionScheme := Some("semver-spec"),
+    )
+
   /** Find an artifact with the given `name` in `classpath` */
   def findArtifact(classpath: Def.Classpath, name: String): File = classpath
     .find(_.get(artifact.key).exists(_.name == name))
@@ -594,6 +600,7 @@ object Build {
   // All projects, used to forward tasks like clean.
   lazy val allProjects: Seq[Project] = Seq(
     `scala3-interfaces`,
+    `scala3-worksheet-interfaces`,
     `scala3-bootstrapped`,
     `scala3-compiler-nonbootstrapped`,
     `scala3-compiler-bootstrapped`,
@@ -642,7 +649,7 @@ object Build {
   lazy val `scala3-nonbootstrapped` = project.in(file("."))
     .aggregate(`scala3-interfaces`, `scala3-library-nonbootstrapped` , `scala-library-nonbootstrapped`,
       `tasty-core-nonbootstrapped`, `scala3-directives-parser-nonbootstrapped`, `scala3-compiler-nonbootstrapped`,
-      `scala3-sbt-bridge-nonbootstrapped`, `scala3-repl-nonbootstrapped`)
+      `scala3-sbt-bridge-nonbootstrapped`, `scala3-worksheet-interfaces`, `scala3-repl-nonbootstrapped`)
     .settings(
       name          := "scala3-nonbootstrapped",
       moduleName    := "scala3-nonbootstrapped",
@@ -732,7 +739,7 @@ object Build {
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped` , `scala-library-bootstrapped`,
       `tasty-core-bootstrapped`, `scala3-directives-parser-bootstrapped`, `scala3-compiler-bootstrapped`, `scala3-sbt-bridge-bootstrapped`,
       `scala3-staging`, `scala3-tasty-inspector`, `scala-library-sjs`, `scala3-library-sjs`,
-      scaladoc, `scala3-repl`, `scala3-presentation-compiler`)
+      scaladoc, `scala3-worksheet-interfaces`, `scala3-repl`, `scala3-presentation-compiler`)
     .settings(
       name          := "scala3-bootstrapped",
       moduleName    := "scala3-bootstrapped",
@@ -916,7 +923,7 @@ object Build {
   )
 
   lazy val `scala3-repl` = project.in(file("repl"))
-    .dependsOn(`scala3-compiler-bootstrapped` % "compile->compile;test->test", `scala3-directives-parser-bootstrapped`)
+    .dependsOn(`scala3-compiler-bootstrapped` % "compile->compile;test->test", `scala3-directives-parser-bootstrapped`, `scala3-worksheet-interfaces`)
     .settings(publishSettings)
     .settings(replSettings)
     .settings(
@@ -941,7 +948,7 @@ object Build {
     )
 
   lazy val `scala3-repl-nonbootstrapped` = project.in(file("repl"))
-    .dependsOn(`scala3-compiler-nonbootstrapped` % "compile->compile;test->test", `scala3-directives-parser-nonbootstrapped`)
+    .dependsOn(`scala3-compiler-nonbootstrapped` % "compile->compile;test->test", `scala3-directives-parser-nonbootstrapped`, `scala3-worksheet-interfaces`)
     .settings(replSettings)
     .settings(
       name          := "scala3-repl-nonbootstrapped",
@@ -2492,6 +2499,7 @@ object Build {
       prepareCommunityBuild := {
         (`scala3-sbt-bridge-bootstrapped` / publishLocalBin).value
         (`scala3-interfaces` / publishLocalBin).value
+        (`scala3-worksheet-interfaces` / publishLocalBin).value
         (`tasty-core-bootstrapped` / publishLocalBin).value
         (`scala3-library-bootstrapped` / publishLocalBin).value
         (`scala-library-bootstrapped` / publishLocalBin).value
@@ -2593,8 +2601,8 @@ object Build {
     Universal / mappings ++= directory(republishRepo.value / "libexec"),
     Universal / mappings +=  (republishRepo.value / "VERSION") -> "VERSION",
     // ========
-    republishCommandLibs += ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "scala-library", "tasty-core", "scala3-repl")),
-    republishCommandLibs += ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "scala3-repl", "^!scala3-interfaces", "^!scala3-compiler", "^!scala3-library", "^!scala-library", "^!tasty-core")),
+    republishCommandLibs += ("scala" -> List("scala3-interfaces", "scala3-worksheet-interfaces", "scala3-compiler", "scala3-library", "scala-library", "tasty-core", "scala3-repl")),
+    republishCommandLibs += ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "scala3-repl", "^!scala3-interfaces", "^!scala3-worksheet-interfaces", "^!scala3-compiler", "^!scala3-library", "^!scala-library", "^!tasty-core")),
     republishCommandLibs += ("scaladoc" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "scala-library", "tasty-core", "scala3-tasty-inspector", "scaladoc")),
   )
 
@@ -2772,6 +2780,7 @@ object Build {
         `scala-library-bootstrapped`,
         `scala3-compiler-bootstrapped`,
         `scala3-interfaces`,
+        `scala3-worksheet-interfaces`,
         `scala3-library-bootstrapped`,
         `scala3-repl`,
         `scala3-sbt-bridge-bootstrapped`, // for scala-cli
