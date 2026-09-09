@@ -3302,7 +3302,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case AppliedType(_, args) => args
           cls.typeParams.sizeCompare(typeArgs) == 0
 
-        def existsCommonBaseTypeWithDisjointArguments: Boolean =
+        def existsCommonBaseTypeWithDisjointArguments: Boolean = ctx.handleRecursive("check if there is a common base type with disjoint arguments of", () => i"$tp1 $tp2"):
           if !typeArgsMatch(tp1, cls1) || !typeArgsMatch(tp2, cls2) then
             /* We have an unapplied polymorphic class type or otherwise not star-kinded one.
              * This does not happen with match types, but happens when coming from the Space engine.
@@ -3724,7 +3724,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
 
   override def matchReducer = this
 
-  def matchCases(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = {
+  def matchCases(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = ctx.handleRecursive("match cases for", scrut) {
     // a reference for the type parameters poisoned during matching
     // for use during the reduction step
     var poisoned: Set[TypeParamRef] = Set.empty

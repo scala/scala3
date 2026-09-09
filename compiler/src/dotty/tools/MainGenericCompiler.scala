@@ -54,7 +54,7 @@ case class CompileSettings(
 object MainGenericCompiler {
 
   private val classpathSeparator: String = File.pathSeparator
-  private val javaPropOption = raw"""-D(.+?)=(.?)""".r
+  private val javaPropOption = raw"""-D([^=]+)=(.*)""".r
 
   private def processClasspath(cp: String, tail: List[String]): (List[String], List[String]) =
     val cpEntries = cp.split(classpathSeparator).toList
