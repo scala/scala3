@@ -57,7 +57,7 @@ private final case class WorksheetConfiguration(
     screenWidth: Int
 ):
   def declaredClasspath: List[Path] =
-    val (configured, _) = WorksheetConfiguration.withoutClasspath(scalacOptions)
+    val (configured, _) = WorksheetOptions.withoutClasspath(scalacOptions)
     val extra = configured
       .flatMap(_.split(File.pathSeparator).toList)
       .filter(_.nonEmpty)
@@ -65,7 +65,7 @@ private final case class WorksheetConfiguration(
     (classpath ::: extra).distinct
 
   def compilerSettings: Array[String] =
-    val (configured, remaining) = WorksheetConfiguration.withoutClasspath(scalacOptions)
+    val (configured, remaining) = WorksheetOptions.withoutClasspath(scalacOptions)
     val entries =
       (classpath.map(_.toString)
         ::: configured
@@ -77,23 +77,6 @@ private final case class WorksheetConfiguration(
 
 private object WorksheetConfiguration:
   val default: WorksheetConfiguration = WorksheetConfiguration(Nil, Nil, 120)
-
-  private val classpathOptions = Set("-classpath", "-cp", "--class-path")
-
-  def withoutClasspath(options: List[String]): (List[String], List[String]) =
-    def loop(
-        remaining: List[String],
-        entries: List[String],
-        kept: List[String]
-    ): (List[String], List[String]) =
-      remaining match
-        case option :: value :: tail if classpathOptions.contains(option) =>
-          loop(tail, entries :+ value, kept)
-        case option :: tail if classpathOptions.exists(name => option.startsWith(s"$name:")) =>
-          loop(tail, entries :+ option.substring(option.indexOf(':') + 1), kept)
-        case option :: tail => loop(tail, entries, kept :+ option)
-        case Nil => (entries, kept)
-    loop(options, Nil, Nil)
 
   val supportClasspath: List[Path] =
     List(

@@ -174,6 +174,8 @@ class ReplDriver(settings: Array[String],
 
   private[repl] def replShouldStart: Boolean = shouldStart
 
+  private[repl] def replRendering: Rendering = rendering
+
   private[repl] def replRenderingClassLoader: Option[ClassLoader] =
     Option(rendering).flatMap(loaded => Option(loaded.myClassLoader))
 

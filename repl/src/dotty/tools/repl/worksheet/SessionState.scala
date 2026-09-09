@@ -37,9 +37,7 @@ private final case class SessionState(
       ) &&
       nextStatements.length >= inputStatements.length)
 
-  def close(): Unit =
-    runner.close()
-    startup.close()
+  def close(): Unit = startup.close()
 
 private object SessionState:
   def initial(settings: Array[String], screenWidth: Int): SessionState =
