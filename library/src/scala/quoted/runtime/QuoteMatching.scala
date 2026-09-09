@@ -7,8 +7,10 @@ import scala.quoted.{Expr, Type}
 /** Part of the `Quotes` interface that needs to be implemented by the compiler but is not visible to users. */
 trait QuoteMatching:
 
+  /** Module implementing the matching of quoted expression patterns: the compiler translates a pattern `case '{ ... } =>` into a call to `ExprMatch.unapply` */
   val ExprMatch: ExprMatchModule
 
+  /** Methods of the module object `val ExprMatch` */
   trait ExprMatchModule { self: ExprMatch.type =>
     /** Pattern matches an the scrutineeExpr against the patternExpr and returns a tuple
      *  with the matched holes if successful.
@@ -34,8 +36,10 @@ trait QuoteMatching:
     def unapply[TypeBindings, Tup <: Tuple](scrutinee: Expr[Any])(using pattern: Expr[Any]): Option[Tup]
   }
 
+  /** Module implementing the matching of quoted type patterns: the compiler translates a pattern `case '[ ... ] =>` into a call to `TypeMatch.unapply` */
   val TypeMatch: TypeMatchModule
 
+  /** Methods of the module object `val TypeMatch` */
   trait TypeMatchModule { self: TypeMatch.type =>
     /** Pattern matches an the scrutineeType against the patternType and returns a tuple
      *  with the matched holes if successful.
