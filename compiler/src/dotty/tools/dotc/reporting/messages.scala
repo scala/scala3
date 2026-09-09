@@ -879,15 +879,21 @@ extends SyntaxMsg(AuxConstructorNeedsNonImplicitParameterID) {
         |"""
 }
 
-class IllegalLiteral()(using Context)
+class IllegalLiteral(ambiguous: Boolean = false)(using Context)
 extends SyntaxMsg(IllegalLiteralID) {
-  def msg(using Context) = "Illegal literal"
+  def msg(using Context) = if ambiguous then "Ambiguous literal" else "Illegal literal"
   def explain(using Context) =
+    if ambiguous then
+    i"""|`${hl("-42.abs")}` does not parse the same as `${hl("-n.abs")}`.
+        |For clarity, write `${hl("(-42).abs")}` instead.
+        |The literal can be rewritten automatically under -rewrite.
+        |"""
+    else
     i"""|Available literals can be divided into several groups:
         | - Integer literals: 0, 21, 0xFFFFFFFF, -42L
         | - Floating Point Literals: 0.0, 1e30f, 3.14159f, 1.0e-100, .1
         | - Boolean Literals: true, false
-        | - Character Literals: 'a', '\u0041', '\n'
+        | - Character Literals: 'a', '\\u0041', '\\n'
         | - String Literals: "Hello, World!"
         | - null
         |"""
