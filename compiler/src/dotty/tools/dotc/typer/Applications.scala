@@ -3134,23 +3134,20 @@ trait Applications extends Compatibility {
     val methodRefTree = ref(methodRef, needLoad = false)
     val truncatedSym = methodRef.symbol.asTerm.copy(info = truncateExtension(methodRef.info))
     val truncatedRefTree = untpd.TypedSplice(ref(truncatedSym)).withSpan(receiver.span)
-    val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
+    val newCtx = ctx.fresh.setNewScope
 
-    try
-      val appliedTree = inContext(newCtx) {
-        // Introducing an auxiliary symbol in a temporary scope.
-        // Entering the symbol indirectly by `newCtx.enter`
-        // could instead add the symbol to the enclosing class
-        // which could break the REPL.
-        newCtx.scope.openForMutations.enter(truncatedSym)
-        newCtx.typer.extMethodApply(truncatedRefTree, receiver, WildcardType)
-      }
-      if appliedTree.tpe.exists && !appliedTree.tpe.isError then
-        Some(replaceCallee(appliedTree, methodRefTree))
-      else
-        None
-    catch
-      case ex: UnhandledError => None
+    val appliedTree = inContext(newCtx) {
+      // Introducing an auxiliary symbol in a temporary scope.
+      // Entering the symbol indirectly by `newCtx.enter`
+      // could instead add the symbol to the enclosing class
+      // which could break the REPL.
+      newCtx.scope.openForMutations.enter(truncatedSym)
+      newCtx.typer.extMethodApply(truncatedRefTree, receiver, WildcardType)
+    }
+    if appliedTree.tpe.exists && !appliedTree.tpe.isError then
+      Some(replaceCallee(appliedTree, methodRefTree))
+    else
+      None
 
   def isApplicableExtensionMethod(methodRef: TermRef, receiverType: Type)(using Context): Boolean =
     methodRef.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&
