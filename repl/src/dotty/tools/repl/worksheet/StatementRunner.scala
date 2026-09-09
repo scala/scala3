@@ -16,13 +16,11 @@ import dotty.tools.repl.Rendering
 import dotty.tools.repl.Rendering.showUser
 import dotty.tools.repl.ReplBytecodeInstrumentation
 import dotty.tools.repl.ReplCompiler
-import dotty.tools.repl.ScalaClassLoader.fromURLsParallelCapable
 import dotty.tools.repl.ScalaClassLoader.*
 import dotty.tools.repl.State
 
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
-import java.net.URLClassLoader
 import java.nio.charset.StandardCharsets
 import scala.util.control.NonFatal
 
@@ -33,25 +31,13 @@ private final case class StatementOutcome(
 )
 
 private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
-  @volatile private var runtime: Option[(URLClassLoader, Rendering)] = None
-
   @volatile private var cancelRequested = false
 
   def beginEvaluation(): Unit = cancelRequested = false
 
   def isCancelled: Boolean = cancelRequested
 
-  private def rendering: Rendering = runtime match
-    case Some((_, loaded)) => loaded
-    case None =>
-      val context = startup.initialState.context
-      val parent = fromURLsParallelCapable(
-        context.platform.classPath(using context).asURLs,
-        getClass.getClassLoader
-      )
-      val loaded = new Rendering(Some(parent))
-      runtime = Some((parent, loaded))
-      loaded
+  private def rendering: Rendering = startup.driver.replRendering
 
   def addToClasspath(files: List[java.io.File], state: State): Unit =
     if files.nonEmpty then
@@ -133,16 +119,7 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
 
   def cancel(): Unit =
     cancelRequested = true
-    runtime.foreach: (_, loaded) =>
-      ReplBytecodeInstrumentation.setStopFlag(
-        loaded.classLoader()(using startup.initialState.context),
-        true
-      )
-
-  def close(): Unit =
-    runtime.foreach: (parent, loaded) =>
-      WorksheetClassLoaders.closeCreated(Option(loaded.myClassLoader).getOrElse(parent))
-    runtime = None
+    Option(rendering.myClassLoader).foreach(ReplBytecodeInstrumentation.setStopFlag(_, true))
 
 private object StatementRunner:
   private def capturing[A](body: => A): (A, String) =
