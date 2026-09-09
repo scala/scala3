@@ -22,7 +22,8 @@ private final class ReplStartup(settings: Array[String]):
           settings :+ "-Xrepl-interrupt-instrumentation:local",
           sink,
           Some(runtimeLoader)
-        )
+        ):
+          override protected def redirectOutput: Boolean = false
 
   val isUsable: Boolean = driver.replShouldStart
 
