@@ -313,6 +313,12 @@ object SpaceEngine {
     }
   }
 
+  /** If `unapp` is the synthetic extractor of a Java record, the record type, otherwise None */
+  private def javaRecordUnapplyParam(unapp: TermRef)(using Context): Option[Type] =
+    if unapp.symbol.is(Synthetic) then
+      unapp.widen.firstParamTypes.headOption.filter(_.classSymbol.isJavaRecord)
+    else None
+
   /** Is the unapply or unapplySeq irrefutable?
    *  @param  unapp   The unapply function reference
    */
@@ -323,6 +329,7 @@ object SpaceEngine {
     || (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))  // scala2 compatibility
     || unapplySeqTypeElemTp(unappResult).exists // only for unapplySeq
     || isProductMatch(unappResult.stripNamedTuple, argLen)
+    || javaRecordUnapplyParam(unapp).isDefined // a Java record's extractor always matches
     || extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition) <:< ConstantType(Constant(false))
     || unappResult.derivesFrom(defn.NonEmptyTupleClass)
     || unapp.symbol == defn.TupleXXL_unapplySeq // Fixes TupleXXL.unapplySeq which returns Some but declares Option
@@ -556,9 +563,15 @@ object SpaceEngine {
     def isStable(tp: TermRef) =
       !tp.symbol.is(ExtensionMethod) // The "prefix" of an extension method may be, but the receiver isn't, so exclude
       && tp.prefix.isStable
-    // always assume two TypeTest[S, T].unapply are the same if they are equal in types
-    (isStable(tp1) && isStable(tp2) || tp1.symbol == defn.TypeTest_unapply)
-    && tp1 =:= tp2
+    // The synthetic extractor of a Java record lives in a fresh anonymous class for
+    // each pattern, so its prefix is neither stable nor equal across patterns. Treat
+    // two such extractors as the same when they unapply the same record type.
+    (javaRecordUnapplyParam(tp1), javaRecordUnapplyParam(tp2)) match
+      case (Some(rec1), Some(rec2)) => rec1 =:= rec2
+      case _ =>
+        // always assume two TypeTest[S, T].unapply are the same if they are equal in types
+        (isStable(tp1) && isStable(tp2) || tp1.symbol == defn.TypeTest_unapply)
+        && tp1 =:= tp2
   }
 
   /** Return term parameter types of the extractor `unapp`.
@@ -892,6 +905,8 @@ object SpaceEngine {
         else if tp.isRef(defn.ConsType.symbol) then
           val body = params.map(doShow(_, flattenList = true)).filter(_.nonEmpty).mkString(", ")
           if flattenList then body else s"List($body)"
+        else if tp.classSymbol.isJavaRecord then
+          tp.typeConstructor.show + params.map(doShow(_)).mkString("(", ", ", ")")
         else
           val isUnapplySeq = fun.symbol.name eq nme.unapplySeq
           val paramsStr = params.map(doShow(_, flattenList = isUnapplySeq)).mkString("(", ", ", ")")
@@ -923,7 +938,7 @@ object SpaceEngine {
       }) ||
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnum) ||
-      classSym.is(Case) || tpw.isNamedTupleType ||
+      classSym.is(Case) || classSym.isJavaRecord || tpw.isNamedTupleType ||
       (tpw.isInstanceOf[TypeRef] && {
         val tref = tpw.asInstanceOf[TypeRef]
         tref.isUpperBoundedAbstract && isCheckable(tref.info.hiBound)
