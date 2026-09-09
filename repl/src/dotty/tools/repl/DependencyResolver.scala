@@ -55,9 +55,7 @@ object DependencyResolver:
     dep match
       case s"$org::$artifact:$version" => Some((org, s"${artifact}_3", version))
       case s"$org:$artifact:$version" => Some((org, artifact, version))
-      case _ =>
-        System.err.println("Unable to parse dependency \"" + dep + "\"")
-        None
+      case _ => None
 
   /** Resolve dependencies using Coursier Interface and return the classpath as a list of File objects */
   def resolveDependencies(

@@ -862,7 +862,9 @@ class ReplDriver(settings: Array[String],
   private def resolveAndAddDeps(depStrings: List[String])(using state: State): State =
     if depStrings.isEmpty then state
     else
-      val deps = depStrings.flatMap(DependencyResolver.parseDependency)
+      val (unparsed, deps) = depStrings.partitionMap: dep =>
+        DependencyResolver.parseDependency(dep).toRight(dep)
+      unparsed.foreach(dep => out.println(s"Unable to parse dependency '$dep'."))
       if deps.isEmpty then state
       else
         DependencyResolver.resolveDependencies(deps, state.repositories) match
