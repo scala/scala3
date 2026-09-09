@@ -16,7 +16,8 @@ import scala.annotation.internal.sharable
 object Annotations {
 
   def annotClass(tree: Tree)(using Context) =
-    if (tree.symbol.isConstructor) tree.symbol.owner
+    val sym = tree.symbol
+    if (sym.isConstructor) sym.owner
     else tree.tpe.typeSymbol
 
   abstract class Annotation extends Showable {

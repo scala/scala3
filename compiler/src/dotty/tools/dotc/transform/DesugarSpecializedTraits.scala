@@ -364,10 +364,14 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
     // TODO: Depending on how we ultimately organize the phasing
     // If we settle on using miniphases, this could be moved into transformDefDef and transformBlock.
     tree.foreachSubTree { 
-      case ddef: DefDef if ddef.symbol.isConstructor && !ddef.symbol.owner.is(Flags.Inline) => 
-        ddef.paramss.flatten.foreach(p => checkType(p.tpe, ddef.srcPos))
-      case ddef: DefDef if !ddef.symbol.isConstructor && !ddef.symbol.is(Flags.Inline) => 
-        ddef.paramss.flatten.foreach(p => checkType(p.tpe, ddef.srcPos))
+      case ddef: DefDef =>
+        val sym = ddef.symbol
+        if sym.isConstructor then
+          if !sym.owner.is(Flags.Inline) then
+            ddef.paramss.flatten.foreach(p => checkType(p.tpe, ddef.srcPos))
+        else
+          if !sym.is(Flags.Inline) then
+            ddef.paramss.flatten.foreach(p => checkType(p.tpe, ddef.srcPos))
       case AnonymousClassInstance(anon) =>
         def deandify(tp: Type): Iterator[Type] = tp match {
           case AndType(l, r) => deandify(l) ++ deandify(r)
@@ -897,7 +901,7 @@ object Specialization:
 
   def unapply(tpt: Tree)(using Context): Option[Specialization] = tpt match {
     case AppliedTypeTree(specializedTrait: Ident, concreteTypeTrees: List[Tree]) => 
-      Some(Specialization(specializedTrait.denot.symbol, concreteTypeTrees.map(_.tpe), tpt.span))
+      Some(Specialization(specializedTrait.symbol, concreteTypeTrees.map(_.tpe), tpt.span))
     case t: TypeTree => Specialization.unapply(t.tpe, t.span)
     case _ => None
   }
