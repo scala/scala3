@@ -498,6 +498,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
      * @see    https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.4
      */
     def getGenericSignature(sym: Symbol, descriptor: String | Null)(using Context): String | Null = {
+      val ogPhase = ctx.phase
       atPhase(erasurePhase) {
         // Finding the member's type is nontrivial because of erasure and how it interacts with other phases.
         def computeMemberType(): Type = {
@@ -534,17 +535,17 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
 
         if ctx.base.settings.XnoGenericSig.value then null
         else
-          val genSig = getGenericSignatureHelper(sym, computeMemberType())
+          val genSig = getGenericSignatureHelper(sym, computeMemberType(), ogPhase)
           if genSig == null || (descriptor != null && descriptor.contentEquals(genSig)) then null
           else genSig.toString
       }
     }
 
-    private def getGenericSignatureHelper(sym: Symbol, memberTpe: Type)(using Context): java.lang.StringBuilder | Null = {
+    private def getGenericSignatureHelper(sym: Symbol, memberTpe: Type, ogPhase: Phase)(using Context): java.lang.StringBuilder | Null = {
       // We must ensure all classes used in generic signatures are known to the loader so they can later be resolved
       // if necessary; and to do so, we must have a context with flattened names, because the callback is called with an erasure-time context.
       // The one exception is `scala.Array`, which can end up in a signature like `class C extends T[Array]` with `trait T[C[_]]`.
-      lazy val loadingCtx = ctx.withPhase(flattenPhase.next)
+      lazy val loadingCtx = ctx.withPhase(ogPhase)
       val jsOpt = GenericSignatures.javaSig(sym, memberTpe, c => {
         if c != defn.ArrayClass then bTypeLoader.classBTypeFromSymbol(c)(using loadingCtx)
       })
@@ -591,7 +592,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
         val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
         val erasedMemberType = ElimErasedValueType.elimEVT(TypeErasure.transformInfo(sym, memberTpe))
         if (erasedMemberType =:= sym.denot.info)
-          val gensig = getGenericSignatureHelper(sym, memberTpe)
+          val gensig = getGenericSignatureHelper(sym, memberTpe, ctx.phase)
           if gensig == null || (descriptor != null && descriptor.contentEquals(gensig)) then null
           else gensig.toString
         else null
