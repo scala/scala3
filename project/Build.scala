@@ -152,6 +152,11 @@ object Build {
     // Do not cut off the bottom of large stack traces (default is 1024)
     javaOptions ++= "-XX:MaxJavaStackTraceDepth=1000000" :: Nil,
 
+    // The default JVM thread stack (1 MiB on most platforms) is too small for the deep
+    // (but finite) recursion in the inliner when compiling tests with many nested inlines
+    // (see tests/pos/26887.scala). Use a slightly larger stack in all forked processes.
+    javaOptions ++= "-Xss2m" :: Nil,
+
     excludeLintKeys ++= Set(
       // We set these settings in `commonSettings`, if a project
       // uses `commonSettings` but overrides `unmanagedSourceDirectories`,
@@ -1226,9 +1231,7 @@ object Build {
           ))
           .flatMap(_.relativeTo(baseDirectory.value / "src")).toSet
 
-        files.filterNot(_.getPath().contains("BoxesRunTime.scala"))
-             .filterNot(_.getPath().contains("ScalaNumber.scala"))
-             .filterNot(file =>
+        files.filterNot(file =>
           file.relativeTo((`scala-library-bootstrapped` / baseDirectory).value / "src")
             .exists(overwrittenSources.contains))
 
