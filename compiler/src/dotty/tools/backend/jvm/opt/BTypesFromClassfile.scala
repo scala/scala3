@@ -166,8 +166,9 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTyp
   
   /**
    * Build the InlineInfo for a class. For Scala classes, the information is stored in the
-   * inline info attribute. If the attribute is missing, the InlineInfo is built using the
-   * metadata available in the classfile (ACC_FINAL flags, etc.).
+   * inline info attribute. If the attribute is missing or is an empty stub (libraries compiled
+   * without `-opt:inline`), the InlineInfo is built using the metadata available in the classfile
+   * (ACC_FINAL flags, etc.).
    */
   private def inlineInfoFromClassfile(classNode: ClassNode, moduleNode: Option[ModuleNode]): InlineInfo = {
     def fromClassfileAttribute: Option[InlineInfo] = {
@@ -206,6 +207,11 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTyp
       InlineInfo(isFinalClass, sam, methodInfos, warning, isAccessible)
     }
 
-    fromClassfileAttribute.getOrElse(fromClassfileWithoutAttribute)
+    // Libraries compiled without -opt:inline still get a Scala3InlineInfo stub
+    // (version + flags 0 + zero methods, isAccessible=false). Trusting that
+    // attribute hides real methods and blocks inlining (#27010 / OptimizationBytecodeTests).
+    fromClassfileAttribute
+      .filter(_.methodInfos.nonEmpty)
+      .getOrElse(fromClassfileWithoutAttribute)
   }
 }
