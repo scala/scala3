@@ -39,7 +39,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
     val ctx = {
       val ctx0 = QuotesCache.init(initCtx.fresh)
       val ctx1 = setup(settings.compilerArgs.toArray :+ "dummy.scala", ctx0).get._2
-      setCompilerSettings(ctx1.fresh.setSetting(ctx1.settings.outputDir, outDir), settings)
+      ctx1.fresh.setSetting(ctx1.settings.outputDir, outDir)
     }
 
     val compiledExpr =
@@ -89,10 +89,5 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
     val ictx = contextBase.initialCtx
     ictx.settings.classpath.update(ClasspathFromClassloader(appClassloader))(using ictx)
     ictx
-
-  private def setCompilerSettings(ctx: FreshContext, settings: Compiler.Settings): ctx.type =
-    // An error in the generated code is a bug in the compiler
-    // Setting the throwing reporter however will report any exception
-    ctx.setReporter(new ThrowingReporter(ctx.reporter))
 
 end QuoteDriver

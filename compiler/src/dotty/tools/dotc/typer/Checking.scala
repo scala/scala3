@@ -1265,7 +1265,7 @@ trait Checking {
 
   /** If `tree` is an application of a new-style implicit conversion (using the apply
    *  method of a `scala.Conversion` instance), check that the expected type is
-   *  annotated with @$into or that implicit conversions are enabled.
+   *  annotated with @\$into or that implicit conversions are enabled.
    */
   def checkImplicitConversionUseOK(tree: Tree, expected: Type)(using Context): Unit =
     val sym = tree.symbol

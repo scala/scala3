@@ -43,3 +43,4 @@ spurious-overload.scala
 tailrec-synchronized.scala
 tailrec.scala
 traitParams.scala
+outer-synchronized.scala

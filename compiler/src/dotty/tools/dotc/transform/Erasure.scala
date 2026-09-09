@@ -409,17 +409,23 @@ object Erasure {
 
     /** The following code:
      *
+     *  ```
      *      val f: Function1[Int, Any] = x => ...
+     *  ```
      *
      *  results in the creation of a closure and an implementation method in the typer:
      *
-     *      def $anonfun(x: Int): Any = ...
-     *      val f: Function1[Int, Any] = closure($anonfun)
+     *  ```
+     *      def \$anonfun(x: Int): Any = ...
+     *      val f: Function1[Int, Any] = closure(\$anonfun)
+     *  ```
      *
-     *  Notice that `$anonfun` takes a primitive as argument, but the SAM (Single Abstract Method)
+     *  Notice that `\$anonfun` takes a primitive as argument, but the SAM (Single Abstract Method)
      *  of `Function1` after erasure is:
      *
+     *  ```
      *      def apply(x: Object): Object
+     *  ```
      *
      *  which takes a reference as argument. Hence, some form of adaptation is
      *  required. The most reliable way to do this adaptation is to replace the
@@ -427,8 +433,10 @@ object Erasure {
      *  original method with appropriate boxing/unboxing. For our example above,
      *  this would be:
      *
-     *      def $anonfun$adapted(x: Object): Object = $anonfun(BoxesRunTime.unboxToInt(x))
-     *      val f: Function1 = closure($anonfun$adapted)
+     *  ```
+     *      def \$anonfun$adapted(x: Object): Object = \$anonfun(BoxesRunTime.unboxToInt(x))
+     *      val f: Function1 = closure(\$anonfun\$adapted)
+     *  ```
      *
      *  But in some situations we can avoid generating this bridge, either
      *  because the runtime can perform auto-adaptation, or because we can
@@ -1109,7 +1117,8 @@ object Erasure {
     }
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
-      val cdef1 = typedSpecializedClassDef(cdef, cls)
+      val cdef1 = if ctx.compilationUnit.hasSpecializations then typedSpecializedClassDef(cdef, cls) else cdef
+
       val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef1, cls): @unchecked
       // In the case where a trait extends a class, we need to strip any non trait class from the signature
       // and accept the first one (see tests/run/mixins.scala)
