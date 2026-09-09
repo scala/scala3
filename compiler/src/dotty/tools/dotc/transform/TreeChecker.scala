@@ -129,7 +129,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     val checkingCtx = ctx
         .fresh
-        .setReporter(new ThrowingReporter(ctx.reporter))
+        .setReporter(ctx.reporter)
 
     val checker = inContext(ctx) {
       new Checker(previousPhases(phasesToRun.toList))
@@ -884,16 +884,16 @@ object TreeChecker {
       // See issue: #17009
       val checkingCtx = ctx
         .fresh
-        .setReporter(new ThrowingReporter(ctx.reporter))
+        .setReporter(ctx.reporter)
         .setPhase(ctx.base.inliningPhase)
 
       val phases = ctx.base.allPhases.toList
       val treeChecker = new LocalChecker(previousPhases(phases))
 
-      def reportMalformedMacroTree(msg: String | Null, err: Throwable) =
+      def reportMalformedMacroTree(msg: String | Null, err: Throwable | Null) =
         val stack =
           if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
-          else if err.getStackTrace == null then "  no stacktrace"
+          else if err == null || err.getStackTrace == null then "  no stacktrace"
           else err.getStackTrace.mkString("  ", "  \n", "")
         report.error(
           em"""Malformed tree was found while expanding macro with -Xcheck-macros.
@@ -912,12 +912,14 @@ object TreeChecker {
           original
         )
 
-      try treeChecker.typed(expansion)(using checkingCtx)
+      val previousErrorCount = checkingCtx.reporter.errorCount
+      try
+        treeChecker.typed(expansion)(using checkingCtx)
+        for error <- checkingCtx.reporter.allErrors.drop(previousErrorCount)
+          do reportMalformedMacroTree(error.message, null)
       catch
         case err: java.lang.AssertionError =>
-          reportMalformedMacroTree(err.getMessage(), err)
-        case err: UnhandledError =>
-          reportMalformedMacroTree(err.diagnostic.message, err)
+          reportMalformedMacroTree(err.getMessage, err)
 
   private[TreeChecker] def previousPhases(phases: List[Phase])(using Context): List[Phase] = phases match {
     case (phase: MegaPhase) :: phases1 =>

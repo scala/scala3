@@ -1112,6 +1112,9 @@ class Inliner(val call: tpd.Tree)(using Context):
               case tp: TypeRef if tp.typeSymbol.isOpaqueAlias =>
                 val sym = tp.typeSymbol
                 apply(sym.opaqueAlias.asSeenFrom(tp.prefix, sym.owner))
+              case tp: TypeRef if tp.typeSymbol.isAliasType =>
+                val tp1 = tp.dealias
+                if tp1 eq tp then tp else apply(tp1)
               case _ =>
                 mapOver(tp)
 

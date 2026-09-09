@@ -32,7 +32,7 @@ import dotty.tools.dotc.util.SrcPos
  *  @version 1.0
  *
  */
-trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes) extends BCodeSkelBuilder {
+trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder {
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
@@ -1873,13 +1873,14 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
 
       val bsmArgs = bsmArgs0 ++ bsmArgs1 ++ bsmArgs2
 
-      val metafactory =
-        if (flags != 0)
-          bTypes.jliLambdaMetaFactoryAltMetafactoryHandle // altMetafactory required to be able to pass the flags and additional arguments if needed
-        else
-          bTypes.jliLambdaMetaFactoryMetafactoryHandle
-
-      bc.invokedynamic(methodName, desc, metafactory, bsmArgs)
+      if flags == 0 then
+        bc.invokedynamic(methodName, desc, bTypes.jliLambdaMetaFactoryMetafactoryHandle, bsmArgs)
+      else
+        // altMetafactory required to be able to pass the flags and additional arguments if needed
+        bc.invokedynamic(methodName, desc, bTypes.jliLambdaMetaFactoryAltMetafactoryHandle, bsmArgs)
+        // collect serializable lambdas
+        if isSerializable then
+          serializableLambdas ::= targetHandle
 
       generatedType
     }

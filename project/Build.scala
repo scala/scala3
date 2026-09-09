@@ -1226,9 +1226,7 @@ object Build {
           ))
           .flatMap(_.relativeTo(baseDirectory.value / "src")).toSet
 
-        files.filterNot(_.getPath().contains("BoxesRunTime.scala"))
-             .filterNot(_.getPath().contains("ScalaNumber.scala"))
-             .filterNot(file =>
+        files.filterNot(file =>
           file.relativeTo((`scala-library-bootstrapped` / baseDirectory).value / "src")
             .exists(overwrittenSources.contains))
 
