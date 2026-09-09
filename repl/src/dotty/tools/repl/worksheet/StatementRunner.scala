@@ -20,7 +20,9 @@ import dotty.tools.repl.ScalaClassLoader.*
 import dotty.tools.repl.State
 
 import java.io.ByteArrayOutputStream
+import java.io.InterruptedIOException
 import java.io.PrintStream
+import java.nio.channels.ClosedByInterruptException
 import java.nio.charset.StandardCharsets
 import scala.util.control.NonFatal
 
@@ -73,7 +75,7 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
         case Left(exception) =>
           val cause = Rendering.rootCause(exception)
           val message =
-            if cause.isInstanceOf[ThreadDeath] then WorksheetDiagnostic.cancelled
+            if isCancellation(cause) then WorksheetDiagnostic.cancelled
             else
               s"${cause.getClass.getName}: ${Option(cause.getMessage).getOrElse("")}"
                 .stripSuffix(": ")
@@ -88,6 +90,12 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
               )
             )
           )
+
+  private def isCancellation(cause: Throwable): Boolean = cause match
+    case _: ThreadDeath => true
+    case _: InterruptedException | _: ClosedByInterruptException | _: InterruptedIOException =>
+      cancelRequested
+    case _ => false
 
   private def binders(objectIndex: Int)(using Context): List[RenderedBinder] =
     val renderPhase =
