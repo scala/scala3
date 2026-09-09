@@ -1317,8 +1317,10 @@ object Types extends TypeUtils {
     /** `this & that`, but handle CyclicReferences by falling back to `safe_&`.
      */
     def recoverable_&(that: Type)(using Context): Type =
-      try this & that
-      catch {
+      try {
+        ctx.handleRecursive("construction of & with", that):
+          this & that
+      } catch {
         case ex: CyclicReference => this safe_& that
           // A test case where this happens is tests/pos/i536.scala.
           // The & causes a subtype check which calls baseTypeRef again with the same
