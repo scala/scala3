@@ -27,7 +27,7 @@ private[worksheet] final class WorksheetSession(
         try evaluateParsed(filename, text)
         finally
           evaluating = None
-          Thread.interrupted()
+          if current.runner.isCancelled then Thread.interrupted()
 
       evaluated.copy(
         diagnostics =
