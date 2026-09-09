@@ -9,13 +9,12 @@ import dotty.tools.dotc.core.Decorators.{toTermName, toTypeName}
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
-import dotty.tools.io.{Directory, File, Path}
-
+import dotty.tools.nio.*
 import dotty.tools.vulpix.TestConfiguration
-
 import org.junit.Test
 import org.junit.Assert.{assertEquals, assertFalse, fail}
-import dotty.tools.io.AbstractFile
+
+import scala.io.Codec
 
 class CommentPicklingTest {
 
@@ -79,29 +78,29 @@ class CommentPicklingTest {
   }
 
   private def compileAndUnpickle[T](sources: List[String])(fn: (List[tpd.Tree], Context) => T) = {
-    Directory.inTempDirectory { tmp =>
+    val tmp = FileContainer.createTemporaryOnDisk("comment-pickling-test")
+    try
       val sourceFiles = sources.zipWithIndex.map {
         case (src, id) =>
-          val path = tmp./(File(s"Src$id.scala")).toAbsolute
-          path.writeAll(src)
-          path.toString
+          val path = tmp.getOrCreateFile(s"Src$id.scala")
+          path.writeText(src, Codec.UTF8)
+          path.path
       }
 
-      val out = tmp./("out")
-      out.createDirectory()
+      val out = tmp.getOrCreateContainer("out")
 
-      val options = compileOptions.and("-d", out.toAbsolute.toString).and(sourceFiles*)
+      val options = compileOptions.and("-d", out.path).and(sourceFiles *)
       val reporter = TestReporter.reporter(System.out, logLevel = ERROR)
       Main.process(options.all, reporter)
       assertFalse("Compilation failed.", reporter.hasErrors)
 
-      val tastyFiles = out.walkFilter(f => f.isFile && f.ext.isTasty).map(_.toFile).toList
+      val tastyFiles = out.recursiveEntries.collect{ case f: File if f.extension.isTasty => f }.toList
       val unpicklingOptions = unpickleOptions
-        .withClasspath(out.toAbsolute.toString)
+        .withClasspath(out.path)
         .and("dummy") // Need to pass a dummy source file name
       val unpicklingDriver = new UnpicklingDriver
       unpicklingDriver.unpickle(unpicklingOptions.all, tastyFiles)(fn)
-    }
+    finally tmp.deleteRecursively()
   }
 
   private class UnpicklingDriver extends Driver {
@@ -114,7 +113,7 @@ class CommentPicklingTest {
       implicit val ctx: Context = setup(args, initCtx).map(_._2).getOrElse(initCtx)
       ctx.initialize()
       val trees = files.flatMap { f =>
-        val unpickler = new DottyUnpickler(AbstractFile.getFile(f.jpath).nn, isBestEffortTasty = false)
+        val unpickler = new DottyUnpickler(dotty.tools.io.AbstractFile.getFile(f.path).nn, isBestEffortTasty = false)
         unpickler.enter(roots = Set.empty)
         unpickler.rootTrees(using ctx)
       }

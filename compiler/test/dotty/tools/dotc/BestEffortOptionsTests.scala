@@ -7,7 +7,6 @@ import reporting.TestReporter
 
 import scala.concurrent.duration.*
 
-import java.io.{File => JFile}
 import org.junit.{AfterClass, Test}
 
 class BestEffortOptionsTests {
@@ -26,7 +25,7 @@ class BestEffortOptionsTests {
     // > scalac -from-tasty -Ywith-best-effort-tasty META_INF/best-effort/<betasty>
 
     given TestGroup = TestGroup("negTestFromBestEffortTasty")
-    compileBestEffortTastyInDir(s"tests${JFile.separator}neg", bestEffortBaselineOptions,
+    compileBestEffortTastyInDir(s"tests/neg", bestEffortBaselineOptions,
       picklingFilter = FileFilter.exclude(TestSources.negBestEffortPicklingExcludelisted),
       unpicklingFilter = FileFilter.exclude(TestSources.negBestEffortUnpicklingExcludelisted)
     ).checkNoCrash()
@@ -35,7 +34,7 @@ class BestEffortOptionsTests {
   // projects depend on the best effort tasty files generated with the Best Effort dir option
   @Test def bestEffortIntegrationTest: Unit =
     given TestGroup = TestGroup("bestEffortIntegrationTests")
-    compileBestEffortIntegration(s"tests${JFile.separator}best-effort", bestEffortBaselineOptions)
+    compileBestEffortIntegration(s"tests/best-effort", bestEffortBaselineOptions)
       .noCrashWithCompilingDependencies()
 }
 
