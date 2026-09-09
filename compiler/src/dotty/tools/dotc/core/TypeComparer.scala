@@ -3302,7 +3302,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case AppliedType(_, args) => args
           cls.typeParams.sizeCompare(typeArgs) == 0
 
-        def existsCommonBaseTypeWithDisjointArguments: Boolean =
+        def existsCommonBaseTypeWithDisjointArguments: Boolean = ctx.handleRecursive("check if there is a common base type with disjoint arguments of", () => i"$tp1 $tp2"):
           if !typeArgsMatch(tp1, cls1) || !typeArgsMatch(tp2, cls2) then
             /* We have an unapplied polymorphic class type or otherwise not star-kinded one.
              * This does not happen with match types, but happens when coming from the Space engine.
