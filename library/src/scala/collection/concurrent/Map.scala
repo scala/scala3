@@ -93,6 +93,19 @@ trait Map[K, V] extends scala.collection.mutable.Map[K, V] {
     */
   def replace(k: K, v: V): Option[V]
 
+  /** Returns the value associated with the given key, if present; otherwise
+   *  computes `defaultValue`, stores it under the key, and returns it.
+   *
+   *  This is not atomic. If another thread inserts a value for `key` after the
+   *  initial lookup fails but before the computed `defaultValue` is stored, that
+   *  concurrently inserted value is returned instead and the computed
+   *  `defaultValue` is discarded. If such a value is inserted and removed again
+   *  in that window, `defaultValue` is stored and returned after all.
+   *
+   *  @param key the key whose associated value is to be retrieved or updated
+   *  @param defaultValue the value to compute and store if `key` is absent;
+   *                      not evaluated if `key` is already present
+   */
   override def getOrElseUpdate(key: K, @deprecatedName("op", since="2.13.13") defaultValue: => V): V = get(key) match {
     case Some(v) => v
     case None =>
