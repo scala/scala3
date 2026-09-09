@@ -1370,9 +1370,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     /** Builds a `CompilationTest` which keeps the generated output files
      *
-     *  This is needed for tests like `tastyBootstrap` which relies on first
-     *  compiling a certain part of the project and then compiling a second
-     *  part which depends on the first
+     *  This is needed for tests like idempotency tests that rely on checking output files.
      */
     def keepOutput: CompilationTest =
       new CompilationTest(targets, times, false, threadLimit, shouldFail, shouldSuppressOutput)
@@ -1425,7 +1423,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     def aggregateTests(tests: CompilationTest*): CompilationTest =
       assert(tests.nonEmpty)
       def aggregate(test1: CompilationTest, test2: CompilationTest) =
-        require(test1.name == test2.name, s"can't combine tests that have different names")
+        require(test1.name == test2.name, s"can't combine tests that have different names (${test1.name} ${test2.name})")
         require(test1.times == test2.times, "can't combine tests that are meant to be benchmark compiled")
         require(test1.shouldDelete == test2.shouldDelete, "can't combine tests that differ on deleting output")
         require(test1.shouldFail == test2.shouldFail, "can't combine tests that have different expectations on outcome")
