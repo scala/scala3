@@ -223,5 +223,6 @@ Positions (138 bytes, starting from <elided base index>):
   source paths:
      0: 35 [<elided source file name>]
 
-Attributes (2 bytes, starting from <elided base index>):
+Attributes (3 bytes, starting from <elided base index>):
+  EXPLICITNULLSattr
   SOURCEFILEattr 35 [<elided source file name>]

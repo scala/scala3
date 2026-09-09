@@ -174,7 +174,7 @@ class SaveTests extends ReplTest, SessionFileHelpers {
     } andThen {
       storedOutput()
       run("s.trim")
-      assertEquals(List("val res0: String = \":help\""), lines())
+      assertEquals(List("val res0: (String)? = \":help\""), lines())
     }
 
   @Test def roundTripsSeparatorInStringViaLoad =

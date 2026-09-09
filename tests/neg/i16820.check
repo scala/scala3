@@ -17,7 +17,7 @@
   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |           missing argument list for method toRealPath in trait Path
   |
-  |             def toRealPath(x$0: java.nio.file.LinkOption*): java.nio.file.Path
+  |             def toRealPath(x$0: ((java.nio.file.LinkOption)?*)?): (java.nio.file.Path)?
   |
   | longer explanation available when compiling with `-explain`
 -- [E178] Type Error: tests/neg/i16820.scala:11:14 ---------------------------------------------------------------------

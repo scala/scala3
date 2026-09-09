@@ -96,6 +96,10 @@
     | resolved to calls on Predef or on imported methods. This might not be what
     | you intended.
      -------------------------------------------------------------------------------------------------------------------
+-- Deprecation Warning: tests/warn/i17266.scala:130:4 ------------------------------------------------------------------
+130 |  1.hashCode() // warn: Any.hashCode is deprecated under explicit nulls
+    |  ^^^^^^^^^^
+    |method hashCode in class Any is deprecated since 3.10.0: Any.hashCode does not handle `null` nor equality of primitive numbers; use ## instead
 -- [E181] Potential Issue Warning: tests/warn/i17266.scala:134:2 -------------------------------------------------------
 134 |  synchronized { // warn
     |  ^^^^^^^^^^^^
