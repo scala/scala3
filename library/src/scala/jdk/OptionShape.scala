@@ -41,6 +41,7 @@ sealed abstract class OptionShape[A, O] {
 }
 
 object OptionShape {
+  /** An `OptionShape` converting options of `Double` to `OptionalDouble`. */
   implicit val doubleOptionShape: OptionShape[Double, OptionalDouble] = new OptionShape[Double, OptionalDouble] {
     def fromJava(o: Optional[Double]): OptionalDouble =
       if (o.isPresent) OptionalDouble.of(o.get) else OptionalDouble.empty
@@ -50,8 +51,10 @@ object OptionShape {
       case _ => OptionalDouble.empty
     }
   }
+  /** An `OptionShape` converting options of boxed `java.lang.Double` to `OptionalDouble`, unboxing the value if present. */
   implicit val jDoubleOptionShape: OptionShape[jl.Double, OptionalDouble] = doubleOptionShape.asInstanceOf[OptionShape[jl.Double, OptionalDouble]]
 
+  /** An `OptionShape` converting options of `Int` to `OptionalInt`. */
   implicit val intOptionShape: OptionShape[Int, OptionalInt] = new OptionShape[Int, OptionalInt] {
     def fromJava(o: Optional[Int]): OptionalInt =
       if (o.isPresent) OptionalInt.of(o.get) else OptionalInt.empty
@@ -61,8 +64,10 @@ object OptionShape {
       case _ => OptionalInt.empty
     }
   }
+  /** An `OptionShape` converting options of boxed `java.lang.Integer` to `OptionalInt`, unboxing the value if present. */
   implicit val jIntegerOptionShape: OptionShape[jl.Integer, OptionalInt] = intOptionShape.asInstanceOf[OptionShape[jl.Integer, OptionalInt]]
 
+  /** An `OptionShape` converting options of `Long` to `OptionalLong`. */
   implicit val longOptionShape: OptionShape[Long, OptionalLong] = new OptionShape[Long, OptionalLong] {
     def fromJava(o: Optional[Long]): OptionalLong =
       if (o.isPresent) OptionalLong.of(o.get) else OptionalLong.empty
@@ -72,5 +77,6 @@ object OptionShape {
       case _ => OptionalLong.empty
     }
   }
+  /** An `OptionShape` converting options of boxed `java.lang.Long` to `OptionalLong`, unboxing the value if present. */
   implicit val jLongOptionShape: OptionShape[jl.Long, OptionalLong] = longOptionShape.asInstanceOf[OptionShape[jl.Long, OptionalLong]]
 }
