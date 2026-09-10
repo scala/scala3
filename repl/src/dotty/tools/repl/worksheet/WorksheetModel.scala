@@ -81,7 +81,6 @@ private[worksheet] object WorksheetPosition:
   def fromOffsets(source: SourceFile, start: Int, end: Int): WorksheetPosition =
     fromCompiler(source.atSpan(Span(start, end)))
 
-/** Compiler options as the worksheet needs to read and rewrite them. */
 private[worksheet] object WorksheetOptions:
   private val classpathOptions = Set("-classpath", "-cp", "--class-path")
 
