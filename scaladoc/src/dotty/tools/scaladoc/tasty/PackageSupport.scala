@@ -20,6 +20,7 @@ trait PackageSupport:
           case CCImport() => ccFlag = true
           case _ =>
       }
+      if ccEnabled then ctx.ccFeatureDetected = true
       (name, Member(name, "", pck.symbol.dri, Kind.Package))
 
     def parsePackageObject(pckObj: ClassDef): (String, Member) =

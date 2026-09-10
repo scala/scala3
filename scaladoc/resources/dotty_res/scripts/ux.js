@@ -506,6 +506,20 @@ window.addEventListener("popstate", (e) => {
 var zoom;
 var transform;
 
+/* The diagram's node sizes are measured when it is first rendered, so a
+ * feature toggle (which changes the visible signature fragments) invalidates
+ * the layout: drop it and re-render if it is currently shown. */
+window.addEventListener("feature-toggled", () => {
+  const graph = document.querySelector("svg#graph");
+  const diagram = document.getElementById("inheritance-diagram");
+  if (graph != null && graph.children.length > 0) {
+    graph.innerHTML = "";
+    if (diagram != null && diagram.classList.contains("shown")) {
+      showGraph();
+    }
+  }
+});
+
 function showGraph() {
   document.getElementById("inheritance-diagram").classList.add("shown");
   const graph = document.querySelector("svg#graph");
