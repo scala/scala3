@@ -15,6 +15,12 @@ package scala
 import scala.language.`2.13`
 
 object Product1 {
+  /** Returns the given product wrapped in a [[scala.Some]], making `Product1` usable
+   *  as an extractor in a pattern match. The extraction always succeeds.
+   *
+   *  @tparam T1 the type of the single component of the product
+   *  @param x the product to extract from
+   */
   def unapply[T1](x: Product1[T1]): Option[Product1[T1]] =
     Some(x)
 }

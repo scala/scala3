@@ -211,16 +211,35 @@ object Predef extends LowPriorityImplicits {
   type Manifest[T]      = scala.reflect.Manifest[T]
   // TODO undeprecated until Scala reflection becomes non-experimental
   // @deprecated("use `scala.reflect.ClassTag` (to capture erasures) or scala.reflect.runtime.universe.TypeTag (to capture types) or both instead", "2.10.0")
+  /** An alias for the [[scala.reflect.Manifest]] companion object, which provides
+   *  manifests for the standard value types and factory methods such as `classType`
+   *  and `arrayType` for constructing others.
+   */
   val Manifest          = scala.reflect.Manifest
   // TODO undeprecated until Scala reflection becomes non-experimental
   // @deprecated("this notion doesn't have a corresponding concept in 2.10, because scala.reflect.runtime.universe.TypeTag can capture arbitrary types. Use type tags instead of manifests, and there will be no need in opt manifests.", "2.10.0")
+  /** An alias for [[scala.reflect.NoManifest]], the [[OptManifest]] value
+   *  indicating that no manifest is available for a type.
+   */
   val NoManifest        = scala.reflect.NoManifest
 
   // TODO undeprecated until Scala reflection becomes non-experimental
   // @deprecated("use scala.reflect.classTag[T] and scala.reflect.runtime.universe.typeTag[T] instead", "2.10.0")
+  /** Summons the [[Manifest]] for type `T`. Usually, the argument is not passed explicitly.
+   *
+   *  @tparam T the type whose `Manifest` is summoned
+   *  @param m the implicit `Manifest` for `T`
+   *  @return the `Manifest` describing the erasure and type arguments of `T`
+   */
   def manifest[T](implicit m: Manifest[T]): Manifest[T]          = m
   // TODO undeprecated until Scala reflection becomes non-experimental
   // @deprecated("this notion doesn't have a corresponding concept in 2.10, because scala.reflect.runtime.universe.TypeTag can capture arbitrary types. Use type tags instead of manifests, and there will be no need in opt manifests.", "2.10.0")
+  /** Summons the [[OptManifest]] for type `T`. Usually, the argument is not passed explicitly.
+   *
+   *  @tparam T the type whose `OptManifest` is summoned
+   *  @param m the implicit `OptManifest` for `T`
+   *  @return the `OptManifest` for `T`, which is [[NoManifest]] when no full `Manifest` is available
+   */
   def optManifest[T](implicit m: OptManifest[T]): OptManifest[T] = m
 
   // Minor variations on identity functions
@@ -407,12 +426,33 @@ object Predef extends LowPriorityImplicits {
    */
   @deprecated("Use `->` extension method instead.", since = "3.10.0")
   final class ArrowAssoc[A](private val self: A) extends AnyVal {
+    /** Returns a two-element tuple with the wrapped value as its first element
+     *  and `y` as its second.
+     *
+     *  Written infix, `a -> b` is a more readable equivalent of `(a, b)`, most
+     *  commonly used for the key/value pairs passed to `Map` factories.
+     *
+     *  @tparam B the type of `y`
+     *  @param y the value to use as the second element of the resulting tuple
+     */
     @deprecated("Use `->` extension method instead.", since = "3.10.0")
     @inline def -> [B](y: B): (A, B) = (self, y)
+    /** Returns a two-element tuple with the wrapped value as its first element
+     *  and `y` as its second, exactly like `->`.
+     *
+     *  @tparam B the type of `y`
+     *  @param y the value to use as the second element of the resulting tuple
+     */
     @deprecated("Use `->` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", "2.13.0")
     def →[B](y: B): (A, B) = ->(y)
   }
 
+  /** Wraps a value so that the pair-construction operators `->` and `→` can be applied to it.
+   *
+   *  @tparam A the type of the left-hand side of the arrow association
+   *  @param self the value to use as the first element of the resulting tuple
+   *  @return an [[ArrowAssoc]] wrapping `self`
+   */
   @deprecated("Use `->` extension method instead.", since = "3.10.0")
   // no longer implicit, but direct calls should still resolve.
   final def ArrowAssoc[A >: Nothing <: Any](self: A): ArrowAssoc[A] = new ArrowAssoc[A](self)
@@ -424,9 +464,31 @@ object Predef extends LowPriorityImplicits {
    *  @param self the value to check postconditions against
    */
   implicit final class Ensuring[A](private val self: A) extends AnyVal {
+    /** Tests a postcondition, throwing an `AssertionError` if it does not hold.
+     *
+     *  @param cond the postcondition to test
+     *  @return the value on which `ensuring` was invoked, unchanged
+     */
     def ensuring(cond: Boolean): A = { assert(cond); self }
+    /** Tests a postcondition, throwing an `AssertionError` including `msg` if it does not hold.
+     *
+     *  @param cond the postcondition to test
+     *  @param msg a value to include in the failure message
+     *  @return the value on which `ensuring` was invoked, unchanged
+     */
     def ensuring(cond: Boolean, msg: => Any): A = { assert(cond, msg); self }
+    /** Tests a postcondition on the value, throwing an `AssertionError` if `cond` does not hold for it.
+     *
+     *  @param cond the predicate applied to the value
+     *  @return the value on which `ensuring` was invoked, unchanged
+     */
     def ensuring(cond: A => Boolean): A = { assert(cond(self)); self }
+    /** Tests a postcondition on the value, throwing an `AssertionError` including `msg` if `cond` does not hold for it.
+     *
+     *  @param cond the predicate applied to the value
+     *  @param msg a value to include in the failure message
+     *  @return the value on which `ensuring` was invoked, unchanged
+     */
     def ensuring(cond: A => Boolean, msg: => Any): A = { assert(cond(self), msg); self }
   }
 
@@ -463,9 +525,22 @@ object Predef extends LowPriorityImplicits {
    *  @param sequenceOfChars the indexed sequence of characters to wrap as a `CharSequence`
    */
   final class SeqCharSequence(sequenceOfChars: scala.collection.IndexedSeq[Char]) extends CharSequence {
+    /** Returns the number of characters in the wrapped sequence. */
     def length: Int                                     = sequenceOfChars.length
+    /** Returns the character at position `index` of the wrapped sequence.
+     *
+     *  @param index the zero-based position of the character to retrieve
+     *  @throws IndexOutOfBoundsException if `index` is negative or not less than `length`
+     */
     def charAt(index: Int): Char                        = sequenceOfChars(index)
+    /** Returns the characters from `start` (inclusive) to `end` (exclusive) as a `CharSequence`.
+     *
+     *  @param start the position of the first character of the subsequence
+     *  @param end the position one past the last character of the subsequence
+     *  @return a new `SeqCharSequence` over a slice of the wrapped sequence
+     */
     def subSequence(start: Int, end: Int): CharSequence = new SeqCharSequence(sequenceOfChars.slice(start, end))
+    /** Returns the wrapped characters concatenated into a `String`. */
     override def toString()                             = sequenceOfChars.mkString
   }
 
@@ -483,9 +558,22 @@ object Predef extends LowPriorityImplicits {
    *  @param arrayOfChars the array of characters to wrap as a `CharSequence`
    */
   final class ArrayCharSequence(arrayOfChars: Array[Char]) extends CharSequence {
+    /** Returns the number of characters in the wrapped array. */
     def length: Int                                     = arrayOfChars.length
+    /** Returns the character at position `index` of the wrapped array.
+     *
+     *  @param index the zero-based position of the character to retrieve
+     *  @throws ArrayIndexOutOfBoundsException if `index` is negative or not less than `length`
+     */
     def charAt(index: Int): Char                        = arrayOfChars(index)
+    /** Returns the characters from `start` (inclusive) to `end` (exclusive) as a `CharSequence`.
+     *
+     *  @param start the position of the first character of the subsequence
+     *  @param end the position one past the last character of the subsequence
+     *  @return a [[scala.runtime.ArrayCharSequence]] viewing that range of the wrapped array, without copying it
+     */
     def subSequence(start: Int, end: Int): CharSequence = new runtime.ArrayCharSequence(arrayOfChars, start, end)
+    /** Returns the wrapped characters concatenated into a `String`. */
     override def toString()                             = arrayOfChars.mkString
   }
 
@@ -547,24 +635,104 @@ object Predef extends LowPriorityImplicits {
 
   // these two are morally deprecated but the @deprecated annotation has been moved to the extension method themselves,
   // in order to provide a more specific deprecation method.
+  /** Adds the deprecated `zipped` and `invert` operations to a pair, each of which
+   *  additionally requires the pair's elements to be collections.
+   *
+   *  @tparam T1 the type of the first element of the pair
+   *  @tparam T2 the type of the second element of the pair
+   *  @param x the pair to enrich
+   *  @return an `Ops` wrapper around `x` providing `zipped` and `invert`
+   */
   @nowarn("""cat=deprecation&origin=scala\.runtime\.Tuple2Zipped""")
   implicit def tuple2ToZippedOps[T1, T2](x: (T1, T2)): runtime.Tuple2Zipped.Ops[T1, T2]             = new runtime.Tuple2Zipped.Ops(x)
+  /** Adds the deprecated `zipped` and `invert` operations to a triple, each of which
+   *  additionally requires the triple's elements to be collections.
+   *
+   *  @tparam T1 the type of the first element of the triple
+   *  @tparam T2 the type of the second element of the triple
+   *  @tparam T3 the type of the third element of the triple
+   *  @param x the triple to enrich
+   *  @return an `Ops` wrapper around `x` providing `zipped` and `invert`
+   */
   @nowarn("""cat=deprecation&origin=scala\.runtime\.Tuple3Zipped""")
   implicit def tuple3ToZippedOps[T1, T2, T3](x: (T1, T2, T3)): runtime.Tuple3Zipped.Ops[T1, T2, T3] = new runtime.Tuple3Zipped.Ops(x)
 
   // Not specialized anymore since 2.13 but we still need separate methods
   // to avoid https://github.com/scala/bug/issues/10746
   // TODO: should not need @inline. add heuristic to inline factories for value classes.
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to an array
+   *  of any element type.
+   *
+   *  This conversion, together with the per-element-type variants such as
+   *  [[intArrayOps]] and [[refArrayOps]], is what makes methods such as `map`,
+   *  `filter`, and `mkString` available on arrays.
+   *
+   *  @tparam T the element type of the array
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def genericArrayOps[T](xs: Array[T]): ArrayOps[T]          = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Boolean` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def booleanArrayOps(xs: Array[Boolean]): ArrayOps[Boolean] = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Byte` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def byteArrayOps(xs: Array[Byte]): ArrayOps[Byte]          = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Char` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def charArrayOps(xs: Array[Char]): ArrayOps[Char]          = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Double` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def doubleArrayOps(xs: Array[Double]): ArrayOps[Double]    = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Float` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def floatArrayOps(xs: Array[Float]): ArrayOps[Float]       = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to an `Int` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def intArrayOps(xs: Array[Int]): ArrayOps[Int]             = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Long` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def longArrayOps(xs: Array[Long]): ArrayOps[Long]          = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to an array
+   *  of reference-typed elements.
+   *
+   *  @tparam T the element type of the array, a subtype of `AnyRef | Null`
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def refArrayOps[T <: AnyRef | Null](xs: Array[T]): ArrayOps[T]    = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Short` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def shortArrayOps(xs: Array[Short]): ArrayOps[Short]       = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Unit` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def unitArrayOps(xs: Array[Unit]): ArrayOps[Unit]          = new ArrayOps(xs)
 
   // "Autoboxing" and "Autounboxing" ---------------------------------------------------
