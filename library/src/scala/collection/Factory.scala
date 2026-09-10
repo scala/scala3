@@ -17,7 +17,6 @@ import scala.language.`2.13`
 import language.experimental.captureChecking
 
 import scala.collection.immutable.NumericRange
-import scala.language.implicitConversions
 import scala.collection.mutable.Builder
 import scala.annotation.unchecked.uncheckedVariance
 import scala.reflect.ClassTag
