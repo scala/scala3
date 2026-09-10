@@ -781,6 +781,7 @@ object Build {
       scripted := scripted.dependsOn(
         (`scala3-sbt-bridge-bootstrapped` / publishLocalBin),
         (`scala3-interfaces` / publishLocalBin),
+        (`scala3-worksheet-interfaces` / publishLocalBin),
         (`scala3-compiler-bootstrapped` / publishLocalBin),
         (`scala3-library-bootstrapped` / publishLocalBin),
         (`scala-library-bootstrapped` / publishLocalBin),
