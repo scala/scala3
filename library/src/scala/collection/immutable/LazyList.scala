@@ -362,10 +362,18 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
       evaluated
     }
 
+  /** Returns the factory used to build lazy lists, the [[LazyList$ `LazyList`]]
+   *  companion object.
+   */
   override def iterableFactory: SeqFactory[LazyList] = LazyList
 
   // NOTE: `evaluated; this eq Empty` would be wrong. Deserialization of `Empty` creates a new
   // instance with `null` fields, but the `evaluated` method always returns the canonical `Empty`.
+  /** Returns `true` if this lazy list has no elements.
+   *
+   *  Deciding this evaluates the state of this lazy list, that is, its head and the
+   *  identity of its tail, but no element beyond the first.
+   */
   @inline override def isEmpty: Boolean = evaluated eq Empty
 
   /** @inheritdoc
@@ -374,11 +382,23 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
    */
   override def knownSize: Int = if (knownIsEmpty) 0 else -1
 
+  /** Returns the first element of this lazy list, evaluating the state of this lazy
+   *  list if it has not been evaluated already.
+   *
+   *  @throws NoSuchElementException if this lazy list is empty
+   */
   override def head: A =
     // inlined `isEmpty` to make it clear that `rawHead` below is initialized
     if (evaluated eq Empty) throw new NoSuchElementException("head of empty lazy list")
     else rawHead.asInstanceOf[A]
 
+  /** Returns a lazy list of all elements of this lazy list except the first.
+   *
+   *  Evaluating the state of this lazy list yields the tail itself; the elements of
+   *  the tail are not evaluated.
+   *
+   *  @throws UnsupportedOperationException if this lazy list is empty
+   */
   override def tail: LazyList[A] =
     // inlined `isEmpty` to make it clear that `rawTail` below is initialized
     if (evaluated eq Empty) throw new UnsupportedOperationException("tail of empty lazy list")
@@ -466,9 +486,17 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
     else tail.foldLeft(op(z, head))(op)
 
   // LazyList.Empty doesn't use the SerializationProxy
+  /** Replaces this lazy list with a serialization proxy during Java serialization, but
+   *  only if its state is already evaluated and non-empty.
+   *
+   *  An evaluated prefix is written out compactly by the proxy; a lazy list whose state
+   *  is not yet evaluated is serialized as itself, so that its unevaluated thunks are
+   *  stored by standard Java serialization and are not forced by serializing.
+   */
   protected def writeReplace(): AnyRef =
     if (knownNonEmpty) new SerializationProxy[A](this) else this
 
+  /** The prefix of this lazy list's string representation: `"LazyList"`. */
   override protected def className = "LazyList"
 
   /** The lazy list resulting from the concatenation of this lazy list with the argument lazy list.
@@ -1394,8 +1422,18 @@ object LazyList extends SeqFactory[LazyList] {
     def unapply[A](xs: LazyList[A]): Option[(A, LazyList[A])] = #::.unapply(xs)
   }
 
+  /** Provides the `#::` and `#:::` operators on a by-name lazy list, so that the right
+   *  operand of a cons is not evaluated when the cons cell is built.
+   *
+   *  @tparam A the element type of the lazy list
+   *  @param l the lazy list to defer, evaluated only when the operator's result is forced
+   */
   implicit def toDeferrer[A](l: => LazyList[A]): Deferrer[A] = new Deferrer[A](() => l)
 
+  /** Holds the deferred right operand of a `#::` or `#:::` operation on lazy lists.
+   *
+   *  @tparam A the element type of the deferred lazy list
+   */
   final class Deferrer[A] private[LazyList] (private val l: () => LazyList[A]) extends AnyVal {
     /** Constructs a `LazyList` consisting of a given first element followed by elements
      *  from another `LazyList`.
@@ -1408,16 +1446,41 @@ object LazyList extends SeqFactory[LazyList] {
   }
 
   object #:: {
+    /** Matches a non-empty lazy list against its head and tail.
+     *
+     *  Matching evaluates the state of `s` and, if it is non-empty, its head; the
+     *  elements of the tail are left unevaluated.
+     *
+     *  @tparam A the element type of the lazy list
+     *  @param s the lazy list to decompose
+     *  @return `Some((head, tail))` if `s` is non-empty, or `None` if it is empty
+     */
     def unapply[A](s: LazyList[A]): Option[(A, LazyList[A])] =
       if (!s.isEmpty) Some((s.head, s.tail)) else None
   }
 
+  /** Returns a lazy list containing the elements of `coll`.
+   *
+   *  If `coll` is already a lazy list it is returned unchanged, and a collection known
+   *  to be empty gives the empty lazy list; otherwise the elements are taken from
+   *  `coll`'s iterator one at a time as the result is forced, the first of them as soon
+   *  as the result's state is evaluated.
+   *
+   *  @tparam A the element type
+   *  @param coll the collection whose elements are to be contained
+   */
   def from[A](coll: collection.IterableOnce[A]): LazyList[A] = coll match {
     case lazyList: LazyList[A]    => lazyList
     case _ if coll.knownSize == 0 => empty[A]
     case _                        => newLL(eagerHeadFromIterator(coll.iterator))
   }
 
+  /** Returns the empty lazy list.
+   *
+   *  All calls return the same instance, which is already evaluated.
+   *
+   *  @tparam A the element type of the lazy list
+   */
   def empty[A]: LazyList[A] = Empty
 
   /** Creates a LazyList with the elements of an iterator followed by a LazyList suffix.
@@ -1442,6 +1505,15 @@ object LazyList extends SeqFactory[LazyList] {
     if (it.hasNext) eagerCons(it.next(), newLL(eagerHeadFromIterator(it)))
     else Empty
 
+  /** Returns a lazy list of the elements of all the given collections, one collection
+   *  after another.
+   *
+   *  $initiallyLazy Each collection is iterated only as the result is forced past its
+   *  predecessors.
+   *
+   *  @tparam A the element type
+   *  @param xss the collections to concatenate
+   */
   override def concat[A](xss: collection.Iterable[A]*): LazyList[A] =
     if (xss.knownSize == 0) empty
     else newLL(eagerHeadConcatIterators(xss.iterator))
@@ -1489,9 +1561,29 @@ object LazyList extends SeqFactory[LazyList] {
    */
   def continually[A](elem: => A): LazyList[A] = newLL(eagerCons(elem, continually(elem)))
 
+  /** Returns a lazy list of `n` elements, each the result of a separate evaluation of
+   *  `elem`.
+   *
+   *  $initiallyLazy An element is computed only when the lazy list is forced that far,
+   *  so `elem` is evaluated once per element and never more often than that. A
+   *  non-positive `n` gives the empty lazy list.
+   *
+   *  @tparam A the element type
+   *  @param n the number of elements
+   *  @param elem the element expression, evaluated once for each element
+   */
   override def fill[A](n: Int)(elem: => A): LazyList[A] =
     if (n > 0) newLL(eagerCons(elem, LazyList.fill(n - 1)(elem))) else empty
 
+  /** Returns a lazy list of `n` elements, the element at index `i` being `f(i)`.
+   *
+   *  $initiallyLazy `f` is applied to an index only when the lazy list is forced that
+   *  far. A non-positive `n` gives the empty lazy list.
+   *
+   *  @tparam A the element type
+   *  @param n the number of elements
+   *  @param f the function computing the element at each index
+   */
   override def tabulate[A](n: Int)(f: Int => A): LazyList[A] = {
     def at(index: Int): LazyList[A] =
       if (index < n) newLL(eagerCons(f(index), at(index + 1))) else empty
@@ -1500,6 +1592,17 @@ object LazyList extends SeqFactory[LazyList] {
   }
 
   // significantly simpler than the iterator returned by Iterator.unfold
+  /** Returns a lazy list produced by repeatedly applying `f` to a state, starting from
+   *  `init`, for as long as it returns an element and the next state.
+   *
+   *  $initiallyLazy `f` is applied to a state only when the lazy list is forced that
+   *  far; the first `None` it returns ends the lazy list.
+   *
+   *  @tparam A the element type
+   *  @tparam S the type of the state
+   *  @param init the initial state
+   *  @param f the function producing the next element and state, or `None` to stop
+   */
   override def unfold[A, S](init: S)(f: S => Option[(A, S)]): LazyList[A] =
     newLL {
       f(init) match {
