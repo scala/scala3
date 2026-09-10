@@ -25,8 +25,12 @@ object Validation {
   def scope[E](using scope: Validation[E]^): scope.type = scope
 
   inline def validate[T, E](inline step: Step[T, E]): Validated[T, E] =
-    given (Validation[E]^)()
-    scope.result(step)
+    val scp: Validation[E]^ = Validation[E]()
+    // FIXME: would prefer to do scp.result(step) but this breaks capture checking error messages
+    val tested = boundary[Tested[T]] { lbl ?=>
+      Ok(step(using lbl, scp))
+    }
+    scp.finish(tested)
 
   val invalid: Err[Unit] = Err(())
 
@@ -83,9 +87,13 @@ class Validation[E] extends caps.Stateful, caps.ExclusiveCapability:
         appendAll(es)
         Validation.invalid
 
-  inline consume def result[A](inline cond: Step[A, E]): Validated[A, E] =
-    val validated = testStep(cond)
+  inline consume def result[A](consume inline cond: Step[A, E]): Validated[A, E] =
+    val tested = testStep(cond)
+    finish(tested)
+
+  @publicInBinary
+  private[Validation] consume def finish[A](consume tested: Tested[A]): Validated[A, E] =
     val errs = close()
-    validated match
+    tested match
       case ok @ Ok(_) if errs.isEmpty => ok
       case _ => Err(errs)
