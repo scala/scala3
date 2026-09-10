@@ -11,6 +11,7 @@ import NameKinds.InlineBinderName
 import ProtoTypes.shallowSelectionProto
 import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
+import config.Feature
 import config.Printers.inlining
 import ErrorReporting.errorTree
 import util.{SimpleIdentitySet, SrcPos}
@@ -742,6 +743,12 @@ class Inliner(val call: tpd.Tree)(using Context):
         // reference to a private method is kept at runtime.
         cpy.Select(tree)(qual.asInstance(qual.tpe.widen), name)
 
+      case tree: TypeTree if Feature.ccEnabled =>
+        // cc.Setup.setupTraverser.transformTT creates scope-dependent capture types,
+        // cached by tree identity in transform.Recheck.Rechecker.nuTypes. Sharing a
+        // TypeTree would reuse the definition's (or another call's) capture roots
+        // in this expansion. See tests/pos-custom-args/captures/inline-result-captures.scala.
+        tree.cloneIn(tree.source)
       case tree => tree
     }
 
