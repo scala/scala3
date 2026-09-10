@@ -14,7 +14,23 @@ package scala.runtime.java8
 
 import scala.language.`2.13`
 
+/** A `@FunctionalInterface` specialization of [[scala.Function1]] for a
+ *  function from an unboxed `Double` to an unboxed `Int`, allowing a Java
+ *  lambda or method reference (and the compiler's `invokedynamic` lambda
+ *  encoding) to implement `Function1[Double, Int]` without boxing.
+ */
 @FunctionalInterface trait JFunction1$mcID$sp extends Function1[Any, Any] with Serializable {
+  /** Applies this function to the given argument.
+   *
+   *  @param v1 the argument, as an unboxed `Double`
+   *  @return the result of applying this function, as an unboxed `Int`
+   */
   def apply$mcID$sp(v1: Double): Int
+  /** Applies this function to the given argument by delegating to
+   *  `apply$mcID$sp`, unboxing the argument and boxing the result.
+   *
+   *  @param t the argument, unboxed to a `Double`
+   *  @return the result of applying this function, as a boxed `Int`
+   */
   override def apply(t: Any): Any = scala.runtime.BoxesRunTime.boxToInteger(apply$mcID$sp(scala.runtime.BoxesRunTime.unboxToDouble(t)))
 }
