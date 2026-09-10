@@ -4,20 +4,49 @@ import language.experimental.captureChecking
 
 object Tuples {
 
+  /** The largest arity for which tuples have a dedicated `TupleN` class (22); larger tuples are represented by a [[TupleXXL]] backed by an array. */
   inline val MaxSpecialized = 22
 
+  /** Returns the elements of `self` in an `Array[Object]`; implements [[scala.Tuple.toArray]].
+   *
+   *  For `EmptyTuple` the shared empty array is returned; otherwise the array
+   *  is freshly allocated (a [[TupleXXL]]'s backing array is cloned), so
+   *  mutating it does not affect the tuple.
+   *
+   *  @param self the tuple whose elements are extracted
+   *  @return an array containing the elements of `self`, in order
+   */
   def toArray(self: Tuple): Array[Object] = (self: Any) match {
     case EmptyTuple => Array.emptyObjectArray
     case self: TupleXXL => self.toArray
     case self: Product => productToArray(self)
   }
 
+  /** Returns the elements of `self` in an `IArray[Object]`; implements [[scala.Tuple.toIArray]].
+   *
+   *  For a [[TupleXXL]] this is the tuple's backing array itself, not a copy;
+   *  for `EmptyTuple` it is the shared empty array; for `Tuple1` to `Tuple22`
+   *  a fresh array is filled from the product elements.
+   *
+   *  @param self the tuple whose elements are extracted
+   *  @return an immutable array containing the elements of `self`, in order
+   */
   def toIArray(self: Tuple): IArray[Object] = (self: Any) match {
     case EmptyTuple => Array.emptyObjectArray.asInstanceOf[IArray[Object]]
     case self: TupleXXL => self.elems
     case self: Product => productToArray(self).asInstanceOf[IArray[Object]]
   }
 
+  /** Copies the elements of `self` into a fresh `Array[Object]`.
+   *
+   *  Accepts any `Product`, not just tuples. [[toArray]] uses it for `Tuple1`
+   *  to `Tuple22`, and the compiler calls it directly when optimizing
+   *  `Tuple.toArray` on tuples statically known to have between 1 and 22 elements; the
+   *  empty tuple is handled separately, with `Array.emptyObjectArray`.
+   *
+   *  @param self the product whose elements are copied
+   *  @return a fresh array containing `self.productElement(0)` to `self.productElement(self.productArity - 1)`
+   */
   def productToArray(self: Product): Array[Object] = {
     val arr = new Array[Object](self.productArity)
     var i = 0
@@ -28,6 +57,16 @@ object Tuples {
     arr
   }
 
+  /** Returns a tuple containing the elements of `xs`, in order; backs [[scala.Tuple.fromArray]].
+   *
+   *  Arrays of length 0 to 22 yield `EmptyTuple` or the corresponding `TupleN`;
+   *  longer arrays yield a [[TupleXXL]] wrapping a clone of `xs`. In either
+   *  case, mutating `xs` afterwards does not affect the result. The elements
+   *  must already be boxed; [[scala.Tuple.fromArray]] takes care of that.
+   *
+   *  @param xs the array supplying the elements of the tuple
+   *  @return a tuple of arity `xs.length` with the elements of `xs`
+   */
   def fromArray(xs: Array[Object]): Tuple = xs.length match {
     case 0  => EmptyTuple
     case 1  => Tuple1(xs(0))
@@ -55,10 +94,29 @@ object Tuples {
     case _ => TupleXXL.fromIArray(xs.clone().asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
   }
 
+  /** Returns a tuple containing the elements of `xs`, in order; backs [[scala.Tuple.fromIArray]].
+   *
+   *  Arrays of length 0 to 22 yield `EmptyTuple` or the corresponding `TupleN`,
+   *  as in [[fromArray]]; longer arrays yield a [[TupleXXL]] backed directly by
+   *  `xs`, without copying.
+   *
+   *  @param xs the immutable array supplying the elements of the tuple
+   *  @return a tuple of arity `xs.length` with the elements of `xs`
+   */
   def fromIArray(xs: IArray[Object]): Tuple =
     if (xs.length <= 22) fromArray(xs.asInstanceOf[Array[Object]])
     else TupleXXL.fromIArray(xs).asInstanceOf[Tuple]
 
+  /** Returns a tuple containing the elements of `xs`, in order; backs [[scala.Tuple.fromProduct]] and [[TupleMirror.fromProduct]].
+   *
+   *  If `xs` already is a tuple in the runtime representation matching its
+   *  arity (a `TupleN` for arities 1 to 22, a [[TupleXXL]] beyond), it is
+   *  returned as is; otherwise its elements are copied into a new tuple of
+   *  arity `xs.productArity`. Every product of arity 0 yields `EmptyTuple`.
+   *
+   *  @param xs the product supplying the elements of the tuple
+   *  @return a tuple of arity `xs.productArity` with the elements of `xs`
+   */
   def fromProduct(xs: Product): Tuple = (xs.productArity match {
     case 0  => EmptyTuple
     case 1 =>
@@ -248,11 +306,32 @@ object Tuples {
     TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
   }
 
+  /** Returns a new tuple with `x` prepended to the elements of `self`; implements [[scala.Tuple.*:]].
+   *
+   *  The result has arity `self.size + 1`: a `Tuple22` or [[TupleXXL]] receiver
+   *  yields a `TupleXXL`, smaller receivers yield the next larger `TupleN`.
+   *
+   *  @param x the element to prepend
+   *  @param self the tuple supplying the remaining elements
+   *  @return a tuple with `x` as its 1st element, followed by the elements of `self`
+   */
   def cons(x: Any, self: Tuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlCons(x, xxl).asInstanceOf[Tuple]
     case _ => specialCaseCons(x, self)
   }
 
+  /** Returns the concatenation of `self` and `that`; implements [[scala.Tuple.++]].
+   *
+   *  If either tuple is empty, the other tuple is returned unchanged (the same
+   *  instance, not a copy); otherwise the elements of both are copied into a
+   *  fresh tuple of arity `self.size + that.size`.
+   *
+   *  @tparam This the type of the first tuple
+   *  @tparam That the type of the second tuple
+   *  @param self the tuple supplying the leading elements
+   *  @param that the tuple supplying the trailing elements
+   *  @return a tuple with the elements of `self` followed by the elements of `that`
+   */
   def concat[This <: Tuple, That <: Tuple](self: This, that: That): Tuple = {
     val selfSize: Int = self.size
     // If one of the tuples is empty, we can leave early
@@ -280,6 +359,11 @@ object Tuples {
     fromIArray(arr.asInstanceOf[IArray[Object]])
   }
 
+  /** Returns the number of elements of `self`: 0 for `EmptyTuple`, otherwise its `productArity`; implements [[scala.Tuple.size]].
+   *
+   *  @param self the tuple whose arity is computed
+   *  @return the arity of `self`
+   */
   def size(self: Tuple): Int = (self: Any) match {
     case EmptyTuple => 0
     case self: Product => self.productArity
@@ -352,6 +436,14 @@ object Tuples {
     }
   }
 
+  /** Returns a tuple containing all elements of `self` except the 1st; implements [[scala.Tuple.tail]].
+   *
+   *  `self` must be non-empty.
+   *
+   *  @param self the tuple whose tail is taken
+   *  @return a tuple of arity `self.size - 1` with all elements of `self` except the 1st
+   *  @throws MatchError if `self` is `EmptyTuple`
+   */
   def tail(self: Tuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlTail(xxl)
     case _ => specialCaseTail(self)
@@ -427,6 +519,15 @@ object Tuples {
     }
   }
 
+  /** Returns a new tuple with `x` appended to the elements of `self`; implements [[scala.Tuple.:*]].
+   *
+   *  The result has arity `self.size + 1`: a `Tuple22` or [[TupleXXL]] receiver
+   *  yields a `TupleXXL`, smaller receivers yield the next larger `TupleN`.
+   *
+   *  @param x the element to append
+   *  @param self the tuple supplying the leading elements
+   *  @return a tuple with the elements of `self` followed by `x` as its last element
+   */
   def append(x: Any, self: Tuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlAppend(x, xxl).asInstanceOf[Tuple]
     case _ => specialCaseAppend(x, self)
@@ -505,6 +606,14 @@ object Tuples {
     }
   }
 
+  /** Returns a tuple with the elements of `self` in reverse order; implements [[scala.Tuple.reverse]].
+   *
+   *  `EmptyTuple` and `Tuple1` receivers are returned unchanged (the same
+   *  instance); all other arities yield a new tuple of the same arity.
+   *
+   *  @param self the tuple to reverse
+   *  @return a tuple whose i-th element is the i-th element of `self` counted from the end
+   */
   def reverse(self: Tuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlReverse(xxl)
     case _ => specialCaseReverse(self)
@@ -560,15 +669,36 @@ object Tuples {
     }
   }
 
+  /** Returns a tuple containing all elements of `self` except the last; implements [[scala.Tuple.init]].
+   *
+   *  `self` must be non-empty.
+   *
+   *  @param self the tuple whose initial part is taken
+   *  @return a tuple of arity `self.size - 1` with all elements of `self` except the last
+   *  @throws MatchError if `self` is `EmptyTuple`
+   */
   def init(self: Tuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlInit(xxl)
     case _ => specialCaseInit(self)
   }
 
+  /** Returns the last element of `self`; implements [[scala.Tuple.last]].
+   *
+   *  @param self the tuple whose last element is retrieved
+   *  @return the element of `self` at index `self.size - 1`
+   *  @throws IndexOutOfBoundsException if `self` is `EmptyTuple` (the element at index -1 is requested)
+   */
   def last(self: Tuple): Any = (self: Any) match {
     case self: Product => self.productElement(self.productArity - 1)
   }
 
+  /** Returns the element of `self` at index `n`, via `productElement`; implements [[scala.Tuple.apply]] and [[scala.Tuple.head]].
+   *
+   *  @param self the tuple whose element is retrieved
+   *  @param n the 0-based index of the element
+   *  @return the element at index `n`
+   *  @throws IndexOutOfBoundsException if `n` is negative or not less than `self.size`
+   */
   def apply(self: Tuple, n: Int): Any =
     self.productElement(n)
 
@@ -583,6 +713,16 @@ object Tuples {
     arr.asInstanceOf[IArray[Object]]
   }
 
+  /** Returns a tuple of pairs formed from corresponding elements of `t1` and `t2`; implements [[scala.Tuple.zip]].
+   *
+   *  The result's arity is the smaller of the two arities; extra elements of
+   *  the longer tuple are discarded. If either tuple is empty, the result is
+   *  `EmptyTuple`.
+   *
+   *  @param t1 the tuple supplying the 1st element of each pair
+   *  @param t2 the tuple supplying the 2nd element of each pair
+   *  @return a tuple whose i-th element is the `Tuple2` of the i-th elements of `t1` and `t2`
+   */
   def zip(t1: Tuple, t2: Tuple): Tuple = {
     val t1Size: Int = t1.size
     val t2Size: Int = t2.size
@@ -597,11 +737,30 @@ object Tuples {
     )
   }
 
+  /** Returns a tuple of the same arity as `self` whose elements are the results of applying `f` to the elements of `self`; implements [[scala.Tuple.map]].
+   *
+   *  An `EmptyTuple` receiver is returned unchanged, without calling `f`.
+   *
+   *  @tparam F the type constructor mapping each element type to its result type
+   *  @param self the tuple whose elements are transformed
+   *  @param f the polymorphic function applied to each element
+   *  @return a tuple whose i-th element is `f` applied to the i-th element of `self`
+   */
   def map[F[_]](self: Tuple, f: [t] -> t -> F[t]): Tuple = self match {
     case EmptyTuple => self
     case _ => fromIArray(self.productIterator.map(f(_).asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use toIArray
   }
 
+  /** Returns a tuple containing the first `n` elements of `self`; implements [[scala.Tuple.take]].
+   *
+   *  If `n` is greater than `self.size`, all elements are taken; if `n` is 0
+   *  or `self` is empty, the result is `EmptyTuple`.
+   *
+   *  @param self the tuple whose leading elements are taken
+   *  @param n the number of elements to take
+   *  @return a tuple with the first `min(n, self.size)` elements of `self`
+   *  @throws IndexOutOfBoundsException if `n` is negative
+   */
   def take(self: Tuple, n: Int): Tuple = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
     val selfSize: Int = self.size
@@ -623,6 +782,16 @@ object Tuples {
     }
   }
 
+  /** Returns a tuple containing all elements of `self` except the first `n`; implements [[scala.Tuple.drop]].
+   *
+   *  If `n` is greater than or equal to `self.size`, the result is `EmptyTuple`;
+   *  if `n` is 0, the result is a tuple with all elements of `self`.
+   *
+   *  @param self the tuple whose leading elements are dropped
+   *  @param n the number of elements to drop
+   *  @return a tuple with the last `self.size - min(n, self.size)` elements of `self`
+   *  @throws IndexOutOfBoundsException if `n` is negative
+   */
   def drop(self: Tuple, n: Int): Tuple = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
     val size = self.size
@@ -645,6 +814,16 @@ object Tuples {
     }
   }
 
+  /** Splits `self` into two tuples at index `n`; implements [[scala.Tuple.splitAt]].
+   *
+   *  `n` is clamped to `self.size`, so for larger `n` the second tuple is
+   *  `EmptyTuple` and the first contains all elements.
+   *
+   *  @param self the tuple to split
+   *  @param n the number of elements in the first part
+   *  @return a pair of the tuple of the first `min(n, self.size)` elements of `self` and the tuple of the remaining elements
+   *  @throws IndexOutOfBoundsException if `n` is negative
+   */
   def splitAt(self: Tuple, n: Int): (Tuple, Tuple) = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
     val size = self.size
@@ -668,12 +847,43 @@ object Tuples {
     )
   }
 
+  /** Returns an iterator over `head` followed by the elements of `tail`.
+   *
+   *  The compiler emits calls to this method when optimizing `*:` on tuples of
+   *  statically known arity, so the elements of `head *: tail` can be consumed
+   *  without materializing an intermediate tuple.
+   *
+   *  @param head the value produced first
+   *  @param tail the tuple whose elements are produced after `head`
+   *  @return an iterator producing `head`, then the elements of `tail` in order
+   */
   def consIterator(head: Any, tail: Tuple): Iterator[Any] =
     Iterator.single(head) ++ tail.productIterator
 
+  /** Returns an iterator over the elements of `tup1` followed by the elements of `tup2`.
+   *
+   *  The compiler emits calls to this method when optimizing `++` on tuples of
+   *  statically known arity, so the elements of `tup1 ++ tup2` can be consumed
+   *  without materializing an intermediate tuple.
+   *
+   *  @param tup1 the tuple whose elements are produced first
+   *  @param tup2 the tuple whose elements are produced after those of `tup1`
+   *  @return an iterator producing the elements of `tup1`, then those of `tup2`, in order
+   */
   def concatIterator(tup1: Tuple, tup2: Tuple): Iterator[Any] =
     tup1.productIterator ++ tup2.productIterator
 
+  /** Returns whether `x` is a tuple at runtime; the compiler rewrites the type test `x.isInstanceOf[Tuple]` to a call of this method.
+   *
+   *  A value passes the test if it is `EmptyTuple`, an instance of the
+   *  `TupleN` class matching its arity, or a [[TupleXXL]]. Other products are
+   *  rejected: for example, a case class of arity 2 that is not a `Tuple2` is
+   *  not a tuple, and a product of arity 0 is a tuple only if it equals
+   *  `EmptyTuple`.
+   *
+   *  @param x the value to test
+   *  @return `true` if `x` is a tuple, `false` otherwise
+   */
   def isInstanceOfTuple(x: Any): Boolean =
     x match
       case x: Product =>
@@ -705,8 +915,22 @@ object Tuples {
       case _ =>
         false
 
+  /** Returns whether `x` is the empty tuple; the compiler rewrites the type test `x.isInstanceOf[EmptyTuple]` to a call of this method.
+   *
+   *  @param x the value to test
+   *  @return `true` if `x` equals the `EmptyTuple` singleton, `false` otherwise
+   */
   def isInstanceOfEmptyTuple(x: Any): Boolean = x == EmptyTuple
 
+  /** Returns whether `x` is a tuple with at least one element; the compiler rewrites the type tests `x.isInstanceOf[NonEmptyTuple]` and `x.isInstanceOf[_ *: _]` to calls of this method.
+   *
+   *  A value passes the test if it is an instance of the `TupleN` class
+   *  matching its arity, or a [[TupleXXL]]. `EmptyTuple` and products that are
+   *  not tuple classes are rejected.
+   *
+   *  @param x the value to test
+   *  @return `true` if `x` is a non-empty tuple, `false` otherwise
+   */
   def isInstanceOfNonEmptyTuple(x: Any): Boolean =
     x match
       case x: Product =>
