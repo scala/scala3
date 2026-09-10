@@ -50,6 +50,15 @@ object Invoker {
         writer.write('\n')
         writer.flush()
 
+  /** Returns the coverage measurement file for the current thread in `dataDir`.
+   *
+   *  The file name is `scoverage.measurements.` followed by a UUID chosen once
+   *  per runtime, a dot, and the current thread's id, so every thread of every
+   *  run appends to its own file. This method only names the file; it does not
+   *  create it.
+   *
+   *  @param dataDir the directory holding the coverage measurement files
+   */
   @nowarn("cat=deprecation")
   def measurementFile(dataDir: String): File = new File(
     dataDir,
