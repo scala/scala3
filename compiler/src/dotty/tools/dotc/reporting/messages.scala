@@ -1335,10 +1335,20 @@ extends TypeMsg(CantInstantiateAbstractClassOrTraitID) {
 
 class UnreducibleApplication(tycon: Type)(using Context) extends TypeMsg(UnreducibleApplicationID):
   def msg(using Context) = i"unreducible application of higher-kinded type $tycon to wildcard arguments"
-  def explain(using Context) =
-    i"""|An abstract type constructor cannot be applied to wildcard arguments.
-        |Such applications are equivalent to existential types, which are not
-        |supported in Scala 3."""
+  def explain(using Context) = tycon match
+    case lam: HKTypeLambda if lam.resType.isInstanceOf[MatchType] =>
+      i"""|Each wildcard argument stands for some unknown type, and two wildcards
+          |may stand for different types. Substituting a wildcard into the cases
+          |of a match type could therefore make the match type reduce to a wrong
+          |result. For that reason, a match type alias can be applied to a
+          |wildcard argument only if the corresponding type parameter is used
+          |solely in the scrutinee of the match type, or in a position where the
+          |wildcard can stand on its own, such as a type argument of a class in
+          |the scrutinee or the upper bound."""
+    case _ =>
+      i"""|An abstract type constructor cannot be applied to wildcard arguments.
+          |Such applications are equivalent to existential types, which are not
+          |supported in Scala 3."""
 
 class OverloadedOrRecursiveMethodNeedsResultType(val ex: CyclicReference)(using Context)
 extends CyclicMsg(OverloadedOrRecursiveMethodNeedsResultTypeID) {
