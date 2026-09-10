@@ -664,6 +664,20 @@ class WorksheetSessionTest:
       result.diagnostics.map(_.position.startLine).sorted
     )
 
+  @Test def doesNotKeepAWarningFromAStatementThatFailed(): Unit =
+    val strict = new WorksheetSession(ReplTest.defaultOptions ++ Array("-Wunused:all"))
+    val text = """val value = { val unused = 1; throw new RuntimeException("boom") }
+                 |""".stripMargin
+    def unusedWarnings(result: WorksheetResult): List[String] =
+      result.diagnostics.filter(_.message.contains("unused")).map(_.message)
+    try
+      assertEquals(1, unusedWarnings(strict.evaluate("warned.worksheet.scala", text)).length)
+
+      val again = strict.evaluate("warned.worksheet.scala", text)
+
+      assertEquals(unusedWarnings(again).toString, 1, unusedWarnings(again).length)
+    finally strict.shutdown()
+
   @Test def reportsReplCommandsAsUnsupported(): Unit =
     val result = driver.evaluate("command.worksheet.scala", ":quit\n")
 
