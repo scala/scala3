@@ -49,6 +49,10 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
   private final def sortedMapFactory: SortedMapFactory[CollisionProofHashMap] = CollisionProofHashMap
 
+  /** Creates a new, empty hash map with the default initial capacity (16) and the default load factor (0.75).
+   *
+   *  @param ordering the `Ordering` used to compare keys within a bucket's red-black tree
+   */
   def this()(implicit ordering: Ordering[K]) = this(CollisionProofHashMap.defaultInitialCapacity, CollisionProofHashMap.defaultLoadFactor)(using ordering)
 
   import CollisionProofHashMap.Node
@@ -63,6 +67,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
   private var contentSize = 0
 
+  /** Returns the number of key-value pairs in this map. */
   override def size: Int = contentSize
 
   @inline private final def computeHash(o: K): Int = {
@@ -74,13 +79,33 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
   @inline private final def index(hash: Int) = hash & (table.length - 1)
 
+  /** Creates a new `CollisionProofHashMap` containing the key-value pairs of `coll`, using
+   *  the same key ordering as this map.
+   *
+   *  @param coll the collection whose key-value pairs are added to the new map
+   *  @return a new `CollisionProofHashMap` containing the key-value pairs of `coll`
+   */
   override protected def fromSpecific(coll: (IterableOnce[(K, V)] @uncheckedVariance)^): CollisionProofHashMap[K, V] @uncheckedVariance = CollisionProofHashMap.from(coll)
+  /** Returns a new builder for a `CollisionProofHashMap` with the same key ordering as this map. */
   override protected def newSpecificBuilder: Builder[(K, V), CollisionProofHashMap[K, V]] @uncheckedVariance = CollisionProofHashMap.newBuilder[K, V]
 
+  /** Returns a new, empty `CollisionProofHashMap` with the same key ordering as this map and
+   *  the default initial capacity and load factor.
+   */
   override def empty: CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V]
 
+  /** Tests whether this map contains a binding for a key.
+   *
+   *  @param key the key to test for membership
+   *  @return `true` if this map contains a binding for `key`, `false` otherwise
+   */
   override def contains(key: K): Boolean = findNode(key) ne null
 
+  /** Returns the value associated with `key` in this map, wrapped in `Some`, or `None` if
+   *  `key` is not present.
+   *
+   *  @param key the key to look up
+   */
   def get(key: K): Option[V] = findNode(key) match {
     case null => None
     case nd => Some(nd match {
@@ -89,6 +114,12 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     })
   }
 
+  /** Returns the value associated with `key`.
+   *
+   *  @param key the key to look up
+   *  @return the value bound to `key`
+   *  @throws NoSuchElementException if `key` is not in this map
+   */
   @throws[NoSuchElementException]
   override def apply(key: K): V = findNode(key) match {
     case null => default(key)
@@ -98,6 +129,14 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
+  /** Returns the value associated with `key`, or `default` if `key` is not in this map.
+   *  The lookup avoids allocating an `Option`.
+   *
+   *  @tparam V1 the result type, a supertype of this map's value type
+   *  @param key the key to look up
+   *  @param default the value to return when `key` is absent; evaluated only in that case
+   *  @return the value bound to `key`, or `default` if there is no such binding
+   */
   override def getOrElse[V1 >: V](key: K, default: => V1): V1 = {
     val nd = findNode(key)
     if (nd eq null) default else nd match {
@@ -115,6 +154,11 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
+  /** Grows the internal table, if necessary, so that `size` entries can be stored without
+   *  triggering a resize. Never shrinks the table.
+   *
+   *  @param size the expected number of entries
+   */
   override def sizeHint(size: Int): Unit = {
     val target = tableSizeFor(((size + 1).toDouble / loadFactor).toInt)
     if(target > table.length) {
@@ -123,13 +167,31 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
+  /** Adds a new key/value pair to this map. If the map already contains a binding for `key`,
+   *  its value is replaced by `value`.
+   *
+   *  @param key the key to add
+   *  @param value the value to bind to `key`
+   */
   override def update(key: K, value: V): Unit = put0(key, value, getOld = false)
 
+  /** Adds a new key/value pair to this map. If the map already contains a binding for `key`,
+   *  its value is replaced by `value`.
+   *
+   *  @param key the key to add
+   *  @param value the value to bind to `key`
+   */
   override def put(key: K, value: V): Option[V] = put0(key, value, getOld = true) match {
     case null => None
     case sm => sm
   }
 
+  /** Adds a single key-value pair to this map, replacing the value of an existing binding for
+   *  the same key.
+   *
+   *  @param elem the key-value pair to add
+   *  @return this map
+   */
   def addOne(elem: (K, V)): this.type = { put0(elem._1, elem._2, getOld = false); this }
 
   @`inline` private def put0(key: K, value: V, getOld: Boolean): Some[V] | Null = {
@@ -184,6 +246,13 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
+  /** Adds all key-value pairs produced by `xs` to this map, replacing the values of keys that
+   *  are already present. When the size of `xs` is known, the table is grown beforehand to
+   *  make room for the current entries plus that many more.
+   *
+   *  @param xs the key-value pairs to add
+   *  @return this map
+   */
   override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     sizeHint(xs, delta = contentSize)
     super.addAll(xs)
@@ -263,6 +332,9 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
       }
   }
 
+  /** Returns an iterator over the keys of this map. The iteration order is not specified
+   *  and may change when the map is modified.
+   */
   override def keysIterator: Iterator[K] = {
     if (isEmpty) Iterator.empty
     else new MapIterator[K] {
@@ -271,6 +343,9 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
+  /** Returns an iterator over the key-value pairs of this map. The iteration order is not
+   *  specified and may change when the map is modified.
+   */
   override def iterator: Iterator[(K, V)] = {
     if (isEmpty) Iterator.empty
     else new MapIterator[(K, V)] {
@@ -351,22 +426,42 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
   private def newThreshold(size: Int) = (size.toDouble * loadFactor).toInt
 
+  /** Removes all key-value pairs from this map. The internal table keeps its current capacity. */
   override def clear(): Unit = {
     java.util.Arrays.fill(table.asInstanceOf[Array[AnyRef]], null)
     contentSize = 0
   }
 
+  /** Removes the binding for `key` from this map, if present.
+   *
+   *  @param key the key whose binding is removed
+   *  @return `Some(value)` if `key` was bound to `value` before the removal, `None` if `key`
+   *          was not in the map
+   */
   override def remove(key: K): Option[V] = {
     val v = remove0(key)
     if(v.asInstanceOf[AnyRef] eq Statics.pfMarker) None else Some(v.asInstanceOf[V])
   }
 
+  /** Removes the binding for `elem` from this map, if present.
+   *
+   *  @param elem the key whose binding is removed
+   *  @return this map
+   */
   def subtractOne(elem: K): this.type = { remove0(elem); this }
 
+  /** Returns the number of key-value pairs in this map; never `-1`, since the size of a hash map is always known. */
   override def knownSize: Int = size
 
+  /** Returns `true` if this map contains no key-value pairs. */
   override def isEmpty: Boolean = size == 0
 
+  /** Applies a function `f` to each key-value pair of this map, passed as a tuple. The order
+   *  of traversal is not specified and may change when the map is modified.
+   *
+   *  @tparam U the result type of `f`, which is discarded
+   *  @param f the function to apply to each key-value pair
+   */
   override def foreach[U](f: ((K, V)) => U): Unit = {
     val len = table.length
     var i = 0
@@ -380,6 +475,13 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
+  /** Applies a function `f` to each key-value pair of this map, passing the key and value as
+   *  two separate arguments, without allocating tuples. The order of traversal is not
+   *  specified and may change when the map is modified.
+   *
+   *  @tparam U the result type of `f`, which is discarded
+   *  @param f the function to apply to each key and value
+   */
   override def foreachEntry[U](f: (K, V) => U): Unit = {
     val len = table.length
     var i = 0
@@ -393,10 +495,27 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
+  /** Replaces this map with a serialization proxy during Java serialization. The proxy records
+   *  the current table length, load factor and key ordering so deserialization can restore an
+   *  equivalent map.
+   */
   protected def writeReplace(): AnyRef = new DefaultSerializationProxy(new CollisionProofHashMap.DeserializationFactory[K, V](table.length, loadFactor, ordering), this)
 
+  /** The name of this collection class, `"CollisionProofHashMap"`, used as the prefix in `toString`. */
   override protected def className = "CollisionProofHashMap"
 
+  /** Returns the value associated with `key`; if `key` is not in this map, evaluates
+   *  `defaultValue`, adds a binding from `key` to the result, and returns it.
+   *
+   *  `defaultValue` is evaluated at most once, and only when `key` is absent. The key is
+   *  hashed and located only once for both the lookup and the insertion; if evaluating
+   *  `defaultValue` resizes this map's table, the new binding is still inserted at the
+   *  correct position.
+   *
+   *  @param key the key to look up
+   *  @param defaultValue the value to bind to `key` if it is absent; evaluated only in that case
+   *  @return the value now associated with `key`
+   */
   override def getOrElseUpdate(key: K, defaultValue: => V): V = {
     val hash = computeHash(key)
     val idx = index(hash)
@@ -459,6 +578,14 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
       (implicit @implicitNotFound(CollisionProofHashMap.ordMsg) ordering: Ordering[K2]): CollisionProofHashMap[K2, V2] =
     sortedMapFactory.from(new View.Collect(this, pf))
 
+  /** Returns a new `CollisionProofHashMap`, with the same key ordering as this map, containing
+   *  the key-value pairs of this map followed by those of `suffix`. When a key occurs in both,
+   *  the value from `suffix` ends up in the result.
+   *
+   *  @tparam V2 the value type of the returned map, a supertype of this map's value type
+   *  @param suffix the key-value pairs to add to those of this map
+   *  @return a new `CollisionProofHashMap` combining this map and `suffix`
+   */
   override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]^): CollisionProofHashMap[K, V2] = sortedMapFactory.from(suffix match {
     case it: Iterable[(K, V2) @unchecked] => new View.Concat(this, it)
     case _ => iterator.concat(suffix.iterator)
@@ -471,10 +598,27 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
    */
   @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]^): CollisionProofHashMap[K, V2] = concat(xs)
 
+  /** Returns a new `CollisionProofHashMap` containing the key-value pairs of this map and the
+   *  pair `kv`. When `kv._1` is already a key of this map, its value in the result is `kv._2`.
+   *
+   *  @tparam V1 the value type of the returned map, a supertype of this map's value type
+   *  @param kv the key-value pair added to those of this map
+   *  @return a new `CollisionProofHashMap` combining this map and `kv`
+   */
   @deprecated("Consider requiring an immutable Map or fall back to Map.concat", "2.13.0")
   override def + [V1 >: V](kv: (K, V1)): CollisionProofHashMap[K, V1] =
      sortedMapFactory.from(new View.Appended(this, kv))
 
+  /** Returns a new `CollisionProofHashMap` containing the key-value pairs of this map and the
+   *  given pairs. When a key occurs more than once, the value of its last occurrence ends up
+   *  in the result.
+   *
+   *  @tparam V1 the value type of the returned map, a supertype of this map's value type
+   *  @param elem1 the first key-value pair added to those of this map
+   *  @param elem2 the second key-value pair added to those of this map
+   *  @param elems the remaining key-value pairs added to those of this map
+   *  @return a new `CollisionProofHashMap` combining this map and the given pairs
+   */
   @deprecated("Use ++ with an explicit collection argument instead of + with varargs", "2.13.0")
   override def + [V1 >: V](elem1: (K, V1), elem2: (K, V1), elems: (K, V1)*): CollisionProofHashMap[K, V1] =
      sortedMapFactory.from(new View.Concat(new View.Appended(new View.Appended(this, elem1), elem2), elems))
@@ -730,6 +874,15 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
   // building
 
+  /** Builds a red-black tree from the next `size` nodes produced by `xs`, which must arrive
+   *  in ascending key order, copying each node's key, hash and value. The tree is built
+   *  perfectly balanced, with only the nodes at the maximum depth colored red. Used to rebuild
+   *  the tree buckets when the table grows.
+   *
+   *  @param xs the nodes whose keys, hashes and values are copied into the new tree
+   *  @param size the number of nodes to consume from `xs`
+   *  @return the root of the new tree, or `null` if `size` is `0`
+   */
   def fromNodes(xs: Iterator[Node], size: Int): RBNode | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
     def f(level: Int, size: Int): RBNode | Null = size match {
@@ -767,16 +920,49 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   private[collection] final val ordMsg = "No implicit Ordering[${K2}] found to build a CollisionProofHashMap[${K2}, ${V2}]. You may want to upcast to a Map[${K}, ${V}] first by calling `unsorted`."
 
+  /** Creates a new collision-proof hash map containing the key-value pairs of the given
+   *  collection. When the size of `it` is known, the initial capacity is chosen so that all
+   *  pairs can be added without resizing the table.
+   *
+   *  @tparam K the key type of the new map, which must have an implicit `Ordering`
+   *  @tparam V the value type of the new map
+   *  @param it the collection whose key-value pairs are added to the new map
+   *  @return a new `CollisionProofHashMap` containing the key-value pairs of `it`
+   */
   def from[K : Ordering, V](it: scala.collection.IterableOnce[(K, V)]^): CollisionProofHashMap[K, V] = {
     val k = it.knownSize
     val cap = if(k > 0) ((k + 1).toDouble / defaultLoadFactor).toInt else defaultInitialCapacity
     new CollisionProofHashMap[K, V](cap, defaultLoadFactor) ++= it
   }
 
+  /** Creates a new, empty collision-proof hash map with the default initial capacity (16) and
+   *  load factor (0.75).
+   *
+   *  @tparam K the key type of the new map, which must have an implicit `Ordering`
+   *  @tparam V the value type of the new map
+   *  @return a new, empty `CollisionProofHashMap`
+   */
   def empty[K : Ordering, V]: CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V]
 
+  /** Creates a new builder for a `CollisionProofHashMap` with the default initial capacity and
+   *  load factor.
+   *
+   *  @tparam K the key type of the map to build, which must have an implicit `Ordering`
+   *  @tparam V the value type of the map to build
+   *  @return a new builder producing a `CollisionProofHashMap`
+   */
   def newBuilder[K : Ordering, V]: Builder[(K, V), CollisionProofHashMap[K, V]] = newBuilder(defaultInitialCapacity, defaultLoadFactor)
 
+  /** Creates a new builder for a `CollisionProofHashMap` with the given initial capacity and
+   *  load factor. Size hints given to the builder are forwarded to the underlying map's
+   *  `sizeHint`.
+   *
+   *  @tparam K the key type of the map to build, which must have an implicit `Ordering`
+   *  @tparam V the value type of the map to build
+   *  @param initialCapacity the initial capacity of the map's hash table
+   *  @param loadFactor the load factor of the map's hash table
+   *  @return a new builder producing a `CollisionProofHashMap`
+   */
   def newBuilder[K : Ordering, V](initialCapacity: Int, loadFactor: Double): Builder[(K, V), CollisionProofHashMap[K, V]] =
     new GrowableBuilder[(K, V), CollisionProofHashMap[K, V]](new CollisionProofHashMap[K, V](initialCapacity, loadFactor)) {
       override def sizeHint(size: Int) = elems.sizeHint(size)
@@ -808,21 +994,50 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
 
   // Superclass for RBNode and LLNode to help the JIT with optimizing instance checks, but no shared common fields.
   // Keeping calls monomorphic where possible and dispatching manually where needed is faster.
+  /** The common supertype of the two bucket node types, `RBNode` and `LLNode`. It has no
+   *  members of its own; a bucket stores either a list of `LLNode`s or a tree of `RBNode`s,
+   *  and callers dispatch on the concrete node type.
+   */
   sealed abstract class Node
 
   /////////////////////////// Red-Black Tree Node
 
+  /** A node of a red-black tree bucket. The tree is ordered by the key `Ordering` alone; the
+   *  improved hash of the key is cached only so it can be redistributed when the table grows.
+   *
+   *  @tparam K the key type
+   *  @tparam V the value type
+   *  @param key the key stored in this node
+   *  @param hash the improved hash of `key`, cached when the entry was created
+   *  @param value the value bound to `key`
+   *  @param red `true` if this node is red, `false` if it is black
+   *  @param left the left child, or `null` if there is none
+   *  @param right the right child, or `null` if there is none
+   *  @param parent the parent node, or `null` if this node is the root of its tree
+   */
   final class RBNode[K, V](
       var key: K, var hash: Int, var value: V, var red: Boolean,
+      /** The left child, or `null` if there is none. */
       @annotation.stableNull
       var left: RBNode[K, V] | Null,
+      /** The right child, or `null` if there is none. */
       @annotation.stableNull
       var right: RBNode[K, V] | Null,
+      /** The parent node, or `null` if this node is the root of its tree. */
       @annotation.stableNull
       var parent: RBNode[K, V] | Null
     ) extends Node {
+    /** Returns a string rendering this node's key, hash, value, color and both subtrees. */
     override def toString(): String = "RBNode(" + key + ", " + hash + ", " + value + ", " + red + ", " + left + ", " + right + ")"
 
+    /** Finds the node for key `k` in the tree rooted at this node, descending left or right
+     *  according to the ordering.
+     *
+     *  @param k the key to look for
+     *  @param h the improved hash of `k`; never used, nodes are compared by the ordering alone
+     *  @param ord the ordering used to compare keys
+     *  @return the node whose key compares equal to `k`, or `null` if the tree contains no such node
+     */
     @tailrec def getNode(k: K, h: Int)(implicit ord: Ordering[K]): RBNode[K, V] | Null = {
       val cmp = compare(k, h, this)
       if (cmp < 0) {
@@ -832,18 +1047,36 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
       } else this
     }
 
+    /** Applies `f` to the key-value pair of every node in the tree rooted at this node,
+     *  passed as a tuple, in ascending key order (in-order traversal).
+     *
+     *  @tparam U the result type of `f`, which is discarded
+     *  @param f the function to apply to each key-value pair
+     */
     def foreach[U](f: ((K, V)) => U): Unit = {
       if(left ne null) left.foreach(f)
       f((key, value))
       if(right ne null) right.foreach(f)
     }
 
+    /** Applies `f` to the key and value of every node in the tree rooted at this node,
+     *  passed as two separate arguments, in ascending key order (in-order traversal).
+     *
+     *  @tparam U the result type of `f`, which is discarded
+     *  @param f the function to apply to each key and value
+     */
     def foreachEntry[U](f: (K, V) => U): Unit = {
       if(left ne null) left.foreachEntry(f)
       f(key, value)
       if(right ne null) right.foreachEntry(f)
     }
 
+    /** Applies `f` to every node in the tree rooted at this node, in ascending key order
+     *  (in-order traversal).
+     *
+     *  @tparam U the result type of `f`, which is discarded
+     *  @param f the function to apply to each node
+     */
     def foreachNode[U](f: RBNode[K, V] => U): Unit = {
       if(left ne null) left.foreachNode(f)
       f(this)
