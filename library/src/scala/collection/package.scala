@@ -18,10 +18,16 @@ import language.experimental.captureChecking
 package object collection {
   @deprecated("Use Iterable instead of Traversable", "2.13.0")
   type Traversable[+X] = Iterable[X]
+  /** Alias for the [[Iterable]] companion object, kept so that code written against
+   *  the old name can still call factory methods such as `Traversable(1, 2, 3)`.
+   */
   @deprecated("Use Iterable instead of Traversable", "2.13.0")
   val Traversable = Iterable
   @deprecated("Use IterableOnce instead of TraversableOnce", "2.13.0")
   type TraversableOnce[+X] = IterableOnce[X]
+  /** Alias for the [[IterableOnce]] companion object, kept so that code written
+   *  against the old name still resolves.
+   */
   @deprecated("Use IterableOnce instead of TraversableOnce", "2.13.0")
   val TraversableOnce = IterableOnce
   @deprecated("Use SeqOps instead of SeqLike", "2.13.0")
@@ -31,26 +37,44 @@ package object collection {
 
   @deprecated("Gen* collection types have been removed", "2.13.0")
   type GenTraversableOnce[+X] = IterableOnce[X]
+  /** Alias for the [[IterableOnce]] companion object, standing in for the removed
+   *  `GenTraversableOnce` companion.
+   */
   @deprecated("Gen* collection types have been removed", "2.13.0")
   val GenTraversableOnce = IterableOnce
   @deprecated("Gen* collection types have been removed", "2.13.0")
   type GenTraversable[+X] = Iterable[X]
+  /** Alias for the [[Iterable]] companion object, standing in for the removed
+   *  `GenTraversable` companion.
+   */
   @deprecated("Gen* collection types have been removed", "2.13.0")
   val GenTraversable = Iterable
   @deprecated("Gen* collection types have been removed", "2.13.0")
   type GenIterable[+X] = Iterable[X]
+  /** Alias for the [[Iterable]] companion object, standing in for the removed
+   *  `GenIterable` companion.
+   */
   @deprecated("Gen* collection types have been removed", "2.13.0")
   val GenIterable = Iterable
   @deprecated("Gen* collection types have been removed", "2.13.0")
   type GenSeq[+X] = Seq[X]
+  /** Alias for the [[Seq]] companion object, standing in for the removed
+   *  `GenSeq` companion.
+   */
   @deprecated("Gen* collection types have been removed", "2.13.0")
   val GenSeq = Seq
   @deprecated("Gen* collection types have been removed", "2.13.0")
   type GenSet[X] = Set[X]
+  /** Alias for the [[Set]] companion object, standing in for the removed
+   *  `GenSet` companion.
+   */
   @deprecated("Gen* collection types have been removed", "2.13.0")
   val GenSet = Set
   @deprecated("Gen* collection types have been removed", "2.13.0")
   type GenMap[K, +V] = Map[K, V]
+  /** Alias for the [[Map]] companion object, standing in for the removed
+   *  `GenMap` companion.
+   */
   @deprecated("Gen* collection types have been removed", "2.13.0")
   val GenMap = Map
 
