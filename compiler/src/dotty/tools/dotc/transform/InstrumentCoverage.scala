@@ -291,9 +291,13 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         start = pos.start,
         end = pos.end,
         // +1 to account for the line number starting at 1
-        // the internal line number is 0-base https://github.com/scala/scala3/blob/18ada516a85532524a39a962b2ddecb243c65376/compiler/src/dotty/tools/dotc/util/SourceFile.scala#L173-L176
+        // the internal line number is 0-based, see SourceFile.scala
         line = pos.line + 1,
-        desc = sourceFile.textContent.substring(pos.start, pos.end),
+        // TODO: figure out why pos.end can be out of range, e.g., in `tests/run/targetName-modules-2`
+        desc = {
+          val textContent = sourceFile.textContent()
+          textContent.substring(pos.start, if pos.end < textContent.length then pos.end else textContent.length)
+        },
         symbolName = tree.symbol.name.toSimpleName.show,
         treeName = tree.getClass.getSimpleName,
         branch,
