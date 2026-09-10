@@ -78,7 +78,13 @@ object Message:
       case None => false
   end Disambiguation
 
-  private type Recorded = Symbol | ParamRef | SkolemType | RootCapability
+  /** An ENodeVar together with its binding level (depth - index for bound
+   *  params; identity for free vars), which uniquely identifies the lambda
+   *  parameter or free variable it refers to.
+   */
+  private case class ENodeVarEntry(ref: qualified_types.ENodeVar, bindingLevel: Int)
+
+  private type Recorded = Symbol | ParamRef | SkolemType | RootCapability | ENodeVarEntry
 
   private case class SeenKey(str: String, isType: Boolean)
 
@@ -139,6 +145,13 @@ object Message:
             case (cur: ParamRef, existing: ParamRef) =>
               (cur.paramName eq existing.paramName)
               && cur.binder.paramNames == existing.binder.paramNames
+            case (cur: ENodeVarEntry, existing: ENodeVarEntry) =>
+              cur.bindingLevel == existing.bindingLevel
+              && cur.ref.getClass == existing.ref.getClass
+              && ((cur.ref, existing.ref) match
+                case (cur: qualified_types.ENodeVar.Skolem, existing: qualified_types.ENodeVar.Skolem) =>
+                  cur.owner == existing.owner
+                case _ => true)
             case _ =>
               false
 
@@ -208,6 +221,14 @@ object Message:
             else if List("^", "=>", "?=>").exists(keys(0).startsWith) then "refers to"
             else "is"
           s"$relation ${ref.descr}"
+        case ENodeVarEntry(ref, _) =>
+          ref match
+            case _: qualified_types.ENodeVar.BoundParam =>
+              s"is a lambda parameter of type ${ref.underlying.show}"
+            case _: qualified_types.ENodeVar.OpenedParam =>
+              s"is an opened lambda parameter of type ${ref.underlying.show}"
+            case _: qualified_types.ENodeVar.Skolem =>
+              s"is a free variable of type ${ref.underlying.show}"
     end explanation
 
     /** Produce a where clause with explanations for recorded iterms.
@@ -219,6 +240,7 @@ object Message:
         case skolem: SkolemType  => true
         case sym: Symbol         => ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
         case ref: Capability     => ref.isTerminalCapability
+        case _: ENodeVarEntry => true
       }
 
       val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
@@ -269,7 +291,30 @@ object Message:
 
     override def toTextRef(tp: SingletonType): Text = tp match
       case tp: SkolemType => seen.record(tp.repr.toString, isType = true, tp)
+      case tp: qualified_types.ENodeVar if seen.isActive =>
+        seen.record("x", isType = false, ENodeVarEntry(tp, enodeLambdaDepth - tp.index))
       case _ => super.toTextRef(tp)
+
+    override def enodeLambdaParamName(paramIndex: Int, paramTp: Type): Text =
+      if seen.isActive then
+        val entry = ENodeVarEntry(
+          qualified_types.ENodeVar.BoundParam(paramIndex)(paramTp),
+          enodeLambdaDepth - paramIndex)
+        seen.record("x", isType = false, entry)
+      else
+        super.enodeLambdaParamName(paramIndex, paramTp)
+
+    override def toTextQualifiedType(parent: Type, qualifier: qualified_types.ENode.Lambda): Text =
+      if seen.isActive then
+        val paramTps = qualifier.paramTps
+        enodeLambdaDepth += paramTps.length
+        try
+          val binderName = enodeLambdaParamName(0, paramTps.head)
+          "{" ~ binderName ~ ": " ~ toText(parent) ~ " with " ~ qualifier.body.toText(this) ~ "}"
+        finally
+          enodeLambdaDepth -= paramTps.length
+      else
+        super.toTextQualifiedType(parent, qualifier)
 
     override def toTextCapability(c: Capability): Text =
       (c, super.toTextCapability(c)) match

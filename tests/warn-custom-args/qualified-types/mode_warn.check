@@ -1,0 +1,6 @@
+-- Warning: tests/warn-custom-args/qualified-types/mode_warn.scala:6:38 ------------------------------------------------
+6 |  val x: {v: Int with v == 1} = getInt() // warn
+  |                                ^^^^^^^^
+  |                          Qualified type conversion from Int to {x: Int with x == 1} cannot be verified statically
+  |
+  |                          where:    x is a lambda parameter of type Int

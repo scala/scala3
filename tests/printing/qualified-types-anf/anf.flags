@@ -1,0 +1,2 @@
+-language:experimental.qualifiedTypes
+-Yqualified-types-anf

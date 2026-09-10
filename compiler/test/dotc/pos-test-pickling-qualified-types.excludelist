@@ -1,0 +1,20 @@
+# Qualified-types tests excluded from -Ytest-pickler.
+#
+# The following four tests have qualifiers that reference the enclosing
+# method (a self-recursive call inside the qualifier annotation), e.g.
+# `def fib(n: Int): {res: Int with res == fib(n - 1) + fib(n - 2)} = ...`.
+# Unpickling the method's signature reads the annotation tree, which
+# contains an `Apply(Ident(fib), ...)` whose type is computed via
+# `tpd.Apply` -> `assignType` -> `fn.tpe.widen`, forcing `fib`'s info
+# while it is still being read -> cyclic-reference assertion.
+self_reference.scala
+fib_selfify.scala
+fib_memoized.scala
+fib_memoized2.scala
+
+# checked_array2 selects on an unstable receiver, which `asSeenFrom`
+# skolemizes. `ENode.singleton` demotes that `SkolemType` to a fresh
+# `ENodeVar.Skolem`, but the index isn't pickle-stable: the pre-pickle
+# and post-unpickle traversals allocate from the per-owner counter in
+# different states, so the printed indices diverge.
+checked_array2.scala

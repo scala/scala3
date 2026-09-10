@@ -1,0 +1,5 @@
+-- Error: tests/neg-custom-args/qualified-types/purity_cc_sepcheck.scala:9:6 -------------------------------------------
+9 |  var field: Int = 0 // error
+  |      ^^^^^
+  |      Mutable variable field is defined in a class that does not extend `Stateful` or `Mutable`.
+  |      The variable needs to be annotated with `untrackedCaptures` to allow this.

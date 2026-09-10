@@ -1,0 +1,12 @@
+-- Error: tests/neg-custom-args/qualified-types/purity_cc.scala:11:10 --------------------------------------------------
+11 |  val v1: Int with v1 == f(1) = f(1) // error
+   |          ^^^^^^^^^^^^^^^^^^^
+   |          Qualified type predicate is not pure: call to method f, which uses capabilities {io}
+-- Error: tests/neg-custom-args/qualified-types/purity_cc.scala:12:10 --------------------------------------------------
+12 |  val v2: Int with v2 == io.now() = io.now() // error
+   |          ^^^^^^^^^^^^^^^^^^^^^^^
+   |          Qualified type predicate is not pure: reference to capability (io : IO)
+-- Error: tests/neg-custom-args/qualified-types/purity_cc.scala:15:10 --------------------------------------------------
+15 |  val v3: Int with v3 == c.field = c.field // error
+   |          ^^^^^^^^^^^^^^^^^^^^^^
+   |          Qualified type predicate is not pure: read of mutable variable field in class Cell
