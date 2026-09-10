@@ -514,12 +514,12 @@ object Predef extends LowPriorityImplicits {
    */
   def print(x: Any): Unit = Console.print(x)
 
-  /** Prints a newline character on the default output.
+  /** Prints a line separator on the default output.
    *  @group console-output
    */
   def println(): Unit = Console.println()
 
-  /** Prints out an object to the default output, followed by a newline character.
+  /** Prints out an object to the default output, followed by a line separator.
    *
    *  @param x the object to print.
    *  @group console-output

@@ -302,9 +302,9 @@ abstract class Source extends Iterator[Char] with Closeable {
     }
   }
 
-  /** Returns an iterator who returns lines (NOT including newline character(s)).
-   *  It will treat any of \r\n, \r, or \n as a line separator (longest match) - if
-   *  you need more refined behavior you can subclass Source#LineIterator directly.
+  /** Returns an iterator who returns lines, NOT including line separators.
+   *  Treats any of \r\n, \r, or \n as a line separator (longest match).
+   *  If you need more specific behavior, subclass Source#LineIterator directly.
    */
   def getLines(): Iterator[String] = new LineIterator()
 
