@@ -498,54 +498,51 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
      * @see    https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.4
      */
     def getGenericSignature(sym: Symbol, descriptor: String | Null)(using Context): String | Null = {
-      val ogPhase = ctx.phase
-      atPhase(erasurePhase) {
-        // Finding the member's type is nontrivial because of erasure and how it interacts with other phases.
-        def computeMemberType(): Type = {
-          // Mixins are resolved _after_ erasure, so we cannot simply ask for "the information before erasure" for these,
-          // since that information never existed.
-          // Thus, we first check if the symbol was specifically marked as having generic information,
-          mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(sym) match
-            // and if so, we use it.
-            case Some(genericInfo) => return genericInfo
-            case _ => ()
+      // Finding the member's type is nontrivial because of erasure and how it interacts with other phases.
+      def computeMemberType(): Type = atPhase(erasurePhase) {
+        // Mixins are resolved _after_ erasure, so we cannot simply ask for "the information before erasure" for these,
+        // since that information never existed.
+        // Thus, we first check if the symbol was specifically marked as having generic information,
+        mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(sym) match
+          // and if so, we use it.
+          case Some(genericInfo) => return genericInfo
+          case _ => ()
 
-          // Methods are straightforward.
-          if sym.is(Method) then
-            return sym.denot.info
+        // Methods are straightforward.
+        if sym.is(Method) then
+          return sym.denot.info
 
-          // Fields have two special cases:
-          if sym.isField then
-            // we must use the getter if entered after erasure at memoize, see tests/generic-java-signatures/17069.scala for an example
-            if sym.denot.validFor.firstPhaseId > erasurePhase.id then
-              if sym.getter.exists then
-                return sym.getter.denot.info.resultType
+        // Fields have two special cases:
+        if sym.isField then
+          // we must use the getter if entered after erasure at memoize, see tests/generic-java-signatures/17069.scala for an example
+          if sym.denot.validFor.firstPhaseId > erasurePhase.id then
+            if sym.getter.exists then
+              return sym.getter.denot.info.resultType
 
-              // there might be a getter created after erasure by the mixin phase,
-              // and if so we must use the information that the mixin phase stored for it.
-              val mixinGetter = atPhase(mixinPhase.next) {
-                sym.getter
-              }
-              if mixinGetter.exists then mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(mixinGetter) match
-                case Some(ExprType(genericInfo)) => return genericInfo // since we're looking for the getter, we get an ExprType
-                case _ => ()
+            // there might be a getter created after erasure by the mixin phase,
+            // and if so we must use the information that the mixin phase stored for it.
+            val mixinGetter = atPhase(mixinPhase.next) {
+              sym.getter
+            }
+            if mixinGetter.exists then mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(mixinGetter) match
+              case Some(ExprType(genericInfo)) => return genericInfo // since we're looking for the getter, we get an ExprType
+              case _ => ()
 
-          sym.owner.denot.thisType.memberInfo(sym)
-        }
-
-        if ctx.base.settings.XnoGenericSig.value then null
-        else
-          val genSig = getGenericSignatureHelper(sym, computeMemberType(), ogPhase)
-          if genSig == null || (descriptor != null && descriptor.contentEquals(genSig)) then null
-          else genSig.toString
+        sym.owner.denot.thisType.memberInfo(sym)
       }
+
+      if ctx.base.settings.XnoGenericSig.value then null
+      else
+        val genSig = getGenericSignatureHelper(sym, computeMemberType())
+        if genSig == null || (descriptor != null && descriptor.contentEquals(genSig)) then null
+        else genSig.toString
     }
 
-    private def getGenericSignatureHelper(sym: Symbol, memberTpe: Type, ogPhase: Phase)(using Context): java.lang.StringBuilder | Null = {
+    private def getGenericSignatureHelper(sym: Symbol, memberTpe: Type)(using Context): java.lang.StringBuilder | Null = {
       // We must ensure all classes used in generic signatures are known to the loader so they can later be resolved
       // if necessary; and to do so, we must have a context with flattened names, because the callback is called with an erasure-time context.
       // The one exception is `scala.Array`, which can end up in a signature like `class C extends T[Array]` with `trait T[C[_]]`.
-      lazy val loadingCtx = ctx.withPhase(ogPhase)
+      val loadingCtx = ctx
       val jsOpt = GenericSignatures.javaSig(sym, memberTpe, c => {
         if c != defn.ArrayClass then bTypeLoader.classBTypeFromSymbol(c)(using loadingCtx)
       })
@@ -592,7 +589,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
         val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
         val erasedMemberType = ElimErasedValueType.elimEVT(TypeErasure.transformInfo(sym, memberTpe))
         if (erasedMemberType =:= sym.denot.info)
-          val gensig = getGenericSignatureHelper(sym, memberTpe, ctx.phase)
+          val gensig = getGenericSignatureHelper(sym, memberTpe)
           if gensig == null || (descriptor != null && descriptor.contentEquals(gensig)) then null
           else gensig.toString
         else null
