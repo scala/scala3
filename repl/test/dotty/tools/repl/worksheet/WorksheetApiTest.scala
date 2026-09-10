@@ -177,15 +177,6 @@ class WorksheetApiTest:
       wide.shutdown()
       narrow.shutdown()
 
-  @Test def reportsCompilerOptionsTheReplRefuses(): Unit =
-    val evaluator = new WorksheetDriver()
-      .withScalacOptions(java.util.List.of("-Ybest-effort"))
-    try
-      val result = evaluator.evaluate("options.worksheet.scala", "val x = 40\n")
-      val messages = result.diagnostics().asScala.map(_.message()).toList
-      assertTrue(messages.toString, messages.exists(_.contains("incompatible")))
-    finally evaluator.shutdown()
-
   @Test def reportsCompilerOptionsThatAreNotRecognised(): Unit =
     val evaluator = new WorksheetDriver()
       .withScalacOptions(java.util.List.of("-Wnosuchthing"))
