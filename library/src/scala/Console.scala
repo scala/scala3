@@ -256,8 +256,8 @@ object Console extends AnsiColor {
   }
 
   /** Flushes the output stream. This function is required when partial
-   *  output (i.e. not an entire line ending in a line separator) has
-   *  to be made visible on the terminal.
+   *  output (i.e. not ending in a line separator) has
+   *  to be made visible.
    *  @group console-output
    */
   def flush(): Unit = { out.flush() }
