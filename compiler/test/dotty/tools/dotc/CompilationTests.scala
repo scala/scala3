@@ -21,7 +21,7 @@ class CompilationTests {
   // Positive tests ------------------------------------------------------------
 
   @Category(Array(classOf[CoverageCompilationTests])) @Test def pos: Unit = {
-    given TestGroup = TestGroup("compilePos")
+    given TestGroup = TestGroup("pos")
     val tests = List(
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
@@ -148,7 +148,7 @@ class CompilationTests {
   // Warning tests ------------------------------------------------------------
 
   @Category(Array(classOf[CoverageCompilationTests])) @Test def warn: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileWarn")
+    implicit val testGroup: TestGroup = TestGroup("warn")
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/warn", defaultOptions),
     ))
@@ -158,7 +158,7 @@ class CompilationTests {
   // Negative tests ------------------------------------------------------------
 
   @Test def negAll: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileNeg")
+    implicit val testGroup: TestGroup = TestGroup("neg")
     aggregateTests(
       compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.negScala2LibraryTastyExcludelisted)),
       compileFilesInDir("tests/neg-deep-subtype", allowDeepSubtypes),
@@ -180,7 +180,7 @@ class CompilationTests {
   }
 
   @Test def fuzzyAll: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileFuzzy")
+    implicit val testGroup: TestGroup = TestGroup("fuzzy")
     compileFilesInDir("tests/fuzzy", defaultOptions).checkNoCrash()
   }
 
@@ -197,7 +197,7 @@ class CompilationTests {
   // Run tests -----------------------------------------------------------------
 
   @Category(Array(classOf[CoverageCompilationTests])) @Test def runAll: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("runAll")
+    implicit val testGroup: TestGroup = TestGroup("run")
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
@@ -219,7 +219,7 @@ class CompilationTests {
   // Pickling Tests ------------------------------------------------------------
 
   @Test def pickling: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("testPickling")
+    implicit val testGroup: TestGroup = TestGroup("pickling")
     aggregateTests(
       compileFilesInDir("tests/pos", picklingOptions, FileFilter.exclude(TestSources.posTestPicklingExcludelisted)),
       compileFilesInDir("tests/run", picklingOptions, FileFilter.exclude(TestSources.runTestPicklingExcludelisted))
@@ -413,36 +413,42 @@ class CompilationTests {
     }
   }
 
-  // parallel backend tests
   @Test def parallelBackend: Unit = {
-    given TestGroup = TestGroup("parallelBackend")
     val parallelism = Runtime.getRuntime().availableProcessors().min(16)
     assumeTrue("Not enough available processors to run parallel tests", parallelism > 1)
 
     val options = defaultOptions.and(s"-Ybackend-parallelism:${parallelism}")
-    def parCompileDir(directory: String) = compileDir(directory, options)
+    def parCompileDir(directory: String)(using TestGroup) = compileDir(directory, options)
 
     // Compilation units containing more than 1 source file
-    aggregateTests(
-      parCompileDir("tests/pos/i10477"),
-      parCompileDir("tests/pos/i4758"),
-      parCompileDir("tests/pos/scala2traits"),
-      parCompileDir("tests/pos/class-gadt"),
-      parCompileDir("tests/pos/tailcall"),
-      parCompileDir("tests/pos/reference"),
-      parCompileDir("tests/pos/pos_valueclasses")
-    ).checkCompile()
+    {
+      given TestGroup = TestGroup("parallelBackend pos")
+      aggregateTests(
+        parCompileDir("tests/pos/i10477"),
+        parCompileDir("tests/pos/i4758"),
+        parCompileDir("tests/pos/scala2traits"),
+        parCompileDir("tests/pos/class-gadt"),
+        parCompileDir("tests/pos/tailcall"),
+        parCompileDir("tests/pos/reference"),
+        parCompileDir("tests/pos/pos_valueclasses")
+      ).checkCompile()
+    }
 
-    aggregateTests(
-      parCompileDir("tests/neg/package-implicit"),
-      parCompileDir("tests/neg/package-export")
-    ).checkExpectedErrors()
+    {
+      given TestGroup = TestGroup("parallelBackend neg")
+      aggregateTests(
+        parCompileDir("tests/neg/package-implicit"),
+        parCompileDir("tests/neg/package-export")
+      ).checkExpectedErrors()
+    }
 
-    aggregateTests(
-      parCompileDir("tests/run/decorators"),
-      parCompileDir("tests/run/generic")
-    ).checkRuns()
-
+    {
+      given TestGroup = TestGroup("parallelBackend run")
+      aggregateTests(
+        parCompileDir("tests/run/decorators"),
+        parCompileDir("tests/run/generic")
+      ).checkRuns()
+    }
   }
 
   /**
