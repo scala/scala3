@@ -2,6 +2,8 @@ package dotty.tools.repl.worksheet
 
 import dotty.tools.repl.ReplTest
 
+import WorksheetDiagnosticSeverity.Warning
+
 import org.junit.Assert.*
 import org.junit.After
 import org.junit.Test
@@ -12,6 +14,15 @@ class WorksheetSessionTest:
   private val driver = new WorksheetSession(ReplTest.defaultOptions)
 
   @After def shutdownDriver(): Unit = driver.shutdown()
+
+  private def withProperty[A](body: String => A): A =
+    val property = s"scala3.worksheet.${java.util.UUID.randomUUID()}"
+    System.clearProperty(property)
+    try body(property) finally System.clearProperty(property)
+
+  extension (result: WorksheetResult)
+    private def errors: List[WorksheetDiagnostic] =
+      result.diagnostics.filter(_.severity == WorksheetDiagnosticSeverity.Error)
 
   @Test def evaluatesDefinitionsAndExpressionsInOneProgram(): Unit =
     val result = driver.evaluate(
@@ -31,10 +42,8 @@ class WorksheetSessionTest:
     assertEquals(": Int = 84", result.statements(2).summary)
     assertEquals("res0: Int = 84", result.statements(2).details)
 
-  @Test def reportsLazyValuesAndGivensWithoutEvaluatingThem(): Unit =
-    val lazyProperty = s"scala3.worksheet.lazy.${java.util.UUID.randomUUID()}"
-    val givenProperty = s"scala3.worksheet.given.${java.util.UUID.randomUUID()}"
-    try
+  @Test def reportsLazyValuesAndGivensWithoutEvaluatingThem(): Unit = withProperty: lazyProperty =>
+    withProperty: givenProperty =>
       val result = driver.evaluate(
         "lazy.worksheet.scala",
         s"""lazy val value: Unit = System.setProperty("$lazyProperty", "evaluated")
@@ -53,9 +62,6 @@ class WorksheetSessionTest:
       assertTrue(result.statements.forall(_.isSummaryComplete))
       assertNull(System.getProperty(lazyProperty))
       assertNull(System.getProperty(givenProperty))
-    finally
-      System.clearProperty(lazyProperty)
-      System.clearProperty(givenProperty)
 
   @Test def assignsOutputToTheStatementThatProducedIt(): Unit =
     val result = driver.evaluate(
@@ -98,12 +104,7 @@ class WorksheetSessionTest:
         |""".stripMargin
     )
 
-    assertEquals(
-      List(1),
-      result.diagnostics
-        .filter(_.severity == WorksheetDiagnosticSeverity.Error)
-        .map(_.position.startLine)
-    )
+    assertEquals(List(1), result.errors.map(_.position.startLine))
     assertEquals(List("// runs"), result.statements.map(_.details))
 
   @Test def stopsAtAnException(): Unit =
@@ -149,7 +150,7 @@ class WorksheetSessionTest:
         |""".stripMargin
     )
 
-    val errors = result.diagnostics.filter(_.severity == WorksheetDiagnosticSeverity.Error)
+    val errors = result.errors
     assertEquals(result.diagnostics.toString, 1, errors.length)
     assertEquals(0, errors.head.position.startLine)
     assertTrue(errors.head.message, errors.head.message.contains("Unable to resolve"))
@@ -177,7 +178,7 @@ class WorksheetSessionTest:
         |""".stripMargin
     )
 
-    val errors = result.diagnostics.filter(_.severity == WorksheetDiagnosticSeverity.Error)
+    val errors = result.errors
     assertEquals(result.diagnostics.toString, 1, errors.length)
     assertTrue(errors.head.message, errors.head.message.contains("does not exist"))
     assertEquals(List("res0: Int = 2"), result.statements.map(_.details))
@@ -227,61 +228,53 @@ class WorksheetSessionTest:
     assertEquals("value: Int = 2", result.statements(1).details)
     assertEquals("res0: Int = 2", result.statements(2).details)
 
-  @Test def evaluatesOnlyTheAppendedStatements(): Unit =
-    val property = s"scala3.worksheet.append.${java.util.UUID.randomUUID()}"
+  @Test def evaluatesOnlyTheAppendedStatements(): Unit = withProperty: property =>
     val initial =
       s"""val runCount = Option(System.getProperty("$property")).fold(1)(_.toInt + 1)
          |System.setProperty("$property", runCount.toString)
          |val value = 1
          |""".stripMargin
 
-    System.clearProperty(property)
-    try
-      val first = driver.evaluate("append.worksheet.scala", initial)
-      assertEquals(Nil, first.diagnostics)
-      assertEquals("1", System.getProperty(property))
+    val first = driver.evaluate("append.worksheet.scala", initial)
+    assertEquals(Nil, first.diagnostics)
+    assertEquals("1", System.getProperty(property))
 
-      val second = driver.evaluate(
-        "append.worksheet.scala",
-        initial +
-          """val value = 2
-            |value
-            |""".stripMargin
-      )
+    val second = driver.evaluate(
+      "append.worksheet.scala",
+      initial +
+        """val value = 2
+          |value
+          |""".stripMargin
+    )
 
-      assertEquals(Nil, second.diagnostics)
-      assertEquals("1", System.getProperty(property))
-      assertEquals("value: Int = 2", second.statements.takeRight(2).head.details)
-      assertEquals("res1: Int = 2", second.statements.last.details)
-    finally System.clearProperty(property)
+    assertEquals(Nil, second.diagnostics)
+    assertEquals("1", System.getProperty(property))
+    assertEquals("value: Int = 2", second.statements.takeRight(2).head.details)
+    assertEquals("res1: Int = 2", second.statements.last.details)
 
-  @Test def appendsFromTheStatementThatFailedToCompile(): Unit =
-    val property = s"scala3.worksheet.compile-error.${java.util.UUID.randomUUID()}"
+  @Test def appendsFromTheStatementThatFailedToCompile(): Unit = withProperty: property =>
     val initial = "val before = 1\n"
 
-    System.clearProperty(property)
-    try
-      val first = driver.evaluate("append-error.worksheet.scala", initial)
-      assertEquals(Nil, first.diagnostics)
+    val first = driver.evaluate("append-error.worksheet.scala", initial)
+    assertEquals(Nil, first.diagnostics)
 
-      val broken =
-        initial +
-          s"""System.setProperty("$property", "executed")
-             |val broken: String = 1
-             |""".stripMargin
-      val second = driver.evaluate("append-error.worksheet.scala", broken)
-      assertTrue(second.diagnostics.exists(_.severity == WorksheetDiagnosticSeverity.Error))
-      assertEquals("executed", System.getProperty(property))
+    val broken =
+      initial +
+        s"""System.setProperty("$property", "executed")
+           |val broken: String = 1
+           |""".stripMargin
+    val second = driver.evaluate("append-error.worksheet.scala", broken)
+    assertTrue(second.errors.nonEmpty)
+    assertEquals("executed", System.getProperty(property))
 
-      System.setProperty(property, "not repeated")
-      val third = driver.evaluate(
-        "append-error.worksheet.scala",
-        broken.replace("val broken: String = 1", """val fixed: String = "ok"""")
-      )
-      assertEquals(Nil, third.diagnostics)
-      assertEquals("not repeated", System.getProperty(property))
-      assertEquals("fixed: String = \"ok\"", third.statements.last.details)
-    finally System.clearProperty(property)
+    System.setProperty(property, "not repeated")
+    val third = driver.evaluate(
+      "append-error.worksheet.scala",
+      broken.replace("val broken: String = 1", """val fixed: String = "ok"""")
+    )
+    assertEquals(Nil, third.diagnostics)
+    assertEquals("not repeated", System.getProperty(property))
+    assertEquals("fixed: String = \"ok\"", third.statements.last.details)
 
   @Test def bindsExpressionResultsToReusableResValues(): Unit =
     val result = driver.evaluate(
@@ -345,10 +338,7 @@ class WorksheetSessionTest:
         |""".stripMargin
 
     val first = driver.evaluate("warning.worksheet.scala", initial)
-    assertTrue(
-      first.diagnostics.toString,
-      first.diagnostics.exists(_.severity == WorksheetDiagnosticSeverity.Warning)
-    )
+    assertTrue(first.diagnostics.toString, first.diagnostics.exists(_.severity == Warning))
 
     val second = driver.evaluate("warning.worksheet.scala", initial + "val value = 1\n")
 
@@ -372,26 +362,22 @@ class WorksheetSessionTest:
     assertEquals(1, second.statements.length)
     assertEquals("res0: Int = 4", second.statements.head.details)
 
-  @Test def reEvaluatingIdenticalTextReplaysTheCachedResult(): Unit =
-    val property = s"scala3.worksheet.identical.${java.util.UUID.randomUUID()}"
+  @Test def reEvaluatingIdenticalTextReplaysTheCachedResult(): Unit = withProperty: property =>
     val text =
       s"""System.setProperty("$property", "executed")
          |val value = 1
          |""".stripMargin
 
+    val first = driver.evaluate("identical.worksheet.scala", text)
+    assertEquals(Nil, first.diagnostics)
+    assertEquals("executed", System.getProperty(property))
     System.clearProperty(property)
-    try
-      val first = driver.evaluate("identical.worksheet.scala", text)
-      assertEquals(Nil, first.diagnostics)
-      assertEquals("executed", System.getProperty(property))
-      System.clearProperty(property)
 
-      val second = driver.evaluate("identical.worksheet.scala", text)
+    val second = driver.evaluate("identical.worksheet.scala", text)
 
-      assertEquals(first.diagnostics, second.diagnostics)
-      assertEquals(first.statements, second.statements)
-      assertEquals(null, System.getProperty(property))
-    finally System.clearProperty(property)
+    assertEquals(first.diagnostics, second.diagnostics)
+    assertEquals(first.statements, second.statements)
+    assertEquals(null, System.getProperty(property))
 
   @Test def keepsReportingARuntimeFailureWhileTheWorksheetGrows(): Unit =
     val initial =
@@ -455,7 +441,7 @@ class WorksheetSessionTest:
         |val broken: String = 2
         |""".stripMargin
     )
-    assertTrue(first.diagnostics.exists(_.severity == WorksheetDiagnosticSeverity.Error))
+    assertTrue(first.errors.nonEmpty)
 
     val second = driver.evaluate("second.worksheet.scala", "1 + 1\n")
 
@@ -496,7 +482,7 @@ class WorksheetSessionTest:
       "numbering.worksheet.scala",
       initial + "1 + 1\nval bad: String = 1\n"
     )
-    assertTrue(broken.diagnostics.exists(_.severity == WorksheetDiagnosticSeverity.Error))
+    assertTrue(broken.errors.nonEmpty)
 
     val fixed = driver.evaluate(
       "numbering.worksheet.scala",
@@ -577,12 +563,8 @@ class WorksheetSessionTest:
     assertEquals(result.diagnostics.toString, Nil, result.diagnostics)
     assertEquals(List("res0: Int = 2"), result.statements.map(_.details))
 
-  @Test def runsStatementsThatBindNothing(): Unit =
-    val wildcard = s"scala3.worksheet.wildcard.${java.util.UUID.randomUUID()}"
-    val ascribed = s"scala3.worksheet.ascribed.${java.util.UUID.randomUUID()}"
-    System.clearProperty(wildcard)
-    System.clearProperty(ascribed)
-    try
+  @Test def runsStatementsThatBindNothing(): Unit = withProperty: wildcard =>
+    withProperty: ascribed =>
       val result = driver.evaluate(
         "no-binder.worksheet.scala",
         s"""val _ = { System.setProperty("$wildcard", "ran"); 1 }
@@ -593,9 +575,6 @@ class WorksheetSessionTest:
       assertEquals(result.diagnostics.toString, Nil, result.diagnostics)
       assertEquals("ran", System.getProperty(wildcard))
       assertEquals("ran", System.getProperty(ascribed))
-    finally
-      System.clearProperty(wildcard)
-      System.clearProperty(ascribed)
 
   @Test def runsCompleteStatementsOfANewWorksheetBeforeASyntaxError(): Unit =
     assertEquals(Nil, driver.evaluate("earlier.worksheet.scala", "val unrelated = 1\n").diagnostics)
@@ -633,6 +612,7 @@ class WorksheetSessionTest:
     val result = driver.evaluate(filename, ":quit\n")
 
     assertTrue(result.diagnostics.toString, result.diagnostics.nonEmpty)
+    assertEquals(Nil, result.statements)
     assertEquals(Nil, result.classpath)
     assertEquals(Nil, result.dependencies)
 
@@ -678,33 +658,23 @@ class WorksheetSessionTest:
       assertEquals(unusedWarnings(again).toString, 1, unusedWarnings(again).length)
     finally strict.shutdown()
 
-  @Test def reportsReplCommandsAsUnsupported(): Unit =
-    val result = driver.evaluate("command.worksheet.scala", ":quit\n")
-
-    assertTrue(result.diagnostics.toString, result.diagnostics.nonEmpty)
-    assertEquals(Nil, result.statements)
-
-  @Test def rebuildsASessionLeftByAnotherWorksheetsSyntaxError(): Unit =
-    val property = s"scala3.worksheet.stale.${java.util.UUID.randomUUID()}"
+  @Test def rebuildsASessionLeftByAnotherWorksheetsSyntaxError(): Unit = withProperty: property =>
     val first = s"""System.setProperty("$property", "1")
                    |val value = 1
                    |""".stripMargin
 
+    assertEquals(Nil, driver.evaluate("a.worksheet.scala", first).diagnostics)
+    assertEquals("1", System.getProperty(property))
+
+    val broken = driver.evaluate("b.worksheet.scala", "val oops = (\n")
+    assertTrue(broken.diagnostics.nonEmpty)
+    assertEquals(Nil, broken.statements)
+
     System.clearProperty(property)
-    try
-      assertEquals(Nil, driver.evaluate("a.worksheet.scala", first).diagnostics)
-      assertEquals("1", System.getProperty(property))
+    val again = driver.evaluate("a.worksheet.scala", first)
 
-      val broken = driver.evaluate("b.worksheet.scala", "val oops = (\n")
-      assertTrue(broken.diagnostics.nonEmpty)
-      assertEquals(Nil, broken.statements)
-
-      System.clearProperty(property)
-      val again = driver.evaluate("a.worksheet.scala", first)
-
-      assertEquals(Nil, again.diagnostics)
-      assertEquals("1", System.getProperty(property))
-    finally System.clearProperty(property)
+    assertEquals(Nil, again.diagnostics)
+    assertEquals("1", System.getProperty(property))
 
   @Test def leavesTheProcessWideStreamsAlone(): Unit =
     val originalOut = System.out
@@ -729,30 +699,23 @@ class WorksheetSessionTest:
     assertEquals(Nil, result.diagnostics)
     assertTrue(result.statements.head.details, result.statements.head.details.contains("child-output"))
 
-  @Test def rebuildsASessionAfterACommandReplacesTheSameWorksheet(): Unit =
-    val property = s"scala3.worksheet.same-file.${java.util.UUID.randomUUID()}"
+  @Test def rebuildsASessionAfterACommandReplacesTheSameWorksheet(): Unit = withProperty: property =>
     val text = s"""System.setProperty("$property", "1")
                   |val value = 1
                   |""".stripMargin
 
+    assertEquals(Nil, driver.evaluate("same.worksheet.scala", text).diagnostics)
+    assertEquals("1", System.getProperty(property))
+
+    assertTrue(driver.evaluate("same.worksheet.scala", ":quit\n").diagnostics.nonEmpty)
+
     System.clearProperty(property)
-    try
-      assertEquals(Nil, driver.evaluate("same.worksheet.scala", text).diagnostics)
-      assertEquals("1", System.getProperty(property))
+    val again = driver.evaluate("same.worksheet.scala", text)
 
-      assertTrue(driver.evaluate("same.worksheet.scala", ":quit\n").diagnostics.nonEmpty)
-
-      System.clearProperty(property)
-      val again = driver.evaluate("same.worksheet.scala", text)
-
-      assertEquals(Nil, again.diagnostics)
-      assertEquals("1", System.getProperty(property))
-    finally System.clearProperty(property)
+    assertEquals(Nil, again.diagnostics)
+    assertEquals("1", System.getProperty(property))
 
 private object WorksheetSessionTest:
-  /** A jar with no dependencies of its own, found through a class it holds so that no
-   *  test needs the network or a path spelled out.
-   */
   val interfacesJar: java.nio.file.Path =
     java.nio.file.Path.of(
       classOf[interfaces.RangePosition].getProtectionDomain.getCodeSource.getLocation.toURI
