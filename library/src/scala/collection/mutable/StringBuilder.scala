@@ -59,6 +59,9 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
   with java.lang.CharSequence
   with Serializable {
 
+  /** Constructs a string builder with no characters in it and an
+   *  initial capacity of 16 characters.
+   */
   def this() = this(new java.lang.StringBuilder)
 
   /** Constructs a string builder with no characters in it and an
@@ -86,24 +89,56 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     this(new java.lang.StringBuilder(initValue.length + initCapacity).append(initValue))
 
   // Methods required to make this an IndexedSeq:
+  /** Returns the character at the specified index.
+   *
+   *  @param i the index of the character to return
+   *  @return the character at index `i`
+   *  @throws IndexOutOfBoundsException if `i` is out of bounds
+   */
   def apply(i: Int): Char = underlying.charAt(i)
 
+  /** Returns a new string builder containing the characters of `coll`.
+   *
+   *  @param coll the characters for the new string builder
+   *  @return a new string builder with the characters of `coll` appended to it
+   */
   override protected def fromSpecific(coll: scala.collection.IterableOnce[Char]^): StringBuilder =
     new StringBuilder() appendAll coll
 
+  /** Returns a builder that produces a `StringBuilder`, backed by a new empty string builder. */
   override protected def newSpecificBuilder: Builder[Char, StringBuilder] =
     new GrowableBuilder(new StringBuilder())
 
+  /** Returns a new empty string builder. */
   override def empty: StringBuilder = new StringBuilder()
 
+  /** Returns the number of characters in this builder. */
   @inline def length: Int = underlying.length
 
+  /** Setter alias for [[setLength]]: sets the length of the character sequence to
+   *  `n`, truncating it or padding it with null characters (`'\u0000'`) as needed.
+   *
+   *  @throws IndexOutOfBoundsException if `n` is negative
+   */
   def length_=(n: Int): Unit = underlying.setLength(n)
 
+  /** Returns the number of characters in this builder, which is always known.
+   *
+   *  This override selects the `IndexedSeqOps` implementation, which returns
+   *  `length`, over the `Growable` default, which returns -1.
+   */
   override def knownSize: Int = super[IndexedSeqOps].knownSize
 
+  /** Appends the given character to this builder.
+   *
+   *  @param x the character to append
+   *  @return this string builder
+   */
   def addOne(x: Char): this.type = { underlying.append(x); this }
 
+  /** Removes all characters from this builder, setting its length to 0.
+   *  The builder's capacity is unchanged, and it can be used again.
+   */
   def clear(): Unit = underlying.setLength(0)
 
   /** Overloaded version of `addAll` that takes a string.
@@ -116,10 +151,26 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
   /** Alias for `addAll`. */
   def ++= (s: String): this.type = addAll(s)
 
+  /** Returns the contents of this builder as a `String`.
+   *
+   *  Unlike most builders, calling `result()` does not reset this builder:
+   *  it may be called repeatedly, interleaved with further modifications.
+   */
   def result() = underlying.toString
 
+  /** Returns the contents of this builder as a `String`. Equivalent to [[result]]. */
   override def toString(): String = result()
 
+  /** Returns an array containing the characters of this builder.
+   *
+   *  When `B` is `Char` itself, the characters are copied directly, as by
+   *  [[toCharArray]]; for any other element type the generic implementation
+   *  inherited from the collections library is used.
+   *
+   *  @tparam B the element type of the resulting array, a supertype of `Char`
+   *  @param ct a class tag whose runtime class determines the component type
+   *            of the resulting array
+   */
   override def toArray[B >: Char](implicit ct: scala.reflect.ClassTag[B]) =
     ct.runtimeClass match {
       case java.lang.Character.TYPE => toCharArray.asInstanceOf[Array[B]]
@@ -139,6 +190,11 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
 
   // append* methods delegate to the underlying java.lang.StringBuilder:
 
+  /** Appends the given string to this builder.
+   *
+   *  @param xs the string to append
+   *  @return this string builder
+   */
   def appendAll(xs: String): this.type = {
     underlying.append(xs)
     this
@@ -242,12 +298,55 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
    *  @return     This StringBuilder.
    */
   def append(x: Boolean): this.type = { underlying.append(x) ; this }
+  /** Appends the string representation of the given `Byte` value,
+   *  as produced by `String.valueOf`, to this builder. The value is
+   *  widened to an `Int` before conversion.
+   *
+   *  @param x the value to append
+   *  @return this string builder
+   */
   def append(x: Byte): this.type = append(x.toInt)
+  /** Appends the string representation of the given `Short` value,
+   *  as produced by `String.valueOf`, to this builder. The value is
+   *  widened to an `Int` before conversion.
+   *
+   *  @param x the value to append
+   *  @return this string builder
+   */
   def append(x: Short): this.type = append(x.toInt)
+  /** Appends the string representation of the given `Int` value,
+   *  as produced by `String.valueOf`, to this builder.
+   *
+   *  @param x the value to append
+   *  @return this string builder
+   */
   def append(x: Int): this.type = { underlying.append(x) ; this }
+  /** Appends the string representation of the given `Long` value,
+   *  as produced by `String.valueOf`, to this builder.
+   *
+   *  @param x the value to append
+   *  @return this string builder
+   */
   def append(x: Long): this.type = { underlying.append (x) ; this }
+  /** Appends the string representation of the given `Float` value,
+   *  as produced by `String.valueOf`, to this builder.
+   *
+   *  @param x the value to append
+   *  @return this string builder
+   */
   def append(x: Float): this.type = { underlying.append (x) ; this }
+  /** Appends the string representation of the given `Double` value,
+   *  as produced by `String.valueOf`, to this builder.
+   *
+   *  @param x the value to append
+   *  @return this string builder
+   */
   def append(x: Double): this.type = { underlying.append(x) ; this }
+  /** Appends the given character to this builder.
+   *
+   *  @param x the character to append
+   *  @return this string builder
+   */
   def append(x: Char): this.type = { underlying.append(x) ; this }
 
   /** Removes a subsequence of Chars from this sequence, starting at the
@@ -347,12 +446,69 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
    *  @return       this StringBuilder.
    */
   def insert(index: Int, x: Boolean): this.type = insert(index, String.valueOf(x))
+  /** Inserts the string representation of the given `Byte` value,
+   *  as produced by `String.valueOf`, at the given index. The value is
+   *  widened to an `Int` before conversion.
+   *
+   *  @param index the index at which to insert
+   *  @param x the value to insert
+   *  @return this string builder
+   *  @throws StringIndexOutOfBoundsException if the index is out of bounds
+   */
   def insert(index: Int, x: Byte): this.type    = insert(index, x.toInt)
+  /** Inserts the string representation of the given `Short` value,
+   *  as produced by `String.valueOf`, at the given index. The value is
+   *  widened to an `Int` before conversion.
+   *
+   *  @param index the index at which to insert
+   *  @param x the value to insert
+   *  @return this string builder
+   *  @throws StringIndexOutOfBoundsException if the index is out of bounds
+   */
   def insert(index: Int, x: Short): this.type   = insert(index, x.toInt)
+  /** Inserts the string representation of the given `Int` value,
+   *  as produced by `String.valueOf`, at the given index.
+   *
+   *  @param index the index at which to insert
+   *  @param x the value to insert
+   *  @return this string builder
+   *  @throws StringIndexOutOfBoundsException if the index is out of bounds
+   */
   def insert(index: Int, x: Int): this.type     = insert(index, String.valueOf(x))
+  /** Inserts the string representation of the given `Long` value,
+   *  as produced by `String.valueOf`, at the given index.
+   *
+   *  @param index the index at which to insert
+   *  @param x the value to insert
+   *  @return this string builder
+   *  @throws StringIndexOutOfBoundsException if the index is out of bounds
+   */
   def insert(index: Int, x: Long): this.type    = insert(index, String.valueOf(x))
+  /** Inserts the string representation of the given `Float` value,
+   *  as produced by `String.valueOf`, at the given index.
+   *
+   *  @param index the index at which to insert
+   *  @param x the value to insert
+   *  @return this string builder
+   *  @throws StringIndexOutOfBoundsException if the index is out of bounds
+   */
   def insert(index: Int, x: Float): this.type   = insert(index, String.valueOf(x))
+  /** Inserts the string representation of the given `Double` value,
+   *  as produced by `String.valueOf`, at the given index.
+   *
+   *  @param index the index at which to insert
+   *  @param x the value to insert
+   *  @return this string builder
+   *  @throws StringIndexOutOfBoundsException if the index is out of bounds
+   */
   def insert(index: Int, x: Double): this.type  = insert(index, String.valueOf(x))
+  /** Inserts the given character at the given index.
+   *
+   *  @param index the index at which to insert
+   *  @param x the character to insert
+   *  @return this string builder
+   *  @throws StringIndexOutOfBoundsException if the index is out of bounds
+   */
   def insert(index: Int, x: Char): this.type    = insert(index, String.valueOf(x))
 
   /** Sets the length of the character sequence.  If the current sequence
@@ -364,6 +520,14 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
    */
   def setLength(len: Int): Unit = underlying.setLength(len)
 
+  /** Replaces the character at index `idx` with `elem`.
+   *
+   *  Equivalent to [[setCharAt]]; enables assignment syntax `sb(idx) = elem`.
+   *
+   *  @param idx the index of the character to replace
+   *  @param elem the replacement character
+   *  @throws IndexOutOfBoundsException if `idx` is negative or not less than `length`
+   */
   def update(idx: Int, elem: Char): Unit = underlying.setCharAt(idx, elem)
 
 
@@ -506,6 +670,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
 }
 
 object StringBuilder {
+  /** Returns a new empty string builder, with the default initial capacity of 16 characters. */
   @deprecated("Use `new StringBuilder()` instead of `StringBuilder.newBuilder`", "2.13.0")
   def newBuilder = new StringBuilder
 }

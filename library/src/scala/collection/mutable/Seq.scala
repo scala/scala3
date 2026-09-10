@@ -16,12 +16,18 @@ import scala.language.`2.13`
 import language.experimental.captureChecking
 import scala.collection.{IterableFactoryDefaults, SeqFactory}
 
+/** Base trait for mutable sequences: ordered collections whose elements can be
+ *  replaced in place with `update`.
+ *
+ *  @tparam A the element type of the sequence
+ */
 trait Seq[A]
   extends Iterable[A]
     with collection.Seq[A]
     with SeqOps[A, Seq, Seq[A]]
     with IterableFactoryDefaults[A, Seq] {
 
+  /** The factory used to build mutable sequences, the [[Seq$ `Seq`]] companion object, which delegates to [[ArrayBuffer]]. */
   override def iterableFactory: SeqFactory[Seq] = Seq
 }
 
@@ -45,6 +51,7 @@ transparent trait SeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
     with Cloneable[C]
     with caps.Pure {
 
+  /** Returns a new sequence of the same kind containing the same elements as this sequence. */
   override def clone(): C = {
     val b = newSpecificBuilder
     b ++= this
