@@ -125,10 +125,19 @@ trait TypeAssigner {
    *  @see QualSkolemType, TypeOps#asSeenFrom
    */
   def maybeSkolemizePrefix(qualType: Type, name: Name)(using Context): Type =
-    if (name.isTermName && !TypeOps.isLegalPrefix(qualType))
+    if skolemizesPrefix(qualType, name) then
       QualSkolemType(qualType)
     else
       qualType
+
+  /** Does selecting `name` on `qualType` skolemize the prefix?
+   *
+   *  Callers that may compute a selection type more than once need this: each call to
+   *  `maybeSkolemizePrefix` makes a *fresh* skolem, so for such a selection recomputing
+   *  the type is not a no-op even when it finds the very same member.
+   */
+  def skolemizesPrefix(qualType: Type, name: Name)(using Context): Boolean =
+    name.isTermName && !TypeOps.isLegalPrefix(qualType)
 
   /** The type of the selection `tree`, where `qual1` is the typed qualifier part. */
   def selectionType(tree: untpd.RefTree, qual1: Tree)(using Context): Type =
