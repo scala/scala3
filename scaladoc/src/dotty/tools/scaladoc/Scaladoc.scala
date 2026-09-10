@@ -97,18 +97,20 @@ object Scaladoc:
   }
 
   def extract(args: Array[String], rootCtx: CompilerContext): (Option[Scaladoc.Args], CompilerContext) =
-    val newContext = rootCtx.fresh
-    val ss = ScaladocSettings()
-    val summary = ScaladocCommand.distill(args, ss)()(using newContext)
-    newContext.setSettings(summary.sstate)
-    given CompilerContext = newContext
-    val argumentFilesOrNone = ScaladocCommand.checkUsage(summary, true)(using ss)(using summary.sstate)
+    val ictx = rootCtx.fresh
+    // Unfortunately, `Context` is only meant to work with `ScalaSettings`, but we want to use `ScaladocSettings`...
+    val ss = new ScaladocSettings()
+    val summary = ScaladocCommand.distill(args, ss)(ictx.settingsState)(using ictx)
+    ictx.setSettings(summary.sstate)
+
+    given CompilerContext = ictx
+    val argumentFilesOrNone = ScaladocCommand.checkUsage(summary, true)(using ss)(using ictx.settingsState)
 
     def setInGlobal[T](s: Setting[T]) =
       s.valueSetByUser.foreach { newValue =>
-        newContext.settings.allSettings.find(_ == s).fold(
+        ss.allSettings.find(_ == s).fold(
           report.warning(s"Unable to set ${s.name} in global context")
-        )(s => newContext.setSetting(s.asInstanceOf[Setting[T]], newValue))
+        )(s => ictx.setSetting(s.asInstanceOf[Setting[T]], newValue))
       }
 
     val commonScalaSettings = (new SettingGroup with CommonScalaSettings).allSettings
@@ -125,7 +127,7 @@ object Scaladoc:
     def parseTastyRoots(roots: String) =
       roots.split(File.pathSeparatorChar).toList.map(new File(_))
 
-    argumentFilesOrNone.fold((None, newContext)) { argumentFiles =>
+    argumentFilesOrNone.fold((None, ictx)) { argumentFiles =>
       val (existing, nonExisting) = argumentFiles.map(File(_)).partition(_.exists)
 
       if nonExisting.nonEmpty then report.warning(
@@ -230,7 +232,7 @@ object Scaladoc:
         ss.noSnippetNamesFor.value,
         ss.generateApi.value,
       )
-      (Some(docArgs), newContext)
+      (Some(docArgs), ictx)
     }
 
   private [scaladoc] def run(args: Args)(using ctx: CompilerContext): DocContext =
