@@ -78,8 +78,8 @@ private final class StatementEvaluator(startup: ReplStartup, runner: StatementRu
                     next.reverse,
                     accepted.reverse,
                     outcome.state,
-                    diagnostics ::: warnings,
-                    failure :: Nil
+                    diagnostics,
+                    warnings :+ failure
                   )
                 case None =>
                   loop(tail, outcome.state, statement :: accepted, next, diagnostics ::: warnings)
