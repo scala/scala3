@@ -100,7 +100,7 @@ object Scaladoc:
     val ictx = rootCtx.fresh
     // Unfortunately, `Context` is only meant to work with `ScalaSettings`, but we want to use `ScaladocSettings`...
     val ss = new ScaladocSettings()
-    val summary = ScaladocCommand.distill(args, ss)(ictx.settingsState)(using ictx)
+    val summary = ScaladocCommand.distill(args, ss)(ss.defaultState)(using ictx)
     ictx.setSettings(summary.sstate)
 
     given CompilerContext = ictx
