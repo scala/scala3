@@ -716,7 +716,10 @@ object MiMaFilters {
       Versions.mimaPreviousVersion -> Seq.empty,
 
       // Additions since last LTS
-      Versions.mimaPreviousLTSVersion -> Seq.empty,
+      Versions.mimaPreviousLTSVersion -> Seq(
+        // SourceFile now has the (preferred) textContent to avoid copying to a char array
+        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.dotc.interfaces.SourceFile.textContent"),
+      )
     )
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(

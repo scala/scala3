@@ -70,9 +70,10 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
 
   def maybeIncomplete: Boolean = _maybeIncomplete
 
+  private var cachedCharArrayContent: Array[Char] | Null = null
   @deprecated("Use `textContent` to not require a copy of the data.")
   override def content(): Array[Char] =
-    textContent().toCharArray
+    initialize(cachedCharArrayContent, cachedCharArrayContent = _, textContent().toCharArray)
 
   /** The contents of the original source file. Note that this can be empty, for example when
    * the source is read from Tasty. */
