@@ -64,6 +64,7 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
         try Right(binders(compiled.objectIndex)(using state.context))
         catch
           case exception: ExceptionInInitializerError => Left(exception)
+          case death: ThreadDeath => Left(death)
           case NonFatal(exception) => Left(exception)
       outcome match
         case Right(values) =>
