@@ -3156,7 +3156,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if seen(p.name) then
             report.error(em"parameter name must be distinct from deprecated name", p.srcPos)
           for annot <- p.symbol.getAnnotation(defn.DeprecatedNameAnnot) do
-            val nm = annot.argumentConstantString(0).map(_.toTermName).getOrElse(nme.NO_NAME)
+            val nm = annot.argumentConstantStringOrSymbol(0).map(_.toTermName).getOrElse(nme.NO_NAME)
             if seen(nm) then
               report.error(em"deprecated parameter name must be distinct from other names", annot.tree.srcPos)
             seen.addOne(nm)

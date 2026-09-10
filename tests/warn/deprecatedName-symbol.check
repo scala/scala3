@@ -1,0 +1,4 @@
+-- Deprecation Warning: tests/warn/deprecatedName-symbol.scala:7:13 ----------------------------------------------------
+7 |val a2 = f(x = 2) // warn
+  |           ^^^^^
+  |           the parameter name x is deprecated: use y instead
