@@ -40,7 +40,7 @@ trait CliCommand:
   """
 
   /** Distill arguments into summary detailing settings, errors and files to main */
-  def distill(args: Array[String], sg: Settings.SettingGroup)(ss: SettingsState = sg.defaultState)(using Context): ArgsSummary =
+  def distill(args: Array[String], sg: Settings.SettingGroup)(ss: SettingsState = sg.defaultState): ArgsSummary =
 
     // expand out @filename to the contents of that filename
     def expandedArguments = args.toList flatMap {
