@@ -3067,7 +3067,7 @@ object Parsers {
             case Number(n, _) if n(0) == '-' =>
               val start = t.span.start
               val span = Span(start, in.lastOffset)
-              warning(IllegalLiteral(), start)
+              warning(IllegalLiteral(ambiguous = true), start)
               unpatch(ctx.compilationUnit.source, span)
               patch(span, s"($n)")
             case Literal(const)
@@ -3077,7 +3077,7 @@ object Parsers {
                     || const.tag == DoubleTag) =>
               val start = t.span.start
               val span = Span(start, in.lastOffset)
-              warning(IllegalLiteral(), start)
+              warning(IllegalLiteral(ambiguous = true), start)
               unpatch(ctx.compilationUnit.source, span)
               val text = source.textContent().substring(start, span.end)
               patch(span, s"($text)")
