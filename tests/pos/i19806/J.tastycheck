@@ -37,7 +37,7 @@ Trees (145 bytes, starting from <elided base index>):
      5:   VALDEF(11) 2 [J]
      8:     IDENTtpt 3 [J[ModuleClass]]
     10:       TYPEREFsymbol 18
-    12:         TERMREFpkg 1 [p]
+    12:         SHAREDtype 3
     14:     ELIDED
     15:       SHAREDtype 10
     17:     OBJECT
@@ -48,7 +48,7 @@ Trees (145 bytes, starting from <elided base index>):
     27:       SELFDEF 8 [_]
     29:         SINGLETONtpt
     30:           TERMREFsymbol 5
-    32:             SHAREDtype 12
+    32:             SHAREDtype 3
     34:       DEFDEF(7) 9 [<init>]
     37:         EMPTYCLAUSE
     38:         TYPEREF 10 [Unit]
@@ -58,7 +58,7 @@ Trees (145 bytes, starting from <elided base index>):
     46:         EMPTYCLAUSE
     47:         IDENTtpt 14 [Module[ModuleClass]]
     49:           TYPEREF 14 [Module[ModuleClass]]
-    51:             SHAREDtype 12
+    51:             SHAREDtype 3
     53:         ELIDED
     54:           SHAREDtype 49
     56:         STATIC
@@ -74,7 +74,7 @@ Trees (145 bytes, starting from <elided base index>):
     74:         EMPTYCLAUSE
     75:         SELECTtpt 18 [InnerModule[ModuleClass]]
     77:           TERMREF 13 [Module]
-    79:             SHAREDtype 12
+    79:             SHAREDtype 3
     81:         ELIDED
     82:           TYPEREF 18 [InnerModule[ModuleClass]]
     84:             SHAREDtype 77
