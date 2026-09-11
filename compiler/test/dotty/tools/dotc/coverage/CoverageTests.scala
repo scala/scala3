@@ -123,7 +123,7 @@ class CoverageTests:
 
     Files.walk(dir, 1).filter(runOnFile).forEach { path =>
       val target = Files.createTempDirectory("coverage-warning")
-      val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", target.toString, "-sourceroot", rootSrc.toString)
+      val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-Ylog:instrumentCoverage", "-coverage-out", target.toString, "-sourceroot", rootSrc.toString)
       val relativePath = Paths.get(userDir).relativize(path).toString
       compileFile(relativePath, options).checkWarnings()
     }
