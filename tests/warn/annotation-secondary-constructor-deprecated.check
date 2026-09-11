@@ -1,0 +1,4 @@
+-- Deprecation Warning: tests/warn/annotation-secondary-constructor-deprecated.scala:9:1 -------------------------------
+9 |@A1(12345) def f2 = "y" // warn
+  |^^^^^^^^^^
+  |constructor A1 in class A1 is deprecated: use String param
