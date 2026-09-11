@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*
+import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*, NameKinds.*
 import ast.tpd, tpd.*
 import util.Spans.{Span, NoSpan}
 import printing.{Showable, Printer}
@@ -46,10 +46,16 @@ object Annotations {
     def argumentTypes(using Context): List[Type] =
       tpd.allArguments(tree).filterConserve(_.isType).tpes
 
-    def argument(i: Int)(using Context): Option[Tree] = {
+    def argument(i: Int)(using Context): Option[Tree] =
       val args = arguments
-      if (i < args.length) Some(args(i)) else None
-    }
+      if i < args.length then Some(args(i)) else None
+
+    def hasExplicitArgument(i: Int)(using Context): Boolean =
+      argument(i) match
+        case Some(Select(Ident(_), DefaultGetterName(nme.CONSTRUCTOR, _))) => false
+        case Some(xxx) => true
+        case None => false
+
     def argumentConstant(i: Int)(using Context): Option[Constant] =
       for case ConstantType(c) <- argument(i).map(stripCast(_).tpe.widenTermRefExpr.normalized) yield c
 
