@@ -34,7 +34,7 @@ class SnippetCompiler(
           ctx
         case None => rootCtx
       ctx.initialize()(using ctx)
-      MacroClassLoader.init(ctx)
+      MacroClassLoader.init(ctx.fresh)
 
   private val scala3Compiler = new Compiler
 
