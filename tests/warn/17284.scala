@@ -1,4 +1,4 @@
-//> using options  -explain
+//> using options  -explain -deprecation
 
 def test =
   451.synchronized {} // warn
@@ -11,4 +11,4 @@ def test3 =
   true.synchronized {} // warn
 
 def test4 =
-  true.hashCode() // success
+  true.hashCode() // warn: Any.hashCode is deprecated under explicit nulls

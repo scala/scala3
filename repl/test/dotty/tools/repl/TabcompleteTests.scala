@@ -102,8 +102,7 @@ class TabcompleteTests extends ReplTest {
   @Test def `null` = initially {
     val comp = tabComplete("null.")
     assertEquals(
-      List("!=", "##", "==", "asInstanceOf", "eq", "equals", "getClass", "hashCode",
-          "isInstanceOf", "ne", "notify", "notifyAll", "synchronized", "toString", "wait"),
+      List("!=", "##", "==", "asInstanceOf", "equals", "getClass", "hashCode", "isInstanceOf", "toString"),
       comp.distinct.sorted)
   }
 
@@ -278,8 +277,8 @@ class TabcompleteTests extends ReplTest {
       List(
         "(separator: Char): Array[String]",
         "(separators: Array[Char]): Array[String]",
-        "(x$0: String): Array[String]",
-        "(x$0: String, x$1: Int): Array[String]"
+        "(x$0: (String)?): (Array[(String)?])?",
+        "(x$0: (String)?, x$1: Int): (Array[(String)?])?"
       ),
       tabCompleteSignatures(""""".split""", "split")
     )

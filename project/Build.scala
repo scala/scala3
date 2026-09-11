@@ -2095,6 +2095,7 @@ object Build {
       excludeDependencies += "org.scala-lang" %% "scala3-library",
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
       scalacOptions -= "-Yexplicit-nulls",
+      scalacOptions += "-Yno-explicit-nulls",
     ).
     settings(
       ideTestsCompilerVersion := (`scala3-compiler-nonbootstrapped` / version).value,
@@ -2465,6 +2466,7 @@ object Build {
       scalaJSUseMainModuleInitializer := true,
       Test / fork := false,
       scalacOptions -= "-Yexplicit-nulls",
+      scalacOptions += "-Yno-explicit-nulls",
     )
 
   lazy val `scaladoc-js-contributors` = project.in(file("scaladoc-js/contributors")).

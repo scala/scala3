@@ -489,13 +489,13 @@ object Contexts {
       fresh.setSetting(ctx.settings.color, "never")
 
     /** Is the explicit nulls option set? */
-    def explicitNulls: Boolean = base.settings.YexplicitNulls.value
+    def explicitNulls: Boolean = !base.settings.YnoExplicitNulls.value
 
     /** Is the flexible types option set? */
-    def flexibleTypes: Boolean = base.settings.YexplicitNulls.value && !base.settings.YnoFlexibleTypes.value
+    def flexibleTypes: Boolean = explicitNulls && !base.settings.YnoFlexibleTypes.value
 
     /** Is the flexify tasty option set? */
-    def flexifyTasty: Boolean = base.settings.YexplicitNulls.value && base.settings.YflexifyTasty.value
+    def flexifyTasty: Boolean = explicitNulls && base.settings.YflexifyTasty.value
 
     /** Is the best-effort option set? */
     def isBestEffort: Boolean = base.settings.YbestEffort.value
