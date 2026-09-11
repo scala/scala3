@@ -818,7 +818,7 @@ class HoverTermSuite extends BaseHoverSuite:
       """|package tests.macros
          |def m = Macros7460.foo.sub@@string(2, 4)
          |""".stripMargin,
-      "def substring(x$0: Int, x$1: Int): String".hover
+      "def substring(x$0: Int, x$1: Int): (String)?".hover
     )
 
   @Test def `i7460-2` =
@@ -826,7 +826,7 @@ class HoverTermSuite extends BaseHoverSuite:
       """|package tests.macros
          |def m = Macros7460.bar.sub@@string(2, 4)
          |""".stripMargin,
-      "def substring(x$0: Int, x$1: Int): String".hover
+      "def substring(x$0: Int, x$1: Int): (String)?".hover
     )
 
   @Test def `multiple-valdefs-1` =
