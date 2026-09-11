@@ -226,8 +226,9 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
   def startColumnPadding(offset: Int): String = {
     var idx = startOfLine(offset)
     val pad = new StringBuilder
+    val text = textContent()
     while (idx != offset) {
-      pad.append(if (idx < textContent().length && textContent()(idx) == '\t') '\t' else ' ')
+      pad.append(if idx < text.length && text(idx) == '\t' then '\t' else ' ')
       idx += 1
     }
     pad.result()
