@@ -1238,6 +1238,7 @@ object RefChecks {
     if ctx.explicitNulls && !ctx.isJava
         && sym.exists && sym.owner.isClass
         && !sym.owner.isAnonymousClass
+        && !sym.owner.name.isReplWrapperName
         && !sym.isOneOf(JavaOrPrivateOrSynthetic | InlineProxy | Param | Exported) then
       val resTp = sym.info.finalResultType
       if resTp.existsPart(_.isInstanceOf[FlexibleType], StopAt.Static) then
