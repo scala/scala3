@@ -1031,7 +1031,7 @@ object CaptureSet:
     override def optionalInfo(using Context): String =
       for vars <- ctx.property(ShownVars) do vars += this
       if !ctx.settings.YccDebug.value then ""
-      else if isConst then ids ++ "(solved)"
+      else if isConst then ids + "(solved)"
       else ids
 
     /** Used for diagnostics and debugging: A string that traces the creation

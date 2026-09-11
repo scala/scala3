@@ -296,14 +296,16 @@ object Signatures {
     for
       previousArg <- untpdArgs.lift(previousArgIndex)
       nextArg = untpdArgs.lift(previousArgIndex + 1)
-      text = ctx.source.content.slice(previousArg.span.end - 1, nextArg.map(_.span.start).getOrElse(span.end))
+      // unfortunately there's no indexOf with both from and to indices,
+      // and we don't want to potentially iterate a very large string
+      text = ctx.source.textContent().substring(previousArg.span.end - 1, nextArg.map(_.span.start).getOrElse(span.end))
       commaIndex = text.indexOf(',')
       if commaIndex != -1
     yield
       commaIndex + previousArg.span.end
 
   /**
-   * Extracts call informatioin for function in unapply context.
+   * Extracts call information for function in unapply context.
    *
    * @param span   The position of the cursor
    * @param params Current function parameters

@@ -825,7 +825,7 @@ object CheckUnused:
         def editPosAt(srcPos: SrcPos, forDeletion: Boolean): SrcPos =
           val start = srcPos.span.start
           val end = srcPos.span.end
-          val content = srcPos.sourcePos.source.content()
+          val content = srcPos.sourcePos.source.textContent()
           val prev = content.lastIndexWhere(c => !isWhitespace(c), end = start - 1)
           val emptyLeft = prev < 0 || isLineBreakChar(content(prev))
           val next = content.indexWhere(c => !isWhitespace(c), from = end)
@@ -857,8 +857,8 @@ object CheckUnused:
         def deletion(editPos: SrcPos): List[CodeAction] = actionsOf(editPos -> "")
         def textFor(impsel: ImpSel): String =
           val (imp, sel) = impsel
-          val content = imp.srcPos.sourcePos.source.content()
-          def textAt(pos: SrcPos) = String(content.slice(pos.span.start, pos.span.end))
+          val content = imp.srcPos.sourcePos.source.textContent()
+          def textAt(pos: SrcPos) = content.substring(pos.span.start, pos.span.end)
           val qual = textAt(imp.expr.srcPos) // keep original
           val selector = textAt(sel.srcPos)  // keep original
           s"$qual.$selector"                 // don't succumb to vagaries of show
@@ -897,7 +897,7 @@ object CheckUnused:
               for imp <- lostClauses do
                 val actions =
                   if imp == existing.last then
-                    val content = imp.srcPos.sourcePos.source.content()
+                    val content = imp.srcPos.sourcePos.source.textContent()
                     val prev = existing.lastIndexWhere(i0 => keeping.exists((i, _) => i == i0))
                     val comma = content.indexOf(',', from = existing(prev).srcPos.span.end)
                     val commaPos = imp.srcPos.sourcePos.withSpan:
@@ -929,7 +929,7 @@ object CheckUnused:
                 else if !lostClauses.contains(imp) then
                   val actions =
                     if sel == imp.selectors.last then
-                      val content = sel.srcPos.sourcePos.source.content()
+                      val content = sel.srcPos.sourcePos.source.textContent()
                       val prev = imp.selectors.lastIndexWhere(s0 => keeping.exists((_, s) => s == s0))
                       val comma = content.indexOf(',', from = imp.selectors(prev).srcPos.span.end)
                       val commaPos = sel.srcPos.sourcePos.withSpan:

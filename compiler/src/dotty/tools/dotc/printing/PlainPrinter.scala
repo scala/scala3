@@ -478,7 +478,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           // Use long output if we are printing a result of a function type, but the
           // ResultCap does not prefer to a prefix in that type
           "<fresh of " ~ toText(c.binder) ~ ">"
-        case n => "outer_" * n ++ "fresh"
+        case n => "outer_" * n + "fresh"
       vbleText ~ Str(idStr).provided(showUniqueIds) ~ Str(hashStr(c.binder)).provided(showUniqueIds | printDebug)
     case c: LocalCap =>
       val idStr = if showUniqueIds then s"#${c.rootId}" else ""
