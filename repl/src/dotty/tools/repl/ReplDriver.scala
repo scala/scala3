@@ -16,7 +16,6 @@ import dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotc.core.Contexts.*
 import dotc.core.Decorators.*
 import dotc.core.Phases.{unfusedPhases, typerPhase, checkCapturesPhase}
-import dotc.core.Denotations.Denotation
 import dotc.core.Flags.*
 import dotc.core.Mode
 import dotc.core.NameKinds.SimpleNameKind
@@ -169,6 +168,15 @@ class ReplDriver(settings: Array[String],
     compiler = new ReplCompiler
     rendering = new Rendering(classLoader)
   }
+
+  private[repl] def replRootContext: Context = rootCtx
+
+  private[repl] def replShouldStart: Boolean = shouldStart
+
+  private[repl] def replRendering: Rendering = rendering
+
+  private[repl] def replRenderingClassLoader: Option[ClassLoader] =
+    Option(rendering).flatMap(loaded => Option(loaded.myClassLoader))
 
   private var rootCtx: Context = uninitialized
   private var shouldStart: Boolean = uninitialized
@@ -344,7 +352,7 @@ class ReplDriver(settings: Array[String],
   /** Detect global language imports in parsed trees and enable them in rootCtx
    *  so subsequent parses and compilations see them (i16250).
    */
-  private def propagateLanguageImports(trees: List[untpd.Tree]): Unit =
+  private[repl] def propagateLanguageImports(trees: List[untpd.Tree]): Unit =
     import dotc.core.NameKinds.QualifiedName
     for case untpd.Import(expr, selectors) <- trees do
       untpd.languageImport(expr) match
@@ -409,9 +417,9 @@ class ReplDriver(settings: Array[String],
         for diag <- parsed.directiveDiagnostics do
           out.println(s"[warn] ${diag.message}")
         val src = parsed.source.textContent()
-        val classified = ReplDirectives.classify(src)
-        if classified.hasDirectives then
-          val stateAfterDirectives = interpretDirectives(classified)
+        val declared = ReplDirectives.read(src)
+        if declared.nonEmpty then
+          val stateAfterDirectives = interpretDirectives(declared)
           if parsed.trees.nonEmpty then
             propagateLanguageImports(parsed.trees)
             compile(parsed, stateAfterDirectives)
@@ -517,17 +525,6 @@ class ReplDriver(settings: Array[String],
   private def renderDefinitions(tree: tpd.Tree, newestWrapper: Name)(using state: State): (State, Seq[Diagnostic]) = {
     given Context = state.context
 
-    def resAndUnit(denot: Denotation)(using Context) = {
-      import scala.util.{Success, Try}
-      val sym = denot.symbol
-      val name = sym.name.show
-      val hasValidNumber = Try(name.drop(3).toInt) match {
-        case Success(num) => num < state.valIndex
-        case _ => false
-      }
-      name.startsWith(str.REPL_RES_PREFIX) && hasValidNumber && sym.info == defn.UnitType
-    }
-
     def extractAndFormatMembers(symbol: Symbol)(using Context): (State, Seq[Diagnostic]) = if (tree.symbol.info.exists) {
       val info = symbol.info
       val defs =
@@ -572,10 +569,7 @@ class ReplDriver(settings: Array[String],
           ++ defs.map(rendering.renderMethod)
           ++ renderedVals
         val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
-        val reclaimed = vals.toList.reverse
-          .filter(_.symbol.name.show.startsWith(str.REPL_RES_PREFIX))
-          .takeWhile(resAndUnit)
-          .length
+        val reclaimed = ReplCompiler.reclaimableResults(vals, state.valIndex)
         (state.copy(valIndex = state.valIndex - reclaimed), diagnostics)
     }
     else (state, Seq.empty)
@@ -840,15 +834,15 @@ class ReplDriver(settings: Array[String],
       state
   }
 
-  private def interpretDirectives(classified: ReplDirectives.DirectiveClassification)(using state: State): State =
+  private def interpretDirectives(declared: ReplDirectives.DirectiveLines)(using state: State): State =
     import ReplDirectives.ReplDirective.*
 
-    classified.warnings.foreach(warning => out.println(warning.toString))
-    val dependencies = classified.directives.collect:
+    declared.warnings.foreach(warning => out.println(warning.toString))
+    val dependencies = declared.directives.collect:
       case Dependency(coordinate) => coordinate
-    val jars = classified.directives.collect:
+    val jars = declared.directives.collect:
       case Jar(path) => path
-    val repositories = classified.directives.collect:
+    val repositories = declared.directives.collect:
       case Repository(repository) => repository
     val stateWithRepositories = addRepositories(repositories)
     val stateWithDependencies = resolveAndAddDeps(dependencies)(using stateWithRepositories)
@@ -868,7 +862,9 @@ class ReplDriver(settings: Array[String],
   private def resolveAndAddDeps(depStrings: List[String])(using state: State): State =
     if depStrings.isEmpty then state
     else
-      val deps = depStrings.flatMap(DependencyResolver.parseDependency)
+      val (unparsed, deps) = depStrings.partitionMap: dep =>
+        DependencyResolver.parseDependency(dep).toRight(dep)
+      unparsed.foreach(dep => out.println(s"Unable to parse dependency '$dep'."))
       if deps.isEmpty then state
       else
         DependencyResolver.resolveDependencies(deps, state.repositories) match
