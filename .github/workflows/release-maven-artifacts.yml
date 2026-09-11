@@ -50,7 +50,7 @@ jobs:
           MAVEN_REPOSITORY_USER : ${{ secrets.MAVEN_REPOSITORY_USER }}
           MAVEN_REPOSITORY_TOKEN: ${{ secrets.MAVEN_REPOSITORY_TOKEN }}
 
-  release-maven-lts-3.3-artifacts:
+  release-maven-lts-3-3-artifacts:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
@@ -101,7 +101,7 @@ jobs:
           PGP_PW        : ${{ secrets.PGP_PW }}
           PGP_SECRET    : ${{ secrets.PGP_SECRET }}
 
-  release-maven-lts-3.9-artifacts:
+  release-maven-lts-3-9-artifacts:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
