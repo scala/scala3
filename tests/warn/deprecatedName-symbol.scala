@@ -1,6 +1,6 @@
 //> using options -deprecation
 
-def f(@deprecatedName(Symbol("x")) y: Int): Int = y
+def f(@deprecatedName(Symbol("x")) y: Int): Int = y // warn
 
 val a1 = f(y = 1)
 
