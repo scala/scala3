@@ -284,7 +284,8 @@ object PatternMatcher {
                 report.error(UnapplyInvalidNumberOfArguments(tree, tree.tpe :: Nil), arg.srcPos)
                 // Generate a throwaway but type-correct plan.
                 // This plan will never execute because it'll be guarded by a `NonNullTest`.
-                ResultPlan(tpd.Throw(tpd.nullLiteral))
+                // The cast is needed because under explicit nulls `Null` is not a `Throwable`.
+                ResultPlan(tpd.Throw(tpd.nullLiteral.cast(defn.ThrowableType)))
               else
                 val sym :: syms1 = syms: @unchecked
                 patternPlan(sym, arg, matchArgsPatternPlan(args1, syms1))
@@ -490,7 +491,8 @@ object PatternMatcher {
           val unappPlan = if (scrutinee.info.isBottomType)
             // Generate a throwaway but type-correct plan.
             // This plan will never execute because it'll be guarded by a `NonNullTest`.
-            ResultPlan(tpd.Throw(tpd.nullLiteral))
+            // The cast is needed because under explicit nulls `Null` is not a `Throwable`.
+            ResultPlan(tpd.Throw(tpd.nullLiteral.cast(defn.ThrowableType)))
           else {
             def applyImplicits(acc: Tree, implicits: List[Tree], mt: Type): Tree = mt match {
               case mt: MethodType =>
