@@ -11,6 +11,7 @@ import Contexts.*
 import Phases.*
 import Symbols.*
 import StdNames.nme
+import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.tasty.{TastyBuffer, TastyHeaderUnpickler}
 import dotty.tools.dotc.core.tasty.TastyUnpickler
 
@@ -19,9 +20,12 @@ import tpd.*
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.interfaces.CompilerCallback
 import dotty.tools.dotc.report
-import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
+import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 
 class CodeGen(impl: BCodeSyncAndTry) {
+  private val caseInsensitively = new java.util.HashMap[String, (String, SourcePosition)]
+
   private val mirrorBuilder = new impl.JMirrorBuilder()
 
   /**
@@ -42,24 +46,28 @@ class CodeGen(impl: BCodeSyncAndTry) {
           val tastyAttrNode = if (mirrorClassNode ne null) mirrorClassNode else mainClassNode
           genTastyAndSetAttributes(sym, tastyAttrNode)
 
-        def registerGeneratedClass(classNode: ClassNode | Null, isArtifact: Boolean): Unit =
+        def registerGeneratedClass(classNode: ClassNode | Null): Unit =
           if classNode ne null then
-            generatedClasses += GeneratedClass(classNode,
-              sourceClassName = sym.javaClassName,
+            val className = classNode.name.replace('/', '.')
+            val (fullClassName, isLocal) = atPhase(sbtExtractDependenciesPhase) {
+              (ExtractDependencies.classNameAsString(sym), sym.isLocal)
+            }
+            generatedClasses += GeneratedClass(
+              classNode = classNode,
               position = sym.srcPos.sourcePos,
-              isArtifact = isArtifact,
-              onFileCreated = onFileCreated(classNode, sym, ctx.compilationUnit.source)
+              onFileCreated = onFileCreated(className, fullClassName, isLocal, ctx.compilationUnit.source,
+                                            ctx.compilerCallback, ctx.incCallback)
             )
 
-        registerGeneratedClass(mainClassNode, isArtifact = false)
-        registerGeneratedClass(mirrorClassNode, isArtifact = true)
+        registerGeneratedClass(mainClassNode)
+        registerGeneratedClass(mirrorClassNode)
       catch
         case ex: TypeError =>
           report.error(s"Error while emitting ${ctx.compilationUnit.source}\n${ex.getMessage}", cd.sourcePos)
 
     def genTastyAndSetAttributes(claszSymbol: Symbol, store: ClassNode): Unit =
       for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
-        generatedTasty += GeneratedTasty(store, binary)
+        generatedTasty += GeneratedTasty(store.name, binary)
         val tasty =
           val uuid = new TastyHeaderUnpickler(TastyUnpickler.scala3CompilerConfig, binary()).readHeader()
           val lo = uuid.getMostSignificantBits
@@ -85,29 +93,42 @@ class CodeGen(impl: BCodeSyncAndTry) {
       }
 
     genClassDefs(ctx.compilationUnit.tpdTree)
+    // Order is not deterministic so we enforce lexicographic order for error-reporting
+    generatedClasses.sortBy(_.classNode.name).foreach(c => warnCaseInsensitiveOverwrite(c.classNode.name, c.position))
     GeneratedCompilationUnit(ctx.compilationUnit.source.path, generatedClasses.toList, generatedTasty.toList)
   }
 
-  // Creates a callback that will be evaluated in PostProcessor after creating a file
-  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: SourceFile)(using Context): AbstractFile => Unit = {
-    val isLocal = atPhase(sbtExtractDependenciesPhase) {
-      claszSymbol.isLocal
+  private def warnCaseInsensitiveOverwrite(name: String, clsPos: SourcePosition)(using Context): Unit =
+    caseInsensitively.putIfAbsent(name.toLowerCase, (name, clsPos)) match {
+      case null => ()
+      case (dupName, dupPos) =>
+        val locationAddendum =
+          if clsPos.source.path == dupPos.source.path then ""
+          else s" (defined in ${dupPos.source.name})"
+        def nicify(name: String): String = name.replace('/', '.')
+        if name == dupName then
+          report.error(
+            em"${nicify(name)} and ${nicify(dupName)} produce classes that overwrite one another", clsPos)
+        else
+          report.warning(
+            em"""Generated class ${nicify(name)} differs only in case from ${nicify(dupName)}$locationAddendum.
+                |  Such classes will overwrite one another on case-insensitive filesystems.""", clsPos)
     }
-    val className = cls.name.replace('/', '.')
-    clsFile => {
-      ctx.compilerCallback match
-        case cb: CompilerCallback => cb.onClassGenerated(sourceFile, clsFile, className)
-        case null => ()
 
-      ctx.withIncCallback: cb =>
-        if isLocal then
-          cb.generatedLocalClass(sourceFile, clsFile.jpath)
-        else if !cb.enabled() then
-          // callback is not enabled, so nonLocalClasses were not reported in ExtractAPI
-          val fullClassName = atPhase(sbtExtractDependenciesPhase) {
-            ExtractDependencies.classNameAsString(claszSymbol)
-          }
-          cb.generatedNonLocalClass(sourceFile, clsFile.jpath, className, fullClassName)
-    }
+  // Creates a callback that will be evaluated in PostProcessor after creating a file
+  private def onFileCreated(className: String, fullClassName: String, isLocal: Boolean, sourceFile: SourceFile,
+                            compilerCallback: CompilerCallback | Null, incrementalCallback: IncrementalCallback | Null)
+                           (clsFile: AbstractFile): Unit = {
+    compilerCallback match
+      case null => ()
+      case cb => cb.onClassGenerated(sourceFile, clsFile, className)
+
+    incrementalCallback match
+      case null => ()
+      case cb if isLocal => cb.generatedLocalClass(sourceFile, clsFile.jpath)
+      case cb if !cb.enabled() =>
+        // callback is not enabled, so nonLocalClasses were not reported in ExtractAPI
+        cb.generatedNonLocalClass(sourceFile, clsFile.jpath, className, fullClassName)
+      case cb => ()
   }
 }
