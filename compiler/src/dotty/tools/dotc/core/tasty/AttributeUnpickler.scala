@@ -21,7 +21,7 @@ class AttributeUnpickler(reader: TastyReader, nameAtRef: NameTable):
         booleanTags += tag
       else if isStringAttrTag(tag) then
         val utf8Ref = readNameRef()
-        val value = nameAtRef(utf8Ref).toString
+        val value = nameAtRef(utf8Ref.index).toString
         stringTagValue += tag -> value
       else
         assert(false, "unknown attribute tag: " + tag)

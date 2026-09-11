@@ -61,7 +61,7 @@ class TastyClassName(bytes: Array[Byte], isBestEffortTasty: Boolean = false) {
 
     extension (reader: TastyReader) def readName() = {
       val idx = reader.readNat()
-      nameAtRef(NameRef(idx))
+      nameAtRef(idx)
     }
   }
 

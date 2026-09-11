@@ -17,10 +17,10 @@ object NameKinds {
   // These are sharable since all NameKinds are created eagerly at the start of the program
   // before any concurrent threads are forked. for this to work, NameKinds should never
   // be created lazily or in modules that start running after compilers are forked.
-  @sharable private val simpleNameKinds = util.HashMap[Int, ClassifiedNameKind]()
-  @sharable private val qualifiedNameKinds = util.HashMap[Int, QualifiedNameKind]()
-  @sharable private val numberedNameKinds = util.HashMap[Int, NumberedNameKind]()
-  @sharable private val uniqueNameKinds = util.HashMap[String, UniqueNameKind]()
+  @sharable private val simpleNameKinds = new Array[ClassifiedNameKind](64)
+  @sharable private val qualifiedNameKinds = new Array[QualifiedNameKind](64)
+  @sharable private val numberedNameKinds = new Array[NumberedNameKind](64)
+  @sharable private val uniqueNameKinds = util.EqHashMap[TermName, UniqueNameKind]()
 
   /** A class for the info stored in a derived name */
   abstract class NameInfo {
@@ -123,7 +123,7 @@ object NameKinds {
     case class QualInfo(name: SimpleName) extends Info with QualifiedInfo {
       override def map(f: SimpleName => SimpleName): NameInfo = new QualInfo(f(name))
       override def toString: String = s"$infoString $name"
-      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
+      override def hashCode: Int = name.hashCode * 31 + kind.hashCode
     }
 
     def apply(qual: TermName, name: SimpleName): TermName =
@@ -171,9 +171,9 @@ object NameKinds {
   /** The kind of numbered names consisting of an underlying name and a number */
   abstract class NumberedNameKind(tag: Int, val infoString: String) extends NameKind(tag) { self =>
     type ThisInfo = NumberedInfo
-    case class NumberedInfo(val num: Int) extends Info with NameKinds.NumberedInfo {
+    case class NumberedInfo(num: Int) extends Info with NameKinds.NumberedInfo {
       override def toString: String = s"$infoString $num"
-      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
+      override def hashCode: Int = num * 31 + kind.hashCode
     }
     def apply(qual: TermName, num: Int): TermName =
       qual.derived(new NumberedInfo(num))
@@ -205,7 +205,7 @@ object NameKinds {
    *
    *  A unique names always constitutes a new name, different from its underlying name.
    */
-  case class UniqueNameKind(val separator: String)
+  case class UniqueNameKind(separator: String)
   extends NumberedNameKind(UNIQUE, s"Unique $separator") {
     override def definesNewName: Boolean = true
 
@@ -224,7 +224,7 @@ object NameKinds {
     def fresh(prefix: TypeName)(using Context): TypeName =
       fresh(prefix.toTermName).toTypeName
 
-    uniqueNameKinds(separator) = this: @unchecked
+    uniqueNameKinds(separatorName) = this: @unchecked
   }
 
   /** An extractor for unique names of arbitrary kind */
@@ -424,7 +424,7 @@ object NameKinds {
       override def toString: String =
         val targetStr = if target.isEmpty then "" else s" @$target"
         s"$infoString $sig$targetStr"
-      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
+      override def hashCode: Int = ((sig.hashCode * 31) + target.hashCode * 31) + kind.hashCode
     }
     type ThisInfo = SignedInfo
 
@@ -446,8 +446,8 @@ object NameKinds {
   val Scala2MethodNameKinds: List[NameKind] =
     List(DefaultGetterName, ExtMethName, UniqueExtMethName)
 
-  def simpleNameKindOfTag      : util.ReadOnlyMap[Int, ClassifiedNameKind] = simpleNameKinds
-  def qualifiedNameKindOfTag   : util.ReadOnlyMap[Int, QualifiedNameKind]  = qualifiedNameKinds
-  def numberedNameKindOfTag    : util.ReadOnlyMap[Int, NumberedNameKind]   = numberedNameKinds
-  def uniqueNameKindOfSeparator: util.ReadOnlyMap[String, UniqueNameKind]  = uniqueNameKinds
+  def simpleNameKindOfTag      : Array[ClassifiedNameKind] = simpleNameKinds
+  def qualifiedNameKindOfTag   : Array[QualifiedNameKind]  = qualifiedNameKinds
+  def numberedNameKindOfTag    : Array[NumberedNameKind]   = numberedNameKinds
+  def uniqueNameKindOfSeparator: util.EqHashMap[TermName, UniqueNameKind]  = uniqueNameKinds
 }
