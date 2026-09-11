@@ -243,7 +243,7 @@ class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(usi
     val cp = AggregateClassPath(Calculated.containers)
 
     if (settings.YlogClasspath.value) {
-      Console.println("Classpath built from " + settings.toConciseString(ctx.settingsState))
+      Console.println("Classpath built from " + settings.userSetSettings(ctx.settingsState).mkString("(", " ", ")"))
       Console.println("Defaults: " + PathResolver.Defaults)
       Console.println("Calculated: " + Calculated)
 

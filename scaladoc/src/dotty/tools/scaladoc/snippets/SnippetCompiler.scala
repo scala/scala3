@@ -26,16 +26,15 @@ class SnippetCompiler(
       rootCtx.setSetting(rootCtx.settings.XreadComments, true)
       rootCtx.setSetting(rootCtx.settings.color, "never")
       rootCtx.setSetting(rootCtx.settings.XimportSuggestionTimeout, 0)
+      for scSetting <- snippetCompilerSettings do
+        rootCtx.setSetting(scSetting.setting, scSetting.value)
 
       val ctx = setup(Array(""), rootCtx) match
         case Some((_, ctx)) =>
           ctx
         case None => rootCtx
-      val res = snippetCompilerSettings.foldLeft(ctx.fresh) { (ctx, setting) =>
-        ctx.setSetting(setting.setting, setting.value)
-      }
-      res.initialize()(using res)
-      MacroClassLoader.init(res)
+      ctx.initialize()(using ctx)
+      MacroClassLoader.init(ctx.fresh)
 
   private val scala3Compiler = new Compiler
 
@@ -86,7 +85,7 @@ class SnippetCompiler(
         val failMsg = Option.when(arg.flag == SCFlags.Fail && !context.reporter.hasErrors)(
           SnippetCompilerMessage(
             Some(Position(SourcePosition(sourceFile, NoSpan), wrappedSnippet.outerLineOffset)),
-            s"Snippet should not compile but compiled successfully in $sourceFile:\n${wrappedSnippet.snippet}", MessageLevel.Error)
+            s"Snippet should not compile but compiled successfully in $sourceFile:\n${wrappedSnippet.snippet}\n(with arg: $arg)", MessageLevel.Error)
         )
         val msgs = observed.map(_.message) ++ failMsg
         val ok =
