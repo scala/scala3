@@ -53,7 +53,7 @@ object Annotations {
     def hasExplicitArgument(i: Int)(using Context): Boolean =
       argument(i) match
         case Some(Select(Ident(_), DefaultGetterName(nme.CONSTRUCTOR, _))) => false
-        case Some(xxx) => true
+        case Some(_) => true
         case None => false
 
     def argumentConstant(i: Int)(using Context): Option[Constant] =
