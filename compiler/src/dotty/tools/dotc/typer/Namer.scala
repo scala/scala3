@@ -202,7 +202,7 @@ class Namer { typer: Typer =>
       val span = tree.span
       if !span.exists || span.isSynthetic then false
       else
-        val content = tree.source.content()
+        val content = tree.source.textContent()
         val point = span.point
         content.length > point && (
           content(point) == '`'
