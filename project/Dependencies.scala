@@ -1,7 +1,6 @@
 import sbt.*
 import dotty.tools.sbtplugin.Versions
 
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 /**
@@ -40,7 +39,7 @@ object Dependencies {
   val jacksonDatabind = "tools.jackson.core" % "jackson-databind" % jacksonVersion
   val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
-  private val jlineVersion = "4.4.2"
+  private val jlineVersion = "4.4.3"
   val jlineReader = "org.jline" % "jline-reader" % jlineVersion
   val jlineTerminal = "org.jline" % "jline-terminal" % jlineVersion
   val jlineTerminalJni = "org.jline" % "jline-terminal-jni" % jlineVersion
