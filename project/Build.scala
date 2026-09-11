@@ -2165,7 +2165,6 @@ object Build {
       regularScalaJSProjectSettings,
       bspEnabled := false,
       scalacOptions --= Seq("-Werror", "-deprecation", "-Yexplicit-nulls"),
-      scalacOptions += "-Yno-explicit-nulls",
       // The fetched Scala.js test suite (pinned to v$scalaJSVersion) still uses
       // the `with` type operator, which is an error since 3.10. Compile these
       // sources under 3.9, where it is only a (non-fatal) warning. 3.9 and 3.10
@@ -2552,7 +2551,6 @@ object Build {
       Test / testOnly := ((Test / testOnly) dependsOn prepareCommunityBuild).evaluated,
       Test / test     := ((Test / test    ) dependsOn prepareCommunityBuild).value,
       scalacOptions -= "-Yexplicit-nulls",
-      scalacOptions += "-Yno-explicit-nulls",
       javaOptions ++= {
         // Propagate the ivy cache directory setting to the tests, which will
         // then propagate it further to the sbt instances they will spawn.
