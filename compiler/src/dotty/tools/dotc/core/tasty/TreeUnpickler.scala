@@ -420,7 +420,12 @@ class TreeUnpickler(reader: TastyReader,
               if nothingButMods(end) then AliasingBounds(readVariances(lo))
               else
                 val hi = readVariances(readType())
-                createNullableTypeBounds(lo, hi)
+                // Only bounds pickled without explicit nulls need adapting: a `>: Null`
+                // lower bound there did not force `Null` into the upper bound. Bounds
+                // pickled with explicit nulls already say what they mean, and rewriting
+                // them would not round-trip.
+                if explicitNulls then TypeBounds(lo, hi)
+                else createNullableTypeBounds(lo, hi)
             case ANNOTATEDtype =>
               val parent = readType()
               val ann =
@@ -1720,7 +1725,9 @@ class TreeUnpickler(reader: TastyReader,
               val lo = readTpt()
               val hi = if currentAddr == end then lo else readTpt()
               val alias = if currentAddr == end then EmptyTree else readTpt()
-              createNullableTypeBoundsTree(lo, hi, alias)
+              // See the `TYPEBOUNDS` case above.
+              if explicitNulls then TypeBoundsTree(lo, hi, alias)
+              else createNullableTypeBoundsTree(lo, hi, alias)
             case QUOTE =>
               Quote(readTree(), Nil).withBodyType(readType())
             case SPLICE =>
