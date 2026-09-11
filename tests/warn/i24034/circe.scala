@@ -61,6 +61,7 @@ object ConfiguredCodec:
             derivation.summonEncoders[et & Tuple](false)(using $conf)
           )(using $conf)
         }
+      case _ => ???
     }
   }
 
