@@ -2095,6 +2095,7 @@ object Build {
       excludeDependencies += "org.scala-lang" %% "scala3-library",
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
       scalacOptions -= "-Yexplicit-nulls",
+      scalacOptions += "-Yno-explicit-nulls",
     ).
     settings(
       ideTestsCompilerVersion := (`scala3-compiler-nonbootstrapped` / version).value,
@@ -2164,6 +2165,7 @@ object Build {
       regularScalaJSProjectSettings,
       bspEnabled := false,
       scalacOptions --= Seq("-Werror", "-deprecation", "-Yexplicit-nulls"),
+      scalacOptions += "-Yno-explicit-nulls",
       // The fetched Scala.js test suite (pinned to v$scalaJSVersion) still uses
       // the `with` type operator, which is an error since 3.10. Compile these
       // sources under 3.9, where it is only a (non-fatal) warning. 3.9 and 3.10
@@ -2465,6 +2467,7 @@ object Build {
       scalaJSUseMainModuleInitializer := true,
       Test / fork := false,
       scalacOptions -= "-Yexplicit-nulls",
+      scalacOptions += "-Yno-explicit-nulls",
     )
 
   lazy val `scaladoc-js-contributors` = project.in(file("scaladoc-js/contributors")).
@@ -2549,6 +2552,7 @@ object Build {
       Test / testOnly := ((Test / testOnly) dependsOn prepareCommunityBuild).evaluated,
       Test / test     := ((Test / test    ) dependsOn prepareCommunityBuild).value,
       scalacOptions -= "-Yexplicit-nulls",
+      scalacOptions += "-Yno-explicit-nulls",
       javaOptions ++= {
         // Propagate the ivy cache directory setting to the tests, which will
         // then propagate it further to the sbt instances they will spawn.
