@@ -98,6 +98,7 @@ Type              ::=  ‘AnyKind‘
                     |  IntersectionType
                     |  MatchType
                     |  SkolemType
+                    |  FlexibleType
 
 TypeLambda        ::=  ‘[‘ TypeParams ‘]‘ ‘=>>‘ Type
 TypeParams        ::=  TypeParam {‘,‘ TypeParam}
@@ -142,6 +143,8 @@ TypeCaseAppliedPattern  ::=  Type ‘[‘ TypeCasePattern { ‘,‘ TypeCasePatt
 TypeCapture             ::=  (id | ‘_‘) TypeBounds
 
 SkolemType        ::=  ‘∃‘ skolemid ‘:‘ Type
+
+FlexibleType      ::=  Type ‘?‘
 
 TypeOrMethodic    ::=  Type
                     |  MethodicType
@@ -352,6 +355,7 @@ They can be referred to with [the fundamental type aliases `scala.AnyKind` and `
 Types can be _concrete_ or _abstract_.
 An abstract type ´T´ always has lower and upper bounds ´L´ and ´H´ such that ´L >: T´ and ´T <: H´.
 A concrete type ´T´ is considered to have itself as both lower and upper bound.
+A flexible type ´T?´ has lower bound `´T´ | scala.Null` and upper bound ´T´.
 
 The kind of a type is indicated by its (transitive) upper bound:
 
@@ -500,7 +504,7 @@ If ´p = \epsilon´ or ´p´ is a package ref, the underlying type ´U´ is the 
 Otherwise, the underlying type ´U´ and whether ´p.x´ is a stable type are determined by [`memberType`](#member-type)`(´p´, ´x´)`.
 
 All term designators are concrete types.
-If `scala.Null ´<: U´`, the term designator denotes the set of values consisting of `null` and the value denoted by ´t´, i.e., the value ´v´ for which `t eq v`.
+Outside the context of a `safeNulls` language import, if `scala.Null ´<: U´`, the term designator denotes the set of values consisting of `null` and the value denoted by ´t´, i.e., the value ´v´ for which `t eq v`.
 Otherwise, the designator denotes the singleton set only containing ´v´.
 
 #### Type Designators
@@ -1494,7 +1498,7 @@ Note that the conditions are not all mutually exclusive.
 - `´(X´ match <: ´H´ { ... }´) <: T´` if ´H <: T´
 - `´(X´ match <: ´H_X´ { case ´P_1´ => ´A_1´; ...; case ´P_n´ => ´A_n´ }´) <: (Y´ match <: ´H_Y´ { case ´Q_1´ => ´B_1´; ...; ´Q_n´ => ´B_n´ }´)´` if ´X =:= Y´ and ´P_i =:= Q_i´ for each ´i´ and ´A_i <: B_i´ for each ´i´
 - `´S = (´=> ´S_1)´` and `´T = (´=> ´T_1)´` and ´S_1 <: T_1´.
-- `´S =´ scala.Null` and:
+- outside the context of a `safeNulls` language import, `´S =´ scala.Null` and:
   - ´T = q.C[T_1, ..., T_n]´ with ´n \geq 0´ and ´C´ does not derive from `scala.AnyVal` and ´C´ is not the hidden class of an `object`, or
   - ´T = q.x´ is a term designator with underlying type ´U´ and `scala.Null ´<: U´`, or
   - `´T = T_1´ { ´R´ }` and `scala.Null ´<: T_1´`, or
@@ -1503,6 +1507,8 @@ Note that the conditions are not all mutually exclusive.
 - `´S = S_1´ { ´R´ }` and ´S_1 <: T´.
 - `´S =´ { ´\alpha´ => ´S_1´ }` and ´S_1 <: T´.
 - `´T =´ scala.Tuple´_n[T_1, ..., T_n]´` with ´1 \leq n \leq 22´, and `´S <: T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple`.
+- `´S = S_1?´` and ´S_1 <: T´.
+- `´T = T_1?´` and `´S <: T_1´ | scala.Null`.
 
 We define `isSubPrefix(´p´, ´q´)` where ´p´ and ´q´ are prefixes as:
 
@@ -1627,6 +1633,8 @@ The erased LUB is computed as follows:
 - if both arguments are arrays of same primitives, an array of this primitive
 - if one argument is array of primitives and the other is array of objects, [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html)
 - if one argument is an array, [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html)
+- if one argument is `scala.Nothing`, the other argument
+- if one argument is `scala.Null` and the other derives from [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html), the other argument
 - otherwise a common superclass or trait S of the argument classes, with the following two properties:
   - S is minimal: no other common superclass or trait derives from S, and
   - S is last: in the linearization of the first argument type ´|A|´ there are no minimal common superclasses or traits that come after S.
