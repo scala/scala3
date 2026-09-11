@@ -87,17 +87,17 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
   @Test def `filter-by-type-old` =
     check(
       """|package example
-        |
-        |object enrichments:
-        |  implicit class A(num: Int):
-        |    def identity2: Int = num + 1
-        |  implicit class B(str: String):
-        |    def identity: String = str
-        |
-        |def main = "foo".iden@@
-        |""".stripMargin,
+         |
+         |object enrichments:
+         |  implicit class A(num: Int):
+         |    def identity2: Int = num + 1
+         |  implicit class B(str: String):
+         |    def identity: String = str
+         |
+         |def main = "foo".iden@@
+         |""".stripMargin,
       """|identity: String (implicit)
-        |""".stripMargin, // identity2 won't be available
+         |""".stripMargin, // identity2 won't be available
       filter = _.contains("(implicit)")
     )
 
