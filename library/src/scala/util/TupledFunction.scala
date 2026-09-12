@@ -13,7 +13,17 @@ import scala.annotation.experimental
 @implicitNotFound("${F} cannot be tupled as ${G}")
 @experimental
 sealed trait TupledFunction[F, G]:
+  /** Converts a function `f` of type `F` to a tupled function of type `G`.
+   *
+   *  @param f the function to convert
+   *  @return the tupled function equivalent to `f`
+   */
   def tupled(f: F): G
+  /** Converts a tupled function `g` of type `G` to a function of type `F`.
+   *
+   *  @param g the tupled function to convert
+   *  @return the function equivalent to `g`
+   */
   def untupled(g: G): F
 
 @experimental

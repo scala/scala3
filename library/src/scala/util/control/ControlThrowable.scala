@@ -51,5 +51,6 @@ import scala.language.`2.13`
 abstract class ControlThrowable(message: String | Null) extends Throwable(
   message, /*cause*/ null, /*enableSuppression=*/ false, /*writableStackTrace*/ false) {
 
+  /** Constructs a `ControlThrowable` with no detail message. */
   def this() = this(message = null)
 }
