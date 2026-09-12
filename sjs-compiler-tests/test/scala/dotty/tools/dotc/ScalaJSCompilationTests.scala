@@ -17,6 +17,13 @@ class ScalaJSCompilationTests {
   import ScalaJSCompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
+  @Test def posScalaJS: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("posScalaJS")
+    aggregateTests(
+      compileFilesInDir("tests/pos-scalajs", scalaJSOptions),
+    ).checkCompile()
+  }
+
   // Negative tests ------------------------------------------------------------
 
   @Test def negScalaJS: Unit = {
