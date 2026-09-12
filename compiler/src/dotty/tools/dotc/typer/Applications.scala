@@ -711,7 +711,7 @@ trait Applications extends Compatibility {
 
       extension (dna: Annotation)
         def deprecatedName: Name =
-          dna.argumentConstantString(0).map(_.toTermName).getOrElse(nme.NO_NAME)
+          dna.argumentConstantStringOrSymbol(0).map(_.toTermName).getOrElse(nme.NO_NAME)
         def since: String =
           val version = dna.argumentConstantString(1).filter(!_.isEmpty)
           version.map(v => s" (since $v)").getOrElse("")
