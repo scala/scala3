@@ -40,13 +40,32 @@ trait SeqMap[K, +V]
     with collection.SeqMap[K, V]
     with MapOps[K, V, SeqMap, SeqMap[K, V]]
     with MapFactoryDefaults[K, V, SeqMap, Iterable] {
+  /** Returns the [[SeqMap$ SeqMap]] companion object as the factory for maps of this kind. */
   override def mapFactory: MapFactory[SeqMap] = SeqMap
 }
 
 
 object SeqMap extends MapFactory[SeqMap] {
+  /** An empty [[SeqMap]].
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   *  @return the empty `SeqMap` (a single cached instance)
+   */
   def empty[K, V]: SeqMap[K, V] = EmptySeqMap.asInstanceOf[SeqMap[K, V]]
 
+  /** Returns a [[SeqMap]] containing the key-value pairs of `it`, in its iteration order.
+   *
+   *  If `it` is already one of the `SeqMap` implementations ([[ListMap]],
+   *  [[TreeSeqMap]], [[VectorMap]], or a small `SeqMap`), it is returned unchanged.
+   *  Otherwise a new map is built; if a key occurs more than once in `it`, its first
+   *  occurrence determines its position and its last occurrence determines its value.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   *  @param it the source collection of key-value pairs
+   *  @return a `SeqMap[K, V]` with the bindings of `it`
+   */
   def from[K, V](it: collection.IterableOnce[(K, V)]^): SeqMap[K, V] =
     (it: @unchecked) match {
       //case sm: SeqMap[K, V] => sm
@@ -61,6 +80,16 @@ object SeqMap extends MapFactory[SeqMap] {
       case _ => (newBuilder[K, V] ++= it).result()
     }
 
+  /** Returns a new builder for a [[SeqMap]].
+   *
+   *  The builder uses the compact one- to four-entry representations while at most
+   *  four distinct keys have been added, and switches to a [[VectorMap]] builder
+   *  beyond that.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   *  @return a `Builder` that accepts key-value pairs and produces a `SeqMap[K, V]`
+   */
   def newBuilder[K, V]: Builder[(K, V), SeqMap[K, V]] = new SeqMapBuilderImpl
 
   @SerialVersionUID(3L)
