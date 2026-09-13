@@ -10,7 +10,7 @@ trait Universe {
 }
 
 object Test extends App {
-  val universe: Universe = null
+  val universe: Universe = ???
   import universe.*
   def select: Select = ???
   def ident: Ident = ???

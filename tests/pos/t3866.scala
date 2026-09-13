@@ -6,8 +6,8 @@ abstract class ImplicitRepeated {
   def f[N, R <: List[_]](props: String, elems: T[N, R]*): Unit // alternative b)
 
   // the following implicit causes "cannot be applied" errors
-  implicit def xToRight(r: X): T[Nothing, X] = null
-  implicit def anyToN[N](x: N): T[N, Nothing] = null
+  implicit def xToRight(r: X): T[Nothing, X] = ???
+  implicit def anyToN[N](x: N): T[N, Nothing] = ???
 
 
   f("A", 1, 2) // should be implicitly resolved to alternative b)

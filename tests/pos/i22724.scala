@@ -11,7 +11,7 @@ private final class UnboundedHub[A]:
     new Node[A](
       null.asInstanceOf[A],
       new AtomicReference(
-        Pointer(null, 0) // error: too many arguments for constructor AtomicReference
+        Pointer(???, 0) // error: too many arguments for constructor AtomicReference
       )
     )
   )

@@ -7,7 +7,7 @@ class B extends A {
 }
 
 object B {
-  def view(x: B): B1 = null
+  def view(x: B): B1 = ???
 }
 
 class B1 {
@@ -15,13 +15,13 @@ class B1 {
 }
 
 object C {
-  implicit def view(x: A): B1 = null
+  implicit def view(x: A): B1 = ???
 }
 
 object Test {
   import C.view
 
-  val b: B = null
+  val b: B = ???
 
   println(b.bar)
 }

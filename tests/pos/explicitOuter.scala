@@ -51,7 +51,7 @@ class Outer(elem: Int, val next: Outer) {
 
 object Test extends App {
 
-  val o = new Outer(1, new Outer(2, null))
+  val o = new Outer(1, new Outer(2, ???))
   val ic = new o.InnerClass(1)
   println(ic.bar)
   println(ic.foo)

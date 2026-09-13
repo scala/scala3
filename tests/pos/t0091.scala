@@ -1,6 +1,6 @@
 class Bug {
   def main(args: Array[String]) = {
-    var msg: String = null;
+    var msg: String = ???;
     val f:  PartialFunction[Any, Unit] = { case 42 => msg = "coucou" };
   }
 }

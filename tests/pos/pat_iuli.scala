@@ -9,7 +9,7 @@ trait Ops { self: MyCodes =>
 trait Blox { self: MyCodes =>
   import opcodes.*
   class Basick {
-    var foo: Instru = null
+    var foo: Instru = ???
 
     def bar = foo match {
       case SWITCH(i) => i

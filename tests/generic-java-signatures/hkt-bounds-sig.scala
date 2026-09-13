@@ -9,12 +9,12 @@ final class VCString(val s: String) extends AnyVal
 class HK[F[_]]
 
 class C {
-  def funcA: Category1Hi[[X <: AnyRef] =>> Box[X]] = null
-  def funcB: Category1LoHi[[X >: String <: AnyRef] =>> Box[X]] = null
+  def funcA: Category1Hi[[X <: AnyRef] =>> Box[X]] = ???
+  def funcB: Category1LoHi[[X >: String <: AnyRef] =>> Box[X]] = ???
   // type lambdas whose result is not an applied type: value classes are boxed, primitives use their boxed class
-  def funcC: HK[[X] =>> VCInt] = null
-  def funcD: HK[[X] =>> VCString] = null
-  def funcE: HK[[X] =>> Int] = null
+  def funcC: HK[[X] =>> VCInt] = ???
+  def funcD: HK[[X] =>> VCString] = ???
+  def funcE: HK[[X] =>> Int] = ???
 }
 
 object Test:

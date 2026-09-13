@@ -1,3 +1,3 @@
 class ConcreteImpl extends AbstractImpl {
-  def create : OuterInterface.InnerInterface = null
+  def create : OuterInterface.InnerInterface = ???
  }

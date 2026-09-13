@@ -12,7 +12,7 @@ object Bip {
   def unapplySeq(x: Any): ArrayOpt[Int] = x match {
     case xs: Array[Int]   => new ArrayOpt(xs)
     case xs: Array[Short] => new ArrayOpt(mkInts(xs))
-    case _                => new ArrayOpt(null)
+    case _                => new ArrayOpt(???)
   }
   // public int[] unapplySeq(java.lang.Object);
   //      0: aload_1

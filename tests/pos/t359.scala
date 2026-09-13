@@ -6,8 +6,8 @@ object Bug359 {
         if (false) {
           f1(xs)
         } else {
-          val a: C = null;
-          val b: C = null;
+          val a: C = ???;
+          val b: C = ???;
           if (xs.isEmpty) a else b
         }
     }
@@ -16,13 +16,13 @@ object Bug359 {
     g {
       xs =>
         if (false) {
-          val a: C = null;
-          val b: C = null;
+          val a: C = ???;
+          val b: C = ???;
           if (xs.isEmpty) a else b
         } else {
           f2(xs);
         }
     }
   }
-  private def g(op: List[C] => C): C = null;
+  private def g(op: List[C] => C): C = ???;
 }

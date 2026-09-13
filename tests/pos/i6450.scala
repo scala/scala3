@@ -55,7 +55,7 @@ object Test3 {
   }
   object B {
     def f(e: CharSequence): A = ???
-    val f: A = f(null)
+    val f: A = f(???)
   }
 }
 
@@ -76,7 +76,7 @@ object Test5 {
   }
   object B {
     def f(e: AnyRef): A = ???
-    val f: A = f(null)
+    val f: A = f(???)
   }
 }
 
@@ -86,6 +86,6 @@ object Test6 {
   }
   object B {
     def f(e: String): A = ???
-    val f: A = f(null)
+    val f: A = f(???)
   }
 }
