@@ -18,6 +18,10 @@ import scala.language.`2.13`
  *  @since 2.8
  */
 abstract class ScalaNumber extends java.lang.Number {
+  /** Returns `true` if this number has no fractional part, i.e. is a whole number. */
   protected def isWhole(): Boolean
+  /** Returns the value underlying this wrapper, e.g. the `java.math.BigInteger`
+   *  underlying a [[scala.math.BigInt]].
+   */
   def underlying(): Object
 }
