@@ -23,7 +23,7 @@ final class HyArray[Element: Value as elementIsCValue](
 
   /** Returns the number of elements that `this` can contain before allocating new storage. */
   def capacity: Int =
-    if _storage == null then 0 else _storage.length
+    if _storage == null then 0 else _storage.nn.length
 
   /** Reserves enough storage to store `n` elements in `this`. */
   def reserveCapacity(n: Int, assumeUniqueness: Boolean = false): HyArray[Element] =
@@ -37,7 +37,7 @@ final class HyArray[Element: Value as elementIsCValue](
       val s = _storage.asInstanceOf[scala.Array[AnyRef | Null]]
       var i = 0
       while i < count do {
-        newStorage(i) = _storage(i).asInstanceOf[Element].copy().asInstanceOf[AnyRef]
+        newStorage(i) = _storage.nn(i).asInstanceOf[Element].copy().asInstanceOf[AnyRef]
         i += 1
       }
 
@@ -52,7 +52,7 @@ final class HyArray[Element: Value as elementIsCValue](
   /** Adds a new element at the end of the array. */
   def append(source: Element, assumeUniqueness: Boolean = false): HyArray[Element] =
     val result = if assumeUniqueness && (count < capacity) then this else copy(count + 1)
-    result._storage(count) = source.asInstanceOf[AnyRef]
+    result._storage.nn(count) = source.asInstanceOf[AnyRef]
     result._count += 1
     result
 
@@ -71,7 +71,7 @@ final class HyArray[Element: Value as elementIsCValue](
     } else {
       val result = if assumeUniqueness then this else copy()
       result._count -= 1
-      (result, Some(result._storage(result._count).asInstanceOf[Element]))
+      (result, Some(result._storage.nn(result._count).asInstanceOf[Element]))
     }
 
   /** Removes all elements in the array, keeping allocated storage iff `keepStorage` is true. */
@@ -98,7 +98,7 @@ final class HyArray[Element: Value as elementIsCValue](
     *   O(1).
     */
   def at(p: Int): Element =
-    _storage(p).asInstanceOf[Element]
+    _storage.nn(p).asInstanceOf[Element]
 
   /** Calls `transform` on the element at `p` to update its value.
     *
@@ -113,7 +113,7 @@ final class HyArray[Element: Value as elementIsCValue](
       assumeUniqueness: Boolean = false
   ): HyArray[Element] =
     val result = if assumeUniqueness then this else copy()
-    result._storage(p) = transform(at(p)).asInstanceOf[AnyRef]
+    result._storage.nn(p) = transform(at(p)).asInstanceOf[AnyRef]
     result
 
   /** Returns a textual description of `this`. */
@@ -139,7 +139,7 @@ final class HyArray[Element: Value as elementIsCValue](
       val clone = HyArray[Element]().reserveCapacity(max(minimumCapacity, count))
       var i = 0
       while i < count do {
-        clone._storage(i) = _storage(i).asInstanceOf[Element].copy().asInstanceOf[AnyRef]
+        clone._storage.nn(i) = _storage.nn(i).asInstanceOf[Element].copy().asInstanceOf[AnyRef]
         i += 1
       }
       clone._count = count
