@@ -771,7 +771,7 @@ object Contexts {
       importInfo.mentionsFeature(nme.unsafeNulls) match
         case Some(true) =>
           setMode(this.mode &~ Mode.SafeNulls)
-        case Some(false) if ctx.settings.YexplicitNulls.value =>
+        case Some(false) if ctx.explicitNulls =>
           setMode(this.mode | Mode.SafeNulls)
         case _ =>
       updateStore(importInfoLoc, importInfo)
