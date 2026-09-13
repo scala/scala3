@@ -33,14 +33,14 @@ class C_ico() {
 }
 
 object o_ico {
-  var v_ico: C_ico = null;
+  var v_ico: C_ico = scala.compiletime.uninitialized;
   new C_ico();
 }
 
 //############################################################################
 
 object o_ioc {
-  var v_ioc: C_ioc = null;
+  var v_ioc: C_ioc = scala.compiletime.uninitialized;
   new C_ioc();
 }
 
@@ -62,7 +62,7 @@ class C_ioc() {
 //############################################################################
 
 object o_oic {
-  var v_oic: C_oic = null;
+  var v_oic: C_oic = scala.compiletime.uninitialized;
   new C_oic();
 }
 

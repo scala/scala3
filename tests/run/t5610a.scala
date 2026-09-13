@@ -7,7 +7,7 @@ object Test extends App {
 
   def bar(f: Int => Result) = f(42)
 
-  var test: String = null
+  var test: String = scala.compiletime.uninitialized
   val result = bar(foo(test))
   test = "bar"
 
