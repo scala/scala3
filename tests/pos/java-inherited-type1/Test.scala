@@ -6,7 +6,7 @@ object Test {
   j.select(null);
   j.select1(null);
 
-  val message:TestMessage = null
+  val message:TestMessage = ???
   val builder:TestMessage.Builder = message.toBuilder
   builder.setName("name")
 

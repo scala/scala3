@@ -21,7 +21,7 @@ object MyCons:
     new MyCons(head, next) { type SetterCapability = ev.type }
 
 class MyListBuffer[A](tracked val heap: MutRegion = new MutRegion):
-  @untrackedCaptures private var last0: MyCons[A] { type SetterCapability = heap.type } = null
+  @untrackedCaptures private var last0: MyCons[A] { type SetterCapability = heap.type } = ???
 
   def assign(f: A): this.type =
     given this.heap.type = this.heap

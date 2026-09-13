@@ -18,5 +18,5 @@ trait Wrapper[T] {
     def use(implicit w: Wrapper[One[A]]): One[w.Out]
   }
 
-  val x: One[Long] = null
+  val x: One[Long] = ???
   val _ = x.use.use.use.use.use.use.use

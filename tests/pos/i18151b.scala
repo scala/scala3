@@ -6,5 +6,5 @@ transparent inline def tmplStr(inline t: El[Any]): String =
 
 def test: Unit = tmplStr {
   val el = El("1", "2")
-  El[Any](el.attr, null)
+  El[Any](el.attr, ???)
 }

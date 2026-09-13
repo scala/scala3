@@ -3,6 +3,6 @@ class As {
   class A {
     def foo: A.this.type = bar.asInstanceOf[A.this.type]
     def foo2: this.type = bar.asInstanceOf[this.type]
-    def bar: A = null
+    def bar: A = ???
   }
 }

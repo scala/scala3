@@ -122,7 +122,7 @@ class C {
           try LazyRuntime.initialize(this, offset, init("x"))
           catch {
             case ex: Throwable =>
-              LazyRuntime.initialize(this, offset, null)
+              LazyRuntime.initialize(this, offset, ???)
               throw ex
           }
         }

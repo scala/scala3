@@ -9,7 +9,7 @@ trait B {
 class C[T](val f1: B, val f2: T)
 
 val f = new A(() => {
-  val x: B = null
+  val x: B = ???
   C[Int](x, 0).f1.mB(1);
   1
 }).mA()

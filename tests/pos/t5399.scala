@@ -18,8 +18,8 @@ class Foo {
 
   case class ScopedKey1[T](val foo: Init[T]) extends ScopedKey[T]
 
-  val scalaHome: Setting[Option[String]] = null
-  val scalaVersion: Setting[String] = null
+  val scalaHome: Setting[Option[String]] = ???
+  val scalaVersion: Setting[String] = ???
 
   def testPatternMatch(s: Setting[_]): Unit = {
     s.key match {

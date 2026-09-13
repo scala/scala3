@@ -1,5 +1,5 @@
 abstract class F {
-    final def apply(x: Int): AnyRef = null
+    final def apply(x: Int): AnyRef = ???
 }
 abstract class AbstractModule {
     def as: List[AnyRef]

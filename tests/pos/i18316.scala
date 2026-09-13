@@ -1,11 +1,11 @@
 class R1
 class R2
 
-class Foo { def meth(x: Int): R1 = null }
-class Bar { def meth(x: Int): R2 = null }
+class Foo { def meth(x: Int): R1 = ??? }
+class Bar { def meth(x: Int): R2 = ??? }
 
-object Impl { implicit def mkFoo(i: Int): Foo = null }
-trait Trait { implicit def mkBar(i: Int): Bar = null }
+object Impl { implicit def mkFoo(i: Int): Foo = ??? }
+trait Trait { implicit def mkBar(i: Int): Bar = ??? }
 
 import Impl.mkFoo // remove to make code compile
 object Test extends Trait:

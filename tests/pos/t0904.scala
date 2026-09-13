@@ -6,8 +6,8 @@ trait A {
 trait B extends A
 
 abstract class Foo {
-  val a: A = null
-  val b: B = null
+  val a: A = ???
+  val b: B = ???
 
   a(0) = 1
   b(0) = 1

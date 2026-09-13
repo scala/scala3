@@ -2,7 +2,7 @@ class M[+A, +B]
 
 object Test {
   implicit class EitherOps[A, B](self: Either[A, B]) {
-    def disjunction: M[A, B] = null
+    def disjunction: M[A, B] = ???
   }
 
   def foo = {

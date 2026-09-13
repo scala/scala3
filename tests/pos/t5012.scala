@@ -7,6 +7,6 @@ class C {
     if ("abc".length == 0) {
       object p       // (program point 2)
     }
-    null
+    ???
   }
 }

@@ -9,7 +9,7 @@ class Wrap {
   implicit class Y[Y](val a: Y)
   Y[Int](0)
   implicit class Z[Z[_]](val a: Z[Wrap.this.Z[Z]])
-  Z[List](List(new Z[List](null)))
+  Z[List](List(new Z[List](???)))
 }
 
 case class X[X](val a: X)
