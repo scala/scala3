@@ -735,21 +735,12 @@ class ReplDriver(settings: Array[String],
             out.println(s"The path '$path' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
           else inContext(state.context):
             val jarClassPath = ClassPathFactory.newClassPath(jarFile)
-            val prevOutputDir = ctx.settings.outputDir.value
 
             // add to compiler class path
             ctx.platform.addToClassPath(jarClassPath)
             SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
 
-            // new class loader with previous output dir and specified jar
-            val prevClassLoader = rendering.classLoader()
-            val jarClassLoader = fromURLsParallelCapable(
-              jarClassPath.asURLs, prevClassLoader)
-            rendering.myClassLoader = new AbstractFileClassLoader(
-              prevOutputDir,
-              jarClassLoader,
-              AbstractFileClassLoader.InterruptInstrumentation.fromString(ctx.settings.XreplInterruptInstrumentation.value)
-            )
+            rendering.addToClasspath(jarClassPath.asURLs)
 
             out.println(s"Added '$path' to classpath.")
         } catch {
@@ -876,13 +867,8 @@ class ReplDriver(settings: Array[String],
             if files.nonEmpty then
               val classpathState = newRun(state)
               inContext(classpathState.context):
-                val prevOutputDir = ctx.settings.outputDir.value
-                val prevClassLoader = rendering.classLoader()
-                rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
-                  files,
-                  prevClassLoader,
-                  prevOutputDir
-                )
+                DependencyResolver.addToCompilerClasspath(files)
+                rendering.addToClasspath(files.map(_.toURI.toURL))
                 val depsDescription = if deps.size == 1 then "a dependency" else s"${deps.size} dependencies"
                 out.println(s"Resolved $depsDescription (${files.size} JARs)")
               classpathState
