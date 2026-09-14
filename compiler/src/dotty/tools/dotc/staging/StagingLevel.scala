@@ -21,7 +21,8 @@ object StagingLevel {
 
   /** All enclosing calls that are currently inlined, from innermost to outermost. */
   def level(using Context): Int =
-    ctx.property(LevelKey).getOrElse(0)
+    val v = ctx.propertyRaw(LevelKey)
+    if v == null then 0 else v
 
   /** Context with an incremented staging level. */
   def quoteContext(using Context): FreshContext =
@@ -33,19 +34,19 @@ object StagingLevel {
 
   /** If we are inside a quote or a splice */
   def inQuoteOrSpliceScope(using Context): Boolean =
-    ctx.property(LevelKey).isDefined
+    ctx.propertyRaw(LevelKey) != null
 
   /** The quotation level of the definition of the locally defined symbol */
   def levelOf(sym: Symbol)(using Context): Int =
-    ctx.property(LevelOfKey) match
-      case Some(map) => map.getOrElse(sym, 0)
-      case None => 0
+    val map = ctx.propertyRaw(LevelOfKey)
+    if map == null then 0 else map.getOrElse(sym, 0)
 
   /** Context with the current staging level set for the symbols */
   def symbolsInCurrentLevel(syms: List[Symbol])(using Context): Context =
     if level == 0 then ctx
     else
-      val levelOfMap = ctx.property(LevelOfKey).getOrElse(Map.empty)
+      val raw = ctx.propertyRaw(LevelOfKey)
+      val levelOfMap: Map[Symbol, Int] = if raw == null then Map.empty else raw
       val syms1 = syms//.filter(sym => !levelOfMap.contains(sym))
       val newMap = syms1.foldLeft(levelOfMap)((acc, sym) => acc.updated(sym, level))
       ctx.fresh.setProperty(LevelOfKey, newMap)
