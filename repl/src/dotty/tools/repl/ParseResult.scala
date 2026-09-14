@@ -126,6 +126,14 @@ object JarCmd extends ArgCommand[JarCmd] {
   val command: String = ":jar"
 }
 
+/** `:resource <path>` adds a resource file or directory to the classpath
+ */
+case class ResourceCmd(path: String) extends Command:
+  override def replayLine = Some(s"${ResourceCmd.command} $path")
+object ResourceCmd extends ArgCommand[ResourceCmd] {
+  val command: String = ":resource"
+}
+
 /** `:toolkit <version>` resolves a toolkit and adds it to the classpath
  */
 case class ToolkitCmd(coordinates: String) extends Command:
