@@ -1188,19 +1188,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         VarOp(ILOAD, 5),
         Op(IRETURN),
         Label(19),
-        Field(GETSTATIC, "scala/package$", "MODULE$", "Lscala/package$;"),
-        Invoke(INVOKEVIRTUAL, "scala/package$", "Nil", "()Lscala/collection/immutable/Nil$;", false),
-        VarOp(ALOAD, 2),
-        Invoke(INVOKESTATIC, "java/util/Objects", "equals", "(Ljava/lang/Object;Ljava/lang/Object;)Z", false),
-        Jump(IFEQ, Label(28)),
         IntOp(BIPUSH, 20),
-        Op(IRETURN),
-        Label(28),
-        TypeOp(NEW, "scala/MatchError"),
-        Op(DUP),
-        VarOp(ALOAD, 2),
-        Invoke(INVOKESPECIAL, "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false),
-        Op(ATHROW),
+        Op(IRETURN)
       ))
 
       // ---------------
