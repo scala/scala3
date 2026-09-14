@@ -298,6 +298,7 @@ object Signatures {
       nextArg = untpdArgs.lift(previousArgIndex + 1)
       // unfortunately there's no indexOf with both from and to indices,
       // and we don't want to potentially iterate a very large string
+      // TODO: there is one in JDK 21, use it instead of this substring once that becomes the minimum version
       text = ctx.source.textContent().substring(previousArg.span.end - 1, nextArg.map(_.span.start).getOrElse(span.end))
       commaIndex = text.indexOf(',')
       if commaIndex != -1
