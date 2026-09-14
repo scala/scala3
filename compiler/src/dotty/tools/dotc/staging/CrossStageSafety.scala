@@ -57,7 +57,7 @@ class CrossStageSafety extends TreeMapWithStages {
   private val InAnnotation = Property.Key[Unit]()
 
   override def transform(tree: Tree)(using Context): Tree =
-    if (tree.source != ctx.source && tree.source.exists)
+    if ((tree.source `ne` ctx.source) && tree.source.exists)
       transform(tree)(using ctx.withSource(tree.source))
     else tree match
       case CancelledQuote(tree) =>

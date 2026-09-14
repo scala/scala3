@@ -17,8 +17,10 @@ import scala.compiletime.uninitialized
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */
-abstract class Positioned(implicit @constructorOnly src: SourceFile) extends SrcPos, Product, Cloneable {
+abstract class Positioned private[ast] (initialSpan: Positioned.InitialSpan)(implicit @constructorOnly src: SourceFile) extends SrcPos, Product, Cloneable {
   import Positioned.{ids, nextId, debugId}
+
+  def this()(implicit src: SourceFile) = this(Positioned.ComputeSpan)(using src)
 
   private var mySpan: Span = uninitialized
 
@@ -47,7 +49,9 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
   def span_=(span: Span): Unit =
     mySpan = span
 
-  span = envelope(src)
+  span =
+    if initialSpan.coords == Positioned.ComputeSpan.coords then envelope(src)
+    else Span(initialSpan.coords)
 
   def source: SourceFile = mySource
 
@@ -86,14 +90,16 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
    *  the left, or, if that one does not exist, to the start position of the envelope
    *  of all children to the right.
    */
-  def envelope(src: SourceFile, startSpan: Span = NoSpan): Span = (this: @unchecked) match {
-    case Trees.Inlined(call, _, _) =>
-      call.span
-    case _ =>
-      def include(span: Span, x: Any): Span = x match {
-        case p: Positioned =>
-          if (p.source != src) span
-          else if (p.span.exists) span.union(p.span)
+  def envelope(src: SourceFile, startSpan: Span = NoSpan): Span = {
+    def include(span: Span, x: Any): Span = x match {
+      case p: Positioned =>
+        if (p.source `ne` src) span
+        else
+          val pspan = p.span
+          if (pspan.exists) {
+            if (span.exists) Span(span.start min pspan.start, span.end max pspan.end)
+            else pspan
+          }
           else if (span.exists) {
             if (span.end != MaxOffset)
               p.span = p.envelope(src, span.endPos)
@@ -101,29 +107,126 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
           }
           else // No span available to assign yet, signal this by returning a span with MaxOffset end
             Span(MaxOffset, MaxOffset)
-        case m: untpd.Modifiers =>
-          include(include(span, m.mods), m.annotations)
-        case y :: ys =>
-          include(include(span, y), ys)
-        case _ => span
-      }
-      val limit = productArity
-      def includeChildren(span: Span, n: Int): Span =
-        if (n < limit) includeChildren(include(span, productElement(n): @unchecked), n + 1)
-        else span
-      val span1 = includeChildren(startSpan, 0)
-      val span2 =
-        if (!span1.exists || span1.end != MaxOffset)
-          span1
-        else if (span1.start == MaxOffset)
-          // No positioned child was found
-          NoSpan
-        else
-          ///println(s"revisit $uniqueId with $span1")
-          // We have some children left whose span could not be assigned.
-          // Go through it again with the known start position.
-          includeChildren(span1.startPos, 0)
-      span2.toSynthetic
+      case m: untpd.Modifiers =>
+        include(include(span, m.mods), m.annotations)
+      case y :: ys =>
+        include(include(span, y), ys)
+      case _ => span
+    }
+
+    (this: @unchecked) match {
+      case Trees.Inlined(call, _, _) =>
+        call.span
+      case tree: Trees.Select[?] =>
+        val qualifier = tree.qualifier
+        def includeQualifier(span: Span): Span =
+          if (qualifier.source `ne` src) span
+          else
+            val pspan = qualifier.span
+            if (pspan.exists) {
+              if (span.exists) Span(span.start min pspan.start, span.end max pspan.end, span.point)
+              else pspan
+            }
+            else if (span.exists) {
+              if (span.end != MaxOffset)
+                qualifier.span = qualifier.envelope(src, span.endPos)
+              span
+            }
+            else // No span available to assign yet, signal this by returning a span with MaxOffset end
+              Span(MaxOffset, MaxOffset)
+        val span1 = includeQualifier(startSpan)
+        val span2 =
+          if (!span1.exists || span1.end != MaxOffset)
+            span1
+          else if (span1.start == MaxOffset)
+            NoSpan
+          else
+            includeQualifier(span1.startPos)
+        span2.toSynthetic
+      case tree: Trees.ValDef[?] =>
+        def includeChildren(span: Span): Span =
+          include(include(span, tree.tpt), tree.unforcedRhs)
+        val span1 = includeChildren(startSpan)
+        val span2 =
+          if (!span1.exists || span1.end != MaxOffset)
+            span1
+          else if (span1.start == MaxOffset)
+            // No positioned child was found
+            NoSpan
+          else
+            includeChildren(span1.startPos)
+        span2.toSynthetic
+      case tree: Trees.DefDef[?] =>
+        def includeChildren(span: Span): Span =
+          include(include(include(span, tree.paramss), tree.tpt), tree.unforcedRhs)
+        val span1 = includeChildren(startSpan)
+        val span2 =
+          if (!span1.exists || span1.end != MaxOffset)
+            span1
+          else if (span1.start == MaxOffset)
+            // No positioned child was found
+            NoSpan
+          else
+            includeChildren(span1.startPos)
+        span2.toSynthetic
+      case tree: Trees.TypeDef[?] =>
+        def includeChildren(span: Span): Span =
+          include(span, tree.rhs)
+        val span1 = includeChildren(startSpan)
+        val span2 =
+          if (!span1.exists || span1.end != MaxOffset)
+            span1
+          else if (span1.start == MaxOffset)
+            // No positioned child was found
+            NoSpan
+          else
+            includeChildren(span1.startPos)
+        span2.toSynthetic
+      case tree: Trees.GenericApply[?] =>
+        def includeChildren(span: Span): Span =
+          include(include(span, tree.fun), tree.args)
+        val span1 = includeChildren(startSpan)
+        val span2 =
+          if (!span1.exists || span1.end != MaxOffset)
+            span1
+          else if (span1.start == MaxOffset)
+            // No positioned child was found
+            NoSpan
+          else
+            includeChildren(span1.startPos)
+        span2.toSynthetic
+      case tree: untpd.TypedSplice =>
+        def includeChildren(span: Span): Span =
+          include(span, tree.splice)
+        val span1 = includeChildren(startSpan)
+        val span2 =
+          if (!span1.exists || span1.end != MaxOffset)
+            span1
+          else if (span1.start == MaxOffset)
+            // No positioned child was found
+            NoSpan
+          else
+            includeChildren(span1.startPos)
+        span2.toSynthetic
+      case _ =>
+        val limit = productArity
+        def includeChildren(span: Span, n: Int): Span =
+          if (n < limit) includeChildren(include(span, productElement(n): @unchecked), n + 1)
+          else span
+        val span1 = includeChildren(startSpan, 0)
+        val span2 =
+          if (!span1.exists || span1.end != MaxOffset)
+            span1
+          else if (span1.start == MaxOffset)
+            // No positioned child was found
+            NoSpan
+          else
+            ///println(s"revisit $uniqueId with $span1")
+            // We have some children left whose span could not be assigned.
+            // Go through it again with the known start position.
+            includeChildren(span1.startPos, 0)
+        span2.toSynthetic
+    }
   }
 
   /** Clone this node but assign it a fresh id which marks it as a node in `file`. */
@@ -239,6 +342,10 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
 }
 
 object Positioned {
+  private[ast] final class InitialSpan(val coords: Long) extends AnyVal
+  private[ast] val ComputeSpan: InitialSpan = new InitialSpan(Long.MinValue)
+  private[ast] def initialSpan(span: Span): InitialSpan = new InitialSpan(span.coords)
+
   @sharable private var debugId = Int.MinValue
   @sharable private var ids: java.util.WeakHashMap[Positioned, Int] | Null = null
   @sharable private var nextId: Int = 0

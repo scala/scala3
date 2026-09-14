@@ -402,13 +402,19 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def This(qual: Ident)(implicit src: SourceFile): This = new This(qual)
   def Super(qual: Tree, mix: Ident)(implicit src: SourceFile): Super = new Super(qual, mix)
   def Apply(fun: Tree, args: List[Tree])(implicit src: SourceFile): Apply = new Apply(fun, args)
+  def Apply(fun: Tree, args: List[Tree], span: Span)(implicit src: SourceFile): Apply =
+    new Apply(fun, args)(using src, Positioned.initialSpan(span))
   def TypeApply(fun: Tree, args: List[Tree])(implicit src: SourceFile): TypeApply = new TypeApply(fun, args)
+  def TypeApply(fun: Tree, args: List[Tree], span: Span)(implicit src: SourceFile): TypeApply =
+    new TypeApply(fun, args)(using src, Positioned.initialSpan(span))
   def Literal(const: Constant)(implicit src: SourceFile): Literal = new Literal(const)
   def New(tpt: Tree)(implicit src: SourceFile): New = new New(tpt)
   def Typed(expr: Tree, tpt: Tree)(implicit src: SourceFile): Typed = new Typed(expr, tpt)
   def NamedArg(name: Name, arg: Tree)(implicit src: SourceFile): NamedArg = new NamedArg(name, arg)
   def Assign(lhs: Tree, rhs: Tree)(implicit src: SourceFile): Assign = new Assign(lhs, rhs)
   def Block(stats: List[Tree], expr: Tree)(implicit src: SourceFile): Block = new Block(stats, expr)
+  def Block(stats: List[Tree], expr: Tree, span: Span)(implicit src: SourceFile): Block =
+    new Block(stats, expr)(using src, Positioned.initialSpan(span))
   def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit src: SourceFile): If = new If(cond, thenp, elsep)
   def InlineIf(cond: Tree, thenp: Tree, elsep: Tree)(implicit src: SourceFile): If = new InlineIf(cond, thenp, elsep)
   def Closure(env: List[Tree], meth: Tree, tpt: Tree)(implicit src: SourceFile): Closure = new Closure(env, meth, tpt)
@@ -423,8 +429,14 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def SeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit src: SourceFile): SeqLiteral = new SeqLiteral(elems, elemtpt)
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(implicit src: SourceFile): JavaSeqLiteral = new JavaSeqLiteral(elems, elemtpt)
   def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(implicit src: SourceFile): Inlined = new Inlined(call, bindings, expansion)
+  def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree, span: Span)(implicit src: SourceFile): Inlined =
+    new Inlined(call, bindings, expansion)(using src, Positioned.initialSpan(span))
   def Quote(body: Tree, tags: List[Tree])(implicit src: SourceFile): Quote = new Quote(body, tags)
+  def Quote(body: Tree, tags: List[Tree], span: Span)(implicit src: SourceFile): Quote =
+    new Quote(body, tags)(using src, Positioned.initialSpan(span))
   def Splice(expr: Tree)(implicit src: SourceFile): Splice = new Splice(expr)
+  def Splice(expr: Tree, span: Span)(implicit src: SourceFile): Splice =
+    new Splice(expr)(using src, Positioned.initialSpan(span))
   def QuotePattern(bindings: List[Tree], body: Tree, quotes: Tree)(implicit src: SourceFile): QuotePattern = new QuotePattern(bindings, body, quotes)
   def SplicePattern(body: Tree, typeargs: List[Tree], args: List[Tree])(implicit src: SourceFile): SplicePattern = new SplicePattern(body, typeargs, args)
   def TypeTree()(implicit src: SourceFile): TypeTree = new TypeTree()
