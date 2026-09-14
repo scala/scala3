@@ -169,7 +169,7 @@ trait Migrations:
     && tree.span.exists
     && {
       val content = ctx.source.textContent()
-      val idx = content.indexOf('(', from = tree.span.end)
+      val idx = content.indexOf('(', /*fromIndex =*/ tree.span.end)
       0 <= idx && idx < ptSpan.start
     }
 

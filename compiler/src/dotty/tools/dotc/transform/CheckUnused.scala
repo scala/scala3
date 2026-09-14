@@ -899,7 +899,7 @@ object CheckUnused:
                   if imp == existing.last then
                     val content = imp.srcPos.sourcePos.source.textContent()
                     val prev = existing.lastIndexWhere(i0 => keeping.exists((i, _) => i == i0))
-                    val comma = content.indexOf(',', from = existing(prev).srcPos.span.end)
+                    val comma = content.indexOf(',', /*fromIndex =*/ existing(prev).srcPos.span.end)
                     val commaPos = imp.srcPos.sourcePos.withSpan:
                       Span(start = comma, end = existing(prev + 1).srcPos.span.start)
                     val srcPos = imp.srcPos
@@ -931,7 +931,7 @@ object CheckUnused:
                     if sel == imp.selectors.last then
                       val content = sel.srcPos.sourcePos.source.textContent()
                       val prev = imp.selectors.lastIndexWhere(s0 => keeping.exists((_, s) => s == s0))
-                      val comma = content.indexOf(',', from = imp.selectors(prev).srcPos.span.end)
+                      val comma = content.indexOf(',', /*fromIndex =*/ imp.selectors(prev).srcPos.span.end)
                       val commaPos = sel.srcPos.sourcePos.withSpan:
                         Span(start = comma, end = imp.selectors(prev + 1).srcPos.span.start)
                       val editPos = sel.srcPos
