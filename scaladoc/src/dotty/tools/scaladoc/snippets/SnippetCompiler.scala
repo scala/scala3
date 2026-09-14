@@ -2,11 +2,11 @@ package dotty.tools.scaladoc
 package snippets
 
 import dotty.tools.io
-import dotty.tools.io.AbstractFile
+import dotty.tools.io.{AbstractFile, VirtualFile}
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.config.Settings.Setting.*
-import dotty.tools.dotc.reporting.StoreReporter
+import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.util.Spans.NoSpan
 import java.nio.charset.StandardCharsets
@@ -23,8 +23,7 @@ class SnippetCompiler(
   ): SnippetCompilationResult =
     val driver = new SnippetDriver(snippetCompilerSettings, target)
     val files = List(new VirtualFile("(snippet)", wrappedSnippet.snippet.getBytes(StandardCharsets.UTF_8)))
-    val reporter = driver.process(arg.scalacOptions, files)
-    reporter.flush()
+    val reporter = driver.processFiles(arg.scalacOptions, files)
     val diagnostics = reporter.allErrors ++ reporter.allWarnings ++ reporter.allInfos
     val observed = SnippetExpectations.observe(diagnostics, wrappedSnippet, sourceFile)
 
@@ -72,10 +71,12 @@ final class SnippetDriver(snippetCompilerSettings: Seq[SnippetCompilerSetting[?]
       rootCtx.setSetting(scSetting.setting, scSetting.value)
     rootCtx.setSetting(rootCtx.settings.outputDir, target)
 
-  def process(args: Array[String], files: List[AbstractFile]): Reporter = {
-    setup(args, initCtx.fresh) match
+  def processFiles(args: Iterable[String], files: List[AbstractFile]): Reporter = {
+    setup(args.toArray, initCtx.fresh) match
       case Some((_, compileCtx)) =>
-        doCompile(newCompiler(using compileCtx), files)(using compileCtx)
+        val reporter = doCompile(newCompiler(using compileCtx), files)(using compileCtx)
+        reporter.flush()(using compileCtx)
+        reporter
       case None =>
         initCtx.reporter
   }
