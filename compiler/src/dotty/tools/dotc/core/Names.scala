@@ -8,7 +8,6 @@ import util.NameTransformer
 import printing.{Printer, Showable, Texts}
 import Texts.Text
 import StdNames.{nme, str}
-import util.LinearMap
 
 import java.nio.CharBuffer
 import java.nio.charset.StandardCharsets
@@ -186,16 +185,15 @@ object Names {
     def underlying: TermName = unsupported("underlying")
 
     @sharable // because of synchronized block in `add`
-    private var derivedNames: LinearMap[NameInfo, DerivedName] = LinearMap.empty
+    private val derivedNames = mutable.HashMap.empty[NameInfo, DerivedName]
 
     private def add(info: NameInfo): TermName = synchronized {
-      val dnOpt = derivedNames.lookup(info)
-      dnOpt match
-        case null =>
-          val derivedName = new DerivedName(this, info)
-          derivedNames = derivedNames.updated(info, derivedName)
+      derivedNames.get(info) match
+        case Some(dnOpt) => dnOpt
+        case None =>
+          val derivedName = DerivedName(this, info)
+          derivedNames(info) = derivedName
           derivedName
-        case _ => dnOpt
     }
 
     private def rewrap(underlying: TermName) =
