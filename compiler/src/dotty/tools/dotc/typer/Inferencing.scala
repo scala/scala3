@@ -225,7 +225,7 @@ object Inferencing {
     private var toMaximize: List[TypeVar] = Nil
 
     def apply(x: Boolean, tp: Type): Boolean = trace(i"isFullyDefined($tp, $force)", typr) {
-      ctx.handleRecursive("check fully defined", () => tp.showSummary(20)):
+      ctx.handleRecursive("check fully defined", tp):
         val tpd = tp.dealias
         if tpd ne tp then apply(x, tpd)
         else tp match
@@ -260,7 +260,7 @@ object Inferencing {
       && (
         toMaximize.isEmpty
         || { maximize(toMaximize)
-             toMaximize = Nil       // Do another round since the maximixing instances
+             toMaximize = Nil       // Do another round since the maximizing instances
              process(tp)            // might have type uninstantiated variables themselves.
            }
       )
