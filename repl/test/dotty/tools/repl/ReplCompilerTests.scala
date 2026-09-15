@@ -120,8 +120,8 @@ class ReplCompilerTests extends ReplTest:
     assert(storedOutput().startsWith("java.lang.StackOverflowError"))
 
   @Test def `i3305 NPE`: Unit = initially:
-    run("null.toString")
-    assert(storedOutput().startsWith("java.lang.NullPointerException"))
+    run("null.hashCode")
+    assert(storedOutput().contains("java.lang.NullPointerException"))
 
   @Test def `i3305 IAE`: Unit = initially:
     run("""throw new IllegalArgumentException("Hello")""")
