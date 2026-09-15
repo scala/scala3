@@ -26,6 +26,11 @@ class SyncChannel[A] {
   private var pendingWrites = List[(A, SyncVar[Signal])]()
   private var pendingReads  = List[SyncVar[A]]()
 
+  /** Writes `data` to the channel, blocking the caller until the value is
+   *  read by a corresponding reader thread.
+   *
+   *  @param data the value to write to the channel
+   */
   def write(data: A): Unit = {
     // create write request
     val writeReq = new SyncVar[Signal]
@@ -51,6 +56,9 @@ class SyncChannel[A] {
     writeReq.get
   }
 
+  /** Reads and removes the next value from the channel, blocking the caller
+   *  until a corresponding writer thread provides one.
+   */
   def read: A = {
     // create read request
     val readReq = new SyncVar[A]

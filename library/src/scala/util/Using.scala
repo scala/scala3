@@ -448,6 +448,10 @@ object Using {
     //implicit val AutoCloseableIsReleasable: Releasable[AutoCloseable] = new Releasable[AutoCloseable] {}
     /** An implicit `Releasable` for [[java.lang.AutoCloseable `AutoCloseable`s]]. */
     implicit object AutoCloseableIsReleasable extends Releasable[AutoCloseable] {
+      /** Releases the specified `AutoCloseable` resource by calling its `close` method.
+       *
+       *  @param resource the `AutoCloseable` resource to release
+       */
       def release(resource: AutoCloseable): Unit = resource.close()
     }
   }
