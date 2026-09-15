@@ -280,11 +280,11 @@ object Types extends TypeUtils {
      *  a non-bottom subclass of `cls`.
      */
     final def derivesFrom(cls: Symbol, defaultIfUnknown: Boolean = false)(using Context): Boolean = {
-      def isLowerBottomType(tp: Type) =
+      inline def isLowerBottomType(tp: Type) =
         tp.isBottomType
         && (tp.hasClassSymbol(defn.NothingClass)
             || cls != defn.NothingClass && !cls.isValueClass)
-      def loop(tp: Type): Boolean = ctx.handleRecursive("derivesFrom", () => i"$cls $this"):
+      def loop(tp: Type): Boolean = ctx.handleRecursive("check derivation from", cls):
         tp match
           case tp: TypeRef =>
             val sym = tp.symbol
