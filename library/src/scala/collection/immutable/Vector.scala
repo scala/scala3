@@ -36,8 +36,24 @@ import scala.runtime.ScalaRunTime.nullForGC
 @SerialVersionUID(3L)
 object Vector extends StrictOptimizedSeqFactory[Vector] {
 
+  /** Returns the empty vector.
+   *
+   *  @tparam A the element type of the vector
+   *  @return the empty vector, a single shared instance
+   */
   def empty[A]: Vector[A] = Vector0
 
+  /** Returns a vector containing the elements of `it`.
+   *
+   *  Returns `it` itself if it is already a `Vector`, and the shared empty vector
+   *  if its size is known to be 0. A source with a known size between 1 and 32
+   *  elements is copied directly into a single-array vector (reusing the underlying
+   *  array of an `ArraySeq.ofRef` of `AnyRef`s without copying); other sources are
+   *  added to a fresh [[VectorBuilder]].
+   *
+   *  @tparam E the element type of the vector
+   *  @param it the collection whose elements end up in the vector
+   */
   def from[E](it: collection.IterableOnce[E]^): Vector[E] =
     it match {
       case v: Vector[E] => v
@@ -65,6 +81,11 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
         }
     }
 
+  /** Returns a new, empty [[VectorBuilder]].
+   *
+   *  @tparam A the element type of the vector to build
+   *  @return a reusable builder that produces a `Vector[A]`
+   */
   def newBuilder[A]: ReusableBuilder[A, Vector[A]] = new VectorBuilder[A]
 
   /** Creates a Vector with the same element at each index.
@@ -131,12 +152,22 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
     with IterableFactoryDefaults[A, Vector]
     with DefaultSerializable {
 
+  /** Returns the [[Vector$ Vector]] companion object, the factory used to build new vectors. */
   override def iterableFactory: SeqFactory[Vector] = Vector
 
+  /** Returns the number of elements in this vector.
+   *
+   *  The length is stored (or, for a single-array vector, is the length of
+   *  that array), so this operation takes constant time.
+   */
   override final def length: Int =
     if(this.isInstanceOf[BigVector[?]]) this.asInstanceOf[BigVector[?]].length0
     else prefix1.length
 
+  /** Returns an iterator over the elements of this vector.
+   *
+   *  The empty vector always returns the same shared, exhausted iterator.
+   */
   override final def iterator: Iterator[A] =
     if(this.isInstanceOf[Vector0.type]) Vector.emptyIterator
     else new NewVectorIterator(this, length, vectorSliceCount)
@@ -201,9 +232,43 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
   }
 
   // Dummy overrides to refine result types for binary compatibility:
+  /** Returns a copy of this vector with the element at `index` replaced by `elem`.
+   *
+   *  Only the arrays on the path to the affected slot are copied; the rest of
+   *  the structure is shared, so this operation takes O(log n) time.
+   *
+   *  @tparam B the element type of the returned vector
+   *  @param index the index of the element to replace
+   *  @param elem the replacement element
+   *  @throws IndexOutOfBoundsException if `index` is negative or `>= length`
+   */
   override def updated[B >: A](index: Int, elem: B): Vector[B] = super.updated(index, elem)
+  /** Returns a copy of this vector with `elem` appended.
+   *
+   *  This operation takes amortized constant time (worst case O(log n)).
+   *
+   *  @tparam B the element type of the returned vector
+   *  @param elem the appended element
+   *  @return a vector with `elem` as its last element
+   */
   override def appended[B >: A](elem: B): Vector[B] = super.appended(elem)
+  /** Returns a copy of this vector with `elem` prepended.
+   *
+   *  This operation takes amortized constant time (worst case O(log n)).
+   *
+   *  @tparam B the element type of the returned vector
+   *  @param elem the prepended element
+   *  @return a vector with `elem` as its first element
+   */
   override def prepended[B >: A](elem: B): Vector[B] = super.prepended(elem)
+  /** Returns a vector containing the elements of `prefix` followed by the
+   *  elements of this vector.
+   *
+   *  Returns this vector itself if `prefix` is known to be empty.
+   *
+   *  @tparam B the element type of the returned vector
+   *  @param prefix the collection whose elements precede this vector's elements
+   */
   override def prependedAll[B >: A](prefix: collection.IterableOnce[B]^): Vector[B] = {
     val k = prefix.knownSize
     if (k == 0) this
@@ -211,6 +276,14 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
     else prependedAll0(prefix, k)
   }
 
+  /** Returns a vector containing the elements of this vector followed by the
+   *  elements of `suffix`.
+   *
+   *  Returns this vector itself if `suffix` is known to be empty.
+   *
+   *  @tparam B the element type of the returned vector
+   *  @param suffix the collection whose elements follow this vector's elements
+   */
   override final def appendedAll[B >: A](suffix: collection.IterableOnce[B]^): Vector[B] = {
     val k = suffix.knownSize
     if (k == 0) this
@@ -218,6 +291,22 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
     else appendedAll0(suffix, k)
   }
 
+  /** Implements `prependedAll` for a prefix with known size `k`.
+   *
+   *  Prepends the elements one by one if there are only a few, appends this
+   *  vector's elements to `prefix` instead if that is a vector more than 32
+   *  times as large, and uses a [[VectorBuilder]] aligned to `k` when this
+   *  vector is sufficiently larger than the prefix, so that the result can
+   *  share this vector's structure; falls back to the generic implementation
+   *  otherwise. The concrete subclasses override this with an additional
+   *  fast path that copies `prefix` into the leading element array when it
+   *  fits.
+   *
+   *  @tparam B the element type of the returned vector
+   *  @param prefix the collection whose elements precede this vector's elements
+   *  @param k the known size of `prefix`; always `>= 0`
+   *  @return a vector containing `prefix` followed by this vector
+   */
   protected def prependedAll0[B >: A](prefix: collection.IterableOnce[B]^, k: Int): Vector[B] = {
     // k >= 0, k = prefix.knownSize
     val tinyAppendLimit = 4 + vectorSliceCount
@@ -236,6 +325,22 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
     } else super.prependedAll(prefix)
   }
 
+  /** Implements `appendedAll` for a suffix with known size `k`.
+   *
+   *  Appends the elements one by one if there are only a few, prepends this
+   *  vector's elements to `suffix` instead if that is a vector more than 32
+   *  times as large, and uses a [[VectorBuilder]] aligned to this vector's
+   *  size when `suffix` is a sufficiently larger vector, so that the result
+   *  can share the suffix vector's structure; otherwise builds the result by
+   *  initializing a [[VectorBuilder]] from this vector and adding `suffix`.
+   *  The concrete subclasses override this with an additional fast path that
+   *  copies `suffix` into the last element array when it fits.
+   *
+   *  @tparam B the element type of the returned vector
+   *  @param suffix the collection whose elements follow this vector's elements
+   *  @param k the known size of `suffix`; always `>= 0`
+   *  @return a vector containing this vector followed by `suffix`
+   */
   protected def appendedAll0[B >: A](suffix: collection.IterableOnce[B]^, k: Int): Vector[B] = {
     // k >= 0, k = suffix.knownSize
     val tinyAppendLimit = 4 + vectorSliceCount
@@ -257,13 +362,46 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
     } else new VectorBuilder[B].initFrom(this).addAll(suffix).result()
   }
 
+  /** The collection name "Vector", used as the prefix of the `toString` representation. */
   override def className = "Vector"
 
+  /** Returns a vector containing the first `n` elements of this vector.
+   *
+   *  @param n the number of elements to take
+   *  @return a vector containing the first `n` elements, this vector itself
+   *          if `n >= length`, or the empty vector if `n <= 0`
+   */
   @inline override final def take(n: Int): Vector[A] = slice(0, n)
+  /** Returns a vector containing all elements of this vector except the first `n`.
+   *
+   *  @param n the number of elements to drop
+   *  @return a vector containing the elements after the first `n`, this
+   *          vector itself if `n <= 0`, or the empty vector if `n >= length`
+   */
   @inline override final def drop(n: Int): Vector[A] = slice(n, length)
+  /** Returns a vector containing the last `n` elements of this vector.
+   *
+   *  @param n the number of elements to take
+   *  @return a vector containing the last `n` elements, this vector itself
+   *          if `n >= length`, or the empty vector if `n <= 0`
+   */
   @inline override final def takeRight(n: Int): Vector[A] = slice(length - mmax(n, 0), length)
+  /** Returns a vector containing all elements of this vector except the last `n`.
+   *
+   *  @param n the number of elements to drop
+   *  @return a vector containing the elements before the last `n`, this
+   *          vector itself if `n <= 0`, or the empty vector if `n >= length`
+   */
   @inline override final def dropRight(n: Int): Vector[A] = slice(0, length - mmax(n, 0))
+  /** Returns a vector containing all elements of this vector except the first.
+   *
+   *  @throws UnsupportedOperationException if this vector is empty
+   */
   override def tail: Vector[A] = slice(1, length)
+  /** Returns a vector containing all elements of this vector except the last.
+   *
+   *  @throws UnsupportedOperationException if this vector is empty
+   */
   override def init: Vector[A] = slice(0, length-1)
 
   /** Like slice but parameters must be `0 <= lo < hi <= length`.
@@ -289,12 +427,43 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
    */
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int
 
+  /** Copies elements of this vector to an array, using bulk copies from the
+   *  underlying element arrays.
+   *
+   *  Copying starts at index `start` of `xs` and continues until either `len`
+   *  elements have been copied, the end of this vector is reached, or the end
+   *  of the array is reached.
+   *
+   *  @tparam B the element type of the array
+   *  @param xs the array to copy elements to
+   *  @param start the starting index in `xs`
+   *  @param len the maximum number of elements to copy
+   *  @return the number of elements copied
+   */
   override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = iterator.copyToArray(xs, start, len)
 
+  /** Returns this vector itself, as it is already a vector. */
   override def toVector: Vector[A] = this
 
+  /** Returns the maximum vector length up to which index-based `apply` is
+   *  preferred over an iterator when comparing elements.
+   *
+   *  Configurable via the system property
+   *  `scala.collection.immutable.Vector.defaultApplyPreferredMaxLength`
+   *  (default 250).
+   */
   override protected def applyPreferredMaxLength: Int = Vector.defaultApplyPreferredMaxLength
 
+  /** Returns a stepper over the elements of this vector.
+   *
+   *  The stepper is specialized to `Int`, `Long`, or `Double` when `shape`
+   *  indicates the corresponding primitive element type, and supports
+   *  efficient splitting for parallel processing.
+   *
+   *  @tparam S the type of the stepper
+   *  @param shape determines the element shape and thereby the type of stepper returned
+   *  @return a stepper that also allows efficient splitting
+   */
   override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     val s = shape.shape match {
       case StepperShape.IntShape    => new IntVectorStepper(iterator.asInstanceOf[NewVectorIterator[Int]])
@@ -305,13 +474,27 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
     s.asInstanceOf[S & EfficientSplit]
   }
 
+  /** Returns a new `IndexOutOfBoundsException` for the given index, to be
+   *  thrown by the caller.
+   *
+   *  @param index the out-of-bounds index
+   *  @return an exception reporting `index` and the valid index range
+   */
   protected def ioob(index: Int): IndexOutOfBoundsException =
     CommonErrors.indexOutOfBounds(index = index, max = length - 1)
 
+  /** Returns the first element of this vector.
+   *
+   *  @throws NoSuchElementException if this vector is empty
+   */
   override final def head: A =
     if (prefix1.length == 0) throw new NoSuchElementException("empty.head")
     else prefix1(0).asInstanceOf[A]
 
+  /** Returns the last element of this vector.
+   *
+   *  @throws NoSuchElementException if this vector is empty
+   */
   override final def last: A = {
     if(this.isInstanceOf[BigVector[?]]) {
       val suffix = this.asInstanceOf[BigVector[?]].suffix1
@@ -320,6 +503,14 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
     } else prefix1(prefix1.length-1)
   }.asInstanceOf[A]
 
+  /** Applies `f` to each element of this vector.
+   *
+   *  Iterates directly over the underlying array slices instead of using an
+   *  iterator.
+   *
+   *  @tparam U the result type of `f`, which is discarded
+   *  @param f the function applied to each element for its side effects
+   */
   override final def foreach[U](f: A => U): Unit = {
     val c = vectorSliceCount
     var i = 0
@@ -1510,6 +1701,17 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
 }
 
 
+/** A reusable builder for a [[Vector]].
+ *
+ *  Elements are collected in a mutable tree of arrays (`a1` through `a6`)
+ *  that mirrors the structure of the resulting vector and grows in depth as
+ *  elements are added; `result()` cuts and copies these arrays into an
+ *  immutable vector. The builder can also be initialized from an existing
+ *  vector, or aligned to an offset so that the result shares array structure
+ *  with a vector appended to it.
+ *
+ *  @tparam A the element type of the vector being built
+ */
 final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
 
   private var a6: Arr6 = compiletime.uninitialized
@@ -1527,12 +1729,25 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     lenRest = i - len1
   }
 
+  /** Returns the number of elements added so far.
+   *
+   *  Computed as the current position in the tree (`len1 + lenRest`) minus
+   *  the `offset` of unused slots reserved in front by `alignTo`.
+   */
   override def knownSize: Int = len1 + lenRest - offset
 
+  /** Returns the number of elements added so far, like `knownSize`. */
   @inline def size: Int = knownSize
+  /** Returns `true` if this builder contains no elements. */
   @inline def isEmpty: Boolean = knownSize == 0
+  /** Returns `true` if this builder contains at least one element. */
   @inline def nonEmpty: Boolean = knownSize != 0
 
+  /** Clears the contents of this builder, making it available for reuse.
+   *
+   *  Resets the state to a single empty leaf array and releases the arrays
+   *  of all higher dimensions for garbage collection.
+   */
   def clear(): Unit = {
     a6 = nullForGC[Arr6]
     a5 = nullForGC[Arr5]
@@ -1813,6 +2028,14 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     prefixIsRightAligned = false
   }
 
+  /** Adds a single element to this builder.
+   *
+   *  Writes into the current leaf array, first advancing to a fresh leaf
+   *  (and growing the tree if necessary) when the current one is full.
+   *
+   *  @param elem the element to add
+   *  @return this builder
+   */
   def addOne(elem: A): this.type = {
     if(len1 == WIDTH) advance()
     a1(len1) = elem.asInstanceOf[AnyRef]
@@ -1932,6 +2155,15 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     this
   }
 
+  /** Adds all elements of `xs` to this builder.
+   *
+   *  An empty, unaligned builder is initialized directly from a `Vector`
+   *  argument; a vector added to a non-empty builder is copied in as whole
+   *  slices where possible. Other collections are added element by element.
+   *
+   *  @param xs the elements to add
+   *  @return this builder
+   */
   override def addAll(xs: IterableOnce[A]^): this.type = xs match {
     case v: Vector[?] =>
       if(len1 == 0 && lenRest == 0 && !prefixIsRightAligned) initFrom(v)
@@ -2003,6 +2235,16 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     }
   }
 
+  /** Returns a vector containing the elements added so far.
+   *
+   *  Cuts the builder's arrays down to the actual length and assembles them
+   *  into a vector of the appropriate level, splitting the prefix and suffix
+   *  fingers off the central data. The builder keeps its contents and
+   *  remains usable.
+   *
+   *  @throws IndexOutOfBoundsException if more than `Int.MaxValue` elements
+   *          were added, overflowing the length to a negative value
+   */
   def result(): Vector[A] = {
     if (prefixIsRightAligned) leftAlignPrefix()
     val len = len1 + lenRest
@@ -2093,6 +2335,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     }
   }
 
+  /** Returns a string showing the internal state of this builder, for debugging. */
   override def toString(): String =
     s"VectorBuilder(len1=$len1, lenRest=$lenRest, offset=$offset, depth=$depth)"
 
