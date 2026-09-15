@@ -196,10 +196,13 @@ object StringOps {
 final class StringOps(private val s: String) extends AnyVal { self =>
   import StringOps._
 
+  /** Returns a [[scala.collection.StringView]] over the chars of this string. */
   @inline def view: StringView = new StringView(s)
 
+  /** Returns the length of this string. */
   @inline def size: Int = s.length
 
+  /** Returns the length of this string, which is always known. */
   @inline def knownSize: Int = s.length
 
   /** Gets the char at the specified index.
@@ -209,12 +212,46 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    */
   @inline def apply(i: Int): Char = s.charAt(i)
 
+  /** Compares the length of this string to a test value.
+   *
+   *  @param otherSize the test value that gets compared with the length
+   *  @return a value `x` where
+   *  ```
+   *       x <  0       if this.length <  otherSize
+   *       x == 0       if this.length == otherSize
+   *       x >  0       if this.length >  otherSize
+   *  ```
+   */
   def sizeCompare(otherSize: Int): Int = Integer.compare(s.length, otherSize)
 
+  /** Compares the length of this string to a test value.
+   *
+   *  @param len the test value that gets compared with the length
+   *  @return a value `x` where
+   *  ```
+   *       x <  0       if this.length <  len
+   *       x == 0       if this.length == len
+   *       x >  0       if this.length >  len
+   *  ```
+   */
   def lengthCompare(len: Int): Int = Integer.compare(s.length, len)
 
+  /** Returns the length of this string.
+   *
+   *  On general collections, `sizeIs` supports comparing the size to a test
+   *  value without computing the full size; a string always knows its length,
+   *  so this simply returns it, and the comparison operators of `Int` provide
+   *  the same syntax.
+   */
   def sizeIs: Int = s.length
 
+  /** Returns the length of this string.
+   *
+   *  On general collections, `lengthIs` supports comparing the length to a
+   *  test value without computing the full length; a string always knows its
+   *  length, so this simply returns it, and the comparison operators of `Int`
+   *  provide the same syntax.
+   */
   def lengthIs: Int = s.length
 
   /** Builds a new collection by applying a function to all chars of this string.
@@ -967,6 +1004,19 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     }
   }
 
+  /** Splits this string around occurrences of any of the separator characters.
+   *
+   *  Builds a regular expression character class from the (escaped) separator
+   *  characters and calls `String.split` with it, so, as described there,
+   *  trailing empty substrings are not included in the result.
+   *
+   *  @param separators the characters used as delimiters
+   *  @return an array of strings computed by splitting this string around
+   *          occurrences of any of the separator characters
+   *  @throws java.util.regex.PatternSyntaxException if the character class
+   *          built from `separators` is not a valid regular expression, for
+   *          example when `separators` is empty
+   */
   @throws(classOf[java.util.regex.PatternSyntaxException])
   def split(separators: Array[Char]): Array[String] = {
     val re = separators.foldLeft("[")(_+escape(_)) + "]"
@@ -1097,6 +1147,14 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     else if (s.equalsIgnoreCase("false")) false
     else throw new IllegalArgumentException("For input string: \""+s+"\"")
 
+  /** Returns a new array containing the chars of this string.
+   *
+   *  @tparam B the element type of the returned array
+   *  @param tag the class tag for the element type `B`, required to create the
+   *             result array; when it is `ClassTag.Char`, the result is a
+   *             plain `char` array
+   *  @return a new array of length `this.length` containing the chars of this string
+   */
   def toArray[B >: Char](implicit tag: ClassTag[B]): Array[B] =
     if (tag == ClassTag.Char) s.toCharArray.asInstanceOf[Array[B]]
     else new WrappedString(s).toArray[B]
@@ -1142,6 +1200,13 @@ final class StringOps(private val s: String) extends AnyVal { self =>
   def formatLocal(l: java.util.Locale, args: Any*): String =
     java.lang.String.format(l, s, args.map(unwrapArg)*)
 
+  /** Compares this string to `that` lexicographically by char values, as
+   *  `String.compareTo`.
+   *
+   *  @param that the string to compare against
+   *  @return a negative value if this string sorts before `that`, a positive
+   *          value if it sorts after, and `0` if the two strings are equal
+   */
   def compare(that: String): Int = s.compareTo(that)
 
   /** Returns true if `this` is less than `that`.
@@ -1836,12 +1901,23 @@ final class StringOps(private val s: String) extends AnyVal { self =>
   def permutations: Iterator[String] = new WrappedString(s).permutations.map(_.unwrap)
 }
 
+/** An indexed view over the chars of a string.
+ *
+ *  @param s the underlying string
+ */
 final case class StringView(s: String) extends AbstractIndexedSeqView[Char] {
+  /** Returns the length of the underlying string. */
   def length = s.length
+  /** Returns the char of the underlying string at index `n`.
+   *
+   *  @param n the index of the char to return
+   */
   @throws[StringIndexOutOfBoundsException]
   def apply(n: Int) = s.charAt(n)
+  /** Returns a string of the form `StringView(...)` containing the underlying string. */
   override def toString(): String = s"StringView($s)"
 }
 
 object StringView extends scala.runtime.AbstractFunction1[String, StringView]:
+  /** Returns the string `"StringView"`. */
   override def toString(): String = "StringView"

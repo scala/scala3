@@ -36,11 +36,27 @@ import scala.collection.mutable.Builder
  *  @define Coll `BitSet`
  */
 trait BitSet extends SortedSet[Int] with BitSetOps[BitSet] { self: BitSet =>
+  /** Creates a bitset of the same kind as this bitset from the given
+   *  collection of elements, delegating to `bitSetFactory`.
+   *
+   *  @param coll the collection of elements to include; all must be non-negative
+   *  @return a bitset containing the elements of `coll`; the immutable factory returns
+   *          `coll` itself when it is already an immutable bitset
+   *  @throws IllegalArgumentException if `coll` contains a negative element
+   */
   override protected def fromSpecific(coll: IterableOnce[Int]^): BitSet = bitSetFactory.fromSpecific(coll)
+  /** Returns a builder for bitsets of the same kind as this bitset, obtained from `bitSetFactory`. */
   override protected def newSpecificBuilder: Builder[Int, BitSet] = bitSetFactory.newBuilder
+  /** Returns an empty bitset of the same kind as this bitset, obtained from `bitSetFactory`. */
   override def empty: BitSet = bitSetFactory.empty
+  /** The prefix used in the string representation of this set, `"BitSet"`. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "BitSet"
+  /** Returns this bitset viewed as an unsorted `Set[Int]`.
+   *
+   *  No copy is made: the result is this same bitset, so its iteration
+   *  order remains increasing.
+   */
   override def unsorted: Set[Int] = this
 }
 
@@ -49,8 +65,16 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
   private[collection] final val ordMsg = "No implicit Ordering[${B}] found to build a SortedSet[${B}]. You may want to upcast to a Set[Int] first by calling `unsorted`."
   private[collection] final val zipOrdMsg = "No implicit Ordering[${B}] found to build a SortedSet[(Int, ${B})]. You may want to upcast to a Set[Int] first by calling `unsorted`."
 
+  /** Returns the empty bitset; this factory delegates to [[immutable.BitSet]]. */
   def empty: BitSet = immutable.BitSet.empty
+  /** Returns a builder for immutable bitsets. */
   def newBuilder: Builder[Int, BitSet] = immutable.BitSet.newBuilder
+  /** Creates an immutable bitset containing the elements of the given collection.
+   *
+   *  @param it the collection of elements to include; all must be non-negative
+   *  @return a new immutable bitset containing the elements of `it`
+   *  @throws IllegalArgumentException if `it` contains a negative element
+   */
   def fromSpecific(it: IterableOnce[Int]^): BitSet = immutable.BitSet.fromSpecific(it)
 
   @SerialVersionUID(3L)
@@ -92,10 +116,15 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
   extends SortedSetOps[Int, SortedSet, C] { self =>
   import BitSetOps._
 
+  /** The factory used to build bitsets of the same kind as this bitset. */
   def bitSetFactory: SpecificIterableFactory[Int, C]
 
+  /** Returns this bitset viewed as an unsorted `Set[Int]`. */
   def unsorted: Set[Int]
 
+  /** The ordering of this bitset, always [[scala.math.Ordering.Int]]:
+   *  elements are iterated in increasing numeric order.
+   */
   final def ordering: Ordering[Int] = Ordering.Int
 
   /** The number of words (each with 64 bits) making up the set. */
@@ -116,11 +145,32 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
    */
   protected[collection] def fromBitMaskNoCopy(elems: Array[Long]): C
 
+  /** Tests whether this bitset contains the given integer.
+   *
+   *  Tests a single bit of a single word, so the check runs in constant time.
+   *
+   *  @param elem the integer to test
+   *  @return `true` if `elem` is non-negative and its bit is set in this
+   *          bitset, `false` otherwise (in particular, always `false` for
+   *          negative values)
+   */
   def contains(elem: Int): Boolean =
     0 <= elem && (word(elem >> LogWL) & (1L << elem)) != 0L
 
+  /** Returns an iterator over the elements of this bitset in increasing order. */
   def iterator: Iterator[Int] = iteratorFrom(0)
 
+  /** Returns an iterator over all elements of this bitset greater than or
+   *  equal to `start`, in increasing order.
+   *
+   *  The iterator starts directly at the word containing `start` rather than
+   *  scanning from the beginning.
+   *
+   *  @param start the lower bound (inclusive) of the iterator; a
+   *               non-positive value yields all elements
+   *  @return an iterator over the elements of this bitset that are greater
+   *          than or equal to `start`
+   */
   def iteratorFrom(start: Int): Iterator[Int] = new AbstractIterator[Int] {
     private var currentPos = if (start > 0) start >> LogWL else 0
     private var currentWord = if (start > 0) word(currentPos) & (-1L << (start & (WordLength - 1))) else word(0)
@@ -141,6 +191,18 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
     }
   }
 
+  /** Returns a [[scala.collection.Stepper]] for the elements of this bitset
+   *  that supports efficient splitting, enabling parallel processing.
+   *
+   *  Yields an [[scala.collection.IntStepper]] that works on unboxed values,
+   *  wrapped in a boxing [[scala.collection.AnyStepper]] if the reference
+   *  shape is requested.
+   *
+   *  @tparam S the type of the returned `Stepper`, determined by the implicit `StepperShape`
+   *  @param shape the `StepperShape` that determines the concrete `Stepper` subtype to return
+   *  @return a stepper over the elements of this bitset, marked with
+   *          [[scala.collection.Stepper.EfficientSplit]]
+   */
   override def stepper[S <: Stepper[?]](implicit shape: StepperShape[Int, S]): S & EfficientSplit = {
     val st = scala.collection.convert.impl.BitSetStepper.from(this)
     val r =
@@ -152,6 +214,11 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
     r.asInstanceOf[S & EfficientSplit]
   }
 
+  /** The number of elements in this bitset.
+   *
+   *  Computed by counting the set bits of each word, so it takes time
+   *  proportional to the number of words rather than the number of elements.
+   */
   override def size: Int = {
     var s = 0
     var i = nwords
@@ -162,6 +229,7 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
     s
   }
 
+  /** Tests whether this bitset is empty, that is, whether every word is zero. */
   override def isEmpty: Boolean = 0 until nwords forall (i => word(i) == 0)
 
   @inline private def smallestInt: Int = {
@@ -189,17 +257,50 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
     throw new UnsupportedOperationException("empty.largestInt")
   }
 
+  /** Returns the largest element of this bitset under the given ordering.
+   *
+   *  For the standard `Int` ordering, the result is found directly from the
+   *  highest set bit; for the reversed `Int` ordering, from the lowest set
+   *  bit. Any other ordering falls back to the general implementation, which
+   *  iterates over all elements.
+   *
+   *  @tparam B the type over which the ordering is defined (a supertype of `Int`)
+   *  @param ord the ordering used to compare elements
+   *  @return the largest element of this bitset with respect to `ord`
+   *  @throws UnsupportedOperationException if this bitset is empty
+   */
   override def max[B >: Int](implicit ord: Ordering[B]): Int =
     if (Ordering.Int eq ord) largestInt
     else if (Ordering.Int isReverseOf ord) smallestInt
     else super.max(using ord)
 
 
+  /** Returns the smallest element of this bitset under the given ordering.
+   *
+   *  For the standard `Int` ordering, the result is found directly from the
+   *  lowest set bit; for the reversed `Int` ordering, from the highest set
+   *  bit. Any other ordering falls back to the general implementation, which
+   *  iterates over all elements.
+   *
+   *  @tparam B the type over which the ordering is defined (a supertype of `Int`)
+   *  @param ord the ordering used to compare elements
+   *  @return the smallest element of this bitset with respect to `ord`
+   *  @throws UnsupportedOperationException if this bitset is empty
+   */
   override def min[B >: Int](implicit ord: Ordering[B]): Int =
     if (Ordering.Int eq ord) smallestInt
     else if (Ordering.Int isReverseOf ord) largestInt
     else super.min(using ord)
 
+  /** Applies the function `f` to each element of this bitset in increasing
+   *  order.
+   *
+   *  Scans the words and their set bits directly instead of creating an
+   *  iterator.
+   *
+   *  @tparam U the result type of `f`, ignored
+   *  @param f the function applied to each element for its side effects
+   */
   override def foreach[U](f: Int => U): Unit = {
     /* NOTE: while loops are significantly faster as of 2.11 and
        one major use case of bitsets is performance. Also, there
@@ -229,6 +330,20 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
     a
   }
 
+  /** Creates a bitset containing the elements of this bitset that fall
+   *  within the given optional bounds.
+   *
+   *  The result is built from a masked copy of this bitset's words, so it is
+   *  a new independent bitset, not a projection: later changes to either
+   *  bitset are not reflected in the other.
+   *
+   *  @param from the lower bound (inclusive) of the range; `None` if there
+   *              is no lower bound
+   *  @param until the upper bound (exclusive) of the range; `None` if there
+   *               is no upper bound
+   *  @return a new bitset containing the elements of this bitset that are
+   *          within the given bounds
+   */
   def rangeImpl(from: Option[Int], until: Option[Int]): C = {
     val a = coll.toBitMask
     val len = a.length
@@ -253,6 +368,17 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
     coll.fromBitMaskNoCopy(a)
   }
 
+  /** Computes the union of this bitset and another collection.
+   *
+   *  When `other` is also a bitset, the union is computed word-by-word with
+   *  bitwise "or"; otherwise the elements of `other` are added individually.
+   *
+   *  @param other the collection of elements to add
+   *  @return a new bitset containing all elements of this bitset and all
+   *          elements of `other`
+   *  @throws IllegalArgumentException if `other` is not a bitset and
+   *          contains a negative element
+   */
   override def concat(other: collection.IterableOnce[Int]^): C = other match {
     case otherBitset: BitSet =>
       val len = coll.nwords max otherBitset.nwords
@@ -263,6 +389,16 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
     case _ => super.concat(other)
   }
 
+  /** Computes the intersection of this bitset and another set.
+   *
+   *  When `other` is also a bitset, the intersection is computed
+   *  word-by-word with bitwise "and"; otherwise this bitset is filtered by
+   *  membership in `other`.
+   *
+   *  @param other the set to intersect with
+   *  @return a new bitset containing the elements of this bitset that are
+   *          also in `other`
+   */
   override def intersect(other: Set[Int]): C = other match {
     case otherBitset: BitSet =>
       val len = coll.nwords min otherBitset.nwords
@@ -273,6 +409,16 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
     case _ => super.intersect(other)
   }
 
+  /** Computes the difference of this bitset and another set.
+   *
+   *  When `other` is also a bitset, the difference is computed word-by-word
+   *  with bitwise "and not"; otherwise it falls back to the general set
+   *  difference.
+   *
+   *  @param other the set of elements to exclude
+   *  @return a new bitset containing the elements of this bitset that are
+   *          not also in `other`
+   */
   abstract override def diff(other: Set[Int]): C = other match {
     case otherBitset: BitSet =>
       val len = coll.nwords
@@ -307,10 +453,37 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
    */
   def map(f: Int => Int): C = fromSpecific(new View.Map(this, f))
 
+  /** Builds a new bitset by applying a function to all elements of this
+   *  bitset and concatenating the resulting collections.
+   *
+   *  @param f the function to apply to each element
+   *  @return a new bitset containing the elements of the collections
+   *          returned by `f` for the elements of this bitset
+   *  @throws IllegalArgumentException if a collection returned by `f`
+   *          contains a negative value
+   */
   def flatMap(f: Int => IterableOnce[Int]^): C = fromSpecific(new View.FlatMap(this, f))
 
+  /** Builds a new bitset by applying a partial function to all elements of
+   *  this bitset on which the function is defined.
+   *
+   *  @param pf the partial function to apply to each element
+   *  @return a new bitset containing the results of applying `pf` to each
+   *          element of this bitset on which it is defined
+   *  @throws IllegalArgumentException if `pf` returns a negative value for
+   *          some element
+   */
   def collect(pf: PartialFunction[Int, Int]^): C = fromSpecific(super[SortedSetOps].collect(pf))
 
+  /** Splits this bitset into a pair of bitsets according to a predicate.
+   *
+   *  The first bitset is obtained by filtering with `p`; the second is the
+   *  difference of this bitset and the first.
+   *
+   *  @param p the predicate used to test elements
+   *  @return a pair of bitsets: the first containing all elements of this
+   *          bitset that satisfy `p`, the second containing those that do not
+   */
   override def partition(p: Int => Boolean): (C, C) = {
     val left = filter(p)
     (left, this &~ left)

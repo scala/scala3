@@ -79,64 +79,279 @@ import scala.language.implicitConversions
  */
 @deprecated("Use `scala.jdk.CollectionConverters` instead", "2.13.0")
 object JavaConverters extends AsJavaConverters with AsScalaConverters {
+  /** Converts a Scala `Iterator` to a Java `Iterator`.
+   *
+   *  The conversion returns a wrapper, not a copy: advancing the result consumes the underlying
+   *  Scala iterator, and vice versa. An iterator that was itself obtained through `asScala` is
+   *  unwrapped, returning the original Java `Iterator`.
+   *
+   *  @tparam A the element type of the iterator
+   *  @param i the Scala `Iterator` to convert
+   *  @return a Java `Iterator` view of the argument
+   */
   @deprecated("Use `asJava` instead", "2.13.0")
   def asJavaIterator[A](i: Iterator[A]): ju.Iterator[A] = asJava(i)
 
+  /** Converts a Scala `Iterable` to a Java `Iterable`.
+   *
+   *  The conversion returns a wrapper, not a copy: the result is backed by the original Scala
+   *  collection, so changes to that collection are visible through the Java view. An iterable
+   *  that was itself obtained through `asScala` is unwrapped, returning the original Java
+   *  `Iterable`.
+   *
+   *  @tparam A the element type of the iterable
+   *  @param i the Scala `Iterable` to convert
+   *  @return a Java `Iterable` view of the argument
+   */
   @deprecated("Use `asJava` instead", "2.13.0")
   def asJavaIterable[A](i: Iterable[A]): jl.Iterable[A] = asJava(i)
 
+  /** Converts a Scala mutable `Buffer` to a Java `List`.
+   *
+   *  The conversion returns a wrapper, not a copy: changes made through either interface are
+   *  visible through the other. A buffer that was itself obtained through `asScala` is
+   *  unwrapped, returning the original Java `List`.
+   *
+   *  @tparam A the element type of the buffer
+   *  @param b the Scala mutable `Buffer` to convert
+   *  @return a Java `List` view of the argument
+   */
   @deprecated("Use `asJava` instead", "2.13.0")
   def bufferAsJavaList[A](b: mutable.Buffer[A]): ju.List[A] = asJava(b)
 
+  /** Converts a Scala mutable `Seq` to a Java `List`.
+   *
+   *  The conversion returns a wrapper, not a copy: changes made through either interface are
+   *  visible through the other. A sequence that was itself obtained through `asScala` is
+   *  unwrapped, returning the original Java `List`.
+   *
+   *  @tparam A the element type of the sequence
+   *  @param s the Scala mutable `Seq` to convert
+   *  @return a Java `List` view of the argument
+   */
   @deprecated("Use `asJava` instead", "2.13.0")
   def mutableSeqAsJavaList[A](s: mutable.Seq[A]): ju.List[A] = asJava(s)
 
+  /** Converts a Scala `Seq` to a Java `List`.
+   *
+   *  The conversion returns a wrapper, not a copy: the result is backed by the original Scala
+   *  sequence, so changes to that sequence are visible through the Java view. A sequence that
+   *  was itself obtained through `asScala` is unwrapped, returning the original Java `List`.
+   *
+   *  @tparam A the element type of the sequence
+   *  @param s the Scala `Seq` to convert
+   *  @return a Java `List` view of the argument
+   */
   @deprecated("Use `asJava` instead", "2.13.0")
   def seqAsJavaList[A](s: Seq[A]): ju.List[A] = asJava(s)
 
+  /** Converts a Scala mutable `Set` to a Java `Set`.
+   *
+   *  The conversion returns a wrapper, not a copy: changes made through either interface are
+   *  visible through the other. A set that was itself obtained through `asScala` is unwrapped,
+   *  returning the original Java `Set`.
+   *
+   *  @tparam A the element type of the set
+   *  @param s the Scala mutable `Set` to convert
+   *  @return a Java `Set` view of the argument
+   */
   @deprecated("Use `asJava` instead", "2.13.0")
   def mutableSetAsJavaSet[A](s: mutable.Set[A]): ju.Set[A] = asJava(s)
 
+  /** Converts a Scala `Set` to a Java `Set`.
+   *
+   *  The conversion returns a wrapper, not a copy: the result is backed by the original Scala
+   *  set, so changes to that set are visible through the Java view. A set that was itself
+   *  obtained through `asScala` is unwrapped, returning the original Java `Set`.
+   *
+   *  @tparam A the element type of the set
+   *  @param s the Scala `Set` to convert
+   *  @return a Java `Set` view of the argument
+   */
   @deprecated("Use `asJava` instead", "2.13.0")
   def setAsJavaSet[A](s: Set[A]): ju.Set[A] = asJava(s)
 
+  /** Converts a Scala mutable `Map` to a Java `Map`.
+   *
+   *  The conversion returns a wrapper, not a copy: changes made through either interface are
+   *  visible through the other. A map that was itself obtained through `asScala` is unwrapped,
+   *  returning the original Java `Map`.
+   *
+   *  @tparam K the type of the map keys
+   *  @tparam V the type of the map values
+   *  @param m the Scala mutable `Map` to convert
+   *  @return a Java `Map` view of the argument
+   */
   @deprecated("Use `asJava` instead", "2.13.0")
   def mutableMapAsJavaMap[K, V](m: mutable.Map[K, V]): ju.Map[K, V] = asJava(m)
 
+  /** Converts a Scala `Map` to a Java `Map`.
+   *
+   *  The conversion returns a wrapper, not a copy: the result is backed by the original Scala
+   *  map, so changes to that map are visible through the Java view. A map that was itself
+   *  obtained through `asScala` is unwrapped, returning the original Java `Map`.
+   *
+   *  @tparam K the type of the map keys
+   *  @tparam V the type of the map values
+   *  @param m the Scala `Map` to convert
+   *  @return a Java `Map` view of the argument
+   */
   @deprecated("Use `asJava` instead", "2.13.0")
   def mapAsJavaMap[K, V](m: Map[K, V]): ju.Map[K, V] = asJava(m)
 
+  /** Converts a Scala `concurrent.Map` to a Java `ConcurrentMap`.
+   *
+   *  The conversion returns a wrapper, not a copy: changes made through either interface are
+   *  visible through the other. A map that was itself obtained through `asScala` is unwrapped,
+   *  returning the original Java `ConcurrentMap`.
+   *
+   *  @tparam K the type of the map keys
+   *  @tparam V the type of the map values
+   *  @param m the Scala `concurrent.Map` to convert
+   *  @return a Java `ConcurrentMap` view of the argument
+   */
   @deprecated("Use `asJava` instead", "2.13.0")
   def mapAsJavaConcurrentMap[K, V](m: concurrent.Map[K, V]): juc.ConcurrentMap[K, V] = asJava(m)
 
 
+  /** Converts a Java `Iterator` to a Scala `Iterator`.
+   *
+   *  The conversion returns a wrapper, not a copy: advancing the result consumes the underlying
+   *  Java iterator, and vice versa. An iterator that was itself obtained through `asJava` is
+   *  unwrapped, returning the original Scala `Iterator`.
+   *
+   *  @tparam A the element type of the iterator
+   *  @param i the Java `Iterator` to convert
+   *  @return a Scala `Iterator` view of the argument
+   */
   @deprecated("Use `asScala` instead", "2.13.0")
   def asScalaIterator[A](i: ju.Iterator[A]): Iterator[A] = asScala(i)
 
+  /** Converts a Java `Enumeration` to a Scala `Iterator`.
+   *
+   *  The conversion returns a wrapper, not a copy: advancing the result consumes the underlying
+   *  Java enumeration, and vice versa. An enumeration that was itself obtained through
+   *  `asJavaEnumeration` is unwrapped, returning the original Scala `Iterator`.
+   *
+   *  @tparam A the element type of the enumeration
+   *  @param i the Java `Enumeration` to convert
+   *  @return a Scala `Iterator` view of the argument
+   */
   @deprecated("Use `asScala` instead", "2.13.0")
   def enumerationAsScalaIterator[A](i: ju.Enumeration[A]): Iterator[A] = asScala(i)
 
+  /** Converts a Java `Iterable` to a Scala `Iterable`.
+   *
+   *  The conversion returns a wrapper, not a copy: the result is backed by the original Java
+   *  iterable, so changes to it are visible through the Scala view. An iterable that was itself
+   *  obtained through `asJava` is unwrapped, returning the original Scala `Iterable`.
+   *
+   *  @tparam A the element type of the iterable
+   *  @param i the Java `Iterable` to convert
+   *  @return a Scala `Iterable` view of the argument
+   */
   @deprecated("Use `asScala` instead", "2.13.0")
   def iterableAsScalaIterable[A](i: jl.Iterable[A]): Iterable[A] = asScala(i)
 
+  /** Converts a Java `Collection` to a Scala `Iterable`.
+   *
+   *  The conversion returns a wrapper, not a copy: the result is backed by the original Java
+   *  collection, so changes to it are visible through the Scala view. A collection that was
+   *  itself obtained through `asJavaCollection` is unwrapped, returning the original Scala
+   *  `Iterable`.
+   *
+   *  @tparam A the element type of the collection
+   *  @param i the Java `Collection` to convert
+   *  @return a Scala `Iterable` view of the argument
+   */
   @deprecated("Use `asScala` instead", "2.13.0")
   def collectionAsScalaIterable[A](i: ju.Collection[A]): Iterable[A] = asScala(i)
 
+  /** Converts a Java `List` to a Scala mutable `Buffer`.
+   *
+   *  The conversion returns a wrapper, not a copy: changes made through either interface are
+   *  visible through the other. A list that was itself obtained by calling `asJava` on a Scala
+   *  `Buffer` is unwrapped, returning that original `Buffer`.
+   *
+   *  @tparam A the element type of the list
+   *  @param l the Java `List` to convert
+   *  @return a Scala mutable `Buffer` view of the argument
+   */
   @deprecated("Use `asScala` instead", "2.13.0")
   def asScalaBuffer[A](l: ju.List[A]): mutable.Buffer[A] = asScala(l)
 
+  /** Converts a Java `Set` to a Scala mutable `Set`.
+   *
+   *  The conversion returns a wrapper, not a copy: changes made through either interface are
+   *  visible through the other. A set that was itself obtained by calling `asJava` on a Scala
+   *  mutable `Set` is unwrapped, returning that original `Set`.
+   *
+   *  @tparam A the element type of the set
+   *  @param s the Java `Set` to convert
+   *  @return a Scala mutable `Set` view of the argument
+   */
   @deprecated("Use `asScala` instead", "2.13.0")
   def asScalaSet[A](s: ju.Set[A]): mutable.Set[A] = asScala(s)
 
+  /** Converts a Java `Map` to a Scala mutable `Map`.
+   *
+   *  The conversion returns a wrapper, not a copy: changes made through either interface are
+   *  visible through the other. A map that was itself obtained by calling `asJava` on a Scala
+   *  mutable `Map` is unwrapped, returning that original `Map`.
+   *
+   *  The wrapper adds no locking of its own. If `m` is a synchronized map, only the
+   *  operations that the underlying map performs atomically remain atomic through the
+   *  wrapper; the caller must synchronize the others.
+   *
+   *  @tparam A the type of the map keys
+   *  @tparam B the type of the map values
+   *  @param m the Java `Map` to convert
+   *  @return a Scala mutable `Map` view of the argument
+   */
   @deprecated("Use `asScala` instead", "2.13.0")
   def mapAsScalaMap[A, B](m: ju.Map[A, B]): mutable.Map[A, B] = asScala(m)
 
+  /** Converts a Java `ConcurrentMap` to a Scala `concurrent.Map`.
+   *
+   *  The conversion returns a wrapper, not a copy: changes made through either interface are
+   *  visible through the other. A map that was itself obtained through `asJava` is unwrapped,
+   *  returning the original Scala `concurrent.Map`.
+   *
+   *  @tparam A the type of the map keys
+   *  @tparam B the type of the map values
+   *  @param m the Java `ConcurrentMap` to convert
+   *  @return a Scala `concurrent.Map` view of the argument
+   */
   @deprecated("Use `asScala` instead", "2.13.0")
   def mapAsScalaConcurrentMap[A, B](m: juc.ConcurrentMap[A, B]): concurrent.Map[A, B] = asScala(m)
 
+  /** Converts a Java `Dictionary` to a Scala mutable `Map`.
+   *
+   *  The conversion returns a wrapper, not a copy: changes made through either interface are
+   *  visible through the other. A dictionary that was itself obtained through
+   *  `asJavaDictionary` is unwrapped, returning the original Scala `Map`.
+   *
+   *  @tparam A the type of the dictionary keys
+   *  @tparam B the type of the dictionary values
+   *  @param p the Java `Dictionary` to convert
+   *  @return a Scala mutable `Map` view of the argument
+   */
   @deprecated("Use `asScala` instead", "2.13.0")
   def dictionaryAsScalaMap[A, B](p: ju.Dictionary[A, B]): mutable.Map[A, B] = asScala(p)
 
+  /** Converts a Java `Properties` to a Scala mutable `Map[String, String]`.
+   *
+   *  The conversion returns a wrapper, not a copy: changes made through either interface are
+   *  visible through the other. This conversion is one-way; there is no corresponding `asJava`
+   *  conversion to `Properties`, and the result is always a new wrapper.
+   *
+   *  `Properties` extends `Hashtable[Object, Object]` and can hold entries whose key or
+   *  value is not a `String`. The wrapper casts rather than checks, so reading such an
+   *  entry through the returned map throws a `ClassCastException`.
+   *
+   *  @param p the Java `Properties` to convert
+   *  @return a Scala mutable `Map[String, String]` view of the argument
+   */
   @deprecated("Use `asScala` instead", "2.13.0")
   def propertiesAsScalaMap(p: ju.Properties): mutable.Map[String, String] = asScala(p)
 

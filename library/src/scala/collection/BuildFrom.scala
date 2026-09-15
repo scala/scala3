@@ -30,6 +30,18 @@ import caps.unsafe.unsafeAssumePure
  */
 @implicitNotFound(msg = "Cannot construct a collection of type ${C} with elements of type ${A} based on a collection of type ${From}.")
 trait BuildFrom[-From, -A, +C] extends Any { self: BuildFrom[From, A, C] =>
+  /** Builds a collection of type `C` from the elements of `it`.
+   *
+   *  The source collection `from` determines how the result is built (typically by
+   *  supplying its factory); the elements of the result come from `it`.
+   *
+   *  Building with `fromSpecific` is preferred over `newBuilder` because it can be
+   *  lazy for lazy collections.
+   *
+   *  @param from the source collection
+   *  @param it the elements of the resulting collection
+   *  @return a collection of type `C` containing the elements of `it`
+   */
   def fromSpecific(from: From)(it: IterableOnce[A]^): C^{it}
 
   /** Gets a Builder for the collection. For non-strict collection types this will use an intermediate buffer.
@@ -85,24 +97,37 @@ object BuildFrom extends BuildFromLowPriority1 {
     def fromSpecific(from: CC[K0, V0])(it: IterableOnce[(K, V)]^): CC[K, V] = (from: SortedMapOps[K0, V0, CC, ?]).sortedMapFactory.from(it)
   }
 
+  /** Builds a bit set of the same concrete type as the source bit set.
+   *
+   *  @tparam C the concrete bit set type (e.g. `immutable.BitSet`, `mutable.BitSet`)
+   *  @return a `BuildFrom` instance that builds a `C` from `Int` elements, using the
+   *          `bitSetFactory` of the source bit set
+   */
   implicit def buildFromBitSet[C <: BitSet & BitSetOps[C]]: BuildFrom[C, Int, C] =
     new BuildFrom[C, Int, C] {
       def fromSpecific(from: C)(it: IterableOnce[Int]^): C = from.bitSetFactory.fromSpecific(it)
       def newBuilder(from: C): Builder[Int, C] = from.bitSetFactory.newBuilder
     }
 
+  /** A `BuildFrom` instance that builds a `String` from `Char` elements. */
   implicit val buildFromString: BuildFrom[String, Char, String] =
     new BuildFrom[String, Char, String] {
       def fromSpecific(from: String)(it: IterableOnce[Char]^): String = Factory.stringFactory.fromSpecific(it)
       def newBuilder(from: String): Builder[Char, String] = Factory.stringFactory.newBuilder
     }
 
+  /** A `BuildFrom` instance that builds a [[scala.collection.immutable.WrappedString]] from `Char` elements. */
   implicit val buildFromWrappedString: BuildFrom[WrappedString, Char, WrappedString] =
     new BuildFrom[WrappedString, Char, WrappedString] {
       def fromSpecific(from: WrappedString)(it: IterableOnce[Char]^): WrappedString = WrappedString.fromSpecific(it)
       def newBuilder(from: WrappedString): mutable.Builder[Char, WrappedString] = WrappedString.newBuilder
     }
 
+  /** Builds an `Array` from any source array.
+   *
+   *  @tparam A the element type of the resulting array, which must have a `ClassTag`
+   *  @return a `BuildFrom` instance that builds an `Array[A]` from elements of type `A`
+   */
   implicit def buildFromArray[A : ClassTag]: BuildFrom[Array[?], A, Array[A]] =
     new BuildFrom[Array[?], A, Array[A]] {
       def fromSpecific(from: Array[?])(it: IterableOnce[A]^): Array[A] =
@@ -117,6 +142,12 @@ object BuildFrom extends BuildFromLowPriority1 {
       def fromSpecific(from: IArray[Any])(it: IterableOnce[A]^): IArray[A] = IArray.from(it)
       def newBuilder(from: IArray[Any]): Builder[A, IArray[A]] = IArray.newBuilder[A]
 
+  /** Builds a [[View]] from any source view.
+   *
+   *  @tparam A the element type of the source view
+   *  @tparam B the element type of the resulting view
+   *  @return a `BuildFrom` instance that builds a `View[B]` from elements of type `B`
+   */
   implicit def buildFromView[A, B]: BuildFrom[View[A], B, View[B]] =
     new BuildFrom[View[A], B, View[B]] {
       def fromSpecific(from: View[A])(it: IterableOnce[B]^): View[B]^{it} = View.from(it)
@@ -125,6 +156,10 @@ object BuildFrom extends BuildFromLowPriority1 {
 
 }
 
+/** `BuildFrom` instances that the compiler tries only after those declared directly
+ *  in the `BuildFrom` companion object, e.g. so that `buildFromString` is preferred
+ *  over `fallbackStringCanBuildFrom` when building a `String` from `Char` elements.
+ */
 trait BuildFromLowPriority1 extends BuildFromLowPriority2 {
 
   /** Builds the source collection type from an Iterable with SortedOps.
@@ -142,6 +177,13 @@ trait BuildFromLowPriority1 extends BuildFromLowPriority2 {
     def fromSpecific(from: CC[A0])(it: IterableOnce[A]^): CC[A] = (from: SortedSetOps[A0, CC, ?]).sortedIterableFactory.from(it)
   }
 
+  /** Builds an `immutable.IndexedSeq` from a `String` source when the element type is
+   *  not `Char`, i.e. when [[BuildFrom.buildFromString]] does not apply.
+   *
+   *  @tparam A the element type of the resulting sequence
+   *  @return a `BuildFrom` instance that builds an `immutable.IndexedSeq[A]` from
+   *          elements of type `A`, with a `String` as the source collection
+   */
   implicit def fallbackStringCanBuildFrom[A]: BuildFrom[String, A, immutable.IndexedSeq[A]] =
     new BuildFrom[String, A, immutable.IndexedSeq[A]] {
       def fromSpecific(from: String)(it: IterableOnce[A]^): immutable.IndexedSeq[A] = immutable.IndexedSeq.from(it)
@@ -149,6 +191,10 @@ trait BuildFromLowPriority1 extends BuildFromLowPriority2 {
   }
 }
 
+/** `BuildFrom` instances of the lowest priority, tried only after those in
+ *  [[BuildFromLowPriority1]] and the `BuildFrom` companion object, e.g. so that
+ *  `buildFromSortedSetOps` is preferred over `buildFromIterableOps` for sorted sets.
+ */
 trait BuildFromLowPriority2 {
   /** Builds the source collection type from an IterableOps.
    *
@@ -163,6 +209,11 @@ trait BuildFromLowPriority2 {
     def fromSpecific(from: CC[A0])(it: IterableOnce[A]^): CC[A]^{it} = (from: IterableOps[A0, CC, ?]).iterableFactory.from(it)
   }
 
+  /** Builds an [[Iterator]] from any source iterator.
+   *
+   *  @tparam A the element type of the resulting iterator
+   *  @return a `BuildFrom` instance that builds an `Iterator[A]` from elements of type `A`
+   */
   implicit def buildFromIterator[A]: BuildFrom[Iterator[?], A, Iterator[A]] = new BuildFrom[Iterator[?], A, Iterator[A]] {
     def newBuilder(from: Iterator[?]): mutable.Builder[A, Iterator[A]] = Iterator.newBuilder
     def fromSpecific(from: Iterator[?])(it: IterableOnce[A]^): Iterator[A]^{it} = Iterator.from(it)

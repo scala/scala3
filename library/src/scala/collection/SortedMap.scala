@@ -28,13 +28,26 @@ trait SortedMap[K, +V]
     with SortedMapOps[K, V, SortedMap, SortedMap[K, V]]
     with SortedMapFactoryDefaults[K, V, SortedMap, Iterable, Map]{
 
+  /** Returns this map itself, statically typed as an unsorted `Map`; no copy is made. */
   def unsorted: Map[K, V] = this
 
+  /** Returns the `SortedMap` companion object as the factory for sorted maps of this kind. */
   def sortedMapFactory: SortedMapFactory[SortedMap] = SortedMap
 
+  /** Returns `"SortedMap"`, the prefix used by `toString`. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix: String = "SortedMap"
 
+  /** Tests whether this sorted map equals the given object.
+   *
+   *  If `that` is a sorted map whose ordering equals this map's ordering, the two are compared
+   *  by iterating both in order and testing that corresponding keys are equivalent under that
+   *  ordering and corresponding values are equal (after checking `canEqual` and equal sizes).
+   *  Otherwise falls back to the unordered `Map` equality, which compares by key lookup.
+   *
+   *  @param that the object to compare this sorted map with
+   *  @return `true` if the two maps are equal according to the description
+   */
   override def equals(that: Any): Boolean = that match {
     case _ if this eq that.asInstanceOf[AnyRef] => true
     case sm: SortedMap[K @unchecked, ?] if sm.ordering == this.ordering =>
@@ -80,6 +93,7 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
    */
   @`inline` protected final def sortedMapFromIterable[K2, V2](it: Iterable[(K2, V2)]^)(implicit ordering: Ordering[K2]): CC[K2, V2] = sortedMapFactory.from(it)
 
+  /** Widens the type of this map to its unsorted counterpart. */
   def unsorted: Map[K, V]
 
   /** Creates an iterator over all the key/value pairs
@@ -118,7 +132,15 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
    */
   def valuesIteratorFrom(start: K): Iterator[V] = iteratorFrom(start).map(_._2)
 
+  /** Returns the first key of this map, the smallest under its ordering.
+   *
+   *  @throws NoSuchElementException if this map is empty
+   */
   def firstKey: K = head._1
+  /** Returns the last key of this map, the largest under its ordering.
+   *
+   *  @throws NoSuchElementException if this map is empty
+   */
   def lastKey: K = last._1
 
   /** Finds the element with smallest key larger than or equal to a given key.
@@ -133,6 +155,11 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
    */
   def maxBefore(key: K): Option[(K, V)] = rangeUntil(key).lastOption
 
+  /** Creates a ranged projection of this collection with no lower-bound.
+   *
+   *  @param to The upper-bound (inclusive) of the ranged projection.
+   *  @return a ranged projection of this collection containing only entries with keys less than or equal to `to`
+   */
   def rangeTo(to: K): C = {
     val i = keySet.rangeFrom(to).iterator
     if (i.isEmpty) return coll
@@ -144,6 +171,11 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
       rangeUntil(next)
   }
 
+  /** Returns a sorted set of the keys of this map, sorted by this map's ordering.
+   *
+   *  The set is a view backed by this map: it holds a reference to the map and reflects its
+   *  current contents rather than copying the keys.
+   */
   override def keySet: SortedSet[K] = new LazyKeySortedSet
 
   /** The implementation class of the set returned by `keySet`. */
@@ -161,7 +193,19 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
   /** The old implementation class of the set returned by `keySet`. */
   @deprecated("KeySortedSet is no longer used in the .keySet implementation", since = "3.8.0")
   protected class KeySortedSet extends SortedSet[K] with GenKeySet with GenKeySortedSet {
+    /** Returns a new sorted set containing the keys of this set that are not also contained
+     *  in `that`.
+     *
+     *  @param that the set of keys to exclude
+     */
     def diff(that: Set[K]): SortedSet[K] = fromSpecific(view.filterNot(that))
+    /** Creates a ranged projection of this key set, backed by the corresponding ranged
+     *  projection of the underlying map.
+     *
+     *  @param from the lower-bound (inclusive) of the projection, `None` if there is no lower bound
+     *  @param until the upper-bound (exclusive) of the projection, `None` if there is no upper bound
+     *  @return the key set of the underlying map restricted to the given range
+     */
     def rangeImpl(from: Option[K], until: Option[K]): SortedSet[K] = {
       val map = SortedMapOps.this.rangeImpl(from, until)
       new map.KeySortedSet
@@ -171,7 +215,14 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
   /** A generic trait that is reused by sorted keyset implementations. */
   @deprecated("GenKeySortedSet is no longer used in .keySet implementations", since = "3.8.0")
   protected trait GenKeySortedSet extends GenKeySet { this: SortedSet[K] =>
+    /** The ordering of the underlying map, by which the keys of this set are sorted. */
     implicit def ordering: Ordering[K] = SortedMapOps.this.ordering
+    /** Returns an iterator over the keys of the underlying map that are greater than or equal
+     *  to `start` under the map's ordering.
+     *
+     *  @param start the lower bound (inclusive) on the keys to be returned
+     *  @return an iterator over all keys greater than or equal to `start`
+     */
     def iteratorFrom(start: K): Iterator[K] = SortedMapOps.this.keysIteratorFrom(start)
   }
 
@@ -215,6 +266,14 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
   def collect[K2, V2](pf: PartialFunction[(K, V), (K2, V2)]^)(implicit @implicitNotFound(SortedMapOps.ordMsg) ordering: Ordering[K2]): CC[K2, V2] =
     sortedMapFactory.from(new View.Collect(this, pf))
 
+  /** Returns a new $coll containing the bindings of this $coll and those of `suffix`, with
+   *  keys sorted by this $coll's ordering. The result is built through the sorted map
+   *  factory, so where two keys compare equal under that ordering only the later binding
+   *  survives.
+   *
+   *  @tparam V2 the value type of the returned sorted map, a supertype of `V`
+   *  @param suffix the collection of key-value pairs to append
+   */
   override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]^): CC[K, V2] = sortedMapFactory.from(suffix match {
     case it: Iterable[(K, V2) @unchecked] => new View.Concat(this, it)
     case _ => iterator.concat(suffix.iterator)
@@ -227,9 +286,24 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
    */
   @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]^): CC[K, V2] = concat(xs)
 
+  /** Returns a new $coll containing all bindings of this $coll together with the binding `kv`;
+   *  if this $coll already contains a binding for the key `kv._1`, the new binding replaces it.
+   *
+   *  @tparam V1 the value type of the returned sorted map, a supertype of `V`
+   *  @param kv the key-value pair to add
+   */
   @deprecated("Consider requiring an immutable Map or fall back to Map.concat", "2.13.0")
   override def + [V1 >: V](kv: (K, V1)): CC[K, V1] = sortedMapFactory.from(new View.Appended(this, kv))(using ordering)
 
+  /** Returns a new $coll containing all bindings of this $coll together with the given
+   *  key-value pairs; a pair later in the argument list overrides any earlier binding
+   *  with the same key.
+   *
+   *  @tparam V1 the value type of the returned sorted map, a supertype of `V`
+   *  @param elem1 the first key-value pair to add
+   *  @param elem2 the second key-value pair to add
+   *  @param elems the remaining key-value pairs to add
+   */
   @deprecated("Use ++ with an explicit collection argument instead of + with varargs", "2.13.0")
   override def + [V1 >: V](elem1: (K, V1), elem2: (K, V1), elems: (K, V1)*): CC[K, V1] = sortedMapFactory.from(new View.Concat(new View.Appended(new View.Appended(this, elem1), elem2), elems))(using ordering)
 }
@@ -252,12 +326,35 @@ object SortedMapOps {
     p: ((K, V)) => Boolean
   ) extends MapOps.WithFilter[K, V, IterableCC, MapCC](self, p) {
 
+    /** Builds a new $coll by applying a function to all elements of the filtered outer $coll.
+     *
+     *  @tparam K2 the key type of the returned $coll, which must have an implicit `Ordering`
+     *  @tparam V2 the value type of the returned $coll
+     *  @param f the function to apply to each element
+     *  @return a new $coll resulting from applying `f` to each element of the filtered outer
+     *          $coll and collecting the results
+     */
     def map[K2 : Ordering, V2](f: ((K, V)) => (K2, V2)): CC[K2, V2] =
       self.sortedMapFactory.from(new View.Map(filtered, f))
 
+    /** Builds a new $coll by applying a collection-valued function to all elements of the
+     *  filtered outer $coll and concatenating the results.
+     *
+     *  @tparam K2 the key type of the returned $coll, which must have an implicit `Ordering`
+     *  @tparam V2 the value type of the returned $coll
+     *  @param f the collection-valued function to apply to each element
+     *  @return a new $coll resulting from applying `f` to each element of the filtered outer
+     *          $coll and concatenating the results
+     */
     def flatMap[K2 : Ordering, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^): CC[K2, V2] =
       self.sortedMapFactory.from(new View.FlatMap(filtered, f))
 
+    /** Further refines the filter of this `WithFilter`.
+     *
+     *  @param q the predicate to combine with the existing filter
+     *  @return a new `WithFilter` whose operations apply to the elements of the outer $coll
+     *          that satisfy both the existing predicate and `q`
+     */
     override def withFilter(q: ((K, V)) => Boolean): WithFilter[K, V, IterableCC, MapCC, CC]^{this, q} =
       new WithFilter[K, V, IterableCC, MapCC, CC](self, (kv: (K, V)) => p(kv) && q(kv))
 
