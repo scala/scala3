@@ -2102,7 +2102,7 @@ object SymDenotations {
     /** Like `baseClasses.length` but more efficient. */
     def baseClassesLength(using BaseData, Context): Int =
       // `+ 1` because the baseClassSet does not include the current class unlike baseClasses
-      baseClassSet.classIds.length + 1
+      baseClassSet.length + 1
 
     /** A bitset that contains the superId's of all base classes */
     private def baseClassSet(implicit onBehalf: BaseData, ctx: Context): BaseClassSet =
@@ -3149,7 +3149,9 @@ object SymDenotations {
     def sameGroup(p1: Phase, p2: Phase) = p1.sameParentsStartId == p2.sameParentsStartId
   }
 
-  class BaseClassSet(val classIds: Array[Int]) extends AnyVal {
+  class BaseClassSet(classIds: Array[Int]) extends AnyVal {
+    def length = classIds.length
+
     def contains(sym: Symbol, limit: Int): Boolean = {
       val id = sym.id
       var i = 0
