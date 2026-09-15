@@ -52,11 +52,23 @@ import processInternal._
  *  @note Failure to close the passed streams may result in resource leakage.
  */
 final class ProcessIO(
+  /** The function called with the stream to which all input to the process must be written. */
   val writeInput: OutputStream => Unit,
+  /** The function called with the stream from which all normal output of the process must be read. */
   val processOutput: InputStream => Unit,
+  /** The function called with the stream from which all error output of the process must be read. */
   val processError: InputStream => Unit,
+  /** Whether the threads spawned to run `processOutput` and `processError` are marked as daemon
+   *  threads. The thread that runs `writeInput` is always a daemon, whatever this is set to.
+   */
   val daemonizeThreads: Boolean
 ) {
+  /** Creates a `ProcessIO` with `daemonizeThreads` set to `false`.
+   *
+   *  @param in function that will be called with the `OutputStream` to which all input to the process must be written
+   *  @param out function that will be called with the `InputStream` from which all normal output of the process must be read
+   *  @param err function that will be called with the `InputStream` from which all error output of the process must be read
+   */
   def this(in: OutputStream => Unit, out: InputStream => Unit, err: InputStream => Unit) = this(in, out, err, daemonizeThreads = false)
 
   /** Creates a new `ProcessIO` with a different handler for the process input.
@@ -82,7 +94,7 @@ final class ProcessIO(
 
   /** Creates a new `ProcessIO`, with `daemonizeThreads` true.
    *
-   *  @return a new `ProcessIO` that runs all I/O threads as daemon threads
+   *  @return a copy of this `ProcessIO` with `daemonizeThreads` set to `true`
    */
   def daemonized(): ProcessIO = new ProcessIO(writeInput, processOutput, processError, daemonizeThreads = true)
 }
