@@ -32,11 +32,23 @@ import scala.concurrent.Future
   * `CompletionStage`s.
   */
 object FutureConverters {
+  /** Provides the `asJava` extension method on [[scala.concurrent.Future]], which converts it to a
+   *  Java [[java.util.concurrent.CompletionStage]].
+   *
+   *  @tparam T the type of value with which the future completes
+   *  @param f the Scala future to convert
+   */
   implicit class FutureOps[T](private val f: Future[T]) extends AnyVal {
     /** Converts a Scala Future to a Java CompletionStage, see [[javaapi.FutureConverters.asJava]]. */
     def asJava: CompletionStage[T] = javaapi.FutureConverters.asJava(f)
   }
 
+  /** Provides the `asScala` extension method on [[java.util.concurrent.CompletionStage]], which
+   *  converts it to a Scala [[scala.concurrent.Future]].
+   *
+   *  @tparam T the type of value with which the completion stage completes
+   *  @param cs the Java completion stage to convert
+   */
   implicit class CompletionStageOps[T](private val cs: CompletionStage[T]) extends AnyVal {
     /** Converts a Java CompletionStage to a Scala Future, see [[javaapi.FutureConverters.asScala]]. */
     def asScala: Future[T] = javaapi.FutureConverters.asScala(cs)
