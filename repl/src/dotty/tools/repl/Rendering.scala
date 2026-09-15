@@ -222,18 +222,18 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     if (myClassLoader != null && myClassLoader.root == ctx.settings.outputDir.value) myClassLoader
     else {
       val parent = Option(myClassLoader).getOrElse {
-        val base = parentClassLoader.getOrElse {
-          val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
-          // We can't use the system classloader as a parent because it would
-          // pollute the user classpath with everything passed to the JVM
-          // `-classpath`. We can't use `null` as a parent either because on Java
-          // 9+ that's the bootstrap classloader which doesn't contain modules
-          // like `java.sql`, so we use the parent of the system classloader,
-          // which should correspond to the platform classloader on Java 9+.
-          val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
-          new URLClassLoader(compilerClasspath.toArray, baseClassLoader)
-        }
-        myClasspathClassLoader = ClasspathClassLoader(base)
+        myClasspathClassLoader = parentClassLoader match
+          case Some(given_) => ClasspathClassLoader(Array.empty, given_)
+          case None =>
+            val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
+            // We can't use the system classloader as a parent because it would
+            // pollute the user classpath with everything passed to the JVM
+            // `-classpath`. We can't use `null` as a parent either because on Java
+            // 9+ that's the bootstrap classloader which doesn't contain modules
+            // like `java.sql`, so we use the parent of the system classloader,
+            // which should correspond to the platform classloader on Java 9+.
+            val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
+            ClasspathClassLoader(compilerClasspath.toArray, baseClassLoader)
         myClasspathClassLoader
       }
 
@@ -248,6 +248,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   private[repl] def addToClasspath(urls: Seq[URL])(using Context): Unit =
     classLoader()
     urls.foreach(myClasspathClassLoader.add)
+
+  private[repl] def addResource(url: URL)(using Context): Unit = addToClasspath(Seq(url))
 
   private[repl] def truncate(str: String, maxPrintCharacters: Int)(using ctx: Context): String =
     val ncp = str.codePointCount(0, str.length) // to not cut inside code point
@@ -381,5 +383,6 @@ object Rendering:
       rootCause(x.getCause)
     case _ => x
 
-private class ClasspathClassLoader(parent: ClassLoader) extends URLClassLoader(Array.empty, parent):
+private class ClasspathClassLoader(urls: Array[URL], parent: ClassLoader)
+  extends URLClassLoader(urls, parent):
   def add(url: URL): Unit = addURL(url)
