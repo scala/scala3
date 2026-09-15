@@ -25,22 +25,8 @@ enum ScalaSettingCategories(val prefixLetter: String) extends SettingCategory:
   // Verbose settings, a category to configure the verbosity of the compiler
   case VerboseSetting extends ScalaSettingCategories("V")
 
-object ScalaSettings extends ScalaSettings
-
-// Kept as separate type to avoid breaking backward compatibility
-abstract class ScalaSettings extends SettingGroup, AllScalaSettings:
-  val settingsByCategory: Map[SettingCategory, List[Setting[?]]] =
-    allSettings.groupBy(_.category)
-      .view.mapValues(_.toList).toMap
-      .withDefaultValue(Nil)
-  def categories: List[SettingCategory] = settingsByCategory.keys.toList.sortBy(_.prefixLetter)
-  val rootSettings: List[Setting[?]] = settingsByCategory(RootSetting).sortBy(_.name)
-  val warningSettings: List[Setting[?]] = settingsByCategory(WarningSetting).sortBy(_.name)
-  val forkSettings: List[Setting[?]] = settingsByCategory(ForkSetting).sortBy(_.name)
-  val advancedSettings: List[Setting[?]] = settingsByCategory(AdvancedSetting).sortBy(_.name)
-  val verboseSettings: List[Setting[?]] = settingsByCategory(VerboseSetting).sortBy(_.name)
-  val settingsByAliases: Map[String, Setting[?]] = allSettings.flatMap(s => s.aliases.map(_.name -> s)).toMap
-
+object ScalaSettings extends SettingGroup, AllScalaSettings
+type ScalaSettings = ScalaSettings.type
 
 trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, OptimizerSettings, WarningSettings, XSettings, YSettings:
   self: SettingGroup =>

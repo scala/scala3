@@ -246,7 +246,7 @@ object Positioned {
   def init(using Context): Unit =
     debugId = ctx.settings.YdebugTreeWithId.value
     if ids == null && ctx.settings.YshowTreeIds.value
-       || debugId != ctx.settings.YdebugTreeWithId.default
+       || ctx.settings.YdebugTreeWithId.wasSetByUser
     then
       ids = java.util.WeakHashMap()
 }

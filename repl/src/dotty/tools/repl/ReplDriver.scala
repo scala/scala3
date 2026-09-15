@@ -397,8 +397,8 @@ class ReplDriver(settings: Array[String],
         .getOrElse(Nil)
       // Candidate discovery can load symbols unrelated to the qualifier. Discard its
       // diagnostics; failed loads are retained and reported if the symbol is requested later.
-      state.context.reporter.removeBufferedMessages(using state.context)
-      val loadingErrors = typecheckReporter.removeBufferedMessages(using state.context).collect:
+      state.context.reporter.removeBufferedMessages
+      val loadingErrors = typecheckReporter.removeBufferedMessages.collect:
         case error: Diagnostic.LoadingError => error
       if loadingErrors.nonEmpty then
         given Context = state.context
@@ -493,8 +493,7 @@ class ReplDriver(settings: Array[String],
             context = contextWithNewImports(newState.context, newImports)
           )
 
-          val warnings = newState.context.reporter
-            .removeBufferedMessages(using newState.context)
+          val warnings = newState.context.reporter.removeBufferedMessages
 
           inContext(newState.context):
             val (updatedState, definitions) =

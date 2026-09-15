@@ -38,7 +38,7 @@ class DiagnosticRelatedInformationTest extends DottyTest:
 
     var diagnostics: List[Diagnostic] = Nil
     checkAfterCompile("inlining", List(source)) { rctx =>
-      diagnostics = reporter.removeBufferedMessages(using rctx)
+      diagnostics = reporter.removeBufferedMessages
     }
 
     // The error from the failed `summonInline` is the one carrying inline related information.

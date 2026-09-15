@@ -86,7 +86,7 @@ class Driver {
    */
   def setup(args: Array[String], rootCtx: Context): Option[(List[AbstractFile], Context)] = {
     val ictx = rootCtx.fresh
-    val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
+    val summary = command.distill(args, ictx.settings)(ictx.settingsState)
     ictx.setSettings(summary.sstate)
 
     inContext(ictx):
