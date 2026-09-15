@@ -636,8 +636,11 @@ class TreeUnpickler(reader: TastyReader,
       val start = currentAddr
       val tag = readByte()
       val end = readEnd()
-      var name: Name = readName()
-      if (tag == TYPEDEF || tag == TYPEPARAM) name = name.toTypeName
+      val name: Name = {
+        val n = readName()
+        if tag == TYPEDEF || tag == TYPEPARAM then n.toTypeName
+        else n
+      }
       skipParams()
       val ttag = nextUnsharedTag
       val isAbsType = isAbstractType(name)
@@ -648,9 +651,8 @@ class TreeUnpickler(reader: TastyReader,
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
       val annotFns = ListBuffer.empty[Symbol => Annotation]
-      var privateWithinRef: runtime.ObjectRef[Symbol] = runtime.ObjectRef(NoSymbol)
-      val givenFlags0 = readModifiers(end, annotFns, privateWithinRef)
-      val privateWithin = privateWithinRef.elem
+      val givenFlags0 = readModifiers(end, annotFns)
+      val privateWithin = lastPrivateWithin
       val givenFlags =
         if isClass && unpicklingScala2Library then givenFlags0 | Scala2x | Scala2Tasty
         else if unpicklingJava then givenFlags0 | JavaDefined
@@ -714,15 +716,20 @@ class TreeUnpickler(reader: TastyReader,
       sym
     }
 
-    /** Read modifier list flags, and optionally annotations and a privateWithin
-     *  boundary symbol.
+    private var lastPrivateWithin: Symbol = NoSymbol
+
+    /** Read modifier list flags, and optionally annotations.
+     * Sets `lastPrivateWithin` if such a modifier is read.
+     * (This is OK because since we need a Context, this method is single-threaded anyway;
+     *  and it avoids a fair amount of allocations of ObjectRef/Tuple/some other multi-return mechanism)
      */
     private def readModifiers(end: Addr,
-                      annotFns: ListBuffer[Symbol => Annotation] | Null,
-                      privateWithinRef: runtime.ObjectRef[Symbol] | Null)(using Context): FlagSet = {
+                      annotFns: ListBuffer[Symbol => Annotation] | Null)(using Context): FlagSet = {
+      lastPrivateWithin = NoSymbol
       var flags: FlagSet = EmptyFlags
       while (currentAddr.index != end.index) {
-        def addFlag(flag: FlagSet) = {
+        // inline so we don't need to allocate a ref for `flags`
+        inline def addFlag(flag: FlagSet) = {
           flags |= flag
           readByte()
         }
@@ -773,12 +780,10 @@ class TreeUnpickler(reader: TastyReader,
           case INTO => addFlag(Into)
           case PRIVATEqualified =>
             readByte()
-            if privateWithinRef != null then
-              privateWithinRef.elem = readWithin
+            lastPrivateWithin = readWithin
           case PROTECTEDqualified =>
             addFlag(Protected)
-            if privateWithinRef != null then
-              privateWithinRef.elem = readWithin
+            lastPrivateWithin = readWithin
           case ANNOTATION =>
             val annot = readAnnot
             if annotFns != null then
@@ -1656,7 +1661,7 @@ class TreeUnpickler(reader: TastyReader,
               readName()
               readType()
               val body = readTree()
-              val givenFlags = readModifiers(end, null, null)
+              val givenFlags = readModifiers(end, null)
               sym.setFlag(givenFlags)
               Bind(sym, body)
             case ALTERNATIVE =>
