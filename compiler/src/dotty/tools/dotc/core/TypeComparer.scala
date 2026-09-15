@@ -950,8 +950,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
         compareClassInfo
-      case tp2: FlexibleType =>
-        recur(tp1, tp2.lo)
       case _ =>
         fourthTry
     }
@@ -1160,8 +1158,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1: ExprType if ctx.phaseId > gettersPhase.id =>
         // getters might have converted T to => T, need to compensate.
         recur(tp1.widenExpr, tp2)
-      case tp1: FlexibleType =>
-        recur(tp1.hi, tp2)
       case _ =>
         false
     }
