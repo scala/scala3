@@ -35,6 +35,7 @@ trait SeqMap[K, V] extends Map[K, V]
   with collection.SeqMap[K, V]
   with MapOps[K, V, SeqMap, SeqMap[K, V]]
   with MapFactoryDefaults[K, V, SeqMap, Iterable] {
+  /** The factory used to build mutable maps that maintain insertion order, the [[SeqMap$ `SeqMap`]] companion object, which delegates to [[LinkedHashMap]]. */
   override def mapFactory: MapFactory[SeqMap] = SeqMap
 }
 

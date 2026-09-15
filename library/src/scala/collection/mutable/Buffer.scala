@@ -32,8 +32,14 @@ trait Buffer[A]
     with Shrinkable[A]
     with IterableFactoryDefaults[A, Buffer] { self =>
 
+  /** The companion object `Buffer`, which creates `ArrayBuffer` instances. */
   override def iterableFactory: SeqFactory[Buffer] = Buffer
 
+  /** The number of elements in this $coll, if it can be cheaply computed, -1 otherwise.
+   *
+   *  Overridden to select `Seq`'s implementation over the conflicting one inherited
+   *  from [[Growable]].
+   */
   override def knownSize: Int = super[Seq].knownSize
 
   //TODO Prepend is a logical choice for a readable name of `+=:` but it conflicts with the renaming of `append` to `add`
@@ -244,15 +250,25 @@ trait Buffer[A]
     this
   }
 
+  /** The prefix of this $coll's `toString` representation, `"Buffer"`. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "Buffer"
 }
 
+/** A `Buffer` that is also an `IndexedSeq`, so its elements can be accessed and
+ *  updated efficiently by index.
+ *
+ *  Adds `flatMapInPlace` and `filterInPlace`, and implements `patchInPlace` in
+ *  terms of indexed `update`.
+ *
+ *  @tparam A the element type of the buffer
+ */
 trait IndexedBuffer[A] extends IndexedSeq[A]
   with IndexedSeqOps[A, IndexedBuffer, IndexedBuffer[A]]
   with Buffer[A]
   with IterableFactoryDefaults[A, IndexedBuffer] {
 
+  /** The companion object `IndexedBuffer`, which creates `ArrayBuffer` instances. */
   override def iterableFactory: SeqFactory[IndexedBuffer] = IndexedBuffer
 
   /** Replaces the contents of this $coll with the flatmapped result.
@@ -292,6 +308,20 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
     if (i == j) this else takeInPlace(j)
   }
 
+  /** Replaces a slice of elements in this $coll by another sequence of elements.
+   *
+   *  `from` and `replaced` are clamped to the range `[0, length]`: patching at negative
+   *  indices is the same as patching starting at 0, patching at indices at or larger
+   *  than the length appends the patch to the end, and an excessive `replaced` count is
+   *  reduced to the available elements. Implemented by overwriting replaced elements in
+   *  place via `update` while the patch lasts, then inserting any remaining patch
+   *  elements or removing any remaining replaced elements.
+   *
+   *  @param from the index of the first replaced element
+   *  @param patch the replacement sequence
+   *  @param replaced the number of elements to drop in the original $coll
+   *  @return this $coll
+   */
   def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A]^, replaced: Int): this.type = {
     val replaced0 = math.min(math.max(replaced, 0), length)
     val i = math.min(math.max(from, 0), length)

@@ -40,11 +40,17 @@ class Queue[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
     with Cloneable[Queue[A]]
     with DefaultSerializable {
 
+  /** Creates an empty queue whose backing array can hold at least `initialSize` elements.
+   *
+   *  @param initialSize the initial capacity hint, 16 by default
+   */
   def this(initialSize: Int = ArrayDeque.DefaultInitialSize) =
     this(ArrayDeque.alloc(initialSize), start = 0, end = 0)
 
+  /** The factory used to build queues, the [[Queue$ `Queue`]] companion object. */
   override def iterableFactory: SeqFactory[Queue] = Queue
 
+  /** The prefix used in the string representation of this queue, `"Queue"`. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "Queue"
 
@@ -113,12 +119,22 @@ class Queue[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
    */
   @`inline` final def front: A = head
 
+  /** Returns a copy of this queue, containing the same elements in the same
+   *  order. Called by `clone()`.
+   */
   override protected def klone(): Queue[A] = {
     val bf = newSpecificBuilder
     bf ++= this
     bf.result()
   }
 
+  /** Wraps an array in a new queue, without copying.
+   *
+   *  @param array the backing array, allocated by `ArrayDeque.alloc` so that
+   *               its length is a power of 2
+   *  @param end the number of elements: `array` holds them at indices `0` until `end`
+   *  @return a new queue backed by `array`
+   */
   override protected def ofArray(array: Array[AnyRef | Null], end: Int): Queue[A] =
     new Queue(array, start = 0, end)
 
@@ -131,10 +147,31 @@ class Queue[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
 @SerialVersionUID(3L)
 object Queue extends StrictOptimizedSeqFactory[Queue] {
 
+  /** Creates a new queue containing the elements of the given collection, in
+   *  its iteration order.
+   *
+   *  The first element of `source` is at the front of the new queue.
+   *
+   *  @tparam A the element type of the queue
+   *  @param source the collection of elements
+   *  @return a new queue containing the elements of `source`
+   */
   def from[A](source: IterableOnce[A]^): Queue[A] = empty ++= source
 
+  /** Creates a new empty queue.
+   *
+   *  @tparam A the element type of the queue
+   *  @return a new empty `Queue[A]`
+   */
   def empty[A]: Queue[A] = new Queue
 
+  /** Returns a new builder that accumulates elements into a queue.
+   *
+   *  The first element added to the builder is at the front of the resulting queue.
+   *
+   *  @tparam A the element type of the queue
+   *  @return a builder for a `Queue[A]`
+   */
   def newBuilder[A]: Builder[A, Queue[A]] = new GrowableBuilder[A, Queue[A]](empty)
 
 }
