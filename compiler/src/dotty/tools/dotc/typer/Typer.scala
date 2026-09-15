@@ -1153,13 +1153,30 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
     def warnUnnecessaryNN(tree: Tree): Unit = {
+      /** May `null` be *written* to a position of type `tp`, i.e. is `null` among the
+       *  values the type accepts?
+       *
+       *  This differs from the negation of `isNotNullAccordingToType`, which answers whether
+       *  a null value can be *read* from a type. This method looks at the lower bound of
+       *  the type; `isNotNullAccordingToType` looks at the upper bound.
+       */
+      def acceptsNull(tp: Type): Boolean =
+        tp.isNullType || tp.isAny || (tp match
+          case OrType(l, r) => acceptsNull(r) || acceptsNull(l)
+          case AndType(l, r) => acceptsNull(r) && acceptsNull(l)
+          case TypeBounds(lo, hi) => acceptsNull(lo)
+          case FlexibleType(lo, hi) => true
+          case tp: TypeProxy => acceptsNull(tp.underlying)
+          case _ => false
+        )
+
       if ctx.explicitNulls then {
         val symbol = tree.symbol
         if symbol.exists && symbol.owner == defn.ScalaPredefModuleClass && symbol.name == nme.nn then
           tree match
           case Apply(_, args) =>
-            if(args.head.tpe.isNotNull) then report.warning(UnnecessaryNN("qualifier is already not null", args.head.sourcePos), tree)
-            if pt.admitsNull then report.warning(UnnecessaryNN("expected type admits null", args.head.sourcePos), tree)
+            if(args.head.tpe.isNotNullAccordingToType) then report.warning(UnnecessaryNN("qualifier is already not null", args.head.sourcePos), tree)
+            if acceptsNull(pt) then report.warning(UnnecessaryNN("expected type admits null", args.head.sourcePos), tree)
           case _ =>
       }
     }

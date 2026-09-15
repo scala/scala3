@@ -380,31 +380,44 @@ object Types extends TypeUtils {
       loop(this)
     }
 
-    /** Is this type guaranteed not to have `null` as a value? */
-    final def isNotNull(using Context): Boolean = this match {
+    /** Is a value of this type guaranteed to never be `null` at run time?
+     *
+     *  This method is sound in that it does not trust safe nulls. It is
+     *  suitable for deciding whether to emit null checks in the generated code.
+     *
+     *  It answers a question about values *read* from a location of this type,
+     *  as opposed to whether a `null` value can be passed to where this type is expected.
+     */
+    final def isNotNull(using Context): Boolean = isNotNullImpl(trustSafeNulls = false)
+
+    /** Does the type system say that a value of this type should not be `null`?
+     *
+     *  This method is unsound, since a non-null type can still contain null values
+     *  due to initialization, Java interop, casts, arrays, etc. It is suitable
+     *  for implementing the type system, but not for deciding whether to emit null
+     *  checks in the generated code.
+     *
+     *  It answers a question about values *read* from a location of this type,
+     *  as opposed to whether a `null` value can be passed to where this type is expected.
+     */
+    final def isNotNullAccordingToType(using Context): Boolean = isNotNullImpl(trustSafeNulls = true)
+
+    private def isNotNullImpl(trustSafeNulls: Boolean)(using Context): Boolean = this match {
       case tp: ConstantType => tp.value.value != null
       case tp: FlexibleType => false
       case tp: ThisType => true
       case tp: SuperType => true
-      case tp: ClassInfo => !tp.cls.isNullableClass && !tp.isNothingType
-      case tp: AppliedType => tp.superType.isNotNull
-      case tp: TypeBounds => tp.hi.isNotNull
-      case tp: TypeProxy => tp.underlying.isNotNull
-      case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
-      case OrType(tp1, tp2) => tp1.isNotNull && tp2.isNotNull
+      case tp: ClassInfo =>
+        val nullable =
+          if trustSafeNulls then tp.cls.isNullableClass else tp.cls.isNullableClassAfterErasure
+        !nullable && !tp.isNothingType
+      case tp: AppliedType => tp.superType.isNotNullImpl(trustSafeNulls)
+      case tp: TypeBounds => tp.hi.isNotNullImpl(trustSafeNulls)
+      case tp: TypeProxy => tp.underlying.isNotNullImpl(trustSafeNulls)
+      case AndType(tp1, tp2) => tp1.isNotNullImpl(trustSafeNulls) || tp2.isNotNullImpl(trustSafeNulls)
+      case OrType(tp1, tp2) => tp1.isNotNullImpl(trustSafeNulls) && tp2.isNotNullImpl(trustSafeNulls)
       case _ => false
     }
-
-    /** Is `null` a value of this type? */
-    def admitsNull(using Context): Boolean =
-      isNullType || isAny || (this match
-        case OrType(l, r) => r.admitsNull || l.admitsNull
-        case AndType(l, r) => r.admitsNull && l.admitsNull
-        case TypeBounds(lo, hi) => lo.admitsNull
-        case FlexibleType(lo, hi) => true
-        case tp: TypeProxy => tp.underlying.admitsNull
-        case _ => false
-      )
 
     /** Is this type produced as a repair for an error? */
     final def isError(using Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]

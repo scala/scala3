@@ -106,7 +106,7 @@ object Linter:
                   (a frozen_<:< b) // fast track
               || (a frozen_<:< approx(b))
             case _: TypeRef | _: AppliedType if a.typeSymbol.isClass =>
-              if a.isNullType then !b.isNotNull
+              if a.isNullType then !b.isNotNullAccordingToType
               else canOverlap(a.typeSymbol.asClass, b.typeSymbol.asClass)
             case a: TypeProxy =>
               canEqual(a.superType, b)
