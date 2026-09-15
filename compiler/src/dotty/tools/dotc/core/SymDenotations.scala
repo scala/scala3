@@ -514,9 +514,12 @@ object SymDenotations {
         if (kind.separator == "$")
           // duplicate scalac's behavior: don't write a double '$$' for module class members.
           prefix = prefix.exclude(ModuleClassName)
+        // avoid the need to capture `filler` and `encl` through ObjectRefs since they're vars
+        val immFiller = filler
+        val immEncl = encl
         def qualify(n: SimpleName) =
-          val qn = kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
-          if kind == FlatName && !encl.is(JavaDefined) then qn.compactified else qn
+          val qn = kind(prefix.toTermName, if (immFiller.isEmpty) n else termName(immFiller + n))
+          if kind == FlatName && !immEncl.is(JavaDefined) then qn.compactified else qn
         val fn = name.replaceDeep {
           case n: SimpleName => qualify(n)
         }
