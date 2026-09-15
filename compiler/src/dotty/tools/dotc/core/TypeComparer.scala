@@ -3675,7 +3675,7 @@ object TypeComparer {
   def logUndoAction(action: () => Unit)(using Context): Unit =
     currentComparer.logUndoAction(action)
 
-  def inNestedLevel(op: => Boolean)(using Context): Boolean =
+  inline def inNestedLevel(inline op: Boolean)(using Context): Boolean =
     currentComparer.inNestedLevel(op)
 
   def addErrorNote(note: Note)(using Context): Unit =

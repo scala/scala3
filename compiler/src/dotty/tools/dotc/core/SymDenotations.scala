@@ -2897,8 +2897,8 @@ object SymDenotations {
     private var myDecls: Scope = EmptyScope
     private var mySourceModule: Symbol | Null = null
     private var myModuleClass: Symbol | Null = null
-    private var mySourceModuleFn: Context ?=> Symbol = LazyType.NoSymbolFn
-    private var myModuleClassFn: Context ?=> Symbol = LazyType.NoSymbolFn
+    private var mySourceModuleFn: (Context => Symbol) | Null = null
+    private var myModuleClassFn: (Context => Symbol) | Null = null
 
     /** The type parameters computed by the completer before completion has finished */
     def completerTypeParams(sym: Symbol)(using Context): List[TypeParamInfo] =
@@ -2907,15 +2907,20 @@ object SymDenotations {
 
     def decls: Scope = myDecls
     def sourceModule(using Context): Symbol =
-      if mySourceModule == null then mySourceModule = mySourceModuleFn
-      mySourceModule.nn
+      initialize(mySourceModule, mySourceModule = _, {
+        val fn = mySourceModuleFn
+        if fn `eq` null then NoSymbol else fn(ctx)
+      })
+
     def moduleClass(using Context): Symbol =
-      if myModuleClass == null then myModuleClass = myModuleClassFn
-      myModuleClass.nn
+      initialize(myModuleClass, myModuleClass = _, {
+        val fn = myModuleClassFn
+        if fn `eq` null then NoSymbol else fn(ctx)
+      })
 
     def withDecls(decls: Scope): this.type = { myDecls = decls; this }
-    def withSourceModule(sourceModuleFn: Context ?=> Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
-    def withModuleClass(moduleClassFn: Context ?=> Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
+    def withSourceModule(sourceModuleFn: Context ?=> Symbol): this.type = { mySourceModuleFn = (c => sourceModuleFn(using c)); this }
+    def withModuleClass(moduleClassFn: Context ?=> Symbol): this.type = { myModuleClassFn = (c => moduleClassFn(using c)); this }
 
     override def toString: String = getClass.toString
 
@@ -2926,9 +2931,6 @@ object SymDenotations {
      */
     def needsCompletion(symd: SymDenotation)(using Context): Boolean = true
   }
-
-  object LazyType:
-    private val NoSymbolFn = (_: Context) ?=> NoSymbol
 
   /** A subtrait of LazyTypes where completerTypeParams yields a List[TypeSymbol], which
    *  should be completed independently of the info.
