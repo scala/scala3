@@ -12,5 +12,6 @@ trait FunctionXXL {
    */
   def apply(xs: IArray[Object]): Object
 
+  /** Returns the string `"<functionXXL>"`, mirroring the `"<functionN>"` rendering of the `Function0` to `Function22` traits. */
   override def toString() = "<functionXXL>"
 }
