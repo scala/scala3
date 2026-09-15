@@ -18,6 +18,24 @@ object MiMaFilters {
         // new experimental language feature: method block end markers (SIP-77)
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$methodBlockEndMarkers$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$methodBlockEndMarkers$"),
+        // `SeqOps.sorted` now returns `C^{this}`, too lenient for `immutable.StrictOptimizedSeqOps.sorted`,
+        // so its body moved to a new `private[collection] sortedImpl` that both call.
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.AbstractSeq.sortedImpl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.AbstractSeqView.sortedImpl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.SeqView#Appended.sortedImpl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.SeqView#Concat.sortedImpl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.SeqView#Drop.sortedImpl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.SeqView#DropRight.sortedImpl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.SeqView#Map.sortedImpl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.SeqView#Prepended.sortedImpl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.SeqView#Sorted.sortedImpl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.SeqView#Sorted#ReverseSorted.sortedImpl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.SeqView#Take.sortedImpl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.SeqView#TakeRight.sortedImpl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.LazyListIterable.sortedImpl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.Nil.sortedImpl"),
+        // The call to `super.sorted` is replaced by `sortedImpl`, so the wrapper goes away.
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.immutable.StrictOptimizedSeqOps.scala$collection$immutable$StrictOptimizedSeqOps$$super$sorted"),
       ),
 
       // Additions since last LTS
