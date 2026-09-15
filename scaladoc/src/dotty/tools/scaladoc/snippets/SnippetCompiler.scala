@@ -6,7 +6,7 @@ import dotty.tools.io.{AbstractFile, VirtualFile}
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.config.Settings.Setting.*
-import dotty.tools.dotc.reporting.Reporter
+import dotty.tools.dotc.reporting.{Reporter, StoreReporter}
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.util.Spans.NoSpan
 import java.nio.charset.StandardCharsets
@@ -24,7 +24,7 @@ class SnippetCompiler(
     val driver = new SnippetDriver(snippetCompilerSettings, target)
     val files = List(new VirtualFile("(snippet)", wrappedSnippet.snippet.getBytes(StandardCharsets.UTF_8)))
     val reporter = driver.processFiles(arg.scalacOptions, files)
-    val diagnostics = reporter.allErrors ++ reporter.allWarnings ++ reporter.allInfos
+    val diagnostics = reporter.pendingMessages
     val observed = SnippetExpectations.observe(diagnostics, wrappedSnippet, sourceFile)
 
     val (messages, succeeded) =
@@ -70,13 +70,13 @@ final class SnippetDriver(snippetCompilerSettings: Seq[SnippetCompilerSetting[?]
     for scSetting <- snippetCompilerSettings do
       rootCtx.setSetting(scSetting.setting, scSetting.value)
     rootCtx.setSetting(rootCtx.settings.outputDir, target)
+    // don't print any diagnostics, keep them for later
+    rootCtx.setReporter(new StoreReporter())
 
   def processFiles(args: Iterable[String], files: List[AbstractFile]): Reporter = {
     setup(args.toArray, initCtx.fresh) match
       case Some((_, compileCtx)) =>
-        val reporter = doCompile(newCompiler(using compileCtx), files)(using compileCtx)
-        reporter.flush()(using compileCtx)
-        reporter
+        doCompile(newCompiler(using compileCtx), files)(using compileCtx)
       case None =>
         initCtx.reporter
   }
