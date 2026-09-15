@@ -320,7 +320,7 @@ object Trees {
   extension (mdef: untpd.DefTree) def mods: untpd.Modifiers = mdef.rawMods
 
   sealed trait WithEndMarker[+T <: Untyped]:
-    self: PackageDef[T] | NamedDefTree[T] =>
+    self: PackageDef[T] | NamedDefTree[T] | Apply[T] =>
 
     import WithEndMarker.*
 
@@ -523,8 +523,16 @@ object Trees {
 
   /** fun(args) */
   case class Apply[+T <: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
-    extends GenericApply[T] {
+    extends GenericApply[T] with WithEndMarker[T] {
     type ThisTree[+T <: Untyped] = Apply[T]
+
+    def srcName(using Context): Name =
+      // Prefer stored method name when present (handles nested Apply cases)
+      getAttachment(untpd.MethodName).getOrElse:
+        fun match
+          case Select(_, name) => name
+          case Ident(name) => name
+          case _ => nme.EMPTY
 
     def setApplyKind(kind: ApplyKind) =
       putAttachment(untpd.KindOfApply, kind)

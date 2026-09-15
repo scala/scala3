@@ -62,7 +62,9 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|object Main {
          |  assert(assertion = true, message = )
          |}
-         |""".stripMargin
+         |""".stripMargin,
+      // `scala.language.experimental.methodBlockEndMarkers` also matches the `me` prefix
+      filter = !_.startsWith("methodBlockEndMarkers")
     )
 
   @Test def `arg2` =
