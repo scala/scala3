@@ -67,6 +67,7 @@ final class SnippetDriver(snippetCompilerSettings: Seq[SnippetCompilerSetting[?]
     rootCtx.setSetting(rootCtx.settings.XreadComments, true)
     rootCtx.setSetting(rootCtx.settings.color, "never")
     rootCtx.setSetting(rootCtx.settings.XimportSuggestionTimeout, 0)
+    rootCtx.setSetting(rootCtx.settings.fromTasty, false)
     for scSetting <- snippetCompilerSettings do
       rootCtx.setSetting(scSetting.setting, scSetting.value)
     rootCtx.setSetting(rootCtx.settings.outputDir, target)
