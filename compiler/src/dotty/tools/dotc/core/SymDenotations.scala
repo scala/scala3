@@ -3149,68 +3149,47 @@ object SymDenotations {
     def sameGroup(p1: Phase, p2: Phase) = p1.sameParentsStartId == p2.sameParentsStartId
   }
 
-  class BaseClassSet(classIds: Array[Int]) extends AnyVal {
-    def length = classIds.length
+  class BaseClassSet(classes: List[ClassSymbol]) extends AnyVal {
+    def length: Int = classes.length
 
-    def contains(sym: Symbol, limit: Int): Boolean = {
-      val id = sym.id
-      var i = 0
-      while (i < limit && classIds(i) != id) i += 1
-      i < limit && {
-        if (i > 0) {
-          val t = classIds(i)
-          classIds(i) = classIds(i - 1)
-          classIds(i - 1) = t
-        }
-        true
-      }
-    }
-    def contains(sym: Symbol): Boolean = contains(sym, classIds.length)
-  }
+    def contains(sym: Symbol, limit: Int): Boolean =
+      @tailrec
+      def recur(sym: Symbol, lst: List[ClassSymbol], limit: Int): Boolean =
+        if limit == -1 then // < -1 means no limit -- no need to fetch the length of the list
+          false
+        else
+          lst match
+            case hd :: tl if hd.id == sym.id => true
+            case _ :: tl => recur(sym, tl, limit - 1)
+            case _ => false
+      recur(sym, classes, limit)
 
-  object BaseClassSet {
-    def apply(bcs: List[ClassSymbol]): BaseClassSet =
-      new BaseClassSet(bcs.toArray.map(_.id))
+    def contains(sym: Symbol): Boolean = contains(sym, -2)
   }
 
   /** A class to combine base data from parent types */
-  class BaseDataBuilder {
+  private final class BaseDataBuilder {
     private var classes: List[ClassSymbol] = Nil
-    private var classIds = new Array[Int](32)
     private var length = 0
 
-    private def resize(size: Int) = {
-      val classIds1 = new Array[Int](size)
-      System.arraycopy(classIds, 0, classIds1, 0, classIds.length min size)
-      classIds = classIds1
-    }
-
-    private def add(sym: Symbol): Unit = {
-      if (length == classIds.length) resize(length * 2)
-      classIds(length) = sym.id
-      length += 1
-    }
-
     def addAll(bcs: List[ClassSymbol]): this.type = {
-      val len = length
       bcs match {
         case bc :: bcs1 =>
           addAll(bcs1)
-          if (!new BaseClassSet(classIds).contains(bc, len)) {
-            add(bc)
+          if (!new BaseClassSet(classes).contains(bc)) {
             classes = bc :: classes
+            length += 1
           }
         case nil =>
       }
       this
     }
 
-    def baseClassSet: BaseClassSet = {
-      if (length != classIds.length) resize(length)
-      new BaseClassSet(classIds)
-    }
+    def baseClassSet: BaseClassSet =
+      new BaseClassSet(classes)
 
-    def baseClasses: List[ClassSymbol] = classes
+    def baseClasses: List[ClassSymbol] =
+      classes
   }
 
   private val packageTypeName = ModuleClassName(nme.PACKAGE).toTypeName
