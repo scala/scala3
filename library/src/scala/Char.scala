@@ -23,12 +23,23 @@ import scala.collection.immutable.NumericRange
  *  The companion object provides useful non-primitive operations as extension methods.
  */
 final abstract class Char private extends AnyVal {
+  /** Returns the value of this `Char` as a `Byte`, which may involve
+   *  truncation.
+   */
   def toByte: Byte
+  /** Returns the value of this `Char` as a `Short`, which may involve a change
+   *  of sign.
+   */
   def toShort: Short
+  /** Returns this `Char` value, unmodified. */
   def toChar: Char
+  /** Returns the value of this `Char` as an `Int`. */
   def toInt: Int
+  /** Returns the value of this `Char` as a `Long`. */
   def toLong: Long
+  /** Returns the value of this `Char` as a `Float`. */
   def toFloat: Float
+  /** Returns the value of this `Char` as a `Double`. */
   def toDouble: Double
 
   /** Returns the bitwise negation of this value.
@@ -646,9 +657,25 @@ object Char extends AnyValCompanion {
    *  @return the value of `x` widened to the corresponding numeric type
    */
   import scala.language.implicitConversions
+  /** Returns the given `Char` value widened to an `Int`.
+   *
+   *  @param x the `Char` value to convert
+   */
   implicit def char2int(x: Char): Int = x.toInt
+  /** Returns the given `Char` value widened to a `Long`.
+   *
+   *  @param x the `Char` value to convert
+   */
   implicit def char2long(x: Char): Long = x.toLong
+  /** Returns the given `Char` value widened to a `Float`.
+   *
+   *  @param x the `Char` value to convert
+   */
   implicit def char2float(x: Char): Float = x.toFloat
+  /** Returns the given `Char` value widened to a `Double`.
+   *
+   *  @param x the `Char` value to convert
+   */
   implicit def char2double(x: Char): Double = x.toDouble
 
   extension (self: Char) {
