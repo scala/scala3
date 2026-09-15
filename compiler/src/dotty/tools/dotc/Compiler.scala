@@ -172,8 +172,10 @@ class Compiler {
     if (run != null) run.reset()
   }
 
+  private var firstRun = true
   def newRun(using Context): Run = {
-    reset()
+    if !firstRun then reset()
+    firstRun = false
     val rctx =
       if ctx.settings.Xsemanticdb.value then
         ctx.addMode(Mode.ReadPositions)
