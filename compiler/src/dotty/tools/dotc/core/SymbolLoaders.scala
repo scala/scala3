@@ -296,7 +296,10 @@ object SymbolLoaders {
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
       if (!root.isRoot) {
-        val classReps = classPath.classes(packageName) ++ classPath.sources(packageName)
+        val classReps = ClassPath.mergeClassesAndSources(
+          classPath.classes(packageName),
+          classPath.sources(packageName),
+        )
 
         for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
