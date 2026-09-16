@@ -26,7 +26,7 @@ final class RecursiveOperation(var title: String, var details: RecursiveOperatio
       ctx.handleRecursive("displaying error for", () => title):
         details match
           case f: (() => ?) => s"$title ${f()}"
-          case s: Showable => i"$title $s"
+          case s: Showable => s"$title ${s.showSummary(20)}"
     catch
       case _: RecursionOverflow => "<not enough fuel to show details>"
 
