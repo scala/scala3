@@ -255,18 +255,10 @@ object Names {
       val (first, last, sep) = split
       if (first.isEmpty) f2(last) else str.sanitize(f1(first) + sep + f2(last))
     }
-
-    protected def computeToString: String
-
-    @sharable private var myToString: String | Null = null
-
-    override def toString: String =
-      initialize(myToString, myToString = _, computeToString)
-
   }
 
   /** A simple name is essentially an interned string */
-  final class SimpleName private[Names](value: String) extends TermName {
+  final class SimpleName private[Names](private val value: String) extends TermName {
 
     override def length: Int = value.length
 
@@ -327,28 +319,23 @@ object Names {
 
     override def isEmpty: Boolean = length == 0
 
-    override def startsWith(str: String, start: Int): Boolean = {
-      var i = 0
-      while (i < str.length && start + i < length && apply(start + i) == str(i)) i += 1
-      i == str.length
-    }
+    override def startsWith(str: String, start: Int): Boolean =
+      value.startsWith(str, start)
 
     override def endsWith(suffix: String): Boolean =
-      var i = 1
-      while i <= suffix.length && i <= length && apply(length - i) == suffix(suffix.length - i) do i += 1
-      i > suffix.length
+      value.endsWith(suffix)
 
     override def endsWith(suffix: SimpleName): Boolean =
-      var i = 1
-      while i <= suffix.length && i <= length && apply(length - i) == suffix(suffix.length - i) do i += 1
-      i > suffix.length
+      value.endsWith(suffix.value)
 
     override def firstPart: SimpleName = this
     override def lastPart: SimpleName = this
 
-    protected def computeToString: String = value
+    override def toString: String = value
+    override def debugString: String = value
 
-    def debugString: String = toString
+    def compareTo(other: SimpleName): Int =
+      value.compareTo(other.value)
   }
 
   final class TypeName private[Names](val toTermName: TermName) extends Name {
@@ -445,7 +432,11 @@ object Names {
       case qual: QualifiedInfo => qual.name
       case _ => underlying.lastPart
     }
-    protected def computeToString: String = info.mkString(underlying)
+
+    @sharable private var myToString: String | Null = null
+    override def toString: String =
+      initialize(myToString, myToString = _, info.mkString(underlying))
+
     override def debugString: String = s"${underlying.debugString}[$info]"
   }
 
@@ -499,7 +490,7 @@ object Names {
         case x: QualifiedInfo =>
           y match {
             case y: QualifiedInfo =>
-              compareSimpleNames(x.name, y.name)
+              x.name.compareTo(y.name)
           }
         case x: NumberedInfo =>
           y match {
@@ -510,20 +501,11 @@ object Names {
           assert(x == y)
           0
       }
-    private def compareSimpleNames(x: SimpleName, y: SimpleName): Int = {
-      val until = x.length min y.length
-      var i = 0
-      while (i < until && x(i) == y(i)) i = i + 1
-      if (i < until)
-        if (x(i) < y(i)) -1
-        else /*(x(i) > y(i))*/ 1
-      else
-        x.length - y.length
-    }
+
     private def compareTermNames(x: TermName, y: TermName): Int = x match {
       case x: SimpleName =>
         y match {
-          case y: SimpleName => compareSimpleNames(x, y)
+          case y: SimpleName => x.compareTo(y)
           case _ => -1
         }
       case DerivedName(xPre, xInfo) =>
