@@ -278,7 +278,7 @@ object Names {
     def lastIndexOf(ch: Char, start: Int = length - 1): Int = value.lastIndexOf(ch, start)
 
     /** The index of the last occurrence of `str` in this name */
-    def lastIndexOfSlice(str: String): Int = value.lastIndexOfSlice(str)
+    def lastIndexOfSlice(str: String): Int = value.lastIndexOf(str)
 
     /** A slice of this name making up the characters between `from` and `until` (exclusive) */
     def slice(from: Int, end: Int): SimpleName = termName(value.substring(from, end))
@@ -309,11 +309,9 @@ object Names {
     override def mapParts(f: SimpleName => SimpleName): SimpleName = f(this)
     override def split: (TermName, SimpleName, String) = (EmptyTermName, this, "")
 
-    override def encode: SimpleName = {
-      val dontEncode =
-        this == StdNames.nme.CONSTRUCTOR || this == StdNames.nme.STATIC_CONSTRUCTOR
-      if (dontEncode) this else NameTransformer.encode(this)
-    }
+    override def encode: SimpleName =
+      if (this `eq` StdNames.nme.CONSTRUCTOR) || (this `eq` StdNames.nme.STATIC_CONSTRUCTOR) then this
+      else NameTransformer.encode(this)
 
     override def decode: SimpleName = NameTransformer.decode(this)
 
