@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class NullArgumentException(msg: String) extends IllegalArgumentException(msg)
 
 trait Suite

@@ -9,7 +9,7 @@
 
 package scala
 package util
-
+import scala.language.unsafeNulls
 import java.io.{ IOException, PrintWriter }
 import java.util.jar.Attributes.Name as AttributeName
 

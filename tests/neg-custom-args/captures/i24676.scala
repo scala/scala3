@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import language.experimental.captureChecking
 import language.experimental.separationChecking
 

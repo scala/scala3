@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test {
   var name = "foo" + 1
   var s1 = Symbol(name)

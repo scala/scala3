@@ -1,5 +1,5 @@
 package dummy
-
+import scala.language.unsafeNulls
 trait BG {
   val   description: { type Structure }
   type  Structure =  description.Structure

@@ -1,5 +1,5 @@
 package dummy
-
+import scala.language.unsafeNulls
 import scala.quoted.*
 
 object Macro:

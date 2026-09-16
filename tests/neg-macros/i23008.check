@@ -7,7 +7,7 @@
   |---------------------------------------------------------------------------------------------------------------------
   |Inline stack trace
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  |This location contains code that was inlined from Macro_1.scala:4
-4 |  inline def buildString = ${buildStringCode}
+  |This location contains code that was inlined from Macro_1.scala:5
+5 |  inline def buildString = ${buildStringCode}
   |                           ^^^^^^^^^^^^^^^^^^
    ---------------------------------------------------------------------------------------------------------------------

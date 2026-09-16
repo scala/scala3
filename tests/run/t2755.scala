@@ -1,5 +1,6 @@
 // Test cases: the only place we can cut and paste without crying
 // ourself to sleep.
+import scala.language.unsafeNulls
 object Test {
   def f1(a: Any)  = a match {
     case x: Array[Int]      => x(0)

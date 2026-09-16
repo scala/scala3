@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test {
   sealed trait Base
   class Blub extends Base

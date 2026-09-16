@@ -1,6 +1,6 @@
 // a.scala
 // Fri Jan 13 11:31:47 PST 2012
-
+import scala.language.unsafeNulls
 package foo {
   package object bar {
     def duh(n: Long)   = println("long")

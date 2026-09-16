@@ -1,5 +1,5 @@
 package implicits
-
+import scala.language.unsafeNulls
 case class C()
 
 implicit object Cops {

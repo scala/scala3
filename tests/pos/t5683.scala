@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test {
   trait NT[X]
   trait W[W, A] extends NT[Int]

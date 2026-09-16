@@ -1,5 +1,6 @@
 // This method will be in the 2.13.17 standard library. Until this test declares a copy of it.
 // import scala.util.hashing.MurmurHash3.caseClassHash
+import scala.language.unsafeNulls
 def caseClassHash(x: Product, caseClassName: String = null): Int =
   import scala.runtime.Statics._
   val arr = x.productArity

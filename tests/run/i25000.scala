@@ -1,6 +1,6 @@
 // Regression test: wildcardArgOK must handle mixed wildcard/concrete type args
 // where both arg and formal have TypeBounds in the same position
-
+import scala.language.unsafeNulls
 trait Format
 trait Codec[L, H, F <: Format]  // invariant
 

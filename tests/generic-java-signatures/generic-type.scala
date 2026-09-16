@@ -1,5 +1,5 @@
 // Used to crash the compiler while emitting the generic signature
-
+import scala.language.unsafeNulls
 class Outer[X, N]:
   class Inner
 

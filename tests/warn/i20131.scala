@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 sealed trait Foo
 case class Foo1() extends Foo
 case class Foo2[A, B]() extends Foo

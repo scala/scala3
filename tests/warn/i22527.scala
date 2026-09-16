@@ -1,4 +1,4 @@
-
+import scala.language.unsafeNulls
 def f: Unit =
   identity(
     identity:

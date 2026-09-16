@@ -1,5 +1,5 @@
 //> using options -Werror
-
+import scala.language.unsafeNulls
 case class A(a: Int)
 case class B(b: Int)
 case class C(c: Int)

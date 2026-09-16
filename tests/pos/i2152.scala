@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class Contra[-D](task: AnyRef)
 object Test {
   def narrow(task: AnyRef): Contra[task.type] = new Contra(task)

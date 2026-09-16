@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class Test {
   def foo(x: Option[Int]) = x match {
     case Some(x) =>

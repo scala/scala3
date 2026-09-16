@@ -1,5 +1,5 @@
 package generic
-
+import scala.language.unsafeNulls
 trait EnumLike {
   def ordinal: Int
 }

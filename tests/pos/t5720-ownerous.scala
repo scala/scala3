@@ -20,6 +20,7 @@
       qual$1.copy("baz")(x$6)
     }
  */
+import scala.language.unsafeNulls
 class C {
   case class M(currentUser: String = "anon")(val message: String = "empty")
   val m = M("foo")()

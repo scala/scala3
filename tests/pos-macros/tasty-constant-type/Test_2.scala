@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test {
   val ret = Macro.ff[1, 2]()
   val x: ret.Out = 3

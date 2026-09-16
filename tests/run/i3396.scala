@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import scala.util.NotGiven
 
 object Test {

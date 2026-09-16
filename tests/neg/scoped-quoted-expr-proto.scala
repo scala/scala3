@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 package a {
 
   trait Expr[+T]

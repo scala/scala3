@@ -4,6 +4,7 @@
  *
  *  Some tests come from https://github.com/scala/scala3/pull/3894/files
  */
+import scala.language.unsafeNulls
 object Test {
   def main(args: Array[String]) = {
     println(f"integer: ${5}%d")

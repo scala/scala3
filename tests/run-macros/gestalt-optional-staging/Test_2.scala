@@ -1,5 +1,5 @@
 // Port of https://github.com/liufengyun/gestalt/blob/master/macros/src/test/scala/gestalt/macros/OptionalTest.scala
-
+import scala.language.unsafeNulls
 object Test {
 
   class C

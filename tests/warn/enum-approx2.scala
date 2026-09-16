@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 sealed trait Exp[T]
 case class Fun[A, B](f: Exp[A => B]) extends Exp[A => B]
 

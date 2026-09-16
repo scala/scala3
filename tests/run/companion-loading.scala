@@ -1,5 +1,5 @@
 //> using options -language:experimental.erasedDefinitions
-
+import scala.language.unsafeNulls
 trait Assoc[T] {
   type U
   def foo(t: T): U

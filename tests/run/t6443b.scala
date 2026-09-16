@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 trait A {
   type D >: Null <: C
   def foo(d: D)(d2: d.type): Unit

@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import scala.annotation.tailrec
 /**
  * Illustrates that abstracting over type arguments without triggering Ycheck failure is tricky

@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import scala.annotation.unchecked.uncheckedVariance
 import scala.compiletime.uninitialized
 

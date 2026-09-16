@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 trait FlowOps[+Out] {
   type Repr[+O] <: FlowOps[O]
 }

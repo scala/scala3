@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object O1:
   sealed trait A
   case class B() extends A

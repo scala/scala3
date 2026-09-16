@@ -1,5 +1,5 @@
 // scalajs: --skip
-
+import scala.language.unsafeNulls
 import scala.reflect.ClassTag
 
 object Test extends App {

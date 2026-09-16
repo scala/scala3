@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import scala.collection.{immutable, mutable}
 import java.nio.file.Paths
 

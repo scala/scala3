@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 abstract class BulkSearch {
        type R   <: Row
        type Rel <: Relation [R]

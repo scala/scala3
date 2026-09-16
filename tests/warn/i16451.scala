@@ -1,4 +1,5 @@
 //
+import scala.language.unsafeNulls
 enum Color:
   case Red, Green
 //sealed trait Color

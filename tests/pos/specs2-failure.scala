@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import util.matching.Regex
 import util.matching.Regex.Match
 
