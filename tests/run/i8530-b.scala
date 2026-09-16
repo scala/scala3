@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import scala.compiletime.erasedValue
 
 class MyRegex[Pattern <: String & Singleton/*Literal constant*/]:

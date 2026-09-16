@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test {
   def f1 = List(5, 10, null: String).##
   def f2(x: Any) = x.##

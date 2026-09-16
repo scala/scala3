@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 enum Fun[-T, +U >: Null] {
   def f: T => U = this match {
     case Identity(g) => g

@@ -1,5 +1,5 @@
 //> using options -Wunused:imports
-
+import scala.language.unsafeNulls
 package util:
   class Random(s: String):
     def this() = this("")

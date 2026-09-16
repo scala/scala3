@@ -4,7 +4,7 @@
 
 //############################################################################
 // Test 0 - Array creation
-
+import scala.language.unsafeNulls
 object Test0Test {
   def println[A](xs: Array[A]): Unit = {
     var i = 0;

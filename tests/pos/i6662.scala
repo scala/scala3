@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object opt:
     opaque type Opt[A >: Null] = A
     object Opt:

@@ -1,4 +1,5 @@
 //> using options -Werror
+import scala.language.unsafeNulls
 import annotation.switch
 import util.Try
 

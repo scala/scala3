@@ -1,4 +1,4 @@
-
+import scala.language.unsafeNulls
 class A {
   def get(): Int = 0
 }

@@ -1,5 +1,5 @@
 package x
-
+import scala.language.unsafeNulls
 def hello = {
   xtransform {
     val a: Seq[Generic[?]] = null

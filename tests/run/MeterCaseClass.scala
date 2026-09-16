@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 package a {
   abstract class BoxingConversions[Boxed, Unboxed] {
     def box(x: Unboxed): Boxed

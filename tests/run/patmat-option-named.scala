@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 case class HasSingleField(f: HasSingleField)
 
 object Test {

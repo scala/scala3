@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test {
   case class C(x: Int)
   val v: Some[Int] = null

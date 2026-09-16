@@ -1,5 +1,5 @@
 package lst
-
+import scala.language.unsafeNulls
 import collection.mutable.{ListBuffer, StringBuilder}
 import collection.immutable.Map
 import reflect.ClassTag

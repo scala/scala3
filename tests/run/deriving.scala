@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 sealed trait T
 object T
 

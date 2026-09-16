@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object `precise-pattern-type` {
   class Type {
     def isType: Boolean = true

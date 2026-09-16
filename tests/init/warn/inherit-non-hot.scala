@@ -1,4 +1,5 @@
 // This is a minimized test for the warning in Names.scala:174
+import scala.language.unsafeNulls
 object Foo {
     abstract class A {
         var b: B = null

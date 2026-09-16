@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test {
   val X, Y = true
   (null: Tuple1[Boolean]) match {

@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 case class Foo(val value: String) extends Comparable[Integer]:
   override def compareTo(other: Integer) = 0
 

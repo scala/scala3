@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test extends AnyRef with App {
   val x = 1;
 

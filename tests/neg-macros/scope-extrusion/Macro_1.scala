@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import quoted.*
 
 inline def test1(): Int = ${ testExtrusion1 }

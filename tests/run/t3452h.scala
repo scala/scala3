@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class Mix extends Foo with Bar { f; }
 trait T
 abstract class Foo {

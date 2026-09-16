@@ -1,4 +1,4 @@
-
+import scala.language.unsafeNulls
 object Test:
   var prev: Any = scala.compiletime.uninitialized
 

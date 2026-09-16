@@ -1,4 +1,4 @@
-
+import scala.language.unsafeNulls
 class Q[A] extends scala.collection.mutable.Queue[A]
 class Q1[A] extends scala.collection.mutable.Qu[A]
 

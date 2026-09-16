@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 sealed trait T_A[A, B]
 sealed trait T_B[C]
 

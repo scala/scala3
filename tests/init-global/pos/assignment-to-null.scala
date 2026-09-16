@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class C {
   var f: Int = 1
 }

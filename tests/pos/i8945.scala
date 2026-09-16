@@ -1,6 +1,7 @@
 
 
 // src-2/MacroImpl.scala
+import scala.language.unsafeNulls
 trait Context {
   object universe {
     type Literal

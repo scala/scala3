@@ -1,6 +1,6 @@
 // /scala/trac/5359/a.scala
 // Thu Jan  5 13:31:05 PST 2012
-
+import scala.language.unsafeNulls
 object test {
   trait Step[F[_]] {
     // crash: typeConstructor inapplicable for <none>

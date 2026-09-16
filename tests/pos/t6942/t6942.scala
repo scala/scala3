@@ -1,5 +1,6 @@
 // not a peep out of the pattern matcher's unreachability analysis
 // its budget should suffice for these simple matches (they do have a large search space)
+import scala.language.unsafeNulls
 class Test {
   import foo.Bar // a large enum
   def exhaustUnreachabilitysStack_ENUM_STYLE = (null: Bar) match {

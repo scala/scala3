@@ -3,7 +3,7 @@
 /*
  * Try exception handling and finally blocks.
  */
-
+import scala.language.unsafeNulls
 trait Tree extends Exception;
 
 case class Node(a: Tree, b: Tree) extends Tree;

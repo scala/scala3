@@ -11,7 +11,7 @@
 package scala
 package collection
 package immutable
-
+import scala.language.unsafeNulls
 import scala.annotation.tailrec
 import scala.annotation.meta.getter
 

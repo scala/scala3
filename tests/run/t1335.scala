@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 case class MyTuple(a: Int, b: Int)
 
 object Test {

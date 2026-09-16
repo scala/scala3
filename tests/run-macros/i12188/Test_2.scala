@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 sealed trait P
 case class PC1(a: String) extends P
 case class PC2(b: Int) extends P

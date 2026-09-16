@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test extends App {
   val x = null
   assert(!x.isInstanceOf[String])
