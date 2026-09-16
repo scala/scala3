@@ -153,8 +153,7 @@ object Names {
 
     def endsWith(suffix: SimpleName): Boolean = lastPart.endsWith(suffix)
 
-    final override def hashCode: Int = System.identityHashCode(this)
-    final override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
+    // keep the default reference-based equality and hashcode, since names are interned
   }
 
   /** Names for terms, can be simple or derived */
@@ -377,7 +376,7 @@ object Names {
   /** A term name that's derived from an `underlying` name and that
    *  adds `info` to it.
    */
-  final case class DerivedName private[Names](override val underlying: TermName, override val info: NameInfo)
+  final class DerivedName private[Names](override val underlying: TermName, override val info: NameInfo)
   extends TermName {
 
     override def asSimpleName: Nothing = throw new UnsupportedOperationException(s"$debugString is not a simple name")
@@ -437,6 +436,11 @@ object Names {
 
     override def debugString: String = s"${underlying.debugString}[$info]"
   }
+
+  object DerivedName:
+    def unapply(n: Name): Option[(TermName, NameInfo)] = n match
+      case dn: DerivedName => Some((dn.underlying, dn.info))
+      case _ => None
 
   /** The term name represented by the empty string */
   val EmptyTermName: SimpleName = new SimpleName("")
