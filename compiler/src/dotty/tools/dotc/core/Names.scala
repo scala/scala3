@@ -3,13 +3,11 @@ package dotc
 package core
 
 import scala.collection.mutable
-import scala.io.Codec
 import util.NameTransformer
 import printing.{Printer, Showable, Texts}
 import Texts.Text
 import StdNames.{nme, str}
 
-import java.nio.CharBuffer
 import java.nio.charset.StandardCharsets
 import scala.annotation.internal.sharable
 import dotty.tools.dotc.util.Stats
@@ -155,8 +153,8 @@ object Names {
 
     def endsWith(suffix: SimpleName): Boolean = lastPart.endsWith(suffix)
 
-    override def hashCode: Int = System.identityHashCode(this)
-    override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
+    final override def hashCode: Int = System.identityHashCode(this)
+    final override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
   }
 
   /** Names for terms, can be simple or derived */
@@ -353,7 +351,7 @@ object Names {
     def debugString: String = toString
   }
 
-  final class TypeName(val toTermName: TermName) extends Name {
+  final class TypeName private[Names](val toTermName: TermName) extends Name {
 
     type ThisName = TypeName
 
@@ -394,7 +392,7 @@ object Names {
   /** A term name that's derived from an `underlying` name and that
    *  adds `info` to it.
    */
-  final case class DerivedName(override val underlying: TermName, override val info: NameInfo)
+  final case class DerivedName private[Names](override val underlying: TermName, override val info: NameInfo)
   extends TermName {
 
     override def asSimpleName: Nothing = throw new UnsupportedOperationException(s"$debugString is not a simple name")
