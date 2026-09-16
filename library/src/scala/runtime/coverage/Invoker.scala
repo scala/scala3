@@ -6,8 +6,7 @@ import scala.annotation.internal.sharable
 import scala.annotation.nowarn
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable.{BitSet, HashMap}
-import java.io.{File, FileWriter}
-import java.nio.file.Files
+import java.io.{File, FileWriter, IOException}
 
 @sharable // avoids false positive by -Ycheck-reentrant
 object Invoker {
@@ -26,12 +25,32 @@ object Invoker {
     * may collide. You may not use `scoverage` on multiple processes in parallel without risking
     * corruption of the measurement file.
     *
+    * If this thread's measurement file has been deleted (clean, recompile, or
+    * `coverageDeleteMeasurements`), cached ids for `dataDir` are dropped so they can be written
+    * again.
+    *
     * @param id
     *   the id of the statement that was invoked
     * @param dataDir
     *   the directory where the measurement data is held
     */
   def invoked(id: Int, dataDir: String): Unit =
+    val file = measurementFile(dataDir)
+    if !file.exists() then
+      val writers = threadFiles.get()
+      if writers != null then
+        writers.remove(dataDir) match
+          case Some(writer) =>
+            try writer.close()
+            catch case _: IOException => ()
+          case None =>
+      dataDirToSet.get(dataDir) match
+        case Some(cachedIds) =>
+          cachedIds.synchronized {
+            cachedIds.clear()
+          }
+        case None =>
+
     val set = dataDirToSet.getOrElseUpdate(dataDir, BitSet.empty)
     if !set.contains(id) then
       val added = set.synchronized {
@@ -44,7 +63,7 @@ object Invoker {
           threadFiles.set(writers)
         val writer = writers.getOrElseUpdate(
           dataDir,
-          FileWriter(measurementFile(dataDir), true)
+          FileWriter(file, true)
         )
         writer.write(Integer.toString(id))
         writer.write('\n')
