@@ -12,6 +12,7 @@ import StdNames.{nme, str}
 import java.nio.CharBuffer
 import java.nio.charset.StandardCharsets
 import scala.annotation.internal.sharable
+import dotty.tools.dotc.util.Stats
 
 object Names {
   import NameKinds.*
@@ -454,25 +455,19 @@ object Names {
   val EmptyTermName: SimpleName = new SimpleName("")
 
   /** Hashtable for finding term names quickly. */
-  @sharable // because it's only mutated in synchronized block of enterIfNew
+  @sharable // because it's only mutated in enterIfNew which is synchronized
   private val nameTable: mutable.HashMap[String, SimpleName] = new mutable.HashMap[String, SimpleName](initialCapacity = 0x10000, loadFactor = 2.0)
   nameTable("") = EmptyTermName
 
-  private def enterIfNew(str: String): SimpleName = {
-    import util.Stats
+  private def enterIfNew(str: String): SimpleName = synchronized {
     Stats.record("NameTable.get")
     nameTable.get(str) match
       case Some(n) => n
       case None =>
         Stats.record("NameTable.add")
-        synchronized {
-          nameTable.get(str) match
-            case Some(n) => n
-            case None =>
-              val res = SimpleName(str)
-              nameTable(str) = res
-              res
-        }
+        val res = SimpleName(str)
+        nameTable(str) = res
+        res
   }
 
   /** Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
