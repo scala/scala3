@@ -410,11 +410,10 @@ object PatternMatcher {
             else caseAccessors.map(tupleSel)
           // Remove components and arguments corresponding to wildcards, as they won't be used,
           // so there's no point generating accessor code
-          val filteredComponents = components.zip(args).filter {
+          val (filteredComponents, filteredArgs) = components.lazyZip(args).filter {
             case (c, Ident(nme.WILDCARD)) => false
             case _ => true
-          }.map(_._1)
-          val filteredArgs = args.filter { case Ident(nme.WILDCARD) => false; case _ => true }
+          }.unzip
           matchArgsPlan(filteredComponents, filteredArgs, onSuccess)
         else if unappType.derivesFrom(defn.BooleanClass) then
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
@@ -531,14 +530,11 @@ object PatternMatcher {
             patternPlan(scrutinee, body, LetPlan(bound, onSuccess), isDefinitelyCatchAll)
           }
         case Alternative(alts) =>
-          var isThisAltCatchAll = isDefinitelyCatchAll
           altsLabeledAbstract { onf =>
             SeqPlan(
               altsLabeledAbstract { ons =>
                 alts.foldRight(onf) { (alt, next) =>
-                  val plan = SeqPlan(patternPlan(scrutinee, alt, ons, isThisAltCatchAll), next)
-                  isThisAltCatchAll = false
-                  plan
+                  SeqPlan(patternPlan(scrutinee, alt, ons, isDefinitelyCatchAll && (next eq onf)), next)
                 }
               },
               onSuccess
@@ -581,11 +577,8 @@ object PatternMatcher {
     private def matchPlan(tree: Match, isExhaustive: Boolean): Plan =
       letAbstract(tree.selector) { scrutinee =>
         val matchError: Plan = ResultPlan(Throw(New(defn.MatchErrorClass.typeRef, ref(scrutinee) :: Nil)))
-        var isCatchAll = isExhaustive
         tree.cases.foldRight(matchError) { (cdef, next) =>
-          val casePlan = SeqPlan(caseDefPlan(scrutinee, cdef, isCatchAll), next)
-          isCatchAll = false
-          casePlan
+          SeqPlan(caseDefPlan(scrutinee, cdef, isExhaustive && (next eq matchError)), next)
         }
       }
 
