@@ -102,7 +102,11 @@ class CompilerSearchVisitor(
     matching.size
 
   def shouldVisitPackage(pkg: String): Boolean =
-    isAccessible(requiredPackage(normalizePackage(pkg)))
+    // this is supposed to be an optimization but checking if `pkg` exists in the symbol table of the compiler
+    // for all packages in a large workspace is more expensive than just letting it go through (it needs to force
+    // everything on its classpath as it keeps trying every possible package). Observed in a profiler that this can
+    // add several seconds on scope completions
+    true
 
   override def isCancelled: Boolean = false
 
