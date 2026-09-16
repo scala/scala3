@@ -50,11 +50,7 @@ class CachingDriver private (
     lastCompiledURI == uri && compilationUnits.get(uri).forall(_.source.textContent() == content)
 
   override def run(uri: URI, source: SourceFile): List[Diagnostic] =
-    run(uri, source, hideNonSensicalMessages = true)
-
-  override def run(uri: URI, source: SourceFile, hideNonSensicalMessages: Boolean): List[Diagnostic] =
-    if !alreadyCompiled(uri, source.textContent()) then
-      previousDiags = super.run(uri, source, hideNonSensicalMessages)
+    if !alreadyCompiled(uri, source.textContent()) then previousDiags = super.run(uri, source)
     lastCompiledURI = uri
     previousDiags
 

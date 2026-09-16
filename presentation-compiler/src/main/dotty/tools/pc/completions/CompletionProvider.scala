@@ -71,7 +71,7 @@ class CompletionProvider(
      */
 
     val driver = if wasCursorApplied then cachingDriver.freshDriver() else cachingDriver
-    driver.run(uri, sourceFile, hideNonSensicalMessages = false)
+    driver.run(uri, sourceFile)
 
     given ctx: Context = driver.currentCtx
     val pos = driver.sourcePosition(params)

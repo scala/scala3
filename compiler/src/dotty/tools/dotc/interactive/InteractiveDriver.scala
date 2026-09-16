@@ -171,26 +171,13 @@ class InteractiveDriver(
 
   def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, SourceFile.virtual(uri, sourceCode))
 
-  /** @param hideNonSensicalMessages Whether to suppress cascading/nonsensical
-   *  diagnostics (`HideNonSensicalMessages`). Deciding whether a message is
-   *  hidden this way forces the message to be fully rendered (e.g. computing
-   *  "did you mean" suggestions), which is unnecessary for things like completions.
-   */
-  def run(uri: URI, sourceCode: String, hideNonSensicalMessages: Boolean): List[Diagnostic] =
-    run(uri, SourceFile.virtual(uri, sourceCode), hideNonSensicalMessages)
-
-  def run(uri: URI, source: SourceFile): List[Diagnostic] = run(uri, source, hideNonSensicalMessages = true)
-
-  def run(uri: URI, source: SourceFile, hideNonSensicalMessages: Boolean): List[Diagnostic] = {
+  def run(uri: URI, source: SourceFile): List[Diagnostic] = {
     import typer.ImportInfo.*
 
     val previousCtx = myCtx
     try {
       val reporter =
-        if hideNonSensicalMessages then
-          new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
-        else
-          new StoreReporter(null) with UniqueMessagePositions
+        new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
       val run = compiler.newRun(using myInitCtx.fresh.setReporter(reporter).setProgressCallback(myProgressCallback))
       myCtx = run.runContext.withRootImports
