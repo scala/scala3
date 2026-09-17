@@ -102,7 +102,7 @@ class TabcompleteTests extends ReplTest {
   @Test def `null` = initially {
     val comp = tabComplete("null.")
     assertEquals(
-      List("!=", "##", "==", "asInstanceOf", "equals", "getClass", "hashCode", "isInstanceOf", "toString"),
+      List("!=", "##", "->", "==", "asInstanceOf", "eq", "equals", "getClass", "hashCode", "isInstanceOf", "ne", "nn", "runtimeChecked", "toString"),
       comp.distinct.sorted)
   }
 

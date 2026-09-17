@@ -1033,7 +1033,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
   @Test // wrong local variable table for methods containing while loops
   def t9179(): Unit = {
     val code =
-      """class C {
+      """import scala.language.unsafeNulls
+        |class C {
         |  def t(): Unit = {
         |    var x = ""
         |    while (x != null) {

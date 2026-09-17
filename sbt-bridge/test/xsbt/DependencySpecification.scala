@@ -83,7 +83,7 @@ class DependencySpecification {
   def extractedClassDependenciesFromARefinement = {
     val srcFoo =
       "object Outer {\n  class Inner { type Xyz }\n\n  type TypeInner = Inner { type Xyz = Int }\n}"
-    val srcBar = "object Bar {\n  def bar: Outer.TypeInner = null\n}"
+    val srcBar = "object Bar {\n  def bar: Outer.TypeInner = ???\n}"
 
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val classDependencies =
@@ -203,7 +203,7 @@ class DependencySpecification {
     val srcA = "class A"
     val srcB = "class B extends D[A]"
     val srcC = """|class C {
-      |  def a: A = null
+      |  def a: A = ???
       |}""".stripMargin
     val srcD = "class D[T]"
     val srcE = "trait E[T]"
