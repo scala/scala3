@@ -1,17 +1,23 @@
--- [E235] Potential Issue Warning: tests/warn/catch.scala:12:14 --------------------------------------------------------
-12 |      case _: Throwable => () // warn
+-- [E235] Potential Issue Warning: tests/warn/catch.scala:12:6 ---------------------------------------------------------
+12 |      case _ => () // warn
+   |      ^^^^^^^^^^^^
+   |      Catching everything can lead to unexpected behavior
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E235] Potential Issue Warning: tests/warn/catch.scala:17:14 --------------------------------------------------------
+17 |      case _: Throwable => () // warn
    |              ^^^^^^^^^
    |              Catching Throwable can lead to unexpected behavior
    |
    | longer explanation available when compiling with `-explain`
--- [E235] Potential Issue Warning: tests/warn/catch.scala:17:14 --------------------------------------------------------
-17 |      case _: Error => () // warn
+-- [E235] Potential Issue Warning: tests/warn/catch.scala:22:14 --------------------------------------------------------
+22 |      case _: Error => () // warn
    |              ^^^^^
    |              Catching Error can lead to unexpected behavior
    |
    | longer explanation available when compiling with `-explain`
--- [E235] Potential Issue Warning: tests/warn/catch.scala:22:14 --------------------------------------------------------
-22 |      case _: AssertionError => () // warn
+-- [E235] Potential Issue Warning: tests/warn/catch.scala:27:14 --------------------------------------------------------
+27 |      case _: AssertionError => () // warn
    |              ^^^^^^^^^^^^^^
    |              Catching AssertionError can lead to unexpected behavior
    |
