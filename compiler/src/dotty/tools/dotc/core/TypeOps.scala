@@ -989,6 +989,8 @@ object TypeOps:
         AnnotatedType(arg, Annotation(defn.SilentIntoAnnot, util.Spans.NoSpan))
       case _: MatchType | _: LazyRef =>
         t
+      case _: AnnotatedType =>
+        mapOver(t)
       case _ =>
         mapFollowingAliases(t)
 
@@ -1001,6 +1003,8 @@ object TypeOps:
           t1 :: Nil)
       case _: MatchType | _: LazyRef =>
         t
+      case _: AnnotatedType =>
+        mapOver(t)
       case _ =>
         mapFollowingAliases(t)
 

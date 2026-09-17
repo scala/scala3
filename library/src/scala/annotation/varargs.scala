@@ -12,6 +12,7 @@
 
 package scala.annotation
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A method annotation which instructs the compiler to generate a

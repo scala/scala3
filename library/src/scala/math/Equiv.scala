@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import java.util.Comparator
 import scala.annotation.migration
@@ -65,10 +66,10 @@ object Equiv extends LowPriorityEquiv {
   def fromComparator[T](cmp: Comparator[T]): Equiv[T] = {
     (x, y) => cmp.compare(x, y) == 0
   }
-  def fromFunction[T](cmp: (T, T) => Boolean): Equiv[T] = {
+  def fromFunction[T](cmp: (T, T) -> Boolean): Equiv[T] = {
     (x, y) => cmp(x, y)
   }
-  def by[T, S: Equiv](f: T => S): Equiv[T] =
+  def by[T, S: Equiv](f: T -> S): Equiv[T] =
     ((x, y) => implicitly[Equiv[S]].equiv(f(x), f(y)))
 
   @inline def apply[T: Equiv]: Equiv[T] = implicitly[Equiv[T]]
@@ -78,7 +79,7 @@ object Equiv extends LowPriorityEquiv {
   private final val optionSeed   = 43
   private final val iterableSeed = 47
 
-  private final class IterableEquiv[CC[X] <: Iterable[X], T](private val eqv: Equiv[T]) extends Equiv[CC[T]] {
+  private final class IterableEquiv[CC[X] <: Iterable[X]^, T](private val eqv: Equiv[T]) extends Equiv[CC[T]] {
     def equiv(x: CC[T], y: CC[T]): Boolean = {
       val xe = x.iterator
       val ye = y.iterator

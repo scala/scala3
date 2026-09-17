@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A slightly more specific conversion trait for classes which

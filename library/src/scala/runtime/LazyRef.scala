@@ -12,6 +12,7 @@
 
 package scala.runtime
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** Classes used as holders for lazy vals defined in methods. */

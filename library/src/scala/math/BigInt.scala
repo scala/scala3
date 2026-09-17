@@ -15,6 +15,7 @@ package math
 
 import java.math.BigInteger
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.annotation.nowarn
 import scala.language.implicitConversions
