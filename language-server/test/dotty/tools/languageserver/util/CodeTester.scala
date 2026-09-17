@@ -1,5 +1,7 @@
 package dotty.tools.languageserver.util
 
+import scala.annotation.nowarn
+
 import dotty.tools.languageserver.util.Code._
 import dotty.tools.languageserver.util.actions._
 import dotty.tools.languageserver.util.embedded.CodeMarker
@@ -275,11 +277,12 @@ class CodeTester(projects: List[Project]) {
                     activeParam: Int): this.type =
     doAction(new SignatureHelp(marker, expected, activeSignature, activeParam))
 
+  @nowarn("msg=Catching AssertionError can lead to unexpected behavior") // we're in a test that has always done this
   private def doAction(action: Action): this.type = {
     try {
       action.execute()(using testServer, testServer.client, positions)
     } catch {
-      case ex: Exception =>
+      case ex: AssertionError =>
         val sourcesStr =
           sources.zip(files).map {
             case ((project, source), file) =>

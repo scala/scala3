@@ -4026,10 +4026,12 @@ final class VarianceInSpecializedTraitsLimitation(using Context)
     Otherwise, remove Specialized, or remove the variance.
     """
 
-class UnreasonableCatch(tpe: Type)(using Context)
+class UnreasonableCatch(tpe: Option[Type])(using Context)
   extends Message(UnreasonableCatchID) {
   def kind = MessageKind.PotentialIssue
-  def msg(using Context) = i"Catching $tpe can lead to unexpected behavior"
+  def msg(using Context) = tpe match
+    case Some(t) => i"Catching $t can lead to unexpected behavior"
+    case None => i"Catching everything can lead to unexpected behavior"
   def explain(using Context) =
     i"""Catching ${hl("Error")} subclasses, including by catching all ${hl("Throwable")}s,
        |can lead to unexpected behavior because an ${hl("Error")} being thrown indicates

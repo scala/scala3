@@ -9,6 +9,11 @@ object O:
     try
       foo()
     catch
+      case _ => () // warn
+
+    try
+      foo()
+    catch
       case _: Throwable => () // warn
 
     try

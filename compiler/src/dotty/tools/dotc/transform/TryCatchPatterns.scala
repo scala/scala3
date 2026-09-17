@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.reporting.UnreasonableCatch
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.util.SrcPos
 
 import scala.annotation.tailrec
 
@@ -77,7 +78,11 @@ class TryCatchPatterns extends MiniPhase {
       warnIfUnreasonableCatch(tpt)
       guard == EmptyTree && isSimpleThrowable(tpt.tpe)
     case _ =>
-      isDefaultCase(cdef)
+      if isDefaultCase(cdef) then
+        warnForUnreasonableCatch(cdef)
+        true
+      else
+        false
   }
 
   @tailrec
@@ -108,10 +113,13 @@ class TryCatchPatterns extends MiniPhase {
       )
     }
 
-  private def warnIfUnreasonableCatch(tpt: Tree)(using Context): Unit = {
+  private def warnIfUnreasonableCatch(tpt: Tree)(using Context): Unit =
     if ctx.settings.Whas.unreasonableCatch && tpt.tpe <:< defn.ErrorType || tpt.tpe =:= defn.ThrowableType then
-      report.warning(UnreasonableCatch(tpt.tpe), tpt)
-  }
+      report.warning(UnreasonableCatch(Some(tpt.tpe)), tpt)
+
+  private def warnForUnreasonableCatch(pos: SrcPos)(using Context): Unit =
+    if ctx.settings.Whas.unreasonableCatch then
+      report.warning(UnreasonableCatch(None), pos)
 }
 
 object TryCatchPatterns:
