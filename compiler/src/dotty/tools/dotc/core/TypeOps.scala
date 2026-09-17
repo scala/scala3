@@ -280,12 +280,18 @@ object TypeOps:
           mergeRefinedOrApplied(tp11, tp2) & mergeRefinedOrApplied(tp12, tp2)
         case tp1: TypeParamRef =>
           tp2.stripTypeVar match
-            case tp2: TypeParamRef if tp1 == tp2 => tp1
+            case tp2s: TypeParamRef if tp1 == tp2s => tp1
+            // two DIFFERENT parameters that the current constraint has
+            // already equated: the caller established `tycon1 =:= tycon2`
+            // before merging, so refusing here contradicts it. Frozen, so
+            // that asking the question cannot create the answer.
+            case _ if tp1.frozen_=:=(tp2) => tp1
             case _ => fail
         case tp1: TypeVar =>
           tp2 match
             case tp2: TypeVar if tp1 == tp2 => tp1
             case tp2: TypeParamRef if tp1.stripTypeVar == tp2 => tp2
+            case _ if tp1.frozen_=:=(tp2) => tp1
             case _ => fail
         case _ => fail
       }
