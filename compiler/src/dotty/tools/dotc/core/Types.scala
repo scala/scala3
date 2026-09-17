@@ -388,8 +388,7 @@ object Types extends TypeUtils {
       case tp: SuperType => true
       case tp: ClassInfo => !tp.cls.isNullableClass && !tp.isNothingType
       case MaybeType(_, errArg) => !norMaybe && !errArg.admitsUnit
-      case tp: TypeBounds => tp.hi.isNotNull(norMaybe)
-      case tp: TypeProxy => tp.underlying.isNotNull(norMaybe)
+      case tp: TypeProxy => tp.superType.isNotNull(norMaybe)
       case AndType(tp1, tp2) => tp1.isNotNull(norMaybe) || tp2.isNotNull(norMaybe)
       case OrType(tp1, tp2) => tp1.isNotNull(norMaybe) && tp2.isNotNull(norMaybe)
       case _ => false
@@ -5792,7 +5791,7 @@ object Types extends TypeUtils {
     def unapply(tp: MatchAlias): Option[Type] = Some(tp.alias)
   }
 
-  /** A constructor/extractor for `R ? E` types */
+  /** A constructor/extractor for `R ? E` types. The extractor also matches subtypes */
   object MaybeType {
     def apply(resTp: Type, errTp: Type)(using Context) =
       defn.MaybeClass.typeRef.appliedTo(resTp, errTp)
@@ -5800,6 +5799,12 @@ object Types extends TypeUtils {
     def unapply(tp: Type)(using Context): Option[(Type, Type)] = tp.dealias match
       case AppliedType(tycon, resArg :: errArg :: Nil) if tycon.isRef(defn.MaybeClass) =>
         Some((resArg, errArg))
+      case tp: TypeProxy =>
+        unapply(tp.superType)
+      case AndType(tp1, tp2) =>
+        for (r1, e1) <- unapply(tp1); (r2, e2) <- unapply(tp2) yield (r1 & r2, e1 & e2)
+      case OrType(tp1, tp2) =>
+        for (r1, e1) <- unapply(tp1); (r2, e2) <- unapply(tp2) yield (r1 | r2, e1 | e2)
       case _ =>
         None
   }

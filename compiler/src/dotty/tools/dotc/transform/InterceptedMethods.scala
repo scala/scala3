@@ -21,6 +21,7 @@ object InterceptedMethods {
   * - `x.##` for ## in NullClass becomes `0`
   * - `x.##` for ## in Any becomes calls to ScalaRunTime.hash,
   *     using the most precise overload available
+  * - `x.isEmpty` on class Maybe becomes `x == null || x.isInstanceOf[Fail]`
   *
   * Under -Yexplicit-nulls:
   *
@@ -43,15 +44,19 @@ class InterceptedMethods extends MiniPhase {
     transformRefTree(tree)
 
   private def transformRefTree(tree: RefTree)(using Context): Tree =
-    if (tree.isTerm && (defn.Any_## eq tree.symbol)) {
-      val qual = tree match {
+    if tree.isTerm then
+      val sym = tree.symbol
+      def qual = tree match
         case id: Ident => tpd.desugarIdentPrefix(id)
         case sel: Select => sel.qualifier
-      }
-      val rewritten = poundPoundValue(qual)
-      report.log(s"$phaseName rewrote $tree to $rewritten")
-      rewritten
-    }
+      if sym eq defn.Any_## then
+        val rewritten = poundPoundValue(qual)
+        report.log(s"$phaseName rewrote $tree to $rewritten")
+        rewritten
+      else if sym eq defn.Maybe_isEmpty then
+        evalOnce(qual): t =>
+          t.nullTest(cond = true).or(t.isInstance(defn.FailClass.typeRef))
+      else tree
     else tree
 
   // TODO: add missing cases from scalac
