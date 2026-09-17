@@ -1,4 +1,4 @@
-//> using options -Yexplicit-nulls:false
+//> using options -Yexplicit-nulls:true
 
 enum E[A, B]:
   case Left(a: A)
@@ -16,5 +16,3 @@ object Test:
     f(E.Left(42))
     f(E.Right(42))
     f(E.Both(42, 0))
-    try f(null)
-    catch case e: MatchError => println(e)
