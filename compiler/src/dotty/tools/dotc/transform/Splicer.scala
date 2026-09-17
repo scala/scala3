@@ -86,7 +86,10 @@ object Splicer {
       }
   }
 
-  /** Checks that no symbol that was generated within the macro expansion has an out of scope reference */
+  /** Checks that no symbol that was generated within the macro expansion has an out of scope reference
+   *  and that a class's primary constructor parameter is not referenced outside of that primary constructor
+   *  within the macro expansion.
+  */
   def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(using Context): tree.type =
     new TreeTraverser {
       private var locals = Set.empty[Symbol]
@@ -104,6 +107,17 @@ object Splicer {
           case tree: Ident if isEscapedVariable(tree.symbol) =>
             val sym = tree.symbol
             report.error(em"While expanding a macro, a reference to $sym was used outside the scope where it was defined", tree.srcPos)
+          case tree: Ident if isEscapedConstructorParam(tree.symbol) =>
+            val sym = tree.symbol
+            val msg = em"""While expanding a macro, a reference to primary constructor $sym of ${sym.owner.owner} was used outside of the primary constructor.
+              |
+              |Hint: Instead of using `Symbol.primaryConstructor.paramSymss` directly, get the analogous field members with `Symbol.fieldMembers`.
+              |"""
+            report.error(msg, tree.srcPos)
+          case tree: DefDef =>
+            val last = locals
+            markDef(tree)
+            traverseOver(last)
           case Block(stats, _) =>
             val last = locals
             stats.foreach(markDef)
@@ -125,6 +139,11 @@ object Splicer {
           }
         )
         && !locals.contains(sym) // symbol is not in current scope
+      private def isEscapedConstructorParam(sym: Symbol)(using Context): Boolean =
+        sym.exists
+        && sym.is(Param)
+        && sym.owner.isPrimaryConstructor
+        && !locals.contains(sym)
     }.traverse(tree)
     tree
 
