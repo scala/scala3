@@ -10,5 +10,5 @@ class Imperative:
   }
 
   def readPerson(s: String) =
-    val e: Exception = null
+    val e: Exception = ???
     OnError((e) => readName2(using e)(using s)).onError(None)

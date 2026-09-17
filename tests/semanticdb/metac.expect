@@ -2279,7 +2279,7 @@ Symbols:
 example/InstrumentTyper# => class InstrumentTyper extends Object { self: AnyRef & InstrumentTyper => +5 decls }
 example/InstrumentTyper#AnnotatedType# => type AnnotatedType  = Int @param
 example/InstrumentTyper#`<init>`(). => primary ctor <init> (): InstrumentTyper
-example/InstrumentTyper#all(). => method all => List[Int | Long | Float | Double | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]]
+example/InstrumentTyper#all(). => method all => List[Int | Long | Float | Double | Null | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]]
 example/InstrumentTyper#clazzOf. => final val method clazzOf Option[Int]
 example/InstrumentTyper#singletonType(). => method singletonType (param x: Predef.type): Nothing
 example/InstrumentTyper#singletonType().(x) => param x: Predef.type
@@ -2341,7 +2341,7 @@ Occurrences:
 [24:37..24:40): Int -> scala/Int#
 
 Synthetics:
-[8:12..8:16):List => *.apply[Int | Long | Float | Double | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]]
+[8:12..8:16):List => *.apply[Int | Long | Float | Double | Null | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]]
 [8:12..21:3):List(
     Literal.int,
     Literal.long,
@@ -2355,7 +2355,7 @@ Synthetics:
     Literal.javaEnum,
     Literal.clazzOf,
     List()
-  ) => List.apply[Int | Long | Float | Double | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]](*)
+  ) => List.apply[Int | Long | Float | Double | Null | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]](*)
 [20:4..20:8):List => *.apply[Nothing]
 [20:4..20:10):List() => List.apply[Nothing](*)
 
@@ -2704,7 +2704,7 @@ Uri => MetacJava.scala
 Text => empty
 Language => Scala
 Symbols => 10 entries
-Occurrences => 63 entries
+Occurrences => 65 entries
 
 Symbols:
 example/MetacJava# => class MetacJava extends Object { self: MetacJava => +9 decls }
@@ -2769,6 +2769,7 @@ Occurrences:
 [16:6..16:15): interface <- example/MetacJava#interface.
 [16:17..16:23): javacp -> com/javacp/
 [16:24..16:33): Interface -> com/javacp/Interface#
+[16:36..16:39): ??? -> scala/Predef.`???`().
 [17:6..17:10): coin <- example/MetacJava#coin.
 [17:12..17:18): javacp -> com/javacp/
 [17:19..17:23): Coin -> com/javacp/Coin#
@@ -2782,6 +2783,7 @@ Occurrences:
 [18:27..18:32): Entry -> java/util/Map#Entry#
 [18:33..18:36): Int -> scala/Int#
 [18:38..18:41): Int -> scala/Int#
+[18:45..18:48): ??? -> scala/Predef.`???`().
 
 expect/MethodUsages.scala
 -------------------------
@@ -2792,7 +2794,7 @@ Uri => MethodUsages.scala
 Text => empty
 Language => Scala
 Symbols => 3 entries
-Occurrences => 81 entries
+Occurrences => 85 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -2839,8 +2841,10 @@ Occurrences:
 [14:4..14:11): `m8().` -> example/Methods#`m8().`().
 [15:2..15:3): m -> example/MethodUsages#m.
 [15:4..15:6): m9 -> example/Methods#m9().
+[15:7..15:10): ??? -> scala/Predef.`???`().
 [16:2..16:3): m -> example/MethodUsages#m.
 [16:4..16:7): m10 -> example/Methods#m10().
+[16:8..16:11): ??? -> scala/Predef.`???`().
 [17:2..17:3): m -> example/MethodUsages#m.
 [17:4..17:7): m11 -> example/Methods#m11().
 [17:8..17:14): Predef -> scala/Predef.
@@ -2849,8 +2853,10 @@ Occurrences:
 [18:8..18:15): Example -> example/Example.
 [19:2..19:3): m -> example/MethodUsages#m.
 [19:4..19:8): m12a -> example/Methods#m12a().
+[19:9..19:12): ??? -> scala/Predef.`???`().
 [20:2..20:3): m -> example/MethodUsages#m.
 [20:4..20:8): m12b -> example/Methods#m12b().
+[20:9..20:12): ??? -> scala/Predef.`???`().
 [21:2..21:3): m -> example/MethodUsages#m.
 [21:4..21:7): m13 -> example/Methods#m13().
 [22:2..22:3): m -> example/MethodUsages#m.
@@ -4047,7 +4053,7 @@ example/Synthetic#a2. => val method a2 Int
 example/Synthetic#as. => val method as LazyList[Int]
 example/Synthetic#f. => val method f Ordered[F]
 example/Synthetic#lst. => val method lst LazyList[Int]
-example/Synthetic#name. => val method name String
+example/Synthetic#name. => val method name String | Null
 example/Synthetic#ordering. => implicit val method ordering Ordering[F]
 example/Synthetic#s. => final object s extends Object { self: s.type => +5 decls }
 example/Synthetic#s.Bar# => case class Bar extends Object with Product with Serializable { self: Bar => +2 decls }

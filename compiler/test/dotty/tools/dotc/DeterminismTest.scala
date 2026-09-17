@@ -285,7 +285,7 @@ class DeterminismTest {
   @Test def testPackageObjectUserLand(): Unit = {
     def code = List(
       source("package.scala", "package userland; object `package` { type Throwy = java.lang.Throwable }\n"),
-      source("th.scala", "package userland; class th[T <: Throwy](cause: T = null)\n")
+      source("th.scala", "package userland; class th[T <: Throwy](cause: T = ???)\n")
     )
     test(code :: Nil)
   }

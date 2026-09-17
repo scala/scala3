@@ -169,12 +169,12 @@ class ExtractUsedNamesSpecification {
                     |}
                     |""".stripMargin
     val srcBar = """|object Bar {
-                    |  def bar: Outer.TypeInner = null
+                    |  def bar: Outer.TypeInner = ???
                     |}
                     |""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcFoo, srcBar)
-    val expectedNames = standardNames ++ Set("Outer", "TypeInner", "Inner", "Int")
+    val expectedNames = standardNames ++ Set("Outer", "TypeInner", "Inner", "Int", "???", "Nothing", "Predef")
     assertEquals(expectedNames, usedNames("Bar"))
   }
 

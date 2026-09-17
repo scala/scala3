@@ -77,14 +77,14 @@ Class
 covtest.Imperative
 readPerson
 243
-247
+246
 13
-<none>
-Literal
+???
+Ident
 false
 0
 false
-null
+???
 
 4
 ContextFunctions.scala
@@ -93,8 +93,8 @@ Imperative
 Class
 covtest.Imperative
 readPerson
-252
-309
+251
+308
 14
 onError
 Apply
@@ -110,8 +110,8 @@ Imperative
 Class
 covtest.Imperative
 $anonfun
-267
-294
+266
+293
 14
 apply
 Apply

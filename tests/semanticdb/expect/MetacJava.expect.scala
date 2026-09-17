@@ -14,7 +14,7 @@ class MetacJava/*<-example::MetacJava#*/ {
   val nonStatic/*<-example::MetacJava#nonStatic.*/ = new staticInner/*->example::MetacJava#staticInner.*/.NonStatic/*->com::javacp::MetacJava#StaticInner#NonStatic#*/()
   nonStatic/*->example::MetacJava#nonStatic.*/.method/*->com::javacp::MetacJava#StaticInner#NonStatic#method().*/(nonStatic/*->example::MetacJava#nonStatic.*/)
   javacp.MetacJava/*->com::javacp::MetacJava#*/.overload/*->com::javacp::MetacJava#overload(+2).*/(new javacp.MetacJava/*->com::javacp::MetacJava#*/.Overload3/*->com::javacp::MetacJava#Overload3#*/.A/*->com::javacp::MetacJava#Overload3#A#*/())
-  val interface/*<-example::MetacJava#interface.*/: javacp.Interface/*->com::javacp::Interface#*/ = null
+  val interface/*<-example::MetacJava#interface.*/: javacp.Interface/*->com::javacp::Interface#*/ = ???/*->scala::Predef.`???`().*/
   val coin/*<-example::MetacJava#coin.*/: javacp.Coin/*->com::javacp::Coin#*/ = javacp.Coin/*->com::javacp::Coin#*/.PENNY/*->com::javacp::Coin#PENNY.*/
-  val entry/*<-example::MetacJava#entry.*/: java.util.Map/*->java::util::Map#*/.Entry/*->java::util::Map#Entry#*/[Int/*->scala::Int#*/, Int/*->scala::Int#*/] = null
+  val entry/*<-example::MetacJava#entry.*/: java.util.Map/*->java::util::Map#*/.Entry/*->java::util::Map#Entry#*/[Int/*->scala::Int#*/, Int/*->scala::Int#*/] = ???/*->scala::Predef.`???`().*/
 }
