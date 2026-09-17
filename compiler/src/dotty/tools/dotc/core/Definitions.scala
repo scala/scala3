@@ -495,6 +495,8 @@ class Definitions {
 
   // Maybe-related
   @tu lazy val MaybeClass: ClassSymbol = requiredClass("scala.compiletime.Maybe")
+    @tu lazy val Maybe_isEmpty: Symbol = MaybeClass.requiredMethod("isEmpty")
+
   @tu lazy val ValidClass: ClassSymbol = requiredClass("scala.runtime.Valid")
   @tu lazy val FailClass: ClassSymbol = requiredClass("scala.runtime.Fail")
   @tu lazy val maybeModule: Symbol = requiredModule("scala.maybe")
