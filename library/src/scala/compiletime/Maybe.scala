@@ -7,9 +7,14 @@ import scala.util.{Ok, Err}
 
 /** Under experimental.maybe, a trait backing maybe types `T?` */
 @experimental
-sealed trait Maybe[+T, +E] extends Any, Matchable:
+sealed trait Maybe[+T, +E] extends Any, Matchable {
   def isEmpty: Boolean
-  def get: T
+
+  /** The `get` methiod needs to exist for pattern matching, but it is
+   *  not accessible to user programs.
+   */
+  private[compiletime] def get: T
+}
 
 object Maybe {
   extension [A, E](x: Maybe[A, E])

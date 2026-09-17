@@ -570,9 +570,20 @@ object SpaceEngine {
   def isSubType(tp1: Type, tp2: Type)(using Context): Boolean = trace(i"$tp1 <:< $tp2") {
     if tp1 == ConstantType(Constant(null)) && !ctx.mode.is(Mode.SafeNulls)
     then tp2 == ConstantType(Constant(null))
-    else if tp1.isTupleXXLExtract(tp2) then true // See isTupleXXLExtract, fixes TupleXXL parameter type
-    else tp1 <:< tp2
+    else
+      tp1.isTupleXXLExtract(tp2) // See isTupleXXLExtract, fixes TupleXXL parameter type
+      || tp1 <:< tp2
+      || tp1.widenSingleton.isNullType && isNullableMaybe(tp2)
   }
+
+  /** Is `tp` a maybe type `T ? E`, or bounded by one, where `E` admits `Unit`,
+   *  so that `null` is one of its values? For a concrete maybe type this coincides
+   *  with `Null <: T ? E`, but for an abstract type `X <: T ? E` the type comparer
+   *  does not conclude `Null <: X`, whereas the space of `X` does contain `null`.
+   */
+  private def isNullableMaybe(tp: Type)(using Context): Boolean = tp match
+    case MaybeType(_, errTp) => errTp.admitsUnit
+    case _ => false
 
   /** True if we can assume that the two unapply methods are the same.
    *  That is, given the same parameter, they return the same result.
