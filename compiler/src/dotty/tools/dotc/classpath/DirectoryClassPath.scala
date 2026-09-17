@@ -133,18 +133,19 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
   // and we have no way to query the file system for "entries without a dot in their name",
   // so might as well cache them
   private val allPackages = listFiles(dir).map(f => f.getFileName.toString)
+  private val emptyPathArray = Array.empty[Path]
 
-  private def listFiles(dir: Path): Seq[Path] =
-    val stream = Files.newDirectoryStream(dir)
-    try stream.asScala.toSeq
+  private def listFiles(dir: Path): Array[Path] =
+    val stream = Files.list(dir)
+    try stream.toArray(n => new Array[Path](n))
     finally stream.close()
 
   // e.g. "java.lang" -> Seq("/modules/java.base")
   // On a modern JDK there are 100s of packages,
   // most of which are never going to be needed because they're internal implementation details,
   // so we lazy-load modules from the ones we need
-  private val cachedPackageToModuleBases = mutable.Map.empty[String, Iterable[Path]]
-  private def packageToModuleBases(pkg: String): Iterable[Path] =
+  private val cachedPackageToModuleBases = mutable.Map.empty[String, Array[Path]]
+  private def packageToModuleBases(pkg: String): Array[Path] =
     cachedPackageToModuleBases.get(pkg) match
       case Some(ps) => ps
       case None =>
@@ -154,7 +155,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
         val moduleFiles =
           if allPackages.contains(pkg)
           then listFiles(dir.resolve(pkg)).map(_.toRealPath()) // toRealPath to follow symlinks
-          else Iterable.empty
+          else emptyPathArray
         cachedPackageToModuleBases(pkg) = moduleFiles
         moduleFiles
 
@@ -173,8 +174,8 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
     case Some(cs) => cs
     case None =>
       val cs = packageToModuleBases(inPackage)
-        .flatMap(pkg => listFiles(pkg.resolve(inPackage.replace('.', JFile.separatorChar))))
         .iterator
+        .flatMap(pkg => listFiles(pkg.resolve(inPackage.replace('.', JFile.separatorChar))))
         .map(f => f.toPlainFile)
         .filter(f => f.ext.isClass)
         .map(f => (f.name, BinaryFileEntry(f)))
