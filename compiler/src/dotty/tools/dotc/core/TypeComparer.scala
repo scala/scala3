@@ -706,26 +706,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // TODO: Merge with isSubInfo in hasMatchingMember. Currently, we can't since
             // the isSubinfo of hasMatchingMember has problems dealing with PolyTypes
             // (---> orphan params during pickling)
-            def isSubInfo(info1: Type, info2: Type): Boolean =
-              printOnAssertionError(i"error while subinfo $info1 <:< $info2"):
-                (info1, info2) match
-                  case (info1: PolyType, info2: PolyType) =>
-                    info1.paramNames.hasSameLengthAs(info2.paramNames)
-                    && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
-                  case (info1: MethodType, info2: MethodType) =>
-                    matchingMethodParams(info1, info2, precise = false)
-                    && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
-                  case (info1 @ CapturingType(parent1, refs1), info2: Type)
-                  if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
-                    compareCaptures(info1, refs1, info2)
-                      && isSubInfo(parent1, info2)
-                  case (info1: Type, CapturingType(parent2, _))
-                  if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
-                    val refs1 = info1.captureSet
-                    (refs1.isAlwaysEmpty || compareCaptures(info1, refs1, info2))
-                      && isSubInfo(info1, parent2)
-                  case _ =>
-                    isSubType(info1, info2)
+            def isSubInfo(info1: Type, info2: Type): Boolean = printOnAssertionError(i"error while subinfo $info1 <:< $info2"):
+              (info1, info2) match
+                case (info1: PolyType, info2: PolyType) =>
+                  info1.paramNames.hasSameLengthAs(info2.paramNames)
+                  && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
+                case (info1: MethodType, info2: MethodType) =>
+                  matchingMethodParams(info1, info2, precise = false)
+                  && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
+                case (info1 @ CapturingType(parent1, refs1), info2: Type)
+                if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
+                  compareCaptures(info1, refs1, info2)
+                    && isSubInfo(parent1, info2)
+                case (info1: Type, CapturingType(parent2, _))
+                if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
+                  val refs1 = info1.captureSet
+                  (refs1.isAlwaysEmpty || compareCaptures(info1, refs1, info2))
+                    && isSubInfo(info1, parent2)
+                case _ =>
+                  isSubType(info1, info2)
 
             if defn.isFunctionType(tp2) then
               if tp2.derivesFrom(defn.PolyFunctionClass) then
