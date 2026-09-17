@@ -106,7 +106,7 @@ class BisectOptionsTest extends munit.FunSuite:
   }
 
   test("invalid boolean value throws") {
-    intercept[Throwable] {
+    intercept[Exception] {
       parse("--dry-run=maybe", "compile", "foo.scala")
     }
   }
