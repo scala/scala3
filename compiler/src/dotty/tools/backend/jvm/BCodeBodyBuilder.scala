@@ -1270,7 +1270,13 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           case arg :: args1 =>
             btpes match
               case btpe :: btpes1 =>
-                genLoad(arg, btpe)
+                arg match
+                  case Ident(nme.WILDCARD) =>
+                    // It's possible to do this via a macro, but it's not something reasonable.
+                    report.error("Cannot use a Java annotation as a value.", arg.srcPos)
+                    bc.nullconst()
+                  case _ =>
+                    genLoad(arg, btpe)
                 stack.push(btpe)
                 loop(args1, btpes1)
               case _ =>
