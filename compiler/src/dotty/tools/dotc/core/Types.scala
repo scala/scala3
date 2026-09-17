@@ -1475,7 +1475,7 @@ object Types extends TypeUtils {
       case tp: HKTypeLambda =>
         tp.derivedLambdaType(resType = tp.resType.widenUnion)
       case tp @ FlexibleType(hi) =>
-        FlexibleType.derivedFlexibleType(tp, hi.widenUnionWithoutNull)
+        tp.derivedFlexibleType(hi.widenUnionWithoutNull)
       case tp =>
         tp
 
@@ -3474,11 +3474,6 @@ object Types extends TypeUtils {
       case tp: TypeRef => tp.symbol eq defn.FlexibleTypeSymbol
       case tp: HKTypeLambda => isInstance(tp.resType) || isTypeConstructor(tp.resType)
       case _ => false
-
-    def derivedFlexibleType(tp: Type, hi: Type)(using Context): Type =
-      tp match
-        case FlexibleType(hi0) if hi eq hi0 => tp
-        case _ => FlexibleType.make(hi)
 
     def make(tp: Type)(using Context): Type = tp match
       case tp @ FlexibleType(hi) => tp // tp is already flexible
@@ -6659,7 +6654,7 @@ object Types extends TypeUtils {
               range(OrNull(lo), hi)
             case _ =>
               if (hi.isExactlyNothing) hi
-              else FlexibleType.derivedFlexibleType(tp, hi)
+              else tp.derivedFlexibleType(hi)
           }
         case Range(tyconLo, tyconHi) =>
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))

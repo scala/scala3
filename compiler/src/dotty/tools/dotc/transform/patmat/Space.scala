@@ -971,7 +971,7 @@ object SpaceEngine {
     case tp: SingletonType                          => toUnderlying(tp.underlying)
     case tp: ExprType                               => toUnderlying(tp.resultType)
     case AnnotatedType(tp, annot)                   => AnnotatedType(toUnderlying(tp), annot)
-    case tp @ FlexibleType(hi)                      => FlexibleType.derivedFlexibleType(tp, toUnderlying(hi))
+    case tp @ FlexibleType(hi)                      => tp.derivedFlexibleType(toUnderlying(hi))
     case _                                          => tp
   })
 

@@ -35,7 +35,7 @@ object NullOpsDecorator:
             else tp
           case tp @ FlexibleType(hi) =>
             val hi1 = strip(hi)
-            if stripFlexibleTypes then hi1 else FlexibleType.derivedFlexibleType(tp, hi1)
+            if stripFlexibleTypes then hi1 else tp.derivedFlexibleType(hi1)
           case tp @ TypeBounds(lo, hi) =>
             tp.derivedTypeBounds(strip(lo), strip(hi))
           case tp => tp

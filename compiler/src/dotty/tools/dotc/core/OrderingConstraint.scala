@@ -558,7 +558,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       case CapturingType(parent, refs) =>
         tp.derivedCapturingType(recur(parent), refs)
       case tp @ FlexibleType(hi) =>
-        FlexibleType.derivedFlexibleType(tp, recur(hi))
+        tp.derivedFlexibleType(recur(hi))
       case tp: AnnotatedType =>
         tp.derivedAnnotatedType(recur(tp.parent), tp.annot)
       case _ =>

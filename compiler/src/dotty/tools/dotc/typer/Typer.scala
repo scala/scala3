@@ -1359,7 +1359,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
       def fromRepeated(pt: Type): Type = pt match
         case pt @ FlexibleType(hi) =>
-          FlexibleType.derivedFlexibleType(pt, fromRepeated(hi))
+          pt.derivedFlexibleType(fromRepeated(hi))
         case _ =>
           if ctx.mode.isQuotedPattern then
             // FIXME(#8680): Quoted patterns do not support Array repeated arguments
