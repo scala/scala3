@@ -134,8 +134,8 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
   // so might as well cache them
   private val allPackages = listFiles(dir).map(f => f.getFileName.toString)
 
-  private def listFiles(dir: Path, glob: String = "*"): Seq[Path] =
-    val stream = Files.newDirectoryStream(dir, glob)
+  private def listFiles(dir: Path): Seq[Path] =
+    val stream = Files.newDirectoryStream(dir)
     try stream.asScala.toSeq
     finally stream.close()
 
@@ -173,8 +173,11 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
     case Some(cs) => cs
     case None =>
       val cs = packageToModuleBases(inPackage)
-        .flatMap(pkg => listFiles(pkg.resolve(inPackage.replace('.', JFile.separatorChar)), "*.class"))
-        .map(x => (x.getFileName.toString, BinaryFileEntry(x.toPlainFile)))
+        .flatMap(pkg => listFiles(pkg.resolve(inPackage.replace('.', JFile.separatorChar))))
+        .iterator
+        .map(f => f.toPlainFile)
+        .filter(f => f.ext.isClass)
+        .map(f => (f.name, BinaryFileEntry(f)))
         .toMap
       cachedClasses(inPackage) = cs
       cs
