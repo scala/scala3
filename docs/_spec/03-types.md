@@ -500,7 +500,7 @@ If ´p = \epsilon´ or ´p´ is a package ref, the underlying type ´U´ is the 
 Otherwise, the underlying type ´U´ and whether ´p.x´ is a stable type are determined by [`memberType`](#member-type)`(´p´, ´x´)`.
 
 All term designators are concrete types.
-Outside the context of a `safeNulls` language import, if `scala.Null ´<: U´`, the term designator denotes the set of values consisting of `null` and the value denoted by ´t´, i.e., the value ´v´ for which `t eq v`.
+Within the context of an `unsafeNulls` language import, if `scala.Null ´<: U´`, the term designator denotes the set of values consisting of `null` and the value denoted by ´t´, i.e., the value ´v´ for which `t eq v`.
 Otherwise, the designator denotes the singleton set only containing ´v´.
 
 #### Type Designators
@@ -1494,7 +1494,7 @@ Note that the conditions are not all mutually exclusive.
 - `´(X´ match <: ´H´ { ... }´) <: T´` if ´H <: T´
 - `´(X´ match <: ´H_X´ { case ´P_1´ => ´A_1´; ...; case ´P_n´ => ´A_n´ }´) <: (Y´ match <: ´H_Y´ { case ´Q_1´ => ´B_1´; ...; ´Q_n´ => ´B_n´ }´)´` if ´X =:= Y´ and ´P_i =:= Q_i´ for each ´i´ and ´A_i <: B_i´ for each ´i´
 - `´S = (´=> ´S_1)´` and `´T = (´=> ´T_1)´` and ´S_1 <: T_1´.
-- outside the context of a `safeNulls` language import, `´S =´ scala.Null` and:
+- within the context of an `unsafeNulls` language import, `´S =´ scala.Null` and:
   - ´T = q.C[T_1, ..., T_n]´ with ´n \geq 0´ and ´C´ does not derive from `scala.AnyVal` and ´C´ is not the hidden class of an `object`, or
   - ´T = q.x´ is a term designator with underlying type ´U´ and `scala.Null ´<: U´`, or
   - `´T = T_1´ { ´R´ }` and `scala.Null ´<: T_1´`, or
