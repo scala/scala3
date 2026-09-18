@@ -28,3 +28,7 @@
    | You called the synchronized method on a boxed primitive. This might not be what
    | you intended.
     --------------------------------------------------------------------------------------------------------------------
+-- Deprecation Warning: tests/warn/17284.scala:14:7 --------------------------------------------------------------------
+14 |  true.hashCode() // warn: Any.hashCode is deprecated under explicit nulls
+   |  ^^^^^^^^^^^^^
+   |method hashCode in class Any is deprecated since 3.10.0: Any.hashCode does not handle `null` nor equality of primitive numbers; use ## instead
