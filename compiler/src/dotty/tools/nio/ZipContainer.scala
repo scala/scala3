@@ -60,6 +60,9 @@ private final class ZipContainer private(val underlying: File, version: String, 
   override def enclosing: Option[File] =
     None
 
+  override def isJar: Boolean =
+    underlying.extension.isJar
+
   override def entries: Iterable[FileSystemEntry] =
     rawEntries.values
 

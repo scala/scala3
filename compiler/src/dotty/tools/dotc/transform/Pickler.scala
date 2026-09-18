@@ -9,8 +9,6 @@ import tasty.*
 import config.Printers.{noPrinter, pickling}
 import config.Feature
 
-import java.io.PrintStream
-import io.FileWriters.TastyWriter
 import StdNames.{nme, str}
 import Periods.*
 import Phases.*
@@ -21,11 +19,12 @@ import collection.mutable
 import util.concurrent.Executor
 
 import compiletime.uninitialized
-import dotty.tools.io.{AbstractFile, JarArchive, VirtualFile}
+import dotty.tools.nio.*
 import dotty.tools.dotc.printing.OutlinePrinter
 
 import scala.annotation.constructorOnly
 import scala.concurrent.Promise
+import scala.io.Codec
 import dotty.tools.dotc.transform.Pickler.*
 import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import dotty.tools.dotc.sbt.asyncZincPhasesCompleted
@@ -34,7 +33,6 @@ import dotty.tools.dotc.util.chaining.*
 
 import scala.concurrent.ExecutionContext
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
-import java.nio.file.Files
 import java.util.ConcurrentModificationException
 
 object Pickler {
@@ -51,7 +49,7 @@ object Pickler {
    * The callbacks should only be called once.
    */
   class AsyncTastyHolder private (
-      val earlyOut: Option[AbstractFile], incCallback: IncrementalCallback | Null)(using @constructorOnly ex: ExecutionContext):
+      val earlyOut: Option[FileContainer], incCallback: IncrementalCallback | Null)(using @constructorOnly ex: ExecutionContext):
     import scala.concurrent.Future as StdFuture
     import scala.concurrent.Await
     import scala.concurrent.duration.Duration
@@ -103,9 +101,7 @@ object Pickler {
           // when we are done, i.e. no suspended units,
           // we should close the file system so it can be read in the same JVM process.
           // Note: we close even if we have been cancelled.
-          earlyOut match
-            case Some(jar: JarArchive) => jar.close()
-            case _ =>
+          earlyOut.foreach(_.close())
         catch
           case ex: Exception =>
             ctx.reporter.error(em"Error closing early output: $ex")
@@ -317,9 +313,7 @@ class Pickler extends Phase {
   override def skipIfJava(using Context): Boolean = false
 
   private def output(name: String, msg: String) = {
-    val s = new PrintStream(name)
-    s.print(msg)
-    s.close
+    File.getOrCreateOnDisk(name).writeText(msg, Codec.UTF8)
   }
 
   // Maps that keep a record if -Ytest-pickler is set.
@@ -526,10 +520,9 @@ class Pickler extends Phase {
       )
     if ctx.isBestEffort then
       val outpath =
-        ctx.settings.outputDir.value.jpath.nn.toAbsolutePath.normalize
-          .resolve("META-INF")
-          .resolve("best-effort")
-      Files.createDirectories(outpath)
+        ctx.settings.outputDir.value
+          .getOrCreateContainer("META-INF")
+          .getOrCreateContainer("best-effort")
       BestEffortTastyWriter.write(outpath, result)
     result
   }

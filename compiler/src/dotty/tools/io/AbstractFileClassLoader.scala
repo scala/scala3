@@ -13,22 +13,22 @@
 package dotty.tools
 package io
 
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.*
 
 import java.net.{URL, URLConnection, URLStreamHandler}
 import java.util.Collections
 
-class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader) extends ClassLoader(parent):
+class AbstractFileClassLoader(val root: FileContainer, parent: ClassLoader) extends ClassLoader(parent):
   // on JDK 20 the URL constructor we're using is deprecated,
   // but the recommended replacement, URL.of, doesn't exist on JDK 17
   @annotation.nowarn("cat=deprecation")
   override protected def findResource(name: String): URL | Null =
-    root.lookupPath(name, '/', directory = false) match
+    root.getFile(name, separator = '/') match
       case None => null
       case Some(file) => new URL(null, s"memory:${file.path}", new URLStreamHandler {
         override def openConnection(url: URL): URLConnection = new URLConnection(url) {
           override def connect() = ()
-          override def getInputStream = file.input
+          override def getInputStream = file.input()
         }
       })
   override protected def findResources(name: String): java.util.Enumeration[URL] =
@@ -37,9 +37,9 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader) exten
       case url  => Collections.enumeration(Collections.singleton(url))
 
   override def findClass(name: String): Class[?] = {
-    root.lookupPath(name, '.', lastSuffix = ".class", directory = false) match
+    root.getFile(name, FileExtension("class"), separator = '.') match
       case None => throw new ClassNotFoundException(name)
-      case Some(file) => defineClass(name, file.toByteArray)
+      case Some(file) => defineClass(name, file.readBytes())
   }
 
   // overrideable for the REPL
