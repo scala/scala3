@@ -3,7 +3,7 @@
 package Foos
 
 object Outer {
-  case class X() // warn
-  object x
+  case class X()
+  object x // warn
 }
 
