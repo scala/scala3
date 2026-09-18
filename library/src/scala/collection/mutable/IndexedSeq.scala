@@ -16,11 +16,17 @@ package mutable
 import scala.language.`2.13`
 import language.experimental.captureChecking
 
+/** Base trait for mutable indexed sequences: mutable sequences with efficient
+ *  random access and `length`.
+ *
+ *  @tparam T the element type of the sequence
+ */
 trait IndexedSeq[T] extends Seq[T]
   with scala.collection.IndexedSeq[T]
   with IndexedSeqOps[T, IndexedSeq, IndexedSeq[T]]
   with IterableFactoryDefaults[T, IndexedSeq] {
 
+  /** The factory used to build mutable indexed sequences, the [[IndexedSeq$ `IndexedSeq`]] companion object, which delegates to [[ArrayBuffer]]. */
   override def iterableFactory: SeqFactory[IndexedSeq] = IndexedSeq
 }
 
