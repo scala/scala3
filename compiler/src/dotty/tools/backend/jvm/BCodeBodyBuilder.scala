@@ -1270,7 +1270,13 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           case arg :: args1 =>
             btpes match
               case btpe :: btpes1 =>
-                genLoad(arg, btpe)
+                arg match
+                  case Ident(nme.WILDCARD) =>
+                    // Default value for a Java annotation, used as a value (e.g., by a macro).
+                    // Not clear what we could do here at this point.
+                    bc.nullconst()
+                  case _ =>
+                    genLoad(arg, btpe)
                 stack.push(btpe)
                 loop(args1, btpes1)
               case _ =>
