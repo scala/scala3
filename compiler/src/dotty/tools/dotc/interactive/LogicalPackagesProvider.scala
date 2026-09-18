@@ -6,9 +6,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.parsing.JavaParsers
 import dotty.tools.dotc.parsing.Parsers
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.io.AbstractFile
-import dotty.tools.io.FileExtension
-import dotty.tools.io.Path
+import dotty.tools.nio.*
 import dotty.tools.dotc.classpath.ClassPath
 
 import scala.io.Codec
@@ -37,9 +35,9 @@ class LogicalPackagesProvider(sourcePath: String) {
 
   private def parseSourceFile(sourceFile: SourceFile, rootPackage: ParsedLogicalPackage)(using Context): Unit =
     val fileName = sourceFile.path
-    if sourceFile.ext ==  FileExtension.Scala then
+    if sourceFile.ext.isScala then
       parseScalaSourceFile(sourceFile, rootPackage)
-    else if sourceFile.ext == FileExtension.Java then
+    else if sourceFile.ext.isJava then
       parseJavaSourceFile(sourceFile, rootPackage)
 
   private def parseScalaSourceFile(sourceFile: SourceFile, rootPackage: ParsedLogicalPackage)(using Context): Unit =
@@ -118,29 +116,28 @@ class LogicalPackagesProvider(sourcePath: String) {
   /**
    * Return all Scala and Java sources from the given sourcepath string.
    */
-  private def allSources(srcPath: String)(using Context): Seq[AbstractFile] = {
+  private def allSources(srcPath: String)(using Context): Iterable[File] = {
     val entries = ClassPath.split(srcPath)
     def isRelevantFile(path: String) =
-      path.endsWith(FileExtension.Scala.withDot) || path.endsWith(FileExtension.Java.withDot)
+      path.endsWith(".scala") || path.endsWith(".java")
     // avoid using IO operation, assume standard extensions, Metals sends files so no sense checking for directories eagerly
     val rootDirs = entries.filter(f => !isRelevantFile(f))
     val rootFiles = for {
       e <- entries
       if isRelevantFile(e)
-      f <- Option(AbstractFile.getFile(e))
+      f <- File.getOnDisk(e)
     } yield f
-    rootFiles ++ rootDirs.flatMap { dir =>
-      Option(AbstractFile.getDirectory(dir, ctx.settings.javaOutputVersion.value)).toSeq.flatMap(sourcesIn(_, FileExtension.Scala.toLowerCase, FileExtension.Java.toLowerCase))
-    }
+    rootDirs.flatMap { dir =>
+      FileContainer.getOnDisk(dir).toSeq.flatMap(sourcesIn(_, "scala", "java"))
+    }.concat(rootFiles)
   }
 
   /**
    * Recursively find all source files with given extensions in a directory.
    */
-  private def sourcesIn(dir: AbstractFile, extensions: String*)(using Context): Seq[AbstractFile] =
-    dir.iterator.toSeq.flatMap { file =>
-      if (file.isDirectory) sourcesIn(file, extensions*)
-      else if (extensions.exists(ext => file.name.endsWith(s".$ext"))) Seq(file)
-      else Seq.empty[AbstractFile]
-    }
+  private def sourcesIn(dir: FileContainer, extensions: String*)(using Context): Iterable[File] =
+    dir.entries.collect {
+      case c: FileContainer => sourcesIn(c, extensions*)
+      case f: File if extensions.exists(f.extension.is) => Seq(f)
+    }.flatten
 }

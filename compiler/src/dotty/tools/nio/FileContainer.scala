@@ -1,6 +1,13 @@
 package dotty.tools.nio
 
+import java.util.zip.Deflater
+
 object FileContainer:
+  /** The default JAR version, for use with `getFromFile` */
+  val DefaultJarVersion: String = ""
+  /** The default compression level, for use with `getFromFile` */
+  val DefaultCompressionLevel: Int = Deflater.DEFAULT_COMPRESSION
+
   /** Gets the current working directory on disk. */
   def workingDirectory(): FileContainer =
     DiskDirectory.workingDirectory()
@@ -42,6 +49,9 @@ object FileContainer:
     else path + extension.withDot
 
 abstract class FileContainer extends FileSystemEntry:
+  /** Whether this container is a JAR. */
+  def isJar: Boolean
+
   /** All file system entries directly contained by this container. */
   def entries: Iterable[FileSystemEntry]
 

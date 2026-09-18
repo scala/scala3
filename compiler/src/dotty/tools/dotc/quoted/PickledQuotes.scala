@@ -19,7 +19,7 @@ import scala.quoted.Quotes
 import scala.quoted.runtime.impl.*
 import scala.collection.mutable
 import QuoteUtils.*
-import dotty.tools.io.VirtualFile
+import dotty.tools.nio.*
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 
 object PickledQuotes {
@@ -224,7 +224,7 @@ object PickledQuotes {
       else new TypeImpl(arg, SpliceScope.getCurrent)
     }
 
-  // TASTY picklingtests/pos/quoteTest.scala
+  // TASTY pickling
 
   /** Pickle tree into it's TASTY bytes s*/
   private def pickle(tree: Tree)(using Context): Array[Byte] = {
@@ -241,6 +241,8 @@ object PickledQuotes {
     quotePickling.println(s"**** pickled quote\n${TastyPrinter.showContents(pickled, ctx.settings.color.value == "never", isBestEffortTasty = false)}")
     pickled
   }
+
+  private val unpicklingVirtualRoot = FileContainer.createInMemory("unpickling-root")
 
   /** Unpickle TASTY bytes into it's tree */
   private def unpickle(pickled: String | List[String], isType: Boolean)(using Context): Tree = {
@@ -280,7 +282,9 @@ object PickledQuotes {
           quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never", isBestEffortTasty = false)}")
 
           val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
-          val unpickler = new DottyUnpickler(new VirtualFile("bytes", bytes), isBestEffortTasty = false, mode)
+          val file = unpicklingVirtualRoot.getOrCreateFile("bytes")
+          file.writeBytes(bytes)
+          val unpickler = new DottyUnpickler(file, isBestEffortTasty = false, mode)
           unpickler.enter(Set.empty)
 
           val tree = unpickler.tree

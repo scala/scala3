@@ -16,7 +16,7 @@ import ast.untpd.Modifiers
 import backend.sjs.JSDefinitions
 import printing.Texts.{*, given}
 import printing.Printer
-import io.AbstractFile
+import nio.File
 import util.common.*
 import util.NoSourcePosition
 import typer.Checking.checkNonCyclic
@@ -169,7 +169,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(using Context): Nothing = {
     val ex = new BadSignature(
-      i"""error reading Scala signature of $classRoot from $source:
+      i"""error reading Scala signature of $classRoot from ${source.path}:
          |error occurred at position $readIndex: $msg""")
     if (ctx.settings.YdebugMissingRefs.value) original.getOrElse(ex).printStackTrace()
     throw ex
@@ -222,7 +222,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case ex: RuntimeException => handleRuntimeException(ex)
     }
 
-  def source(using Context): AbstractFile = {
+  def source(using Context): File = {
     val f = classRoot.symbol.associatedFile
     if (f != null)
       f
