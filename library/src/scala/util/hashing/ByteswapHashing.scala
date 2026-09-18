@@ -21,6 +21,10 @@ import scala.language.`2.13`
  */
 final class ByteswapHashing[T] extends Hashing[T] {
 
+  /** Computes the hash code of a value by applying the byteswap32 algorithm to its default hash code.
+   *
+   *  @param v the value to be hashed
+   */
   def hash(v: T) = byteswap32(v.##)
 
 }

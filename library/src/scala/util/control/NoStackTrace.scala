@@ -23,12 +23,20 @@ import scala.language.`2.13`
  *  @note Since JDK 1.7, a similar effect can be achieved with `class Ex extends Throwable(..., writableStackTrace = false)`
  */
 trait NoStackTrace extends Throwable {
+  /** Overrides the default stack trace filling behavior to optionally suppress stack traces for efficiency.
+   *
+   *  @return this `Throwable` instance without filling in the stack trace if suppression is enabled, otherwise the result of the superclass implementation
+   */
   override def fillInStackTrace(): Throwable =
     if (NoStackTrace.noSuppression) super.fillInStackTrace()
     else this
 }
 
 object NoStackTrace {
+  /** Returns whether stack trace suppression is disabled globally,
+   *  as requested by setting the system property
+   *  `scala.control.noTraceSuppression` to `true` at startup.
+   */
   final def noSuppression = _noSuppression
 
   // two-stage init to make checkinit happy, since sys.SystemProperties.noTraceSuppression.value calls back into NoStackTrace.noSuppression
