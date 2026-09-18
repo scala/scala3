@@ -16,7 +16,7 @@ import scala.collection.mutable.ArrayBuffer
  * A representation of the compiler's class- or sourcepath.
  */
 trait ClassPath {
-  def asURLs: Seq[URL] = Seq.empty
+  def asURLs: Iterable[URL] = Seq.empty
   def hasPackage(pkg: String): Boolean = false
   def packages(inPackage: String): Iterable[String] = Seq.empty
   def classes(inPackage: String): Iterable[BinaryFileEntry] = Seq.empty
