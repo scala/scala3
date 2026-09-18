@@ -3450,7 +3450,6 @@ object Types extends TypeUtils {
    * `T | Null .. T`, so that `T | Null <: FlexibleType(T) <: T`.
    * A flexible type will be erased to its original type `T`.
    */
-
   object FlexibleType:
     def apply(tp: Type)(using Context): Type =
       assert(tp.isValueType, s"Should not flexify ${tp}")
