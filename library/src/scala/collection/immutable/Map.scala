@@ -34,8 +34,23 @@ trait Map[K, +V]
      with MapOps[K, V, Map, Map[K, V]]
      with MapFactoryDefaults[K, V, Map, Iterable] {
 
+  /** Returns the `immutable.Map` companion object as the factory for maps of this kind. */
   override def mapFactory: scala.collection.MapFactory[Map] = Map
 
+  /** Returns this map, typed as an immutable `Map[K2, V2]`.
+   *
+   *  Since this map is already immutable, a non-empty default map implementation is
+   *  returned unchanged, without copying; implementations with a reified key type,
+   *  such as sorted maps, are rebuilt as a default `Map`. Any empty map yields the
+   *  shared `Map.empty`, so an empty `HashMap`, `ListMap` or `VectorMap` is not
+   *  returned unchanged.
+   *
+   *  @tparam K2 the key type of the resulting map, a supertype of `K`
+   *  @tparam V2 the value type of the resulting map, a supertype of `V`
+   *  @param ev evidence that the element type `(K, V)` conforms to `(K2, V2)`;
+   *            never called
+   *  @return this map, widened to `Map[K2, V2]`
+   */
   override final def toMap[K2, V2](implicit ev: (K, V) <:< (K2, V2)): Map[K2, V2] = Map.from(this.asInstanceOf[Map[K2, V2]])
 
   /** The same map with a given default function.
@@ -78,6 +93,9 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
     with collection.MapOps[K, V, CC, C]
     with caps.Pure {
 
+  /** Returns this map, typed as both the concrete map type `C` and `CC[K, V]`,
+   *  so that it can be used where either type is required.
+   */
   protected def coll: C & CC[K, V]
 
   /** Removes a key from this map, returning a new map.
@@ -93,6 +111,15 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
    */
   @`inline` final def - (key: K): C = removed(key)
 
+  /** Returns a $coll with the two given keys and all keys in `keys` removed, by
+   *  chaining `removed`.
+   *
+   *  @param key1 the first key to remove
+   *  @param key2 the second key to remove
+   *  @param keys the remaining keys to remove
+   *  @return a $coll without bindings for any of the given keys; the built-in
+   *          immutable maps return themselves when none of the keys is bound
+   */
   @deprecated("Use -- with an explicit collection", "2.13.0")
   def - (key1: K, key2: K, keys: K*): C = removed(key1).removed(key2).removedAll(keys)
 
@@ -160,6 +187,13 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
    */
   def transform[W](f: (K, V) => W): CC[K, W] = map { case (k, v) => (k, f(k, v)) }
 
+  /** Returns an immutable set of the keys contained in this map.
+   *
+   *  The returned set holds a reference to this map and reads the keys from it
+   *  lazily, rather than copying them.
+   *
+   *  @return a set containing the keys of this map
+   */
   override def keySet: Set[K] = new LazyImmutableKeySet
 
   /** The implementation class of the set returned by `keySet`. */
@@ -183,6 +217,16 @@ transparent trait StrictOptimizedMapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?]
     with collection.StrictOptimizedMapOps[K, V, CC, C]
     with StrictOptimizedIterableOps[(K, V), Iterable, C] {
 
+  /** Returns a $coll containing the key/value pairs of this $coll followed
+   *  by those of `that`, built eagerly by adding the pairs one at a time to this
+   *  $coll, so an empty `that` leaves this $coll itself as the result.
+   *
+   *  Pairs in `that` override pairs of this $coll with the same key.
+   *
+   *  @tparam V1 the value type of the returned map, a supertype of `V`
+   *  @param that the key/value pairs to add
+   *  @return a $coll with the combined bindings
+   */
   override def concat [V1 >: V](that: collection.IterableOnce[(K, V1)]^): CC[K, V1] = {
     var result: CC[K, V1] = coll
     val it = that.iterator
@@ -199,42 +243,129 @@ transparent trait StrictOptimizedMapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?]
 @SerialVersionUID(3L)
 object Map extends MapFactory[Map] {
 
+  /** An immutable map that wraps `underlying` and adds a default function,
+   *  used by `apply` when a requested key is not present.
+   *
+   *  Only `apply` uses the default; `get`, `contains`, `iterator`, and other
+   *  queries are unaffected. Operations that produce a map of the same type,
+   *  such as `updated`, `removed`, `concat`, and `filter`, preserve the
+   *  default; transformations to other element types, such as `map` and
+   *  `flatMap`, return maps without it.
+   *
+   *  @tparam K the type of the keys in this map
+   *  @tparam V the type of the values associated with the keys
+   *  @param underlying the map providing the actual bindings
+   *  @param defaultValue the function computing a default value for a missing key
+   */
   @SerialVersionUID(3L)
   class WithDefault[K, +V](val underlying: Map[K, V], val defaultValue: K -> V)
     extends AbstractMap[K, V]
       with MapOps[K, V, Map, WithDefault[K, V]] with Serializable {
 
+    /** Returns the value associated with `key` in the underlying map as an
+     *  option. The default value is not used.
+     *
+     *  @param key the key value
+     *  @return an option value containing the value associated with `key`, or
+     *          `None` if `key` is not present in the underlying map
+     */
     def get(key: K): Option[V] = underlying.get(key)
 
+    /** Defines the default value computation for the map, returned by `apply`
+     *  when a key is not found.
+     *
+     *  @param key the given key value for which a binding is missing
+     *  @return the result of applying `defaultValue` to `key`
+     */
     override def default(key: K): V = defaultValue(key)
 
+    /** Returns the factory for `Iterable` collections used by the underlying map. */
     override def iterableFactory: IterableFactory[Iterable] = underlying.iterableFactory
 
+    /** Returns an iterator over the key/value pairs of the underlying map. */
     def iterator: Iterator[(K, V)] = underlying.iterator
 
+    /** Returns `true` if the underlying map contains no bindings. */
     override def isEmpty: Boolean = underlying.isEmpty
 
+    /** Returns the factory of the underlying map. Maps it builds do not have a default value. */
     override def mapFactory: MapFactory[Map] = underlying.mapFactory
 
+    /** Returns a new `WithDefault` map containing the bindings of the
+     *  underlying map followed by those of `xs`, with the same default value
+     *  function as this map.
+     *
+     *  Bindings in `xs` override bindings of this map with the same key.
+     *
+     *  @tparam V2 the value type of the returned map, a supertype of `V`
+     *  @param xs the key/value pairs to add
+     *  @return a new `WithDefault` map with the combined bindings and this map's default
+     */
     override def concat [V2 >: V](xs: collection.IterableOnce[(K, V2)]^): WithDefault[K, V2] =
       new WithDefault(underlying.concat(xs), defaultValue)
 
+    /** Returns a new `WithDefault` map with the binding for `key` removed from
+     *  the underlying map, and with the same default value function as this map.
+     *
+     *  @param key the key to remove
+     *  @return a new `WithDefault` map without a binding for `key`
+     */
     def removed(key: K): WithDefault[K, V] = new WithDefault[K, V](underlying.removed(key), defaultValue)
 
+    /** Returns a new `WithDefault` map with `key` bound to `value`, replacing
+     *  any existing binding, and with the same default value function as this
+     *  map.
+     *
+     *  @tparam V1 the type of the added value, a supertype of `V`
+     *  @param key the key
+     *  @param value the value
+     *  @return a new `WithDefault` map with the binding added and this map's default
+     */
     def updated[V1 >: V](key: K, value: V1): WithDefault[K, V1] =
       new WithDefault[K, V1](underlying.updated(key, value), defaultValue)
 
+    /** Returns a new, empty `WithDefault` map with the same default value function as this map. */
     override def empty: WithDefault[K, V] = new WithDefault[K, V](underlying.empty, defaultValue)
 
+    /** Returns a new `WithDefault` map containing the elements of `coll` and
+     *  the same default value function as this map.
+     *
+     *  @param coll the key/value pairs for the new map
+     *  @return a new `WithDefault` map with those bindings and this map's default
+     */
     override protected def fromSpecific(coll: (collection.IterableOnce[(K, V)]^) @uncheckedVariance): WithDefault[K, V] =
       new WithDefault[K, V](mapFactory.from(coll), defaultValue)
 
+    /** Returns a builder that produces a `WithDefault` map with the same default value function as this map. */
     override protected def newSpecificBuilder: Builder[(K, V), WithDefault[K, V]] @uncheckedVariance =
       Map.newBuilder.mapResult((p: Map[K, V]) => new WithDefault[K, V](p, defaultValue))
   }
 
+  /** Returns the empty immutable map.
+   *
+   *  A single empty map instance is shared: the same instance is returned for
+   *  every call, cast to the requested key and value types.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   *  @return the empty immutable map
+   */
   def empty[K, V]: Map[K, V] = EmptyMap.asInstanceOf[Map[K, V]]
 
+  /** Returns an immutable map containing the key/value pairs of `it`.
+   *
+   *  An empty `Iterable` yields the shared empty map. Otherwise, if `it` is already
+   *  one of the default immutable map implementations, such as a `HashMap`,
+   *  `ListMap`, `VectorMap`, or one of the specialized small maps, it is returned
+   *  unchanged. In every other case, including for maps with a reified key type such
+   *  as sorted maps, a new map is built from its elements, with later bindings
+   *  overriding earlier ones with the same key.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   *  @param it the source collection of key/value pairs
+   *  @return an immutable map with the bindings of `it`
+   */
   def from[K, V](it: IterableOnce[(K, V)]^): Map[K, V] =
     (it: @unchecked) match {
       case it: Iterable[?] if it.isEmpty => empty[K, V]
@@ -261,6 +392,13 @@ object Map extends MapFactory[Map] {
       case _ => newBuilder[K, V].addAll(it).result()
     }
 
+  /** Returns a new builder for an immutable map.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   *  @return a builder that produces the specialized small maps for up to four
+   *          distinct keys, and a `HashMap` beyond that
+   */
   def newBuilder[K, V]: Builder[(K, V), Map[K, V]] = new MapBuilderImpl
 
   @SerialVersionUID(3L)
@@ -283,37 +421,118 @@ object Map extends MapFactory[Map] {
     }
   }
 
+  /** An immutable map with exactly one binding, stored directly in fields.
+   *
+   *  @tparam K the type of the key
+   *  @tparam V the type of the value
+   *  @param key1 the key of the single binding
+   *  @param value1 the value of the single binding
+   */
   @SerialVersionUID(3L)
   final class Map1[K, +V](key1: K, value1: V) extends AbstractMap[K, V] with StrictOptimizedIterableOps[(K, V), Iterable, Map[K, V]] with Serializable {
+    /** Returns `1`: this map has exactly one binding. */
     override def size: Int = 1
+    /** Returns `1`: the size is always known. */
     override def knownSize: Int = 1
+    /** Returns `false`: this map always has one binding. */
     override def isEmpty: Boolean = false
+    /** Returns the value associated with `key`.
+     *
+     *  @param key the key to look up
+     *  @return the value associated with `key`
+     *  @throws NoSuchElementException if `key` is not the key of this map
+     */
     override def apply(key: K): V = if (key == key1) value1 else throw new NoSuchElementException("key not found: " + key)
+    /** Returns `true` if `key` is the key of this map, `false` otherwise.
+     *
+     *  @param key the key to test
+     */
     override def contains(key: K): Boolean = key == key1
+    /** Returns the value associated with `key` as an option.
+     *
+     *  @param key the key to look up
+     *  @return `Some` of the value associated with `key`, or `None` if `key`
+     *          is not the key of this map
+     */
     def get(key: K): Option[V] =
       if (key == key1) Some(value1) else None
+    /** Returns the value associated with `key`, or `default` if `key` is not
+     *  present.
+     *
+     *  @tparam V1 the type of the result, a supertype of `V`
+     *  @param key the key to look up
+     *  @param default the value to return if `key` is not present; evaluated
+     *                 only in that case
+     *  @return the value associated with `key`, or the value of `default`
+     */
     override def getOrElse [V1 >: V](key: K, default: => V1): V1 =
       if (key == key1) value1 else default
+    /** Returns an iterator over the single key/value pair of this map. */
     def iterator: Iterator[(K, V)] = Iterator.single((key1, value1))
+    /** Returns an iterator over the single key of this map. */
     override def keysIterator: Iterator[K] = Iterator.single(key1)
+    /** Returns an iterator over the single value of this map. */
     override def valuesIterator: Iterator[V] = Iterator.single(value1)
+    /** Returns a new map with `key` bound to `value`.
+     *
+     *  If `key` equals the key of this map, returns a new `Map1` with the
+     *  value replaced; otherwise returns a `Map2` with both bindings.
+     *
+     *  @tparam V1 the type of the added value, a supertype of `V`
+     *  @param key the key
+     *  @param value the value
+     *  @return a new map of one or two bindings containing `key -> value`
+     */
     def updated[V1 >: V](key: K, value: V1): Map[K, V1] =
       if (key == key1) new Map1(key1, value)
       else new Map2(key1, value1, key, value)
+    /** Returns the empty map if `key` is the key of this map, or this map
+     *  itself otherwise.
+     *
+     *  @param key the key to remove
+     *  @return a map without a binding for `key`
+     */
     def removed(key: K): Map[K, V] =
       if (key == key1) Map.empty else this
+    /** Applies `f` to the single key/value pair of this map.
+     *
+     *  @tparam U the result type of `f`; the result is discarded
+     *  @param f the function to apply
+     */
     override def foreach[U](f: ((K, V)) => U): Unit = {
       f((key1, value1))
     }
+    /** Returns `true` if the single key/value pair of this map satisfies `p`.
+     *
+     *  @param p the predicate to test
+     */
     override def exists(p: ((K, V)) => Boolean): Boolean = p((key1, value1))
+    /** Returns `true` if the single key/value pair of this map satisfies `p`.
+     *  With exactly one binding, `forall` and `exists` coincide.
+     *
+     *  @param p the predicate to test
+     */
     override def forall(p: ((K, V)) => Boolean): Boolean = p((key1, value1))
     override protected[collection] def filterImpl(pred: ((K, V)) => Boolean, isFlipped: Boolean): Map[K, V] =
       if (pred((key1, value1)) != isFlipped) this else Map.empty
+    /** Returns a map obtained by applying `f` to the key and value of this map.
+     *
+     *  If the transformed value is reference-equal to the current value, this
+     *  map itself is returned; otherwise a new `Map1` with the same key and
+     *  the transformed value.
+     *
+     *  @tparam W the type of the transformed value
+     *  @param f the transformation function, applied to the key and value
+     *  @return a one-binding map with the same key and the transformed value
+     */
     override def transform[W](f: (K, V) => W): Map[K, W] = {
       val walue1 = f(key1, value1)
       if (walue1.asInstanceOf[AnyRef] eq value1.asInstanceOf[AnyRef]) this.asInstanceOf[Map[K, W]]
       else new Map1(key1, walue1)
     }
+    /** Returns a hash code computed with MurmurHash3 from the single key/value
+     *  pair, equal to the hash code of any other map with the same binding.
+     */
     override def hashCode(): Int = {
       import scala.util.hashing.MurmurHash3
       var a, b = 0
@@ -333,30 +552,70 @@ object Map extends MapFactory[Map] {
     }
   }
 
+  /** An immutable map with exactly two bindings, stored directly in fields.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   *  @param key1 the key of the first binding
+   *  @param value1 the value of the first binding
+   *  @param key2 the key of the second binding
+   *  @param value2 the value of the second binding
+   */
   @SerialVersionUID(3L)
   final class Map2[K, +V](key1: K, value1: V, key2: K, value2: V) extends AbstractMap[K, V] with StrictOptimizedIterableOps[(K, V), Iterable, Map[K, V]] with Serializable {
+    /** Returns `2`: this map has exactly two bindings. */
     override def size: Int = 2
+    /** Returns `2`: the size is always known. */
     override def knownSize: Int = 2
+    /** Returns `false`: this map always has two bindings. */
     override def isEmpty: Boolean = false
+    /** Returns the value associated with `key`.
+     *
+     *  @param key the key to look up
+     *  @return the value associated with `key`
+     *  @throws NoSuchElementException if `key` is not a key of this map
+     */
     override def apply(key: K): V =
       if (key == key1) value1
       else if (key == key2) value2
       else throw new NoSuchElementException("key not found: " + key)
+    /** Returns `true` if `key` is one of the keys of this map, `false` otherwise.
+     *
+     *  @param key the key to test
+     */
     override def contains(key: K): Boolean = (key == key1) || (key == key2)
+    /** Returns the value associated with `key` as an option.
+     *
+     *  @param key the key to look up
+     *  @return `Some` of the value associated with `key`, or `None` if `key`
+     *          is not a key of this map
+     */
     def get(key: K): Option[V] =
       if (key == key1) Some(value1)
       else if (key == key2) Some(value2)
       else None
+    /** Returns the value associated with `key`, or `default` if `key` is not
+     *  present.
+     *
+     *  @tparam V1 the type of the result, a supertype of `V`
+     *  @param key the key to look up
+     *  @param default the value to return if `key` is not present; evaluated
+     *                 only in that case
+     *  @return the value associated with `key`, or the value of `default`
+     */
     override def getOrElse [V1 >: V](key: K, default: => V1): V1 =
       if (key == key1) value1
       else if (key == key2) value2
       else default
+    /** Returns an iterator over the two key/value pairs of this map. */
     def iterator: Iterator[(K, V)] = new Map2Iterator[(K, V)] {
       override protected def nextResult(k: K, v: V): (K, V) = (k, v)
     }
+    /** Returns an iterator over the two keys of this map. */
     override def keysIterator: Iterator[K] = new Map2Iterator[K] {
       override protected def nextResult(k: K, v: V): K = k
     }
+    /** Returns an iterator over the two values of this map. */
     override def valuesIterator: Iterator[V] = new Map2Iterator[V] {
       override protected def nextResult(k: K, v: V): V = v
     }
@@ -376,18 +635,51 @@ object Map extends MapFactory[Map] {
       override def drop(n: Int): Iterator[A] = { i += n; this }
       protected def nextResult(k: K, v: V @uncheckedVariance): A
     }
+    /** Returns a new map with `key` bound to `value`.
+     *
+     *  If `key` equals one of the keys of this map, returns a new `Map2` with
+     *  that key's value replaced; otherwise returns a `Map3` with the new
+     *  binding added after the existing ones.
+     *
+     *  @tparam V1 the type of the added value, a supertype of `V`
+     *  @param key the key
+     *  @param value the value
+     *  @return a new map of two or three bindings containing `key -> value`
+     */
     def updated[V1 >: V](key: K, value: V1): Map[K, V1] =
       if (key == key1) new Map2(key1, value, key2, value2)
       else if (key == key2) new Map2(key1, value1, key2, value)
       else new Map3(key1, value1, key2, value2, key, value)
+    /** Returns a `Map1` of the remaining binding if `key` is a key of this
+     *  map, or this map itself otherwise.
+     *
+     *  @param key the key to remove
+     *  @return a map without a binding for `key`
+     */
     def removed(key: K): Map[K, V] =
       if (key == key1) new Map1(key2, value2)
       else if (key == key2) new Map1(key1, value1)
       else this
+    /** Applies `f` to each key/value pair of this map.
+     *
+     *  @tparam U the result type of `f`; the results are discarded
+     *  @param f the function to apply
+     */
     override def foreach[U](f: ((K, V)) => U): Unit = {
       f((key1, value1)); f((key2, value2))
     }
+    /** Returns `true` if at least one key/value pair of this map satisfies
+     *  `p`. The predicate is not applied to the second pair if the first one
+     *  satisfies it.
+     *
+     *  @param p the predicate to test
+     */
     override def exists(p: ((K, V)) => Boolean): Boolean = p((key1, value1)) || p((key2, value2))
+    /** Returns `true` if both key/value pairs of this map satisfy `p`. The
+     *  predicate is not applied to the second pair if the first one fails it.
+     *
+     *  @param p the predicate to test
+     */
     override def forall(p: ((K, V)) => Boolean): Boolean = p((key1, value1)) && p((key2, value2))
     override protected[collection] def filterImpl(pred: ((K, V)) => Boolean, isFlipped: Boolean): Map[K, V] = {
       var k1 = null.asInstanceOf[K]
@@ -402,6 +694,16 @@ object Map extends MapFactory[Map] {
         case 2 => this
       }
     }
+    /** Returns a map obtained by applying `f` to each key and its value.
+     *
+     *  If every transformed value is reference-equal to the current one, this
+     *  map itself is returned; otherwise a new `Map2` with the same keys and
+     *  the transformed values.
+     *
+     *  @tparam W the type of the transformed values
+     *  @param f the transformation function, applied to each key and its value
+     *  @return a two-binding map with the same keys and the transformed values
+     */
     override def transform[W](f: (K, V) => W): Map[K, W] = {
       val walue1 = f(key1, value1)
       val walue2 = f(key2, value2)
@@ -409,6 +711,9 @@ object Map extends MapFactory[Map] {
           (walue2.asInstanceOf[AnyRef] eq value2.asInstanceOf[AnyRef])) this.asInstanceOf[Map[K, W]]
       else new Map2(key1, walue1, key2, walue2)
     }
+    /** Returns a hash code computed with MurmurHash3 from the two key/value
+     *  pairs, equal to the hash code of any other map with the same bindings.
+     */
     override def hashCode(): Int = {
       import scala.util.hashing.MurmurHash3
       var a, b = 0
@@ -433,33 +738,75 @@ object Map extends MapFactory[Map] {
     }
   }
 
+  /** An immutable map with exactly three bindings, stored directly in fields.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   *  @param key1 the key of the first binding
+   *  @param value1 the value of the first binding
+   *  @param key2 the key of the second binding
+   *  @param value2 the value of the second binding
+   *  @param key3 the key of the third binding
+   *  @param value3 the value of the third binding
+   */
   @SerialVersionUID(3L)
   class Map3[K, +V](key1: K, value1: V, key2: K, value2: V, key3: K, value3: V) extends AbstractMap[K, V] with StrictOptimizedIterableOps[(K, V), Iterable, Map[K, V]] with Serializable {
+    /** Returns `3`: this map has exactly three bindings. */
     override def size: Int = 3
+    /** Returns `3`: the size is always known. */
     override def knownSize: Int = 3
+    /** Returns `false`: this map always has three bindings. */
     override def isEmpty: Boolean = false
+    /** Returns the value associated with `key`.
+     *
+     *  @param key the key to look up
+     *  @return the value associated with `key`
+     *  @throws NoSuchElementException if `key` is not a key of this map
+     */
     override def apply(key: K): V =
       if (key == key1) value1
       else if (key == key2) value2
       else if (key == key3) value3
       else throw new NoSuchElementException("key not found: " + key)
+    /** Returns `true` if `key` is one of the keys of this map, `false` otherwise.
+     *
+     *  @param key the key to test
+     */
     override def contains(key: K): Boolean = (key == key1) || (key == key2) || (key == key3)
+    /** Returns the value associated with `key` as an option.
+     *
+     *  @param key the key to look up
+     *  @return `Some` of the value associated with `key`, or `None` if `key`
+     *          is not a key of this map
+     */
     def get(key: K): Option[V] =
       if (key == key1) Some(value1)
       else if (key == key2) Some(value2)
       else if (key == key3) Some(value3)
       else None
+    /** Returns the value associated with `key`, or `default` if `key` is not
+     *  present.
+     *
+     *  @tparam V1 the type of the result, a supertype of `V`
+     *  @param key the key to look up
+     *  @param default the value to return if `key` is not present; evaluated
+     *                 only in that case
+     *  @return the value associated with `key`, or the value of `default`
+     */
     override def getOrElse [V1 >: V](key: K, default: => V1): V1 =
       if (key == key1) value1
       else if (key == key2) value2
       else if (key == key3) value3
       else default
+    /** Returns an iterator over the three key/value pairs of this map. */
     def iterator: Iterator[(K, V)] = new Map3Iterator[(K, V)] {
       override protected def nextResult(k: K, v: V): (K, V) = (k, v)
     }
+    /** Returns an iterator over the three keys of this map. */
     override def keysIterator: Iterator[K] = new Map3Iterator[K] {
       override protected def nextResult(k: K, v: V): K = k
     }
+    /** Returns an iterator over the three values of this map. */
     override def valuesIterator: Iterator[V] = new Map3Iterator[V] {
       override protected def nextResult(k: K, v: V): V = v
     }
@@ -480,20 +827,53 @@ object Map extends MapFactory[Map] {
       override def drop(n: Int): Iterator[A] = { i += n; this }
       protected def nextResult(k: K, v: V @uncheckedVariance): A
     }
+    /** Returns a new map with `key` bound to `value`.
+     *
+     *  If `key` equals one of the keys of this map, returns a new `Map3` with
+     *  that key's value replaced; otherwise returns a `Map4` with the new
+     *  binding added after the existing ones.
+     *
+     *  @tparam V1 the type of the added value, a supertype of `V`
+     *  @param key the key
+     *  @param value the value
+     *  @return a new map of three or four bindings containing `key -> value`
+     */
     def updated[V1 >: V](key: K, value: V1): Map[K, V1] =
       if (key == key1)      new Map3(key1, value, key2, value2, key3, value3)
       else if (key == key2) new Map3(key1, value1, key2, value, key3, value3)
       else if (key == key3) new Map3(key1, value1, key2, value2, key3, value)
       else new Map4(key1, value1, key2, value2, key3, value3, key, value)
+    /** Returns a `Map2` of the remaining bindings if `key` is a key of this
+     *  map, or this map itself otherwise.
+     *
+     *  @param key the key to remove
+     *  @return a map without a binding for `key`
+     */
     def removed(key: K): Map[K, V] =
       if (key == key1)      new Map2(key2, value2, key3, value3)
       else if (key == key2) new Map2(key1, value1, key3, value3)
       else if (key == key3) new Map2(key1, value1, key2, value2)
       else this
+    /** Applies `f` to each key/value pair of this map.
+     *
+     *  @tparam U the result type of `f`; the results are discarded
+     *  @param f the function to apply
+     */
     override def foreach[U](f: ((K, V)) => U): Unit = {
       f((key1, value1)); f((key2, value2)); f((key3, value3))
     }
+    /** Returns `true` if at least one key/value pair of this map satisfies
+     *  `p`. The predicate is not applied to the remaining pairs once one
+     *  satisfies it.
+     *
+     *  @param p the predicate to test
+     */
     override def exists(p: ((K, V)) => Boolean): Boolean = p((key1, value1)) || p((key2, value2)) || p((key3, value3))
+    /** Returns `true` if all three key/value pairs of this map satisfy `p`.
+     *  The predicate is not applied to the remaining pairs once one fails it.
+     *
+     *  @param p the predicate to test
+     */
     override def forall(p: ((K, V)) => Boolean): Boolean = p((key1, value1)) && p((key2, value2)) && p((key3, value3))
     override protected[collection] def filterImpl(pred: ((K, V)) => Boolean, isFlipped: Boolean): Map[K, V] = {
       var k1, k2 = null.asInstanceOf[K]
@@ -510,6 +890,16 @@ object Map extends MapFactory[Map] {
         case 3 => this
       }
     }
+    /** Returns a map obtained by applying `f` to each key and its value.
+     *
+     *  If every transformed value is reference-equal to the current one, this
+     *  map itself is returned; otherwise a new `Map3` with the same keys and
+     *  the transformed values.
+     *
+     *  @tparam W the type of the transformed values
+     *  @param f the transformation function, applied to each key and its value
+     *  @return a three-binding map with the same keys and the transformed values
+     */
     override def transform[W](f: (K, V) => W): Map[K, W] = {
       val walue1 = f(key1, value1)
       val walue2 = f(key2, value2)
@@ -519,6 +909,9 @@ object Map extends MapFactory[Map] {
           (walue3.asInstanceOf[AnyRef] eq value3.asInstanceOf[AnyRef])) this.asInstanceOf[Map[K, W]]
       else new Map3(key1, walue1, key2, walue2, key3, walue3)
     }
+    /** Returns a hash code computed with MurmurHash3 from the three key/value
+     *  pairs, equal to the hash code of any other map with the same bindings.
+     */
     override def hashCode(): Int = {
       import scala.util.hashing.MurmurHash3
       var a, b = 0
@@ -548,38 +941,82 @@ object Map extends MapFactory[Map] {
     }
   }
 
+  /** An immutable map with exactly four bindings, stored directly in fields.
+   *
+   *  @tparam K the type of the keys
+   *  @tparam V the type of the values
+   *  @param key1 the key of the first binding
+   *  @param value1 the value of the first binding
+   *  @param key2 the key of the second binding
+   *  @param value2 the value of the second binding
+   *  @param key3 the key of the third binding
+   *  @param value3 the value of the third binding
+   *  @param key4 the key of the fourth binding
+   *  @param value4 the value of the fourth binding
+   */
   @SerialVersionUID(3L)
   final class Map4[K, +V](key1: K, value1: V, key2: K, value2: V, key3: K, value3: V, key4: K, value4: V)
     extends AbstractMap[K, V] with StrictOptimizedIterableOps[(K, V), Iterable, Map[K, V]] with Serializable {
 
+    /** Returns `4`: this map has exactly four bindings. */
     override def size: Int = 4
+    /** Returns `4`: the size is always known. */
     override def knownSize: Int = 4
+    /** Returns `false`: this map always has four bindings. */
     override def isEmpty: Boolean = false
+    /** Returns the value associated with `key`.
+     *
+     *  @param key the key to look up
+     *  @return the value associated with `key`
+     *  @throws NoSuchElementException if `key` is not a key of this map
+     */
     override def apply(key: K): V =
       if (key == key1) value1
       else if (key == key2) value2
       else if (key == key3) value3
       else if (key == key4) value4
       else throw new NoSuchElementException("key not found: " + key)
+    /** Returns `true` if `key` is one of the keys of this map, `false` otherwise.
+     *
+     *  @param key the key to test
+     */
     override def contains(key: K): Boolean = (key == key1) || (key == key2) || (key == key3) || (key == key4)
+    /** Returns the value associated with `key` as an option.
+     *
+     *  @param key the key to look up
+     *  @return `Some` of the value associated with `key`, or `None` if `key`
+     *          is not a key of this map
+     */
     def get(key: K): Option[V] =
       if (key == key1) Some(value1)
       else if (key == key2) Some(value2)
       else if (key == key3) Some(value3)
       else if (key == key4) Some(value4)
       else None
+    /** Returns the value associated with `key`, or `default` if `key` is not
+     *  present.
+     *
+     *  @tparam V1 the type of the result, a supertype of `V`
+     *  @param key the key to look up
+     *  @param default the value to return if `key` is not present; evaluated
+     *                 only in that case
+     *  @return the value associated with `key`, or the value of `default`
+     */
     override def getOrElse [V1 >: V](key: K, default: => V1): V1 =
       if (key == key1) value1
       else if (key == key2) value2
       else if (key == key3) value3
       else if (key == key4) value4
       else default
+    /** Returns an iterator over the four key/value pairs of this map. */
     def iterator: Iterator[(K, V)] = new Map4Iterator[(K, V)] {
       override protected def nextResult(k: K, v: V): (K, V) = (k, v)
     }
+    /** Returns an iterator over the four keys of this map. */
     override def keysIterator: Iterator[K] = new Map4Iterator[K] {
       override protected def nextResult(k: K, v: V): K = k
     }
+    /** Returns an iterator over the four values of this map. */
     override def valuesIterator: Iterator[V] = new Map4Iterator[V] {
       override protected def nextResult(k: K, v: V): V = v
     }
@@ -601,22 +1038,55 @@ object Map extends MapFactory[Map] {
       override def drop(n: Int): Iterator[A] = { i += n; this }
       protected def nextResult(k: K, v: V @uncheckedVariance): A
     }
+    /** Returns a new map with `key` bound to `value`.
+     *
+     *  If `key` equals one of the keys of this map, returns a new `Map4` with
+     *  that key's value replaced; otherwise returns a `HashMap` of the five
+     *  bindings.
+     *
+     *  @tparam V1 the type of the added value, a supertype of `V`
+     *  @param key the key
+     *  @param value the value
+     *  @return a new map of four or five bindings containing `key -> value`
+     */
     def updated[V1 >: V](key: K, value: V1): Map[K, V1] =
       if (key == key1)      new Map4(key1, value, key2, value2, key3, value3, key4, value4)
       else if (key == key2) new Map4(key1, value1, key2, value, key3, value3, key4, value4)
       else if (key == key3) new Map4(key1, value1, key2, value2, key3, value, key4, value4)
       else if (key == key4) new Map4(key1, value1, key2, value2, key3, value3, key4, value)
       else HashMap.empty[K, V1].updated(key1,value1).updated(key2, value2).updated(key3, value3).updated(key4, value4).updated(key, value)
+    /** Returns a `Map3` of the remaining bindings if `key` is a key of this
+     *  map, or this map itself otherwise.
+     *
+     *  @param key the key to remove
+     *  @return a map without a binding for `key`
+     */
     def removed(key: K): Map[K, V] =
       if (key == key1)      new Map3(key2, value2, key3, value3, key4, value4)
       else if (key == key2) new Map3(key1, value1, key3, value3, key4, value4)
       else if (key == key3) new Map3(key1, value1, key2, value2, key4, value4)
       else if (key == key4) new Map3(key1, value1, key2, value2, key3, value3)
       else this
+    /** Applies `f` to each key/value pair of this map.
+     *
+     *  @tparam U the result type of `f`; the results are discarded
+     *  @param f the function to apply
+     */
     override def foreach[U](f: ((K, V)) => U): Unit = {
       f((key1, value1)); f((key2, value2)); f((key3, value3)); f((key4, value4))
     }
+    /** Returns `true` if at least one key/value pair of this map satisfies
+     *  `p`. The predicate is not applied to the remaining pairs once one
+     *  satisfies it.
+     *
+     *  @param p the predicate to test
+     */
     override def exists(p: ((K, V)) => Boolean): Boolean = p((key1, value1)) || p((key2, value2)) || p((key3, value3)) || p((key4, value4))
+    /** Returns `true` if all four key/value pairs of this map satisfy `p`.
+     *  The predicate is not applied to the remaining pairs once one fails it.
+     *
+     *  @param p the predicate to test
+     */
     override def forall(p: ((K, V)) => Boolean): Boolean = p((key1, value1)) && p((key2, value2)) && p((key3, value3)) && p((key4, value4))
     override protected[collection] def filterImpl(pred: ((K, V)) => Boolean, isFlipped: Boolean): Map[K, V] = {
       var k1, k2, k3 = null.asInstanceOf[K]
@@ -635,6 +1105,16 @@ object Map extends MapFactory[Map] {
         case 4 => this
       }
     }
+    /** Returns a map obtained by applying `f` to each key and its value.
+     *
+     *  If every transformed value is reference-equal to the current one, this
+     *  map itself is returned; otherwise a new `Map4` with the same keys and
+     *  the transformed values.
+     *
+     *  @tparam W the type of the transformed values
+     *  @param f the transformation function, applied to each key and its value
+     *  @return a four-binding map with the same keys and the transformed values
+     */
     override def transform[W](f: (K, V) => W): Map[K, W] = {
       val walue1 = f(key1, value1)
       val walue2 = f(key2, value2)
@@ -648,6 +1128,9 @@ object Map extends MapFactory[Map] {
     }
     private[immutable] def buildTo[V1 >: V](builder: HashMapBuilder[K, V1]): builder.type =
       builder.addOne(key1, value1).addOne(key2, value2).addOne(key3, value3).addOne(key4, value4)
+    /** Returns a hash code computed with MurmurHash3 from the four key/value
+     *  pairs, equal to the hash code of any other map with the same bindings.
+     */
     override def hashCode(): Int = {
       import scala.util.hashing.MurmurHash3
       var a, b = 0
