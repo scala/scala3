@@ -418,7 +418,17 @@ object SpaceEngine {
             Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)))
         }
       else
-        Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.map(project))
+        val prod = Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.map(project))
+        // `Err.unapply` succeeds on `null`, which is how `Err(())` is represented for
+        // a maybe type with a nullable error type. Since such a maybe type decomposes
+        // into a space of its own for `null` (see `maybeParts`), `Err...)` has to cover
+        // it explicitly.
+        pat.tpe.widen.dealias match
+          case MaybeType(_, errTp)
+          if fun.symbol == defn.Err_unapply && errTp.admitsUnit =>
+            Or(prod :: nullSpace :: Nil)
+          case _ =>
+            prod
 
     case Typed(pat @ UnApply(_, _, _), _) =>
       project(pat)
@@ -444,6 +454,17 @@ object SpaceEngine {
     case OrType(tp1, tp2) => Or(project(tp1) :: project(tp2) :: Nil)
     case tp => Typ(tp, decomposed = true)
   }
+
+  /** The two spaces a maybe type `T ? E` decomposes into: the `Ok` values, which
+   *  are represented by `T ? Nothing`, and the `Err` values. The latter are `null`
+   *  if `E` is a supertype of `Unit` (the invalid value is then `null` itself), and
+   *  are represented by `Nothing ? E` otherwise.
+   */
+  private def maybeParts(resTp: Type, errTp: Type, nullable: Boolean)(using Context): List[Type] =
+    val errPart =
+      if nullable then ConstantType(Constant(null))
+      else MaybeType(defn.NothingType, errTp)
+    MaybeType(resTp, defn.NothingType) :: errPart :: Nil
 
   private def unapplySeqInfo(resTp: Type, pos: SrcPos)(using Context): (Int, Type, Type) = {
     var resultTp = resTp
@@ -549,9 +570,20 @@ object SpaceEngine {
   def isSubType(tp1: Type, tp2: Type)(using Context): Boolean = trace(i"$tp1 <:< $tp2") {
     if tp1 == ConstantType(Constant(null)) && !ctx.mode.is(Mode.SafeNulls)
     then tp2 == ConstantType(Constant(null))
-    else if tp1.isTupleXXLExtract(tp2) then true // See isTupleXXLExtract, fixes TupleXXL parameter type
-    else tp1 <:< tp2
+    else
+      tp1.isTupleXXLExtract(tp2) // See isTupleXXLExtract, fixes TupleXXL parameter type
+      || tp1 <:< tp2
+      || tp1.widenSingleton.isNullType && isNullableMaybe(tp2)
   }
+
+  /** Is `tp` a maybe type `T ? E`, or bounded by one, where `E` admits `Unit`,
+   *  so that `null` is one of its values? For a concrete maybe type this coincides
+   *  with `Null <: T ? E`, but for an abstract type `X <: T ? E` the type comparer
+   *  does not conclude `Null <: X`, whereas the space of `X` does contain `null`.
+   */
+  private def isNullableMaybe(tp: Type)(using Context): Boolean = tp match
+    case MaybeType(_, errTp) => errTp.admitsUnit
+    case _ => false
 
   /** True if we can assume that the two unapply methods are the same.
    *  That is, given the same parameter, they return the same result.
@@ -574,12 +606,23 @@ object SpaceEngine {
         && tp1 =:= tp2
   }
 
+  /** Return term parameter types of the extractor `unapp`. */
+  def signature(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): List[Type] =
+    // `Ok.unapply` extracts the result component of a maybe type, `Err.unapply` its error
+    // component. We cannot infer these from the extractor's signature, since the type of
+    // the component that is not extracted cannot be constrained from the scrutinee type,
+    // which would make the inferred component type `Any`.
+    scrutineeTp.dealias match
+      case MaybeType(resTp, _) if unapp.symbol == defn.Ok_unapply  => resTp :: Nil
+      case MaybeType(_, errTp) if unapp.symbol == defn.Err_unapply => errTp :: Nil
+      case _ => extractorSignature(unapp, scrutineeTp, argLen)
+
   /** Return term parameter types of the extractor `unapp`.
    *  Parameter types of the case class type `tp`. Adapted from `unapplyPlan` in patternMatcher  */
-  def signature(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): List[Type] = trace(i"signature($unapp, $scrutineeTp, $argLen)") {
+  private def extractorSignature(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): List[Type] = trace(i"signature($unapp, $scrutineeTp, $argLen)") {
     val unappSym = unapp.symbol
 
-    val mt: MethodType = unapp.widen match {
+    val mt: MethodType = unapp.widenDealias match {
       case mt: MethodType => mt
       case pt: PolyType   =>
         scrutineeTp match
@@ -672,6 +715,14 @@ object SpaceEngine {
       val AppliedType(_, tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
+    || scrutineeTp.match
+      // `Ok(_)` covers a maybe type without error values, `Err(_)` covers a maybe type
+      // without result values. These are the two spaces a maybe type decomposes into,
+      // see `maybeParts`.
+      case MaybeType(resTp, errTp) =>
+        unapp.symbol == defn.Ok_unapply && errTp.isNothingType
+        || unapp.symbol == defn.Err_unapply && resTp.isNothingType
+      case _ => false
   }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
@@ -690,6 +741,8 @@ object SpaceEngine {
           case tp if !TypeComparer.provablyDisjoint(tp, tpB) => AndType(tp, tpB)
 
       case OrType(tp1, tp2)                            => List(tp1, tp2)
+      case MaybeType(resTp, errTp)
+      if !resTp.isNothingType && !errTp.isNothingType  => maybeParts(resTp, errTp, nullable = errTp.admitsUnit)
       case tp if tp.isRef(defn.BooleanClass)           => List(ConstantType(Constant(true)), ConstantType(Constant(false)))
       case tp if tp.isRef(defn.UnitClass)              => ConstantType(Constant(())) :: Nil
       case tp @ NamedType(Parts(parts), _)             => if parts.exists(_ eq tp) then ListOfNoType else parts.map(tp.derivedSelect)
@@ -884,6 +937,9 @@ object SpaceEngine {
       case Typ(tp: TermRef, _) =>
         if (flattenList && tp <:< defn.NilType) ""
         else tp.symbol.showName
+      case Typ(MaybeType(resTp, errTp), _) if resTp.isNothingType ^ errTp.isNothingType =>
+        // the spaces a maybe type decomposes into, see `maybeParts`
+        if resTp.isNothingType then "Err(_)" else "Ok(_)"
       case Typ(tp, decomposed) =>
         val cls = tp.classSymbol
         if ctx.definitions.isTupleNType(tp.stripNamedTuple) then
@@ -1115,7 +1171,10 @@ object SpaceEngine {
 
   def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)"):
     val selTyp = toUnderlying(m.selector.tpe).dealias
-    val isNullable = FlexibleType.isInstance(selTyp) || selTyp.classSymbol.isNullableClass
+    val isNullable = selTyp match
+      case MaybeType(_, errTp) => errTp.admitsUnit
+      case FlexibleType(_) => true
+      case _ => selTyp.classSymbol.isNullableClass
     val targetSpace = trace(i"targetSpace($selTyp)"):
       if isNullable && !ctx.mode.is(Mode.SafeNulls)
       then project(OrType(selTyp, ConstantType(Constant(null)), soft = false))

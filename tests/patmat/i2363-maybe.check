@@ -1,0 +1,16 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i2363-maybe.scala:17:32 
+17 |  def foo(x: List[Expr]): Int = x match {
+   |                                ^
+   |                              match may not be exhaustive.
+   |
+   |                              It would fail on pattern case: List(_, _*)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i2363-maybe.scala:23:26 
+23 |  def bar(x: Expr): Int = x match {
+   |                          ^
+   |               match may not be exhaustive.
+   |
+   |               It would fail on pattern case: _: IntExpr, _: BooleanExpr
+   |
+   | longer explanation available when compiling with `-explain`

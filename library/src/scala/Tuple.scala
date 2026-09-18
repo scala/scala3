@@ -6,7 +6,7 @@ import compiletime.*
 import compiletime.ops.int.*
 
 /** Tuple of arbitrary arity. */
-sealed trait Tuple extends Product {
+sealed trait Tuple extends Product, caps.Pure {
   import Tuple.*
 
   /** Creates a copy of this tuple as an Array. */
