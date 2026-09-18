@@ -276,11 +276,12 @@ object Erasure {
           val cls = tycon.symbol.asClass
           val underlying = underlyingOfValueClass(cls)
           val ctor = cls.primaryConstructor
+          val arg = cast(tree, underlying)
           transformInfo(ctor, ctor.info) match
             case mt: MethodType if mt.paramInfos.nonEmpty =>
-              New(tycon, adaptToType(cast(tree, underlying), mt.paramInfos.head) :: Nil)
+              New(tycon, adaptToType(arg, mt.paramInfos.head) :: Nil)
             case _ =>
-              New(tycon, cast(tree, underlying) :: Nil)
+              New(tycon, arg :: Nil)
         case tp =>
           val cls = tp.classSymbol
           if (cls eq defn.UnitClass) constant(tree, ref(defn.BoxedUnit_UNIT))
