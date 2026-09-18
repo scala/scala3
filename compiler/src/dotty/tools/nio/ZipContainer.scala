@@ -60,6 +60,9 @@ private final class ZipContainer private(val underlying: File, version: String, 
   override def enclosing: Option[File] =
     None
 
+  override def isJar: Boolean =
+    underlying.extension.isJar
+
   override def entries: Iterable[FileSystemEntry] =
     rawEntries.values
 
@@ -209,6 +212,9 @@ private trait ZipEntryContainerBase(entryPath: String) extends FileContainer:
   }
 
 private final class ZipEntryContainer(container: ZipContainer, entry: ZipEntry) extends FileContainer, ZipEntryFileSystemEntry(container, entry), ZipEntryContainerBase(entry.getName):
+  override def isJar: Boolean =
+    false // not the root!
+
   // `entries` is defined in terms of `recursiveEntries` since the latter is simpler as it needs no filtering
   override def entries: Iterable[FileSystemEntry] = {
     // An entry is a direct descendant if it either has no more '/' after this entry's path,

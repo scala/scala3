@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package config
 
-import io.*
+import nio.File
 import classpath.{AggregateClassPath, ClassPath}
 import core.*
 import Symbols.*, Types.*, Contexts.*, StdNames.*
@@ -112,10 +112,10 @@ class JavaPlatform(precomputedSourcePackages: Option[LogicalPackage] = None) ext
   def shouldReceiveJavaSerializationMethods(sym: ClassSymbol)(using Context): Boolean =
     true
 
-  def newClassLoader(bin: AbstractFile)(using Context): SymbolLoader =
+  def newClassLoader(bin: File)(using Context): SymbolLoader =
     new ClassfileLoader(bin)
 
-  def newTastyLoader(bin: AbstractFile)(using Context): SymbolLoader =
+  def newTastyLoader(bin: File)(using Context): SymbolLoader =
     new TastyLoader(bin)
 
   def typeMightBeSubtypeAtRuntime(c: Symbol, potentialSuperClass: Symbol)(using Context): Boolean =

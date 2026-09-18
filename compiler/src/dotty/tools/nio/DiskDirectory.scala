@@ -39,6 +39,9 @@ private final class DiskDirectory(private val underlying: JPath) extends FileCon
   override def enclosing: Option[File] =
     None
 
+  override def isJar: Boolean =
+    false
+
   override def entries: Iterable[FileSystemEntry] =
     val stream = JFiles.list(underlying)
     val files =

@@ -24,6 +24,8 @@ class FileExtension private(value: String) extends AnyVal {
   def isJar: Boolean = value == "jar"
   /** Whether this is the  `".scala"` extension. */
   def isScala: Boolean = value == "scala"
+  /** Whether this is the  `".sig"` extension. */
+  def isSig: Boolean = value == "sig"
   /** Whether this is the  `".tasty"` extension. */
   def isTasty: Boolean = value == "tasty"
   /** Whether this is the  `".zip"` extension. */

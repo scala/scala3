@@ -20,6 +20,9 @@ private final class MemoryContainer(realParent: Option[MemoryContainer], overrid
   override def enclosing: Option[File] =
     None
 
+  override def isJar: Boolean =
+    false
+
   override def entries: Iterable[FileSystemEntry] =
     files.values ++ containers.values
 

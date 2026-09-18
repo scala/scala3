@@ -6,7 +6,7 @@ import core.Comments.{ContextDoc, ContextDocstrings}
 import core.Contexts.*
 import core.{MacroClassLoader, RecursionOverflow, TypeError}
 import dotty.tools.dotc.ast.Positioned
-import dotty.tools.io.{AbstractFile, FileExtension}
+import dotty.tools.nio.*
 import reporting.*
 import core.Decorators.*
 import util.chaining.*
@@ -29,7 +29,7 @@ class Driver {
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
   @nowarn("msg=Catching StackOverflowError can lead to unexpected behavior") // yes, but we immediately exit
-  protected def doCompile(compiler: Compiler, files: List[AbstractFile])(using Context): Reporter =
+  protected def doCompile(compiler: Compiler, files: List[File])(using Context): Reporter =
     if files.nonEmpty then
       var runOrNull = ctx.run
       try
@@ -87,7 +87,7 @@ class Driver {
    *  this method returns a list of files to compile and an updated Context.
    *  If compilation should be interrupted, this method returns None.
    */
-  def setup(args: Array[String], rootCtx: Context): Option[(List[AbstractFile], Context)] = {
+  def setup(args: Array[String], rootCtx: Context): Option[(List[File], Context)] = {
     val ictx = rootCtx.fresh
     val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
     ictx.setSettings(summary.sstate)
@@ -114,24 +114,20 @@ class Driver {
   }
 
   /** Setup extra classpath of tasty and jar files */
-  protected def fromTastySetup(files: List[AbstractFile])(using Context): Context =
+  protected def fromTastySetup(files: List[File])(using Context): Context =
     if ctx.settings.fromTasty.value then
       val newEntries: List[String] = files
         .flatMap { file =>
-          if !file.exists then
-            report.error(em"File does not exist: ${file.path}")
+          if file.extension.isJar then Some(file.path)
+          else if file.extension.isTasty || file.extension.isBetasty then
+            TastyFileUtil.getClassPath(file, ctx.withBestEffortTasty) match
+              case Some(classpath) => Some(classpath)
+              case _ =>
+                report.error(em"Could not load classname from: ${file.path}")
+                None
+          else
+            report.error(em"File extension is not `tasty` or `jar`: ${file.path}")
             None
-          else file.ext match
-            case FileExtension.Jar => Some(file.path)
-            case FileExtension.Tasty | FileExtension.Betasty =>
-              TastyFileUtil.getClassPath(file, ctx.withBestEffortTasty) match
-                case Some(classpath) => Some(classpath)
-                case _ =>
-                  report.error(em"Could not load classname from: ${file.path}")
-                  None
-            case _ =>
-              report.error(em"File extension is not `tasty` or `jar`: ${file.path}")
-              None
         }
         .distinct
       val ctx1 = ctx.fresh

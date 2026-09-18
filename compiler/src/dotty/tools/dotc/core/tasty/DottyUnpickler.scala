@@ -14,7 +14,7 @@ import dotty.tools.tasty.TastyReader
 import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection, AttributesSection}
 import dotty.tools.tasty.TastyVersion
 
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.File
 
 object DottyUnpickler {
 
@@ -53,14 +53,14 @@ object DottyUnpickler {
  *  @param mode              the tasty file contains package (TopLevel), an expression (Term) or a type (TypeTree)
  */
 class DottyUnpickler(
-  tastyFile: AbstractFile,
+  tastyFile: File,
   isBestEffortTasty: Boolean,
   mode: UnpickleMode = UnpickleMode.TopLevel
 ) extends ClassfileParser.Embedded with tpd.TreeProvider {
   import tpd.*
   import DottyUnpickler.*
 
-  val unpickler: TastyUnpickler = new TastyUnpickler(tastyFile.toByteArray, isBestEffortTasty)
+  val unpickler: TastyUnpickler = new TastyUnpickler(tastyFile.readBytes(), isBestEffortTasty)
 
   val tastyAttributes: Attributes =
     unpickler.unpickle(new AttributesSectionUnpickler)
