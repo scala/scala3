@@ -2675,7 +2675,7 @@ object Parsers {
 
     def expr1(location: Location = Location.Elsewhere): Tree = in.token match
       case IF =>
-        ifExpr(in.offset, If, canOmitThen = Feature.errorHandlingEnabled && location == Location.InBlock)
+        ifExpr(in.offset, If, canOmitThen = Feature.magicEnabled && location == Location.InBlock)
       case WHILE =>
         atSpan(in.skipToken()) {
           val cond = condExpr(DO)
