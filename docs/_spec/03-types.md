@@ -98,7 +98,6 @@ Type              ::=  ‘AnyKind‘
                     |  IntersectionType
                     |  MatchType
                     |  SkolemType
-                    |  FlexibleType
 
 TypeLambda        ::=  ‘[‘ TypeParams ‘]‘ ‘=>>‘ Type
 TypeParams        ::=  TypeParam {‘,‘ TypeParam}
@@ -143,8 +142,6 @@ TypeCaseAppliedPattern  ::=  Type ‘[‘ TypeCasePattern { ‘,‘ TypeCasePatt
 TypeCapture             ::=  (id | ‘_‘) TypeBounds
 
 SkolemType        ::=  ‘∃‘ skolemid ‘:‘ Type
-
-FlexibleType      ::=  Type ‘?‘
 
 TypeOrMethodic    ::=  Type
                     |  MethodicType
@@ -355,7 +352,6 @@ They can be referred to with [the fundamental type aliases `scala.AnyKind` and `
 Types can be _concrete_ or _abstract_.
 An abstract type ´T´ always has lower and upper bounds ´L´ and ´H´ such that ´L >: T´ and ´T <: H´.
 A concrete type ´T´ is considered to have itself as both lower and upper bound.
-A flexible type ´T?´ has lower bound `´T´ | scala.Null` and upper bound ´T´.
 
 The kind of a type is indicated by its (transitive) upper bound:
 
@@ -1507,8 +1503,6 @@ Note that the conditions are not all mutually exclusive.
 - `´S = S_1´ { ´R´ }` and ´S_1 <: T´.
 - `´S =´ { ´\alpha´ => ´S_1´ }` and ´S_1 <: T´.
 - `´T =´ scala.Tuple´_n[T_1, ..., T_n]´` with ´1 \leq n \leq 22´, and `´S <: T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple`.
-- `´S = S_1?´` and ´S_1 <: T´.
-- `´T = T_1?´` and `´S <: T_1´ | scala.Null`.
 
 We define `isSubPrefix(´p´, ´q´)` where ´p´ and ´q´ are prefixes as:
 
