@@ -4,7 +4,8 @@ package transform
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.Names.TermName
+import dotty.tools.dotc.core.Decorators.toTermName
+import dotty.tools.dotc.core.Names.{Name, TermName, EmptyTermName}
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
@@ -32,6 +33,10 @@ object InterceptedMethods {
 class InterceptedMethods extends MiniPhase {
   import tpd.*
 
+  /** Filters to quickly rule out nodes we no not need to consider */
+  val interceptedParametricMethodNames: Set[Name] = Set(nme.NE, "toString".toTermName, "getClass".toTermName)
+  val interceptedParameterlessMethodNames: Set[Name] = Set(nme.HASHHASH, nme.isEmpty)
+
   override def phaseName: String = InterceptedMethods.name
 
   override def description: String = InterceptedMethods.description
@@ -44,7 +49,7 @@ class InterceptedMethods extends MiniPhase {
     transformRefTree(tree)
 
   private def transformRefTree(tree: RefTree)(using Context): Tree =
-    if tree.isTerm then
+    if interceptedParameterlessMethodNames.contains(tree.name) then
       val sym = tree.symbol
       def qual = tree match
         case id: Ident => tpd.desugarIdentPrefix(id)
@@ -86,20 +91,23 @@ class InterceptedMethods extends MiniPhase {
       case TypeApply(inner, _) => qualOf(inner)
     }
 
-    lazy val qual = qualOf(tree.fun)
+    def methodName(tree: Tree): Name = tree match
+      case tree: GenericApply => methodName(tree.fun)
+      case tree: RefTree => tree.name
+      case _ => EmptyTermName
 
-    val sym = tree.fun.symbol
-
-    if sym == defn.Any_!= then
-      qual.select(defn.Any_==).appliedToTermArgs(tree.args).not.withSpan(tree.span)
-    else if ctx.explicitNulls then
-      if sym == defn.Any_toString && !qual.tpe.isNotNull then
-        ref(defn.Objects_toString).appliedTo(qual)
-      else if sym == defn.Any_getClass && !qual.tpe.isNotNull then
-        ref(defn.ScalaRuntime_anyClass).appliedToType(qual.tpe).appliedTo(qual)
-      else
-        tree
-    else
-      tree
+    if interceptedParametricMethodNames.contains(methodName(tree.fun)) then
+      lazy val qual = qualOf(tree.fun)
+      val sym = tree.fun.symbol
+      if sym == defn.Any_!= then
+        qual.select(defn.Any_==).appliedToTermArgs(tree.args).not.withSpan(tree.span)
+      else if ctx.explicitNulls then
+        if sym == defn.Any_toString && !qual.tpe.isNotNull then
+          ref(defn.Objects_toString).appliedTo(qual)
+        else if sym == defn.Any_getClass && !qual.tpe.isNotNull then
+          ref(defn.ScalaRuntime_anyClass).appliedToType(qual.tpe).appliedTo(qual)
+        else tree
+      else tree
+    else tree
   }
 }

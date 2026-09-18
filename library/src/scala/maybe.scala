@@ -16,7 +16,7 @@ object maybe {
   inline def provided(inline cond: Boolean)(using CanErr[Unit]): Unit =
     if !cond then boundary.break(Err(()))
 
-  inline def provided[E](inline cond: Boolean, inline e: E)(using CanErr[E]): Unit =
-    if !cond then boundary.break(Err(e))
+  inline def provided[E](inline cond: Boolean, inline err: E)(using CanErr[E]): Unit =
+    if !cond then boundary.break(Err(err))
 }
 
