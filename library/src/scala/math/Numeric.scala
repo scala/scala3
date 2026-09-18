@@ -36,7 +36,8 @@ object Numeric {
      *
      *  @return a `NumericOps` wrapper around `x` that exposes infix arithmetic operators and numeric conversion methods
      */
-    implicit def infixNumericOps[T](x: T)(implicit num: Numeric[T]): Numeric[T]#NumericOps = new num.NumericOps(x)
+    @deprecated("use the extension methods available instead", since = "3.10.0")
+    def infixNumericOps[T](x: T)(implicit num: Numeric[T]): Numeric[T]#NumericOps = new num.NumericOps(x)
   }
   object Implicits extends ExtraImplicits { }
 
@@ -49,10 +50,15 @@ object Numeric {
     def negate(x: BigInt): BigInt = -x
     def fromInt(x: Int): BigInt = BigInt(x)
     def parseString(str: String): Option[BigInt] = Try(BigInt(str)).toOption
-    def toInt(x: BigInt): Int = x.intValue
-    def toLong(x: BigInt): Long = x.longValue
-    def toFloat(x: BigInt): Float = x.floatValue
-    def toDouble(x: BigInt): Double = x.doubleValue
+    extension (x: BigInt) {
+     override def toInt: Int = x.intValue
+
+     override def toLong: Long = x.longValue
+
+     override def toFloat: Float = x.floatValue
+
+     override def toDouble: Double = x.doubleValue
+    }
   }
   implicit object BigIntIsIntegral extends BigIntIsIntegral with Ordering.BigIntOrdering
 
@@ -65,10 +71,12 @@ object Numeric {
     def negate(x: Int): Int = -x
     def fromInt(x: Int): Int = x
     def parseString(str: String): Option[Int] = StringParsers.parseInt(str)
-    def toInt(x: Int): Int = x
-    def toLong(x: Int): Long = x.toLong
-    def toFloat(x: Int): Float = x.toFloat
-    def toDouble(x: Int): Double = x.toDouble
+    extension (x: Int) {
+      override def toInt: Int = x
+      override def toLong: Long = x.toLong
+      override def toFloat: Float = x.toFloat
+      override def toDouble: Double = x.toDouble
+    }
     override def signum(x: Int): Int = math.signum(x)
     override def sign(x: Int): Int = math.signum(x)
   }
@@ -83,10 +91,12 @@ object Numeric {
     def negate(x: Short): Short = (-x).toShort
     def fromInt(x: Int): Short = x.toShort
     def parseString(str: String): Option[Short] = StringParsers.parseShort(str)
-    def toInt(x: Short): Int = x.toInt
-    def toLong(x: Short): Long = x.toLong
-    def toFloat(x: Short): Float = x.toFloat
-    def toDouble(x: Short): Double = x.toDouble
+    extension (x: Short) {
+      override def toInt: Int = x.toInt
+      override def toLong: Long = x.toLong
+      override def toFloat: Float = x.toFloat
+      override def toDouble: Double = x.toDouble
+    }
     override def signum(x: Short): Int = math.signum(x.toInt)
     override def sign(x: Short): Short = math.signum(x.toInt).toShort
   }
@@ -101,10 +111,12 @@ object Numeric {
     def negate(x: Byte): Byte = (-x).toByte
     def fromInt(x: Int): Byte = x.toByte
     def parseString(str: String): Option[Byte] = StringParsers.parseByte(str)
-    def toInt(x: Byte): Int = x.toInt
-    def toLong(x: Byte): Long = x.toLong
-    def toFloat(x: Byte): Float = x.toFloat
-    def toDouble(x: Byte): Double = x.toDouble
+    extension (x: Byte) {
+      override def toInt: Int = x.toInt
+      override def toLong: Long = x.toLong
+      override def toFloat: Float = x.toFloat
+      override def toDouble: Double = x.toDouble
+    }
     override def signum(x: Byte): Int = math.signum(x.toInt)
     override def sign(x: Byte): Byte = math.signum(x.toInt).toByte
   }
@@ -119,10 +131,12 @@ object Numeric {
     def negate(x: Char): Char = (-x).toChar
     def fromInt(x: Int): Char = x.toChar
     def parseString(str: String): Option[Char] = Try(str.toInt.toChar).toOption
-    def toInt(x: Char): Int = x.toInt
-    def toLong(x: Char): Long = x.toLong
-    def toFloat(x: Char): Float = x.toFloat
-    def toDouble(x: Char): Double = x.toDouble
+    extension (x: Char) {
+      override def toInt: Int = x.toInt
+      override def toLong: Long = x.toLong
+      override def toFloat: Float = x.toFloat
+      override def toDouble: Double = x.toDouble
+    }
     override def signum(x: Char): Int = math.signum(x.toInt)
     override def sign(x: Char): Char = math.signum(x.toInt).toChar
   }
@@ -137,10 +151,12 @@ object Numeric {
     def negate(x: Long): Long = -x
     def fromInt(x: Int): Long = x.toLong
     def parseString(str: String): Option[Long] = StringParsers.parseLong(str)
-    def toInt(x: Long): Int = x.toInt
-    def toLong(x: Long): Long = x
-    def toFloat(x: Long): Float = x.toFloat
-    def toDouble(x: Long): Double = x.toDouble
+    extension (x: Long) {
+      override def toInt: Int = x.toInt
+      override def toLong: Long = x
+      override def toFloat: Float = x.toFloat
+      override def toDouble: Double = x.toDouble
+    }
     override def signum(x: Long): Int = math.signum(x).toInt
     override def sign(x: Long): Long = math.signum(x)
   }
@@ -153,13 +169,15 @@ object Numeric {
     def negate(x: Float): Float = -x
     def fromInt(x: Int): Float = x.toFloat
     def parseString(str: String): Option[Float] = StringParsers.parseFloat(str)
-    def toInt(x: Float): Int = x.toInt
-    def toLong(x: Float): Long = x.toLong
-    def toFloat(x: Float): Float = x
-    def toDouble(x: Float): Double = x.toDouble
     def div(x: Float, y: Float): Float = x / y
-    // logic in Numeric base trait mishandles abs(-0.0f)
-    override def abs(x: Float): Float = math.abs(x)
+    extension (x: Float) {
+      override def toInt: Int = x.toInt
+      override def toLong: Long = x.toLong
+      override def toFloat: Float = x
+      override def toDouble: Double = x.toDouble
+      // logic in Numeric base trait mishandles abs(-0.0f)
+      override def abs: Float = math.abs(x)
+    }
     // logic in Numeric base trait mishandles sign(-0.0f) and sign(Float.NaN)
     override def sign(x: Float): Float = math.signum(x)
   }
@@ -172,13 +190,15 @@ object Numeric {
     def negate(x: Double): Double = -x
     def fromInt(x: Int): Double = x.toDouble
     def parseString(str: String): Option[Double] = StringParsers.parseDouble(str)
-    def toInt(x: Double): Int = x.toInt
-    def toLong(x: Double): Long = x.toLong
-    def toFloat(x: Double): Float = x.toFloat
-    def toDouble(x: Double): Double = x
     def div(x: Double, y: Double): Double = x / y
-    // logic in Numeric base trait mishandles abs(-0.0)
-    override def abs(x: Double): Double = math.abs(x)
+    extension (x: Double) {
+      override def toInt: Int = x.toInt
+      override def toLong: Long = x.toLong
+      override def toFloat: Float = x.toFloat
+      override def toDouble: Double = x
+      // logic in Numeric base trait mishandles abs(-0.0)
+      override def abs: Double = math.abs(x)
+    }
     // logic in Numeric base trait mishandles sign(-0.0) and sign(Double.NaN)
     override def sign(x: Double): Double = math.signum(x)
   }
@@ -202,10 +222,12 @@ object Numeric {
     def negate(x: BigDecimal): BigDecimal = -x
     def fromInt(x: Int): BigDecimal = BigDecimal(x)
     def parseString(str: String): Option[BigDecimal] = Try(BigDecimal(str)).toOption
-    def toInt(x: BigDecimal): Int = x.intValue
-    def toLong(x: BigDecimal): Long = x.longValue
-    def toFloat(x: BigDecimal): Float = x.floatValue
-    def toDouble(x: BigDecimal): Double = x.doubleValue
+    extension (x: BigDecimal) {
+      override def toInt: Int = x.intValue
+      override def toLong: Long = x.longValue
+      override def toFloat: Float = x.floatValue
+      override def toDouble: Double = x.doubleValue
+    }
   }
   private object BigDecimalIsConflicted {
     private val _0 = BigDecimal(0)   // cached zero is ordinarily cached for default math context
@@ -233,15 +255,10 @@ trait Numeric[T] extends Ordering[T] {
   def negate(x: T): T
   def fromInt(x: Int): T
   def parseString(str: String): Option[T]
-  def toInt(x: T): Int
-  def toLong(x: T): Long
-  def toFloat(x: T): Float
-  def toDouble(x: T): Double
 
   def zero = fromInt(0)
   def one = fromInt(1)
 
-  def abs(x: T): T = if (lt(x, zero)) negate(x) else x
 
   @deprecated("use `sign` method instead", since = "2.13.0") def signum(x: T): Int =
     if (lt(x, zero)) -1
@@ -252,6 +269,19 @@ trait Numeric[T] extends Ordering[T] {
     else if (gt(x, zero)) one
     else zero
 
+  extension (lhs: T) {
+    def +(rhs: T): T = plus(lhs, rhs)
+    def -(rhs: T): T = minus(lhs, rhs)
+    def *(rhs: T): T = times(lhs, rhs)
+    def unary_- : T = negate(lhs)
+    def abs: T = if (lt(lhs, zero)) negate(lhs) else lhs
+    def toInt: Int
+    def toLong: Long
+    def toFloat: Float
+    def toDouble: Double
+  }
+
+  @deprecated("use the extension methods available instead", since = "3.10.0")
   class NumericOps(lhs: T) {
     def +(rhs: T) = plus(lhs, rhs)
     def -(rhs: T) = minus(lhs, rhs)
@@ -265,5 +295,6 @@ trait Numeric[T] extends Ordering[T] {
     def toFloat: Float = Numeric.this.toFloat(lhs)
     def toDouble: Double = Numeric.this.toDouble(lhs)
   }
-  implicit def mkNumericOps(lhs: T): NumericOps = new NumericOps(lhs)
+  @deprecated("use the extension methods available instead", since = "3.10.0")
+  def mkNumericOps(lhs: T): NumericOps = new NumericOps(lhs)
 }
