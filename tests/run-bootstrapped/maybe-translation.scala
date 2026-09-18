@@ -1,6 +1,7 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
 import scala.util.{Ok, Err}
+import maybe.provided
 
 def foo(x: Int): Int? =
   if x > 0 && x < 10 then x else null
@@ -8,7 +9,7 @@ def foo(x: Int): Int? =
 def bar(x: Int?) =
   maybe:
     val y = x?
-    if y > 0
+    provided(y > 0)
     y
 
 /* With -Vprint:erasure should produce something like:
@@ -48,7 +49,7 @@ def bar(x: Int?) =
 def baz(x: Int ? String) =
   maybe:
     val y = x.withErr("not an int")?
-    if y > 0 else "not positive"
+    provided(y > 0, "not positive")
     y
 
 /* With -Vprint:erasure should produce something like:
