@@ -12,7 +12,7 @@ object Dependencies {
   val asmCommons = "org.ow2.asm" % "asm-commons" % "9.10.1"
 
   /** Version of Coursier to use + download for initializing the local maven repo of Scala command */
-  val coursierJarVersion = "2.1.25-M26"
+  val coursierJarVersion = "2.1.25"
   val coursier = "io.get-coursier" %% "coursier" % coursierJarVersion
   val coursierInterface = "io.get-coursier" % "interface" % "1.0.29-M4"
 
@@ -70,7 +70,7 @@ object Dependencies {
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.20.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.17.0"
+  val scalaCliLauncherVersion = "1.17.1"
 
   val scalaJsDomVersion = "2.8.1" // needs %%% which isn't usable within a val here
   val scalaJsEnvNodeJs = "org.scala-js" %% "scalajs-env-nodejs" % "1.6.0"
