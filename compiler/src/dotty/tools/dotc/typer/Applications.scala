@@ -744,6 +744,9 @@ trait Applications extends Compatibility {
         def alternative: Name =
           deprecatedNames.get(name).map(_.deprecatedName).getOrElse(nme.NO_NAME)
 
+      extension [T <: Untyped](namedArg: Trees.NamedArg[T])
+        def isBackquoted: Boolean = namedArg.hasAttachment(Backquoted)
+
       /** Reorder the suffix of named args per a list of required names.
        *
        *  @param pnames    The list of parameter names that are missing arguments
@@ -776,7 +779,10 @@ trait Applications extends Compatibility {
         case _ =>
           args match
           case allArgs @ (arg @ NamedArg(aname, _)) :: args =>
-            if toDrop.contains(aname) then
+            if arg.isBackquoted then
+              report.error(i"positional after named argument", arg.srcPos)
+              arg.arg :: handleNamed(pnames.dropOne, args, nameToArg, toDrop, missingArgs) // take as unnamed
+            else if toDrop.contains(aname) then
               // named argument was already picked (using aname), skip it
               handleNamed(pnames, args, nameToArg, toDrop - aname, missingArgs)
             else if pnames.nonEmpty && nameToArg.contains(aname) then
@@ -800,19 +806,23 @@ trait Applications extends Compatibility {
       }
 
       // Skip prefix of positional args, then handleNamed
-      def handlePositional(pnames: List[Name], args: TreeList[T]): TreeList[T] =
-        args match
+      def handlePositional(pnames: List[Name], bqnames: List[Name], args: TreeList[T]): TreeList[T] = args match
         case (arg @ NamedArg(name, _)) :: args if !pnames.isEmpty && pnames.head.isMatchedBy(name) =>
           pnames.head.checkDeprecationOf(name, arg.srcPos)
-          arg :: handlePositional(pnames.tail, args)
+          arg :: handlePositional(pnames.tail, bqnames, args)
+        case (namedArg @ NamedArg(name, arg)) :: args if namedArg.isBackquoted =>
+          if bqnames.contains(name) || methodType.paramNames.contains(name) then
+            report.error(i"backquoted named arg must be unique", namedArg.srcPos)
+          val pnames1 = if pnames.isEmpty then Nil else pnames.tail
+          arg :: handlePositional(pnames1, name :: bqnames, args)
         case (_: NamedArg) :: _ =>
           val nameAssocs = args.collect { case arg @ NamedArg(name, _) => name -> arg }
           handleNamed(pnames, args, nameAssocs.toMap, toDrop = Set.empty, missingArgs = false)
         case arg :: args =>
-          arg :: handlePositional(pnames.dropOne, args)
+          arg :: handlePositional(pnames.dropOne, bqnames, args)
         case nil => nil
 
-      handlePositional(methodType.paramNames, args)
+      handlePositional(methodType.paramNames, bqnames = Nil, args)
     } // end reorder
 
     /** Is `sym` a constructor of a Java-defined annotation? */
