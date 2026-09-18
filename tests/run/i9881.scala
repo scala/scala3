@@ -4,7 +4,7 @@ import java.io.*
 
 class Config(s: String)
 
-class ConfigException(@transient val config: Config = null)
+class ConfigException(@transient val config: Config = ???)
     extends java.io.Serializable
 
 object Test {

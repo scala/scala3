@@ -1,4 +1,5 @@
 package foo.bar.baz // the package nesting level material to this bug
+import scala.language.unsafeNulls
 
 class DivergenceTest {
 

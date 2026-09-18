@@ -1,5 +1,5 @@
--- [E029] Pattern Match Exhaustivity Warning: tests/patmat/enum-approx.scala:24:46 
-24 |  def f[T, U >: Null](f: Fun[T, U]): T => U = f match {
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/enum-approx.scala:25:46 
+25 |  def f[T, U >: Null](f: Fun[T, U]): T => U = f match {
    |                                              ^
    |                    match may not be exhaustive.
    |

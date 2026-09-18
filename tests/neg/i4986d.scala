@@ -1,5 +1,5 @@
 //> using options -Werror
-
+import scala.language.unsafeNulls
 trait Foo[A]
 
 type Fooable[A] = {

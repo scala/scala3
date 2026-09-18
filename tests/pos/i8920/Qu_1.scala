@@ -1,5 +1,5 @@
 package scala.collection.mutable
-
+import scala.language.unsafeNulls
 class Qu[A] protected (array: Array[AnyRef], start: Int, end: Int):
   def this(initialSize: Int = ArrayDeque.DefaultInitialSize) =
     this(ArrayDeque.alloc(initialSize), start = 0, end = 0)

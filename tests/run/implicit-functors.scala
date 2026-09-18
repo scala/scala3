@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Utils {
   type Id[t] = t
   type Const[c] = [t] =>> c

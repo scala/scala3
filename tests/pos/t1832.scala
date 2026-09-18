@@ -4,7 +4,7 @@ trait Cloning {
 
   abstract class Star { def *(a: Cloning.this.Foo): Cloning.this.Foo }
 
-  implicit def mkStar(i: Int): Star = new Star { def *(a: Foo): Foo = null }
+  implicit def mkStar(i: Int): Star = new Star { def *(a: Foo): Foo = ??? }
 
   val pool = 4 * fn { case ghostSYMBOL: Int => ghostSYMBOL * 2 }
 }

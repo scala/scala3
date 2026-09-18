@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class C {
     def get(): Int = 0
 }

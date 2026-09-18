@@ -1,5 +1,5 @@
 package test
-
+import scala.language.unsafeNulls
 object Tags {
   type Tagged[A, T] = {type Tag = T; type Self = A}
 

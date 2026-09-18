@@ -7,7 +7,7 @@ public class Exist<T extends String> {
 }
 */
 class Exist[T <: String] {
-  def foo: Exist[_] = null
+  def foo: Exist[_] = ???
 }
 
 /*
@@ -18,7 +18,7 @@ public class ExistF<T extends ExistF<T>> {
 */
 
 class ExistF[T <: ExistF[T]] {
-  def foo: ExistF[_] = null
+  def foo: ExistF[_] = ???
 }
 
 /*
@@ -29,7 +29,7 @@ public class ExistIndir<T extends String, U extends T> {
 */
 
 class ExistIndir[T <: String, U <: T] {
-  def foo: ExistIndir[_, _] = null
+  def foo: ExistIndir[_, _] = ???
 }
 
 class Test {

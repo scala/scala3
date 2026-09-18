@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class X
 
 object X {

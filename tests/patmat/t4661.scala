@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 trait Foo
 class One extends Foo
 class Two extends Foo

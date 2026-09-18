@@ -1,4 +1,5 @@
 // original report
+import scala.language.unsafeNulls
 def foo(opt: Option[Tuple.Tail[NonEmptyTuple]]): Unit =
   opt match
     case None => ???

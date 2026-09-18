@@ -1,5 +1,5 @@
 package example
-
+import scala.language.unsafeNulls
 import scala.language.experimental.macros
 
 trait Context {

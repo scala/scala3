@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import annotation.switch
 
 object Test {

@@ -2,7 +2,7 @@
 class A
 class B
 
-class Foo(val x: A = null) {
+class Foo(val x: A = ???) {
   def this(bla: B*) = {
     this(new A)
   }

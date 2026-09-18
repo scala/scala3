@@ -7,7 +7,7 @@ class Test {
     var x: Int = 1
     var y: String = "abc"
     @volatile var vx: Double = 2
-    @volatile var vo: Exception = null
+    @volatile var vo: Exception = ???
     var xs: Array[Int] = Array(1, 2, 3)
     val xs1: Object = xs
 

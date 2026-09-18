@@ -1,5 +1,5 @@
 //> using options -Wunused:imports -Wconf:origin=Suppressed.*:s
-
+import scala.language.unsafeNulls
 object FooUnused:
   import collection.mutable.Set // warn
   import collection.mutable.{Map => MutMap} // warn

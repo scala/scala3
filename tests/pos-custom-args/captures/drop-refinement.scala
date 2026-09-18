@@ -6,7 +6,7 @@ private final class ConcatIterator[+A](val from: Iterator[A @uncheckedVariance]^
   def next(): A = ???
 
   def concat[B >: A](that: => IterableOnce[B]^): ConcatIterator[B]^{this, that} = {
-    val c = new ConcatIteratorCell[B](that, null).asInstanceOf[ConcatIteratorCell[A]]
+    val c = new ConcatIteratorCell[B](that, ???).asInstanceOf[ConcatIteratorCell[A]]
       // crashes without special exemption for isRefining in CaptureSet.ProperVar$includeElem.
     this
   }

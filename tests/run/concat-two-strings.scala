@@ -1,6 +1,7 @@
 /** This doesn't test that the optimization is working, only that
  *  nothing is exploding.
  */
+import scala.language.unsafeNulls
 object Test {
   def f1(x: AnyRef)      = "" + x
   def f2(x: Int)         = "" + x

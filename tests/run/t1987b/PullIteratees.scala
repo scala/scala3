@@ -1,5 +1,5 @@
 package scales.xml
-
+import scala.language.unsafeNulls
 trait PullType
 class QName
 trait RetUrn[T]

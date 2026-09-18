@@ -10,7 +10,7 @@ def test(cap1: Cap, cap2: Cap) =
   val z2c: () ->{x} Unit = z2
 
   class Ref extends caps.Stateful:
-    var elem: String ->{cap1} String = null
+    var elem: String ->{cap1} String = ???
 
   val r = Ref()
   r.elem = f

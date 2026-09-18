@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import scala.math.Ordering
 import scala.reflect.ClassTag
 

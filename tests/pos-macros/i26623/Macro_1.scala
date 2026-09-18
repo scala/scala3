@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 trait Binder[T]
 
 object Binder:

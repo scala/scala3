@@ -120,15 +120,15 @@ class ReplCompilerTests extends ReplTest:
     assert(storedOutput().startsWith("java.lang.StackOverflowError"))
 
   @Test def `i3305 NPE`: Unit = initially:
-    run("null.toString")
-    assert(storedOutput().startsWith("java.lang.NullPointerException"))
+    run("null.hashCode")
+    assert(storedOutput().contains("java.lang.NullPointerException"))
 
   @Test def `i3305 IAE`: Unit = initially:
     run("""throw new IllegalArgumentException("Hello")""")
     assertTrue(storedOutput().startsWith("java.lang.IllegalArgumentException: Hello"))
 
   @Test def `i3305 ME`: Unit = initially:
-    run("val (x, y) = null")
+    run("import scala.language.unsafeNulls; val (x, y) = null")
     assert(storedOutput().startsWith("scala.MatchError: null"))
 
   @Test def i2789: Unit = initially {
@@ -445,14 +445,14 @@ class ReplCompilerTests extends ReplTest:
 
   @Test def `i17333 print null result of toString`: Unit =
     initially:
-      run("val tpolecat = new Object { override def toString(): String = null }")
+      run("import scala.language.unsafeNulls; val tpolecat = new Object { override def toString(): String = null }")
     .andThen:
       val last = lines().last
       assertTrue(last, last.startsWith("val tpolecat: Object = null"))
 
   @Test def `i17333 print toplevel object with null toString`: Unit =
     initially:
-      run("object tpolecat { override def toString(): String = null }")
+      run("import scala.language.unsafeNulls; object tpolecat { override def toString(): String = null }")
     .andThen:
       run("tpolecat")
       val last = lines().last

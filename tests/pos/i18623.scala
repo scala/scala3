@@ -1,6 +1,6 @@
 final abstract class ForcedRecompilationToken[T]
 object ForcedRecompilationToken {
-  implicit def default: ForcedRecompilationToken["abc"] = null
+  implicit def default: ForcedRecompilationToken["abc"] = ???
 }
 
 class GoodNoParens[T](implicit ev: ForcedRecompilationToken[T])

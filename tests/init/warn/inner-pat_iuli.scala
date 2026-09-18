@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 trait Ops { self: MyCodes =>
   abstract class Instru
   object opcodes {

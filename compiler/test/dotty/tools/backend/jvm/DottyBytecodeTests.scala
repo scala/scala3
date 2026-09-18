@@ -1033,7 +1033,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
   @Test // wrong local variable table for methods containing while loops
   def t9179(): Unit = {
     val code =
-      """class C {
+      """import scala.language.unsafeNulls
+        |class C {
         |  def t(): Unit = {
         |    var x = ""
         |    while (x != null) {
@@ -1591,7 +1592,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assertInvoke(getMethod(c, "f1"), "[Ljava/lang/String;", "clone") // array descriptor as receiver
       assertInvoke(getMethod(c, "f2"), "java/lang/Object", "hashCode") // object receiver
       assertInvoke(getMethod(c, "f3"), "java/lang/Object", "hashCode")
-      assertInvoke(getMethod(c, "f4"), "java/lang/Object", "toString")
+      assertInvoke(getMethod(c, "f4"), "java/util/Objects", "toString")
     }
   }
 

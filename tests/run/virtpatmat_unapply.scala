@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class IntList(val hd: Int, val tl: IntList)
 object NilIL extends IntList(0, null)
 object IntList {

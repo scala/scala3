@@ -109,15 +109,15 @@ class ExtractAPISpecification {
     val src1 = """
         |class Box[T]
         |class Foo {
-        | def foo: Box[_] = null
+        | def foo: Box[_] = ???
         |
         }""".stripMargin
     val fooMethodApi1 = compileAndGetFooMethodApi(src1)
     val src2 = """
         |class Box[T]
         |class Foo {
-          |   def bar: Box[_] = null
-        | def foo: Box[_] = null
+          |   def bar: Box[_] = ???
+        | def foo: Box[_] = ???
         |
         }""".stripMargin
     val fooMethodApi2 = compileAndGetFooMethodApi(src2)

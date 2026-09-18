@@ -1,5 +1,5 @@
 
-
+import scala.language.unsafeNulls
 class CC
 type Cap = CC^
 

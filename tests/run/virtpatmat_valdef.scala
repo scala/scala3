@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test extends App {
   // patterns in valdefs...
   // TODO: irrefutability should indicate we don't actually need to test, just deconstruct

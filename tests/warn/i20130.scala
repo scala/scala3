@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 sealed trait T_A[B]
 sealed trait T_B[C]
 case class CC_B[C]() extends T_A[T_B[C]]

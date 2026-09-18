@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object nullable {
   opaque type Nullable[A >: Null <: AnyRef] = A
 

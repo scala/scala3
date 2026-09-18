@@ -1,7 +1,7 @@
 class R[T] extends annotation.StaticAnnotation
 
 class A[T]:
-  val next: A[T] = null
+  val next: A[T] = ???
   val self: this.type = this
   val selfnext: this.next.type = this.next
   def f: (A[T] @R[this.type], A[T] @R[this.next.type]) = ???

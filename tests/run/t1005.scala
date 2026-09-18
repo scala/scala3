@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import scala.language.postfixOps
 object Test
 {

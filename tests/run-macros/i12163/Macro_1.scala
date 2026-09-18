@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import scala.quoted.*
 import scala.util.matching.Regex
 

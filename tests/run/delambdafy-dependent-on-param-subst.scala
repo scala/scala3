@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 trait M[-X] {
   def m(x: X): Boolean
 }

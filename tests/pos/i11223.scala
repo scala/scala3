@@ -10,12 +10,12 @@ object T:
   type C1 = M[CE]
 
   trait F[+R, +A]:
-    def <+>[U, B](b: F[U, B]): F[R | U, A] = null
+    def <+>[U, B](b: F[U, B]): F[R | U, A] = ???
     def int: F[R | A1, Int]
 
-  def d1[A](f: => A): F[D1, A] = null
-  def m[R, A](f: F[R | C1, A]): F[R | C1, A] = null
+  def d1[A](f: => A): F[D1, A] = ???
+  def m[R, A](f: F[R | C1, A]): F[R | C1, A] = ???
 
   def x = m { // adding type annotation here helps (m[D1 | A1 | C1, Int])
-    d1(123).int <+> null
+    d1(123).int <+> ???
   }

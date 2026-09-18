@@ -1,5 +1,5 @@
 package scriptWrapper
-
+import scala.language.unsafeNulls
 import dotty.tools.dotc.*
 import core.*
 import Contexts.Context

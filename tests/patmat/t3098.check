@@ -1,5 +1,5 @@
--- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t3098/b.scala:3:11 --
-3 |  def f = (null: T) match {
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t3098/b.scala:4:11 --
+4 |  def f = (null: T) match {
   |           ^^^^^^^
   |           match may not be exhaustive.
   |

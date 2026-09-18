@@ -1,4 +1,4 @@
-
+import scala.language.unsafeNulls
 @main def Test(): Unit =
   println(showLabel("TestMappingDocument"))
   println(showLabel("TypeABCMappingDocument"))

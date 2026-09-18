@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class A {
   // 3528 - not fixed
   // def f1 = List(List(1), LazyList(1))

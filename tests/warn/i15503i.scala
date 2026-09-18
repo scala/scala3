@@ -1,5 +1,5 @@
 //> using options -Wunused:all -Wconf:name=InlinedAnonClassWarning:s
-
+import scala.language.unsafeNulls
 import collection.mutable.{Map => MutMap} // warn
 import collection.mutable.Set // warn
 

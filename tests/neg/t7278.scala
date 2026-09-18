@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class A { class E }
 class B extends A { class EB }
 trait C { type E = Int }

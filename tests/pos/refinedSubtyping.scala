@@ -65,7 +65,7 @@ class Test4 {
 
   abstract class A { type T; val xz: Any }
 
-  val yy: A { val xz: T } = null;
+  val yy: A { val xz: T } = ???;
 //  val xx: A { val xz: T } = null;
   val zz: A { val xz: T } = yy;
 

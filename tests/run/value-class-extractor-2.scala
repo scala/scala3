@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 final class Opt[+A >: Null](val value: A) extends AnyVal {
   def get: A  = value
   def isEmpty = value == null

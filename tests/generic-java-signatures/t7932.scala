@@ -4,17 +4,17 @@ class Category[M[_, _]]
 
 trait M1[F] {
   type X[a, b] = F
-  def category: Category[X] = null
-  def category1: Category[Tuple2] = null
+  def category: Category[X] = ???
+  def category1: Category[Tuple2] = ???
   type Tuple2Alias = Tuple2
-  def category1b: Category[Tuple2Alias] = null
+  def category1b: Category[Tuple2Alias] = ???
 }
 
 // The second trait is needed to make sure there's a forwarder generated in C.
 // otherwise the trait methods are just the inherited default methods from M1.
 trait M2[F] { self: M1[F] =>
-  override def category: Category[X] = null
-  override def category1: Category[Tuple2] = null
+  override def category: Category[X] = ???
+  override def category1: Category[Tuple2] = ???
 
   type T[A, B]
   def category2: Category[T]

@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 trait Search[M] {
   def search(input: M): C[Int] = {
     println("Search received: " + input)

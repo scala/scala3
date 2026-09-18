@@ -1,5 +1,5 @@
 package p1 {
-  object Ex  { def unapply(p: Any): Option[_ <: Int] = null }
+  object Ex  { def unapply(p: Any): Option[_ <: Int] = ??? }
   object Foo { val Ex(_) = null }
 }
 // a.scala:2: error: error during expansion of this match (this is a scalac bug).
@@ -17,7 +17,7 @@ package p2 {
   }
   trait Reifiers {
     def f(): Unit = {
-      val u2: Other = null
+      val u2: Other = ???
       (null: Any) match { case u2.Baz(x) => println(x) } //: u2.Quux) }
       // The underlying error was: type mismatch;
       //  found   : Other#Quux

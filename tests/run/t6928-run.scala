@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 abstract class A( val someAs: A* ) {
   override def toString = someAs.length + " As"
 }
