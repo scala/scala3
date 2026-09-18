@@ -1,6 +1,7 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
 import scala.util.{Ok, Err}
+import maybe.provided
 
 
 extension (str: String) def parseInt: Int? =
@@ -35,8 +36,8 @@ def parseDate3(str: String): Date ? String =
         val day   = d.parseInt.withErr(s"malformed day: $d")?
         val month = m.parseInt.withErr(s"malformed month: $m")?
         val year  = y.parseInt.withErr(s"malformed year: $y")?
-        if 1 <= day && day <= 31 else s"day $day outside allowed range 1..31"
-        if 1 <= month && month <= 12 else s"month $month outside allowed range 1..12"
+        provided(1 <= day && day <= 31, s"day $day outside allowed range 1..31")
+        provided(1 <= month && month <= 12, s"month $month outside allowed range 1..12")
         Date(day, month, year)
     case _ =>
       Err("Date not in format day/month/year")
@@ -48,8 +49,8 @@ def parseDate4(str: String): Date? =
         val day   = d.parseInt?
         val month = m.parseInt?
         val year  = y.parseInt?
-        if 1 <= day && day <= 31
-        if 1 <= month && month <= 12
+        provided(1 <= day && day <= 31)
+        provided(1 <= month && month <= 12)
         Date(day, month, year)
     case _ =>
       null
