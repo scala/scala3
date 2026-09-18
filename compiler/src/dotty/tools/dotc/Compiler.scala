@@ -85,7 +85,6 @@ class Compiler {
          new SpecializeApplyMethods, // Adds specialized methods to FunctionN
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
-         new PruneInlinedMethods,    // Remove methods which have already been inlined
          new PruneInlineTraits) ::   // Remove right-hand side of definitions in inline traits
     List(new TestRecheck.Pre) ::     // Test only: run rechecker, enabled under -Yrecheck-test
     List(new TestRecheck) ::         // Test only: run rechecker, enabled under -Yrecheck-test
