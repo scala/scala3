@@ -9,8 +9,6 @@ import tasty.*
 import config.Printers.{noPrinter, pickling}
 import config.Feature
 
-import java.io.PrintStream
-import io.FileWriters.TastyWriter
 import StdNames.{nme, str}
 import Periods.*
 import Phases.*
@@ -21,11 +19,12 @@ import collection.mutable
 import util.concurrent.Executor
 
 import compiletime.uninitialized
-import dotty.tools.io.{AbstractFile, JarArchive, VirtualFile}
+import dotty.tools.nio.*
 import dotty.tools.dotc.printing.OutlinePrinter
 
 import scala.annotation.constructorOnly
 import scala.concurrent.Promise
+import scala.io.Codec
 import dotty.tools.dotc.transform.Pickler.*
 import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import dotty.tools.dotc.sbt.asyncZincPhasesCompleted
@@ -34,7 +33,6 @@ import dotty.tools.dotc.util.chaining.*
 
 import scala.concurrent.ExecutionContext
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
-import java.nio.file.Files
 import java.util.ConcurrentModificationException
 
 object Pickler {
@@ -51,7 +49,7 @@ object Pickler {
    * The callbacks should only be called once.
    */
   class AsyncTastyHolder private (
-      val earlyOut: Option[AbstractFile], incCallback: IncrementalCallback | Null)(using @constructorOnly ex: ExecutionContext):
+      val earlyOut: Option[FileContainer], incCallback: IncrementalCallback | Null)(using @constructorOnly ex: ExecutionContext):
     import scala.concurrent.Future as StdFuture
     import scala.concurrent.Await
     import scala.concurrent.duration.Duration
@@ -103,9 +101,7 @@ object Pickler {
           // when we are done, i.e. no suspended units,
           // we should close the file system so it can be read in the same JVM process.
           // Note: we close even if we have been cancelled.
-          earlyOut match
-            case Some(jar: JarArchive) => jar.close()
-            case _ =>
+          earlyOut.foreach(_.close())
         catch
           case ex: Exception =>
             ctx.reporter.error(em"Error closing early output: $ex")
@@ -157,28 +153,23 @@ object Pickler {
    */
   def writeSigFilesAsync(
       tasks: List[(String, Array[Byte])],
-      writer: EarlyFileWriter,
+      container: FileContainer,
       async: AsyncTastyHolder)(using ctx: ReadOnlyContext): Unit = {
     try
       try
         for (internalName, pickled) <- tasks do
           if !async.cancelled then
-            val _ = writer.writeTasty(internalName, pickled)
+            container.getOrCreateFile(internalName, FileExtension("tasty"), separator = '.')
+              .writeBytes(pickled)
       catch
         case ex: Exception => ctx.reporter.exception(em"writing TASTy to early output", ex)
       finally
-        writer.close()
+        container.close()
     catch
       case ex: Exception => ctx.reporter.exception(em"closing early output writer", ex)
     finally
       async.signalAsyncTastyWritten()
   }
-
-  class EarlyFileWriter private (writer: TastyWriter):
-    def this(dest: AbstractFile)(using @constructorOnly ctx: ReadOnlyContext) = this(TastyWriter(dest))
-
-    export writer.{writeTasty, close}
-
 
   sealed trait DelayedReporter {
     def hasErrors: Boolean
@@ -317,9 +308,7 @@ class Pickler extends Phase {
   override def skipIfJava(using Context): Boolean = false
 
   private def output(name: String, msg: String) = {
-    val s = new PrintStream(name)
-    s.print(msg)
-    s.close
+    File.getOrCreateOnDisk(name).writeText(msg, Codec.UTF8)
   }
 
   // Maps that keep a record if -Ytest-pickler is set.
@@ -497,8 +486,7 @@ class Pickler extends Phase {
         () => async.earlyOut match {
           case Some(out) =>
             given ReadOnlyContext = if useExecutor then ReadOnlyContext.buffered else ReadOnlyContext.eager
-            val writer = Pickler.EarlyFileWriter(out)
-            writeSigFilesAsync(serialized.result(), writer, async)
+            writeSigFilesAsync(serialized.result(), out, async)
           case None =>
         }
 
@@ -526,26 +514,27 @@ class Pickler extends Phase {
       )
     if ctx.isBestEffort then
       val outpath =
-        ctx.settings.outputDir.value.jpath.nn.toAbsolutePath.normalize
-          .resolve("META-INF")
-          .resolve("best-effort")
-      Files.createDirectories(outpath)
+        ctx.settings.outputDir.value
+          .getOrCreateContainer("META-INF")
+          .getOrCreateContainer("best-effort")
       BestEffortTastyWriter.write(outpath, result)
     result
   }
 
+  lazy val testInMemoryRoot = FileContainer.createInMemory("unpickler-test")
   private def testUnpickler(using Context): Unit =
     pickling.println(i"testing unpickler at run ${ctx.runId}")
     ctx.initialize()
     val resolveCheck = ctx.settings.YtestPicklerCheck.value
     val unpicklers =
       for ((cls, (unit, bytes)) <- pickledBytes) yield {
-        val unpickler = new DottyUnpickler(new VirtualFile(unit.source.path, bytes), isBestEffortTasty = false)
+        val file = testInMemoryRoot.getOrCreateFile(unit.source.path)
+        file.writeBytes(bytes)
+        val unpickler = new DottyUnpickler(file, isBestEffortTasty = false)
         unpickler.enter(roots = Set.empty)
         val optCheck =
           if resolveCheck && unit.source.file != null then
-            val resolved = unit.source.file.resolveSibling(s"${cls.name.mangledString}.tastycheck")
-            Option(resolved)
+            unit.source.file.parent.getFile(s"${cls.name.mangledString}.tastycheck")
           else None
         cls -> (unit, unpickler, optCheck)
       }
@@ -562,8 +551,7 @@ class Pickler extends Phase {
       freshUnit.knowsPureFuns = unit.knowsPureFuns
       optCheck match
         case Some(check) =>
-          import java.nio.charset.StandardCharsets.UTF_8
-          val checkContents = String(check.toByteArray, UTF_8)
+          val checkContents = check.readText(Codec.UTF8)
           inContext(rootCtx.fresh.setCompilationUnit(freshUnit)):
             testSamePrinted(printedTasty(cls), checkContents, cls, check)
         case None =>
@@ -585,11 +573,11 @@ class Pickler extends Phase {
                     |  diff before-pickling.txt after-pickling.txt""")
   end testSame
 
-  private def testSamePrinted(printed: String, checkContents: String, cls: ClassSymbol, check: AbstractFile)(using Context): Unit = {
+  private def testSamePrinted(printed: String, checkContents: String, cls: ClassSymbol, check: File)(using Context): Unit = {
     for lines <- diff(printed, checkContents) do
       output("after-printing.txt", printed)
-      report.error(em"""TASTy printer difference for $cls in ${cls.source}, did not match ${check},
-                    |  output dumped in after-printing.txt, check diff with `git diff --no-index -- $check after-printing.txt`
+      report.error(em"""TASTy printer difference for $cls in ${cls.source}, did not match ${check.path},
+                    |  output dumped in after-printing.txt, check diff with `git diff --no-index -- ${check.path} after-printing.txt`
                     |  actual output:
                     |$lines%\n%""")
   }

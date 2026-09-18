@@ -3,7 +3,7 @@ package config
 
 import core.Contexts.*
 
-import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
+import dotty.tools.nio.FileContainer
 
 import annotation.tailrec
 import annotation.internal.unshared
@@ -21,8 +21,8 @@ object Settings:
   private val StringTag: ClassTag[String]        = ClassTag(classOf[String])
   private val ListTag: ClassTag[List[?]]         = ClassTag(classOf[List[?]])
   private val VersionTag: ClassTag[ScalaVersion] = ClassTag(classOf[ScalaVersion])
-  private val FileContainerTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
-  private val OptionalFileContainerTag: ClassTag[Option[AbstractFile]]  = ClassTag(classOf[Option[AbstractFile]])
+  private val FileContainerTag: ClassTag[FileContainer]  = ClassTag(classOf[FileContainer])
+  private val OptionalFileContainerTag: ClassTag[Option[FileContainer]]  = ClassTag(classOf[Option[FileContainer]])
 
   trait SettingCategory:
     def prefixLetter: String
@@ -237,6 +237,7 @@ object Settings:
           state.fail(s"$argValue is not an integer argument for $name", args)
 
       def setFileContainer(arg: String, args: List[String], optional: Boolean)(using ArgsSummary) =
+        ???/*
         val path = Directory(arg)
         val isJar = path.ext.isJar
         if !isJar && !path.isDirectory then
@@ -247,7 +248,7 @@ object Settings:
           def fullFile = if optional then Some(file) else file
           val dubious = changed && fullFile != valueIn(sstate)
           val updated = update(fullFile, arg, args)
-          if dubious then updated.warn(s"Option $name was updated") else updated
+          if dubious then updated.warn(s"Option $name was updated") else updated*/
 
       // argRest is the remainder of -foo:bar if any. This setting will receive a value from argRest or args.head.
       // useArg means use argRest even if empty.
@@ -480,10 +481,10 @@ object Settings:
     def MultiStringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[List[String]] =
       publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, deprecation = deprecation))
 
-    def FileContainerSetting(category: SettingCategory, name: String, allowsJar: Boolean, descr: String, default: AbstractFile, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[AbstractFile] =
+    def FileContainerSetting(category: SettingCategory, name: String, allowsJar: Boolean, descr: String, default: FileContainer, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[FileContainer] =
       publish(Setting(category, prependName(name), descr, default, if allowsJar then "directory or .jar file" else "directory", aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs))
 
-    def OptionalFileContainerSetting(category: SettingCategory, name: String, allowsJar: Boolean, descr: String, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[Option[AbstractFile]] =
+    def OptionalFileContainerSetting(category: SettingCategory, name: String, allowsJar: Boolean, descr: String, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[Option[FileContainer]] =
       publish(Setting(category, prependName(name), descr, None, if allowsJar then "directory or .jar file" else "directory", aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs))
 
     def PathSetting(category: SettingCategory, name: String, descr: String, default: String, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[String] =

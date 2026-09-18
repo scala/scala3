@@ -19,9 +19,9 @@ import StdNames.*
 import TypeErasure.ErasedValueType
 
 import dotty.tools.dotc.transform.{Erasure, ValueClasses}
-
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.report
+import dotty.tools.nio.*
 
 import dotty.tools.sjs.ir
 import dotty.tools.sjs.ir.{ClassKind, Position, Trees => js, Types => jstpe, WellKnownNames => jswkn}
@@ -324,22 +324,13 @@ class JSCodeGen()(using genCtx: Context) {
   }
 
   private def genIRFile(cunit: CompilationUnit, tree: ir.Trees.ClassDef): Unit = {
-    val outfile = getFileFor(cunit, tree.name.name, ".sjsir")
-    val output = new BufferedOutputStream(outfile.output)
+    val outfile = ctx.settings.outputDir.value.getOrCreateFile(tree.name.name.nameString, FileExtension("sjsir"), separator = '.')
+    val output = new BufferedOutputStream(outfile.output())
     try {
       ir.Serializers.serialize(output, tree)
     } finally {
       output.close()
     }
-  }
-
-  private def getFileFor(cunit: CompilationUnit, className: ClassName,
-      suffix: String): dotty.tools.io.AbstractFile = {
-    val outputDirectory = ctx.settings.outputDir.value
-    val pathParts = className.nameString.split('.')
-    val dir = pathParts.init.foldLeft(outputDirectory)(_.subdirectoryNamed(_))
-    val filename = pathParts.last
-    dir.fileNamed(filename + suffix)
   }
 
   private def isDelambdafyTargetCandidate(sym: Symbol): Boolean =

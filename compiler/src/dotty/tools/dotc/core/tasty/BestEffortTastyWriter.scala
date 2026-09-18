@@ -2,38 +2,26 @@ package dotty.tools.dotc
 package core
 package tasty
 
-import java.nio.file.{Path as JPath, Files as JFiles}
-import java.nio.channels.ClosedByInterruptException
-import java.io.DataOutputStream
-import dotty.tools.io.{File, PlainFile}
+import dotty.tools.nio.*
 import dotty.tools.dotc.core.Contexts.Context
 
 object BestEffortTastyWriter:
 
-  def write(dir: JPath, units: List[CompilationUnit])(using Context): Unit =
-    if JFiles.exists(dir) then JFiles.createDirectories(dir)
-
+  def write(dir: FileContainer, units: List[CompilationUnit])(using Context): Unit =
     units.foreach { unit =>
       unit.pickled.foreach { (clz, binary) =>
         val parts = clz.fullName.mangledString.split('.')
-        val outPath = outputPath(parts.toList, dir)
-        val outTastyFile = new File(outPath)
-        val outstream = new PlainFile(outTastyFile).output
-        try outstream.write(binary())
-        catch case ex: ClosedByInterruptException =>
-          outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
-          throw ex
-        finally outstream.close()
+        val outTastyFile = outputPath(parts.toList, dir)
+        outTastyFile.writeBytes(binary())
       }
     }
 
-  def outputPath(parts: List[String], acc: JPath): JPath =
+  def outputPath(parts: List[String], acc: FileContainer): File =
     parts match
       case Nil => throw new Exception("Invalid class name")
       case last :: Nil =>
         val name = last.stripSuffix("$")
-        acc.resolve(s"$name.betasty")
+        acc.getOrCreateFile(s"$name.betasty")
       case pkg :: tail =>
-        val next = acc.resolve(pkg)
-        if !JFiles.exists(next) then JFiles.createDirectory(next)
+        val next = acc.getOrCreateContainer(pkg)
         outputPath(tail, next)

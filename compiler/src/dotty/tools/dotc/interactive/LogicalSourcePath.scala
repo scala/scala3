@@ -2,9 +2,7 @@ package dotty.tools.dotc.interactive
 
 import dotty.tools.dotc.classpath.SourceFileEntry
 import dotty.tools.dotc.classpath.ClassPath
-
-import java.io.File
-import java.net.URL
+import dotty.tools.nio.*
 
 /**
  * A ClassPath implementation that can find sources regardless of the directory where they're declared.
@@ -36,7 +34,10 @@ class LogicalSourcePath(val sourcepath: String, rootPackage: LogicalPackage)
     val pre = if (prefix.isEmpty) prefix else s"$prefix."
     pkg.packages.map(p => pre + p.name)
 
-  override def asURLs: Seq[URL] = sourcepath.split(File.pathSeparator).toIndexedSeq.map(new File(_)).map(_.toURI.toURL)
+  override def asURLs: Seq[java.net.URL] =
+    sourcepath.split(ClassPath.pathSeparator).toIndexedSeq
+              .map(p => FileContainer.getOnDisk(p).orElse(File.getOnDisk(p)).get)
+              .flatMap(_.toURL)
 
   /** Return the package for the given fullName, if any */
   private def findPackage(fullName: String): Option[LogicalPackage] =

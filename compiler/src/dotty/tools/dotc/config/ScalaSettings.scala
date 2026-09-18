@@ -5,7 +5,7 @@ import dotty.tools.dotc.config.PathResolver.Defaults
 import dotty.tools.dotc.config.Settings.{Setting, SettingAlias, SettingGroup, SettingCategory, Deprecation}
 import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
+import dotty.tools.nio.FileContainer
 import Setting.ChoiceWithHelp
 import ScalaSettingCategories.*
 
@@ -46,7 +46,7 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
   self: SettingGroup =>
 
   /* Path related settings */
-  val semanticdbTarget: Setting[String] = PathSetting(RootSetting, "semanticdb-target", "Specify an alternative output directory for SemanticDB files.", "")
+  val semanticdbTarget: Setting[Option[FileContainer]] = OptionalFileContainerSetting(RootSetting, "semanticdb-target", allowsJar = false, "Specify an alternative output directory for SemanticDB files.")
   val semanticdbText: Setting[Boolean] = BooleanSetting(RootSetting, "semanticdb-text", "Specifies whether to include source code in SemanticDB files or not.")
 
   val source: Setting[String] = ChoiceSetting(RootSetting, "source", "source version", "source version", ScalaSettingsProperties.supportedSourceVersions, SourceVersion.defaultSourceVersion.toString, aliases = List("--source"))
@@ -89,10 +89,10 @@ trait CommonScalaSettings:
   val javabootclasspath: Setting[String] = PathSetting(RootSetting, "javabootclasspath", "Override java boot classpath.", Defaults.javaBootClassPath, aliases = List("--java-boot-class-path"))
   val javaextdirs: Setting[String] = PathSetting(RootSetting, "javaextdirs", "Override java extdirs classpath.", Defaults.javaExtDirs, aliases = List("--java-extension-directories"))
   val sourcepath: Setting[String] = PathSetting(RootSetting, "sourcepath", "Specify location(s) of source files.", Defaults.scalaSourcePath, aliases = List("--source-path"))
-  val sourceroot: Setting[AbstractFile] = FileContainerSetting(RootSetting, "sourceroot", allowsJar = false, "Specify workspace root directory.", new PlainDirectory(Directory(".")))
+  val sourceroot: Setting[FileContainer] = FileContainerSetting(RootSetting, "sourceroot", allowsJar = false, "Specify workspace root directory.", FileContainer.workingDirectory())
 
   val classpath: Setting[String] = PathSetting(RootSetting, "classpath", "Specify where to find user class files.", ScalaSettingsProperties.defaultClasspath, aliases = List("-cp", "--class-path"))
-  val outputDir: Setting[AbstractFile] = FileContainerSetting(RootSetting, "d", allowsJar = true, "Destination for generated classfiles.", new PlainDirectory(Directory(".")))
+  val outputDir: Setting[FileContainer] = FileContainerSetting(RootSetting, "d", allowsJar = true, "Destination for generated classfiles.", FileContainer.workingDirectory())
   val color: Setting[String] = ChoiceSetting(RootSetting, "color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/, aliases = List("--color"))
   val verbose: Setting[Boolean] = BooleanSetting(RootSetting, "verbose", "Output messages about what the compiler is doing.", aliases = List("--verbose"))
   val version: Setting[Boolean] = BooleanSetting(RootSetting, "version", "Print product version and exit.", aliases = List("--version"))
@@ -115,7 +115,7 @@ trait CommonScalaSettings:
   val preview: Setting[Boolean] = BooleanSetting(RootSetting, "preview", "Enable the use of preview features anywhere in the project.")
 
   /* Coverage settings */
-  val coverageOutputDir = PathSetting(RootSetting, "coverage-out", "Destination for coverage classfiles and instrumentation data.", "", aliases = List("--coverage-out"))
+  val coverageOutputDir: Setting[Option[FileContainer]] = OptionalFileContainerSetting(RootSetting, "coverage-out", allowsJar = false, "Destination for coverage classfiles and instrumentation data.", aliases = List("--coverage-out"))
   val coverageExcludeClasslikes: Setting[List[String]] = MultiStringSetting(RootSetting, "coverage-exclude-classlikes", "packages, classes and modules", "List of regexes for packages, classes and modules to exclude from coverage.", aliases = List("--coverage-exclude-classlikes"))
   val coverageExcludeFiles: Setting[List[String]] = MultiStringSetting(RootSetting, "coverage-exclude-files", "files", "List of regexes for files to exclude from coverage.", aliases = List("--coverage-exclude-files"))
 
@@ -469,7 +469,7 @@ private sealed trait XSettings:
 
   /** Pipeline compilation options */
   val XjavaTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xjava-tasty", "Pickler phase should compute TASTy for .java defined symbols for use by build tools", aliases = List("-Xpickle-java", "-Yjava-tasty", "-Ypickle-java"), preferPrevious = true)
-  val XearlyTastyOutput: Setting[Option[AbstractFile]] = OptionalFileContainerSetting(AdvancedSetting, "Xearly-tasty-output", allowsJar = true, "Destination to write generated .tasty files to for use in pipelined compilation.", aliases = List("-Xpickle-write", "-Yearly-tasty-output", "-Ypickle-write"), ignoreInvalidArgs = true, preferPrevious = true)
+  val XearlyTastyOutput: Setting[Option[FileContainer]] = OptionalFileContainerSetting(AdvancedSetting, "Xearly-tasty-output", allowsJar = true, "Destination to write generated .tasty files to for use in pipelined compilation.", aliases = List("-Xpickle-write", "-Yearly-tasty-output", "-Ypickle-write"), ignoreInvalidArgs = true, preferPrevious = true)
   val XallowOutlineFromTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xallow-outline-from-tasty", "Allow outline TASTy to be loaded with the -from-tasty option.", aliases = List("-Yallow-outline-from-tasty"))
 
   val XmixinForceForwarders = ChoiceSetting(

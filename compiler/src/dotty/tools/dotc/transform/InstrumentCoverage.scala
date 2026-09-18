@@ -1,9 +1,6 @@
 package dotty.tools.dotc
 package transform
 
-import java.io.File
-import java.nio.file.{Files, Path}
-
 import ast.tpd
 import ast.tpd.*
 import ast.desugar.TrailingForMap
@@ -26,6 +23,7 @@ import util.{Property, SourcePosition, SourceFile}
 import util.Spans.Span
 import localopt.StringInterpolatorOpt
 import inlines.Inlines
+import dotty.tools.nio.*
 import scala.util.matching.Regex
 import java.util.regex.Pattern
 
@@ -146,27 +144,14 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
   private val coverageLocalExclusions: mutable.Map[String, List[Span]] = mutable.Map.empty
 
   override def runOn(units: List[CompilationUnit])(using ctx: Context): List[CompilationUnit] =
-    val outputPath = ctx.settings.coverageOutputDir.value
-
-    // Ensure the dir exists (once per batch, not per unit)
-    val dataDir = File(outputPath)
-    val newlyCreated = dataDir.mkdirs()
-
-    if !newlyCreated then
-      // If the directory existed before, clean measurement files.
-      val files = dataDir.listFiles
-      if files != null then
-        files
-          .filter(_.getName.startsWith("scoverage.measurements."))
-          .foreach(_.delete())
-    end if
+    val outputPath = ctx.settings.coverageOutputDir.value.get
+    // Clean any existing measurement files.
+    outputPath.entries.collect{ case f: File if f.name.startsWith("scoverage.measurements.") => f }.foreach(_.delete())
 
     // Deserialize previous coverage once at the start
-    val coverageFilePath = Serializer.coverageFilePath(outputPath)
-    val previousCoverage =
-      if Files.exists(coverageFilePath) then
-        Serializer.deserialize(coverageFilePath)
-      else Coverage()
+    val previousCoverage = outputPath.getFile(Serializer.CoverageFileName) match
+      case Some(f) => Serializer.deserialize(f)
+      case None => Coverage()
 
     // Initialize coverage patterns once
     coverageExcludeClasslikePatterns = ctx.settings.coverageExcludeClasslikes.value.map(_.r.pattern)
@@ -212,14 +197,14 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     previousCoverage.statements
       .filterNot(stmt =>
         val source = stmt.location.sourcePath
-        currentFiles.contains(source) || !Files.exists(Path.of(ctx.settings.sourceroot.value.path).resolve(source))
+        currentFiles.contains(source) || ctx.settings.sourceroot.value.getFile(source).isEmpty
       )
       .foreach(mergedCoverage.addStatement)
 
     // Add all new statements from this compilation
     ctx.base.coverage.nn.statements.foreach(mergedCoverage.addStatement)
 
-    Serializer.serialize(mergedCoverage, outputPath)
+    Serializer.serialize(mergedCoverage, outputPath.getOrCreateFile(Serializer.CoverageFileName))
 
     result
 
@@ -246,11 +231,11 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       excludedSpans.exists(_.contains(tree.span))
 
   override protected def newTransformer(using Context) =
-    CoverageTransformer(ctx.settings.coverageOutputDir.value)
+    CoverageTransformer(ctx.settings.coverageOutputDir.value.get)
 
   /** Transforms trees to insert calls to Invoker.invoked to compute the coverage when the code is called */
-  private class CoverageTransformer(outputPath: String) extends Transformer:
-    private val ConstOutputPath = Constant(outputPath)
+  private class CoverageTransformer(outputPath: FileContainer) extends Transformer:
+    private val ConstOutputPath = Constant(outputPath.path)
 
     private def echoSkippedLargeTreeCoverage(tree: MemberDef, subject: String, nodeCount: Int)(using Context): Unit = {
       report.echo(

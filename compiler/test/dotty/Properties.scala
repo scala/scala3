@@ -1,6 +1,7 @@
 package dotty
 
-import java.nio.file.*
+import dotty.tools.nio.FileSystemEntry
+
 import java.util.regex.{Matcher, Pattern}
 
 /** Runtime properties from defines or environment */
@@ -59,7 +60,7 @@ object Properties {
 
   /** all the ASM jars */
   def asmAll: Seq[String] =
-    val sep = java.io.File.separator
+    val sep = FileSystemEntry.separator.toString
     Seq("", "-tree", "-util", "-commons", "-analysis")
       .map(suffix =>
         asm.replaceAll("asm", "asm" + suffix)
