@@ -18,7 +18,7 @@ import scala.collection.immutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
-import io.AbstractFile
+import nio.File
 import dotty.tools.dotc.classpath.FileUtils.hasSiblingTasty
 import dotty.tools.dotc.config.Printers
 
@@ -76,17 +76,17 @@ object ClassfileParser {
     }
   }
 
-  private[classfile] def parseHeader(classfile: AbstractFile)(using in: DataReader): Header.Version = {
+  private[classfile] def parseHeader(classfile: File)(using in: DataReader): Header.Version = {
     val magic = in.nextInt
     if (magic != JAVA_MAGIC)
-      throw new IOException(s"class file '${classfile}' has wrong magic number 0x${toHexString(magic)}, should be 0x${toHexString(JAVA_MAGIC)}")
+      throw new IOException(s"class file '${classfile.path}' has wrong magic number 0x${toHexString(magic)}, should be 0x${toHexString(JAVA_MAGIC)}")
     val minorVersion = in.nextChar.toInt
     val majorVersion = in.nextChar.toInt
     if ((majorVersion < JAVA_MAJOR_VERSION) ||
         ((majorVersion == JAVA_MAJOR_VERSION) &&
          (minorVersion < JAVA_MINOR_VERSION)))
       throw new IOException(
-        s"class file '${classfile}' has unknown version $majorVersion.$minorVersion, should be at least $JAVA_MAJOR_VERSION.$JAVA_MINOR_VERSION")
+        s"class file '${classfile.path}' has unknown version $majorVersion.$minorVersion, should be at least $JAVA_MAJOR_VERSION.$JAVA_MINOR_VERSION")
     Header.Version(majorVersion, minorVersion)
   }
 

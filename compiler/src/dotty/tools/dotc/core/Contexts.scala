@@ -23,7 +23,7 @@ import config.Settings.*
 import config.Config
 import reporting.*
 import reporting.Diagnostic.LoadingFailure
-import io.{AbstractFile, PlainFile, Path}
+import dotty.tools.nio.*
 import scala.io.Codec
 import collection.mutable
 import printing.*
@@ -262,7 +262,7 @@ object Contexts {
     def nestingLevel: Int = effectiveScope.nestingLevel
 
     /** Sourcefile corresponding to given abstract file, memoized */
-    def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
+    def getSource(file: File, codec: => Codec = Codec(settings.encoding.value)) = {
       util.Stats.record("Context.getSource")
       base.sources.getOrElseUpdate(file, SourceFile(file, settings.sourceroot.value, codec))
     }
@@ -273,9 +273,9 @@ object Contexts {
       case Some(file) => getSource(file)
 
     /** AbstractFile with given path, memoized */
-    def getFile(path: String): Option[AbstractFile] = base.files.get(path).orElse(
+    def getFile(path: String): Option[File] = base.files.get(path).orElse(
       try
-        val file = new PlainFile(Path(path))
+        val file = File.getOrCreateOnDisk(path)
         base.files(path) = file
         Some(file)
       catch
@@ -320,10 +320,7 @@ object Contexts {
           util.Stats.record("Context.withSource.new")
           val ctx2 = fresh.setSource(source)
           if ctx2.compilationUnit eq NoCompilationUnit then
-            // `source` might correspond to a file not necessarily
-            // in the current project (e.g. when inlining library code),
-            // so set `mustExistIfNotNull` to false.
-            ctx2.setCompilationUnit(CompilationUnit(source, mustExistIfNotNull = false))
+            ctx2.setCompilationUnit(CompilationUnit(source))
           ctx1 = ctx2
           related = related.nn.updated(source, ctx2)
         ctx1
@@ -854,15 +851,15 @@ object Contexts {
 
   // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
   extension (c: Context)
-    final def withModeBits(mode: Mode): Context =
+    def withModeBits(mode: Mode): Context =
       if (mode != c.mode) c.fresh.setMode(mode) else c
 
-    final def addMode(mode: Mode): Context = withModeBits(c.mode | mode)
-    final def retractMode(mode: Mode): Context = withModeBits(c.mode &~ mode)
+    def addMode(mode: Mode): Context = withModeBits(c.mode | mode)
+    def retractMode(mode: Mode): Context = withModeBits(c.mode &~ mode)
 
   extension (c: FreshContext)
-    final def addMode(mode: Mode): c.type = c.setMode(c.mode | mode)
-    final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
+    def addMode(mode: Mode): c.type = c.setMode(c.mode | mode)
+    def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
 
   /** Run `op` with a pool-allocated context that has an ExploreTyperState. */
   inline def explore[T](inline op: Context ?=> T)(using Context): T =
@@ -1055,8 +1052,8 @@ object Contexts {
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
 
     /** Sources and Files that were loaded */
-    val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
-    val files: util.HashMap[String, AbstractFile] = util.HashMap()
+    val sources: util.HashMap[File, SourceFile] = util.HashMap[File, SourceFile]()
+    val files: util.HashMap[String, File] = util.HashMap()
 
     /** Cache for magic offset header lookups, scoped to this compiler instance
      *  so that concurrent compilers in the same classloader don't share stale entries. */

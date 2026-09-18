@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package util
 
-import dotty.tools.io.*
 import Spans.*
 import core.Contexts.*
 import core.Decorators.*
@@ -14,12 +13,8 @@ import scala.annotation.internal.sharable
 import scala.collection.mutable.ArrayBuffer
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.util.chaining.*
+import dotty.tools.nio.*
 
-import java.io.File.separator
-import java.net.URI
-import java.nio.charset.StandardCharsets
-import java.nio.file.{FileSystemException, Paths}
-import java.util.Optional
 import scala.annotation.threadUnsafe
 
 object WrappedSourceFile:
@@ -53,7 +48,7 @@ object WrappedSourceFile:
                 val name = m.group(1).nn
                 val src = ctx.getSource(name)
                 val file = src.file
-                if file != null && file.exists then
+                if file != null then
                   HasHeader(sourceStartOffset, src)
                 else
                   report.warning(em"original source file not found: $name")
@@ -63,7 +58,7 @@ object WrappedSourceFile:
         result
       case result => result
 
-class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec: Codec) extends interfaces.SourceFile {
+class SourceFile (val file: File | Null, sourceRoot: FileContainer, codec: Codec) extends interfaces.SourceFile {
   private var myContent: String | Null = null
 
   private var _maybeIncomplete: Boolean = false
@@ -79,44 +74,30 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
    * the source is read from Tasty. */
   override def textContent(): String =
     if file == null then ""
-    else
-      initialize(myContent, myContent = _,
-        try new String(file.toByteArray, codec.charSet)
-        catch case _: FileSystemException => ""
-      )
+    else initialize(myContent, myContent = _, file.readText(codec))
 
   override def name: String =
     if file eq null then "" else file.name
   def ext: FileExtension =
-    if file eq null then FileExtension.Empty else file.ext
+    if file eq null then FileExtension("") else file.extension
   override def path: String =
     if file eq null then "" else file.path
   @threadUnsafe lazy val pathRelativeToSourceRoot: String =
     if file eq null then
       // While this should not happen, it currently does due to known definitions being loaded without a source file
       ""
-    else if file.isVirtual || sourceRoot.isVirtual then
-      // This can happen when evaluating debug expressions with fake in-memory files
-      file.path
     else
-      val sourcePath = file.jpath.nn.toAbsolutePath.normalize
-      val refPath = sourceRoot.jpath.nn.toAbsolutePath.normalize
-      if sourcePath.startsWith(refPath) then
-        // On Windows we can only relativize paths if root component matches:
-        //     try refPath.relativize(sourcePath).toString
-        //     catch case _: IllegalArgumentException => sourcePath.toString
-        // As we already check that the prefix matches, the special handling for
-        // Windows is not needed.
-        //
-        // Also, consistently use '/' as separator so any path loaded from anywhere
-        // is guaranteed to have the same separator, otherwise we'd see, e.g., "a\path",
-        // and wonder "is this a Windows 2-part path, or a non-Windows file name with a backslash in it?"
-        refPath.relativize(sourcePath).toString.replace(java.io.File.separatorChar, '/')
-      else
-        file.path
+      // Consistently use '/' as separator so any path loaded from anywhere
+      // is guaranteed to have the same separator, otherwise we'd see, e.g., "a\path",
+      // and wonder "is this a Windows 2-part path, or a non-Windows file name with a backslash in it?"
+      file.pathRelativeTo(sourceRoot).replace(FileSystemEntry.separator, '/')
 
-  override def jfile: Optional[JFile] =
-    if file eq null then Optional.empty() else file.jfile
+  override def jfile: java.util.Optional[java.io.File] =
+    if file eq null then
+      java.util.Optional.empty()
+    else
+      try java.util.Optional.of(new java.io.File(path))
+      catch case _: Exception => java.util.Optional.empty()
 
   override def equals(that: Any): Boolean =
     (this `eq` that.asInstanceOf[AnyRef]) || {
@@ -238,22 +219,26 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
     if file eq null then "<no file>" else file.toString
 }
 object SourceFile {
+  private[util] val VirtualSourceRoot = FileContainer.createInMemory("_root_")
+
   implicit def fromContext(using Context): SourceFile = ctx.source
 
   /** A source file with an underlying virtual file. The path is taken as a file system path
    *  with the local separator converted to "/". The last element of the path will be the simple name of the file.
    */
-  def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
-    new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), new VirtualFile("_root_", Array.emptyByteArray), Codec.UTF8)
+  def virtual(name: String, content: String, maybeIncomplete: Boolean = false): SourceFile =
+    val file = VirtualSourceRoot.getOrCreateFile(name)
+    file.writeText(name, Codec.UTF8)
+    new SourceFile(file, VirtualSourceRoot, Codec.UTF8)
       .tap(_._maybeIncomplete = maybeIncomplete)
 
   /** A helper method to create a virtual source file for given URI.
    */
-  def virtual(uri: URI, content: String): SourceFile =
+  def virtual(uri: java.net.URI, content: String): SourceFile =
     virtual(java.nio.file.Path.of(uri).toString, content)
 }
 
-@sharable object NoSource extends SourceFile(null, new VirtualFile("_root_", Array.emptyByteArray), Codec.UTF8) {
+@sharable object NoSource extends SourceFile(null, SourceFile.VirtualSourceRoot, Codec.UTF8) {
   override def exists: Boolean = false
   override def atSpan(span: Span): SourcePosition = NoSourcePosition
 }

@@ -2152,7 +2152,7 @@ extends NamingMsg(AlreadyDefinedID):
   def msg(using Context) =
     def where: String =
       if conflicting.effectiveOwner.is(Package) && conflicting.associatedFile != null then
-        i" in ${conflicting.associatedFile}"
+        i" in ${conflicting.associatedFile.nn.path}"
       else if conflicting.owner == owner then ""
       else i" in ${conflicting.owner}"
     def print(tpe: Type): String =

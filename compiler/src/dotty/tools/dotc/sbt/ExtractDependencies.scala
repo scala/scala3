@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package sbt
 
-import java.io.File
-import java.nio.file.Path
 import java.util.{Arrays, EnumSet}
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
@@ -17,8 +15,8 @@ import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.typer.Applications.*
 import dotty.tools.dotc.util.{NoSourcePosition, SrcPos}
-import dotty.tools.{io, printOnAssertionError}
-import dotty.tools.io.AbstractFile
+import dotty.tools.printOnAssertionError
+import dotty.tools.nio.*
 import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext.*
@@ -93,8 +91,8 @@ object ExtractDependencies {
   def classNameAsString(sym: Symbol)(using Context): String =
     def isJava(sym: Symbol)(using Context): Boolean =
       Option(sym.source) match
-        case Some(src) => src.toString.endsWith(".java")
-        case None      => false
+        case Some(src) if src.file != null => src.file.extension.isJava
+        case _                             => false
     def classNameAsString0(sym: Symbol)(using Context): String =
       sym.fullName.stripModuleClassSuffix.toString
     def javaClassNameAsString(sym: Symbol)(using Context): String =
@@ -505,7 +503,7 @@ class DependencyRecorder {
   def sendToZinc()(using Context): Unit =
     if ctx.settings.YdumpSbtInc.value then dumpInc()
     ctx.withIncCallback: cb =>
-      val siblingClassfiles = new mutable.HashMap[AbstractFile, Path]
+      val siblingClassfiles = new mutable.HashMap[File, File]
       _foundDeps.iterator.foreach:
         case (clazz, foundDeps) =>
           val className = classNameAsString(clazz)
@@ -518,20 +516,24 @@ class DependencyRecorder {
 
   /** Write the dependencies to a `.inc` file next to the source, for `-Ydump-sbt-inc`. */
   private def dumpInc()(using Context): Unit =
-    val deps = _foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray[Object]
-    val names = _foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray[Object]
-    Arrays.sort(deps)
-    Arrays.sort(names)
-    ctx.compilationUnit.source.jfile.ifPresent(jpath => {
-      val pw = io.File(jpath.toPath)(using Codec.UTF8).changeExtension(io.FileExtension.Inc).toFile.printWriter()
+    val file = ctx.compilationUnit.source.file
+    if file != null then
+      val deps = _foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray
+      val names = _foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray
+      Arrays.sort(deps)
+      Arrays.sort(names)
+      val pw = file.getOrCreateSiblingWithExtension("inc").writer(Codec.UTF8)
+      def printLine(s: String): Unit =
+        pw.write(s)
+        pw.newLine()
       try
-        pw.println("Used Names:")
-        pw.println("===========")
-        names.foreach(pw.println)
-        pw.println()
-        pw.println("Dependencies:")
-        pw.println("=============")
-        deps.foreach(pw.println)
+        printLine("Used Names:")
+        printLine("===========")
+        names.foreach(printLine)
+        printLine("")
+        printLine("Dependencies:")
+        printLine("=============")
+        deps.foreach(printLine)
       finally pw.close()
     })
 
@@ -548,7 +550,7 @@ class DependencyRecorder {
    *  run) or from class file and calls respective callback method.
    */
   private def recordClassDependency(cb: interfaces.IncrementalCallback, fromClass: Symbol, toClass: Symbol,
-      depCtx: DependencyContext, siblingClassfiles: mutable.Map[AbstractFile, Path])(using Context): Unit = {
+      depCtx: DependencyContext, siblingClassfiles: mutable.Map[File, File])(using Context): Unit = {
     val fromClassName = classNameAsString(fromClass)
     val sourceFile = ctx.compilationUnit.source
 
@@ -568,11 +570,10 @@ class DependencyRecorder {
      * FIXME: we still need a way to resolve the correct classfile when we split tasty and classes between
      * different outputs (e.g. scala2-library-bootstrapped).
      */
-    def cachedSiblingClass(pf: AbstractFile): Path =
+    def cachedSiblingClass(pf: File): File =
       siblingClassfiles.getOrElseUpdate(pf, {
-        val jpath = pf.jpath.nn
         val moduleSuffix = if fromClass.is(Module) then str.MODULE_SUFFIX else ""
-        jpath.getParent.resolve(jpath.getFileName.toString.stripSuffix(".tasty") + moduleSuffix + ".class")
+        pf.parent.getOrCreateFile(pf.nameWithoutExtension + moduleSuffix + ".class")
       })
 
     def binaryDependency(path: Path, binaryClassName: String): Unit =

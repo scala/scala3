@@ -89,12 +89,14 @@ abstract class File extends FileSystemEntry:
   def writeBytes(bytes: Array[Byte], append: Boolean = false): Unit =
     val out = output(append)
     try out.write(bytes)
+    catch case _: Exception => delete() // do not leave a half-written file after an exception
     finally out.close()
 
   /** Writes the given text using the given codec into this file, optionally appending. */
   def writeText(str: String, codec: Codec, append: Boolean = false): Unit =
     val out = output(append)
     try out.write(str.getBytes(codec.charSet))
+    catch case _: Exception => delete() // do not leave a half-written file after an exception
     finally out.close()
 
   /** Writes the given lines using the given codec into this file, optionally appending. */
