@@ -40,7 +40,7 @@ object ClassPath {
 
   /** Expand single path entry */
   private def expandS(pattern: String): List[String] = {
-    val wildSuffix = FileSystemEntry.separator + "*"
+    val wildSuffix = s"${FileSystemEntry.separator}*"
 
     /* Get all subdirectories, jars, zips out of a directory. */
     def lsDir(dir: FileContainer, filt: String => Boolean = _ => true) =
