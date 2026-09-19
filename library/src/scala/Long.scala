@@ -23,12 +23,27 @@ import scala.collection.immutable.NumericRange
  *  The companion object provides useful non-primitive operations as extension methods.
  */
 final abstract class Long private extends AnyVal {
+  /** Returns this value as a [[scala.Byte]], which may involve truncation of
+   *  the high-order bits.
+   */
   def toByte: Byte
+  /** Returns this value as a [[scala.Short]], which may involve truncation of
+   *  the high-order bits.
+   */
   def toShort: Short
+  /** Returns this value as a [[scala.Char]], which may involve truncation of
+   *  the high-order bits.
+   */
   def toChar: Char
+  /** Returns this value as an [[scala.Int]], which may involve truncation of
+   *  the high-order bits.
+   */
   def toInt: Int
+  /** Returns this value unchanged. */
   def toLong: Long
+  /** Returns this value as a [[scala.Float]], which may lose precision. */
   def toFloat: Float
+  /** Returns this value as a [[scala.Double]], which may lose precision. */
   def toDouble: Double
 
   /** Returns the bitwise negation of this value.
@@ -646,8 +661,18 @@ object Long extends AnyValCompanion {
   /** Language mandated coercions from `Long` to "wider" types. */
   import scala.language.implicitConversions
   @deprecated("Implicit conversion from Long to Float is dangerous because it loses precision. Write `.toFloat` instead.", "2.13.1")
+  /** Returns `x` converted to a [[scala.Float]].
+   *
+   *  @param x the `Long` value to convert
+   *  @return the `Float` resulting from converting `x`, which may lose precision
+   */
   implicit def long2float(x: Long): Float = x.toFloat
   @deprecated("Implicit conversion from Long to Double is dangerous because it loses precision. Write `.toDouble` instead.", "2.13.1")
+  /** Returns `x` converted to a [[scala.Double]].
+   *
+   *  @param x the `Long` value to convert
+   *  @return the `Double` resulting from converting `x`, which may lose precision
+   */
   implicit def long2double(x: Long): Double = x.toDouble
 
   extension (self: Long) {

@@ -23,6 +23,10 @@ import scala.language.`2.13`
  *  @param queue an optional reference queue to which the reference will be enqueued when the referent becomes weakly reachable, or `null` for no queue
  */
 class WeakReference[+T <: AnyRef](value: T, queue: ReferenceQueue[T] | Null) extends ReferenceWrapper[T] {
+  /** Creates a weak reference to `value` with no associated reference queue.
+   *
+   *  @param value the object to be weakly referenced
+   */
   def this(value: T) = this(value, null)
   val underlying: java.lang.ref.WeakReference[? <: T] =
     new WeakReferenceWithWrapper[T](value, queue, this)
