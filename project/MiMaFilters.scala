@@ -15,6 +15,9 @@ object MiMaFilters {
       Versions.mimaPreviousVersion -> Seq(
         // new annotation carrying the component names of Java records
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
+        // new experimental language feature: method block end markers (SIP-77)
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$methodBlockEndMarkers$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$methodBlockEndMarkers$"),
       ),
 
       // Additions since last LTS
