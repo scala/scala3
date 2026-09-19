@@ -1,0 +1,5 @@
+-- [E173] Reference Error: tests/neg/maybe-get.scala:5:4 ---------------------------------------------------------------
+5 |  s.get  // error
+  |  ^^^^^
+  |  method get cannot be accessed as a member of (s : String?) from the top-level definitions in package <empty>.
+  |    private[compiletime] method get can only be accessed from package scala.compiletime in package scala.

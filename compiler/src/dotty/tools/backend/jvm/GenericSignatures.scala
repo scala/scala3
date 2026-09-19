@@ -320,6 +320,9 @@ object GenericSignatures {
         case JavaArrayType(elemtp) =>
           arraySig(elemtp)
 
+        case tp @ AppliedType(tycon, _) if tycon.isRef(defn.MaybeClass) =>
+          jsig(maybeSig(tp), toplevel, vcBoxing)
+
         case RefOrAppliedType(sym, pre, args) =>
           if isTypeParameterInSig(sym, sym0) then
             assert(!sym.isAliasType || sym.info.isLambdaSub, s"Unexpected alias type: $sym")
@@ -469,9 +472,18 @@ object GenericSignatures {
 
   private def hiBounds(bounds: TypeBounds)(using Context): List[Type] = bounds.hi.widenDealias match {
     case AndType(tp1, tp2) => hiBounds(tp1.bounds) ::: hiBounds(tp2.bounds)
+    case tp @ AppliedType(tycon, _) if tycon.isRef(defn.MaybeClass) => maybeSig(tp) :: Nil
     case tp => tp :: Nil
   }
 
+  /** The type to use in a generic signature for a maybe type `T ? E`. This follows
+   *  `TypeErasure`: if `T ? E` erases to the erasure of `T`, the signature is that of
+   *  `T` (which keeps type parameters in `T` visible to Java), otherwise it is `Object`.
+   *  The result is never `tp` itself, so that `jsig` makes progress when it recurses on it.
+   */
+  private def maybeSig(tp: AppliedType)(using Context): Type =
+    if erasure(tp).isRef(defn.ObjectClass) then defn.ObjectType
+    else tp.args.head
 
   // only refer to type params that will actually make it into the sig, this excludes:
   // * type parameters appearing in method parameters
@@ -516,7 +528,7 @@ object GenericSignatures {
               // otherwise we end up in infinite loops,
               // e.g., in `X[A] <: Thing[X[A]]` or `X[A] <: X[Thing[A]]` we keep resolving `X`.
               // In that case we must completely give up on the genericity, i.e.,
-              // in `X[A] <: Y[X[Z[A]]]` it would not be correct to use `Y[A]` as a type signature! 
+              // in `X[A] <: Y[X[Z[A]]]` it would not be correct to use `Y[A]` as a type signature!
               if instantiated.existsPart(_ == a.tycon) then ResolvedAppliedType.Bail
               else ResolvedAppliedType.Resolved(instantiated)
             case _ => ResolvedAppliedType.NotResolved

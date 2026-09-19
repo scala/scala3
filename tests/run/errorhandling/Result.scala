@@ -1,4 +1,5 @@
-package scala.util
+package test.util
+import scala.util.*
 import boundary.{Label, break}
 
 sealed abstract class Result[+T, +E]
