@@ -682,11 +682,12 @@ object CheckUnused:
 
     def checkParam(sym: Symbol, pos: SrcPos) =
       val m = sym.owner
+      val hasSuppression = m.hasAnnotation(defn.UnusedAnnot) // param of unused method
+        || sym.hasAnnotation(defn.UnusedAnnot)
       def allowed =
         val dd = defn
            m.isDeprecated
         || m.is(Synthetic) && !m.isAnonymousFunction
-        || m.hasAnnotation(defn.UnusedAnnot) // param of unused method
         || sym.name.startsWith("_") // convenient syntax to avoid needing @unused
         || sym.info.isSingleton
         || m.isConstructor && m.owner.thisType.baseClasses.contains(defn.AnnotationClass)
@@ -696,7 +697,7 @@ object CheckUnused:
         // (The class param is not assigned to a field until constructors.)
         // A local param accessor warns as a param; a private accessor as a private member.
         // Avoid warning for case class elements because they are aliased via unapply (i.e. may be extracted).
-        if m.isPrimaryConstructor then
+        if m.isPrimaryConstructor && !hasSuppression then
           val alias = m.owner.info.member(sym.name)
           if alias.exists then
             val aliasSym = alias.symbol
@@ -721,7 +722,11 @@ object CheckUnused:
           && !ctx.platform.isMainMethod(m)
           && !usedByDefaultGetter(sym, m)
         then
-          warnAt(pos)(UnusedSymbol.explicitParams(sym))
+          if(hasSuppression) then
+            if infos.refs.contains(sym) then
+              warnAt(pos)(UnusedSymbol.uselessSuppression(sym))
+          else
+            warnAt(pos)(UnusedSymbol.explicitParams(sym))
       end checkExplicit
       // begin
       if !infos.skip(m)
@@ -947,16 +952,17 @@ object CheckUnused:
         end while
 
     // begin
-    for (sym, pos) <- infos.defs.iterator if !sym.hasAnnotation(defn.UnusedAnnot) do
-      if infos.refs(sym) then
+    for (sym, pos) <- infos.defs.iterator do
+      val hasSuppression = sym.hasAnnotation(defn.UnusedAnnot)
+      if infos.refs(sym) && !hasSuppression then
         checkUnassigned(sym, pos)
-      else if sym.isEffectivelyPrivate then
+      else if sym.isEffectivelyPrivate && !hasSuppression then
         checkPrivate(sym, pos)
       else if sym.is(Param, butNot = Given | Implicit) then
         checkParam(sym, pos)
-      else if sym.is(Param) then // Given | Implicit
+      else if sym.is(Param) && !hasSuppression then // Given | Implicit
         checkImplicit(sym, pos)
-      else if sym.isLocalToBlock then
+      else if sym.isLocalToBlock && !hasSuppression then
         checkLocal(sym, pos)
 
     if ctx.settings.WunusedHas.patvars then
