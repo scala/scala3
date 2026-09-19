@@ -19,6 +19,7 @@ import scala.language.`2.13`
  *  extend ScalaNumber (which excludes value classes.)
  */
 trait ScalaNumericConversions extends ScalaNumber with ScalaNumericAnyConversions {
+  /** Returns the underlying value as a Java `Object`. */
   def underlying: Object
 }
 
@@ -31,11 +32,17 @@ trait ScalaNumericAnyConversions extends Any {
    */
   def isWhole: Boolean
 
+  /** Returns the value of this number as a [[scala.Byte]]. Any fractional part is discarded, and a value that does not fit is narrowed in an implementation-specific way: integral implementations such as [[scala.math.BigInt]] keep only the low-order 8 bits, while `Float` and `Double` first saturate at `Int.MinValue` or `Int.MaxValue`, or give `0` for `NaN`, and only then keep the low-order 8 bits of that. Either way the magnitude and sign can change. */
   def byteValue: Byte
+  /** Returns the value of this number as a [[scala.Short]]. Any fractional part is discarded, and a value that does not fit is narrowed in an implementation-specific way: integral implementations such as [[scala.math.BigInt]] keep only the low-order 16 bits, while `Float` and `Double` first saturate at `Int.MinValue` or `Int.MaxValue`, or give `0` for `NaN`, and only then keep the low-order 16 bits of that. Either way the magnitude and sign can change. */
   def shortValue: Short
+  /** Returns the value of this number as an [[scala.Int]]. Any fractional part is discarded, and a value that does not fit is narrowed in an implementation-specific way: integral implementations such as [[scala.math.BigInt]] keep only the low-order 32 bits, which can change the magnitude and sign, while `Float` and `Double` saturate at `Int.MinValue` or `Int.MaxValue`, and give `0` for `NaN`. */
   def intValue: Int
+  /** Returns the value of this number as a [[scala.Long]]. Any fractional part is discarded, and a value that does not fit is narrowed in an implementation-specific way: integral implementations such as [[scala.math.BigInt]] keep only the low-order 64 bits, which can change the magnitude and sign, while `Float` and `Double` saturate at `Long.MinValue` or `Long.MaxValue`, and give `0` for `NaN`. */
   def longValue: Long
+  /** Returns the value of this number as a [[scala.Float]]. This may involve rounding, or overflow to positive/negative infinity if the magnitude is too large to represent. */
   def floatValue: Float
+  /** Returns the value of this number as a [[scala.Double]]. This may involve rounding, or overflow to positive/negative infinity if the magnitude is too large to represent. */
   def doubleValue: Double
 
   /** Returns the value of this as a [[scala.Char]]. This may involve
@@ -93,6 +100,7 @@ trait ScalaNumericAnyConversions extends Any {
    */
   def isValidChar  = isWhole && (toInt >= Char.MinValue && toInt <= Char.MaxValue)
 
+  /** Returns a hash code based on `toLong`: the value itself, as an [[scala.Int]], if it fits in the `Int` range; otherwise the hash code of the [[scala.Long]] value. */
   protected def unifiedPrimitiveHashcode = {
     val lv = toLong
     if (lv >= Int.MinValue && lv <= Int.MaxValue) lv.toInt
