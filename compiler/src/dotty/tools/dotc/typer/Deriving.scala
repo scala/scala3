@@ -12,6 +12,7 @@ import util.Spans.*
 import util.SrcPos
 import collection.mutable.ListBuffer
 import ErrorReporting.errorTree
+import config.Feature
 
 /** A typer mixin that implements type class derivation functionality */
 trait Deriving {
@@ -68,8 +69,8 @@ trait Deriving {
      *
      *  If it passes the checks, enter a type class instance for it in the current scope.
      *
-     *  See test run/typeclass-derivation2, run/poly-kinded-derives and pos/derive-eq
-     *  for examples that spell out what would be generated.
+     *  See test run/typeclass-derivation2, run/poly-kinded-derives, pos/derive-eq
+     *  and run/self-type-class-derives for examples that spell out what would be generated.
      *
      *  Note that the name of the derived method contains the name in the derives clause, not
      *  the underlying class name. This allows one to disambiguate derivations of type classes
@@ -97,6 +98,20 @@ trait Deriving {
         val monoInfo =
           if evidenceParamInfos.isEmpty then resultType
           else ImplicitMethodType(evidenceParamInfos.map(typeClassType.appliedTo), resultType)
+        val derivedInfo =
+          if derivedParams.isEmpty then monoInfo
+          else PolyType.fromParams(derivedParams, monoInfo)
+        addDerivedInstance(originalTypeClassTree, originalTypeClassType.typeSymbol.name, derivedInfo, derived.srcPos)
+      }
+
+      /** `tp is TC`, i.e. `TC { type Self = tp }`, for the self-based type class `typeClassType`. */
+      def selfRefined(tp: Type): Type = RefinedType(typeClassType, tpnme.Self, TypeAlias(tp))
+
+      def addSelfInstance(derivedParams: List[TypeSymbol], evidenceParamTypes: List[Type], instanceType: Type): Unit = {
+        val resultType = selfRefined(instanceType)
+        val monoInfo =
+          if evidenceParamTypes.isEmpty then resultType
+          else ImplicitMethodType(evidenceParamTypes.map(selfRefined), resultType)
         val derivedInfo =
           if derivedParams.isEmpty then monoInfo
           else PolyType.fromParams(derivedParams, monoInfo)
@@ -186,6 +201,39 @@ trait Deriving {
           cannotBeUnified
       }
 
+      def deriveSelfParameter: Unit = {
+        // Self-based type classes, i.e. type classes of the form
+        //
+        //     trait TC:
+        //       type Self
+        //       ...
+        //
+        // which are used via the `is` context-bound syntax (`X is TC`, aka `TC { type Self = X }`)
+        // rather than by being applied to a type argument (`TC[X]`). Since `TC` itself takes no
+        // type parameters, derivation instead pattern-matches on the abstract `Self` member.
+        //
+        // This is the `Self`-based analogue of case (b) in deriveSingleParameter above:
+        //
+        //     Type class: TC (with abstract type member Self)
+        //
+        //     ADT: C[A, B, C]
+        //
+        //          given derived$TC[a, b, c] given (a is TC), (b is TC), (c is TC): (C[a, b, c] is TC)
+        //
+        //     ADT: C   (no type parameters)
+        //
+        //          given derived$TC: (C is TC)
+        val clsType = cls.typeRef
+        val clsParams = cls.typeParams
+
+        if clsParams.exists(_.info.isLambdaSub) then
+          cannotBeUnified
+        else
+          val instanceType = clsType.appliedTo(clsParams.map(_.typeRef))
+          val evidenceParamTypes = clsParams.map(_.typeRef)
+          addSelfInstance(clsParams, evidenceParamTypes, instanceType)
+      }
+
       def deriveCanEqual: Unit = {
         // Specific derives rules for the CanEqual type class ... (c) above
         //
@@ -252,7 +300,10 @@ trait Deriving {
       if (typeClassArity == 1) deriveSingleParameter
       else if (typeClass == defn.CanEqualClass) deriveCanEqual
       else if (typeClassArity == 0)
-        report.error(em"type ${typeClass.name} in derives clause of ${cls.name} has no type parameters", derived.srcPos)
+        if Feature.enabled(Feature.modularity) && typeClassType.member(tpnme.Self).symbol.isAbstractOrParamType then
+          deriveSelfParameter
+        else
+          report.error(em"type ${typeClass.name} in derives clause of ${cls.name} has no type parameters", derived.srcPos)
       else
         cannotBeUnified
     }
