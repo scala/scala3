@@ -80,7 +80,7 @@ final class SummaryReport extends SummaryReporting {
   override def echoSummary(): Unit = {
     val rep = new StringBuilder
     if failed == 0 && failedTests.isEmpty then
-      rep.append(s"${Console.BOLD}${Console.GREEN}== Vulpix Test Report: $passed suites passed, no failures (${skippedTests.size} skipped) ==${Console.RESET}")
+      rep.append(s"${Console.BOLD}${Console.GREEN}== Vulpix Test Report: all $passed suites passed (${skippedTests.size} skipped) ==${Console.RESET}")
     else
       rep.append(
         s"""|${Console.BOLD}${Console.RED}

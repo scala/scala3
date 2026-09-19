@@ -1506,10 +1506,10 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val c2 = loadClassNode(lookupClass(dir, "C2.class"))
       assertSameCode(getMethod(c1, "clone"), List(VarOp(ALOAD, 0), Invoke(INVOKESTATIC, "T", "clone$", "(LT;)Ljava/lang/Object;", true), Op(ARETURN)))
       assertInvoke(getMethod(c1, "f1"), "T", "clone")
-      assertInvoke(getMethod(c1, "f2"), "T", "clone")
+      assertInvoke(getMethod(c1, "f2"), "U", "clone")
       assertInvoke(getMethod(c1, "f3"), "C1", "clone")
       assertInvoke(getMethod(c2, "f1"), "T", "clone")
-      assertInvoke(getMethod(c2, "f2"), "T", "clone")
+      assertInvoke(getMethod(c2, "f2"), "U", "clone")
       assertInvoke(getMethod(c2, "f3"), "C1", "clone")
     }
     checkBCode(List(invocationReceiversTestCode.definitions("String"))) { dir =>
@@ -2205,9 +2205,7 @@ object invocationReceiversTestCode {
         |  // invokeinterface T.clone
         |  def f1 = (this: T).clone()
         |
-        |  // cannot invokeinterface U.clone (NoSuchMethodError). Object.clone would work here, but
-        |  // not in the example in C2 (illegal access to protected). T.clone works in all cases and
-        |  // resolves correctly.
+        |  // invokeinterface U.clone
         |  def f2 = (this: U).clone()
         |
         |  // invokevirtual C1.clone()
@@ -2216,7 +2214,7 @@ object invocationReceiversTestCode {
         |
         |class C2 {
         |  def f1(t: T) = t.clone()  // invokeinterface T.clone
-        |  def f2(t: U) = t.clone()  // invokeinterface T.clone -- Object.clone would be illegal (protected, explained in C1)
+        |  def f2(t: U) = t.clone()  // invokeinterface U.clone -- Object.clone would be illegal (protected, explained in C1)
         |  def f3(t: C1) = t.clone() // invokevirtual C1.clone -- Object.clone would be illegal
         |}
     """.stripMargin

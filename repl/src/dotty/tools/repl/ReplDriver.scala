@@ -5,7 +5,7 @@ import scala.util.control.NonFatal
 
 import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
 import java.util.regex.Pattern
 
 import dotc.ast.Trees.*
@@ -50,6 +50,7 @@ import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
 import org.objectweb.asm.ClassReader
 import scala.util.Using
+import scala.util.control.NonFatal
 
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
@@ -278,7 +279,7 @@ class ReplDriver(settings: Array[String],
           try
             System.setIn(replIn)
             scala.Console.withIn(replIn) {
-              interpret(res)
+              interpretSubmission(res)
             }
           finally
             System.setIn(savedIn)
@@ -295,6 +296,9 @@ class ReplDriver(settings: Array[String],
   final def run(input: String)(using state: State): State = runBody {
     interpret(ParseResult.complete(input))
   }
+
+  protected final def interpretSubmission(res: ParseResult)(using state: State): State =
+    rendering.classLoader()(using state.context).asContext(interpret(res))
 
   protected def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
 
@@ -431,7 +435,8 @@ class ReplDriver(settings: Array[String],
       case CommandThenCode(cmd, code) =>
         val stateAfterCommand = interpretCommand(cmd)
         val recorded = cmd.replayLine.fold(stateAfterCommand)(line => stateAfterCommand.recordInput(line.strip))
-        interpret(ParseResult(code)(using recorded))(using recorded)
+        rendering.classLoader()(using recorded.context).asContext:
+          interpret(ParseResult(code)(using recorded))(using recorded)
 
       case MixedCommandsAndDirectives =>
         out.println(
@@ -735,28 +740,21 @@ class ReplDriver(settings: Array[String],
             out.println(s"The path '$path' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
           else inContext(state.context):
             val jarClassPath = ClassPathFactory.newClassPath(jarFile)
-            val prevOutputDir = ctx.settings.outputDir.value
 
             // add to compiler class path
             ctx.platform.addToClassPath(jarClassPath)
             SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
 
-            // new class loader with previous output dir and specified jar
-            val prevClassLoader = rendering.classLoader()
-            val jarClassLoader = fromURLsParallelCapable(
-              jarClassPath.asURLs, prevClassLoader)
-            rendering.myClassLoader = new AbstractFileClassLoader(
-              prevOutputDir,
-              jarClassLoader,
-              AbstractFileClassLoader.InterruptInstrumentation.fromString(ctx.settings.XreplInterruptInstrumentation.value)
-            )
+            rendering.addToClasspath(jarClassPath.asURLs)
 
             out.println(s"Added '$path' to classpath.")
         } catch {
-          case e: Throwable =>
+          case NonFatal(e) =>
             out.println(s"Failed to load '$path' to classpath: ${e.getMessage}")
         }
         state
+
+    case ResourceCmd(path) => addResource(path)
 
     case KindOf(expr) =>
       out.println(s"""The :kind command is not currently supported.""")
@@ -827,7 +825,7 @@ class ReplDriver(settings: Array[String],
         case _ => None
       singleValue.flatMap(ReplDirectives.toolkitCoordinates) match
         case Some(dependencies) =>
-          out.println(ReplDirectives.Warning.NoSeparateTestScope.toString)
+          out.println(ReplDirectives.Warning.NoSeparateTestScope("Dependencies").toString)
           resolveAndAddDeps(dependencies)
         case None =>
           out.println(
@@ -850,10 +848,35 @@ class ReplDriver(settings: Array[String],
       case Jar(path) => path
     val repositories = classified.directives.collect:
       case Repository(repository) => repository
+    val resources = classified.directives.collect:
+      case Resource(path) => path
     val stateWithRepositories = addRepositories(repositories)
     val stateWithDependencies = resolveAndAddDeps(dependencies)(using stateWithRepositories)
-    jars.foldLeft(stateWithDependencies): (currentState, path) =>
+    val stateWithJars = jars.foldLeft(stateWithDependencies): (currentState, path) =>
       interpretCommand(JarCmd(path))(using currentState)
+    resources.foldLeft(stateWithJars): (currentState, path) =>
+      addResource(path)(using currentState)
+
+  private def addResource(path: String)(using state: State): State =
+    try
+      val resource = Path.of(path)
+      if !Files.exists(resource) then
+        out.println(s"Cannot add '$path' to classpath, it does not exist.")
+      else
+        val root = if Files.isDirectory(resource) then resource else stageResourceFile(resource)
+        inContext(state.context):
+          rendering.addResource(root.toUri.toURL)
+        out.println(s"Added '$path' to classpath.")
+    catch case NonFatal(e) =>
+      out.println(s"Failed to load '$path' to classpath: ${e.getMessage}")
+    state
+
+  private def stageResourceFile(resource: Path): Path =
+    val staging = Files.createTempDirectory("repl_resource")
+    staging.toFile.deleteOnExit()
+    val staged = Files.copy(resource, staging.resolve(resource.getFileName))
+    staged.toFile.deleteOnExit()
+    staging
 
   private def addRepositories(repositoryStrings: List[String])(using state: State): State =
     repositoryStrings.foldLeft(state): (currentState, repositoryString) =>
@@ -876,13 +899,8 @@ class ReplDriver(settings: Array[String],
             if files.nonEmpty then
               val classpathState = newRun(state)
               inContext(classpathState.context):
-                val prevOutputDir = ctx.settings.outputDir.value
-                val prevClassLoader = rendering.classLoader()
-                rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
-                  files,
-                  prevClassLoader,
-                  prevOutputDir
-                )
+                DependencyResolver.addToCompilerClasspath(files)
+                rendering.addToClasspath(files.map(_.toURI.toURL))
                 val depsDescription = if deps.size == 1 then "a dependency" else s"${deps.size} dependencies"
                 out.println(s"Resolved $depsDescription (${files.size} JARs)")
               classpathState

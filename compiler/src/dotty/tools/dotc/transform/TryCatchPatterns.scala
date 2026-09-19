@@ -7,10 +7,15 @@ import core.Types.*
 import core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.reporting.UnreasonableCatch
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.util.SrcPos
+
+import scala.annotation.tailrec
 
 /** Compiles the cases that can not be handled by primitive catch cases as a common pattern match.
+ *  Also emits warnings for cases that are bad ideas, such as catching Throwable or Error.
  *
  *  The following code:
  *    ```
@@ -66,11 +71,21 @@ class TryCatchPatterns extends MiniPhase {
 
   /** Is this pattern node a catch-all or type-test pattern? */
   private def isCatchCase(cdef: CaseDef)(using Context): Boolean = cdef match {
-    case CaseDef(Typed(Ident(nme.WILDCARD), tpt), EmptyTree, _)          => isSimpleThrowable(tpt.tpe)
-    case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt)), EmptyTree, _) => isSimpleThrowable(tpt.tpe)
-    case _                                                               => isDefaultCase(cdef)
+    case CaseDef(Typed(Ident(nme.WILDCARD), tpt), guard, _) =>
+      warnIfUnreasonableCatch(tpt)
+      guard == EmptyTree && isSimpleThrowable(tpt.tpe)
+    case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt)), guard, _) =>
+      warnIfUnreasonableCatch(tpt)
+      guard == EmptyTree && isSimpleThrowable(tpt.tpe)
+    case _ =>
+      if isDefaultCase(cdef) then
+        warnForUnreasonableCatch(cdef)
+        true
+      else
+        false
   }
 
+  @tailrec
   private def isSimpleThrowable(tp: Type)(using Context): Boolean = tp.strippedDealias match {
     case tp @ TypeRef(pre, _) =>
       (pre == NoPrefix || pre.typeSymbol.isStatic) && // Does not require outer class check
@@ -97,6 +112,14 @@ class TryCatchPatterns extends MiniPhase {
           transformFollowing(Match(sel, patternMatchCases ::: rethrow :: Nil)))
       )
     }
+
+  private def warnIfUnreasonableCatch(tpt: Tree)(using Context): Unit =
+    if ctx.settings.Whas.unreasonableCatch && tpt.tpe <:< defn.ErrorType || tpt.tpe =:= defn.ThrowableType then
+      report.warning(UnreasonableCatch(Some(tpt.tpe)), tpt)
+
+  private def warnForUnreasonableCatch(pos: SrcPos)(using Context): Unit =
+    if ctx.settings.Whas.unreasonableCatch then
+      report.warning(UnreasonableCatch(None), pos)
 }
 
 object TryCatchPatterns:

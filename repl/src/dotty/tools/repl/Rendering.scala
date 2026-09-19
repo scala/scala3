@@ -8,12 +8,14 @@ import printing.SyntaxHighlighting
 import reporting.Diagnostic
 import StackTraceOps.*
 
+import scala.annotation.nowarn
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
 import org.objectweb.asm.*
 import org.objectweb.asm.Opcodes.*
 import org.objectweb.asm.tree.*
 import scala.util.control.NonFatal
+import java.net.{URL, URLClassLoader}
 import java.util.function.Predicate
 
 import dotty.vendored.fansi
@@ -31,6 +33,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   import Rendering.*
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
+
+  private var myClasspathClassLoader: ClasspathClassLoader = uninitialized
 
   // Temporary fix until `pprint` special-cases these.
   // (We cannot use, e.g., `isInstanceOf[LazyList]` because we're not in the same classloader)
@@ -218,16 +222,20 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   private[repl] def classLoader()(using Context) =
     if (myClassLoader != null && myClassLoader.root == ctx.settings.outputDir.value) myClassLoader
     else {
-      val parent = Option(myClassLoader).orElse(parentClassLoader).getOrElse {
-        val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
-        // We can't use the system classloader as a parent because it would
-        // pollute the user classpath with everything passed to the JVM
-        // `-classpath`. We can't use `null` as a parent either because on Java
-        // 9+ that's the bootstrap classloader which doesn't contain modules
-        // like `java.sql`, so we use the parent of the system classloader,
-        // which should correspond to the platform classloader on Java 9+.
-        val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
-        new java.net.URLClassLoader(compilerClasspath.toArray, baseClassLoader)
+      val parent = Option(myClassLoader).getOrElse {
+        myClasspathClassLoader = parentClassLoader match
+          case Some(given_) => ClasspathClassLoader(Array.empty, given_)
+          case None =>
+            val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
+            // We can't use the system classloader as a parent because it would
+            // pollute the user classpath with everything passed to the JVM
+            // `-classpath`. We can't use `null` as a parent either because on Java
+            // 9+ that's the bootstrap classloader which doesn't contain modules
+            // like `java.sql`, so we use the parent of the system classloader,
+            // which should correspond to the platform classloader on Java 9+.
+            val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
+            ClasspathClassLoader(compilerClasspath.toArray, baseClassLoader)
+        myClasspathClassLoader
       }
 
       myClassLoader = new AbstractFileClassLoader(
@@ -237,6 +245,12 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       )
       myClassLoader
     }
+
+  private[repl] def addToClasspath(urls: Seq[URL])(using Context): Unit =
+    classLoader()
+    urls.foreach(myClasspathClassLoader.add)
+
+  private[repl] def addResource(url: URL)(using Context): Unit = addToClasspath(Seq(url))
 
   private[repl] def truncate(str: String, maxPrintCharacters: Int)(using ctx: Context): String =
     val ncp = str.codePointCount(0, str.length) // to not cut inside code point
@@ -319,6 +333,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   end renderVal
 
   /** Force module initialization in the absence of members. */
+  // the module statements are executing in can fail to initialize if there's a problem
+  @nowarn("msg=Catching ExceptionInInitializerError can lead to unexpected behavior")
   def forceModule(sym: Symbol)(using Context): Seq[Diagnostic] =
     def load() =
       val objectName = sym.fullName.encode.toString
@@ -369,3 +385,7 @@ object Rendering:
         if x.getCause != null =>
       rootCause(x.getCause)
     case _ => x
+
+private class ClasspathClassLoader(urls: Array[URL], parent: ClassLoader)
+  extends URLClassLoader(urls, parent):
+  def add(url: URL): Unit = addURL(url)

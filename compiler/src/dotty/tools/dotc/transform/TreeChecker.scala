@@ -26,6 +26,8 @@ import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
 import cc.RetainingAnnotation
 
+import scala.annotation.nowarn
+
 /** Run by -Ycheck option after a given phase, this class retypes all syntax trees
  *  and verifies that the type of each tree node so obtained conforms to the type found in the tree node.
  *  It also performs the following checks:
@@ -872,6 +874,7 @@ object TreeChecker {
       if nowDefinedSyms.contains(tree.symbol.maybeOwner) then
         super.assertDefined(tree)
 
+  @nowarn("msg=Catching AssertionError can lead to unexpected behavior") // backwards compat
   def checkMacroGeneratedTree(original: tpd.Tree, expansion: tpd.Tree)(using Context): Unit =
     if ctx.settings.XcheckMacros.value then
       // We want to make sure that transparent inline macros are checked in the same way that
@@ -918,7 +921,7 @@ object TreeChecker {
         for error <- checkingCtx.reporter.allErrors.drop(previousErrorCount)
           do reportMalformedMacroTree(error.message, null)
       catch
-        case err: java.lang.AssertionError =>
+        case err: AssertionError =>
           reportMalformedMacroTree(err.getMessage, err)
 
   private[TreeChecker] def previousPhases(phases: List[Phase])(using Context): List[Phase] = phases match {

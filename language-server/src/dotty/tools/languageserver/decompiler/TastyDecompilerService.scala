@@ -5,6 +5,7 @@ package decompiler
 import java.net.URI
 import java.nio.file._
 import java.util.concurrent.CompletableFuture
+import scala.util.control.NonFatal
 
 import dotty.tools.tasty.UnpickleException
 import dotty.tools.io.{PlainFile, Path}
@@ -38,7 +39,7 @@ trait TastyDecompilerService {
       } catch {
         case _: UnpickleException =>
           TastyDecompileResult(error = TastyDecompileResult.ErrorTastyVersion)
-        case t: Throwable =>
+        case NonFatal(t) =>
           t.printStackTrace()
           TastyDecompileResult(error = TastyDecompileResult.ErrorOther)
       }

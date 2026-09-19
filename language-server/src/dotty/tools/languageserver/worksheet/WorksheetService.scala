@@ -11,6 +11,7 @@ import org.eclipse.lsp4j.jsonrpc.services._//{JsonSegment, JsonRequest}
 
 import java.net.URI
 import java.util.concurrent.{CompletableFuture, ConcurrentHashMap}
+import scala.util.control.NonFatal
 
 @JsonSegment("worksheet")
 trait WorksheetService { thisServer: DottyLanguageServer =>
@@ -28,7 +29,7 @@ trait WorksheetService { thisServer: DottyLanguageServer =>
         cancelChecker.checkCanceled()
         WorksheetRunResult(success = true)
       } catch {
-        case _: Throwable =>
+        case NonFatal(_) =>
           WorksheetRunResult(success = false)
       }
     })
