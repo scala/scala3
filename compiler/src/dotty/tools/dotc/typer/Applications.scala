@@ -18,6 +18,7 @@ import Names.*
 import StdNames.*
 import ContextOps.*
 import NameKinds.DefaultGetterName
+import NameKinds.SimpleNameKind
 import Typer.tryEither
 import ProtoTypes.*
 import Inferencing.*
@@ -743,6 +744,11 @@ trait Applications extends Compatibility {
               case _ =>
         def alternative: Name =
           deprecatedNames.get(name).map(_.deprecatedName).getOrElse(nme.NO_NAME)
+        // looks like x$42, an ersatz name for Java parameters which lack names
+        def isUnnamed: Boolean =
+          methRef.symbol.is(JavaDefined)
+          && name.is(SimpleNameKind)
+          && name.startsWith("x$")
 
       extension [T <: Untyped](namedArg: Trees.NamedArg[T])
         def isBackquoted: Boolean = namedArg.hasAttachment(Backquoted)
@@ -779,10 +785,7 @@ trait Applications extends Compatibility {
         case _ =>
           args match
           case allArgs @ (arg @ NamedArg(aname, _)) :: args =>
-            if arg.isBackquoted then
-              report.error(i"positional after named argument", arg.srcPos)
-              arg.arg :: handleNamed(pnames.dropOne, args, nameToArg, toDrop, missingArgs) // take as unnamed
-            else if toDrop.contains(aname) then
+            if toDrop.contains(aname) then
               // named argument was already picked (using aname), skip it
               handleNamed(pnames, args, nameToArg, toDrop - aname, missingArgs)
             else if pnames.nonEmpty && nameToArg.contains(aname) then
@@ -810,11 +813,11 @@ trait Applications extends Compatibility {
         case (arg @ NamedArg(name, _)) :: args if !pnames.isEmpty && pnames.head.isMatchedBy(name) =>
           pnames.head.checkDeprecationOf(name, arg.srcPos)
           arg :: handlePositional(pnames.tail, bqnames, args)
-        case (namedArg @ NamedArg(name, arg)) :: args if namedArg.isBackquoted =>
-          if bqnames.contains(name) || methodType.paramNames.contains(name) then
+        case (namedArg @ NamedArg(name, arg)) :: args
+        if namedArg.isBackquoted && !pnames.isEmpty && pnames.head.isUnnamed =>
+          if bqnames.contains(name) then
             report.error(i"backquoted named arg must be unique", namedArg.srcPos)
-          val pnames1 = if pnames.isEmpty then Nil else pnames.tail
-          arg :: handlePositional(pnames1, name :: bqnames, args)
+          arg :: handlePositional(pnames.tail, name :: bqnames, args)
         case (_: NamedArg) :: _ =>
           val nameAssocs = args.collect { case arg @ NamedArg(name, _) => name -> arg }
           handleNamed(pnames, args, nameAssocs.toMap, toDrop = Set.empty, missingArgs = false)
@@ -828,7 +831,6 @@ trait Applications extends Compatibility {
     /** Is `sym` a constructor of a Java-defined annotation? */
     def isJavaAnnotConstr(sym: Symbol): Boolean =
       sym.is(JavaDefined) && sym.isConstructor && sym.owner.is(JavaAnnotation)
-
 
     /** Is `sym` a constructor of an annotation class, and are we in an
      *  annotation? If so, we don't lift arguments. See [[Mode.InAnnotation]].
