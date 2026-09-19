@@ -31,6 +31,7 @@ import scala.language.`2.13`
 final case class Tuple5[+T1, +T2, +T3, +T4, +T5](_1: T1, _2: T2, _3: T3, _4: T4, _5: T5)
   extends Product5[T1, T2, T3, T4, T5]
 {
+  /** Returns a string representation of this tuple, with the five elements separated by commas and enclosed in parentheses, as in `(1,two,3.0,four,5)`. */
   override def toString(): String = "(" + _1 + "," + _2 + "," + _3 + "," + _4 + "," + _5 + ")"
   
 }

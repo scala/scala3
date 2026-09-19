@@ -740,6 +740,12 @@ object IArray:
   def from[A : ClassTag](it: IterableOnce[A]^): IArray[A] =
     unsafeFromArray(Array.from(it))
 
+  /** Returns a new empty builder for immutable arrays of element type `T`.
+   *
+   *  @tparam T the element type of the array
+   *  @param t the `ClassTag` for the element type `T`, used to allocate the underlying array
+   *  @return  a new builder that produces an `IArray[T]` from the elements added to it
+   */
   def newBuilder[T](using t: ClassTag[T]): Builder[T, IArray[T]] =
     ArrayBuilder.make[T].mapResult(IArray.unsafeFromArray)
 
@@ -995,6 +1001,21 @@ object IArray:
       b.result()
     }
 
+    /** Builds a new array by applying a function to each element of this array
+     *  that satisfies this filter's predicate and using the elements of the
+     *  resulting collections.
+     *
+     *  Unlike the overload taking an `IterableOnce`-valued function, `f` may return
+     *  any type that can be viewed as an `Iterable[U]`.
+     *
+     *  @tparam BS the result type of `f`, which must be viewable as an `Iterable[U]`.
+     *  @tparam U the element type of the returned array.
+     *  @param f the function to apply to each element.
+     *  @param asIterable the implicit conversion viewing the result of `f` as an `Iterable[U]`.
+     *  @param m the `ClassTag` for the returned array's element type `U`.
+     *  @return a new array resulting from applying `f` to each element of this array
+     *          that satisfies the filter predicate and concatenating the results.
+     */
     def flatMap[BS, U](f: T => BS)(using asIterable: BS => Iterable[U]^, m: ClassTag[U]): IArray[U] =
       flatMap[U](x => asIterable(f(x)))
 
