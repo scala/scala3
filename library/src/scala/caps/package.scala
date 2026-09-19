@@ -93,6 +93,18 @@ trait Stateful
 trait Unscoped extends ExclusiveCapability, Classifier
 
 @experimental
+/** Marker trait for mutable data structures such as ref cells or matrices.
+ *  `Mutable` is itself both [[Stateful]] and [[Unscoped]], so classes extending it
+ *  can consult and change global program state and are not subject to the scoping
+ *  restrictions of captured capabilities.
+ *
+ *  When [[scala.language.experimental.captureChecking Capture Checking]] is turned on,
+ *  a reference to a type extending `Mutable` gets the implicit capture set `{any.rd}`
+ *  if no capture set is given explicitly.
+ *
+ *  [[scala.Array]] does not extend this trait, but when separation checking is
+ *  enabled it is treated as a mutable type as well.
+ */
 trait Mutable extends Stateful, Unscoped
 
 /** Carrier trait for capture set type parameters. */
@@ -180,6 +192,7 @@ object internal:
    *  @tparam T the type of the mutable variable's value
    */
   trait Var[T] extends Mutable:
+    /** Returns the current value of the mutable variable. */
     def get: T
     update def set(x: T): Unit
 

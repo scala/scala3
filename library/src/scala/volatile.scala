@@ -16,4 +16,5 @@ import scala.language.`2.13`
 import scala.annotation.meta._
 
 @field
+/** Marks a mutable field as volatile, giving reads and writes of the field the JVM's volatile memory-visibility and ordering guarantees. */
 final class volatile extends scala.annotation.StaticAnnotation
