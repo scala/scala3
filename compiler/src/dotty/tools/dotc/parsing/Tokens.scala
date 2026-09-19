@@ -5,6 +5,7 @@ package parsing
 import collection.immutable.BitSet
 import core.Decorators.*
 import core.StdNames.nme
+import dotty.tools.dotc.core.Names.*
 
 abstract class TokensCommon {
   def maxToken: Int
@@ -125,19 +126,12 @@ abstract class TokensCommon {
   inline val firstParen = LPAREN
   inline val lastParen = OUTDENT
 
-  def buildKeywordArray(keywords: TokenSet): (Int, Array[Int]) = {
-    def start(tok: Token) = tokenString(tok).nn.toTermName.asSimpleName.start
-    def sourceKeywords = keywords.toList.filter { (kw: Token) =>
+  def buildKeywordMap(keywords: TokenSet): Map[SimpleName, Token] =
+    keywords.toList.map((kw: Token) =>
       val ts = tokenString(kw)
-      (ts != null) && !ts.contains(' ')
-    }
-
-    val lastKeywordStart = sourceKeywords.map(start).max
-
-    val arr = Array.fill(lastKeywordStart + 1)(IDENTIFIER)
-    for (kw <- sourceKeywords) arr(start(kw)) = kw
-    (lastKeywordStart, arr)
-  }
+      if ts == null || ts.contains(' ') then (EmptyTermName, kw)
+      else (termName(ts), kw)
+    ).filter(_._1 != EmptyTermName).toMap
 }
 
 object Tokens extends TokensCommon {
