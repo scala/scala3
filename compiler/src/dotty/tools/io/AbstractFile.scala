@@ -119,13 +119,6 @@ abstract class AbstractFile extends dotty.tools.dotc.interfaces.AbstractFile {
   /** URL of the file if available. */
   def toURL: Option[URL]
 
-  /** Returns contents of file (if applicable) in a Char array.
-   *  warning: use `Global.getSourceFile()` to use the proper
-   *  encoding when converting to the char array.
-   */
-  @throws(classOf[IOException])
-  final def toCharArray: Array[Char] = new String(toByteArray).toCharArray
-
   /** Returns contents of file (if applicable) in a byte array. */
   @throws(classOf[IOException])
   final def toByteArray: Array[Byte] =

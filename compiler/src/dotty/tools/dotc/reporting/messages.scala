@@ -4,12 +4,19 @@ package reporting
 
 import core.*
 import Contexts.*
-import Decorators.*, Symbols.*, Names.*, NameOps.*, Types.*, Flags.*, Phases.*
+import Decorators.*
+import Symbols.*
+import Names.*
+import NameOps.*
+import Types.{Type, *}
+import Flags.*
+import Phases.*
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
-import NameKinds.{WildcardParamName, ContextFunctionParamName}
+import NameKinds.{ContextFunctionParamName, WildcardParamName}
 import parsing.Scanners.Token
-import parsing.Tokens, Tokens.showToken
+import parsing.Tokens
+import Tokens.showToken
 import printing.Highlighting.*
 import printing.Formatting
 import ErrorMessageID.*
@@ -21,11 +28,12 @@ import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
 import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
-import typer.ProtoTypes.{ViewProto, FunProto}
+import typer.ProtoTypes.{FunProto, ViewProto}
 import typer.Implicits.*
 import typer.Inferencing
 import StdNames.nme
-import Formatting.{hl, delay}
+import Formatting.{delay, hl}
+
 import scala.util.matching.Regex
 import java.util.regex.Matcher.quoteReplacement
 import cc.CaptureSet
@@ -59,7 +67,7 @@ abstract class TypeMsg(errorId: ErrorMessageID)(using Context) extends Message(e
 
 trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
   override def msgPostscript(using Context): String =
-    super.msgPostscript ++ matchReductionAddendum(tps*)
+    super.msgPostscript + matchReductionAddendum(tps*)
 
 abstract class TypeMismatchMsg(found: Type, val expected: Type)(errorId: ErrorMessageID)(using Context)
 extends Message(errorId), ShowMatchTrace(found, expected):
@@ -92,7 +100,7 @@ abstract class CyclicMsg(errorId: ErrorMessageID)(using Context) extends Message
 
   protected def debugInfo =
     if ctx.settings.YdebugCyclic.value then
-      "\n\nStacktrace:" ++ ex.getStackTrace().mkString("\n    ", "\n    ", "")
+      "\n\nStacktrace:" + ex.getStackTrace().mkString("\n    ", "\n    ", "")
     else "\n\n Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace."
 
   protected def context: String =
@@ -343,7 +351,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
             tp
           case tp @ TypeRef(pre, _) =>
             if pre != NoPrefix && !pre.member(tp.name).exists then
-              notes ++=
+              notes +=
                 i"""
                    |
                    |Note that I could not resolve reference $tp.
@@ -367,7 +375,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     def importSuggestions =
       if expected.isTopType || found.isBottomType then ""
       else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
-    notes.filter(!_.showAsPrefix).map(_.render).mkString ++ super.msgPostscript ++ importSuggestions
+    notes.filter(!_.showAsPrefix).map(_.render).mkString + super.msgPostscript + importSuggestions
 
   override def explain(using Context) =
     val treeStr = inTree.map(x => s"\nTree:\n\n${x.show}\n").getOrElse("")
@@ -376,7 +384,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
   override def actions(using Context) =
     inTree match {
       case Some(tree) if shouldSuggestNN =>
-        val content = tree.source.content().slice(tree.srcPos.startPos.start, tree.srcPos.endPos.end).mkString
+        val content = tree.source.textContent().substring(tree.srcPos.startPos.start, tree.srcPos.endPos.end)
         val replacement = tree match
           case a @ Apply(_, _) if !a.hasAttachment(desugar.WasTypedInfix) =>
             content + ".nn"
@@ -429,7 +437,7 @@ extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
             case site => i"$site."
         )
         if hint.isEmpty then prefixEnumClause("")
-        else hint ++ enumClause
+        else hint + enumClause
 
     i"$selected $name is not a member of ${site.widen}$finalAddendum"
   }
@@ -879,15 +887,21 @@ extends SyntaxMsg(AuxConstructorNeedsNonImplicitParameterID) {
         |"""
 }
 
-class IllegalLiteral()(using Context)
+class IllegalLiteral(ambiguous: Boolean = false)(using Context)
 extends SyntaxMsg(IllegalLiteralID) {
-  def msg(using Context) = "Illegal literal"
+  def msg(using Context) = if ambiguous then "Ambiguous literal" else "Illegal literal"
   def explain(using Context) =
+    if ambiguous then
+    i"""|`${hl("-42.abs")}` does not parse the same as `${hl("-n.abs")}`.
+        |For clarity, write `${hl("(-42).abs")}` instead.
+        |The literal can be rewritten automatically under -rewrite.
+        |"""
+    else
     i"""|Available literals can be divided into several groups:
         | - Integer literals: 0, 21, 0xFFFFFFFF, -42L
         | - Floating Point Literals: 0.0, 1e30f, 3.14159f, 1.0e-100, .1
         | - Boolean Literals: true, false
-        | - Character Literals: 'a', '\u0041', '\n'
+        | - Character Literals: 'a', '\\u0041', '\\n'
         | - String Literals: "Hello, World!"
         | - null
         |"""
@@ -3243,7 +3257,7 @@ class MissingImplicitArgument(
             case _ =>
               ctx.typer.importSuggestionAddendum(pt)
         super.msgPostscript
-        ++ ignoredInstanceNormalImport.map(hiddenImplicitNote)
+        + ignoredInstanceNormalImport.map(hiddenImplicitNote)
             .orElse(noChainConversionsNote(ignoredConvertibleImplicits))
             .getOrElse(importSuggestionAddendum)
 
@@ -3798,7 +3812,7 @@ final class CannotBeIncluded(
           if targetOwner.isClass
           then ("", targetOwner)
           else (" initially", targetOwner.owner)
-        def useStr(c: Capability) = c.showAsCapability ++ suffix
+        def useStr(c: Capability) = c.showAsCapability + suffix
         val usedStr = added match
           case added: Capability => i"${useStr(added)}"
           case added: CaptureSet => i"${added.elems.toList.map(useStr).mkString(", ")}"
@@ -4011,3 +4025,18 @@ final class VarianceInSpecializedTraitsLimitation(using Context)
  
     Otherwise, remove Specialized, or remove the variance.
     """
+
+class UnreasonableCatch(tpe: Option[Type])(using Context)
+  extends Message(UnreasonableCatchID) {
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) = tpe match
+    case Some(t) => i"Catching $t can lead to unexpected behavior"
+    case None => i"Catching everything can lead to unexpected behavior"
+  def explain(using Context) =
+    i"""Catching ${hl("Error")} subclasses, including by catching all ${hl("Throwable")}s,
+       |can lead to unexpected behavior because an ${hl("Error")} being thrown indicates
+       |an unrecoverable problem.
+       |The JDK documentation states that "a reasonable application should not
+       |try to catch" ${hl("Error")}s, and on some platforms such as Scala.js,
+       |such errors will immediately terminate the application and cannot be caught."""
+}

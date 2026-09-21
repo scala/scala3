@@ -4,6 +4,7 @@ import scala.annotation.tailrec
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.show
 import dotty.tools.dotc.core.Denotations.PreDenotation
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags.*
@@ -93,17 +94,20 @@ object IndexedContext:
   class LazyWrapper(pos: SourcePosition, tpdPath: List[tpd.Tree])(using val ctx: Context) extends IndexedContext:
 
     val scopeContext: CompletionResult = Completion.scopeContext(pos, tpdPath, ctx)
-    val names: Map[String, Seq[SingleDenotation]] = scopeContext.names.toList.groupBy(_._1.show).map {
-      case (name, denotations) =>
-        val denots = denotations.flatMap(_._2.denots)
-        val nonRoot = denots.filter(!_.symbol.owner.isRoot)
-        val (importedByDefault, conflictingValue) =
-          denots.partition(denot => Interactive.isImportedByDefault(denot.symbol))
-        if importedByDefault.nonEmpty && conflictingValue.nonEmpty then
-          name.trim -> conflictingValue
-        else
-          name.trim -> nonRoot
-    }
+    // `.show` re-derives `ctx.printer` (with `new RefinedPrinter(_)`) on every call - let's reuse one instead
+    private val namePrinter = ctx.printer
+    val names: Map[String, Seq[SingleDenotation]] =
+      scopeContext.names.toList.groupBy(_._1.toText(namePrinter).show).map {
+        case (name, denotations) =>
+          val denots = denotations.flatMap(_._2.denots)
+          val nonRoot = denots.filter(!_.symbol.owner.isRoot)
+          val (importedByDefault, conflictingValue) =
+            denots.partition(denot => Interactive.isImportedByDefault(denot.symbol))
+          if importedByDefault.nonEmpty && conflictingValue.nonEmpty then
+            name.trim -> conflictingValue
+          else
+            name.trim -> nonRoot
+      }
     val renames = scopeContext.renames
 
     def defaultScopes(name: Name): Option[List[Symbol]] =

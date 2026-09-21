@@ -514,9 +514,12 @@ object SymDenotations {
         if (kind.separator == "$")
           // duplicate scalac's behavior: don't write a double '$$' for module class members.
           prefix = prefix.exclude(ModuleClassName)
+        // avoid the need to capture `filler` and `encl` through ObjectRefs since they're vars
+        val immFiller = filler
+        val immEncl = encl
         def qualify(n: SimpleName) =
-          val qn = kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
-          if kind == FlatName && !encl.is(JavaDefined) then qn.compactified else qn
+          val qn = kind(prefix.toTermName, if (immFiller.isEmpty) n else termName(immFiller + n))
+          if kind == FlatName && !immEncl.is(JavaDefined) then qn.compactified else qn
         val fn = name.replaceDeep {
           case n: SimpleName => qualify(n)
         }
@@ -571,7 +574,8 @@ object SymDenotations {
       myTargetName = name
 
     def hasTargetName(name: Name)(using Context): Boolean =
-      targetName.matchesTargetName(name)
+      // Don't bother looking at annotations if we're looking for a name that will always match
+      name.isEmpty || targetName.matchesTargetName(name)
 
     /** The name given in a `@targetName` annotation if one is present, `name` otherwise */
     def targetName(using Context): Name =
@@ -2098,7 +2102,7 @@ object SymDenotations {
     /** Like `baseClasses.length` but more efficient. */
     def baseClassesLength(using BaseData, Context): Int =
       // `+ 1` because the baseClassSet does not include the current class unlike baseClasses
-      baseClassSet.classIds.length + 1
+      baseClassSet.length + 1
 
     /** A bitset that contains the superId's of all base classes */
     private def baseClassSet(implicit onBehalf: BaseData, ctx: Context): BaseClassSet =
@@ -2893,8 +2897,8 @@ object SymDenotations {
     private var myDecls: Scope = EmptyScope
     private var mySourceModule: Symbol | Null = null
     private var myModuleClass: Symbol | Null = null
-    private var mySourceModuleFn: Context ?=> Symbol = LazyType.NoSymbolFn
-    private var myModuleClassFn: Context ?=> Symbol = LazyType.NoSymbolFn
+    private var mySourceModuleFn: (Context => Symbol) | Null = null
+    private var myModuleClassFn: (Context => Symbol) | Null = null
 
     /** The type parameters computed by the completer before completion has finished */
     def completerTypeParams(sym: Symbol)(using Context): List[TypeParamInfo] =
@@ -2903,15 +2907,20 @@ object SymDenotations {
 
     def decls: Scope = myDecls
     def sourceModule(using Context): Symbol =
-      if mySourceModule == null then mySourceModule = mySourceModuleFn
-      mySourceModule.nn
+      initialize(mySourceModule, mySourceModule = _, {
+        val fn = mySourceModuleFn
+        if fn `eq` null then NoSymbol else fn(ctx)
+      })
+
     def moduleClass(using Context): Symbol =
-      if myModuleClass == null then myModuleClass = myModuleClassFn
-      myModuleClass.nn
+      initialize(myModuleClass, myModuleClass = _, {
+        val fn = myModuleClassFn
+        if fn `eq` null then NoSymbol else fn(ctx)
+      })
 
     def withDecls(decls: Scope): this.type = { myDecls = decls; this }
-    def withSourceModule(sourceModuleFn: Context ?=> Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
-    def withModuleClass(moduleClassFn: Context ?=> Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
+    def withSourceModule(sourceModuleFn: Context ?=> Symbol): this.type = { mySourceModuleFn = (c => sourceModuleFn(using c)); this }
+    def withModuleClass(moduleClassFn: Context ?=> Symbol): this.type = { myModuleClassFn = (c => moduleClassFn(using c)); this }
 
     override def toString: String = getClass.toString
 
@@ -2922,9 +2931,6 @@ object SymDenotations {
      */
     def needsCompletion(symd: SymDenotation)(using Context): Boolean = true
   }
-
-  object LazyType:
-    private val NoSymbolFn = (_: Context) ?=> NoSymbol
 
   /** A subtrait of LazyTypes where completerTypeParams yields a List[TypeSymbol], which
    *  should be completed independently of the info.
@@ -3143,66 +3149,47 @@ object SymDenotations {
     def sameGroup(p1: Phase, p2: Phase) = p1.sameParentsStartId == p2.sameParentsStartId
   }
 
-  class BaseClassSet(val classIds: Array[Int]) extends AnyVal {
-    def contains(sym: Symbol, limit: Int): Boolean = {
-      val id = sym.id
-      var i = 0
-      while (i < limit && classIds(i) != id) i += 1
-      i < limit && {
-        if (i > 0) {
-          val t = classIds(i)
-          classIds(i) = classIds(i - 1)
-          classIds(i - 1) = t
-        }
-        true
-      }
-    }
-    def contains(sym: Symbol): Boolean = contains(sym, classIds.length)
-  }
+  class BaseClassSet(classes: List[ClassSymbol]) extends AnyVal {
+    def length: Int = classes.length
 
-  object BaseClassSet {
-    def apply(bcs: List[ClassSymbol]): BaseClassSet =
-      new BaseClassSet(bcs.toArray.map(_.id))
+    def contains(sym: Symbol, limit: Int): Boolean =
+      @tailrec
+      def recur(sym: Symbol, lst: List[ClassSymbol], limit: Int): Boolean =
+        if limit == -1 then // < -1 means no limit -- no need to fetch the length of the list
+          false
+        else
+          lst match
+            case hd :: tl if hd.id == sym.id => true
+            case _ :: tl => recur(sym, tl, limit - 1)
+            case _ => false
+      recur(sym, classes, limit)
+
+    def contains(sym: Symbol): Boolean = contains(sym, -2)
   }
 
   /** A class to combine base data from parent types */
-  class BaseDataBuilder {
+  private final class BaseDataBuilder {
     private var classes: List[ClassSymbol] = Nil
-    private var classIds = new Array[Int](32)
     private var length = 0
 
-    private def resize(size: Int) = {
-      val classIds1 = new Array[Int](size)
-      System.arraycopy(classIds, 0, classIds1, 0, classIds.length min size)
-      classIds = classIds1
-    }
-
-    private def add(sym: Symbol): Unit = {
-      if (length == classIds.length) resize(length * 2)
-      classIds(length) = sym.id
-      length += 1
-    }
-
     def addAll(bcs: List[ClassSymbol]): this.type = {
-      val len = length
       bcs match {
         case bc :: bcs1 =>
           addAll(bcs1)
-          if (!new BaseClassSet(classIds).contains(bc, len)) {
-            add(bc)
+          if (!new BaseClassSet(classes).contains(bc)) {
             classes = bc :: classes
+            length += 1
           }
         case nil =>
       }
       this
     }
 
-    def baseClassSet: BaseClassSet = {
-      if (length != classIds.length) resize(length)
-      new BaseClassSet(classIds)
-    }
+    def baseClassSet: BaseClassSet =
+      new BaseClassSet(classes)
 
-    def baseClasses: List[ClassSymbol] = classes
+    def baseClasses: List[ClassSymbol] =
+      classes
   }
 
   private val packageTypeName = ModuleClassName(nme.PACKAGE).toTypeName

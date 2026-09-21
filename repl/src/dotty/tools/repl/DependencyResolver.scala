@@ -1,11 +1,8 @@
 package dotty.tools.repl
 
 import java.io.File
-import java.net.{URL, URLClassLoader}
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
-
-import dotty.tools.repl.AbstractFileClassLoader
 
 import coursierapi.{Dependency, IvyRepository, MavenRepository, Repository}
 
@@ -89,34 +86,17 @@ object DependencyResolver:
    *
    *  This follows the same pattern as the `:jar` command.
    */
-  def addToCompilerClasspath(
-    files: List[File],
-    prevClassLoader: ClassLoader,
-    prevOutputDir: dotty.tools.io.AbstractFile
-  )(using ctx: dotty.tools.dotc.core.Contexts.Context): AbstractFileClassLoader =
+  def addToCompilerClasspath(files: List[File])(using ctx: dotty.tools.dotc.core.Contexts.Context): Unit =
     import dotty.tools.dotc.classpath.{ClassPath, ClassPathFactory}
     import dotty.tools.dotc.core.SymbolLoaders
     import dotty.tools.dotc.core.Symbols.defn
     import dotty.tools.io.AbstractFile
-    import dotty.tools.repl.ScalaClassLoader.fromURLsParallelCapable
 
-    // Create a classloader with all the resolved JAR files
-    val urls = files.map(_.toURI.toURL).toArray
-    val depsClassLoader = new URLClassLoader(urls, prevClassLoader)
-
-    // Add each JAR to the compiler's classpath
     for file <- files do
       val jarFile = AbstractFile.getDirectory(file.getAbsolutePath, ctx.settings.javaOutputVersion.value)
       if jarFile != null then
         val jarClassPath = ClassPathFactory.newClassPath(jarFile)
         ctx.platform.addToClassPath(jarClassPath)
         SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
-
-    // Create new classloader with previous output dir and resolved dependencies
-    new AbstractFileClassLoader(
-      prevOutputDir,
-      depsClassLoader,
-      AbstractFileClassLoader.InterruptInstrumentation.fromString(ctx.settings.XreplInterruptInstrumentation.value)
-    )
 
 end DependencyResolver

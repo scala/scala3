@@ -243,6 +243,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         ParamRefNameString(tp) ~ hashStr(tp.binder) ~ suffix
       case tp: SingletonType =>
         toTextSingleton(tp)
+      case FlexibleType(tpe) =>
+        "(" ~ toText(tpe) ~ ")?"
       case AppliedType(tycon, args) =>
         (toTextLocal(tycon) ~ "[" ~ argsText(args) ~ "]").close
       case tp: RefinedType =>
@@ -332,8 +334,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
             toText(tpe)
           case _ =>
             toTextLocal(tpe) ~ " " ~ toText(annot)
-      case FlexibleType(_, tpe) =>
-        "(" ~ toText(tpe) ~ ")?"
       case tp: TypeVar =>
         def toTextCaret(tp: Type) = if printDebug then toTextLocal(tp) ~ Str("^") else toText(tp)
         if (tp.isInstantiated)
@@ -478,7 +478,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           // Use long output if we are printing a result of a function type, but the
           // ResultCap does not prefer to a prefix in that type
           "<fresh of " ~ toText(c.binder) ~ ">"
-        case n => "outer_" * n ++ "fresh"
+        case n => "outer_" * n + "fresh"
       vbleText ~ Str(idStr).provided(showUniqueIds) ~ Str(hashStr(c.binder)).provided(showUniqueIds | printDebug)
     case c: LocalCap =>
       val idStr = if showUniqueIds then s"#${c.rootId}" else ""

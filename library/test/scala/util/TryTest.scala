@@ -296,7 +296,7 @@ class TryTest {
     val res = try {
       t.fold(_ => throw new Exception("bar"), "Returns " + _)
     } catch {
-      case e: Throwable => "Throws " + e
+      case e: Exception => "Throws " + e
     }
     assertEquals("Throws java.lang.Exception: bar", res)
   }
