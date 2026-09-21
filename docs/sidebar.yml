@@ -199,6 +199,7 @@ subsection:
       - page: reference/experimental/spec-strings.md
       - page: reference/experimental/inline-traits.md
       - page: reference/experimental/specialized-traits.md
+      - page: reference/experimental/method-block-end-markers.md
   - page: reference/syntax.md
   - title: Language Versions
     index: reference/language-versions/language-versions.md
