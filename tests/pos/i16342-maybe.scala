@@ -1,0 +1,20 @@
+//> using options -Yexplicit-nulls
+import language.experimental.errorHandling
+type Opaque = Base & Tag
+
+type Base = Any {
+  type Hack
+}
+
+trait Tag
+
+object Opaque {
+  def apply(value: String): Opaque = value.asInstanceOf[Opaque]
+
+  def unapply(userId: Opaque): String? = userId.value
+  def unappy2(userId: Base & Tag): Option[String] = Option(userId).map(_.value)
+}
+
+final implicit class Ops(private val userId: Opaque) extends AnyVal {
+  def value: String = userId.asInstanceOf[String]
+}
