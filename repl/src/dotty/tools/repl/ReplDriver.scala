@@ -842,7 +842,7 @@ class ReplDriver(settings: Array[String],
       case Jar(path) => path
     val repositories = declared.directives.collect:
       case Repository(repository) => repository
-    val resources = classified.directives.collect:
+    val resources = declared.directives.collect:
       case Resource(path) => path
     val stateWithRepositories = addRepositories(repositories)
     val stateWithDependencies = resolveAndAddDeps(dependencies)(using stateWithRepositories)

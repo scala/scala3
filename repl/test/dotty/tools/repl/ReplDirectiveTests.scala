@@ -38,7 +38,7 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
   @Test def `resource directive aliases are supported`: Unit =
     val paths = List("res", "conf.json")
     List("resourceDir", "resourceDirs", "resource").foreach: alias =>
-      val result = ReplDirectives.classify(s"//> using $alias ${paths.mkString(" ")}")
+      val result = ReplDirectives.read(s"//> using $alias ${paths.mkString(" ")}")
       assertEquals(alias, paths.map(Resource(_)), result.directives)
       assertEquals(alias, Nil, result.warnings)
     assertTrue(ReplDirectives.helpText.contains("Aliases: resourceDirs, resource"))
@@ -46,7 +46,7 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
   @Test def `test resource directive aliases are supported with a warning`: Unit =
     val paths = List("res", "conf.json")
     List("test.resourceDir", "test.resourceDirs", "test.resource").foreach: alias =>
-      val result = ReplDirectives.classify(s"//> using $alias ${paths.mkString(" ")}")
+      val result = ReplDirectives.read(s"//> using $alias ${paths.mkString(" ")}")
       assertEquals(alias, paths.map(Resource(_)), result.directives)
       assertEquals(alias, List(Warning.NoSeparateTestScope("Resources")), result.warnings)
     assertTrue(ReplDirectives.helpText.contains("Aliases: test.resourceDirs, test.resource"))
