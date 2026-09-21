@@ -144,6 +144,7 @@ object Splicer {
         && sym.is(Param)
         && sym.owner.isPrimaryConstructor
         && !locals.contains(sym)
+        && !ctx.owner.ownersIterator.exists(_.isLocalDummy) // in top level of class's body
     }.traverse(tree)
     tree
 
