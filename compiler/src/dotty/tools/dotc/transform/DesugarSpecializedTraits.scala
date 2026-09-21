@@ -812,7 +812,11 @@ end MethodSpecialization
 
 object SpecializedEvidence {
   def unapply(tpe: Type)(using Context): Option[Type] = tpe match {
-    case AppliedType(tycon, List(tpeArg)) if (tycon =:= ctx.definitions.SpecializedClass.typeRef && tpeArg.typeSymbol.isTypeParam) => Some(tpeArg)
+    case AppliedType(tycon, List(tpeArg)) if tycon =:= ctx.definitions.SpecializedClass.typeRef =>
+      if tpeArg.typeSymbol.isTypeParam || tpeArg.isInstanceOf[TypeParamRef] then 
+        Some(tpeArg)
+      else 
+        None
     case _ => None
   }
 }
