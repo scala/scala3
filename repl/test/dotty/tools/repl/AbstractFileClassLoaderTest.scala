@@ -174,7 +174,7 @@ class AbstractFileClassLoaderTest:
     val threads = (1 to 8).toList.map: _ =>
       val thread = new Thread(() =>
         start.await()
-        loaded.add(try loader.loadClass(name) catch case e: Throwable => e)
+        loaded.add(try loader.loadClass(name) catch case e: LinkageError => e)
         ()
       )
       thread.start()

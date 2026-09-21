@@ -5,7 +5,7 @@ import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 
 private final case class InputStatement(start: Int, end: Int, original: SourceFile):
-  val source: String = original.content.slice(start, end).mkString
+  val source: String = original.textContent().slice(start, end)
   val position: WorksheetPosition = WorksheetPosition.fromOffsets(original, start, end)
 
   def mapPosition(generated: SourcePosition): WorksheetPosition =

@@ -44,12 +44,8 @@ private final class StatementRunner(startup: ReplStartup, screenWidth: Int):
   def addToClasspath(files: List[java.io.File], state: State): Unit =
     if files.nonEmpty then
       given Context = state.context
-      val previous = rendering.classLoader()(using state.context)
-      rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
-        files,
-        previous,
-        state.context.settings.outputDir.value(using state.context)
-      )
+      DependencyResolver.addToCompilerClasspath(files)
+      rendering.addToClasspath(files.map(_.toURI.toURL))
 
   def beginRun(state: State): Unit =
     ReplBytecodeInstrumentation.setStopFlag(
