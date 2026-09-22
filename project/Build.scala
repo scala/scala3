@@ -929,11 +929,11 @@ object Build {
       Dependencies.coursierInterface, // used by the REPL for dependency resolution
     ),
     run / fork := true,
-    Compile / run := {
+    Compile / run := Def.uncached {
       //val classpath = s"-classpath ${(`scala-library-bootstrapped` / Compile / packageBin).value}"
       // TODO: We should use the val above instead of `-usejavacp` below. SBT crashes we we have a val and we call toTask
       // with it as a parameter. THIS IS NOT A LEGIT USE CASE OF THE `-usejavacp` FLAG.
-      (Compile / run).partialInput(" -usejavacp").evaluated
+      (Compile / run).toTask(" -usejavacp").value
     },
   )
 
@@ -955,7 +955,10 @@ object Build {
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
       // Needed for the JSR223 tests which are "run" tests
-      Test / javaOptions += s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
+      Test / javaOptions += Def.uncached {
+        given FileConverter = fileConverter.value
+        s"-Ddotty.tests.classes.scalaLibrary=${pkgPath((`scala-library-bootstrapped` / Compile / packageBin).value)}"
+      },
       Test / javaOptions += s"-Ddotty.tests.scalaCliVersion=${Dependencies.scalaCliLauncherVersion}",
       excludeDependencies += "org.scala-lang" %% "scala3-library",
       excludeDependencies += "org.scala-lang" % "scala-library",
@@ -973,7 +976,10 @@ object Build {
       publish / skip := true,
       target := target.value / "scala3-repl-nonbootstrapped",
       fetchedScalaInstanceSettings,
-      Test / javaOptions += s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-nonbootstrapped` / Compile / packageBin).value}",
+      Test / javaOptions += Def.uncached {
+        given FileConverter = fileConverter.value
+        s"-Ddotty.tests.classes.scalaLibrary=${pkgPath((`scala-library-nonbootstrapped` / Compile / packageBin).value)}"
+      },
       bspEnabled := true,
     )
 
@@ -2789,7 +2795,7 @@ object Build {
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
       republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
-      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishFetchCoursier := Def.uncached((dist / republishFetchCoursier).value),
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-pc-linux.gz")
     )
@@ -2812,11 +2818,12 @@ object Build {
       packageDescription := "The Scala Programming Language",
       // Emit a fixed-name `scala.deb` so CI can reference it without a glob
       // Debian packaging doesn't seem to respect `artifactPath`
-      Debian / packageBin := {
-        val built = (Debian / packageBin).dependsOn(republish).value
+      Debian / packageBin := Def.uncached {
+        given FileConverter = fileConverter.value
+        val built = (Debian / packageBin).dependsOn(republish).value.toFile
         val fixed = built.getParentFile / "scala.deb"
         IO.copyFile(built, fixed)
-        fixed
+        fixed.toFileRef
       },
     )
 
@@ -2826,7 +2833,7 @@ object Build {
     .settings(
       republishLibexecDir := (dist / republishLibexecDir).value,
       republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
-      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishFetchCoursier := Def.uncached((dist / republishFetchCoursier).value),
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-pc-linux.gz")
     )
@@ -2851,8 +2858,11 @@ object Build {
       packageSummary     := s"Scala $dottyVersion",
       packageDescription := "The Scala Programming Language",
       // Emit a fixed-name `scala.rpm` so CI can reference it without a glob
-      Rpm / packageBin / artifactPath := (Rpm / target).value / "scala.rpm",
-      Rpm / packageBin := (Rpm / packageBin).dependsOn(republish).value,
+      Rpm / packageBin / artifactPath := {
+        given FileConverter = fileConverter.value
+        ((Rpm / target).value / "scala.rpm").toFileRef
+      },
+      Rpm / packageBin := Def.uncached((Rpm / packageBin).dependsOn(republish).value),
     )
 
   lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist
