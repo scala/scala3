@@ -930,6 +930,7 @@ object Build {
       Dependencies.coursierInterface, // used by the REPL for dependency resolution
     ),
     run / fork := true,
+    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Raw,
     Compile / run := Def.uncached {
       //val classpath = s"-classpath ${(`scala-library-bootstrapped` / Compile / packageBin).value}"
       // TODO: We should use the val above instead of `-usejavacp` below. SBT crashes we we have a val and we call toTask
@@ -1513,6 +1514,7 @@ object Build {
       Test    / publishArtifact := false,
       // Do not allow to publish this project for now
       publish / skip := false,
+      Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Raw,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-compiler-nonbootstrapped",
       // Generate compiler.properties, used by sbt
@@ -1652,6 +1654,7 @@ object Build {
       Test    / publishArtifact := false,
       // Do not allow to publish this project for now
       publish / skip := false,
+      Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Raw,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-compiler-bootstrapped",
       // Generate compiler.properties, used by sbt
