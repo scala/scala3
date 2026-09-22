@@ -1,4 +1,4 @@
-//> using options -language:experimental.specializedTraits
+//> using options -language:experimental.specializedTraits -language:experimental.genericNumberLiterals
 
 
 inline trait A[T: Specialized, S: Numeric](val x: T)(val y: T)(val z: S)(p: S):
