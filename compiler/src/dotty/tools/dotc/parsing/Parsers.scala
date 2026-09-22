@@ -1427,17 +1427,25 @@ object Parsers {
     def literal(start: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
 
       def literalOf(token: Token): Tree = {
+        val strVal = in.strVal
         val isNegated = start < in.offset
-        def digits0 = in.removeNumberSeparators(in.strVal.nn)
+        def digits0 = in.removeNumberSeparators(strVal.nn)
         def digits = if isNegated then "-" + digits0 else digits0
         if !inTypeOrSingleton then
           if isNegated && start < in.offset - 1 then
             warning(IllegalLiteral(), start)
             patch(Span(start, in.offset + in.strVal.nn.length), "-" + in.strVal.nn.trim)
+          def num(kind: NumberKind): Tree =
+            val d = digits
+            if d.isEmpty then
+              syntaxErrorOrIncomplete(IllegalLiteral())
+              Literal(Constant.fromValue(null))
+            else
+              Number(d, kind)
           token match {
-            case INTLIT  => return Number(digits, NumberKind.Whole(in.base))
-            case DECILIT => return Number(digits, NumberKind.Decimal)
-            case EXPOLIT => return Number(digits, NumberKind.Floating)
+            case INTLIT  => return num(NumberKind.Whole(in.base))
+            case DECILIT => return num(NumberKind.Decimal)
+            case EXPOLIT => return num(NumberKind.Floating)
             case _ =>
           }
         import scala.util.FromDigits.*
