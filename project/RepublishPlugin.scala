@@ -1,14 +1,14 @@
 package dotty.tools.sbtplugin
 
 import com.typesafe.sbt.packager.universal.UniversalPlugin
-import sbt.{ given, * }
+import sbt.*
 import sbt.Keys.*
 import sbt.AutoPlugin
 import sbt.PublishBinPlugin
 import sbt.PublishBinPlugin.autoImport.*
 import sbt.io.Using
 import sbt.util.CacheImplicits.*
-import sbt.{toFile, toFileRef}
+import sbt.toFile
 import xsbti.FileConverter
 
 import java.nio.file.Files
@@ -367,8 +367,7 @@ object RepublishPlugin extends AutoPlugin {
 
       deps.classpathRefs(proj)
     },
-    republishLocalResolved := Def.uncached(
-      Def.taskDyn {
+    republishLocalResolved := Def.uncached(Def.taskDyn {
       val deps = (republishLocalResolved / republishProjectRefs).value
       val publishAllLocalBin = deps.map({ d => ((d / publishLocalBin / packagedArtifacts)) }).join
       val resolveId = deps.map({ d => ((d / projectID)) }).join
@@ -436,12 +435,12 @@ object RepublishPlugin extends AutoPlugin {
       val cacheDir = republishRepo.value
       republishResolvedArtifacts(resolved, cacheDir / "maven2", logOpt = Some(s.log))
     },
-    republishFetchLaunchers := Def.uncached(
+    republishFetchLaunchers := Def.uncached {
       fetchFilesTask(republishPrepareBin, republishLaunchers, strict = true).value
-    ),
-    republishFetchCoursier := Def.uncached(
+    },
+    republishFetchCoursier := Def.uncached {
       fetchFilesTask(republishCoursierDir.toTask, republishCoursier, strict = true).value.head
-    ),
+    },
     republishPrepareBin := Def.uncached {
       val baseDir = baseDirectory.value
       val srcLibexec = republishLibexecDir.value
@@ -483,4 +482,3 @@ object RepublishPlugin extends AutoPlugin {
     },
   )
 }
-

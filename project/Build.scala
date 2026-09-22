@@ -1581,14 +1581,10 @@ object Build {
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
       // Configuration of the test suite
-      Compile / run / forkOptions := Def.uncached(
-        (Compile / run / forkOptions).value
-        .withWorkingDirectory((ThisBuild / baseDirectory).value)
-      ),
-      Test / forkOptions := Def.uncached(
-        (Test / forkOptions).value
-        .withWorkingDirectory((ThisBuild / baseDirectory).value)
-      ),
+      Compile / run / forkOptions := Def.uncached((Compile / run / forkOptions).value
+        .withWorkingDirectory((ThisBuild / baseDirectory).value)),
+      Test / forkOptions := Def.uncached((Test / forkOptions).value
+        .withWorkingDirectory((ThisBuild / baseDirectory).value)),
       Test / test := (Test / testOnly).toTask(" -- --exclude-categories=dotty.VulpixMetaTests").value,
       Test / testOptions += Tests.Argument(
         TestFrameworks.JUnit,
@@ -1713,15 +1709,11 @@ object Build {
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
-      Compile / run / forkOptions := Def.uncached(
-        (Compile / run / forkOptions).value
-        .withWorkingDirectory((ThisBuild / baseDirectory).value)
-      ),
+      Compile / run / forkOptions := Def.uncached((Compile / run / forkOptions).value
+        .withWorkingDirectory((ThisBuild / baseDirectory).value)),
       // Configuration of the test suite
-      Test / forkOptions := Def.uncached(
-        (Test / forkOptions).value
-        .withWorkingDirectory((ThisBuild / baseDirectory).value)
-      ),
+      Test / forkOptions := Def.uncached((Test / forkOptions).value
+        .withWorkingDirectory((ThisBuild / baseDirectory).value)),
       Test / test := (Test / testOnly).toTask(" -- --exclude-categories=dotty.VulpixMetaTests").value,
       Test / testOptions += Tests.Argument(
         TestFrameworks.JUnit,
@@ -1820,9 +1812,7 @@ object Build {
     // Test configuration
     .settings(
       Test / test := (Test / test).dependsOn(`scaladoc-testcases` / Compile / compile).evaluated,
-      Test / testcasesOutputDir := Def.uncached(
-        (`scaladoc-testcases` / Compile / products).value.map(_.getAbsolutePath)
-      ),
+      Test / testcasesOutputDir := Def.uncached((`scaladoc-testcases` / Compile / products).value.map(_.getAbsolutePath)),
       Test / testcasesSourceRoot := ((`scaladoc-testcases` / baseDirectory).value / "src").getAbsolutePath,
       testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
     )
@@ -1835,11 +1825,9 @@ object Build {
     )
       // Documentation generation tasks
     .settings(
-      generateSelfDocumentation := Def.uncached(
-        Def.taskDyn {
-          generateDocumentation(Scaladoc)
-        }.value
-      ),
+      generateSelfDocumentation := Def.uncached(Def.taskDyn {
+        generateDocumentation(Scaladoc)
+      }.value),
 
       generateScalaDocumentation := Def.inputTaskDyn {
         val majorVersion = (`scala-library-bootstrapped` / scalaBinaryVersion).value
@@ -1923,11 +1911,9 @@ object Build {
         generateDocumentation(config)
       }.evaluated,
 
-      generateTestcasesDocumentation := Def.uncached(
-        Def.taskDyn {
-          generateDocumentation(Testcases)
-        }.value
-      ),
+      generateTestcasesDocumentation := Def.uncached(Def.taskDyn {
+        generateDocumentation(Testcases)
+      }.value),
 
       // Generate the Scala 3 reference documentation (published at https://docs.scala-lang.org/scala3/reference)
       generateReferenceDocumentation := Def.inputTaskDyn {
@@ -2059,7 +2045,7 @@ object Build {
       Test / buildInfoKeys := Seq(
         BuildInfoKey("scalaVersion", scalaVersion),
         BuildInfoKey("ideTestsDependencyClasspath", ideTestsDependencyClasspath),
-        BuildInfoKey("ideTestsScalaJSClasspath", ideTestsScalaJSClasspath),
+        BuildInfoKey("ideTestsScalaJSClasspath", ideTestsScalaJSClasspath)
       )
     ) ++ BuildInfoPlugin.buildInfoScopedSettings(Compile) ++
       BuildInfoPlugin.buildInfoScopedSettings(Test) ++
@@ -2462,9 +2448,7 @@ object Build {
       },
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
-      Test / forkOptions := Def.uncached(
-        (Test / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value)
-      ),
+      Test / forkOptions := Def.uncached((Test / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value)),
       bspEnabled := false,
     )
 
@@ -2669,47 +2653,35 @@ object Build {
     // ========
     Universal / stage := Def.uncached((Universal / stage).dependsOn(republish).value),
     Universal / packageBin := Def.uncached((Universal / packageBin).dependsOn(republish).value),
-    Universal / packageZipTarball := Def.uncached(
-      Def.task {
-        given FileConverter = fileConverter.value
-        val archiveFile = (Universal / packageZipTarball).dependsOn(republish).value
-        val file = archiveFile.toFile
-        val renamedFile = file.getParentFile / file.getName.replaceAll("\\.tgz$", ".tar.gz")
-        IO.move(file, renamedFile)
-        renamedFile.toFileRef
-      }.value
-    ),
+    Universal / packageZipTarball := Def.uncached(Def.task {
+      given FileConverter = fileConverter.value
+      val archiveFile = (Universal / packageZipTarball).dependsOn(republish).value
+      val file = archiveFile.toFile
+      val renamedFile = file.getParentFile / file.getName.replaceAll("\\.tgz$", ".tar.gz")
+      IO.move(file, renamedFile)
+      renamedFile.toFileRef
+    }.value),
     // ========
-    Universal / mappings ++= Def.uncached(
-      Def.task {
-        given FileConverter = fileConverter.value
-        directory(dist.base / "bin").map { case (f, p) => f.toFileRef -> p }
-      }.value
-    ),
-    Universal / mappings ++= Def.uncached(
-      Def.task {
-        given FileConverter = fileConverter.value
-        directory(republishRepo.value / "maven2").map { case (f, p) => f.toFileRef -> p }
-      }.value
-    ),
-    Universal / mappings ++= Def.uncached(
-      Def.task {
-        given FileConverter = fileConverter.value
-        directory(republishRepo.value / "lib").map { case (f, p) => f.toFileRef -> p }
-      }.value
-    ),
-    Universal / mappings ++= Def.uncached(
-      Def.task {
-        given FileConverter = fileConverter.value
-        directory(republishRepo.value / "libexec").map { case (f, p) => f.toFileRef -> p }
-      }.value
-    ),
-    Universal / mappings += Def.uncached(
-      Def.task {
-        given FileConverter = fileConverter.value
-        (republishRepo.value / "VERSION").toFileRef -> "VERSION"
-      }.value
-    ),
+    Universal / mappings ++= Def.uncached(Def.task {
+      given FileConverter = fileConverter.value
+      directory(dist.base / "bin").map { case (f, p) => f.toFileRef -> p }
+    }.value),
+    Universal / mappings ++= Def.uncached(Def.task {
+      given FileConverter = fileConverter.value
+      directory(republishRepo.value / "maven2").map { case (f, p) => f.toFileRef -> p }
+    }.value),
+    Universal / mappings ++= Def.uncached(Def.task {
+      given FileConverter = fileConverter.value
+      directory(republishRepo.value / "lib").map { case (f, p) => f.toFileRef -> p }
+    }.value),
+    Universal / mappings ++= Def.uncached(Def.task {
+      given FileConverter = fileConverter.value
+      directory(republishRepo.value / "libexec").map { case (f, p) => f.toFileRef -> p }
+    }.value),
+    Universal / mappings += Def.uncached(Def.task {
+      given FileConverter = fileConverter.value
+      (republishRepo.value / "VERSION").toFileRef -> "VERSION"
+    }.value),
     // ========
     republishCommandLibs += ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "scala-library", "tasty-core", "scala3-repl")),
     republishCommandLibs += ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "scala3-repl", "^!scala3-interfaces", "^!scala3-compiler", "^!scala3-library", "^!scala-library", "^!tasty-core")),
@@ -2858,7 +2830,7 @@ object Build {
       packageSummary     := s"Scala $dottyVersion",
       packageDescription := "The Scala Programming Language",
       // Emit a fixed-name `scala.rpm` so CI can reference it without a glob
-      Rpm / packageBin / artifactPath := {
+      Rpm / packageBin / artifactPath := Def.uncached {
         given FileConverter = fileConverter.value
         ((Rpm / target).value / "scala.rpm").toFileRef
       },
@@ -2998,7 +2970,6 @@ object ScaladocConfigs {
   }
 
   lazy val Scala3 = Def.task {
-    given FileConverter = fileConverter.value
     ScaladocConfigs0.Scala3(
       version.value,
       (ThisBuild/baseDirectory).value.toPath,

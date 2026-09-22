@@ -1,6 +1,6 @@
 package dotty.tools.sbtplugin
 
-import sbt.{ given, * }
+import sbt.*
 import sbt.Keys.*
 
 import org.scalajs.sbtplugin.ScalaJSPlugin
@@ -80,12 +80,8 @@ object DottyJSPlugin extends AutoPlugin {
       new NodeJSEnv(config)
     },
 
-    Compile / jsEnvInput := Def.uncached(
-      (Compile / jsEnvInput).dependsOn(writePackageJSON).value
-    ),
-    Test / jsEnvInput := Def.uncached(
-      (Test / jsEnvInput).dependsOn(writePackageJSON).value
-    ),
+    Compile / jsEnvInput := Def.uncached((Compile / jsEnvInput).dependsOn(writePackageJSON).value),
+    Test / jsEnvInput := Def.uncached((Test / jsEnvInput).dependsOn(writePackageJSON).value),
 
     writePackageJSON := Def.uncached {
       val packageType = scalaJSLinkerConfig.value.moduleKind match {

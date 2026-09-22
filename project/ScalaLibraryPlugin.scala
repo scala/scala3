@@ -1,6 +1,6 @@
 package dotty.tools.sbtplugin
 
-import sbt.{ given, * }
+import sbt.*
 import sbt.Keys.*
 import sbt.io.Using
 import sbt.librarymanagement.ModuleFilter
@@ -136,7 +136,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
         }
         throw new MessageOnlyException(s"There were $filteredTotal conflicts")
       }
-    },
+    }
   )
 
   def fetch(stream: TaskStreams, jar: File) = {
