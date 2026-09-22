@@ -1430,7 +1430,7 @@ object Parsers {
         val isNegated = start < in.offset
         def digits0 = in.removeNumberSeparators(in.strVal.nn)
         def digits = if isNegated then "-" + digits0 else digits0
-        if !inTypeOrSingleton && Feature.genericNumberLiteralsEnabled then
+        if !inTypeOrSingleton then
           if isNegated && start < in.offset - 1 then
             warning(IllegalLiteral(), start)
             patch(Span(start, in.offset + in.strVal.nn.length), "-" + in.strVal.nn.trim)

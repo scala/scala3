@@ -1220,17 +1220,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         }
       else if (target.isRef(defn.LongClass))
         tree.kind match {
-          case Whole(radix) => return lit(longFromDigits(digits, radix))
+          case Whole(radix) if Feature.genericNumberLiteralsEnabled =>
+            return lit(longFromDigits(digits, radix))
           case _ =>
         }
       else if (target.isRef(defn.FloatClass))
         tree.kind match {
           case Whole(16) => // cant parse hex literal as float
-          case _         =>
+          case _ if Feature.genericNumberLiteralsEnabled =>
             val float = floatFromDigits(digits)
             if digits.toIntOption.exists(_ != float.toInt) then
               report.warning(LossyWideningConstantConversion(defn.IntType, target), tree.srcPos)
             return lit(float)
+          case _ =>
         }
       else if (target.isRef(defn.DoubleClass))
         tree.kind match {
