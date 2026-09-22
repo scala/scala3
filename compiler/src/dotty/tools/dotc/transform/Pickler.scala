@@ -28,7 +28,7 @@ import scala.annotation.constructorOnly
 import scala.concurrent.Promise
 import dotty.tools.dotc.transform.Pickler.*
 import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
-import dotty.tools.dotc.sbt.asyncZincPhasesCompleted
+import dotty.tools.dotc.sbt.asyncZincPhaseCompleted
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.dotc.util.chaining.*
 
@@ -55,7 +55,7 @@ object Pickler {
     import scala.concurrent.Future as StdFuture
     import scala.concurrent.Await
     import scala.concurrent.duration.Duration
-    import AsyncTastyHolder.Signal
+    import AsyncTastyHolder.{Signal, State}
 
     private val _cancelled = AtomicBoolean(false)
 
@@ -66,7 +66,9 @@ object Pickler {
       if _cancelled.compareAndSet(false, true) then
         asyncTastyWritten.trySuccess(None) // cancel the wait for TASTy writing
         if incCallback != null then
-          asyncAPIComplete.trySuccess(Signal.Cancelled) // cancel the wait for API completion
+          // cancel the wait for API and dependencies
+          asyncAPISent.trySuccess(Signal.Cancelled)
+          asyncDependenciesSent.trySuccess(Signal.Cancelled)
       else
         () // nothing else to do
 
@@ -74,26 +76,40 @@ object Pickler {
     def cancelled: Boolean = _cancelled.get()
 
     private val asyncTastyWritten = Promise[Option[AsyncTastyHolder.State]]()
-    private val asyncAPIComplete =
-      if incCallback == null then Promise.successful(Signal.Done) // no need to wait for API completion
+    private val asyncAPISent = zincSignal()
+    private val asyncDependenciesSent = zincSignal()
+
+    private def zincSignal(): Promise[Signal] =
+      if incCallback == null then Promise.successful(Signal.Done) // no need to wait for Zinc
       else Promise[Signal]()
 
+    /** Once `prev` completes and `sent` is signalled, tell Zinc that `phase` is complete. */
+    private def completeZincPhase(prev: StdFuture[Option[State]], sent: Promise[Signal], phase: String)(
+        signal: => Unit)(using ExecutionContext): StdFuture[Option[State]] =
+      prev.zipWith(sent.future): (optState, sentSignal) =>
+        optState.map: state =>
+          if incCallback != null && sentSignal == Signal.Done && state.done && !state.hasErrors then
+            val reporter = asyncZincPhaseCompleted(state.pending, phase)(signal)
+            State(hasErrors = reporter.hasErrors, done = true, pending = reporter.toBuffered)
+          else state
+
+    // `dependencyPhaseCompleted` waits for the dependencies, which are sent after the API
     private val backendFuture: StdFuture[Option[BufferingReporter]] =
-      val asyncState = asyncTastyWritten.future
-        .zipWith(asyncAPIComplete.future)((state, api) => state.filterNot(_ => api == Signal.Cancelled))
-      asyncState.map: optState =>
-        optState.flatMap: state =>
-          if incCallback != null && state.done && !state.hasErrors then
-            asyncZincPhasesCompleted(incCallback, state.pending).toBuffered
-          else state.pending
+      val apiCompleted = completeZincPhase(asyncTastyWritten.future, asyncAPISent, "API")(incCallback.nn.apiPhaseCompleted())
+      completeZincPhase(apiCompleted, asyncDependenciesSent, "Dependencies")(incCallback.nn.dependencyPhaseCompleted())
+        .map(_.flatMap(_.pending))
 
     /** awaits the state of async TASTy operations indefinitely, returns optionally any buffered reports. */
     def sync(): Option[BufferingReporter] =
       Await.result(backendFuture, Duration.Inf)
 
-    def signalAPIComplete(): Unit =
+    def signalAPISent(): Unit =
       if incCallback != null then
-        asyncAPIComplete.trySuccess(Signal.Done)
+        asyncAPISent.trySuccess(Signal.Done)
+
+    def signalDependenciesSent(): Unit =
+      if incCallback != null then
+        asyncDependenciesSent.trySuccess(Signal.Done)
 
     /** should only be called once */
     def signalAsyncTastyWritten()(using ctx: ReadOnlyContext): Unit =

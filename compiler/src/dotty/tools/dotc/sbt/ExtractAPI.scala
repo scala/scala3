@@ -88,7 +88,7 @@ class ExtractAPI extends Phase {
       val sourceFile = cls.source
       if sourceFile.exists && cls.isDefinedInCurrentRun then
         recordNonLocalClass(cls, sourceFile, cb)
-    ctx.run.nn.asyncTasty.foreach(_.signalAPIComplete())
+    ctx.run.nn.asyncTasty.foreach(_.signalAPISent())
 
   private def recordNonLocalClass(cls: Symbol, sourceFile: SourceFile, cb: interfaces.IncrementalCallback)(using Context): Unit =
     def registerProductNames(fullClassName: String, binaryClassName: String) =
