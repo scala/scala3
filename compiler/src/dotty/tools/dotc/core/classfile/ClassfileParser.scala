@@ -952,12 +952,15 @@ final class ClassfileParser(
       }
 
       permittedSubclasses.foreach { child =>
-        val cls = getClassSymbol(child.name)
-        sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)(
+        sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)({
+          // It's important to fetch this symbol in the deferred tree function,
+          // since otherwise it may create cycles, e.g.,
+          // A extends from B which also permits C which also extends from D which permits A
+          val cls = getClassSymbol(child.name)
           New(defn.ChildAnnot.typeRef.appliedTo(cls.owner.thisType.select(cls.name, cls)), Nil)
-          .withSpan(NoSpan)
-          ))
-        }
+            .withSpan(NoSpan)
+        }))
+      }
 
       def fillInParamNames(t: Type): Type = t match
         case mt @ MethodType(oldp) if namedParams.nonEmpty =>
