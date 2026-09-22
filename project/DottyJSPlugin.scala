@@ -2,6 +2,7 @@ package dotty.tools.sbtplugin
 
 import sbt.*
 import sbt.Keys.*
+import sbt.librarymanagement.Platform
 
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
@@ -49,7 +50,7 @@ object DottyJSPlugin extends AutoPlugin {
       _.filter(!_.name.startsWith("junit-interface"))
     },
     libraryDependencies +=
-      ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion  % "test").cross(CrossVersion.for3Use2_13),
+      ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion % "test").cross(CrossVersion.for3Use2_13).platform(Platform.jvm),
 
     // Typecheck the Scala.js IR found on the classpath
     scalaJSLinkerConfig ~= (_.withCheckIR(true)),

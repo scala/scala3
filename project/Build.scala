@@ -2,6 +2,7 @@ import java.io.File
 import java.nio.file._
 import com.jsuereth.sbtpgp.PgpKeys
 import sbt.Keys.*
+import sbt.librarymanagement.Platform
 import sbt.{ given, * }
 import complete.DefaultParsers._
 import com.typesafe.sbt.packager.Keys._
@@ -1270,7 +1271,7 @@ object Build {
           || file._2.endsWith("UnitOps.tasty")         || file._2.endsWith("UnitOps.class") || file._2.endsWith("UnitOps$.class")
           || file._2.endsWith("AnonFunctionXXL.tasty") || file._2.endsWith("AnonFunctionXXL.class"))
       },
-      libraryDependencies += (Dependencies.scalaJsLibrary % Provided).cross(CrossVersion.for3Use2_13),
+      libraryDependencies += (Dependencies.scalaJsLibrary % Provided).cross(CrossVersion.for3Use2_13).platform(Platform.jvm),
       libraryDependencies += (Dependencies.scalaJsJavalib),
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library",
@@ -2243,7 +2244,7 @@ object Build {
 
       // We need JUnit in the Compile configuration
       libraryDependencies +=
-        (Dependencies.scalaJsJunitTestRuntime).cross(CrossVersion.for3Use2_13),
+        Dependencies.scalaJsJunitTestRuntime.cross(CrossVersion.for3Use2_13).platform(Platform.jvm),
 
       (Compile / sourceGenerators) += Def.task {
         import org.scalajs.linker.interface.CheckedBehavior
