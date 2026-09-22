@@ -12,7 +12,7 @@ object Dependencies {
   val asmCommons = "org.ow2.asm" % "asm-commons" % "9.10.1"
 
   /** Version of Coursier to use + download for initializing the local maven repo of Scala command */
-  val coursierJarVersion = "2.1.25-M26"
+  val coursierJarVersion = "2.1.25"
   val coursier = "io.get-coursier" %% "coursier" % coursierJarVersion
   val coursierInterface = "io.get-coursier" % "interface" % "1.0.29-M4"
 
@@ -79,4 +79,10 @@ object Dependencies {
   val scalaJsJunitTestRuntime = "org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion
   val scalaJsLibrary = "org.scala-js" %% "scalajs-library" % scalaJSVersion
   val scalaJsLinker = "org.scala-js" %% "scalajs-linker" % scalaJSVersion
+
+  /** Needed on the classpath of anything compiling against `coursier`: its Scala 2 macro
+   *  bundles (e.g. `coursier.util.StringInterpolators`) mention `scala.reflect.macros`
+   *  types in their signatures, but `coursier` declares `scala-reflect` as `provided`.
+   */
+  val scalaReflect = "org.scala-lang" % "scala-reflect" % Versions.scala2Version
 }
