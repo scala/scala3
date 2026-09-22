@@ -18,6 +18,5 @@ addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.7")
 
 // addSbtPlugin("com.github.sbt" % "sbt-jdi-tools" % "1.2.0")
 
-// MissingLinkPlugin is vendored in project/MissingLinkPlugin.scala (upstream sbt2 port not yet on Maven Central)
+addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.3.8")
 libraryDependencies += "com.spotify" % "missinglink-core" % "0.2.11"
-libraryDependencies += "org.ow2.asm" % "asm-tree" % "9.9"

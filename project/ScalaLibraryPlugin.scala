@@ -99,14 +99,22 @@ object ScalaLibraryPlugin extends AutoPlugin {
         .withAnalysis(analysis.copy(stamps = stamps)) // update the analysis with the correct stamps
         .withHasModified(true)  // mark it as updated for sbt to update its caches
     },
+    // The default sbt plugin has no way to filter out problems by class
+    // We need to redefine it which requires reflective access
     Compile / missinglinkCheck := Def.uncached {
       val log = streams.value.log
       given FileConverter = fileConverter.value
       val cp = (Compile / fullClasspath).value
       val classDir = (Compile / classDirectory).value
 
-      val conflicts = MissingLinkPlugin.checkConflicts(
-        cp, classDir, scanDependencies = false, (_ => true): ModuleFilter, log)
+      val (conflicts, sourceModules) = {
+        val method = MissingLinkPlugin.getClass.getDeclaredMethods()
+          .find(_.getName == "loadArtifactsAndCheckConflicts")
+          .getOrElse(sys.error("MissingLinkPlugin.loadArtifactsAndCheckConflicts not found"))
+        method.setAccessible(true)
+        method.invoke(MissingLinkPlugin, cp, classDir, java.lang.Boolean.FALSE, (_ => true):ModuleFilter, log, summon[FileConverter])
+          .asInstanceOf[(Seq[Conflict], Map[?, ModuleID])]
+      }
 
       val filteredConflicts = conflicts.filterNot { conflict =>
         MissingLinkFilters.excludedClassFiles.contains(
@@ -119,7 +127,13 @@ object ScalaLibraryPlugin extends AutoPlugin {
       } else {
         val filteredTotal = filteredConflicts.length
         log.error(s"$filteredTotal conflicts found!")
-        MissingLinkPlugin.logConflicts(filteredConflicts, log)
+        locally {
+          val method = MissingLinkPlugin.getClass.getDeclaredMethods()
+            .find(_.getName == "outputConflicts")
+            .getOrElse(sys.error("MissingLinkPlugin.outputConflicts not found"))
+          method.setAccessible(true)
+          method.invoke(MissingLinkPlugin, filteredConflicts, sourceModules, java.lang.Boolean.TRUE, log)
+        }
         throw new MessageOnlyException(s"There were $filteredTotal conflicts")
       }
     },
