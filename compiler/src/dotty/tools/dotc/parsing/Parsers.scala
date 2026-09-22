@@ -1427,9 +1427,8 @@ object Parsers {
     def literal(start: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
 
       def literalOf(token: Token): Tree = {
-        val strVal = in.strVal
         val isNegated = start < in.offset
-        def digits0 = in.removeNumberSeparators(strVal.nn)
+        def digits0 = in.removeNumberSeparators(in.strVal.nn)
         def digits = if isNegated then "-" + digits0 else digits0
         if !inTypeOrSingleton then
           if isNegated && start < in.offset - 1 then
@@ -1438,7 +1437,7 @@ object Parsers {
           def num(kind: NumberKind): Tree =
             val d = digits
             if d.isEmpty then
-              syntaxErrorOrIncomplete(IllegalLiteral())
+              syntaxError(IllegalLiteral(), start)
               Literal(Constant.fromValue(null))
             else
               Number(d, kind)
