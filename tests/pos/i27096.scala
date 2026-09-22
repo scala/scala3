@@ -10,3 +10,8 @@ def needs[F[_], G[_]](using In[F, G]): Int = 0
 
 val here = needs[IO, IO]
 val deep = needs[IO, [A] =>> IO[A] | Log[A]]
+
+// Joining two different uninstantiated type variables used to crash with
+// "Failure to join alternatives F and F" after `F =:= G` unified them.
+def f[F[_], G[_], T]: F[T] | G[T] = ???
+def x = f.toString
