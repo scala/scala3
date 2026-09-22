@@ -4,6 +4,7 @@ import xsbti.TestCallback.ExtractedClassDependencies
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume.assumeTrue
 
 class DependencySpecification {
 
@@ -66,6 +67,16 @@ class DependencySpecification {
     // same as above but indirect (C -> B -> A), note that only A is visible here
     assertEquals(Set("A", "C"), memberRef("D"))
     assertEquals(Set("A", "C"), inheritance("D"))
+  }
+
+  @Test
+  def jdkClassesUnderReleaseAreBinaryDependencies = {
+    // `-release` reads JDK classes from `ct.sym` only when targeting an older JDK
+    assumeTrue(Runtime.version().feature() > 17)
+    val analysis = new ScalaCompilerForUnitTesting()
+      .compileSrcs(List(List("trait T")), extraArgs = List("-release:17")).analysis
+    assertEquals(Seq.empty, analysis.classDependencies.map(_._1).filter(_.startsWith("java.")))
+    assertTrue(analysis.binaryDependencies.exists(_._2 == "java.lang.Object"))
   }
 
   @Test

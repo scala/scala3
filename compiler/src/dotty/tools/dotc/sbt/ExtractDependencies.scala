@@ -557,7 +557,7 @@ class DependencyRecorder {
     if depFile != null then {
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = depCtx == DependencyByInheritance || depCtx == LocalDependencyByInheritance
-      val isTastyOrSig = depFile.ext.isTasty
+      val isTasty = depFile.ext.isTasty
 
       def processExternalDependency(): Unit = {
         val binaryClassName = depClass.binaryClassName
@@ -565,12 +565,12 @@ class DependencyRecorder {
           case Some(archive) if archive.jpath != null => // The dependency comes from a JAR
             binaryDependency(archive.jpath.nn, binaryClassName)
           case _ if depFile.jpath != null =>
-            binaryDependency(if isTastyOrSig then cachedSiblingClass(depFile) else depFile.jpath.nn, binaryClassName)
+            binaryDependency(if isTasty then cachedSiblingClass(depFile) else depFile.jpath.nn, binaryClassName)
           case _ =>
             internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}", fromClass.srcPos)
       }
 
-      if isTastyOrSig || depFile.ext.isClass then
+      if isTasty || depFile.ext.isClass || depFile.ext.isSig then
         processExternalDependency()
       else if allowLocal || depFile != sourceFile.file then
         // We cannot ignore dependencies coming from the same source file because
