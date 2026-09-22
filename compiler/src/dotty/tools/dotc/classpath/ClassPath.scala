@@ -10,6 +10,8 @@ import dotty.tools.io.{AbstractFile, Directory, File, FileExtension}
 import java.net.URL
 import java.util.regex.PatternSyntaxException
 
+import scala.collection.mutable.ArrayBuffer
+
 /**
  * A representation of the compiler's class- or sourcepath.
  */
@@ -63,6 +65,39 @@ object ClassPath {
   def expandPath(path: String, expandStar: Boolean = true): List[String] =
     if (expandStar) split(path).flatMap(expandS)
     else split(path)
+
+  /** Pair classfile/TASTy entries with source entries of the same name.
+   *
+   *  `classes` and `sources` are listed independently on the classpath. Without
+   *  this merge, a class that exists both as TASTy and as a `.scala` file on
+   *  `-sourcepath` would be entered twice: once from TASTy and once via
+   *  `enterToplevelsFromSource`. `SymbolLoaders.initializeFromClassPath` then
+   *  never sees `(binary, source)` together and cannot apply `needCompile`.
+   */
+  private[dotty] def mergeClassesAndSources(
+      classes: Iterable[BinaryFileEntry],
+      sources: Iterable[SourceFileEntry],
+  ): Seq[ClassRepresentation] =
+    val indices = dotc.util.HashMap[String, Int]()
+    val merged = new ArrayBuffer[ClassRepresentation](classes.size + sources.size)
+    var count = 0
+    for entry <- classes do
+      if !indices.contains(entry.name) then
+        indices(entry.name) = count
+        merged += entry
+        count += 1
+    for entry <- sources do
+      indices.get(entry.name) match
+        case Some(index) =>
+          merged(index) match
+            case binary: BinaryFileEntry =>
+              merged(index) = BinaryAndSourceFilesEntry(binary, entry)
+            case _ =>
+        case None =>
+          indices(entry.name) = count
+          merged += entry
+          count += 1
+    if merged.isEmpty then Nil else merged.toSeq
 }
 
 trait ClassRepresentation {
@@ -85,4 +120,15 @@ private[dotty] final case class SourceFileEntry(file: AbstractFile) extends Clas
   def name: String = FileUtils.stripSourceExtension(file.name)
   def binary: Option[AbstractFile] = None
   def source: Option[AbstractFile] = Some(file)
+}
+
+/** A class that exists both as a classfile/TASTy and as a source file. */
+private[dotty] final case class BinaryAndSourceFilesEntry(
+    binaryEntry: BinaryFileEntry,
+    sourceEntry: SourceFileEntry,
+) extends ClassRepresentation {
+  def fileName: String = binaryEntry.fileName
+  def name: String = binaryEntry.name
+  def binary: Option[AbstractFile] = binaryEntry.binary
+  def source: Option[AbstractFile] = sourceEntry.source
 }

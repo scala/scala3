@@ -15,6 +15,9 @@ object MiMaFilters {
       Versions.mimaPreviousVersion -> Seq(
         // new annotation carrying the component names of Java records
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
+        // new experimental language feature: method block end markers (SIP-77)
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$methodBlockEndMarkers$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$methodBlockEndMarkers$"),
       ),
 
       // Additions since last LTS
@@ -713,7 +716,10 @@ object MiMaFilters {
   object Interfaces {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of interfaces
-      Versions.mimaPreviousVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq(
+        // SourceFile now has the (preferred) textContent to avoid copying to a char array
+        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.dotc.interfaces.SourceFile.textContent"),
+      ),
 
       // Additions since last LTS
       Versions.mimaPreviousLTSVersion -> Seq.empty,

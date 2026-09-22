@@ -126,10 +126,10 @@ object Completion:
    * @param end The end position we'll look for the prefix at
    * @return Either the full prefix including the ` or an empty string
    */
-  private def checkBacktickPrefix(content: Array[Char], start: Int, end: Int): String =
+  private def checkBacktickPrefix(content: String, start: Int, end: Int): String =
     content.lift(start) match
       case Some(char) if char == '`' =>
-        content.slice(start, end).mkString
+        content.substring(start, end)
       case _ =>
         ""
 
@@ -147,24 +147,24 @@ object Completion:
     path match
       case GenericImportSelector(sel) =>
         if sel.isGiven then completionPrefix(sel.bound :: Nil, pos)
-        else if sel.isWildcard then pos.source.content()(pos.point - 1).toString
+        else if sel.isWildcard then pos.source.textContent()(pos.point - 1).toString
         else completionPrefix(sel.imported :: Nil, pos)
 
       // Foo.`se<TAB> will result in Select(Ident(Foo), <error>)
       case (select: untpd.Select) :: _ if select.name == nme.ERROR =>
-        checkBacktickPrefix(select.source.content(), select.nameSpan.start, select.span.end)
+        checkBacktickPrefix(select.source.textContent(), select.nameSpan.start, select.span.end)
 
       // import scala.util.chaining.`s<TAB> will result in a Ident(<error>)
       case (ident: untpd.Ident) :: _ if ident.name == nme.ERROR =>
-        checkBacktickPrefix(ident.source.content(), ident.span.start, ident.span.end)
+        checkBacktickPrefix(ident.source.textContent(), ident.span.start, ident.span.end)
 
       case (tree: untpd.RefTree) :: _ if tree.name != nme.ERROR =>
         val nameStart = tree.span.point
-        val start = if pos.source.content().lift(nameStart).contains('`') then nameStart + 1 else nameStart
+        val start = if pos.source.textContent().lift(nameStart).contains('`') then nameStart + 1 else nameStart
         tree.name.toString.take(pos.span.point - start)
 
       case _ =>
-        naiveCompletionPrefix(pos.source.content().mkString, pos.point)
+        naiveCompletionPrefix(pos.source.textContent(), pos.point)
   end completionPrefix
 
   private object GenericImportSelector:

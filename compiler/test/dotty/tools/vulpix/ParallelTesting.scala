@@ -16,6 +16,7 @@ import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Random, Try, Using}
 import scala.util.Properties.{isJavaAtLeast, javaSpecVersion}
+import scala.util.control.NonFatal
 import dotc.{Compiler, Driver}
 import dotty.tools.dotc.CoverageSupport
 import dotc.core.Contexts.*
@@ -311,7 +312,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
               case None => onSuccess(testSource, reporters, logger)
             }
           case _ =>
-      catch case ex: Throwable =>
+      catch case NonFatal(ex) =>
         echo(s"Exception thrown onComplete (probably by a reporter) in $testSource: ${ex.getClass}")
         Try(ex.printStackTrace())
           .recover{ _ =>
@@ -483,7 +484,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     protected def tryCompile(testSource: TestSource)(op: => Unit): Unit =
       try op
       catch
-        case e: Throwable =>
+        case NonFatal(e) =>
           // if an exception is thrown during compilation, the complete test
           // run should fail
           failTestSource(testSource)
@@ -828,9 +829,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] =
       lazy val (expected, expCount) = getWarnMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
-      lazy val obtCount = reporters.foldLeft(0)(_ + _.warningCount)
       lazy val diagnostics = reporters.flatMap(_.diagnostics.toSeq.sortBy(_.pos.line))
-      lazy val (unfulfilled, unexpected) = getMissingExpectedWarnings(expected, diagnostics.iterator.filter(_.level >= WARNING))
+      lazy val (unfulfilled, unexpected) = getMissingExpectedWarnings(expected, diagnostics.iterator)
+      lazy val obtCount = expCount - unfulfilled.length + unexpected.length
       lazy val messages = diagnostics.map(d => s" at ${d.pos.line + 1}: ${d.message}")
       def showLines(title: String, lines: Seq[String]) = if lines.isEmpty then "" else lines.mkString(s"$title\n", "\n", "")
       def hasMissingAnnotations = unfulfilled.nonEmpty || unexpected.nonEmpty

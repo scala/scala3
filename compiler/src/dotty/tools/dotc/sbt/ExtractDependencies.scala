@@ -17,7 +17,7 @@ import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.typer.Applications.*
 import dotty.tools.dotc.util.{NoSourcePosition, SrcPos}
-import dotty.tools.io
+import dotty.tools.{io, printOnAssertionError}
 import dotty.tools.io.AbstractFile
 import xsbti.UseScope
 import xsbti.api.DependencyContext
@@ -121,7 +121,7 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends Abst
    *  can be retrieved using DependencyRecorder.
    */
   override def traverse(tree: Tree)(using Context): Unit =
-    try
+    printOnAssertionError(i"assertion failed while traversing $tree"):
       recordTree(tree)
 
       recordInlineCallArgs(tree)
@@ -141,10 +141,6 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends Abst
           t.body.foreach(traverse)
         case _ =>
           traverseChildren(tree)
-    catch
-      case ex: AssertionError =>
-        println(i"asserted failed while traversing $tree")
-        throw ex
 end ExtractDependenciesCollector
 
 /** Extract the dependency information of a compilation unit.
@@ -561,7 +557,7 @@ class DependencyRecorder {
     if depFile != null then {
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = depCtx == DependencyByInheritance || depCtx == LocalDependencyByInheritance
-      val isTastyOrSig = depFile.ext.isTasty
+      val isTasty = depFile.ext.isTasty
 
       def processExternalDependency(): Unit = {
         val binaryClassName = depClass.binaryClassName
@@ -569,12 +565,12 @@ class DependencyRecorder {
           case Some(archive) if archive.jpath != null => // The dependency comes from a JAR
             binaryDependency(archive.jpath.nn, binaryClassName)
           case _ if depFile.jpath != null =>
-            binaryDependency(if isTastyOrSig then cachedSiblingClass(depFile) else depFile.jpath.nn, binaryClassName)
+            binaryDependency(if isTasty then cachedSiblingClass(depFile) else depFile.jpath.nn, binaryClassName)
           case _ =>
             internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}", fromClass.srcPos)
       }
 
-      if isTastyOrSig || depFile.ext.isClass then
+      if isTasty || depFile.ext.isClass || depFile.ext.isSig then
         processExternalDependency()
       else if allowLocal || depFile != sourceFile.file then
         // We cannot ignore dependencies coming from the same source file because

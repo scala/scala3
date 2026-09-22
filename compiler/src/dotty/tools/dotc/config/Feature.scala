@@ -45,6 +45,7 @@ object Feature:
   val magic = experimental("magic")
   val inlineTraits = experimental("inlineTraits")
   val specializedTraits = experimental("specializedTraits")
+  val methodBlockEndMarkers = experimental("methodBlockEndMarkers")
 
   val nonViralExperimentalFeatures: Set[TermName] =
     Set(captureChecking, separationChecking, safe)
@@ -86,6 +87,7 @@ object Feature:
     (magic, "Enable extensions for working with coding agents"),
     (inlineTraits, "Allow inline traits"),
     (specializedTraits, "Allow specialized traits"),
+    (methodBlockEndMarkers, "Enable experimental end markers for method blocks"),
   )
 
   /** Features that are now standard; the language import / -language choice is
