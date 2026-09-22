@@ -283,6 +283,30 @@ object Build {
     },
   )
 
+  // Use the published org.scala-lang:scala3-sbt-bridge:%scalaVersion jar as the compiler bridge.
+  //
+  // sbt 1 fetched that jar (scalaCompilerBridgeBinaryJar), even when
+  // `managedScalaInstance := false`, but sbt 2 (scalaCompilerBridgeBin) deesn't fetch it.
+  // Instead, it reuses a jar that `update` already resolved.
+  // However, that jar is missing from `update` in cases:
+  //
+  // - `managedScalaInstance := false` or
+  // - in project `scala3-sbt-bridge-nonbootstrapped` sbt won't add jar to `update` if
+  //   the jar we're resolving is the project itself's.
+  def publishedCompilerBridgeBin = Def.settings(
+    scalaCompilerBridgeBin := Def.uncached {
+      given FileConverter = fileConverter.value
+      val lm = dependencyResolution.value
+      val log = streams.value.log
+      val ver = scalaVersion.value
+      val retrieveDir = streams.value.cacheDirectory / "scala3-sbt-bridge" / ver
+      val comp = lm.retrieve("org.scala-lang" % "scala3-sbt-bridge" %
+        ver, scalaModuleInfo = None, retrieveDir, log)
+        .fold(w => throw w.resolveException, identity)
+      Vector(comp(0).toFileRef)
+    },
+  )
+
   // Common scalaInstance settings for bootstrapped projects compiled with the non-bootstrapped compiler.
   lazy val bootstrappedScalaInstanceSettings = Def.settings(
     managedScalaInstance := false,
@@ -744,6 +768,7 @@ object Build {
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-sbt-bridge-nonbootstrapped",
       fetchedScalaInstanceSettings,
+      publishedCompilerBridgeBin,
     )
 
   // ==============================================================================================
@@ -1095,6 +1120,7 @@ object Build {
       // Drop all the scala tools in this project, so we can never generate any bytecode, or documentation
       managedScalaInstance := false,
       fetchedScalaInstanceSettings,
+      publishedCompilerBridgeBin,
       // This Project only has a dependency to `org.scala-lang:scala-library:*.**.**-nonbootstrapped`
       emptyPublishedJarSettings,  // Validate JAR is empty (only META-INF)
       // Packaging configuration of the stdlib
@@ -1523,17 +1549,7 @@ object Build {
       // as a workaround, I build it manually by only adding the compiler
       managedScalaInstance := false,
       fetchedScalaInstanceSettings,
-      scalaCompilerBridgeBin := Def.uncached {
-        given FileConverter = fileConverter.value
-        val lm = dependencyResolution.value
-        val log = streams.value.log
-        val version = scalaVersion.value
-        val retrieveDir = streams.value.cacheDirectory / "scala3-sbt-bridge" / version
-        val comp = lm.retrieve("org.scala-lang" % "scala3-sbt-bridge" %
-          version, scalaModuleInfo = None, retrieveDir, log)
-          .fold(w => throw w.resolveException, identity)
-        Vector(comp(0).toFileRef)
-      },
+      publishedCompilerBridgeBin,
       /* Add the sources of scalajs-ir.
        * To guarantee that dotty can bootstrap without depending on a version
        * of scalajs-ir built with a different Scala compiler, we add its
