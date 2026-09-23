@@ -92,7 +92,7 @@ object ExtractDependencies {
     def classNameAsString0(sym: Symbol)(using Context): String =
       sym.fullName.stripModuleClassSuffix.toString
     def javaClassNameAsString(sym: Symbol)(using Context): String =
-      if sym.owner.isClass && !sym.owner.isRoot then
+      if sym.owner.isClass && !sym.owner.isEffectiveRoot then
         javaClassNameAsString(sym.owner) + "." + sym.name.stripModuleClassSuffix.toString
       else classNameAsString0(sym)
     if isJava(sym) then javaClassNameAsString(sym)
