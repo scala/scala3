@@ -37,15 +37,33 @@ class ScalaPrimitives(using @constructorOnly initCtx: Context) {
   private val primitives: ReadOnlyMap[Symbol, ReadOnlyMap[Name, Int]] = init
 
   /** Return the code for the given symbol. */
-  def getPrimitive(sym: Symbol)(using Context): Int = {
-    val code = primitives(sym.owner)(sym.name)
-    if code == ADD then
-      sym.info.paramInfoss match
-        case (tp :: _) :: Nil if tp =:= defn.StringType => CONCAT
-        case _ => code
-    else
-      code
+  def getPrimitive(sym: Symbol)(using Context): Option[Int] = {
+    primitives.get(sym.owner) match
+      case None => None
+      case Some(m) => m.get(sym.name) match
+        case None => None
+        case Some(code) =>
+          if code == ADD then
+            sym.info.paramInfoss match
+              case (tp :: _) :: Nil if tp =:= defn.StringType => Some(CONCAT)
+              case _ => Some(code)
+          else
+            Some(code)
   }
+
+  def getPrimitive(fun: Tree)(using Context): Option[Int] =
+    val sym = fun.symbol
+    if sym == NoSymbol then
+      // the only trees that do not have a symbol assigned are array.{update,select,length,clone}
+      fun match
+        case Select(_, nme.primitive.arrayUpdate) => Some(UPDATE)
+        case Select(_, nme.primitive.arrayLength) => Some(LENGTH)
+        case Select(_, nme.primitive.arrayApply) => Some(APPLY)
+        case Select(_, nme.clone_) => None // but array.clone is NOT a primitive op
+        case Apply(s, _) => getPrimitive(s)
+        case _ => throw new AssertionError("Tried to get the primitive of an unknown function without a symbol: " + fun)
+    else
+      getPrimitive(sym)
 
   /**
    * Return the primitive code of the given operation. If the
@@ -56,15 +74,15 @@ class ScalaPrimitives(using @constructorOnly initCtx: Context) {
    * @param tpe The type of the receiver object. It is used only for array
    *            operations
    */
-  def getPrimitive(app: Apply, tpe: Type)(using Context): Int = {
+  def getPrimitive(app: Apply, tpe: Type)(using Context): Option[Int] = {
     val fun = app.fun.symbol
-    val code = app.fun match {
+    val maybeCode = app.fun match {
       case Select(_, nme.primitive.arrayLength) =>
-        LENGTH
+        Some(LENGTH)
       case Select(_, nme.primitive.arrayUpdate) =>
-        UPDATE
+        Some(UPDATE)
       case Select(_, nme.primitive.arrayApply) =>
-        APPLY
+        Some(APPLY)
       case _ => getPrimitive(fun)
     }
 
@@ -76,10 +94,10 @@ class ScalaPrimitives(using @constructorOnly initCtx: Context) {
         UnspecifiedErrorType
     }
 
-    code match {
+    maybeCode match {
 
-      case APPLY =>
-        defn.scalaClassName(elementType) match {
+      case Some(APPLY) =>
+        Some(defn.scalaClassName(elementType) match {
           case tpnme.Boolean    => ZARRAY_GET
           case tpnme.Byte       => BARRAY_GET
           case tpnme.Short      => SARRAY_GET
@@ -89,10 +107,10 @@ class ScalaPrimitives(using @constructorOnly initCtx: Context) {
           case tpnme.Float      => FARRAY_GET
           case tpnme.Double     => DARRAY_GET
           case _                => OARRAY_GET
-        }
+        })
 
-      case UPDATE =>
-        defn.scalaClassName(elementType) match {
+      case Some(UPDATE) =>
+        Some(defn.scalaClassName(elementType) match {
           case tpnme.Boolean    => ZARRAY_SET
           case tpnme.Byte       => BARRAY_SET
           case tpnme.Short      => SARRAY_SET
@@ -102,10 +120,10 @@ class ScalaPrimitives(using @constructorOnly initCtx: Context) {
           case tpnme.Float      => FARRAY_SET
           case tpnme.Double     => DARRAY_SET
           case _                => OARRAY_SET
-        }
+        })
 
-      case LENGTH =>
-        defn.scalaClassName(elementType) match {
+      case Some(LENGTH) =>
+        Some(defn.scalaClassName(elementType) match {
           case tpnme.Boolean    => ZARRAY_LENGTH
           case tpnme.Byte       => BARRAY_LENGTH
           case tpnme.Short      => SARRAY_LENGTH
@@ -115,15 +133,15 @@ class ScalaPrimitives(using @constructorOnly initCtx: Context) {
           case tpnme.Float      => FARRAY_LENGTH
           case tpnme.Double     => DARRAY_LENGTH
           case _                => OARRAY_LENGTH
-        }
+        })
 
       case _ =>
-        code
+        maybeCode
     }
   }
 
   /** Initialize the primitive map */
-  private def init(using Context): ReadOnlyMap[Symbol, ReadOnlyMap[Name, Int]] = atPhase(Phases.flattenPhase) {
+  private def init(using Context): ReadOnlyMap[Symbol, ReadOnlyMap[Name, Int]] = {
     val primitives = MutableSymbolMap[ReadOnlyMap[Name, Int]]()
 
     // scala.Any
@@ -387,19 +405,4 @@ class ScalaPrimitives(using @constructorOnly initCtx: Context) {
 
     primitives
   }
-
-  def isPrimitive(sym: Symbol)(using Context): Boolean =
-    sym != NoSymbol && (primitives.get(sym.owner) match
-      case Some(m) => m.contains(sym.name)
-      case _ => false)
-
-  def isPrimitive(fun: Tree)(using Context): Boolean =
-    val sym = fun.symbol
-    if sym == NoSymbol then
-      // the only trees that do not have a symbol assigned are array.{update,select,length,clone}
-      fun match
-        case Select(_, nme.clone_) => false // but array.clone is NOT a primitive op.
-        case _ => true
-    else
-      isPrimitive(sym)
 }

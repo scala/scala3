@@ -312,7 +312,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, cache: ClassBType.Cache, in
         Some(single.javaSimpleName + btype.descriptor)
       case _ => None
 
-    def keepMember(sym: Symbol) = sym.is(Method) && !primitives.isPrimitive(sym)
+    def keepMember(sym: Symbol) = sym.is(Method) && primitives.getPrimitive(sym).isEmpty
 
     val classMethods = classSym.info.decls.iterator.filter(keepMember)
     val methods = if classSym.is(JavaDefined) then

@@ -1677,7 +1677,7 @@ class JSCodeGen()(using genCtx: Context) {
 
       def jsParams = params.map(genParamDef(_))
 
-      if (primitives.isPrimitive(sym) && sym != defn.newArrayMethod) {
+      if (primitives.getPrimitive(sym).nonEmpty && sym != defn.newArrayMethod) {
         None
       } else if (sym.is(Deferred) && currentClassSym.isNonNativeJSClass) {
         // scala-js/#4409: Do not emit abstract methods in non-native JS classes
@@ -2322,19 +2322,21 @@ class JSCodeGen()(using genCtx: Context) {
         genApplyNew(tree)
 
       case _ =>
-        if (primitives.isPrimitive(tree)) {
-          genPrimitiveOp(tree, isStat)
-        } else if (Erasure.Boxing.isBox(sym)) {
-          // Box a primitive value (cannot be Unit)
-          val arg = args.head
-          makePrimitiveBox(genExpr(arg), arg.tpe)
-        } else if (Erasure.Boxing.isUnbox(sym)) {
-          // Unbox a primitive value (cannot be Unit)
-          val arg = args.head
-          makePrimitiveUnbox(genExpr(arg), tree.tpe)
-        } else {
-          genNormalApply(tree, isStat)
-        }
+        primitives.getPrimitive(tree) match
+          case Some(code) =>
+            genPrimitiveOp(tree, isStat, code)
+          case None =>
+            if (Erasure.Boxing.isBox(sym)) {
+              // Box a primitive value (cannot be Unit)
+              val arg = args.head
+              makePrimitiveBox(genExpr(arg), arg.tpe)
+            } else if (Erasure.Boxing.isUnbox(sym)) {
+              // Unbox a primitive value (cannot be Unit)
+              val arg = args.head
+              makePrimitiveUnbox(genExpr(arg), tree.tpe)
+            } else {
+              genNormalApply(tree, isStat)
+            }
     }
   }
 
@@ -2668,15 +2670,13 @@ class JSCodeGen()(using genCtx: Context) {
   }
 
   /** Gen JS code for a primitive method call. */
-  private def genPrimitiveOp(tree: Apply, isStat: Boolean): js.Tree = {
+  private def genPrimitiveOp(tree: Apply, isStat: Boolean, code: Int): js.Tree = {
     import dotty.tools.backend.ScalaPrimitivesOps.*
 
     implicit val pos = tree.span
 
     val Apply(fun, args) = tree
     val receiver = qualifierOf(fun)
-
-    val code = primitives.getPrimitive(tree, receiver.tpe)
 
     if (isArithmeticOp(code) || isLogicalOp(code) || isComparisonOp(code))
       genSimpleOp(tree, receiver :: args, code)
@@ -4403,8 +4403,6 @@ class JSCodeGen()(using genCtx: Context) {
   private def genLinkTimeExpr(tree: Tree): js.Tree = {
     import dotty.tools.backend.ScalaPrimitivesOps.*
 
-    import primitives.*
-
     implicit val pos = tree.span
 
     def invalid(): js.Tree = {
@@ -4433,51 +4431,52 @@ class JSCodeGen()(using genCtx: Context) {
             val propName = annotation.argumentConstantString(0).get
             js.LinkTimeProperty(propName)(toIRType(tree.tpe))
 
-          case None if isPrimitive(fun.symbol) =>
-            val code = getPrimitive(fun.symbol)
-            val receiver = (fun: @unchecked) match {
-              case fun: Select => fun.qualifier
-              case fun: Ident  => desugarIdent(fun).get.qualifier
-            }
-
-            def genLhs: js.Tree = genLinkTimeExpr(receiver)
-            def genRhs: js.Tree = genLinkTimeExpr(args.head)
-
-            def unaryOp(op: js.UnaryOp.Code): js.Tree =
-              js.UnaryOp(op, genLhs)
-            def binaryOp(op: js.BinaryOp.Code): js.Tree =
-              js.BinaryOp(op, genLhs, genRhs)
-
-            toIRType(receiver.tpe) match {
-              case jstpe.BooleanType =>
-                (code: @switch) match {
-                  case ZNOT     => unaryOp(js.UnaryOp.Boolean_!)
-                  case EQ       => binaryOp(js.BinaryOp.Boolean_==)
-                  case NE | XOR => binaryOp(js.BinaryOp.Boolean_!=)
-                  case OR       => binaryOp(js.BinaryOp.Boolean_|)
-                  case AND      => binaryOp(js.BinaryOp.Boolean_&)
-                  case ZOR      => js.LinkTimeIf(genLhs, js.BooleanLiteral(true), genRhs)(jstpe.BooleanType)
-                  case ZAND     => js.LinkTimeIf(genLhs, genRhs, js.BooleanLiteral(false))(jstpe.BooleanType)
-                  case _        => invalid()
+          case None =>
+            primitives.getPrimitive(fun) match
+              case Some(code) =>
+                val receiver = (fun: @unchecked) match {
+                  case fun: Select => fun.qualifier
+                  case fun: Ident  => desugarIdent(fun).get.qualifier
                 }
 
-              case jstpe.IntType =>
-                (code: @switch) match {
-                  case EQ => binaryOp(js.BinaryOp.Int_==)
-                  case NE => binaryOp(js.BinaryOp.Int_!=)
-                  case LT => binaryOp(js.BinaryOp.Int_<)
-                  case LE => binaryOp(js.BinaryOp.Int_<=)
-                  case GT => binaryOp(js.BinaryOp.Int_>)
-                  case GE => binaryOp(js.BinaryOp.Int_>=)
-                  case _  => invalid()
+                def genLhs: js.Tree = genLinkTimeExpr(receiver)
+                def genRhs: js.Tree = genLinkTimeExpr(args.head)
+
+                def unaryOp(op: js.UnaryOp.Code): js.Tree =
+                  js.UnaryOp(op, genLhs)
+                def binaryOp(op: js.BinaryOp.Code): js.Tree =
+                  js.BinaryOp(op, genLhs, genRhs)
+
+                toIRType(receiver.tpe) match {
+                  case jstpe.BooleanType =>
+                    (code: @switch) match {
+                      case ZNOT => unaryOp(js.UnaryOp.Boolean_!)
+                      case EQ => binaryOp(js.BinaryOp.Boolean_==)
+                      case NE | XOR => binaryOp(js.BinaryOp.Boolean_!=)
+                      case OR => binaryOp(js.BinaryOp.Boolean_|)
+                      case AND => binaryOp(js.BinaryOp.Boolean_&)
+                      case ZOR => js.LinkTimeIf(genLhs, js.BooleanLiteral(true), genRhs)(jstpe.BooleanType)
+                      case ZAND => js.LinkTimeIf(genLhs, genRhs, js.BooleanLiteral(false))(jstpe.BooleanType)
+                      case _ => invalid()
+                    }
+
+                  case jstpe.IntType =>
+                    (code: @switch) match {
+                      case EQ => binaryOp(js.BinaryOp.Int_==)
+                      case NE => binaryOp(js.BinaryOp.Int_!=)
+                      case LT => binaryOp(js.BinaryOp.Int_<)
+                      case LE => binaryOp(js.BinaryOp.Int_<=)
+                      case GT => binaryOp(js.BinaryOp.Int_>)
+                      case GE => binaryOp(js.BinaryOp.Int_>=)
+                      case _ => invalid()
+                    }
+
+                  case _ =>
+                    invalid()
                 }
 
-              case _ =>
+              case None =>
                 invalid()
-            }
-
-          case None => // if !isPrimitive
-            invalid()
         }
 
       case _ =>

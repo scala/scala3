@@ -74,17 +74,11 @@ class JSPrimitives()(using @constructorOnly initCtx: Context) extends ScalaPrimi
 
   private val jsPrimitives: ReadOnlyMap[Symbol, Int] = initJSPrimitives
 
-  override def getPrimitive(sym: Symbol)(using Context): Int =
-    jsPrimitives.getOrElse(sym, super.getPrimitive(sym))
+  override def getPrimitive(sym: Symbol)(using Context): Option[Int] =
+    jsPrimitives.get(sym).orElse(super.getPrimitive(sym))
 
-  override def getPrimitive(app: Apply, tpe: Type)(using Context): Int =
-    jsPrimitives.getOrElse(app.fun.symbol, super.getPrimitive(app, tpe))
-
-  override def isPrimitive(sym: Symbol)(using Context): Boolean =
-    jsPrimitives.contains(sym) || super.isPrimitive(sym)
-
-  override def isPrimitive(fun: Tree)(using Context): Boolean =
-    jsPrimitives.contains(fun.symbol) || super.isPrimitive(fun)
+  override def getPrimitive(app: Apply, tpe: Type)(using Context): Option[Int] =
+    jsPrimitives.get(app.fun.symbol).orElse(super.getPrimitive(app, tpe))
 
   /** Initialize the primitive map */
   private def initJSPrimitives(using Context): ReadOnlyMap[Symbol, Int] = {
