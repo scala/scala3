@@ -500,8 +500,7 @@ If ´p = \epsilon´ or ´p´ is a package ref, the underlying type ´U´ is the 
 Otherwise, the underlying type ´U´ and whether ´p.x´ is a stable type are determined by [`memberType`](#member-type)`(´p´, ´x´)`.
 
 All term designators are concrete types.
-Within the context of an `unsafeNulls` language import, if `scala.Null ´<: U´`, the term designator denotes the set of values consisting of `null` and the value denoted by ´t´, i.e., the value ´v´ for which `t eq v`.
-Otherwise, the designator denotes the singleton set only containing ´v´.
+The designator denotes the singleton set containing only the value denoted by ´t´, i.e., the value ´v´ for which `t eq v`.
 
 #### Type Designators
 
@@ -1496,7 +1495,6 @@ Note that the conditions are not all mutually exclusive.
 - `´S = (´=> ´S_1)´` and `´T = (´=> ´T_1)´` and ´S_1 <: T_1´.
 - within the context of an `unsafeNulls` language import, `´S =´ scala.Null` and:
   - ´T = q.C[T_1, ..., T_n]´ with ´n \geq 0´ and ´C´ does not derive from `scala.AnyVal` and ´C´ is not the hidden class of an `object`, or
-  - ´T = q.x´ is a term designator with underlying type ´U´ and `scala.Null ´<: U´`, or
   - `´T = T_1´ { ´R´ }` and `scala.Null ´<: T_1´`, or
   - `´T =´ { ´\beta´ => ´T_1´ }` and `scala.Null ´<: T_1´`.
 - ´S´ is a stable type and ´T = q.x´ is a term designator with underlying type ´T_1´ and ´T_1´ is a stable type and ´S <: T_1´.
