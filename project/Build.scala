@@ -2424,6 +2424,15 @@ object Build {
 
         common ++ moduleSpecific
       },
+
+      /* sbt 2 does not run `copyResources` from `compile` (sbt 1.x did though), which
+       * copies `resources` directory files to class directory (`test-classes`).
+       * ModuleTest expects `.js` files in `test-classes`, we need to run `copyResrouces`
+       * before running tests so that we copy files to `test-classes`.
+       */
+      Test / loadedTestFrameworks := Def.uncached {
+        (Test / loadedTestFrameworks).dependsOn(Test / copyResources).value
+      },
     )
 
   lazy val sjsCompilerTests = project.in(file("sjs-compiler-tests")).
