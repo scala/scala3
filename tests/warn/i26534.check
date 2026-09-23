@@ -14,3 +14,7 @@
 9 |class C(private val x: Int, y: Int, z: Int, @unused w: Int): // warn
   |                                    ^
   |                                    unused explicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:20:22 ---------------------------------------------------------
+20 |  @unused private var x = 27 // warn unused unused, x is read and assigned
+   |                      ^
+   |                      useless @unused annotation on variable x
