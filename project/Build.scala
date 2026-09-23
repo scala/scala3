@@ -1821,13 +1821,13 @@ object Build {
     )
     // Build information configuration
     .settings(
-      Compile / buildInfoKeys := Seq(BuildInfoKey("version", version)),
+      Compile / buildInfoKeys := Seq(BuildInfoKey(version)),
       Compile / buildInfoPackage := "dotty.tools.scaladoc",
       Test / buildInfoPackage := "dotty.tools.scaladoc.test",
       Test / buildInfoKeys := Seq(
-        BuildInfoKey("testcasesOutputDir", Test / Build.testcasesOutputDir),
-        BuildInfoKey("testcasesSourceRoot", Test / Build.testcasesSourceRoot),
-        BuildInfoKey("testDocumentationRoot", Build.testDocumentationRoot),
+        BuildInfoKey(Test / Build.testcasesOutputDir),
+        BuildInfoKey(Test / Build.testcasesSourceRoot),
+        BuildInfoKey(Build.testDocumentationRoot),
       ),
       BuildInfoPlugin.buildInfoScopedSettings(Compile),
       BuildInfoPlugin.buildInfoScopedSettings(Test),
@@ -2064,12 +2064,12 @@ object Build {
         scalaJSLibrary :: scalaJSJavalib :: scalaJSScalalib :: scalaJSCommonDom :: Nil
       },
       Compile / buildInfoPackage := "dotty.tools.pc.buildinfo",
-      Compile / buildInfoKeys := Seq(BuildInfoKey("scalaVersion", scalaVersion)),
+      Compile / buildInfoKeys := Seq(BuildInfoKey(scalaVersion)),
       Test / buildInfoPackage := "dotty.tools.pc.tests.buildinfo",
       Test / buildInfoKeys := Seq(
-        BuildInfoKey("scalaVersion", scalaVersion),
-        BuildInfoKey("ideTestsDependencyClasspath", ideTestsDependencyClasspath),
-        BuildInfoKey("ideTestsScalaJSClasspath", ideTestsScalaJSClasspath)
+        BuildInfoKey(scalaVersion),
+        BuildInfoKey(ideTestsDependencyClasspath),
+        BuildInfoKey(ideTestsScalaJSClasspath)
       )
     ) ++ BuildInfoPlugin.buildInfoScopedSettings(Compile) ++
       BuildInfoPlugin.buildInfoScopedSettings(Test) ++
@@ -2167,9 +2167,9 @@ object Build {
         scalaLib :: Nil
       },
       Test / buildInfoKeys := Seq[BuildInfoKey](
-        BuildInfoKey("ideTestsCompilerVersion", ideTestsCompilerVersion),
-        BuildInfoKey("ideTestsCompilerArguments", ideTestsCompilerArguments),
-        BuildInfoKey("ideTestsDependencyClasspath", ideTestsDependencyClasspath),
+        BuildInfoKey(ideTestsCompilerVersion),
+        BuildInfoKey(ideTestsCompilerArguments),
+        BuildInfoKey(ideTestsDependencyClasspath),
       ),
       Test / buildInfoPackage := "dotty.tools.languageserver.util.server",
       BuildInfoPlugin.buildInfoScopedSettings(Test),
