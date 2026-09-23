@@ -273,10 +273,10 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
 
       import ScalaPrimitivesOps.*
 
-      if (isArithmeticOp(code))                genArithmeticOp(tree, code)
-      else if (code == CONCAT) genStringConcat(tree)
-      else if (code == HASH)   genScalaHash(receiver)
-      else if (isArrayOp(code))                genArrayOp(tree, code, expectedType)
+      if (isArithmeticOp(code))  genArithmeticOp(tree, code)
+      else if (code == CONCAT)   genStringConcat(tree)
+      else if (code == HASH)     genScalaHash(receiver)
+      else if (isArrayOp(code))  genArrayOp(tree, code, expectedType)
       else if (isLogicalOp(code) || isComparisonOp(code)) {
         val success, failure, after = new asm.Label
         genCond(tree, success, failure, targetIfNoJump = success)
@@ -1497,8 +1497,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
      * It turns a chained call like "a".+("b").+("c") into a list of arguments.
      */
     def liftStringConcat(tree: Tree)(using Context): List[Tree] = tree match {
-      case tree @ Apply(fun @ DesugaredSelect(larg, method), rarg) =>
-        if primitives.getPrimitive(tree, larg.tpe).contains(ScalaPrimitivesOps.CONCAT) then
+      case tree @ Apply(DesugaredSelect(larg, _), rarg) =>
+        if primitives.getPrimitive(tree).contains(ScalaPrimitivesOps.CONCAT) then
           liftStringConcat(larg) ::: rarg
         else
           tree :: Nil
