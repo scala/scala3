@@ -319,7 +319,7 @@ trait BCodeSkelBuilder(val bTypes: KnownBTypes) extends BCodeHelpers {
     * method due to a limitation in the JVM. Instead, we emit a separate invokedynamic bytecode for each group of target
     * methods.
     */
-    private def addLambdaDeserialize(classNode: ClassNode, serializableLambdas: List[Handle]): Unit = {
+    private def addLambdaDeserialize(classNode: ClassNode, serializableLambdas: List[Handle])(using Context): Unit = {
       if serializableLambdas.isEmpty then
         return
 
@@ -332,7 +332,7 @@ trait BCodeSkelBuilder(val bTypes: KnownBTypes) extends BCodeHelpers {
       val serializedLambdaObjDesc = s"(Ljava/lang/invoke/SerializedLambda;)L${ClassBType.javaLangObjectInternalName};"
       val mv = cw.visitMethod(Opcodes.ACC_PRIVATE + Opcodes.ACC_STATIC + Opcodes.ACC_SYNTHETIC, "$deserializeLambda$", serializedLambdaObjDesc, null, null)
 
-      def emitLambdaDeserializeIndy(targetMethods: Seq[Handle]): Unit = {
+      def emitLambdaDeserializeIndy(targetMethods: Seq[Handle])(using Context): Unit = {
         mv.visitVarInsn(Opcodes.ALOAD, 0)
         mv.visitInvokeDynamicInsn("lambdaDeserialize", serializedLambdaObjDesc, bTypes.jliLambdaDeserializeBootstrapHandle, targetMethods *)
       }
