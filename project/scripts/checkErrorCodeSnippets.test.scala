@@ -135,7 +135,7 @@ class ErrorCodeSnippetsTest extends munit.FunSuite:
     val sidebarErrorCodePattern = """page:\s*reference/error-codes/E(\d+)\.md""".r
     val sidebarErrorCodes: Set[Int] = sidebarErrorCodePattern
       .findAllMatchIn(sidebarContent)
-      .map(_.group(1).toInt)
+      .map(_.group(1).nn.toInt)
       .toSet
 
     // Check that all documented error codes are in the sidebar
