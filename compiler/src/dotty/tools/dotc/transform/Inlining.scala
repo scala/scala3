@@ -2,8 +2,7 @@ package dotty.tools.dotc
 package transform
 
 
-import java.util.Arrays
-import dotty.tools.{io, printOnAssertionError}
+import dotty.tools.printOnAssertionError
 import ast.tpd
 import ast.Trees.*
 import ast.TreeMapWithTrackedStats
@@ -23,7 +22,6 @@ import staging.StagingLevel
 import util.Property
 
 import scala.collection.mutable
-import scala.io.Codec
 
 /**
  * Inlines all calls to inline methods that are not in an inline method or a quote.
@@ -45,32 +43,19 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
 
   override def changesMembers: Boolean = true
 
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+    val units1 = super.runOn(units)
+    if ctx.runZincPhases then
+      ctx.run.nn.asyncTasty.foreach(_.signalDependenciesSent())
+    units1
+
   override protected def run(using Context): Unit =
     val unit = ctx.compilationUnit
     if unit.needsInlining || unit.hasMacroAnnotations then
       super.run
 
     if ctx.runZincPhases then
-      val rec = ctx.compilationUnit.depRecorder
-      if ctx.settings.YdumpSbtInc.value then
-        val deps = rec.foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray[Object]
-        val names = rec.foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray[Object]
-        Arrays.sort(deps)
-        Arrays.sort(names)
-        unit.source.jfile.ifPresent(jpath => {
-          val pw = io.File(jpath.toPath)(using Codec.UTF8).changeExtension(io.FileExtension.Inc).toFile.printWriter()
-          // val pw = Console.out
-          try
-            pw.println("Used Names:")
-            pw.println("===========")
-            names.foreach(pw.println)
-            pw.println()
-            pw.println("Dependencies:")
-            pw.println("=============")
-            deps.foreach(pw.println)
-          finally pw.close()
-        })
-      rec.sendToZinc()
+      unit.depRecorder.sendToZinc()
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {

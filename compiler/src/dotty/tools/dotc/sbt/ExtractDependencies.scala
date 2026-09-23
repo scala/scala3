@@ -3,7 +3,7 @@ package sbt
 
 import java.io.File
 import java.nio.file.Path
-import java.util.EnumSet
+import java.util.{Arrays, EnumSet}
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
@@ -26,8 +26,10 @@ import xsbti.api.DependencyContext.*
 import scala.jdk.CollectionConverters.*
 import scala.collection.{Set, mutable}
 import scala.compiletime.uninitialized
+import scala.io.Codec
 
-/** This phase sends information on classes' dependencies to sbt via callbacks.
+/** This phase collects information on classes' dependencies for sbt.
+ *  For Scala sources, they are sent in `Inlining`, after the dependencies of inlined code are added.
  *
  *  This is used by sbt for incremental recompilation. Briefly, when a file
  *  changes sbt will recompile it, if its API has changed (determined by what
@@ -72,12 +74,16 @@ class ExtractDependencies extends Phase {
     val rec = unit.depRecorder
     val collector = ExtractDependenciesCollector(rec)
     collector.traverse(unit.tpdTree)
+    // Java units are normally dropped after typer, so don't reach here.
+    // With `-Xjava-tasty`, they do reach here, but they don't reach `Inlining`, where dependencies
+    // are reported to zinc. So do that here for Java units.
+    if unit.typedAsJava then rec.sendToZinc()
   }
 }
 
 object ExtractDependencies {
   val name: String = "sbt-deps"
-  val description: String = "sends information on classes' dependencies to sbt"
+  val description: String = "collects information on classes' dependencies for sbt"
 
   /** Construct String name for the given sym.
    * See https://github.com/sbt/zinc/blob/v1.9.6/internal/zinc-apiinfo/src/main/scala/sbt/internal/inc/ClassToAPI.scala#L86-L99
@@ -92,7 +98,7 @@ object ExtractDependencies {
     def classNameAsString0(sym: Symbol)(using Context): String =
       sym.fullName.stripModuleClassSuffix.toString
     def javaClassNameAsString(sym: Symbol)(using Context): String =
-      if sym.owner.isClass && !sym.owner.isRoot then
+      if sym.owner.isClass && !sym.owner.isEffectiveRoot then
         javaClassNameAsString(sym.owner) + "." + sym.name.stripModuleClassSuffix.toString
       else classNameAsString0(sym)
     if isJava(sym) then javaClassNameAsString(sym)
@@ -497,6 +503,7 @@ class DependencyRecorder {
 
   /** Send the collected dependency information to Zinc and clear the local caches. */
   def sendToZinc()(using Context): Unit =
+    if ctx.settings.YdumpSbtInc.value then dumpInc()
     ctx.withIncCallback: cb =>
       val siblingClassfiles = new mutable.HashMap[AbstractFile, Path]
       _foundDeps.iterator.foreach:
@@ -508,6 +515,25 @@ class DependencyRecorder {
             for dep <- deps.asScala do
               recordClassDependency(cb, clazz, toClass, dep, siblingClassfiles)
     clear()
+
+  /** Write the dependencies to a `.inc` file next to the source, for `-Ydump-sbt-inc`. */
+  private def dumpInc()(using Context): Unit =
+    val deps = _foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray[Object]
+    val names = _foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray[Object]
+    Arrays.sort(deps)
+    Arrays.sort(names)
+    ctx.compilationUnit.source.jfile.ifPresent(jpath => {
+      val pw = io.File(jpath.toPath)(using Codec.UTF8).changeExtension(io.FileExtension.Inc).toFile.printWriter()
+      try
+        pw.println("Used Names:")
+        pw.println("===========")
+        names.foreach(pw.println)
+        pw.println()
+        pw.println("Dependencies:")
+        pw.println("=============")
+        deps.foreach(pw.println)
+      finally pw.close()
+    })
 
    /** Clear all state. */
   def clear(): Unit =
