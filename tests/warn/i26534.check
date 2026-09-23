@@ -10,3 +10,7 @@
 7 |  def g(x: Int, @unused y: Int): Int = y // warn // warn
   |                        ^
   |                        useless @unused annotation on parameter y
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:9:36 ----------------------------------------------------------
+9 |class C(private val x: Int, y: Int, z: Int, @unused w: Int): // warn
+  |                                    ^
+  |                                    unused explicit parameter

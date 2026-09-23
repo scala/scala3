@@ -658,7 +658,9 @@ object CheckUnused:
         warnAt(pos)(UnusedSymbol.unsetPrivates)
 
     def checkPrivate(sym: Symbol, pos: SrcPos) =
+      var w: Option[UnusedSymbol] = None
       if ctx.settings.WunusedHas.privates
+        && !infos.hasRef(sym)
         && !sym.isPrimaryConstructor
         && !sym.isOneOf(SelfName | Synthetic | CaseAccessor)
         && !sym.name.is(BodyRetainerName)
@@ -670,9 +672,14 @@ object CheckUnused:
         && !infos.nowarn(sym)
       then
         if sym.is(Mutable) && isMutated(sym) then
-          warnAt(pos)(UnusedSymbol.privateVars)
+          w = Some(UnusedSymbol.privateVars)
         else
-          warnAt(pos)(UnusedSymbol.privateMembers)
+          w = Some(UnusedSymbol.privateMembers)
+      w match
+        case Some(w) =>
+          if !sym.isAnnotated then warnAt(pos)(w)
+        case None =>
+          if sym.isAnnotated && ctx.settings.WunusedHas.unused then warnAt(pos)(UnusedSymbol.uselessSuppression(sym))
 
     def checkParam(sym: Symbol, pos: SrcPos) =
       val m = sym.owner
@@ -759,6 +766,7 @@ object CheckUnused:
         || sym.info.dealias.isInstanceOf[RefinedType] // can't be expressed as a context bound
         || sym.isErased // erased param is unused by design
       if ctx.settings.WunusedHas.implicits
+        && !infos.hasRef(sym)
         && !infos.skip(m)
         && !m.isEffectivelyOverride
         && !allowed
@@ -779,17 +787,23 @@ object CheckUnused:
           warnAt(pos)(UnusedSymbol.implicitParams(sym))
 
     def checkLocal(sym: Symbol, pos: SrcPos) =
+      var w: Option[UnusedSymbol] = None
       if ctx.settings.WunusedHas.locals
         && !sym.isOneOf(InlineProxy | Synthetic)
       then
         if sym.is(Mutable) then
           if infos.asss(sym) then
             if !infos.hasRef(sym) then
-              warnAt(pos)(UnusedSymbol.localVars)
+              w = Some(UnusedSymbol.localVars)
           else
-            warnAt(pos)(UnusedSymbol.unsetLocals)
+            w = Some(UnusedSymbol.unsetLocals)
         else if !infos.hasRef(sym) then
-          warnAt(pos)(UnusedSymbol.localDefs)
+          w = Some(UnusedSymbol.localDefs)
+      w match
+        case Some(w) =>
+          if !sym.isAnnotated then warnAt(pos)(w)
+        case None =>
+          if sym.isAnnotated && ctx.settings.WunusedHas.unused then warnAt(pos)(UnusedSymbol.uselessSuppression(sym))
 
     def checkPatvars() =
       // patvars in for comprehensions share the pos of where the name was introduced
