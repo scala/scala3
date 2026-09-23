@@ -910,8 +910,13 @@ extends SyntaxMsg(IllegalLiteralID) {
 class LossyWideningConstantConversion(sourceType: Type, targetType: Type)(using Context)
 extends Message(LossyWideningConstantConversionID):
   def kind = MessageKind.LossyConversion
-  def msg(using Context) = i"""|Widening conversion from $sourceType to $targetType loses precision.
-                |Write `.to$targetType` instead."""
+  def msg(using Context) =
+    if targetType.isRef(defn.LongClass) && sourceType.isRef(defn.IntClass) then
+      i"""|Expected type $targetType does not sign-extend the literal.
+          |Write `.to$targetType` to sign-extend, or use `L` suffix to silence this warning."""
+    else
+      i"""|Widening conversion from $sourceType to $targetType loses precision.
+          |Write `.to$targetType` instead."""
   def explain(using Context) = ""
 
 class PatternMatchExhaustivity(uncoveredCases: Seq[Space], tree: untpd.Match)(using Context)

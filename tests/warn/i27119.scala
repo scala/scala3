@@ -1,5 +1,5 @@
 import language.experimental.genericNumberLiterals
 
 @main def Test: Unit =
-  val n: Long = 0xffffffff
-  assert(n > 0)
+  val m: Long = 0xffffffff // warn
+  val n: Long = 0xffffffffL // explicit

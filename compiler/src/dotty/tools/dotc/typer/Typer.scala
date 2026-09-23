@@ -1221,7 +1221,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else if (target.isRef(defn.LongClass))
         tree.kind match {
           case Whole(radix) if Feature.genericNumberLiteralsEnabled =>
-            return lit(longFromDigits(digits, radix))
+            val long = longFromDigits(digits, radix)
+            try
+              if long != intFromDigits(digits, radix).toLong then
+                report.warning(LossyWideningConstantConversion(defn.IntType, target), tree.srcPos)
+            catch case _: FromDigitsException => () // check only when int would have succeeded
+            return lit(long)
           case _ =>
         }
       else if (target.isRef(defn.FloatClass))
