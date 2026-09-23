@@ -2,15 +2,15 @@ package dotty.tools.backend
 
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
-import dotty.tools.dotc.core.Names.TermName
+import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Types.{JavaArrayType, Type, UnspecifiedErrorType}
 import dotty.tools.dotc.core.Symbols.{MutableSymbolMap, NoSymbol, Symbol, defn}
 import dotty.tools.dotc.report
-import dotty.tools.dotc.util.ReadOnlyMap
 import dotty.tools.dotc.ast.Trees.Select
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Phases
+import dotty.tools.dotc.util.{ReadOnlyMap, EqHashMap}
 
 import scala.annotation.constructorOnly
 
@@ -34,11 +34,17 @@ import scala.annotation.constructorOnly
 class ScalaPrimitives(using @constructorOnly initCtx: Context) {
   import dotty.tools.backend.ScalaPrimitivesOps.*
 
-  private val primitives: ReadOnlyMap[Symbol, Int] = init
+  private val primitives: ReadOnlyMap[Symbol, ReadOnlyMap[Name, Int]] = init
 
   /** Return the code for the given symbol. */
-  def getPrimitive(sym: Symbol): Int = {
-    primitives(sym)
+  def getPrimitive(sym: Symbol)(using Context): Int = {
+    val code = primitives(sym.owner)(sym.name)
+    if code == ADD then
+      sym.info.paramInfoss match
+        case (tp :: _) :: Nil if tp =:= defn.StringType => CONCAT
+        case _ => code
+    else
+      code
   }
 
   /**
@@ -117,292 +123,283 @@ class ScalaPrimitives(using @constructorOnly initCtx: Context) {
   }
 
   /** Initialize the primitive map */
-  private def init(using Context): ReadOnlyMap[Symbol, Int] = atPhase(Phases.flattenPhase) {
-
-    val primitives = MutableSymbolMap[Int](1024)
-
-    /** Add a primitive operation to the map */
-    def addPrimitive(s: Symbol, code: Int): Unit = {
-      assert(!primitives.contains(s), s"Duplicate primitive for code $code: $s")
-      primitives(s) = code
-    }
-
-    def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit = {
-      val alts = cls.info.member(method).alternatives.map(_.symbol)
-      if (alts.isEmpty)
-        report.error(em"Unknown primitive method $cls.$method")
-      else alts foreach (s =>
-        addPrimitive(s,
-          s.info.paramInfoss match {
-            case List(tp :: _) if code == ADD && tp =:= ctx.definitions.StringType => CONCAT
-            case _                                          => code
-          }
-        )
-        )
-    }
+  private def init(using Context): ReadOnlyMap[Symbol, ReadOnlyMap[Name, Int]] = atPhase(Phases.flattenPhase) {
+    val primitives = MutableSymbolMap[ReadOnlyMap[Name, Int]]()
 
     // scala.Any
-    addPrimitive(defn.Any_==, EQ)
-    addPrimitive(defn.Any_!=, NE)
-    addPrimitive(defn.Any_isInstanceOf, IS)
-    addPrimitive(defn.Any_asInstanceOf, AS)
-    addPrimitive(defn.Any_##, HASH)
+    val anyPrimitives = EqHashMap[Name, Int]()
+    anyPrimitives(nme.EQ) = EQ
+    anyPrimitives(nme.NE) = NE
+    anyPrimitives(nme.isInstanceOf_) = IS
+    anyPrimitives(nme.asInstanceOf_) = AS
+    anyPrimitives(nme.HASHHASH) = HASH
+    primitives(defn.AnyClass) = anyPrimitives
 
     // java.lang.Object
-    addPrimitive(defn.Object_eq, ID)
-    addPrimitive(defn.Object_ne, NI)
- /*   addPrimitive(defn.Any_==, EQ)
-    addPrimitive(defn.Any_!=, NE)*/
-    addPrimitive(defn.Object_synchronized, SYNCHRONIZED)
-    /*addPrimitive(defn.Any_isInstanceOf, IS)
-    addPrimitive(defn.Any_asInstanceOf, AS)*/
+    val objectPrimitives = EqHashMap[Name, Int]()
+    objectPrimitives(nme.EQ) = EQ
+    objectPrimitives(nme.NE) = NE
+    objectPrimitives(nme.eq) = ID
+    objectPrimitives(nme.ne) = NI
+    objectPrimitives(nme.synchronized_) = SYNCHRONIZED
+    primitives(defn.ObjectClass) = objectPrimitives
 
     // java.lang.String
-    addPrimitive(defn.String_+, CONCAT)
+    val stringPrimitives = EqHashMap[Name, Int]()
+    stringPrimitives(nme.PLUS) = CONCAT
+    primitives(defn.StringClass) = stringPrimitives
 
     // scala.Array
-    lazy val ArrayClass = defn.ArrayClass
-    addPrimitives(ArrayClass, nme.length, LENGTH)
-    addPrimitives(ArrayClass, nme.apply, APPLY)
-    addPrimitives(ArrayClass, nme.update, UPDATE)
+    val arrayPrimitives = EqHashMap[Name, Int]()
+    arrayPrimitives(nme.length) = LENGTH
+    arrayPrimitives(nme.apply) = APPLY
+    arrayPrimitives(nme.update) = UPDATE
+    primitives(defn.ArrayClass) = arrayPrimitives
 
     // scala.Boolean
-    lazy val BooleanClass = defn.BooleanClass
-    addPrimitives(BooleanClass, nme.EQ, EQ)
-    addPrimitives(BooleanClass, nme.NE, NE)
-    addPrimitives(BooleanClass, nme.UNARY_!, ZNOT)
-    addPrimitives(BooleanClass, nme.ZOR, ZOR)
-    addPrimitives(BooleanClass, nme.ZAND, ZAND)
-    addPrimitives(BooleanClass, nme.OR, OR)
-    addPrimitives(BooleanClass, nme.AND, AND)
-    addPrimitives(BooleanClass, nme.XOR, XOR)
+    val booleanPrimitives = EqHashMap[Name, Int]()
+    booleanPrimitives(nme.EQ) = EQ
+    booleanPrimitives(nme.NE) = NE
+    booleanPrimitives(nme.UNARY_!) = ZNOT
+    booleanPrimitives(nme.ZOR) = ZOR
+    booleanPrimitives(nme.ZAND) = ZAND
+    booleanPrimitives(nme.OR) = OR
+    booleanPrimitives(nme.AND) = AND
+    booleanPrimitives(nme.XOR) = XOR
+    primitives(defn.BooleanClass) = booleanPrimitives
 
     // scala.Byte
-    lazy val ByteClass = defn.ByteClass
-    addPrimitives(ByteClass, nme.EQ, EQ)
-    addPrimitives(ByteClass, nme.NE, NE)
-    addPrimitives(ByteClass, nme.ADD, ADD)
-    addPrimitives(ByteClass, nme.SUB, SUB)
-    addPrimitives(ByteClass, nme.MUL, MUL)
-    addPrimitives(ByteClass, nme.DIV, DIV)
-    addPrimitives(ByteClass, nme.MOD, MOD)
-    addPrimitives(ByteClass, nme.LT, LT)
-    addPrimitives(ByteClass, nme.LE, LE)
-    addPrimitives(ByteClass, nme.GT, GT)
-    addPrimitives(ByteClass, nme.GE, GE)
-    addPrimitives(ByteClass, nme.XOR, XOR)
-    addPrimitives(ByteClass, nme.OR, OR)
-    addPrimitives(ByteClass, nme.AND, AND)
-    addPrimitives(ByteClass, nme.LSL, LSL)
-    addPrimitives(ByteClass, nme.LSR, LSR)
-    addPrimitives(ByteClass, nme.ASR, ASR)
-      // conversions
-    addPrimitives(ByteClass, nme.toByte,   B2B)
-    addPrimitives(ByteClass, nme.toShort,  B2S)
-    addPrimitives(ByteClass, nme.toChar,   B2C)
-    addPrimitives(ByteClass, nme.toInt,    B2I)
-    addPrimitives(ByteClass, nme.toLong,   B2L)
+    val bytePrimitives = EqHashMap[Name, Int]()
+    bytePrimitives(nme.EQ) = EQ
+    bytePrimitives(nme.NE) = NE
+    bytePrimitives(nme.ADD) = ADD
+    bytePrimitives(nme.SUB) = SUB
+    bytePrimitives(nme.MUL) = MUL
+    bytePrimitives(nme.DIV) = DIV
+    bytePrimitives(nme.MOD) = MOD
+    bytePrimitives(nme.LT) = LT
+    bytePrimitives(nme.LE) = LE
+    bytePrimitives(nme.GT) = GT
+    bytePrimitives(nme.GE) = GE
+    bytePrimitives(nme.XOR) = XOR
+    bytePrimitives(nme.OR) = OR
+    bytePrimitives(nme.AND) = AND
+    bytePrimitives(nme.LSL) = LSL
+    bytePrimitives(nme.LSR) = LSR
+    bytePrimitives(nme.ASR) = ASR
+    // conversions
+    bytePrimitives(nme.toByte) =   B2B
+    bytePrimitives(nme.toShort) =  B2S
+    bytePrimitives(nme.toChar) =   B2C
+    bytePrimitives(nme.toInt) =    B2I
+    bytePrimitives(nme.toLong) =   B2L
+    bytePrimitives(nme.toFloat) =  B2F
+    bytePrimitives(nme.toDouble) = B2D
     // unary methods
-    addPrimitives(ByteClass, nme.UNARY_+, POS)
-    addPrimitives(ByteClass, nme.UNARY_-, NEG)
-    addPrimitives(ByteClass, nme.UNARY_~, NOT)
-
-    addPrimitives(ByteClass, nme.toFloat,  B2F)
-    addPrimitives(ByteClass, nme.toDouble, B2D)
+    bytePrimitives(nme.UNARY_+) = POS
+    bytePrimitives(nme.UNARY_-) = NEG
+    bytePrimitives(nme.UNARY_~) = NOT
+    primitives(defn.ByteClass) = bytePrimitives
 
     // scala.Short
-    lazy val ShortClass = defn.ShortClass
-    addPrimitives(ShortClass, nme.EQ, EQ)
-    addPrimitives(ShortClass, nme.NE, NE)
-    addPrimitives(ShortClass, nme.ADD, ADD)
-    addPrimitives(ShortClass, nme.SUB, SUB)
-    addPrimitives(ShortClass, nme.MUL, MUL)
-    addPrimitives(ShortClass, nme.DIV, DIV)
-    addPrimitives(ShortClass, nme.MOD, MOD)
-    addPrimitives(ShortClass, nme.LT, LT)
-    addPrimitives(ShortClass, nme.LE, LE)
-    addPrimitives(ShortClass, nme.GT, GT)
-    addPrimitives(ShortClass, nme.GE, GE)
-    addPrimitives(ShortClass, nme.XOR, XOR)
-    addPrimitives(ShortClass, nme.OR, OR)
-    addPrimitives(ShortClass, nme.AND, AND)
-    addPrimitives(ShortClass, nme.LSL, LSL)
-    addPrimitives(ShortClass, nme.LSR, LSR)
-    addPrimitives(ShortClass, nme.ASR, ASR)
-      // conversions
-    addPrimitives(ShortClass, nme.toByte,   S2B)
-    addPrimitives(ShortClass, nme.toShort,  S2S)
-    addPrimitives(ShortClass, nme.toChar,   S2C)
-    addPrimitives(ShortClass, nme.toInt,    S2I)
-    addPrimitives(ShortClass, nme.toLong,   S2L)
+    val shortPrimitives = EqHashMap[Name, Int]()
+    shortPrimitives(nme.EQ) = EQ
+    shortPrimitives(nme.NE) = NE
+    shortPrimitives(nme.ADD) = ADD
+    shortPrimitives(nme.SUB) = SUB
+    shortPrimitives(nme.MUL) = MUL
+    shortPrimitives(nme.DIV) = DIV
+    shortPrimitives(nme.MOD) = MOD
+    shortPrimitives(nme.LT) = LT
+    shortPrimitives(nme.LE) = LE
+    shortPrimitives(nme.GT) = GT
+    shortPrimitives(nme.GE) = GE
+    shortPrimitives(nme.XOR) = XOR
+    shortPrimitives(nme.OR) = OR
+    shortPrimitives(nme.AND) = AND
+    shortPrimitives(nme.LSL) = LSL
+    shortPrimitives(nme.LSR) = LSR
+    shortPrimitives(nme.ASR) = ASR
+    // conversions
+    shortPrimitives(nme.toByte) =   S2B
+    shortPrimitives(nme.toShort) =  S2S
+    shortPrimitives(nme.toChar) =   S2C
+    shortPrimitives(nme.toInt) =    S2I
+    shortPrimitives(nme.toLong) =   S2L
+    shortPrimitives(nme.toFloat) =  S2F
+    shortPrimitives(nme.toDouble) = S2D
     // unary methods
-    addPrimitives(ShortClass, nme.UNARY_+, POS)
-    addPrimitives(ShortClass, nme.UNARY_-, NEG)
-    addPrimitives(ShortClass, nme.UNARY_~, NOT)
-
-    addPrimitives(ShortClass, nme.toFloat,  S2F)
-    addPrimitives(ShortClass, nme.toDouble, S2D)
+    shortPrimitives(nme.UNARY_+) = POS
+    shortPrimitives(nme.UNARY_-) = NEG
+    shortPrimitives(nme.UNARY_~) = NOT
+    primitives(defn.ShortClass) = shortPrimitives
 
     // scala.Char
-    lazy val CharClass = defn.CharClass
-    addPrimitives(CharClass, nme.EQ, EQ)
-    addPrimitives(CharClass, nme.NE, NE)
-    addPrimitives(CharClass, nme.ADD, ADD)
-    addPrimitives(CharClass, nme.SUB, SUB)
-    addPrimitives(CharClass, nme.MUL, MUL)
-    addPrimitives(CharClass, nme.DIV, DIV)
-    addPrimitives(CharClass, nme.MOD, MOD)
-    addPrimitives(CharClass, nme.LT, LT)
-    addPrimitives(CharClass, nme.LE, LE)
-    addPrimitives(CharClass, nme.GT, GT)
-    addPrimitives(CharClass, nme.GE, GE)
-    addPrimitives(CharClass, nme.XOR, XOR)
-    addPrimitives(CharClass, nme.OR, OR)
-    addPrimitives(CharClass, nme.AND, AND)
-    addPrimitives(CharClass, nme.LSL, LSL)
-    addPrimitives(CharClass, nme.LSR, LSR)
-    addPrimitives(CharClass, nme.ASR, ASR)
-      // conversions
-    addPrimitives(CharClass, nme.toByte,   C2B)
-    addPrimitives(CharClass, nme.toShort,  C2S)
-    addPrimitives(CharClass, nme.toChar,   C2C)
-    addPrimitives(CharClass, nme.toInt,    C2I)
-    addPrimitives(CharClass, nme.toLong,   C2L)
+    val charPrimitives = EqHashMap[Name, Int]()
+    charPrimitives(nme.EQ) = EQ
+    charPrimitives(nme.NE) = NE
+    charPrimitives(nme.ADD) = ADD
+    charPrimitives(nme.SUB) = SUB
+    charPrimitives(nme.MUL) = MUL
+    charPrimitives(nme.DIV) = DIV
+    charPrimitives(nme.MOD) = MOD
+    charPrimitives(nme.LT) = LT
+    charPrimitives(nme.LE) = LE
+    charPrimitives(nme.GT) = GT
+    charPrimitives(nme.GE) = GE
+    charPrimitives(nme.XOR) = XOR
+    charPrimitives(nme.OR) = OR
+    charPrimitives(nme.AND) = AND
+    charPrimitives(nme.LSL) = LSL
+    charPrimitives(nme.LSR) = LSR
+    charPrimitives(nme.ASR) = ASR
+    // conversions
+    charPrimitives(nme.toByte) =   C2B
+    charPrimitives(nme.toShort) =  C2S
+    charPrimitives(nme.toChar) =   C2C
+    charPrimitives(nme.toInt) =    C2I
+    charPrimitives(nme.toLong) =   C2L
+    charPrimitives(nme.toFloat) =  C2F
+    charPrimitives(nme.toDouble) = C2D
     // unary methods
-    addPrimitives(CharClass, nme.UNARY_+, POS)
-    addPrimitives(CharClass, nme.UNARY_-, NEG)
-    addPrimitives(CharClass, nme.UNARY_~, NOT)
-    addPrimitives(CharClass, nme.toFloat,  C2F)
-    addPrimitives(CharClass, nme.toDouble, C2D)
+    charPrimitives(nme.UNARY_+) = POS
+    charPrimitives(nme.UNARY_-) = NEG
+    charPrimitives(nme.UNARY_~) = NOT
+    primitives(defn.CharClass) = charPrimitives
 
     // scala.Int
-    lazy val IntClass = defn.IntClass
-    addPrimitives(IntClass, nme.EQ, EQ)
-    addPrimitives(IntClass, nme.NE, NE)
-    addPrimitives(IntClass, nme.ADD, ADD)
-    addPrimitives(IntClass, nme.SUB, SUB)
-    addPrimitives(IntClass, nme.MUL, MUL)
-    addPrimitives(IntClass, nme.DIV, DIV)
-    addPrimitives(IntClass, nme.MOD, MOD)
-    addPrimitives(IntClass, nme.LT, LT)
-    addPrimitives(IntClass, nme.LE, LE)
-    addPrimitives(IntClass, nme.GT, GT)
-    addPrimitives(IntClass, nme.GE, GE)
-    addPrimitives(IntClass, nme.XOR, XOR)
-    addPrimitives(IntClass, nme.OR, OR)
-    addPrimitives(IntClass, nme.AND, AND)
-    addPrimitives(IntClass, nme.LSL, LSL)
-    addPrimitives(IntClass, nme.LSR, LSR)
-    addPrimitives(IntClass, nme.ASR, ASR)
-      // conversions
-    addPrimitives(IntClass, nme.toByte,   I2B)
-    addPrimitives(IntClass, nme.toShort,  I2S)
-    addPrimitives(IntClass, nme.toChar,   I2C)
-    addPrimitives(IntClass, nme.toInt,    I2I)
-    addPrimitives(IntClass, nme.toLong,   I2L)
+    val intPrimitives = EqHashMap[Name, Int]()
+    intPrimitives(nme.EQ) = EQ
+    intPrimitives(nme.NE) = NE
+    intPrimitives(nme.ADD) = ADD
+    intPrimitives(nme.SUB) = SUB
+    intPrimitives(nme.MUL) = MUL
+    intPrimitives(nme.DIV) = DIV
+    intPrimitives(nme.MOD) = MOD
+    intPrimitives(nme.LT) = LT
+    intPrimitives(nme.LE) = LE
+    intPrimitives(nme.GT) = GT
+    intPrimitives(nme.GE) = GE
+    intPrimitives(nme.XOR) = XOR
+    intPrimitives(nme.OR) = OR
+    intPrimitives(nme.AND) = AND
+    intPrimitives(nme.LSL) = LSL
+    intPrimitives(nme.LSR) = LSR
+    intPrimitives(nme.ASR) = ASR
+    // conversions
+    intPrimitives(nme.toByte) =   I2B
+    intPrimitives(nme.toShort) =  I2S
+    intPrimitives(nme.toChar) =   I2C
+    intPrimitives(nme.toInt) =    I2I
+    intPrimitives(nme.toLong) =   I2L
+    intPrimitives(nme.toFloat) =  I2F
+    intPrimitives(nme.toDouble) = I2D
     // unary methods
-    addPrimitives(IntClass, nme.UNARY_+, POS)
-    addPrimitives(IntClass, nme.UNARY_-, NEG)
-    addPrimitives(IntClass, nme.UNARY_~, NOT)
-    addPrimitives(IntClass, nme.toFloat,  I2F)
-    addPrimitives(IntClass, nme.toDouble, I2D)
+    intPrimitives(nme.UNARY_+) = POS
+    intPrimitives(nme.UNARY_-) = NEG
+    intPrimitives(nme.UNARY_~) = NOT
+    primitives(defn.IntClass) = intPrimitives
 
     // scala.Long
-    lazy val LongClass = defn.LongClass
-    addPrimitives(LongClass, nme.EQ, EQ)
-    addPrimitives(LongClass, nme.NE, NE)
-    addPrimitives(LongClass, nme.ADD, ADD)
-    addPrimitives(LongClass, nme.SUB, SUB)
-    addPrimitives(LongClass, nme.MUL, MUL)
-    addPrimitives(LongClass, nme.DIV, DIV)
-    addPrimitives(LongClass, nme.MOD, MOD)
-    addPrimitives(LongClass, nme.LT, LT)
-    addPrimitives(LongClass, nme.LE, LE)
-    addPrimitives(LongClass, nme.GT, GT)
-    addPrimitives(LongClass, nme.GE, GE)
-    addPrimitives(LongClass, nme.XOR, XOR)
-    addPrimitives(LongClass, nme.OR, OR)
-    addPrimitives(LongClass, nme.AND, AND)
-    addPrimitives(LongClass, nme.LSL, LSL)
-    addPrimitives(LongClass, nme.LSR, LSR)
-    addPrimitives(LongClass, nme.ASR, ASR)
-      // conversions
-    addPrimitives(LongClass, nme.toByte,   L2B)
-    addPrimitives(LongClass, nme.toShort,  L2S)
-    addPrimitives(LongClass, nme.toChar,   L2C)
-    addPrimitives(LongClass, nme.toInt,    L2I)
-    addPrimitives(LongClass, nme.toLong,   L2L)
+    val longPrimitives = EqHashMap[Name, Int]()
+    longPrimitives(nme.EQ) = EQ
+    longPrimitives(nme.NE) = NE
+    longPrimitives(nme.ADD) = ADD
+    longPrimitives(nme.SUB) = SUB
+    longPrimitives(nme.MUL) = MUL
+    longPrimitives(nme.DIV) = DIV
+    longPrimitives(nme.MOD) = MOD
+    longPrimitives(nme.LT) = LT
+    longPrimitives(nme.LE) = LE
+    longPrimitives(nme.GT) = GT
+    longPrimitives(nme.GE) = GE
+    longPrimitives(nme.XOR) = XOR
+    longPrimitives(nme.OR) = OR
+    longPrimitives(nme.AND) = AND
+    longPrimitives(nme.LSL) = LSL
+    longPrimitives(nme.LSR) = LSR
+    longPrimitives(nme.ASR) = ASR
+    // conversions
+    longPrimitives(nme.toByte) =   L2B
+    longPrimitives(nme.toShort) =  L2S
+    longPrimitives(nme.toChar) =   L2C
+    longPrimitives(nme.toInt) =    L2I
+    longPrimitives(nme.toLong) =   L2L
+    longPrimitives(nme.toFloat) =  L2F
+    longPrimitives(nme.toDouble) = L2D
     // unary methods
-    addPrimitives(LongClass, nme.UNARY_+, POS)
-    addPrimitives(LongClass, nme.UNARY_-, NEG)
-    addPrimitives(LongClass, nme.UNARY_~, NOT)
-    addPrimitives(LongClass, nme.toFloat,  L2F)
-    addPrimitives(LongClass, nme.toDouble, L2D)
+    longPrimitives(nme.UNARY_+) = POS
+    longPrimitives(nme.UNARY_-) = NEG
+    longPrimitives(nme.UNARY_~) = NOT
+    primitives(defn.LongClass) = longPrimitives
 
     // scala.Float
-    lazy val FloatClass = defn.FloatClass
-    addPrimitives(FloatClass, nme.EQ, EQ)
-    addPrimitives(FloatClass, nme.NE, NE)
-    addPrimitives(FloatClass, nme.ADD, ADD)
-    addPrimitives(FloatClass, nme.SUB, SUB)
-    addPrimitives(FloatClass, nme.MUL, MUL)
-    addPrimitives(FloatClass, nme.DIV, DIV)
-    addPrimitives(FloatClass, nme.MOD, MOD)
-    addPrimitives(FloatClass, nme.LT, LT)
-    addPrimitives(FloatClass, nme.LE, LE)
-    addPrimitives(FloatClass, nme.GT, GT)
-    addPrimitives(FloatClass, nme.GE, GE)
+    val floatPrimitives = EqHashMap[Name, Int]()
+    floatPrimitives(nme.EQ) = EQ
+    floatPrimitives(nme.NE) = NE
+    floatPrimitives(nme.ADD) = ADD
+    floatPrimitives(nme.SUB) = SUB
+    floatPrimitives(nme.MUL) = MUL
+    floatPrimitives(nme.DIV) = DIV
+    floatPrimitives(nme.MOD) = MOD
+    floatPrimitives(nme.LT) = LT
+    floatPrimitives(nme.LE) = LE
+    floatPrimitives(nme.GT) = GT
+    floatPrimitives(nme.GE) = GE
     // conversions
-    addPrimitives(FloatClass, nme.toByte,   F2B)
-    addPrimitives(FloatClass, nme.toShort,  F2S)
-    addPrimitives(FloatClass, nme.toChar,   F2C)
-    addPrimitives(FloatClass, nme.toInt,    F2I)
-    addPrimitives(FloatClass, nme.toLong,   F2L)
-    addPrimitives(FloatClass, nme.toFloat,  F2F)
-    addPrimitives(FloatClass, nme.toDouble, F2D)
+    floatPrimitives(nme.toByte) =   F2B
+    floatPrimitives(nme.toShort) =  F2S
+    floatPrimitives(nme.toChar) =   F2C
+    floatPrimitives(nme.toInt) =    F2I
+    floatPrimitives(nme.toLong) =   F2L
+    floatPrimitives(nme.toFloat) =  F2F
+    floatPrimitives(nme.toDouble) = F2D
     // unary methods
-    addPrimitives(FloatClass, nme.UNARY_+, POS)
-    addPrimitives(FloatClass, nme.UNARY_-, NEG)
+    floatPrimitives(nme.UNARY_+) = POS
+    floatPrimitives(nme.UNARY_-) = NEG
+    primitives(defn.FloatClass) = floatPrimitives
 
     // scala.Double
-    lazy val DoubleClass = defn.DoubleClass
-    addPrimitives(DoubleClass, nme.EQ, EQ)
-    addPrimitives(DoubleClass, nme.NE, NE)
-    addPrimitives(DoubleClass, nme.ADD, ADD)
-    addPrimitives(DoubleClass, nme.SUB, SUB)
-    addPrimitives(DoubleClass, nme.MUL, MUL)
-    addPrimitives(DoubleClass, nme.DIV, DIV)
-    addPrimitives(DoubleClass, nme.MOD, MOD)
-    addPrimitives(DoubleClass, nme.LT, LT)
-    addPrimitives(DoubleClass, nme.LE, LE)
-    addPrimitives(DoubleClass, nme.GT, GT)
-    addPrimitives(DoubleClass, nme.GE, GE)
+    val doublePrimitives = EqHashMap[Name, Int]()
+    doublePrimitives(nme.EQ) = EQ
+    doublePrimitives(nme.NE) = NE
+    doublePrimitives(nme.ADD) = ADD
+    doublePrimitives(nme.SUB) = SUB
+    doublePrimitives(nme.MUL) = MUL
+    doublePrimitives(nme.DIV) = DIV
+    doublePrimitives(nme.MOD) = MOD
+    doublePrimitives(nme.LT) = LT
+    doublePrimitives(nme.LE) = LE
+    doublePrimitives(nme.GT) = GT
+    doublePrimitives(nme.GE) = GE
     // conversions
-    addPrimitives(DoubleClass, nme.toByte,   D2B)
-    addPrimitives(DoubleClass, nme.toShort,  D2S)
-    addPrimitives(DoubleClass, nme.toChar,   D2C)
-    addPrimitives(DoubleClass, nme.toInt,    D2I)
-    addPrimitives(DoubleClass, nme.toLong,   D2L)
-    addPrimitives(DoubleClass, nme.toFloat,  D2F)
-    addPrimitives(DoubleClass, nme.toDouble, D2D)
+    doublePrimitives(nme.toByte) =   D2B
+    doublePrimitives(nme.toShort) =  D2S
+    doublePrimitives(nme.toChar) =   D2C
+    doublePrimitives(nme.toInt) =    D2I
+    doublePrimitives(nme.toLong) =   D2L
+    doublePrimitives(nme.toFloat) =  D2F
+    doublePrimitives(nme.toDouble) = D2D
     // unary methods
-    addPrimitives(DoubleClass, nme.UNARY_+, POS)
-    addPrimitives(DoubleClass, nme.UNARY_-, NEG)
-
+    doublePrimitives(nme.UNARY_+) = POS
+    doublePrimitives(nme.UNARY_-) = NEG
+    primitives(defn.DoubleClass) = doublePrimitives
 
     primitives
   }
 
-  def isPrimitive(sym: Symbol): Boolean =
-    primitives.contains(sym)
+  def isPrimitive(sym: Symbol)(using Context): Boolean =
+    sym != NoSymbol && (primitives.get(sym.owner) match
+      case Some(m) => m.contains(sym.name)
+      case _ => false)
 
   def isPrimitive(fun: Tree)(using Context): Boolean =
     val sym = fun.symbol
-    primitives.contains(sym)
-    || (sym == NoSymbol // the only trees that do not have a symbol assigned are array.{update,select,length,clone}
-        && {
-          fun match
-            case Select(_, nme.clone_) => false // but array.clone is NOT a primitive op.
-            case _ => true
-        })
+    if sym == NoSymbol then
+      // the only trees that do not have a symbol assigned are array.{update,select,length,clone}
+      fun match
+        case Select(_, nme.clone_) => false // but array.clone is NOT a primitive op.
+        case _ => true
+    else
+      isPrimitive(sym)
 }

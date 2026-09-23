@@ -74,13 +74,13 @@ class JSPrimitives()(using @constructorOnly initCtx: Context) extends ScalaPrimi
 
   private val jsPrimitives: ReadOnlyMap[Symbol, Int] = initJSPrimitives
 
-  override def getPrimitive(sym: Symbol): Int =
+  override def getPrimitive(sym: Symbol)(using Context): Int =
     jsPrimitives.getOrElse(sym, super.getPrimitive(sym))
 
   override def getPrimitive(app: Apply, tpe: Type)(using Context): Int =
     jsPrimitives.getOrElse(app.fun.symbol, super.getPrimitive(app, tpe))
 
-  override def isPrimitive(sym: Symbol): Boolean =
+  override def isPrimitive(sym: Symbol)(using Context): Boolean =
     jsPrimitives.contains(sym) || super.isPrimitive(sym)
 
   override def isPrimitive(fun: Tree)(using Context): Boolean =
