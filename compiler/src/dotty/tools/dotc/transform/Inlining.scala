@@ -45,6 +45,12 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
 
   override def changesMembers: Boolean = true
 
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+    val units1 = super.runOn(units)
+    if ctx.runZincPhases then
+      ctx.run.nn.asyncTasty.foreach(_.signalDependenciesSent())
+    units1
+
   override protected def run(using Context): Unit =
     val unit = ctx.compilationUnit
     if unit.needsInlining || unit.hasMacroAnnotations then
