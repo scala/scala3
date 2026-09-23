@@ -1673,6 +1673,8 @@ object Build {
       // Do not allow to publish this project for now
       publish / skip := false,
       Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Raw,
+      // scriptsDir loads compiler/test-resources via ClassLoader.getResource and needs a directory.
+      Test / exportJars := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-compiler-bootstrapped",
       // Generate compiler.properties, used by sbt
