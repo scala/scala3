@@ -1,4 +1,4 @@
 object Bar {
-  def bar: Outer.TypeInner = null
+  def bar: Outer.TypeInner = ???
   // comment to trigger recompilation
 }

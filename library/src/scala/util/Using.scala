@@ -76,6 +76,7 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  Custom resources can be registered on construction by requiring an implicit `Manager`.
  *  This ensures they will be released even if composition fails:
  *  ```scala sc:compile
+ *  import scala.language.unsafeNulls
  *  import scala.util.Using
  *
  *  case class X(x: String)(implicit mgr: Using.Manager) extends AutoCloseable {

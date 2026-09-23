@@ -1,3 +1,5 @@
+import scala.language.unsafeNulls
+
 import com.typesafe.config.Config
 import akka.persistence.snapshot.SnapshotStoreSpec
 
