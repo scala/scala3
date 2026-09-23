@@ -651,16 +651,9 @@ object CheckUnused:
          infos.asss(sym)
       || infos.refs(sym.owner.info.member(sym.name.asTermName.setterName).symbol)
 
-    def checkUnassigned(sym: Symbol, pos: SrcPos) =
-      if ctx.settings.WunusedHas.privates
-        && !isMutated(sym)
-      then
-        warnAt(pos)(UnusedSymbol.unsetPrivates)
-
     def checkPrivate(sym: Symbol, pos: SrcPos) =
       var w: Option[UnusedSymbol] = None
       if ctx.settings.WunusedHas.privates
-        && !infos.hasRef(sym)
         && !sym.isPrimaryConstructor
         && !sym.isOneOf(SelfName | Synthetic | CaseAccessor)
         && !sym.name.is(BodyRetainerName)
@@ -671,9 +664,13 @@ object CheckUnused:
         )
         && !infos.nowarn(sym)
       then
-        if sym.is(Mutable) && isMutated(sym) then
-          w = Some(UnusedSymbol.privateVars)
-        else
+        if sym.is(Mutable) then
+          if isMutated(sym) then
+            if !infos.hasRef(sym) then
+              w = Some(UnusedSymbol.privateVars)
+          else
+            w = Some(UnusedSymbol.unsetPrivates)
+        else if !infos.hasRef(sym) then
           w = Some(UnusedSymbol.privateMembers)
       w match
         case Some(w) =>
@@ -966,10 +963,6 @@ object CheckUnused:
 
     // begin
     for (sym, pos) <- infos.defs.iterator do
-      if sym.is(Mutable) && (sym.is(Private) || sym.isEffectivelyPrivate)
-        && !sym.isSetter // tracks sym.underlyingSymbol sibling getter, check setter below
-      then
-        checkUnassigned(sym, pos)
       if sym.isEffectivelyPrivate then
         checkPrivate(sym, pos)
       else if sym.is(Param, butNot = Given | Implicit) then
