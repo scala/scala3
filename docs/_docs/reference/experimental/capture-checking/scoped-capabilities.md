@@ -171,6 +171,7 @@ the try-with-resources pattern. They prevent escaping of scoped capabilities thr
 indirect) assignment to mutable variables:
 ```scala sc:fail sc-compile-with:scoped-withfile-context
 //{
+import scala.language.unsafeNulls
 def test(): Unit =
  //}
   var esc: File^/*{any₁}*/ = null

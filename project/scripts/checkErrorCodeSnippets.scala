@@ -365,7 +365,7 @@ case class ParsedMarkdown(
 def extractErrorCode(fileName: String): Option[Int] =
   val pattern = """E(\d+)\.md""".r
   fileName match
-    case pattern(num) => Some(num.toInt)
+    case pattern(num) => Some(num.nn.toInt)
     case _            => None
 
 def formatErrorCode(code: Int): String = f"E$code%03d"
@@ -374,10 +374,10 @@ def formatErrorCode(code: Int): String = f"E$code%03d"
 def extractSinceVersion(content: String): Option[ScalaVersion] =
   val yamlPattern = """(?s)^---\n(.*?)\n---""".r
   yamlPattern.findFirstMatchIn(content).flatMap { m =>
-    val yaml = m.group(1)
+    val yaml = m.group(1).nn
     val sincePattern = """since:\s*([0-9.]+(?:-[A-Za-z0-9]+)?)""".r
     sincePattern.findFirstMatchIn(yaml).flatMap { versionMatch =>
-      val versionStr = versionMatch.group(1)
+      val versionStr = versionMatch.group(1).nn
       ScalaVersion.parse(versionStr).toOption
     }
   }
@@ -386,10 +386,10 @@ def extractSinceVersion(content: String): Option[ScalaVersion] =
 def extractUntilVersion(content: String): Option[ScalaVersion] =
   val yamlPattern = """(?s)^---\n(.*?)\n---""".r
   yamlPattern.findFirstMatchIn(content).flatMap { m =>
-    val yaml = m.group(1)
+    val yaml = m.group(1).nn
     val untilPattern = """until:\s*([0-9.]+(?:-[A-Za-z0-9]+)?)""".r
     untilPattern.findFirstMatchIn(yaml).flatMap { versionMatch =>
-      val versionStr = versionMatch.group(1)
+      val versionStr = versionMatch.group(1).nn
       ScalaVersion.parse(versionStr).toOption
     }
   }
@@ -449,7 +449,7 @@ def updateErrorSection(content: String, newErrorOutput: String): String =
   // Preserve YAML front matter - flexmark modifies it during rendering
   val yamlPattern = """(?s)^(---\n.*?\n---\n)(.*)$""".r
   val (yamlFrontMatter, bodyContent) = content match
-    case yamlPattern(yaml, body) => (Some(yaml), body)
+    case yamlPattern(yaml, body) => (Some(yaml.nn), body.nn)
     case _                       => (None, content)
 
   // Configure formatter to preserve whitespace in fenced code blocks
@@ -504,7 +504,7 @@ def parseMarkdown(content: String): ParsedMarkdown =
   val untilVersion = extractUntilVersion(content)
 
   // Iterate through all nodes in document order
-  var node: Node = document.getFirstChild
+  var node: Node | Null = document.getFirstChild
   while node != null do
     node match
       case heading: Heading =>
