@@ -1,0 +1,12 @@
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:6:16 ----------------------------------------------------------
+6 |  def f(@unused inUse: Int): Int = inUse // warn
+  |                ^^^^^
+  |                useless @unused annotation on parameter inUse
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:7:8 -----------------------------------------------------------
+7 |  def g(x: Int, @unused y: Int): Int = y // warn // warn
+  |        ^
+  |        unused explicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:7:24 ----------------------------------------------------------
+7 |  def g(x: Int, @unused y: Int): Int = y // warn // warn
+  |                        ^
+  |                        useless @unused annotation on parameter y
