@@ -386,7 +386,9 @@ object Build {
     moduleName ~= { _.stripSuffix("js").stripSuffix("-bootstrapped") },
 
     // sbt gets very unhappy if two projects use the same target
-    target := baseDirectory.value / ".." / "out" / "bootstrap" / name.value,
+    // (since sbt 2 adds scala compiler version to default target dir,
+    //  we don't need to override `target` though)
+    target := rootOutputDirectory.value.resolve(Paths.get("bootstrap", name.value)).toFile,
 
     // Compile using the non-bootstrapped and non-published dotty
     managedScalaInstance := false,
