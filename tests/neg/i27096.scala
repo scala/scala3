@@ -1,5 +1,5 @@
-// Implicit search over a row encoded as a union of abstract type
-// constructors used to crash the compiler in `TypeOps.orDominator` with
+// Implicit search over a union of abstract type constructors
+// used to crash the compiler in `TypeOps.orDominator` with
 // "AssertionError: Failure to join alternatives G and H".
 // It must report a missing given instead.
 object differentParams:

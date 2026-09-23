@@ -398,7 +398,7 @@ object TypeOps:
       (tycon1.stripTypeVar, tycon2.stripTypeVar) match
           case (tp1: TypeParamRef, tp2) => tp1 == tp2
           case (tp1, tp2: TypeParamRef) => tp1 == tp2
-          case _ => tycon1.typeSymbol == tycon2.typeSymbol && (tycon1 =:= tycon2)
+          case _ => tycon1.typeSymbol == tycon2.typeSymbol && (tycon1 frozen_=:= tycon2)
 
     tp match {
       case tp: OrType =>
