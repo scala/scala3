@@ -895,14 +895,17 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
                 // receiverClass is used in the bytecode to as the method receiver. using sym.owner
                 // may lead to IllegalAccessErrors, see 9954eaf / aladdin bug 455.
                 val qualSym = qual.tpe.typeSymbol
-                if (qualSym == defn.ArrayClass) {
+                if qualSym == defn.ArrayClass then
                   // For invocations like `Array(1).hashCode` or `.wait()`, use Object as receiver
                   // in the bytecode. Using the array descriptor (like we do for clone above) seems
                   // to work as well, but it seems safer not to change this. Javac also uses Object.
                   // Note that array apply/update/length are handled by isPrimitive (above).
                   assert(sym.owner == defn.ObjectClass, s"unexpected array call: $app")
                   defn.ObjectClass
-                } else qualSym
+                else if qualSym == defn.NullClass || qualSym == defn.NothingClass then
+                  null // when explicitly calling, e.g., `null.hashCode`, or `???.getClass`
+                else
+                  qualSym
               }
               generatedType = genCallMethod(sym, invokeStyle, app, receiverClass)
             }
@@ -1454,42 +1457,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
      * prevent IllegalAccessError in some virtual and super calls (aladdin bug 455, i22628).
      */
     private def genCallMethod(method: Symbol, style: InvokeStyle, pos: Positioned | Null = null, specificReceiver: Symbol | Null = null)(using Context): BType = {
-      val methodOwner = method.owner
-
-      // the class used in the invocation's method descriptor in the classfile
-      val receiverClass = {
-        if (specificReceiver != null)
-          assert(style.isVirtual || style.isSuper || specificReceiver == methodOwner, s"specificReceiver can only be specified for virtual and super calls. $method - $specificReceiver")
-
-        val useSpecificReceiver = specificReceiver != null && !defn.isBottomClass(specificReceiver) && !method.isScalaStatic
-        val receiver: Symbol = if (useSpecificReceiver) specificReceiver.nn else methodOwner
-
-        // TODO this JVM bug was resolved a very long time ago, workaround could be removed?
-        // workaround for a JVM bug: https://bugs.openjdk.java.net/browse/JDK-8154587
-        // when an interface method overrides a member of Object (note that all interfaces implicitly
-        // have superclass Object), the receiver needs to be the interface declaring the override (and
-        // not a sub-interface that inherits it). example:
-        //   trait T { override def clone(): Object = "" }
-        //   trait U extends T
-        //   class C extends U
-        //   class D { def f(u: U) = u.clone() }
-        // The invocation `u.clone()` needs `T` as a receiver:
-        //   - using Object is illegal, as Object.clone is protected
-        //   - using U results in a `NoSuchMethodError: U.clone. This is the JVM bug.
-        // Note that a mixin forwarder is generated, so the correct method is executed in the end:
-        //   class C { override def clone(): Object = super[T].clone() }
-        val isTraitMethodOverridingObjectMember = {
-          receiver != methodOwner && // fast path - the boolean is used to pick either of these two, if they are the same it does not matter
-            style.isVirtual &&
-            isEmittedInterface(receiver) &&
-            defn.ObjectType.decl(method.name).symbol.exists && { // fast path - compute overrideChain on the next line only if necessary
-              val syms = method.allOverriddenSymbols.toList
-              !syms.isEmpty && syms.last.owner == defn.ObjectClass
-            }
-        }
-        if (isTraitMethodOverridingObjectMember) methodOwner else receiver
-      }
-
+      val receiverClass = if specificReceiver == null then method.owner else specificReceiver
       receiverClass.info // ensure types the type is up to date; erasure may add lateINTERFACE to traits
       val receiverName = bTypeLoader.classBTypeFromSymbol(receiverClass).internalName
 
