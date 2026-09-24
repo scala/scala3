@@ -185,16 +185,12 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
     /** Visit the class node and collect all referenced nested classes. */
     def collectNestedClasses(): (Iterable[ClassBType], Iterable[ClassBType]) = {
       val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
-        def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
+        override def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
           gen.classBTypeCache().previouslyConstructedClassBType(internalName).get.info.nestedClasses
 
-        def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
+        override def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
           val c = gen.classBTypeCache().previouslyConstructedClassBType(internalName).get
           Option.when(c.isNestedClass)(c)
-        }
-
-        def raiseError(msg: String, sig: String, e: Option[Throwable]): Unit = {
-          // don't crash on invalid generic signatures
         }
       }
       c.visit(classNode)
@@ -222,12 +218,12 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
         classNode.visitInnerClass(e.name, e.outerName, e.innerName, e.flags)
     }
 
-    // First, ensure we fill the inner classes, as required by the JVM
+    // Do local optimizations on the class node if requested
+    localOpt.foreach(opt => opt.run(classNode))
+    // Ensure we indicate all used inner classes, as required by the JVM
     classNode.innerClasses.clear()
     val (declared, referred) = collectNestedClasses()
     addInnerClasses(declared, referred)
-    // Then, do local optimizations on the class node if requested
-    localOpt.foreach(opt => opt.run(classNode))
     // Finally, convert the class node to bytes
     val writer = new ClassWriterWithBTypeLub(gen.classBTypeCache())
     classNode.accept(writer)
