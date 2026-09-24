@@ -24,7 +24,7 @@ import scala.collection.mutable
 trait DirectoryLookup[FileEntryType] extends ClassPath {
   type F
 
-  val dir: F
+  protected val dir: F
 
   protected def getSubDir(dirName: String): Option[F]
   protected def listChildren(dir: F, filter: Option[F => Boolean] = None): Iterable[F]
@@ -251,7 +251,7 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
   }
 }
 
-case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[BinaryFileEntry] {
+class DirectoryClassPath(protected override val dir: JFile) extends JFileDirectoryLookup[BinaryFileEntry] {
 
   override def findClassFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className)
@@ -269,7 +269,7 @@ case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[BinaryFil
   override def classes(inPackage: String): Iterable[BinaryFileEntry] = files(inPackage)
 }
 
-case class DirectorySourcePath(dir: JFile) extends JFileDirectoryLookup[SourceFileEntry] {
+class DirectorySourcePath(protected override val dir: JFile) extends JFileDirectoryLookup[SourceFileEntry] {
   protected def createFileEntry(file: AbstractFile): SourceFileEntry = SourceFileEntry(file)
   protected def isMatchingFile(f: JFile): Boolean = endsSourceExtension(f.getName)
 

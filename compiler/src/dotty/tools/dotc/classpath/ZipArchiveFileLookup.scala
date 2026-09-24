@@ -16,8 +16,8 @@ import FileUtils.*
  * It's aware of things like e.g. META-INF directory which is correctly skipped.
  */
 trait ZipArchiveFileLookup[FileEntryType] extends ClassPath {
-  val zipFile: File
-  val release: String
+  protected val zipFile: File
+  protected val release: String
 
   override def asURLs: Seq[URL] = Seq(zipFile.toURI.toURL)
 
