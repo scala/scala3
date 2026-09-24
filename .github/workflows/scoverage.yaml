@@ -29,7 +29,6 @@ permissions:
 #   - tasty-core-bootstrapped
 #   - scala3-repl
 #   - scala3-presentation-compiler
-#   - scala3-language-server
 #   - scala3-staging
 #   - scala3-tasty-inspector
 #   - scala3-sbt-bridge-bootstrapped
@@ -111,28 +110,6 @@ jobs:
           );
           scala3-presentation-compiler/clean;
           scala3-presentation-compiler/compile'
-
-  scala3-language-server-coverage-ycheck:
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: 'temurin'
-          java-version: 17
-          cache: 'sbt'
-      - uses: sbt/setup-sbt@82da71df4e122282484a99a8d70096bc2369dbd8 # v1.5.9
-      - name: Compile with coverage and Ycheck
-        run: |
-          ./project/scripts/sbt '
-          set `scala3-language-server` / Compile / compile / scalacOptions ++= Seq(
-            "-Ycheck:instrumentCoverage",
-            "-coverage-out", "language-server/target/scala3-language-server/coverage-ycheck",
-            "-sourceroot", "${{ github.workspace }}"
-          );
-          scala3-language-server/clean;
-          scala3-language-server/compile'
 
   scala3-staging-coverage-ycheck:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
