@@ -1532,6 +1532,9 @@ object Build {
       ),
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
+      // Disable connectInput to avoid losing stdout/stderr in sbt client mode
+      // Workaround for https://github.com/sbt/sbt/issues/9185
+      run / connectInput := false,
       // Add entry's to the MANIFEST
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)), // Used by the REPL
       // Packaging configuration of the stdlib
@@ -1662,6 +1665,9 @@ object Build {
       ),
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
+      // Disable connectInput to avoid losing stdout/stderr in sbt client mode
+      // Workaround for https://github.com/sbt/sbt/issues/9185
+      run / connectInput := false,
       // Add entry's to the MANIFEST
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)), // Used by the REPL
       // Packaging configuration of the stdlib
