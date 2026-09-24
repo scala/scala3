@@ -161,13 +161,13 @@ trait Dynamic {
         formPartialDynamicAssignment(q, n, s.span, Nil)
       case _ =>
         val e = errorTree(lhs, ReassignmentToVal(lhs.symbol.name, NoType))
-        PartialAssignment(SimpleLValue(e)) { (l, _) => l.expression }
+        PartialAssignment(SimpleLValue(e)) { (l, _, _) => l.expression }
 
   def formPartialDynamicAssignment(
       q: untpd.Tree, n: Name, s: Span, targs: List[untpd.Tree]
   )(using Context): PartialAssignment[SimpleLValue] =
     val v = typed(coreDynamic(q, nme.updateDynamic, n, s, targs))
-    PartialAssignment(SimpleLValue(v)) { (l, r) =>
+    PartialAssignment(SimpleLValue(v)) { (l, r, _) =>
       untpd.Apply(untpd.TypedSplice(l.expression), List(r))
     }
 

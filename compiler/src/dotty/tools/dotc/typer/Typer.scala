@@ -1474,7 +1474,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   /** Returns a builder for making trees representing assignments to `lhs`. */
   def formPartialAssignmentTo(
-      lhs: untpd.Tree, isSingleAssignment: Boolean
+      lhs: untpd.Tree, pt: Type, isSingleAssignment: Boolean
   )(using Context): PartialAssignment[LValue] =
     lhs match
       case lhs @ Apply(f, as) =>
@@ -1482,7 +1482,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val arguments = as.map((a) => PossiblyHoistedValue(typed(a), isSingleAssignment))
         val callee = ApplyLValue.Callee(typed(f), nme.update, isSingleAssignment)
         val lvalue = ApplyLValue(callee, arguments)
-        PartialAssignment(lvalue) { (l, r) => l.formAssignment(r) }
+        PartialAssignment(lvalue) { (l, r, _) => l.formAssignment(r) }
 
       case untpd.TypedSplice(Apply(MaybePoly(Select(fn, app), tas), as)) if app == nme.apply =>
         if tas.isEmpty then
@@ -1490,7 +1490,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val arguments = as.map((a) => PossiblyHoistedValue(a, isSingleAssignment))
           val callee = ApplyLValue.Callee(fn, nme.update, isSingleAssignment)
           val lvalue = ApplyLValue(callee, arguments)
-          PartialAssignment(lvalue) { (l, r) => l.formAssignment(r) }
+          PartialAssignment(lvalue) { (l, r, _) => l.formAssignment(r) }
         else
           // Type arguments are present; the LHS requires a type application.
           val s: untpd.Tree = untpd.Select(untpd.TypedSplice(fn), nme.update)
@@ -1498,7 +1498,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val arguments = as.map((a) => PossiblyHoistedValue(a, isSingleAssignment))
           val callee = ApplyLValue.Callee(typed(t), isSingleAssignment)
           val lvalue = ApplyLValue(callee, arguments)
-          PartialAssignment(lvalue) { (l, r) => l.formAssignment(r) }
+          PartialAssignment(lvalue) { (l, r, _) => l.formAssignment(r) }
 
       case _ =>
         formPartialAssignmentToNonApply(lhs, isSingleAssignment)
@@ -1515,12 +1515,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     /** Returns a builder reporting that the left-hand side is not reassignable. */
     def reassignmentToVal(): PartialAssignment[SimpleLValue] =
-      PartialAssignment(SimpleLValue(core)) { (l, r) =>
+      PartialAssignment(SimpleLValue(core)) { (l, r, pt) =>
         val target = l.expression
         val name = target match
           case nt: NameTree => nt.name // respects import rename
           case _ => adapted.symbol.name // other LHS such as X.x += y
-        report.error(ReassignmentToVal(name, target.tpe), target.srcPos)
+        val fullPos = target.withSpan(target.srcPos.span.union(r.srcPos.span))
+        report.error(ReassignmentToVal(name, pt), fullPos)
         untpd.TypedSplice(tpd.Assign(target, typed(r, adapted.tpe.widen)))
       }
 
@@ -1554,7 +1555,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // bounds: (T .. Any) as seen from lhs prefix, where T is the type of v.symbol
             // This ensures we do the as-seen-from on T with variance -1. Test case neg/i2928.scala
             val bounds = TypeBounds.lower(v.symbol.info).asSeenFrom(r.prefix, v.symbol.owner)
-            PartialAssignment(SimpleLValue(adapted)) { (l, r) =>
+            PartialAssignment(SimpleLValue(adapted)) { (l, r, _) =>
               val s = tpd.Assign(l.expression, typed(r, bounds.loBound))
               untpd.TypedSplice(s.computeAssignNullable())
             }
@@ -1566,7 +1567,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 val t = r.prefix.select(setterName, setter)
                 val u = ensureAccessible(t, isSuperSelection(core), lhs.srcPos)
                 val v = untpd.rename(core, setterName).withType(u)
-                PartialAssignment(SimpleLValue(v)) { (l, r) =>
+                PartialAssignment(SimpleLValue(v)) { (l, r, _) =>
                   // QUESTION: Why do we need the `typedUnadapted(s, WildcardType, locked)`?
                   val s = untpd.Apply(untpd.TypedSplice(l.expression), List(r))
                   untpd.TypedSplice(typedUnadapted(s, WildcardType, locked))
@@ -1577,7 +1578,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case r: TermRef =>
           val (setter, locals) = formSetter(adapted, isExtensionReceiver=false, isSingleAssignment)
           val lvalue = ApplyLValue(ApplyLValue.Callee.Untyped(setter, locals), List())
-          PartialAssignment(lvalue) { (l, r) => l.formAssignment(r) }
+          PartialAssignment(lvalue) { (l, r, _) => l.formAssignment(r) }
 
         case TryDynamicCallType =>
           formPartialDynamicAssignment(lhs)
@@ -1594,7 +1595,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val (setter, locals) = formSetter(lhs, isExtensionReceiver=true, isSingleAssignment)
     if setter.isEmpty then None else
       val lvalue = ApplyLValue(ApplyLValue.Callee.Untyped(setter, locals), List())
-      Some(PartialAssignment(lvalue) { (l, r) => l.formAssignment(r) })
+      Some(PartialAssignment(lvalue) { (l, r, _) => l.formAssignment(r) })
 
   /** Returns the setter corresponding to `lhs`, which is a getter, along hoisted definitions. */
   def formSetter(
@@ -1663,12 +1664,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedMultipleAssign(lhs, tree.rhs)
       case _ =>
         // Simple assignment.
-        val assignmentBuilder = formPartialAssignmentTo(tree.lhs, isSingleAssignment=true)
+        val assignmentBuilder = formPartialAssignmentTo(tree.lhs, pt, isSingleAssignment=true)
         val locals = assignmentBuilder.lhs.locals.map((d) => untpd.TypedSplice(d))
         if locals.isEmpty then
-          typed(assignmentBuilder(tree.rhs))
+          typed(assignmentBuilder(tree.rhs, pt))
         else
-          typed(untpd.Block(locals, assignmentBuilder(tree.rhs)))
+          typed(untpd.Block(locals, assignmentBuilder(tree.rhs, pt)))
 
   def typedMultipleAssign(targets: List[untpd.Tree], source: untpd.Tree)(using Context): Tree =
     val rhs = typed(source, WildcardType)
@@ -1677,19 +1678,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         errorTree(rhs, InvalidMultipleAssignmentSource(rhs.tpe))
       case Some(e) if targets.length != e.length =>
         errorTree(rhs, MultipleAssignmentShapeMismatch(e.length, targets.length))
-      case _ =>
+      case Some(rhsTpes) =>
         val statements = mutable.ListBuffer[untpd.Tree]()
         val assignmentBuilders = mutable.ListBuffer[PartialAssignment[LValue]]()
 
         // Compute the targets of each assignment, hoisting impure intermediate steps.
-        for l <- targets do
+        for (l, r) <- targets.lazyZip(rhsTpes) do
           l match
             case _: untpd.Tuple =>
               val e = errorTree(l, InvalidMultipleAssignmentTarget())
-              val s = PartialAssignment(SimpleLValue(e)) { (l, _) => l.expression }
+              val s = PartialAssignment(SimpleLValue(e)) { (l, _, _) => l.expression }
               assignmentBuilders.append(s)
             case _ =>
-              val s = formPartialAssignmentTo(l, false)
+              val s = formPartialAssignmentTo(l, r, false)
               statements.appendAll(s.lhs.locals.map((d) => untpd.TypedSplice(d)))
               assignmentBuilders.append(s)
 
@@ -1701,12 +1702,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
         // Append the assignments.
         var i = 0
-        for l <- targets do
+        for (l, rt) <- targets.lazyZip(rhsTpes) do
           val r = untpd.Select(
             untpd.TypedSplice(tpd.Ident(d.namedType)),
             nme.productAccessorName(i + 1)
           ).withSpan(rhs.span)
-          statements.append(assignmentBuilders(i)(r))
+          statements.append(assignmentBuilders(i)(r, rt))
           i += 1
         typed(untpd.Block(statements.toList, untpd.TypedSplice(unitLiteral)))
 

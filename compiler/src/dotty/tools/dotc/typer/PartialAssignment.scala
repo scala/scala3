@@ -9,22 +9,23 @@ import dotty.tools.dotc.ast.TreeInfo
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.NameKinds.TempResultName
+import dotty.tools.dotc.core.Types.Type
 
 import core.Symbols.defn
 
 /** A function computing the assignment of a lvalue.
   *
   * @param lhs The target of the assignment.
-  * @param perform: A closure that accepts `lhs` and an untyped tree `rhs`, and returns a tree
-  *   representing the assignment of `rhs` to `lhs`.
+  * @param perform A closure that accepts `lhs` and an untyped tree `rhs`, and returns a tree
+  *   representing the assignment of `rhs` to `lhs`. It also takes the type, used for better error messages.
   */
 private[typer] final class PartialAssignment[+T <: LValue](val lhs: T)(
-    perform: (T, untpd.Tree) => untpd.Tree
+    perform: (T, untpd.Tree, Type) => untpd.Tree
 ):
 
   /** Returns a tree computing the assignment of `rhs` to `lhs`. */
-  def apply(rhs: untpd.Tree): untpd.Tree =
-    perform(lhs, rhs)
+  def apply(rhs: untpd.Tree, pt: Type): untpd.Tree =
+    perform(lhs, rhs, pt)
 
 end PartialAssignment
 
