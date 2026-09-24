@@ -2,7 +2,8 @@ package dotty.tools
 package dotc
 package config
 
-import io.{ClassPath, AbstractFile}
+import classpath.ClassPath
+import io.AbstractFile
 import core.Contexts.*, core.Symbols.*
 import core.SymbolLoader
 import core.StdNames.nme
