@@ -19,7 +19,16 @@ class SignatureHelpTest {
   }
 
   @Test def errorTypeParameter: Unit = {
-    val emptySignature = S("empty", List(List(TP("K"), TP("V"))), Some("Map[K, V]"))
+    val emptySignature = S(
+      "empty",
+      List(List(TP("K"), TP("V"))),
+      Some("Map[K, V]"),
+      Some(
+        """Returns the empty immutable map.
+          |
+          |  A single empty map instance is shared: the same instance is returned for
+          |  every call, cast to the requested key and value types.""".stripMargin)
+    )
     code"""object O:
           |  Map.empty[WrongType, $m1]
           """
