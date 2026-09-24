@@ -1,0 +1,12 @@
+-- [E198] Unused Symbol Warning: tests/warn/i27158.scala:4:16 ----------------------------------------------------------
+4 |  private given Option[Int] = Some(2) // warn
+  |                ^
+  |                unused private member
+-- [E198] Unused Symbol Warning: tests/warn/i27158.scala:6:16 ----------------------------------------------------------
+6 |  private given List[Int] = List(3) // warn
+  |                ^
+  |                unused private member
+-- [E198] Unused Symbol Warning: tests/warn/i27158.scala:8:16 ----------------------------------------------------------
+8 |  private given given_Int: Int = 42 // warn
+  |                ^^^^^^^^^
+  |                unused private member
