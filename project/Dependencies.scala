@@ -35,9 +35,7 @@ object Dependencies {
 
   val guava = "com.google.guava" % "guava" % "33.7.1-jre"
 
-  private val jacksonVersion = "3.2.2"
-  val jacksonDatabind = "tools.jackson.core" % "jackson-databind" % jacksonVersion
-  val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
+  val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % "3.2.2"
 
   private val jlineVersion = "4.4.3"
   val jlineReader = "org.jline" % "jline-reader" % jlineVersion
@@ -54,8 +52,6 @@ object Dependencies {
     "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.2",
     "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % "2.22.2"
   )
-
-  val lsp4j = "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "1.0.0"
 
   val lz4 = "at.yawk.lz4" % "lz4-java" % "1.11.2"
 
