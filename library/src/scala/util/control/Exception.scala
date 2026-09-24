@@ -118,6 +118,7 @@ import scala.language.implicitConversions
  *  ```
  *
  *  ```scala sc-hidden sc-name:exception-imports-5
+ *  import scala.language.unsafeNulls
  *  import scala.util.control.Exception._
  *  ```
  *

@@ -1,5 +1,5 @@
 // scalajs: --compliant-semantics
-
+import scala.language.unsafeNulls
 object Test extends App {
 
   println(test1)

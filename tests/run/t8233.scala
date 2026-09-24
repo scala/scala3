@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test {
   def bar(s: String) = s;
   val o: Option[Null] = None

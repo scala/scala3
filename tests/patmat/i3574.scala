@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object PathVariantDefns {
   sealed trait AtomBase {
     sealed trait Atom

@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test {
 
   def lookup(): Option[Tuple2[String, String]] =

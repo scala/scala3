@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test {
   sealed trait A
   sealed trait B

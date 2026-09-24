@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 sealed trait T_B
 case class CC_A() extends T_B
 case class CC_C() extends T_B

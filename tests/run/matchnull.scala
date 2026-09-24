@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test
 {
   def f1 = null match { case x: AnyRef => 1 case _ => -1 }

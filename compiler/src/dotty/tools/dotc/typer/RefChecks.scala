@@ -13,6 +13,7 @@ import ast.*
 import MegaPhase.*
 import config.Printers.{checks, noPrinter, capt}
 import Decorators.*
+import NullOpsDecorator.*
 import OverridingPairs.isOverridingPair
 import typer.ErrorReporting.*
 import config.Feature.{warnOnMigration, migrateTo3, sourceVersion}
@@ -1542,7 +1543,7 @@ class RefChecks extends MiniPhase { thisPhase =>
       sym.unforcedAnnotation(defn.JdkInternalValueBasedAnnot).nonEmpty ||
         sym == defn.BoxedUnitClass // other boxed classes have the annotation; this one is defined by the Scala stdlib
 
-    if tree.name == nme.synchronized_ && shouldNotBeSynchronized(tree.qualifier.tpe.typeSymbol) then
+    if tree.name == nme.synchronized_ && shouldNotBeSynchronized(tree.qualifier.tpe.stripNull().typeSymbol) then
       report.warning(SynchronizedCallOnValueClass(tree), tree.srcPos)
     tree
 }

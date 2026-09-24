@@ -1,4 +1,5 @@
 /** Test pattern matching and finally, see SI-5929. */
+import scala.language.unsafeNulls
 object Test extends App {
   def bar(s1: Object, s2: Object): Unit = {
     s1 match {

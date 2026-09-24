@@ -14,7 +14,7 @@ class MetacJava {
   val nonStatic = new staticInner.NonStatic()
   nonStatic.method(nonStatic)
   javacp.MetacJava.overload(new javacp.MetacJava.Overload3.A())
-  val interface: javacp.Interface = null
+  val interface: javacp.Interface = ???
   val coin: javacp.Coin = javacp.Coin.PENNY
-  val entry: java.util.Map.Entry[Int, Int] = null
+  val entry: java.util.Map.Entry[Int, Int] = ???
 }

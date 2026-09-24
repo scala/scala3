@@ -20,7 +20,7 @@ object NodeSeq {
 object Main {
   def example() = {
     {
-      new Elem(null, "foo", false,
+      new Elem(???, "foo", false,
         {
           val $buf: NodeBuffer = new NodeBuffer()
           $buf.&+(new Text("bar"))

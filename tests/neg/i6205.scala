@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class Contra[-T >: Null]
 
 object Test:

@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class L(val x: Int) extends AnyVal
 class M(val s: String) extends AnyVal
 class N[T](val t: T) extends AnyVal

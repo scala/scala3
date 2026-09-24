@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object forceDelay {
   import scala.language.implicitConversions
 

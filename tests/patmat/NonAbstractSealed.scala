@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 sealed class A
 class B extends A
 class C extends A

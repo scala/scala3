@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 trait T[X]
 object Test extends App {
   def join(in: Seq[T[_]]): Int = 1

@@ -127,8 +127,6 @@ object SbtCommunityProject:
   def scalacOptions = List(
     "-Xcheck-macros",
     "-Wsafe-init",
-    "-Yexplicit-nulls",
-    "-language:unsafeNulls",
   )
 
 object projects:
@@ -282,6 +280,7 @@ object projects:
 
   lazy val scalaXml = SbtCommunityProject(
     project       = "scala-xml",
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-language:unsafeNulls",
     sbtTestCommand = "xml/test",
     sbtPublishCommand = "xml/publishLocal",
     sbtDocCommand = "xml/doc"
@@ -301,6 +300,7 @@ object projects:
 
   lazy val scalaPB = SbtCommunityProject(
     project       = "ScalaPB",
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-language:unsafeNulls",
     sbtTestCommand   = "lensesJVM3/compile; runtimeJVM3/compile; grpcRuntimeJVM3/compile; compilerPluginJVM3/compile",
     // aggregateDoc("runtimeJVM")("scalapbc", "grpcRuntime", "compilerPlugin") fails with
     // module class ScalaPbCodeGenerator$ has non-class parent: TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module protocbridge),ProtocCodeGenerator)
@@ -359,6 +359,7 @@ object projects:
 
   lazy val sconfig = SbtCommunityProject(
     project       = "sconfig",
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-language:unsafeNulls",
     sbtTestCommand   = "sconfigJVM/test",
     sbtDocCommand = "sconfigJVM/doc",
   )
@@ -432,6 +433,7 @@ object projects:
 
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-language:unsafeNulls",
     sbtTestCommand =
       List(
         removeRelease8("core.jvm", "example.jvm", "kernel.jvm", "kernelTestkit.jvm", "laws.jvm", "std.jvm", "testkit.jvm", "tests.jvm", "rootJVM", "ioAppTestsJVM", "benchmarks", "graalVMExample"),
@@ -567,12 +569,14 @@ object projects:
 
   lazy val scalaSTM = SbtCommunityProject(
     project           = "scala-stm",
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-language:unsafeNulls",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
   )
 
   lazy val scissLucre = SbtCommunityProject(
     project           = "Lucre",
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-language:unsafeNulls",
     sbtTestCommand    =
       val subprojects = List("adjunct.jvm", "base.jvm", "confluent.jvm", "core.jvm", "data.jvm", "expr.jvm", "geom.jvm", "bdb", "tests.jvm")
       List(

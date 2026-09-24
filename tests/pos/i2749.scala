@@ -8,7 +8,7 @@ object Test {
 
 object Test2 {
   val f: (Int ?=> Char) ?=> Boolean = ???
-  implicit val s: String = null
+  implicit val s: String = ???
   implicit val g: Int ?=> String ?=> Char = ???
 
   f : Boolean

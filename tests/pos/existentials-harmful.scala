@@ -9,7 +9,7 @@ object ExistentialsConsideredHarmful {
   trait Tools[A] {
     def shave(a: A): A
   }
-  def tools[A](a: A): Tools[A] = null // dummy
+  def tools[A](a: A): Tools[A] = ??? // dummy
 
   case class TransportBox[A <: Animal](animal: A, tools: Tools[A]) {
     def label: String = animal.name

@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 case class Foo()
 
 object Test {

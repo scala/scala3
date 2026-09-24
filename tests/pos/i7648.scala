@@ -13,6 +13,6 @@ class Stream[+F[_], +A] {
 
 object Test:
 
-  implicit val ioMonad: Monad[IO] = null
+  implicit val ioMonad: Monad[IO] = ???
 
   val x = new Stream[IO, Int].take[IO](10)

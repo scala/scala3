@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import annotation.tailrec
 
 sealed abstract class Super[+A] {

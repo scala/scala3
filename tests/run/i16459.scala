@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test {
   import scala.xml.*
   def main(args: Array[String]): Unit = {

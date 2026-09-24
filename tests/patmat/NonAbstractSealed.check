@@ -1,5 +1,5 @@
--- [E029] Pattern Match Exhaustivity Warning: tests/patmat/NonAbstractSealed.scala:6:3 
-6 |  (null: A) match {
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/NonAbstractSealed.scala:7:3 
+7 |  (null: A) match {
   |   ^^^^^^^
   |   match may not be exhaustive.
   |

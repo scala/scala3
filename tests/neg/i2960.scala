@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 package org.glavo.dotty {
 
 import scala.collection.mutable

@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import scala.quoted.*
 
 case class MyQuoted(val ast: String, sub: String)

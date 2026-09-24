@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class Outer(elem: Int, val next: Outer) {
 
   trait InnerTrait {

@@ -1,60 +1,60 @@
--- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:9:9 ---------
-9 |    case f: One =>   // unreachable
-  |         ^^^^^^
-  |         Unreachable case
 -- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:10:9 --------
-10 |    case f: Two =>   // unreachable
+10 |    case f: One =>   // unreachable
    |         ^^^^^^
    |         Unreachable case
 -- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:11:9 --------
-11 |    case f: Three => // unreachable
+11 |    case f: Two =>   // unreachable
+   |         ^^^^^^
+   |         Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:12:9 --------
+12 |    case f: Three => // unreachable
    |         ^^^^^^^^
    |         Unreachable case
--- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:26:9 --------
-26 |    case b: BarOne =>   // unreachable
-   |         ^^^^^^^^^
-   |         Unreachable case
 -- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:27:9 --------
-27 |    case b: BarTwo =>   // unreachable
+27 |    case b: BarOne =>   // unreachable
    |         ^^^^^^^^^
    |         Unreachable case
 -- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:28:9 --------
-28 |    case b: BarThree => // unreachable
-   |         ^^^^^^^^^^^
-   |         Unreachable case
--- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:33:9 --------
-33 |    case b: BarOne =>  // unreachable
+28 |    case b: BarTwo =>   // unreachable
    |         ^^^^^^^^^
    |         Unreachable case
--- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:36:9 --------
-36 |    case b: BarTwo =>     // unreachable
+-- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:29:9 --------
+29 |    case b: BarThree => // unreachable
+   |         ^^^^^^^^^^^
+   |         Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:34:9 --------
+34 |    case b: BarOne =>  // unreachable
    |         ^^^^^^^^^
    |         Unreachable case
 -- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:37:9 --------
-37 |    case b: BarThree =>   // unreachable
-   |         ^^^^^^^^^^^
-   |         Unreachable case
--- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:38:9 --------
-38 |    case b: Bar =>        // unreachable
-   |         ^^^^^^
-   |         Unreachable case
--- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:39:9 --------
-39 |    case b: Prefix#Bar => // unreachable
-   |         ^^^^^^^^^^^^^
-   |         Unreachable case
--- [E121] Pattern Match Warning: tests/patmat/t4661.scala:40:9 -----------------
-40 |    case _ => // only null matches
-   |         ^
-   |Unreachable case except for null (if this is intentional, consider writing case null => instead).
--- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:46:9 --------
-46 |    case b: BarOne => // unreachable
+37 |    case b: BarTwo =>     // unreachable
    |         ^^^^^^^^^
    |         Unreachable case
--- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:52:9 --------
-52 |    case b:Prefix#Bar => // unreachable
+-- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:38:9 --------
+38 |    case b: BarThree =>   // unreachable
+   |         ^^^^^^^^^^^
+   |         Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:39:9 --------
+39 |    case b: Bar =>        // unreachable
+   |         ^^^^^^
+   |         Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:40:9 --------
+40 |    case b: Prefix#Bar => // unreachable
+   |         ^^^^^^^^^^^^^
+   |         Unreachable case
+-- [E121] Pattern Match Warning: tests/patmat/t4661.scala:41:9 -----------------
+41 |    case _ => // only null matches
+   |         ^
+   |Unreachable case except for null (if this is intentional, consider writing case null => instead).
+-- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:47:9 --------
+47 |    case b: BarOne => // unreachable
+   |         ^^^^^^^^^
+   |         Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/t4661.scala:53:9 --------
+53 |    case b:Prefix#Bar => // unreachable
    |         ^^^^^^^^^^^^
    |         Unreachable case
--- [E121] Pattern Match Warning: tests/patmat/t4661.scala:59:9 -----------------
-59 |    case _ => // only null matches
+-- [E121] Pattern Match Warning: tests/patmat/t4661.scala:60:9 -----------------
+60 |    case _ => // only null matches
    |         ^
    |Unreachable case except for null (if this is intentional, consider writing case null => instead).

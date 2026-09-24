@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object test {
 
   class Tree

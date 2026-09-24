@@ -68,12 +68,12 @@ object O7 {
   @a1  class C1;
   @a1 @a2(77)  class C2;
   @a1 @a2(88)  class C3;
-  @a1 @a2(88) @a3(null)  class C4;
+  @a1 @a2(88) @a3(???)  class C4;
 
   @myAttrs.a1  class A1;
   @myAttrs.a1 @myAttrs.a2(99)  class A2;
   @myAttrs.a1 @myAttrs.a2(99)  class A3;
-  @myAttrs.a1 @myAttrs.a2(99) @myAttrs.a3(null)  class A4;
+  @myAttrs.a1 @myAttrs.a2(99) @myAttrs.a3(???)  class A4;
   @a4(Array(1,2,3)) class A5;
   @a4(Array()) class A6;
 

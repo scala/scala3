@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import base.*
 
 object Test extends App {

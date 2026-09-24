@@ -367,7 +367,7 @@ class GlobalOptimizationBytecodeTests extends OptimizationBytecodeTest {
   @Test def deadUnboxNull =
     assertEquivalence(
       "1",
-      "Byte.unbox(null); 1"
+      "import scala.language.unsafeNulls; Byte.unbox(null); 1"
     )
 
 
@@ -747,7 +747,7 @@ class GlobalOptimizationBytecodeTests extends OptimizationBytecodeTest {
 
   @Test def inlineSingleAbstractMethod =
     assertEquivalence(
-      "if i eq null then throw null; 42",
+      "import scala.language.unsafeNulls; if i eq null then throw null; 42",
       "i.foo()",
       params = List("i: Impl"),
       extraMemberSources = List(

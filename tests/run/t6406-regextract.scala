@@ -8,23 +8,23 @@ object Test extends App {
   val ns = List("1,2","x","3,4")
   val u = r.unanchored
 
-  val is = ns collect { case u(x) => x } map { case r(x) => x }
+  val is = ns collect { case u(x) => x.nn } map { case r(x) => x.nn }
   println(is)
   // Match from same pattern
-  val js = (ns map { u findFirstMatchIn _ }).flatten map { case r(x) => x }
+  val js = (ns map { u findFirstMatchIn _ }).flatten map { case r(x) => x.nn }
   println(js)
   // Match not from same pattern
-  val ks = (ns map { q findFirstMatchIn _ }).flatten map { case r(x) => x }
+  val ks = (ns map { q findFirstMatchIn _ }).flatten map { case r(x) => x.nn }
   println(ks)
 
   val t = "Last modified 2011-07-15"
   val p1 = """(\d\d\d\d)-(\d\d)-(\d\d)""".r
   val y1: Option[String] = for {
     case p1(year, month, day) <- p1 findFirstIn t
-  } yield year
+  } yield year.nn
   val y2: Option[String] = for {
     case p1(year, month, day) <- p1 findFirstMatchIn t
-  } yield year
+  } yield year.nn
   println(s"$y1 $y2")
 
 }

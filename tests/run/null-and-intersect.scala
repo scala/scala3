@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Test {
   trait Immutable
   trait Immortal

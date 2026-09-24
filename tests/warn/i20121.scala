@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 sealed trait T_A[A, B]
 type X = T_A[Byte, Byte]
 

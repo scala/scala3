@@ -15,8 +15,8 @@ final class ¬[A, B]
 object ¬ {
   implicit def defaultEvidence[A, B]: ¬[A, B] = new ¬[A, B]()
   @annotation.implicitAmbiguous("Could not prove type ${A} is not (¬) ${A}")
-  implicit def ambiguousEvidence1[A]: ¬[A, A] = null
-  implicit def ambiguousEvidence2[A]: ¬[A, A] = null
+  implicit def ambiguousEvidence1[A]: ¬[A, A] = ???
+  implicit def ambiguousEvidence2[A]: ¬[A, A] = ???
 }
 
 private[bson] trait DefaultBSONHandlers extends LowPriorityHandlers

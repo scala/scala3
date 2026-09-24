@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 class ParseResult[+T]
 case class MemoEntry[+T](var r: Either[Nothing,ParseResult[_]])
 

@@ -25,7 +25,7 @@ class Transaction {
   var id: Long = _  // only for real transactions
 
   var head: Transaction = this
-  var next: Transaction = null
+  var next: Transaction = ???
 
   def this(hd: Transaction, tl: Transaction) = { this(); this.head = head; this.next = next }
 
@@ -62,12 +62,12 @@ trait Transactional {
   var readers: Transaction
   var writer: Transaction
 
-  def currentWriter(): Transaction = null
+  def currentWriter(): Transaction = ???
     if (writer == null) null
     else if (writer.status == Transaction.Running) writer
     else {
       if (writer.status != Transaction.Committed) rollBack();
-      writer = null;
+      writer = ???;
       null
     }
 
@@ -85,7 +85,7 @@ trait Transactional {
       if (thisTrans.status == Transaction.Abortable) throw new AbortException
       val w = currentWriter()
       if (w != null)
-        if (thisTrans.id < w.id) { w.makeAbort(); rollBack(); writer = null }
+        if (thisTrans.id < w.id) { w.makeAbort(); rollBack(); writer = ??? }
         else throw new AbortException
       readers = if (readers == null) thisTrans else new Transaction(thisTrans, readers)
     }

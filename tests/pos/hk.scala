@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import language.higherKinds
 
 object hk0 {

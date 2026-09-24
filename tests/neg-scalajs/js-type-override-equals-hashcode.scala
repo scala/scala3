@@ -12,7 +12,7 @@ class A extends js.Object {
    * as a result, only the overrides can be called. So the fact that they
    * do not truly override the methods in jl.Object is not observable.
    */
-  override def clone(): Object = null
+  override def clone(): Object = ???
   override def finalize(): Unit = ()
 
   // other methods in jl.Object are final.

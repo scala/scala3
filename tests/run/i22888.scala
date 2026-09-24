@@ -1,6 +1,6 @@
 trait Foo:
   type A[T]
-  var arr: Array[A[Int]] = null
+  var arr: Array[A[Int]] = scala.compiletime.uninitialized
 
 class Bar() extends Foo:
   type A[T] = Int
@@ -8,7 +8,7 @@ class Bar() extends Foo:
 trait Foo2:
   type Dummy
   type A[T] <: Dummy
-  var arr: Array[A[Int]] = null
+  var arr: Array[A[Int]] = scala.compiletime.uninitialized
 
 class Bar2() extends Foo2:
   type Dummy = Any
@@ -16,7 +16,7 @@ class Bar2() extends Foo2:
 
 trait Foo3:
   type A[T] <: Object
-  var arr: Array[A[String]] = null
+  var arr: Array[A[String]] = scala.compiletime.uninitialized
 
 class Bar3() extends Foo3:
   type A[T] = String

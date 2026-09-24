@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import collection.immutable.HashMap
 
 

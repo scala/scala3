@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 def test =
   System.getClass  // error
   System.toString  // error

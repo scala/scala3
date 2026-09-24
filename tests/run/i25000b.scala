@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 trait Codec[L, H, F]  // invariant
 
 trait Variant {

@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 import scala.collection.*
 
 object EmptyHashMap extends mutable.HashMap[Nothing, Nothing]

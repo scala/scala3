@@ -3,7 +3,7 @@ object Test {
     trait I {
       def foo: Any = null
     }
-    val s: I = null
+    val s: I = ???
     s.foo
   }
 

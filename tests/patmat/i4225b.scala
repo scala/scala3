@@ -1,3 +1,4 @@
+import scala.language.unsafeNulls
 object Bar {
   def unapply(x: String): Some[Int] =
     Some(0)

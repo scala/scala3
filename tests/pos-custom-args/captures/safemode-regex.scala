@@ -16,8 +16,8 @@ object Test:
   def matchData(s: String): List[Regex.Match] = word.findAllIn(s).matchData.toList
 
   def year(s: String): String = s match
-    case date(y, _, _) => y
-    case anyDate(y, _, _) => y
+    case date(y, _, _) => y.nn
+    case anyDate(y, _, _) => y.nn
     case _ => ""
 
   def extractors(s: String): String = date.findFirstMatchIn(s) match
@@ -28,13 +28,13 @@ object Test:
     case Some(Regex.Groups(y, m, d)) => s"$d/$m/$y"
     case _ => ""
 
-  def upper(s: String): String = word.replaceAllIn(s, m => m.matched.toUpperCase)
-  def some(s: String): String = word.replaceSomeIn(s, m => if m.matched.length > 3 then Some("*") else None)
+  def upper(s: String): String = word.replaceAllIn(s, m => m.matched.nn.toUpperCase)
+  def some(s: String): String = word.replaceSomeIn(s, m => if m.matched.nn.length > 3 then Some("*") else None)
   def replaceFirst(s: String): String = word.replaceFirstIn(s, Regex.quoteReplacement("$1"))
   def literal(s: String): Regex = Regex.quote(s).r
 
   def replaceAllInWithLog(s: String, log: String => Unit): String =
-    word.replaceAllIn(s, m => { log(m.matched); m.matched.reverse })
+    word.replaceAllIn(s, m => { log(m.matched.nn); m.matched.nn.reverse })
 
   def iterate(s: String): Int =
     val it = word.findAllIn(s)

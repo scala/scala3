@@ -4,7 +4,7 @@
 //                |        |
 //                |        ensure error warnings
 //                ensure warning for implicit conversions
-
+import scala.language.unsafeNulls
 import scala.collection.Factory
 
 @main def Test: Unit =

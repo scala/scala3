@@ -19,13 +19,13 @@ def test: Unit =
 def toss: Unit =
   assert(
     throw
-      null,
+      ???,
     "ok"
   )
 def raise: Unit =
   assert(
     throw
-      null, "ok" // ok now
+      ???, "ok" // ok now
   )
 
 def callme[A](x: => A, msg: String) = try x.toString catch case t: RuntimeException => msg
