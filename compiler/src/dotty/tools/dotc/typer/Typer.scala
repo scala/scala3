@@ -1666,7 +1666,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedMultipleAssign(lhs, tree.rhs)
       case _ =>
         // Simple assignment.
-        val assignmentBuilder = genPartialAssignmentTo(tree.lhs, pt, isSingleAssignment=true)
+        val assignmentBuilder = genPartialAssignmentTo(tree.lhs, pt, isSingleAssignment = true)
         val locals = assignmentBuilder.lhs.locals.map((d) => untpd.TypedSplice(d))
         if locals.isEmpty then
           typed(assignmentBuilder(tree.rhs, pt))
