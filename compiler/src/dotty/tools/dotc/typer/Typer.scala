@@ -1703,14 +1703,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         statements.append(untpd.TypedSplice(d))
 
         // Append the assignments.
-        var i = 0
-        for (l, rt) <- targets.lazyZip(rhsTpes) do
+        for ((l, rt), i) <- targets.lazyZip(rhsTpes).zipWithIndex do
           val r = untpd.Select(
             untpd.TypedSplice(tpd.Ident(d.namedType)),
             nme.productAccessorName(i + 1)
           ).withSpan(rhs.span)
           statements.append(assignmentBuilders(i)(r, rt))
-          i += 1
         typed(untpd.Block(statements.toList, untpd.TypedSplice(unitLiteral)))
 
   def typedBlockStats(stats: List[untpd.Tree])(using Context): (List[tpd.Tree], Context) =
