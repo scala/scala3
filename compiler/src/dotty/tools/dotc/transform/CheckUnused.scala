@@ -668,6 +668,8 @@ object CheckUnused:
           if isMutated(sym) then
             if !infos.hasRef(sym) then
               w = Some(UnusedSymbol.privateVars)
+          else if !infos.hasRef(sym) then
+            w = Some(UnusedSymbol.privateMembers)
           else
             w = Some(UnusedSymbol.unsetPrivates)
         else if !infos.hasRef(sym) then
@@ -764,6 +766,7 @@ object CheckUnused:
     def checkImplicit(sym: Symbol, pos: SrcPos) =
       var target: Symbol = sym // if warning, the symbol which may be annotated; alias member for class parameter
       val m = sym.owner
+      def isAnonGivenDef: Boolean = m.isAllOf(Given | Method) && m.isSynthetic
       def allowed =
         val dd = defn
            m.isDeprecated
@@ -783,6 +786,7 @@ object CheckUnused:
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
         && !m.isEffectivelyOverride
+        && !isAnonGivenDef
       then
         if m.isPrimaryConstructor then
           val alias = m.owner.info.member(sym.name)
@@ -799,9 +803,11 @@ object CheckUnused:
           w = Some(UnusedSymbol.implicitParams(sym))
       w match
         case Some(w) =>
-          if !target.isAnnotated then warnAt(pos)(w)
+          if !target.isAnnotated then
+            warnAt(pos)(w)
         case _ =>
-          if target.isAnnotated && ctx.settings.WunusedHas.unused then warnAt(pos)(UnusedSymbol.uselessSuppression(sym))
+          if target.isAnnotated && ctx.settings.WunusedHas.unused && !isAnonGivenDef then
+            warnAt(pos)(UnusedSymbol.uselessSuppression(sym))
 
     def checkLocal(sym: Symbol, pos: SrcPos) =
       var w: Option[UnusedSymbol] = None
