@@ -559,7 +559,14 @@ object Build {
     val scalaLib = pkgPath((libraryProject / Compile / packageBin).value)
     def run(args: List[String]): Unit = {
       val fullArgs = insertClasspathInArgs(args, List(".", scalaLib).mkString(File.pathSeparator))
-      Process.runProcess("java" :: fullArgs, wait = true)
+      Process.runProcess("java" :: fullArgs, wait = true, outputCallback = Some { reader =>
+        // Without a callback, stdout is inherited from the sbt server's fd 1.
+        // sbt 2's thin client only relays System.out, so copy the program output there.
+        var line = reader.readLine()
+        while line != null do
+          System.out.println(line)
+          line = reader.readLine()
+      })
     }
     if (args.isEmpty) {
       println("Couldn't run `scala` without args. Use `repl` to run the repl or add args to run the dotty application")
