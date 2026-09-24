@@ -1693,7 +1693,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               assignmentBuilders.append(s)
             case _ =>
               val s = genPartialAssignmentTo(l, r, false)
-              statements.appendAll(s.lhs.locals.map((d) => untpd.TypedSplice(d)))
+              statements.appendAll(s.lhs.locals.map(d => untpd.TypedSplice(d)))
               assignmentBuilders.append(s)
 
         // Compute the right-hand side value.
@@ -1704,10 +1704,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
         // Append the assignments.
         for ((l, rt), i) <- targets.lazyZip(rhsTpes).zipWithIndex do
+          val span = rhs match
+            case Apply(_, rhsArgs) => rhsArgs(i).span
+            case _ => rhs.span
           val r = untpd.Select(
             untpd.TypedSplice(tpd.Ident(d.namedType)),
             nme.productAccessorName(i + 1)
-          ).withSpan(rhs.span)
+          ).withSpan(span)
           statements.append(assignmentBuilders(i)(r, rt))
         typed(untpd.Block(statements.toList, untpd.TypedSplice(unitLiteral)))
 
