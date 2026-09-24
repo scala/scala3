@@ -1,0 +1,8 @@
+-- Deprecation Warning: tests/warn/deprecatedName-symbol.scala:7:13 ----------------------------------------------------
+7 |val a2 = f(x = 2) // warn
+  |           ^^^^^
+  |           the parameter name x is deprecated: use y instead
+-- Deprecation Warning: tests/warn/deprecatedName-symbol.scala:3:7 -----------------------------------------------------
+3 |def f(@deprecatedName(Symbol("x")) y: Int): Int = y // warn
+  |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |constructor deprecatedName in class deprecatedName is deprecated since 2.13.0: The parameter name should be a String, not a symbol.

@@ -192,12 +192,18 @@ object ImplicitNullInterop:
         state = savedState
         if isNullAnnot then parent2
         else parent2 match
-          case FlexibleType(_, parent2a) =>
+          case FlexibleType(parent2a) =>
             FlexibleType(derivedAnnotatedType(tp, parent2a, tp.annot))
           case OrNull(parent2a) =>
             OrNull(derivedAnnotatedType(tp, parent2a, tp.annot))
           case _ =>
             derivedAnnotatedType(tp, parent2, tp.annot)
+      case FlexibleType(_) =>
+        // A flexible type is already a fully-nullified result, so nullification must be
+        // idempotent on it: leave it unchanged. Without this case it would match the
+        // `AppliedType` case below (a flexible type is encoded as `AppliedType(FlexibleType, T)`)
+        // and get wrapped a second time, e.g. `(Array[T])?` becoming `((Array[T])?)?`.
+        tp
       case appTp @ AppliedType(tycon, targs) =>
         val savedState = state
         // If Java-defined tycon, don't nullify outer level of type args (Java classes are fully nullified)
@@ -236,7 +242,7 @@ object ImplicitNullInterop:
         // This keeps the result minimal and avoids duplicating `| Null`
         // on both sides and at the outer level.
         (this(tp.tp1), this(tp.tp2)) match
-          case (FlexibleType(_, t1), FlexibleType(_, t2)) if ctx.flexibleTypes =>
+          case (FlexibleType(t1), FlexibleType(t2)) if ctx.flexibleTypes =>
             FlexibleType(derivedAndOrType(tp, t1, t2))
           case (OrNull(t1), OrNull(t2)) =>
             OrNull(derivedAndOrType(tp, t1, t2))
@@ -256,7 +262,7 @@ object ImplicitNullInterop:
 
         // If the parent type becomes nullable, then we pop the nullification to the outer level.
         parent2 match
-          case FlexibleType(_, parent2a) =>
+          case FlexibleType(parent2a) =>
             FlexibleType(derivedRefinedType(tp, parent2a, refinedInfo2))
           case OrNull(parent2a) =>
             OrNull(derivedRefinedType(tp, parent2a, refinedInfo2))

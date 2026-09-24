@@ -19,7 +19,7 @@ object Rewrites {
   def newPatchedFiles(): PatchedFiles = new PatchedFiles
 
   private case class Patch(span: Span, replacement: String) {
-    def delta = replacement.length - (span.end - span.start)
+    def delta: Int = replacement.length - (span.end - span.start)
   }
 
   /** A special type of Patch that instead of just a span, contains the
@@ -43,7 +43,7 @@ object Rewrites {
       def p(other: Span): Boolean = span.start == other.start || span.end == other.end
       pbuf.filterInPlace(x => !p(x.span))
 
-    def apply(cs: Array[Char]): Array[Char] = {
+    def apply(str: String, writer: OutputStreamWriter): Unit = {
       val patches = pbuf.toList.distinct.sortBy(_.span.start)
       val delta = patches.map(_.delta).sum
       if (patches.nonEmpty)
@@ -51,32 +51,27 @@ object Rewrites {
           assert(p1.span.end <= p2.span.start, s"overlapping patches in $source: $p1 and $p2")
           p2
         }
-      val ds = new Array[Char](cs.length + delta)
-      @tailrec def loop(ps: List[Patch], inIdx: Int, outIdx: Int): Unit = {
-        def copy(upTo: Int): Int = {
+      @tailrec def loop(ps: List[Patch], inIdx: Int): Unit = {
+        def copy(upTo: Int): Unit = {
           val untouched = upTo - inIdx
-          System.arraycopy(cs, inIdx, ds, outIdx, untouched)
-          outIdx + untouched
+          writer.write(str, inIdx, untouched)
         }
         ps match {
           case patch @ Patch(span, replacement) :: ps1 =>
-            val outNew = copy(span.start)
-            replacement.copyToArray(ds, outNew)
-            loop(ps1, span.end, outNew + replacement.length)
+            copy(span.start)
+            writer.write(replacement)
+            loop(ps1, span.end)
           case Nil =>
-            val outNew = copy(cs.length)
-            assert(outNew == ds.length, s"$outNew != ${ds.length}")
+            copy(str.length)
         }
       }
-      loop(patches, 0, 0)
-      ds
+      loop(patches, 0)
     }
 
     def writeBack(): Unit =
       assert(source.file != null, "Cannot rewrite nonexistent file!")
-      val chars = apply(source.content)
       val osw = OutputStreamWriter(source.file.output, UTF_8)
-      try osw.write(chars, 0, chars.length)
+      try apply(source.textContent(), osw)
       finally osw.close()
   }
 

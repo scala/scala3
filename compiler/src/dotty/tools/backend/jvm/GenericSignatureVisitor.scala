@@ -15,7 +15,7 @@ abstract class GenericSignatureVisitor(nestedOnly: Boolean) {
   private trait CharBooleanFunction { def apply(c: Char): Boolean }
 
   final def visitInternalName(internalName: String): Unit = visitInternalName(internalName, 0, if (internalName eq null) 0 else internalName.length)
-  def visitInternalName(internalName: String, offset: Int, length: Int): Unit
+  def visitInternalName(internalName: String, beginIndex: Int, endIndex: Int): Unit
 
   def visitClassSignature(sig: String): Unit = if (sig != null) {
     val p = new Parser(sig, nestedOnly)
@@ -232,13 +232,13 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
     }
   }
 
-  private def containsChar(s: String, offset: Int, length: Int, char: Char): Boolean = {
-    val ix = s.indexOf(char, offset)
-    !(ix == -1 || ix >= offset + length)
+  private def containsChar(s: String, beginIndex: Int, endIndex: Int, char: Char): Boolean = {
+    val ix = s.indexOf(char, beginIndex)
+    beginIndex <= ix && ix < endIndex
   }
 
-  def visitInternalName(internalName: String, offset: Int, length: Int): Unit = if (internalName != null && containsChar(internalName, offset, length, '$')) {
-    for (c <- getClassIfNested(internalName.substring(offset, length)))
+  def visitInternalName(internalName: String, beginIndex: Int, endIndex: Int): Unit = if (internalName != null && containsChar(internalName, beginIndex, endIndex, '$')) {
+    for (c <- getClassIfNested(internalName.substring(beginIndex, endIndex)))
       if (!declaredInnerClasses.contains(c))
         referredInnerClasses += c
   }
@@ -256,18 +256,16 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
   // primitives and the brackets of array descriptors
   def visitDescriptor(desc: String): Unit = (desc.charAt(0): @switch) match {
     case '(' =>
-      var i = 1
-      while (i < desc.length) {
-        if (desc.charAt(i) == 'L') {
-          val start = i + 1 // skip the L
-          var seenDollar = false
-          while ({val ch = desc.charAt(i); seenDollar ||= (ch == '$'); ch != ';'}) i += 1
-          if (seenDollar)
-            visitInternalName(desc, start, i)
-        }
-        // skips over '[', ')', primitives
-        i += 1
-      }
+      // skips over '[', ')', primitives
+      var i = 0
+      while
+        i = desc.indexOf('L', i + 1)
+        i != -1
+      do
+        val start = i + 1 // skip the L
+        val end = desc.indexOf(';', start)
+        visitInternalName(desc, start, end)
+        i = end
 
     case 'L' =>
       visitInternalName(desc, 1, desc.length - 1)

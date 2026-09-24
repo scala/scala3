@@ -37,9 +37,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
-env:
-  DOTTY_CI_RUN: true
-
 jobs:
   # Run tests before publishing a release
   stdlib-tests:
@@ -123,13 +120,13 @@ jobs:
       ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
       ##############################################################################################
       - name: Set up JDK 17
-        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
+      - uses: sbt/setup-sbt@82da71df4e122282484a99a8d70096bc2369dbd8 # v1.5.9
 
       # Extract the release tag
       - name: Extract the release tag
@@ -260,7 +257,6 @@ jobs:
               scala3-compiler-bootstrapped/publishSigned \
               scala3-directives-parser-bootstrapped/publishSigned \
               scala3-interfaces/publishSigned \
-              scala3-language-server/publishSigned \
               scala3-library-bootstrapped/publishSigned \
               scala3-library-sjs/publishSigned \
               scala3-presentation-compiler/publishSigned \
@@ -342,7 +338,7 @@ jobs:
 
       - name: Generate the provenance attestation
         id: provenance
-        uses: carabiner-dev/actions/slsa/generate@32587e82f960d49b36101e8c45d1956e511965d3 # v1.2.9
+        uses: carabiner-dev/actions/slsa/generate@d41fe10fe88deaf493ce026007da73738b9f570c # v1.3.0
         with:
           # publish_release has finished by the time this job starts, naming it
           # keeps tejolote from waiting on the unrelated jobs of the run
@@ -434,7 +430,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@95e5b1029b6b86e7bac033ee44a0697d8a527d2d # v8.1.1
-      - uses: VirtusLab/scala-cli-setup@8db5313925605c20e292348c1749e80dac7eed0f # v1.16.0
+      - uses: VirtusLab/scala-cli-setup@c33dfbf1a5f16ee60efff453b7f9a987d2b6955b # v1.17.1
       - name: Check formatting
         run: |
           if ! scala-cli format --check; then

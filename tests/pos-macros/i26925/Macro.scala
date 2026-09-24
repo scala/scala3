@@ -13,7 +13,6 @@ object Macros {
           args.foreach(visit)
         case _ =>
           if t.typeSymbol.primaryConstructor.exists then
-            println(t)
             val constructor = t.typeSymbol.primaryConstructor
             constructor.paramSymss.flatten.foreach { parameter =>
               visit(t.memberType(parameter))

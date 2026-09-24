@@ -11,6 +11,7 @@ import NameKinds.InlineBinderName
 import ProtoTypes.shallowSelectionProto
 import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
+import config.Feature
 import config.Printers.inlining
 import ErrorReporting.errorTree
 import util.{SimpleIdentitySet, SrcPos}
@@ -353,7 +354,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       if bindingFlags.is(Inline) && argIsBottom then
         newArg = Typed(newArg, TypeTree(formal.widenExpr)) // type ascribe RHS to avoid type errors in expansion. See i8612.scala
       if isByName then DefDef(boundSym, newArg)
-      else ValDef(boundSym, newArg, inferred = true)
+      else ValDef(boundSym, newArg)
     }.withSpan(boundSym.span)
     if !argIsBottom then // Record typer skolem on the proxy ValDef, so the `avoidingType` can avoid proxy to skolem.
       skolem.foreach(binding.putAttachment(TypeAssigner.InlineProxySkolem, _))
@@ -742,6 +743,12 @@ class Inliner(val call: tpd.Tree)(using Context):
         // reference to a private method is kept at runtime.
         cpy.Select(tree)(qual.asInstance(qual.tpe.widen), name)
 
+      case tree: TypeTree if Feature.ccEnabled =>
+        // cc.Setup.setupTraverser.transformTT creates scope-dependent capture types,
+        // cached by tree identity in transform.Recheck.Rechecker.nuTypes. Sharing a
+        // TypeTree would reuse the definition's (or another call's) capture roots
+        // in this expansion. See tests/pos-custom-args/captures/inline-result-captures.scala.
+        tree.cloneIn(tree.source)
       case tree => tree
     }
 
@@ -810,7 +817,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     // corresponding arguments or proxies on the type and term level. It also changes
     // the owner from the inlined method to the current owner.
 
-    // This is reused through InlineTraitAncestors for inline traits, so inlinedMethod might not exist there  
+    // This is reused through InlineTraitAncestors for inline traits, so inlinedMethod might not exist there
     val oldOwners = if (inlinedMethod.exists) then inlinedMethod :: Nil else Nil
     val newOwners = if (inlinedMethod.exists) then ctx.owner :: Nil else Nil
 

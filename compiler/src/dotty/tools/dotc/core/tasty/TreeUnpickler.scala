@@ -165,7 +165,7 @@ class TreeUnpickler(reader: TastyReader,
                 using ctx.withOwner(owner).withModeBits(mode).withSource(source))
           catch
             case ex: CyclicReference => throw ex
-            case NonFatal(ex) => throw UnpicklingError(denot, where, ex)
+            case NonFatal(ex) if !ex.isInstanceOf[RecursionOverflow] => throw UnpicklingError(denot, where, ex)
           finally
             cleanup()
   }
@@ -261,7 +261,7 @@ class TreeUnpickler(reader: TastyReader,
       else tag
     }
 
-    def readName(): TermName = nameAtRef(readNameRef())
+    def readName(): TermName = nameAtRef(readNat())
 
     /** Can `tag` start a type argument of a CompactAnnotation? */
     def isCompactAnnotTypeTag(tag: Int): Boolean = tag match
@@ -636,8 +636,11 @@ class TreeUnpickler(reader: TastyReader,
       val start = currentAddr
       val tag = readByte()
       val end = readEnd()
-      var name: Name = readName()
-      if (tag == TYPEDEF || tag == TYPEPARAM) name = name.toTypeName
+      val name: Name = {
+        val n = readName()
+        if tag == TYPEDEF || tag == TYPEPARAM then n.toTypeName
+        else n
+      }
       skipParams()
       val ttag = nextUnsharedTag
       val isAbsType = isAbstractType(name)
@@ -647,7 +650,9 @@ class TreeUnpickler(reader: TastyReader,
       val rhsStart = currentAddr
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
-      val (givenFlags0, annotFns, privateWithin) = readModifiers(end)
+      val annotFns = ListBuffer.empty[Symbol => Annotation]
+      val givenFlags0 = readModifiers(end, annotFns)
+      val privateWithin = lastPrivateWithin
       val givenFlags =
         if isClass && unpicklingScala2Library then givenFlags0 | Scala2x | Scala2Tasty
         else if unpicklingJava then givenFlags0 | JavaDefined
@@ -678,7 +683,7 @@ class TreeUnpickler(reader: TastyReader,
       registerSym(start, sym)
       val annotOwner =
         if sym.owner.isClass then newLocalDummy(sym.owner) else sym.owner
-      sym.annotations = annotFns.map(_(annotOwner))
+      sym.annotations = annotFns.map(_(annotOwner)).toList
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
       ctx.owner match {
@@ -711,15 +716,20 @@ class TreeUnpickler(reader: TastyReader,
       sym
     }
 
-    /** Read modifier list into triplet of flags, annotations and a privateWithin
-     *  boundary symbol.
+    private var lastPrivateWithin: Symbol = NoSymbol
+
+    /** Read modifier list flags, and optionally annotations.
+     * Sets `lastPrivateWithin` if such a modifier is read.
+     * (This is OK because since we need a Context, this method is single-threaded anyway;
+     *  and it avoids a fair amount of allocations of ObjectRef/Tuple/some other multi-return mechanism)
      */
-    def readModifiers(end: Addr)(using Context): (FlagSet, List[Symbol => Annotation], Symbol) = {
+    private def readModifiers(end: Addr,
+                      annotFns: ListBuffer[Symbol => Annotation] | Null)(using Context): FlagSet = {
+      lastPrivateWithin = NoSymbol
       var flags: FlagSet = EmptyFlags
-      var annotFns: List[Symbol => Annotation] = Nil
-      var privateWithin: Symbol = NoSymbol
       while (currentAddr.index != end.index) {
-        def addFlag(flag: FlagSet) = {
+        // inline so we don't need to allocate a ref for `flags`
+        inline def addFlag(flag: FlagSet) = {
           flags |= flag
           readByte()
         }
@@ -770,20 +780,19 @@ class TreeUnpickler(reader: TastyReader,
           case INTO => addFlag(Into)
           case PRIVATEqualified =>
             readByte()
-            privateWithin = readWithin
+            lastPrivateWithin = readWithin
           case PROTECTEDqualified =>
             addFlag(Protected)
-            privateWithin = readWithin
+            lastPrivateWithin = readWithin
           case ANNOTATION =>
-            val annotFn =
-              val annot = readAnnot
-              (sym: Symbol) => annot.complete(sym)
-            annotFns = annotFn :: annotFns
+            val annot = readAnnot
+            if annotFns != null then
+              annotFns.addOne((sym: Symbol) => annot.complete(sym))
           case tag =>
             assert(false, s"illegal modifier tag $tag at $currentAddr, end = $end")
         }
       }
-      (flags, annotFns.reverse, privateWithin)
+      flags
     }
 
     private def readWithin(using Context): Symbol = readType().typeSymbol
@@ -1652,7 +1661,7 @@ class TreeUnpickler(reader: TastyReader,
               readName()
               readType()
               val body = readTree()
-              val (givenFlags, _, _) = readModifiers(end)
+              val givenFlags = readModifiers(end, null)
               sym.setFlag(givenFlags)
               Bind(sym, body)
             case ALTERNATIVE =>
@@ -1854,7 +1863,7 @@ class TreeUnpickler(reader: TastyReader,
      */
     def sourceChangeContext(addr: Addr = currentAddr)(using Context): Context = {
       val path = sourcePathAt(addr)
-      if (path.nonEmpty) {
+      if (!path.isEmpty) {
         val sourceFile = ctx.getSource(path)
         posUnpicklerOpt match
           case Some(posUnpickler) if !sourceFile.initialized =>

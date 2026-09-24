@@ -306,7 +306,7 @@ object ErrorReporting {
           ViewProto(qualType.widen,
             SelectionProto(tree.name, WildcardType, NoViewsAllowed, privateOK = false, NoSpan)))
         if add.isEmpty then ""
-        else ", but could be made available as an extension method." ++ add
+        else ", but could be made available as an extension method." + add
     end selectErrorAddendum
   }
 
