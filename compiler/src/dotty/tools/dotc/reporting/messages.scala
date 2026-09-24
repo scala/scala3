@@ -912,8 +912,8 @@ extends Message(LossyWideningConstantConversionID):
   def kind = MessageKind.LossyConversion
   def msg(using Context) =
     if targetType.isRef(defn.LongClass) && sourceType.isRef(defn.IntClass) then
-      i"""|Expected type $targetType does not sign-extend the literal.
-          |Write `.to$targetType` to sign-extend, or use `L` suffix to silence this warning."""
+      i"""|Literal produces a different $targetType value compared to conversion.
+          |Write `.to$targetType` for conversion, or use `L` suffix to silence this warning."""
     else
       i"""|Widening conversion from $sourceType to $targetType loses precision.
           |Write `.to$targetType` instead."""
