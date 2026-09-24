@@ -699,16 +699,28 @@ object CheckUnused:
           val alias = m.owner.info.member(sym.name)
           if alias.exists then
             val aliasSym = alias.symbol
-            if aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
-              && !infos.hasRef(alias.symbol)
-              && !usedByDefaultGetter(sym, m)
-            then
+            val warnable =
+              if aliasSym.is(Mutable) then aliasSym.isAllOf(PrivateParamAccessor)
+              else aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
+            if warnable then
               target = aliasSym
-              if aliasSym.is(Local) then
-                if ctx.settings.WunusedHas.explicits then
+              if aliasSym.is(Mutable) then
+                if isMutated(aliasSym) then
+                  if !infos.hasRef(aliasSym) then
+                    return Some(UnusedSymbol.privateVars)
+                else
+                  return Some(UnusedSymbol.unsetPrivates)
+              else if aliasSym.is(Local) then
+                if ctx.settings.WunusedHas.explicits
+                  && !infos.hasRef(alias.symbol)
+                  && !usedByDefaultGetter(sym, m)
+                then
                   return Some(UnusedSymbol.explicitParams(aliasSym))
               else
-                if ctx.settings.WunusedHas.privates then
+                if ctx.settings.WunusedHas.privates
+                  && !infos.hasRef(alias.symbol)
+                  && !usedByDefaultGetter(sym, m)
+                then
                   return Some(UnusedSymbol.privateMembers)
         else if ctx.settings.WunusedHas.explicits
           && !infos.hasRef(sym)
