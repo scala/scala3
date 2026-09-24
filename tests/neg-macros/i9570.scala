@@ -11,7 +11,7 @@ object Macros {
 
     private def sizeImpl(e: Expr[HList], n:Int)(using qctx:Quotes): Expr[Int] = {
       import quotes.reflect.*
-      e match {
+      (e: @unchecked) match {
         case '{HCons(_,$t)} => // warn (in .check file)
           sizeImpl(t,n+1)
         case '{HNil} => Expr(n)
