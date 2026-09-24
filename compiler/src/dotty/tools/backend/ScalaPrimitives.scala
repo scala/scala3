@@ -119,7 +119,7 @@ class ScalaPrimitives(using @constructorOnly initCtx: Context) {
   /** Initialize the primitive map */
   private def init(using Context): ReadOnlyMap[Symbol, Int] = atPhase(Phases.flattenPhase) {
 
-    val primitives = MutableSymbolMap[Int](512)
+    val primitives = MutableSymbolMap[Int](1024)
 
     /** Add a primitive operation to the map */
     def addPrimitive(s: Symbol, code: Int): Unit = {

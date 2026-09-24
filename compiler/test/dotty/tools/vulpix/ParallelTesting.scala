@@ -16,6 +16,7 @@ import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Random, Try, Using}
 import scala.util.Properties.{isJavaAtLeast, javaSpecVersion}
+import scala.util.control.NonFatal
 import dotc.{Compiler, Driver}
 import dotty.tools.dotc.CoverageSupport
 import dotc.core.Contexts.*
@@ -311,7 +312,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
               case None => onSuccess(testSource, reporters, logger)
             }
           case _ =>
-      catch case ex: Throwable =>
+      catch case NonFatal(ex) =>
         echo(s"Exception thrown onComplete (probably by a reporter) in $testSource: ${ex.getClass}")
         Try(ex.printStackTrace())
           .recover{ _ =>
@@ -483,7 +484,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     protected def tryCompile(testSource: TestSource)(op: => Unit): Unit =
       try op
       catch
-        case e: Throwable =>
+        case NonFatal(e) =>
           // if an exception is thrown during compilation, the complete test
           // run should fail
           failTestSource(testSource)
@@ -759,6 +760,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         val logProgress = !Properties.isRunByCI && sourceCount > 1 && !suppressAllOutput
         val start = System.currentTimeMillis()
         if logProgress then
+          realStdout.println(s"Testing ${Console.BOLD}${Console.BLUE}${filteredSources.head.name}${Console.RESET}")
           timer.schedule((() => updateProgressMonitor(start)): TimerTask, 100/*ms*/, 200/*ms*/)
 
         val eventualResults = for target <- filteredSources yield
@@ -827,9 +829,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] =
       lazy val (expected, expCount) = getWarnMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
-      lazy val obtCount = reporters.foldLeft(0)(_ + _.warningCount)
       lazy val diagnostics = reporters.flatMap(_.diagnostics.toSeq.sortBy(_.pos.line))
-      lazy val (unfulfilled, unexpected) = getMissingExpectedWarnings(expected, diagnostics.iterator.filter(_.level >= WARNING))
+      lazy val (unfulfilled, unexpected) = getMissingExpectedWarnings(expected, diagnostics.iterator)
+      lazy val obtCount = expCount - unfulfilled.length + unexpected.length
       lazy val messages = diagnostics.map(d => s" at ${d.pos.line + 1}: ${d.message}")
       def showLines(title: String, lines: Seq[String]) = if lines.isEmpty then "" else lines.mkString(s"$title\n", "\n", "")
       def hasMissingAnnotations = unfulfilled.nonEmpty || unexpected.nonEmpty
@@ -1206,6 +1208,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       shouldSuppressOutput: Boolean = shouldSuppressOutput): CompilationTest =
         CompilationTest(targets, times, shouldDelete, threadLimit, shouldFail, shouldSuppressOutput)
 
+    def name: String =
+      targets.headOption.map(_.name).getOrElse("???")
+
     /** Creates a "pos" test run, which makes sure that all tests pass
      *  compilation without generating errors and that they do not crash the
      *  compiler
@@ -1366,9 +1371,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     /** Builds a `CompilationTest` which keeps the generated output files
      *
-     *  This is needed for tests like `tastyBootstrap` which relies on first
-     *  compiling a certain part of the project and then compiling a second
-     *  part which depends on the first
+     *  This is needed for tests like idempotency tests that rely on checking output files.
      */
     def keepOutput: CompilationTest =
       new CompilationTest(targets, times, false, threadLimit, shouldFail, shouldSuppressOutput)
@@ -1421,11 +1424,12 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     def aggregateTests(tests: CompilationTest*): CompilationTest =
       assert(tests.nonEmpty)
       def aggregate(test1: CompilationTest, test2: CompilationTest) =
+        require(test1.name == test2.name, s"can't combine tests that have different names (${test1.name} ${test2.name})")
         require(test1.times == test2.times, "can't combine tests that are meant to be benchmark compiled")
         require(test1.shouldDelete == test2.shouldDelete, "can't combine tests that differ on deleting output")
         require(test1.shouldFail == test2.shouldFail, "can't combine tests that have different expectations on outcome")
         require(test1.shouldSuppressOutput == test2.shouldSuppressOutput, "can't combine tests that both suppress and don't suppress output")
-        test1.copy(test1.targets ++ test2.targets) // what if thread limit differs? currently threads are limited on aggregate only
+        test1.copy(test1.targets ++ test2.targets)
       tests.reduce(aggregate)
   end CompilationTest
 
@@ -1510,7 +1514,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     val targetDir = new JFile(outDir, sourceDir.getName)
     targetDir.mkdirs()
 
-    val target = JointCompilationSource(s"compiling '$f' in test '$testGroup'", randomized, flags, targetDir)
+    val target = JointCompilationSource(testGroup.name, randomized, flags, targetDir)
     new CompilationTest(target)
   }
 
@@ -1524,7 +1528,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     targetDir.mkdirs()
     assert(targetDir.exists, s"couldn't create target directory: $targetDir")
 
-    val target = JointCompilationSource(s"$testName from $testGroup", files.map(new JFile(_)).toArray, flags, targetDir)
+    val target = JointCompilationSource(testGroup.name, files.map(new JFile(_)).toArray, flags, targetDir)
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(target)

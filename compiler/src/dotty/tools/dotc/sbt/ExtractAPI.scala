@@ -88,7 +88,7 @@ class ExtractAPI extends Phase {
       val sourceFile = cls.source
       if sourceFile.exists && cls.isDefinedInCurrentRun then
         recordNonLocalClass(cls, sourceFile, cb)
-    ctx.run.nn.asyncTasty.foreach(_.signalAPIComplete())
+    ctx.run.nn.asyncTasty.foreach(_.signalAPISent())
 
   private def recordNonLocalClass(cls: Symbol, sourceFile: SourceFile, cb: interfaces.IncrementalCallback)(using Context): Unit =
     def registerProductNames(fullClassName: String, binaryClassName: String) =
@@ -548,6 +548,8 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
         else
           tp.prefix
         api.Projection.of(apiType(prefix), sym.name.toString)
+      case FlexibleType(hi) =>
+        apiType(hi)
       case AppliedType(tycon, args) =>
         def processArg(arg: Type): api.Type = arg match {
           case arg @ TypeBounds(lo, hi) => // Handle wildcard parameters
@@ -627,8 +629,6 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
       case tp: OrType =>
         val s = combineApiTypes(apiType(tp.tp1), apiType(tp.tp2))
         withMarker(s, orMarker)
-      case tp: FlexibleType =>
-        apiType(tp.underlying)
       case ExprType(resultType) =>
         withMarker(apiType(resultType), byNameMarker)
       case MatchType(bound, scrut, cases) =>

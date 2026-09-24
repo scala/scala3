@@ -17,7 +17,6 @@ import typer.ProtoTypes.*
 import typer.ForceDegree
 import typer.Inferencing.*
 import typer.IfBottom
-import reporting.TestingReporter
 import Annotations.Annotation
 import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed}
 import CaptureSet.{IdentityCaptRefMap, VarState}
@@ -32,7 +31,9 @@ object TypeOps:
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
    *  for what this means.
    */
-  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol)(using Context): Type = ctx.handleRecursive("checking 'as seen from' for", () => i"$tp from $pre and $cls"):
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol)(using Context): Type = ctx.handleRecursive("checking 'as seen from' for", tp):
+    // we only include 'tp' in the handleRecursive details because if we make it a fancy display,
+    // the implementing closure is responsible for ~0.5% of all compiler allocations
     pre match {
       case pre: QualSkolemType =>
         // When a selection has an unstable qualifier, the qualifier type gets

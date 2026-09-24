@@ -52,7 +52,7 @@ import cc.{Setup, CheckCaptures, isRetainsLike, derivesFromCapSet}
 import config.MigrationVersion
 import dotty.tools.dotc.core.Mode.Interactive
 import transform.CheckUnused.withOriginalName
-import dotty.tools.dotc.printing.Formatting
+import dotty.tools.dotc.printing.Formatting.hl
 
 import scala.annotation.{unchecked as _, *}
 import dotty.tools.dotc.util.chaining.*
@@ -1183,7 +1183,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     record("typedThis")
     val res = assignType(tree)
     if res.tpe.typeSymbol.name.isTopLevelPackageObjectName then
-      report.error(em"Top-level definitions cannot refer to ${Formatting.hl("this")}", tree)
+      report.error(em"Top-level definitions cannot refer to ${hl("this")}", tree)
     res
   }
 
@@ -1358,8 +1358,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if (untpd.isWildcardStarArg(tree)) {
 
       def fromRepeated(pt: Type): Type = pt match
-        case pt: FlexibleType =>
-          pt.derivedFlexibleType(fromRepeated(pt.hi))
+        case pt @ FlexibleType(hi) =>
+          pt.derivedFlexibleType(fromRepeated(hi))
         case _ =>
           if ctx.mode.isQuotedPattern then
             // FIXME(#8680): Quoted patterns do not support Array repeated arguments
@@ -1684,8 +1684,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     val result =
       if tree.elsep.isEmpty then
-        val thenp1 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
+        val thenp0 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
         val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
+        // Discard a `then` value that only *conforms* to `Unit` (e.g. a Java
+        // `FlexibleType[Unit]`, as returned by `Map[K, Unit].put`) so the branch is
+        // actually `Unit`. Otherwise `assignType(If)`'s lub (used when the tree is
+        // unpickled or rebuilt) recomputes the `if` to `lub(FlexibleType[Unit], Unit) =
+        // FlexibleType[Unit]` and disagrees with the `Unit` hardcoded here, breaking TASTY
+        // pickling round-trips. (The previous `FlexibleType` representation hid this: being
+        // a freshly-allocated proxy rather than a hash-consed `AppliedType`, it failed the
+        // `eq` check in `TypedTreeCopier.If`, forcing that copier to recompute the `if` to
+        // the same lub the unpickler uses.)
+        val thenp1 =
+          if FlexibleType.isInstance(thenp0.tpe.widenExpr)
+          then tpd.Block(thenp0 :: Nil, tpd.unitLiteral.withSpan(tree.span.endPos))
+          else thenp0
         cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
       else
         val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
@@ -1999,8 +2012,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val t1 = instantiatableTypeVar(tp.tp1)
         if t1.exists then t1
         else instantiatableTypeVar(tp.tp2)
-      case tp: FlexibleType =>
-        instantiatableTypeVar(tp.hi)
+      case FlexibleType(hi) =>
+        instantiatableTypeVar(hi)
       case tp: TypeVar if isConstrainedByFunctionType(tp) =>
         // Only instantiate if the type variable is constrained by function types
         tp
@@ -2015,8 +2028,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case SAMType(_, _) => true
         case tp: AndOrType =>
           containsFunctionType(tp.tp1) || containsFunctionType(tp.tp2)
-        case tp: FlexibleType =>
-          containsFunctionType(tp.hi)
         case _ => false
       containsFunctionType(bounds.lo) || containsFunctionType(bounds.hi)
 
@@ -3156,10 +3167,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if seen(p.name) then
             report.error(em"parameter name must be distinct from deprecated name", p.srcPos)
           for annot <- p.symbol.getAnnotation(defn.DeprecatedNameAnnot) do
-            val nm = annot.argumentConstantString(0).map(_.toTermName).getOrElse(nme.NO_NAME)
-            if seen(nm) then
-              report.error(em"deprecated parameter name must be distinct from other names", annot.tree.srcPos)
-            seen.addOne(nm)
+            if annot.hasExplicitArgument(0) then
+              annot.argumentConstantStringOrSymbol(0) match
+                case Some(nm0) =>
+                  val nm = nm0.toTermName
+                  if seen(nm) then
+                    report.error(em"deprecated parameter name must be distinct from other names", annot.tree.srcPos)
+                  seen.addOne(nm)
+                case None =>
+                  report.error(em"the first argument of ${hl("@deprecatedName")} must be a constant", annot.tree.srcPos)
           seen.addOne(p.name)
       checkNoForwardDependencies(vparams)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
@@ -4676,6 +4692,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // is a temporary hack to keep projects compiling that would fail otherwise due to
             // searching more arguments to instantiate implicits (PR #23532). A failing project
             // is described in issue #23609.
+            @nowarn("msg=unexpected behavior") // will go away once this workaround is unneeded
             def tryConstrainResult(pt: Type): Boolean =
               try constrainResult(tree.symbol, wtp, pt)
               catch case ex: TyperState.BadTyperStateAssertion => false
@@ -4727,22 +4744,28 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             case _ => propagatedFailure(args)
           case Nil => NoType
 
-        /** Reports errors for arguments of `appTree` that have a `SearchFailureType`.
+        /** Reports errors for arguments that have a `SearchFailureType`.
          */
         def issueErrors(fun: Tree, args: List[Tree], failureType: Type): Tree =
+          // If there are several arguments, some arguments might already
+          // have influenced the context, binding variables, but later ones
+          // might fail. In that case the constraint and instantiated variables
+          // need to be reset.
+          ctx.typerState.resetTo(saved)
+
           val errorType = failureType match
             case ai: AmbiguousImplicits => ai.asNested
             case tp => tp
           untpd.Apply(fun, args)
             .withType(errorType)
-            .tap: res =>
+            .tap: app =>
               wtp.paramNames.lazyZip(wtp.paramInfos).lazyZip(args).foreach: (paramName, formal, arg) =>
                 arg.tpe match
                 case failure: SearchFailureType =>
                   val methodStr = err.refStr(methPart(fun).tpe)
                   val paramStr = implicitParamString(paramName, methodStr, fun)
                   val paramSym = fun.symbol.paramSymss.flatten.find(_.name == paramName)
-                  val paramSymWithMethodCallTree = paramSym.map((_, res))
+                  val paramSymWithMethodCallTree = paramSym.map((_, app))
                   val msg = missingArgMsg(arg, formal, paramStr, paramSymWithMethodCallTree)
                   report.error(msg, tree.srcPos.endPos)
                 case _ =>
@@ -4750,12 +4773,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val args = implicitArgs(wtp.paramInfos, 0, pt)
         val failureType = propagatedFailure(args)
         if failureType.exists then
-          // If there are several arguments, some arguments might already
-          // have influenced the context, binding variables, but later ones
-          // might fail. In that case the constraint and instantiated variables
-          // need to be reset.
-          ctx.typerState.resetTo(saved)
-
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
           if hasDefaultParams && !failureType.isInstanceOf[AmbiguousImplicits] then
