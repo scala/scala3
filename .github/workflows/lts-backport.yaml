@@ -29,7 +29,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@95e5b1029b6b86e7bac033ee44a0697d8a527d2d # v8.1.1
-      - uses: VirtusLab/scala-cli-setup@8db5313925605c20e292348c1749e80dac7eed0f # v1.16.0
+      - uses: VirtusLab/scala-cli-setup@2218d26d90fb8440c4cc125d89f787bcf711de56 # v1.17.0
       - run: scala-cli ./project/scripts/addToBackportingProject.scala -- ${{ github.sha }}
         env:
           GRAPHQL_API_TOKEN: ${{ steps.app-token.outputs.token }}
