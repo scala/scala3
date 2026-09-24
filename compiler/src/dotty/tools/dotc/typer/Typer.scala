@@ -10,6 +10,7 @@ import Constants.*
 import StdNames.*
 import Scopes.*
 import Denotations.*
+import PartialAssignment.*
 import ProtoTypes.*
 import Contexts.*
 import Symbols.*

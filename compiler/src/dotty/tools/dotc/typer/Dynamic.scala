@@ -20,6 +20,7 @@ import transform.ValueClasses
 import ErrorReporting.*
 import reporting.*
 import inlines.Inlines
+import PartialAssignment.*
 
 object Dynamic {
   private def isDynamicMethod(name: Name): Boolean =
