@@ -1,4 +1,4 @@
-//> using options  -explain
+//> using options  -explain -deprecation
 
 def test1 =
   synchronized { // warn
@@ -127,7 +127,7 @@ def test26 =
   hashCode() // warn
 
 def test27 =
-  1.hashCode()// not an error (should be? probably not)
+  1.hashCode() // warn: Any.hashCode is deprecated under explicit nulls
 
 def test28 =
   import MyLib.*
