@@ -72,7 +72,12 @@ class SignatureHelpTest {
   }
 
   @Test def typeParameterIndex: Unit = {
-    val mapSignature = S("map", List(List(TP("B")), List(P("f", "Int => B"))), Some("List[B]"))
+    val mapSignature = S(
+      "map",
+      List(List(TP("B")), List(P("f", "Int => B", Some("the function to apply to each element")))),
+      Some("List[B]"),
+      Some("Returns a list of the results of applying `f` to each element of this list, in\n  order.")
+    )
     code"""object O {
              List(1, 2, 3).map[$m1]($m2)
            }"""
