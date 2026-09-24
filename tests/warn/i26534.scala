@@ -23,3 +23,7 @@ class E:
   def h =
     x = x + 1
     x
+
+class F:
+  def f(using s: String) = println(42) // warn
+  def g(using @unused s: String) = println(42)

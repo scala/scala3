@@ -18,3 +18,7 @@
 20 |  @unused private var x = 27 // warn unused unused, x is read and assigned
    |                      ^
    |                      useless @unused annotation on variable x
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:28:14 ---------------------------------------------------------
+28 |  def f(using s: String) = println(42) // warn
+   |              ^
+   |              unused implicit parameter

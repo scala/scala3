@@ -751,7 +751,7 @@ object CheckUnused:
         val dd = defn
            m.isDeprecated
         || m.is(Synthetic)
-        || m.hasAnnotation(dd.UnusedAnnot)          // param of unused method
+        || m.isAnnotated // param of unused method
         || sym.name.is(ContextFunctionParamName)    // a ubiquitous parameter
         || sym.info.dealias.typeSymbol.match        // more ubiquity
            case dd.DummyImplicitClass | dd.SubTypeClass | dd.SameTypeClass => true
@@ -762,6 +762,7 @@ object CheckUnused:
         || sym.info.isSingleton // DSL friendly
         || sym.info.dealias.isInstanceOf[RefinedType] // can't be expressed as a context bound
         || sym.isErased // erased param is unused by design
+      var w: Option[UnusedSymbol] = None
       if ctx.settings.WunusedHas.implicits
         && !infos.hasRef(sym)
         && !infos.skip(m)
@@ -779,9 +780,14 @@ object CheckUnused:
               && !infos.refs(alias.symbol)
               && !usedByDefaultGetter(sym, m)
             then
-              warnAt(pos)(UnusedSymbol.implicitParams(aliasSym))
+              w = Some(UnusedSymbol.implicitParams(aliasSym))
         else if !usedByDefaultGetter(sym, m) then
-          warnAt(pos)(UnusedSymbol.implicitParams(sym))
+          w = Some(UnusedSymbol.implicitParams(sym))
+      w match
+        case Some(w) =>
+          if !sym.isAnnotated then warnAt(pos)(w)
+        case None =>
+          if sym.isAnnotated && ctx.settings.WunusedHas.unused then warnAt(pos)(UnusedSymbol.uselessSuppression(sym))
 
     def checkLocal(sym: Symbol, pos: SrcPos) =
       var w: Option[UnusedSymbol] = None
