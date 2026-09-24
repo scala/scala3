@@ -2158,6 +2158,7 @@ object Build {
       excludeDependencies += "org.scala-lang" %% "scala3-library",
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
       scalacOptions -= "-Yexplicit-nulls",
+      Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Raw,
     ).
     settings(
       ideTestsCompilerVersion := (`scala3-compiler-nonbootstrapped` / version).value,
