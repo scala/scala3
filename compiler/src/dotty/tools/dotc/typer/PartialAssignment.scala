@@ -51,9 +51,7 @@ private[typer] final class PossiblyHoistedValue private (representation: tpd.Tre
 
   /** Returns a tree representing the value of `self` along with its hoisted definition, if any. */
   def valueAndDefinition(using Context): (tpd.Tree, Option[tpd.ValDef]) =
-    definition match
-      case Some(d) => (tpd.Ident(d.namedType).withSpan(representation.span), Some(d))
-      case _ => (representation, None)
+    (value, definition)
 
 object PossiblyHoistedValue:
 
@@ -71,7 +69,7 @@ private[typer] sealed abstract class LValue:
   def locals: List[tpd.ValDef]
 
   /** Returns a tree computing the assignment of `rhs` to this lvalue. */
-  def formAssignment(rhs: untpd.Tree)(using Context): untpd.Tree
+  def genAssignment(rhs: untpd.Tree)(using Context): untpd.Tree
 
 end LValue
 
@@ -87,9 +85,8 @@ private[typer] final case class SimpleLValue(expression: tpd.Tree) extends LValu
   def locals: List[tpd.ValDef] =
     List()
 
-  def formAssignment(rhs: untpd.Tree)(using Context): untpd.Tree =
-    val s = untpd.Assign(untpd.TypedSplice(expression), rhs)
-    untpd.TypedSplice(s.withType(defn.UnitType))
+  def genAssignment(rhs: untpd.Tree)(using Context): untpd.Tree =
+    untpd.Assign(untpd.TypedSplice(expression), rhs)
 
 end SimpleLValue
 
@@ -104,9 +101,9 @@ private[typer] final case class ApplyLValue(
 ) extends LValue:
 
   val locals: List[tpd.ValDef] =
-    function.locals ++ (arguments.flatMap { (v) => v.definition })
+    function.locals ++ arguments.flatMap(_.definition)
 
-  def formAssignment(rhs: untpd.Tree)(using Context): untpd.Tree =
+  def genAssignment(rhs: untpd.Tree)(using Context): untpd.Tree =
     val s = function.expanded
     val t = arguments.map((a) => untpd.TypedSplice(a.value)) :+ rhs
     untpd.Apply(s, t)

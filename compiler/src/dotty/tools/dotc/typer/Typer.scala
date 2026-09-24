@@ -1473,40 +1473,40 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   /** Returns a builder for making trees representing assignments to `lhs`. */
-  def formPartialAssignmentTo(
+  def genPartialAssignmentTo(
       lhs: untpd.Tree, pt: Type, isSingleAssignment: Boolean
   )(using Context): PartialAssignment[LValue] =
     lhs match
-      case lhs @ Apply(f, as) =>
+      case lhs @ Apply(fn, args) =>
         // LHS is an application `f(a1, ..., an)` that desugars to `f.update(a1, ..., an, rhs)`.
-        val arguments = as.map((a) => PossiblyHoistedValue(typed(a), isSingleAssignment))
-        val callee = ApplyLValue.Callee(typed(f), nme.update, isSingleAssignment)
+        val arguments = args.map(a => PossiblyHoistedValue(typed(a), isSingleAssignment))
+        val callee = ApplyLValue.Callee(typed(fn), nme.update, isSingleAssignment)
         val lvalue = ApplyLValue(callee, arguments)
-        PartialAssignment(lvalue) { (l, r, _) => l.formAssignment(r) }
+        PartialAssignment(lvalue) { (l, r, _) => l.genAssignment(r) }
 
-      case untpd.TypedSplice(Apply(MaybePoly(Select(fn, app), tas), as)) if app == nme.apply =>
-        if tas.isEmpty then
+      case untpd.TypedSplice(Apply(MaybePoly(Select(fn, app), targs), args)) if app == nme.apply =>
+        if targs.isEmpty then
           // No type arguments: fall back to a regular update.
-          val arguments = as.map((a) => PossiblyHoistedValue(a, isSingleAssignment))
+          val arguments = args.map(a => PossiblyHoistedValue(a, isSingleAssignment))
           val callee = ApplyLValue.Callee(fn, nme.update, isSingleAssignment)
           val lvalue = ApplyLValue(callee, arguments)
-          PartialAssignment(lvalue) { (l, r, _) => l.formAssignment(r) }
+          PartialAssignment(lvalue) { (l, r, _) => l.genAssignment(r) }
         else
           // Type arguments are present; the LHS requires a type application.
           val s: untpd.Tree = untpd.Select(untpd.TypedSplice(fn), nme.update)
-          val t = untpd.TypeApply(s, tas.map((ta) => untpd.TypedSplice(ta)))
-          val arguments = as.map((a) => PossiblyHoistedValue(a, isSingleAssignment))
+          val t = untpd.TypeApply(s, targs.map(ta => untpd.TypedSplice(ta)))
+          val arguments = args.map(a => PossiblyHoistedValue(a, isSingleAssignment))
           val callee = ApplyLValue.Callee(typed(t), isSingleAssignment)
           val lvalue = ApplyLValue(callee, arguments)
-          PartialAssignment(lvalue) { (l, r, _) => l.formAssignment(r) }
+          PartialAssignment(lvalue) { (l, r, _) => l.genAssignment(r) }
 
       case _ =>
-        formPartialAssignmentToNonApply(lhs, isSingleAssignment)
+        genPartialAssignmentToNonApply(lhs, isSingleAssignment)
 
   /** Returns a builder for making trees representing assignments to `lhs`, which isn't a term or
     * type application.
     */
-  def formPartialAssignmentToNonApply(
+  def genPartialAssignmentToNonApply(
       lhs: untpd.Tree, isSingleAssignment: Boolean
   )(using Context): PartialAssignment[LValue] =
     val locked = ctx.typerState.ownedVars
@@ -1526,9 +1526,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       }
 
     /** Returns `true` if `s` is assignable. */
-    def canAssign(s: Symbol) =
-      s.isMutableVar ||
-      ctx.owner.isPrimaryConstructor && !s.is(Method) && s.maybeOwner == ctx.owner.owner ||
+    def canAssign(sym: Symbol) =
+      sym.isMutableVar ||
+      ctx.owner.isPrimaryConstructor && !sym.is(Method) && sym.maybeOwner == ctx.owner.owner ||
       // allow assignments from the primary constructor to class fields
       ctx.owner.name.is(TraitSetterName) || ctx.owner.isStaticConstructor
 
@@ -1537,18 +1537,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      *  the variance check for these variables, which is done at PostTyper. It will be removed
      *  after the variance check.
      */
-    def rememberNonLocalAssignToPrivate(s: Symbol) = adapted match
-      case Select(q, _) if s.is(Private, butNot = Local) && !s.isAccessPrivilegedThisType(q.tpe) =>
-        s.addAnnotation(Annotation(defn.AssignedNonLocallyAnnot, adapted.span))
-      case _ => ()
+    def rememberNonLocalAssignToPrivate(sym: Symbol) = adapted match
+      case Select(qual, _)
+        if sym.is(Private, butNot = Local) && !sym.isAccessPrivilegedThisType(qual.tpe) =>
+        sym.addAnnotation(Annotation(defn.AssignedNonLocallyAnnot, adapted.span))
+      case _ =>
 
     core match
       case Apply(f, _) if f.symbol.is(ExtensionMethod) =>
-        formPartialAssignmentToExtensionApply(core, isSingleAssignment)
+        genPartialAssignmentToExtensionApply(core, isSingleAssignment)
           .getOrElse(reassignmentToVal())
 
       case _ => core.tpe match
-        case r: TermRef if isSingleAssignment || !mustFormSetter(adapted) =>
+        case r: TermRef if isSingleAssignment || !mustgenSetter(adapted) =>
           val v = core.denot.suchThat(!_.is(Method))
           if canAssign(v.symbol) then
             rememberNonLocalAssignToPrivate(v.symbol)
@@ -1576,12 +1577,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 reassignmentToVal()
 
         case r: TermRef =>
-          val (setter, locals) = formSetter(adapted, isExtensionReceiver=false, isSingleAssignment)
+          val (setter, locals) = genSetter(adapted, isExtensionReceiver=false, isSingleAssignment)
           val lvalue = ApplyLValue(ApplyLValue.Callee.Untyped(setter, locals), List())
-          PartialAssignment(lvalue) { (l, r, _) => l.formAssignment(r) }
+          PartialAssignment(lvalue) { (l, r, _) => l.genAssignment(r) }
 
         case TryDynamicCallType =>
-          formPartialDynamicAssignment(lhs)
+          genPartialDynamicAssignment(lhs)
 
         case _ =>
           reassignmentToVal()
@@ -1589,16 +1590,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   /** Returns a builder for making trees representing assignments to `lhs`, which denotes a setter
    *  defined in an extension.
    */
-  def formPartialAssignmentToExtensionApply(
+  def genPartialAssignmentToExtensionApply(
       lhs: Tree, isSingleAssignment: Boolean
   )(using Context): Option[PartialAssignment[LValue]] =
-    val (setter, locals) = formSetter(lhs, isExtensionReceiver=true, isSingleAssignment)
+    val (setter, locals) = genSetter(lhs, isExtensionReceiver=true, isSingleAssignment)
     if setter.isEmpty then None else
       val lvalue = ApplyLValue(ApplyLValue.Callee.Untyped(setter, locals), List())
-      Some(PartialAssignment(lvalue) { (l, r, _) => l.formAssignment(r) })
+      Some(PartialAssignment(lvalue) { (l, r, _) => l.genAssignment(r) })
 
   /** Returns the setter corresponding to `lhs`, which is a getter, along hoisted definitions. */
-  def formSetter(
+  def genSetter(
       lhs: Tree, isExtensionReceiver: Boolean, isSingleAssignment: Boolean
   )(using Context): (untpd.Tree, List[ValDef]) =
     def recurse(lhs: Tree, locals: List[ValDef]): (untpd.Tree, List[ValDef]) =
@@ -1647,7 +1648,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     recurse(lhs, List())
 
   /** Returns whether `t` should be desugared as a setter to form a partial assignment. */
-  def mustFormSetter(t: tpd.Tree)(using Context) =
+  def mustgenSetter(t: tpd.Tree)(using Context) =
     t match
       case f @ Ident(_) => f.tpe match
         case TermRef(NoPrefix, _) => false
@@ -1664,7 +1665,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedMultipleAssign(lhs, tree.rhs)
       case _ =>
         // Simple assignment.
-        val assignmentBuilder = formPartialAssignmentTo(tree.lhs, pt, isSingleAssignment=true)
+        val assignmentBuilder = genPartialAssignmentTo(tree.lhs, pt, isSingleAssignment=true)
         val locals = assignmentBuilder.lhs.locals.map((d) => untpd.TypedSplice(d))
         if locals.isEmpty then
           typed(assignmentBuilder(tree.rhs, pt))
@@ -1690,7 +1691,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               val s = PartialAssignment(SimpleLValue(e)) { (l, _, _) => l.expression }
               assignmentBuilders.append(s)
             case _ =>
-              val s = formPartialAssignmentTo(l, r, false)
+              val s = genPartialAssignmentTo(l, r, false)
               statements.appendAll(s.lhs.locals.map((d) => untpd.TypedSplice(d)))
               assignmentBuilders.append(s)
 

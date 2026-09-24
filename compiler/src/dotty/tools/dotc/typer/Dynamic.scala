@@ -151,19 +151,19 @@ trait Dynamic {
     *
     * @param lhs The target of the assignment.
     */
-  def formPartialDynamicAssignment(
+  def genPartialDynamicAssignment(
       lhs: untpd.Tree
   )(using Context): PartialAssignment[SimpleLValue] =
     lhs match
       case s @ Select(q, n) if !isDynamicMethod(n) =>
-        formPartialDynamicAssignment(q, n, s.span, Nil)
+        genPartialDynamicAssignment(q, n, s.span, Nil)
       case TypeApply(s @ Select(q, n), targs) if !isDynamicMethod(n) =>
-        formPartialDynamicAssignment(q, n, s.span, Nil)
+        genPartialDynamicAssignment(q, n, s.span, Nil)
       case _ =>
         val e = errorTree(lhs, ReassignmentToVal(lhs.symbol.name, NoType))
         PartialAssignment(SimpleLValue(e)) { (l, _, _) => l.expression }
 
-  def formPartialDynamicAssignment(
+  def genPartialDynamicAssignment(
       q: untpd.Tree, n: Name, s: Span, targs: List[untpd.Tree]
   )(using Context): PartialAssignment[SimpleLValue] =
     val v = typed(coreDynamic(q, nme.updateDynamic, n, s, targs))
