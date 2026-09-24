@@ -4,7 +4,6 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.opt.{GlobalOptimizer, LocalOptimizer}
 import dotty.tools.dotc.ast.Trees.PackageDef
 import dotty.tools.dotc.ast.tpd.{EmptyTree, Tree, TypeDef, ValDef}
-import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Contexts.{Context, atPhase}
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.core.Phases.{Phase, sbtExtractDependenciesPhase}
@@ -14,17 +13,18 @@ import dotty.tools.dotc.core.TypeError
 import dotty.tools.dotc.core.tasty.TastyUnpickler
 import dotty.tools.dotc.interfaces.CompilerCallback
 import dotty.tools.dotc.profile.ProfiledThreadPool
-import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
+import dotty.tools.dotc.report
 import dotty.tools.dotc.sbt.ExtractDependencies
+import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.io.FileWriters
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.tree.ClassNode
 
-import java.util.concurrent.Future
+import java.util.concurrent.{Executor, ExecutorService, Future, FutureTask}
 import scala.annotation.constructorOnly
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import org.objectweb.asm.ClassWriter
-import org.objectweb.asm.tree.ClassNode
 
 final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimizer], globalOpt: Option[GlobalOptimizer])(using @constructorOnly initctx: Context):
   // Save the compiler callbacks to avoid having to capture a Context
@@ -40,8 +40,8 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
     initctx.settings.Xdumpclasses.value
   )
   // Let the profiler create an executor in the multithreaded case, since individual threads need to be profiled
-  private val executor = initctx.settings.YbackendParallelism.value match
-    case 1 => SynchronousExecutorService()
+  private val executor: Executor = initctx.settings.YbackendParallelism.value match
+    case 1 => _.run()
     case n =>
       // The thread pool queue is limited in size. When it's full,
       // a new task is executed on the main thread, which provides back-pressure.
@@ -51,7 +51,7 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
       ProfiledThreadPool.newExecutor(ownerPhase, initctx.profiler, n - 1, queueSize, "gen-class-handler")
   // Java's ExecutorService doesn't let us tell whether there is ongoing work, so we must keep track of that ourselves.
   // We anyway need to keep track of the path in order to show it in error messages if something went deeply wrong.
-  private val submittedExecutions = ListBuffer.empty[(Future[Unit], String)]
+  private val submittedExecutions = ListBuffer.empty[(FutureTask[Unit], String)]
   // If we are globally optimizing, we can only emit class nodes to files once we have them all
   private val pendingClassNodes = ListBuffer.empty[(ClassNode, ClassNodeMetadata)]
 
@@ -103,6 +103,9 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
       catch case ex: Exception => report.error(s"Error while emitting $path\n${ex.getMessage}")
     // Finally, once everything is done, we can free resources.
     classfileWriter.close()
+    executor match
+      case pool: ExecutorService => pool.shutdownNow()
+      case _ => ()
   }
 
   // This method MUST NOT take a Context, since it schedules work for concurrent execution
@@ -111,13 +114,14 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
       // We want to release memory for GC as soon as processing is done, even if the Future is still referenced
       val classNodeRef = scala.runtime.ObjectRef(classNode)
       val metadataRef = scala.runtime.ObjectRef(metadata)
-      val future = executor.submit[Unit](() => {
+      val future = FutureTask(() => {
         val serializedClassNode = serializeClassNode(classNodeRef.elem)
         writeSerializedClassNode(classNodeRef.elem, metadataRef.elem, serializedClassNode)
         classNodeRef.elem = null
         metadataRef.elem = null
       })
-      submittedExecutions += ((future, metadata.position.source.path))
+      executor.execute(future)
+      submittedExecutions += (future -> metadata.position.source.path)
   }
 
   private def generateClassNodes(typeDef: TypeDef)(using ctx: Context): List[(ClassNode, ClassNodeMetadata)] = {
