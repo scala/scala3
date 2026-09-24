@@ -21,7 +21,8 @@ import dotty.tools.io.FileWriters
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.tree.ClassNode
 
-import java.util.concurrent.{Executor, ExecutorService, Future, FutureTask}
+import java.nio.channels.ClosedByInterruptException
+import java.util.concurrent.{ExecutionException, Executor, ExecutorService, Future, FutureTask}
 import scala.annotation.constructorOnly
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -100,7 +101,14 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
     // At this point all we need to do is wait.
     for (submitted, path) <- submittedExecutions do
       try submitted.get()
-      catch case ex: Exception => report.error(s"Error while emitting $path\n${ex.getMessage}")
+      catch case ex: ExecutionException => ex.getCause match
+        case _: ClosedByInterruptException =>
+          throw new InterruptedException()
+        case e: Exception =>
+          report.error(s"Error while emitting $path\n${e.getMessage}")
+          e.printStackTrace()
+        case e =>
+          throw e
     // Finally, once everything is done, we can free resources.
     classfileWriter.close()
     executor match
