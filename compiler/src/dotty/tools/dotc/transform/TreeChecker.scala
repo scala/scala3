@@ -500,7 +500,16 @@ object TreeChecker {
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       assert(tree.isType || ctx.mode.is(Mode.Pattern) && untpd.isWildcardArg(tree) || !needsSelect(tree.typeOpt), i"bad type ${tree.tpe} for $tree # ${tree.uniqueId}")
-      assertDefined(tree)
+      if ctx.erasedTypes || enclosingInlineds.exists(_.symbol.is(Macro)) then
+        // relax the check for macro generated references to primaryConstructor parameters in the class's LocalDummy
+        // - they are moved to primaryConstructor in the Constructors phase anyway and there were issues here with
+        // the sourcecode community-build project and i25159-b based on it.
+        val isPrimaryConsParam = tree.symbol.is(Param) && tree.symbol.maybeOwner.isPrimaryConstructor
+        val isInLocalDummyOfThatClass = ctx.owner.ownersIterator.exists(sym =>
+          sym.isLocalDummy && tree.symbol.maybeOwner.maybeOwner == sym.enclosingClass
+        )
+        if !(isPrimaryConsParam && isInLocalDummyOfThatClass) then assertDefined(tree)
+      else assertDefined(tree)
 
       checkNotRepeated(super.typedIdent(tree, pt))
     }

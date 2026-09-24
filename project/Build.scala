@@ -675,7 +675,6 @@ object Build {
     `scaladoc-js-contributors`,
     `scala3-presentation-compiler`,
     `scala3-presentation-compiler-testcases`,
-    `scala3-language-server`,
     sjsSandbox,
     sjsJUnitTests,
     sjsCompilerTests,
@@ -789,7 +788,7 @@ object Build {
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped` , `scala-library-bootstrapped`,
       `tasty-core-bootstrapped`, `scala3-directives-parser-bootstrapped`, `scala3-compiler-bootstrapped`, `scala3-sbt-bridge-bootstrapped`,
       `scala3-staging`, `scala3-tasty-inspector`, `scala-library-sjs`, `scala3-library-sjs`,
-      scaladoc, `scala3-repl`, `scala3-presentation-compiler`, `scala3-language-server`)
+      scaladoc, `scala3-repl`, `scala3-presentation-compiler`)
     .settings(
       name          := "scala3-bootstrapped",
       moduleName    := "scala3-bootstrapped",
@@ -2156,39 +2155,6 @@ object Build {
       Compile / scalacOptions ++= Seq(
         "-sourceroot", ((Compile / scalaSource).value).getAbsolutePath
       ),
-    )
-
-  lazy val `scala3-language-server` = project.in(file("language-server")).
-    dependsOn(`scala3-compiler-bootstrapped`, `scala3-repl`).
-    settings(commonBootstrappedSettings).
-    settings(
-      libraryDependencies ++= Seq(
-        Dependencies.lsp4j,
-        Dependencies.jacksonDatabind
-      ),
-      // Exclude the dependency that is resolved transitively, the stdlib
-      // is a project dependency instead
-      excludeDependencies += "org.scala-lang" %% "scala3-library",
-      javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
-      scalacOptions -= "-Yexplicit-nulls",
-      Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Raw,
-    ).
-    settings(
-      ideTestsCompilerVersion := (`scala3-compiler-nonbootstrapped` / version).value,
-      ideTestsCompilerArguments := Seq(),
-      ideTestsDependencyClasspath := Def.uncached {
-        val scalaLib = (`scala-library-bootstrapped` / Compile / classDirectory).value
-        scalaLib :: Nil
-      },
-      Test / buildInfoKeys := Seq[BuildInfoKey](
-        BuildInfoKey(ideTestsCompilerVersion),
-        BuildInfoKey(ideTestsCompilerArguments),
-        BuildInfoKey(ideTestsDependencyClasspath),
-      ),
-      Test / buildInfoPackage := "dotty.tools.languageserver.util.server",
-      BuildInfoPlugin.buildInfoScopedSettings(Test),
-      BuildInfoPlugin.buildInfoDefaultSettings,
-      bspEnabled := enableBspAllProjects,
     )
 
   /** Common settings for sjsSandbox and sjsJUnitTests */

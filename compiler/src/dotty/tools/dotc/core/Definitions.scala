@@ -1201,6 +1201,7 @@ class Definitions {
   @tu lazy val NoInlineAnnot: ClassSymbol = requiredClass("scala.noinline")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
+  @tu lazy val JdkInternalValueBasedAnnot: Symbol = getClassIfDefined("jdk.internal.ValueBased")
 
   // Initialization annotations
   @tu lazy val InitModule: Symbol = requiredModule("scala.annotation.init")
