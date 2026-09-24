@@ -1702,15 +1702,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val d = tpd.SyntheticValDef(TempResultName.fresh(), rhs).withSpan(rhs.span)
         statements.append(untpd.TypedSplice(d))
 
+        // If the RHS is a tuple, use the exact positions of its components
+        val rhsPositions = rhs match
+          case Apply(TypeApply(Select(Ident(id), nme.apply), _), rhsArgs) if id.toTypeName == defn.TupleType(targets.length).nn.name =>
+            rhsArgs.map(_.span)
+          case _ => List.fill(targets.length)(rhs.span)
+
         // Append the assignments.
-        for ((l, rt), i) <- targets.lazyZip(rhsTpes).zipWithIndex do
-          val span = rhs match
-            case Apply(_, rhsArgs) => rhsArgs(i).span
-            case _ => rhs.span
+        for ((l, rt, rpos), i) <- targets.lazyZip(rhsTpes).lazyZip(rhsPositions).zipWithIndex do
           val r = untpd.Select(
             untpd.TypedSplice(tpd.Ident(d.namedType)),
             nme.productAccessorName(i + 1)
-          ).withSpan(span)
+          ).withSpan(rpos)
           statements.append(assignmentBuilders(i)(r, rt))
         typed(untpd.Block(statements.toList, untpd.TypedSplice(unitLiteral)))
 
