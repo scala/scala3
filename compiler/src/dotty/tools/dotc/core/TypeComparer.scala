@@ -3724,7 +3724,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
 
   override def matchReducer = this
 
-  def matchCases(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = {
+  def matchCases(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = ctx.handleRecursive("match cases for", scrut) {
     // a reference for the type parameters poisoned during matching
     // for use during the reduction step
     var poisoned: Set[TypeParamRef] = Set.empty
