@@ -38,6 +38,7 @@ import Denotations.SingleDenotation
 import annotation.threadUnsafe
 
 import scala.annotation.tailrec
+import dotty.tools.dotc.transform.SpecializedEvidence
 
 object Applications {
   import tpd.*
@@ -2765,7 +2766,25 @@ trait Applications extends Compatibility {
           alts.filterConserve(alt =>
             isApplicableMethodRef(alt, args, resultType, keepConstraint = false, ArgMatch.CompatibleCAP)
           )
-
+          
+        def containsSpecializedEvidence(tpe: Type): Boolean = tpe match
+          case mt: MethodType => 
+            val hasEvidence = 
+              mt.isContextualMethod && mt.paramInfos.exists(tp => SpecializedEvidence.unapply(tp.stripAnnots).nonEmpty)
+            if hasEvidence then true else containsSpecializedEvidence(mt.resType)
+          case _ => false 
+          
+        def isSpecializedMethodRef(alt: TermRef): Boolean = 
+          if !alt.symbol.isInlineMethod then false 
+          else containsSpecializedEvidence(alt.widen.stripPoly)
+        
+        def narrowBySpecialization(alts: List[TermRef], args: List[Tree]): List[TermRef] = 
+          if args.forall(tree => isFullyDefined(tree.tpe, ForceDegree.all)) && 
+            alts.exists(isSpecializedMethodRef) then 
+            alts.filterConserve(alt => alt.symbol.isInlineMethod)
+          else 
+            alts
+        
         record("resolveOverloaded.FunProto", alts.length)
         val alts1 = narrowBySize(alts)
         overload.println(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
@@ -2778,7 +2797,12 @@ trait Applications extends Compatibility {
           else
             record("resolveOverloaded.narrowedByShape", alts2.length)
             pretypeArgs(alts2, pt)
-            narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)), resultType)
+            val typedArgs = pt.typedArgs(normArg(alts2, _, _))
+            val alts3 = narrowByTrees(alts2, typedArgs, resultType)
+            if isDetermined(alts3) then alts3 
+            else
+              record("resolvedOverloaded.narrowBySpecialization", alts3.length)
+              narrowBySpecialization(alts3, typedArgs)
 
       case pt @ PolyProto(targs1, pt1) =>
         val alts1 = alts.filterConserve(pt.canInstantiate)
