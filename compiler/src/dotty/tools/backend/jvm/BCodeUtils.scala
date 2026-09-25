@@ -27,7 +27,6 @@ import org.objectweb.asm.Opcodes.*
 import org.objectweb.asm.commons.CodeSizeEvaluator
 import org.objectweb.asm.tree.*
 import org.objectweb.asm.tree.analysis.*
-import org.objectweb.asm.{Label, Type}
 import org.objectweb.asm.{ClassWriter, Label, Type}
 
 object BCodeUtils {
