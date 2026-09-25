@@ -389,7 +389,9 @@ object Trees {
         else {
           val realName = srcName.stripModuleClassSuffix.lastPart
           if realName.startsWith("given_") then
-            if sourcePos.lineContent.substring(sourcePos.column).startsWith(realName.toString) then
+            val line = sourcePos.lineContent
+            val col = sourcePos.column
+            if col < line.length && line.substring(col).startsWith(realName.toString) then
               Span(point, point + realName.length, point)
             else
               Span(point)
