@@ -45,7 +45,9 @@ final class GenBCode extends Phase:
           val heuristics = new InlinerHeuristics(byteCodeRepository, callGraph, knownBTypes, optSettings)
           val globalOpt = new GlobalOptimizer(callGraph, classBTypeCache, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
           val localOpt = new LocalOptimizer(callGraph, globalOpt, knownBTypes, bTypesFromClassfile, optSettings)
-          CodeGen(this, bc, Some(localOpt), Option.when(ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations)(globalOpt))
+          val globalOptOption = Option.when(ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations)(globalOpt)
+          val localOptOption = Option.when(ctx.settings.optAnyEnabled)(localOpt)
+          CodeGen(this, bc, localOptOption, globalOptOption)
         else
           val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, None)
           val knownBTypes = new KnownBTypes(bTypeLoader)
