@@ -1,11 +1,20 @@
 package foo
 
-class Bippy // warn
+class Bippy: // warn
+  def foo = 1
 
-class BIPPY
+class BIPPY:
+  def foo = 2
 
-object Dingo // warn
-object DINGO
+object Dingo: // warn
+  val bar = 0
 
-case class Hyrax() // warn
-object HyRaX
+object DINGO:
+  val bar = 42
+
+case class Hyrax() { // warn
+  object X
+}
+object HyRaX {
+  object Y
+}
