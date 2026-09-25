@@ -4040,3 +4040,28 @@ class UnreasonableCatch(tpe: Option[Type])(using Context)
        |try to catch" ${hl("Error")}s, and on some platforms such as Scala.js,
        |such errors will immediately terminate the application and cannot be caught."""
 }
+
+class InvalidMultipleAssignmentSource(found: Type)(using Context)
+  extends TypeMsg(InvalidMultipleAssignmentSourceID) {
+  def msg(using Context) =
+    i"""invalid source of multiple assignment.
+        |The right hand side must be a tuple but $found was found."""
+  def explain(using Context) = ""
+}
+
+class InvalidMultipleAssignmentTarget()(using Context)
+  extends TypeMsg(InvalidMultipleAssignmentTargetID) {
+  def msg(using Context) =
+    i"""invalid target of multiple assignment.
+        |Multiple assignments admit only one level of nesting."""
+  def explain(using Context) = ""
+}
+
+class MultipleAssignmentShapeMismatch(found: Int, required: Int)(using Context)
+  extends TypeMsg(MultipleAssignmentShapeMismatchID) {
+  def msg(using Context) =
+    i"""Source and target of multiple assignment have different sizes.
+        |Source: $found
+        |Target: $required"""
+  def explain(using Context) = ""
+}

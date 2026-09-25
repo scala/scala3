@@ -3,7 +3,7 @@
   |                 ^
   |                 Read-only method next accesses exclusive capability `f`;
   |                 method next should be declared an update method to allow this.
--- Error: tests/neg-custom-args/captures/mut-iterator.scala:17:14 ------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/mut-iterator.scala:17:6 -------------------------------------------------------
 17 |      current = xs1 // error
    |      ^^^^^^^^^^^^^
    |      Cannot assign to field current of this

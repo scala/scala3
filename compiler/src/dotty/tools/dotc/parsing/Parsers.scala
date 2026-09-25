@@ -2779,7 +2779,7 @@ object Parsers {
     def expr1Rest(t: Tree, location: Location): Tree =
       if in.token == EQUALS then
         t match
-          case Ident(_) | Select(_, _) | Apply(_, _) | PrefixOp(_, _) | PostfixOp(_, _) =>
+          case Ident(_) | Select(_, _) | Apply(_, _) | PrefixOp(_, _) | PostfixOp(_, _) | Tuple(_) =>
             atSpan(startOffset(t), in.skipToken()) {
               val loc = if location.inArgs then location else Location.Elsewhere
               Assign(t, subPart(() => expr(loc)))
