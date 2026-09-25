@@ -159,7 +159,7 @@ object ScaladocTastyInspector:
     val (jarPaths, invalidPaths) = nonTastyPaths.partition(_.endsWith(".jar"))
 
     for invalidPath <- invalidPaths do
-      report.error("File extension is not `tasty` or `jar`: " + invalidPath)
+      report.error("File extension passed to Scaladoc is not `tasty` or `jar`: " + invalidPath)
 
     if tastyPaths.nonEmpty then
       ScaladocInternalTastyInspector.inspectAllTastyFilesInContext(tastyPaths, jarPaths, classpath)(inspector)(using ctx.compilerContext)
