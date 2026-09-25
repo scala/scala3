@@ -1,0 +1,18 @@
+//> using options -language:experimental.captureChecking
+scala> import caps.*
+scala> class File { override def toString = "File" }
+// defined class File
+scala> class Box[A](val value: A) { override def toString = "Box" }
+// defined class Box
+scala> val f = Box([C^] => (f: File^{C}) => (h: File^{C}) => (g: File^{C}) => { println(h); (f, h) })
+val f:
+  Box[
+    [C^] => (f: File^{C}) ->
+      (h: File^{C}) -> (g: File^{C}) ->{h} (File^{C}, File^{C})^{}
+  ]^{} = Box
+scala> val x: File^ = File()
+val x: File^ = File
+scala> val bounded = Box([C^ <: {x}] => (xs: List[File^{C}]) => xs)
+val bounded: Box[[C^ <: {x}] => (xs: List[File^{C}]) -> List[File^{C}]]^{} = Box
+scala> def g = Box([C^] => (xs: List[File^{C}]) => xs)
+def g: Box[[C^ <: {fresh}] => (xs: List[File^{C}]) -> List[File^{C}]]
