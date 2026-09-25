@@ -8,5 +8,9 @@
   |                unused private member
 -- [E198] Unused Symbol Warning: tests/warn/i27158.scala:8:16 ----------------------------------------------------------
 8 |  private given given_Int: Int = 42 // warn
-  |                ^^^^^^^^^
+  |                ^
   |                unused private member
+-- [E198] Unused Symbol Warning: tests/warn/i27158.scala:10:14 ---------------------------------------------------------
+10 |  private val given_String: String = "hello, world" // warn underlining possibly poorly chosen name
+   |              ^^^^^^^^^^^^
+   |              unused private member
