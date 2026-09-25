@@ -521,7 +521,7 @@ package object math {
    *
    *  @param x the base.
    *  @param y the exponent.
-   *  @return the value `x^y^`.
+   *  @return the value <code>x<sup>y</sup></code>.
    *  @group explog
    */
   def pow(x: Double, y: Double): Double = java.lang.Math.pow(x, y)
@@ -529,7 +529,7 @@ package object math {
   /** Returns Euler's number `e` raised to the power of a `Double` value.
    *
    *  @param  x the exponent to raise `e` to.
-   *  @return the value `e^x^`, where `e` is the base of the natural
+   *  @return the value <code>e<sup>x</sup></code>, where `e` is the base of the natural
    *          logarithms.
    *  @group explog
    */

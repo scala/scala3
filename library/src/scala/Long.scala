@@ -651,8 +651,8 @@ object Long extends AnyValCompanion {
   implicit def long2double(x: Long): Double = x.toDouble
 
   extension (self: Long) {
-    /** Returns `'''true'''` if this number has no decimal component.
-      * Always `'''true'''` for `Long`.
+    /** Returns `true` if this number has no decimal component.
+      * Always `true` for `Long`.
       */
     @deprecated("isWhole on Long is always true", "2.12.15")
     def isWhole: Boolean = true

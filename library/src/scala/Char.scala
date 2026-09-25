@@ -653,8 +653,8 @@ object Char extends AnyValCompanion {
 
   extension (self: Char) {
 
-    /** Returns `'''true'''` if this number has no decimal component.
-      * Always `'''true'''` for `RichInt`.
+    /** Returns `true` if this number has no decimal component.
+      * Always `true` for `RichInt`.
       */
     @deprecated("isWhole on Char is always true", "2.12.15")
     def isWhole: Boolean = true
