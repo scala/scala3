@@ -107,8 +107,6 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
         case e: Exception =>
           report.error(s"Error while emitting $path\n${e.getMessage}")
           e.printStackTrace()
-        case e =>
-          throw e
     // Finally, once everything is done, we can free resources.
     classfileWriter.close()
     executor match
