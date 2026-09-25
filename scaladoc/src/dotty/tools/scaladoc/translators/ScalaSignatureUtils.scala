@@ -7,11 +7,11 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
   assert(content != null)
   def plain(str: String): SignatureBuilder = copy(content = content :+ Plain(str))
   def name(str: String, dri: DRI, isCaptureVar: Boolean = false/*under CC*/): SignatureBuilder =
-    val suffix = if isCaptureVar then List(Keyword("^")) else Nil
-    copy(content = content ++ (Name(str, dri) :: suffix))
+    copy(content = content ++ (Name(str, dri) :: captureVarSuffix(isCaptureVar)))
   def tpe(text: String, dri: Option[DRI], isCaptureVar: Boolean = false/*under CC*/): SignatureBuilder =
-    val suffix = if isCaptureVar then List(Keyword("^")) else Nil
-    copy(content = content ++ (Type(text, dri) :: suffix))
+    copy(content = content ++ (Type(text, dri) :: captureVarSuffix(isCaptureVar)))
+  private def captureVarSuffix(isCaptureVar: Boolean): List[SignaturePart] =
+    if isCaptureVar then List(Toggleable(ToggleableFeature.CaptureChecking, List(Keyword("^")))) else Nil
   def keyword(str: String): SignatureBuilder = copy(content = content :+ Keyword(str))
   def tpe(text: String, dri: DRI): SignatureBuilder = copy(content = content :+ Type(text, Some(dri)))
   def signature(s: Signature): SignatureBuilder = copy(content = content ++ s)
@@ -78,13 +78,20 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
   def usesClause(member: Member): SignatureBuilder =
     member.usesClause match
       case None => this
-      case Some(clause) => keyword(" uses ").signature(clause.signature)
+      case Some(clause) =>
+        signature(List(Toggleable(ToggleableFeature.CaptureChecking, Keyword(" uses ") :: clause.signature)))
 
   def modifiersAndVisibility(t: Member) =
-    val (prefixMods, suffixMods) = t.modifiers.partition(_.prefix)
+    // Capture-checking-specific modifiers are wrapped in a Toggleable so they
+    // can be hidden interactively; they always come last, right before the kind.
+    val isCCModifier: Modifier => Boolean = m => m == Modifier.Update || m == Modifier.Consume
+    val (ccMods, mods) = t.modifiers.partition(isCCModifier)
+    val (prefixMods, suffixMods) = mods.partition(_.prefix)
     val all = prefixMods.map(_.name) ++ Seq(t.visibility.asSignature) ++ suffixMods.map(_.name)
     val filtered = all.filter(_.trim.nonEmpty)
-    if filtered.nonEmpty then keyword(filtered.toSignatureString()) else this
+    val bdr = if filtered.nonEmpty then keyword(filtered.toSignatureString()) else this
+    if ccMods.isEmpty then bdr
+    else bdr.signature(List(Toggleable(ToggleableFeature.CaptureChecking, List(Keyword(ccMods.map(_.name).toSignatureString())))))
 
   def kind(k: Kind) =
     keyword(k.name + " ")
@@ -100,6 +107,9 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
     this.list(params.parameters, prefix = List(Plain("("), Keyword(params.modifiers)), suffix = List(Plain(")")), forcePrefixAndSuffix = true) { (bld, p) =>
       val annotationsAndModifiers =
         bld.annotationsInline(p)
+          .signature(
+            if p.ccModifiers.isEmpty then Nil
+            else List(Toggleable(ToggleableFeature.CaptureChecking, List(Keyword(p.ccModifiers)))))
           .keyword(p.modifiers)
       val name = p.name match {
         case Some(name) => annotationsAndModifiers.name(name, p.dri).plain(": ")

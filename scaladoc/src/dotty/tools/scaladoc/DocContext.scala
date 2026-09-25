@@ -67,6 +67,10 @@ extension (r: report.type)
 case class NavigationNode(name: String, dri: DRI, nested: Seq[NavigationNode])
 
 case class DocContext(args: Scaladoc.Args, compilerContext: CompilerContext):
+  // Set during parsing when any documented source file opts into capture
+  // checking; renderers use it to decide whether to emit the cc toggle button.
+  var ccFeatureDetected: Boolean = false
+
   lazy val sourceLinks = SourceLinks.load(args.sourceLinks, args.revision)(using compilerContext)
 
   lazy val commentSyntaxArgs = tasty.comments.CommentSyntaxArgs.load(args.defaultSyntax)(using compilerContext)

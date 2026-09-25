@@ -114,6 +114,10 @@ abstract class SignatureTest(
 
     def processFile(path: Path): Unit = if filterFunc(path) then
       val document = Jsoup.parse(IO.read(path))
+      // Toggleable feature fragments (e.g. capture checking) carry both an
+      // `on` and an `off` variant in the DOM; only the `on` variant is shown
+      // by default, so drop the hidden one before extracting text.
+      document.select(".feature-off").remove()
       val documentable = document.select(".groupHeader").forEach { element =>
         signatures += element.text
       }

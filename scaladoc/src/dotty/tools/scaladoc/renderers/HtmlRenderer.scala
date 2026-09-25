@@ -275,6 +275,14 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
          div(cls:="header-container-right")(
           button(id := "search-toggle", cls := "icon-button"),
           quickLinks(),
+          Option.when(ctx.ccFeatureDetected)(
+            button(
+              id := "cc-toggle",
+              cls := "text-button",
+              titleAttr := "Show or hide capture checking annotations",
+              Attr("aria-label") := "Show or hide capture checking annotations",
+            )("cc")
+          ).toSeq,
           span(id := "theme-toggle", cls := "icon-button"),
           span(id := "mobile-menu-toggle", cls := "icon-button hamburger"),
         ),
@@ -291,6 +299,9 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         div(cls := "mobile-menu-container body-medium")(
           input(id := "mobile-scaladoc-searchbar-input", cls := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything"),
           quickLinks(mobile = true),
+          Option.when(ctx.ccFeatureDetected)(
+            span(id := "mobile-cc-toggle", cls := "mobile-menu-item")("Hide capture checking")
+          ).toSeq,
           span(id := "mobile-theme-toggle", cls := "mobile-menu-item mode"),
         )
       ),
