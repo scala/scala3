@@ -394,11 +394,17 @@ object TypeOps:
       doms.map(baseTp).reduceLeft(AndType.apply)
     }
 
+    def isSameTypeConstructor(tycon1: Type, tycon2: Type): Boolean =
+      (tycon1.stripTypeVar, tycon2.stripTypeVar) match
+          case (tp1: TypeParamRef, tp2) => tp1 == tp2
+          case (tp1, tp2: TypeParamRef) => tp1 == tp2
+          case _ => tycon1.typeSymbol == tycon2.typeSymbol && (tycon1 frozen_=:= tycon2)
+
     tp match {
       case tp: OrType =>
         (tp.tp1.dealias, tp.tp2.dealias) match
           case (tp1 @ AppliedType(tycon1, args1), tp2 @ AppliedType(tycon2, args2))
-          if tycon1.typeSymbol == tycon2.typeSymbol && (tycon1 =:= tycon2) =>
+          if isSameTypeConstructor(tycon1, tycon2) =>
             mergeRefinedOrApplied(tp1, tp2) match
               case tp: AppliedType if tp.isUnreducibleWild =>
                 // fall back to or-dominators rather than inferring a type that would
