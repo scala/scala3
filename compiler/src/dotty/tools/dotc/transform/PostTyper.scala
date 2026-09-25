@@ -277,11 +277,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           else
             if sym.is(Param) then
               registerIfUnrolledParam(sym)
-              // @unused is getter/setter but we want it on ordinary method params
-              // @param should be consulted only for fields
-              val unusing = sym.getAnnotation(defn.UnusedAnnot)
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
-              unusing.foreach(sym.addAnnotation)
             else if sym.is(ParamAccessor) then
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot),
                 andAlso = defn.NonBeanParamAccessorAnnots)

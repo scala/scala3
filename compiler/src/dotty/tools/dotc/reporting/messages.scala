@@ -3480,6 +3480,7 @@ object UnusedSymbol:
     UnusedSymbol(i"unused explicit parameter${paramAddendum(sym)}")
   def implicitParams(sym: Symbol)(using Context): UnusedSymbol =
     UnusedSymbol(i"unused implicit parameter${paramAddendum(sym)}")
+  def uselessSuppression(sym: Symbol)(using Context): UnusedSymbol = UnusedSymbol(i"useless @unused annotation on $sym")
   def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
   def privateVars(using Context): UnusedSymbol = UnusedSymbol(i"private variable was mutated but not read")
   def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
@@ -3974,7 +3975,7 @@ final class IllegalUseOfSpecialized(using Context)
         inline def foo[T: Specialized](v: Vec[T]) = v.x
 
         In this instance it was used in a way which is unsupported, such as
-        trying to create a type synonym or a value with explicit type Specialized[X].  
+        trying to create a type synonym or a value with explicit type Specialized[X].
       """
 
 /** Shows up as a TypeError (in the notes field) if variance is attempted
@@ -3988,17 +3989,17 @@ final class IllegalVarianceInSpecializedTraitsNote(using Context) extends Note:
     - Primitives are specialized: Foo[Int] erases to Foo$$sp$$Int
     - Reference types are specialized to the highest non-top class: Foo[Lion] erases to Foo$$sp$$Animal
     - Top classes are erased normally: Foo[Any] / Foo[AnyVal] / Foo[Object] / Foo[AnyRef] erase to Foo.
-    This means that variance patterns that cross these erasure categories will fail at 
+    This means that variance patterns that cross these erasure categories will fail at
     runtime due to a ClassCastException, so they are not permitted.
 
     Please see the docs for more information on how specialized traits are erased.
     Suggested fixes:
       - Make the type of the target site more general e.g. Foo[Object] instead of Foo[Animal].
-      - Reconsider if you really need to use Nothing / Object / Any / AnyRef / AnyVal in your code. 
+      - Reconsider if you really need to use Nothing / Object / Any / AnyRef / AnyVal in your code.
       - Remove Specialized from the definition of the corresponding parameter.
     """
 
-  override def covers(other: Note)(using Context): Boolean =    
+  override def covers(other: Note)(using Context): Boolean =
     other.isInstanceOf[IllegalVarianceInSpecializedTraitsNote]
 
 final class VarianceInSpecializedTraitsLimitation(using Context)
@@ -4011,18 +4012,18 @@ final class VarianceInSpecializedTraitsLimitation(using Context)
     - Primitives are specialized: Foo[Int] erases to Foo$$sp$$Int
     - Reference types are specialized to the highest non-top class: Foo[Lion] erases to Foo$$sp$$Animal
     - Top classes are erased normally: Foo[Any] / Foo[AnyVal] / Foo[Object] / Foo[AnyRef] erase to Foo.
-    This means that certain variance patterns that cross these erasure categories will fail at 
+    This means that certain variance patterns that cross these erasure categories will fail at
     runtime due to a ClassCastException, so they are not permitted.
-    
-    For example, treating Foo[Any] as Foo[Animal] via contravariance is not allowed with Specialized. 
+
+    For example, treating Foo[Any] as Foo[Animal] via contravariance is not allowed with Specialized.
 
     Please see the docs for more information on how specialized traits are erased.
 
     If you accept this limitation you can silence this warning with @nowarn. For example:
-    
+
     @nowarn("id=E${VarianceInSpecializedTraitsLimitationID.errorNumber}")
     inline trait Foo[-T: Specialized]:
- 
+
     Otherwise, remove Specialized, or remove the variance.
     """
 
