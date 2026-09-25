@@ -64,7 +64,12 @@ object ScaladocInternalTastyInspector:
     val classes = tastyFiles ::: jars
     classes.isEmpty
     || !inspectorDriver(inspector)
-        .process(inspectorArgs(dependenciesClasspath, classes), ctx)
+        .process(
+          ("-from-tasty" :: "-Yretain-trees" :: classes).toArray,
+          // pass the classpath via context setting instead of a flag
+          // this avoids warnings about classpath set repeatedly (#22875)
+          ctx.fresh.setSetting(ctx.settings.classpath, fullClasspath(dependenciesClasspath))
+        )
         .hasErrors
 
   /** Load and process TASTy files using TASTy reflect
@@ -127,10 +132,12 @@ object ScaladocInternalTastyInspector:
 
     new InspectorDriver
 
-  private def inspectorArgs(classpath: List[String], classes: List[String]): Array[String] =
+  private def fullClasspath(classpath: List[String]): String =
     val currentClasspath = ClasspathFromClassloader(getClass.getClassLoader)
-    val fullClasspath = (classpath :+ currentClasspath).mkString(pathSeparator)
-    ("-from-tasty" :: "-Yretain-trees" :: "-classpath" :: fullClasspath :: classes).toArray
+    (classpath :+ currentClasspath).mkString(pathSeparator)
+
+  private def inspectorArgs(classpath: List[String], classes: List[String]): Array[String] =
+    ("-from-tasty" :: "-Yretain-trees" :: "-classpath" :: fullClasspath(classpath) :: classes).toArray
 
 
   private def inspectFiles(classpath: List[String], classes: List[String])(inspector: Inspector): Boolean =
