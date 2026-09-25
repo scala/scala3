@@ -2178,6 +2178,38 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assert(instrs.contains(Op(MONITOREXIT)))
     }
   }
+
+  @Test def arrayGetSetLength = {
+    val source =
+      """class Foo {
+         |  def get(a: Array[Int]) = a(1)
+         |  def set(a: Array[Double]) = a(2) = 0.0
+         |  def length(a: Array[Boolean]) = a.length
+         |}
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val fooClass = loadClassNode(lookupClass(dir, "Foo.class"))
+      assertSameCode(getMethod(fooClass, "get"), List(
+        VarOp(ALOAD, 1),
+        Op(ICONST_1),
+        Op(IALOAD),
+        Op(IRETURN)
+      ))
+      assertSameCode(getMethod(fooClass, "set"), List(
+        VarOp(ALOAD, 1),
+        Op(ICONST_2),
+        Op(DCONST_0),
+        Op(DASTORE),
+        Op(RETURN)
+      ))
+      assertSameCode(getMethod(fooClass, "length"), List(
+        VarOp(ALOAD, 1),
+        Op(ARRAYLENGTH),
+        Op(IRETURN)
+      ))
+    }
+  }
 }
 
 object invocationReceiversTestCode {
