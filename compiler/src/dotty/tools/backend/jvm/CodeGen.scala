@@ -49,7 +49,7 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
       // The queue size is large enough to ensure that running a task on the main thread does
       // not take longer than to exhaust the queue for the backend workers.
       val queueSize = initctx.settings.YbackendWorkerQueue.valueSetByUser.getOrElse(n * 2)
-      ProfiledThreadPool.newExecutor(ownerPhase, initctx.profiler, n - 1, queueSize, "gen-class-handler")
+      ProfiledThreadPool.newExecutor(ownerPhase, initctx.profiler, n, queueSize, "gen-class-handler")
   // Java's ExecutorService doesn't let us tell whether there is ongoing work, so we must keep track of that ourselves.
   // We anyway need to keep track of the path in order to show it in error messages if something went deeply wrong.
   private val submittedExecutions = ListBuffer.empty[(FutureTask[Unit], String)]
@@ -72,9 +72,6 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
         .flatMap(generateClassNodes)
         .sortBy((cn, _) => cn.name)
         .tapEach((cn, meta) => warnCaseInsensitiveOverwrite(cn.name, meta.position))
-    compilerCallback match
-      case null => ()
-      case cb => cb.onSourceCompiled(ctx.source)
     // If we are doing global optimizations, we must collect class nodes and wait until we have them all,
     // i.e., until `finish` is called.
     // Otherwise, we can already schedule their generation in background threads.
@@ -85,7 +82,7 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
         schedule(generatedClassNodes)
   }
 
-  /** Ensures all work is finished, files have been generated, and resources have been freed. Only call once per instance. */
+  /** Ensures all work is finished, files have been generated. Only call once per instance. */
   def finish()(using ctx: Context): Unit = {
     // If we are running global optimizations, we haven't scheduled anything yet; run such optimizations first, then schedule everything.
     // Otherwise, we have scheduled everything already.
@@ -96,6 +93,8 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
           i => report.optimizerWarning(i.msg, i.site, i.pos)
         )
         schedule(pendingClassNodes)
+        // Ensure we don't keep any potentially large objects alive for any more time than necessary.
+        pendingClassNodes.clear()
       case None =>
         assert(pendingClassNodes.isEmpty)
     // At this point all we need to do is wait.
@@ -107,7 +106,10 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
         case e: Exception =>
           report.error(s"Error while emitting $path\n${e.getMessage}")
           e.printStackTrace()
-    // Finally, once everything is done, we can free resources.
+  }
+
+  /* Frees resources used by the code generation. Only call once per instance. */
+  def close(): Unit = {
     classfileWriter.close()
     executor match
       case pool: ExecutorService => pool.shutdownNow()
@@ -123,6 +125,11 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
       val future = FutureTask(() => {
         val serializedClassNode = serializeClassNode(classNodeRef.elem)
         writeSerializedClassNode(classNodeRef.elem, metadataRef.elem, serializedClassNode)
+        // This callback is intended for when the file "has been generated".
+        // A previous version of the compiler called it after the file had been written, so we do the same to avoid breaking any dependents.
+        compilerCallback match
+          case null => ()
+          case cb => cb.onSourceCompiled(metadataRef.elem.position.source)
         classNodeRef.elem = null
         metadataRef.elem = null
       })
@@ -131,14 +138,14 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
   }
 
   private def generateClassNodes(typeDef: TypeDef)(using ctx: Context): List[(ClassNode, ClassNodeMetadata)] = {
-    val position = typeDef.sourcePos
+    val typeSym = typeDef.symbol
     try
       // First, generate the class nodes; the mirror is only generated if needed.
       val mainClassNode = gen.genClassNode(typeDef)
       val mirrorClassNode = gen.genMirrorClassNode(typeDef)
       // If the type def represents a class, and we have TASTY available, we must emit a TASTY attribute.
       // We must also store the TASTY for later emitting.
-      val serializedTasty = typeDef.symbol match
+      val serializedTasty = typeSym match
         case classSymbol: ClassSymbol =>
           ctx.compilationUnit.pickled.get(classSymbol) match
             case Some(func) =>
@@ -155,16 +162,16 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
       // and return the nodes decorated with this info.
       mirrorClassNode match {
         case Some(mirror) => List(
-          (mainClassNode, ClassNodeMetadata(fullName, isLocal, position, None)),
-          (mirror, ClassNodeMetadata(fullName, isLocal, position, serializedTasty))
+          (mainClassNode, ClassNodeMetadata(fullName, isLocal, typeSym.sourcePos, None)),
+          (mirror, ClassNodeMetadata(fullName, isLocal, typeSym.sourcePos, serializedTasty))
         )
         case None => List(
-          (mainClassNode, ClassNodeMetadata(fullName, isLocal, position, serializedTasty))
+          (mainClassNode, ClassNodeMetadata(fullName, isLocal, typeSym.sourcePos, serializedTasty))
         )
       }
     catch
       case ex: TypeError =>
-        report.error(s"Error while emitting ${ctx.compilationUnit.source}\n${ex.getMessage}", position)
+        report.error(s"Error while emitting ${ctx.compilationUnit.source}\n${ex.getMessage}", typeSym.srcPos)
         Nil
   }
 
@@ -241,10 +248,9 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
   }
 
   private def writeSerializedClassNode(classNode: ClassNode, metadata: ClassNodeMetadata, serialized: Array[Byte]): Unit = {
+    TraceUtils.traceSerializedClassIfRequested(classNode.name, serialized)
+
     val dottedName = dotted(classNode.name)
-
-    TraceUtils.traceSerializedClassIfRequested(dottedName, serialized)
-
     val writtenClassFile = classfileWriter.writeClass(dottedName, serialized)
     metadata.serializedTasty.foreach(classfileWriter.writeTasty(classNode.name, _))
 

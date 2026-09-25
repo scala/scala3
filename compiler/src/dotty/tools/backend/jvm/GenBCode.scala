@@ -7,6 +7,8 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.io.JarArchive
 
+import scala.annotation.stableNull
+
 /**
  * Code generation has 3 parts:
  * 1. Translating trees to Java bytecode
@@ -24,6 +26,7 @@ final class GenBCode extends Phase:
   override def description: String = GenBCode.description
   override def isRunnable(using ctx: Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
+  @stableNull
   private var codeGen: CodeGen | Null = null
   private def getCodeGen()(using ctx: Context): CodeGen = codeGen match
     case null =>
@@ -42,7 +45,7 @@ final class GenBCode extends Phase:
           val heuristics = new InlinerHeuristics(byteCodeRepository, callGraph, knownBTypes, optSettings)
           val globalOpt = new GlobalOptimizer(callGraph, classBTypeCache, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
           val localOpt = new LocalOptimizer(callGraph, globalOpt, knownBTypes, bTypesFromClassfile, optSettings)
-          CodeGen(this, bc, Some(localOpt), Some(globalOpt))
+          CodeGen(this, bc, Some(localOpt), Option.when(ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations)(globalOpt))
         else
           val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, None)
           val knownBTypes = new KnownBTypes(bTypeLoader)
@@ -57,7 +60,9 @@ final class GenBCode extends Phase:
 
   override def runOn(units: List[CompilationUnit])(using ctx: Context): List[CompilationUnit] =
     try
-      super.runOn(units)
+      val result = super.runOn(units)
+      if codeGen != null then codeGen.finish()
+      result
     finally
       ctx.settings.outputDir.value match
         case jar: JarArchive =>
@@ -67,9 +72,7 @@ final class GenBCode extends Phase:
             report.error("Cannot suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
           jar.close()
         case _ => ()
-      codeGen match
-        case null => () // no compilation units, that's OK
-        case cg => cg.finish()
+      if codeGen != null then codeGen.close()
 
 object GenBCode:
   val name: String = "genBCode"
