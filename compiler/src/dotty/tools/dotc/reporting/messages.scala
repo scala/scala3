@@ -2725,9 +2725,22 @@ class NoMatchingOverload(val alternatives: List[SingleDenotation], pt: Type)(usi
   extends TypeMsg(NoMatchingOverloadID) {
   def msg(using Context) =
     i"""None of the ${err.overloadedAltsStr(alternatives)}
-        |match ${err.expectedTypeStr(pt)}"""
+        |match ${err.expectedTypeStr(pt)}${more}"""
   def explain(using Context) = ""
+  def more = pt match
+    case FunProto(args, _) if args.exists(_.isInstanceOf[untpd.NamedArg]) =>
+      args.find:
+        case untpd.NamedArg(name, _) =>
+          val ok = alternatives.exists: d =>
+            d.info.paramNamess.flatten.exists(_ == name)
+          !ok
+        case _ => false
+      .match
+        case Some(untpd.NamedArg(name, _)) => i"; the name `$name` does not match a parameter of any alternative"
+        case _ => i" in an application with named args"
+    case _ => ""
 }
+
 class StableIdentPattern(tree: untpd.Tree, pt: Type)(using Context)
   extends TypeMsg(StableIdentPatternID) {
   def msg(using Context) =

@@ -3213,7 +3213,7 @@ object Parsers {
       res
 
     val argumentExpr: () => Tree = () => expr(Location.InArgs) match
-      case arg @ Assign(Ident(id), rhs) => cpy.NamedArg(arg)(id, rhs)
+      case arg @ Assign(id: Ident, rhs) => cpy.NamedArg(arg)(id.name, rhs).withAttachmentsFrom(id)
       case arg => arg
 
     /** ArgumentExprss ::= {ArgumentExprs}

@@ -18,6 +18,7 @@ import Names.*
 import StdNames.*
 import ContextOps.*
 import NameKinds.DefaultGetterName
+import NameKinds.SimpleNameKind
 import Typer.tryEither
 import ProtoTypes.*
 import Inferencing.*
@@ -743,6 +744,14 @@ trait Applications extends Compatibility {
               case _ =>
         def alternative: Name =
           deprecatedNames.get(name).map(_.deprecatedName).getOrElse(nme.NO_NAME)
+        // looks like x$42, an ersatz name for Java parameters which lack names
+        def isUnnamed: Boolean =
+          methRef.symbol.is(JavaDefined)
+          && name.is(SimpleNameKind)
+          && name.startsWith("x$")
+
+      extension [T <: Untyped](namedArg: Trees.NamedArg[T])
+        def isBackquoted: Boolean = namedArg.hasAttachment(Backquoted)
 
       /** Reorder the suffix of named args per a list of required names.
        *
@@ -800,25 +809,28 @@ trait Applications extends Compatibility {
       }
 
       // Skip prefix of positional args, then handleNamed
-      def handlePositional(pnames: List[Name], args: TreeList[T]): TreeList[T] =
-        args match
+      def handlePositional(pnames: List[Name], bqnames: List[Name], args: TreeList[T]): TreeList[T] = args match
         case (arg @ NamedArg(name, _)) :: args if !pnames.isEmpty && pnames.head.isMatchedBy(name) =>
           pnames.head.checkDeprecationOf(name, arg.srcPos)
-          arg :: handlePositional(pnames.tail, args)
+          arg :: handlePositional(pnames.tail, bqnames, args)
+        case (namedArg @ NamedArg(name, arg)) :: args
+        if namedArg.isBackquoted && !pnames.isEmpty && pnames.head.isUnnamed =>
+          if bqnames.contains(name) then
+            report.error(i"backquoted named arg must be unique", namedArg.srcPos)
+          arg :: handlePositional(pnames.tail, name :: bqnames, args)
         case (_: NamedArg) :: _ =>
           val nameAssocs = args.collect { case arg @ NamedArg(name, _) => name -> arg }
           handleNamed(pnames, args, nameAssocs.toMap, toDrop = Set.empty, missingArgs = false)
         case arg :: args =>
-          arg :: handlePositional(pnames.dropOne, args)
+          arg :: handlePositional(pnames.dropOne, bqnames, args)
         case nil => nil
 
-      handlePositional(methodType.paramNames, args)
+      handlePositional(methodType.paramNames, bqnames = Nil, args)
     } // end reorder
 
     /** Is `sym` a constructor of a Java-defined annotation? */
     def isJavaAnnotConstr(sym: Symbol): Boolean =
       sym.is(JavaDefined) && sym.isConstructor && sym.owner.is(JavaAnnotation)
-
 
     /** Is `sym` a constructor of an annotation class, and are we in an
      *  annotation? If so, we don't lift arguments. See [[Mode.InAnnotation]].
