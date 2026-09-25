@@ -1,16 +1,13 @@
 package dotty.tools.backend
 
 import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
-import dotty.tools.dotc.core.Types.{JavaArrayType, Type, UnspecifiedErrorType}
 import dotty.tools.dotc.core.Symbols.{MutableSymbolMap, NoSymbol, Symbol, defn}
-import dotty.tools.dotc.report
 import dotty.tools.dotc.ast.Trees.Select
 import dotty.tools.dotc.ast.tpd.*
-import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.util.{ReadOnlyMap, EqHashMap}
+import dotty.tools.backend.ScalaPrimitivesOps.*
 
 import scala.annotation.constructorOnly
 
@@ -32,11 +29,17 @@ import scala.annotation.constructorOnly
  * Inspired from the `scalac` compiler.
  */
 class ScalaPrimitives(using @constructorOnly initCtx: Context) {
-  import dotty.tools.backend.ScalaPrimitivesOps.*
 
   private val primitives: ReadOnlyMap[Symbol, ReadOnlyMap[Name, Int]] = init
 
-  /** Return the code for the given symbol. */
+  /**
+   * Checks whether the given symbol has an associated primitive code.
+   * Only use when you do not need the code at all! Otherwise, call `getPrimitive` to avoid a double lookup.
+   */
+  final def isPrimitive(sym: Symbol)(using Context): Boolean =
+    getPrimitive(sym).isDefined
+
+  /** Returns the primitive code for the given symbol. */
   def getPrimitive(sym: Symbol)(using Context): Option[Int] = {
     primitives.get(sym.owner) match
       case None => None
@@ -51,6 +54,7 @@ class ScalaPrimitives(using @constructorOnly initCtx: Context) {
             Some(code)
   }
 
+  /** Returns the primitive code for the given tree. */
   def getPrimitive(fun: Tree)(using Context): Option[Int] =
     val sym = fun.symbol
     if sym == NoSymbol then
@@ -65,7 +69,7 @@ class ScalaPrimitives(using @constructorOnly initCtx: Context) {
     else
       getPrimitive(sym)
 
-  /** Initialize the primitive map */
+  /** Initializes the primitive map */
   private def init(using Context): ReadOnlyMap[Symbol, ReadOnlyMap[Name, Int]] = {
     val primitives = MutableSymbolMap[ReadOnlyMap[Name, Int]]()
 
