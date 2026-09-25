@@ -388,13 +388,11 @@ object Trees {
         if (rawMods.is(Synthetic) || span.isSynthetic || name.toTermName == nme.ERROR) Span(point)
         else {
           val realName = srcName.stripModuleClassSuffix.lastPart
-          if realName.startsWith("given_") then
-            val line = sourcePos.lineContent
-            val col = sourcePos.column
-            if col < line.length && line.substring(col).startsWith(realName.toString) then
-              Span(point, point + realName.length, point)
-            else
-              Span(point)
+          inline def plain = // exclude if known not to be given
+            val sym = symbol
+            sym != NoSymbol && !sym.is(Given)
+          if realName.startsWith("given_") && !plain then
+            Span(point)
           else
             Span(point, point + realName.length, point)
         }
