@@ -922,13 +922,13 @@ object CaptureSet:
             case _ => foldOver(b, t)
       find(false, binder)
 
-    def levelOK(elem: Capability)(using Context): Boolean = elem match
-      case elem @ ResultCap(binder) =>
+    def levelOK(elem: Capability)(using Context): Boolean = elem.core match
+      case core @ ResultCap(binder) =>
         rootLimit == null && isPartOf(binder.resType)
       case _: GlobalCap =>
         rootLimit == null
-      case elem: ParamRef =>
-        isPartOf(elem.binder.resType)
+      case core: ParamRef =>
+        isPartOf(core.binder.resType)
       case _ =>
         if owner.exists then
           val elemVis = elem.visibility
