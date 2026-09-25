@@ -24,10 +24,9 @@ import scala.PartialFunction.condOpt
 import typer.ImportInfo.withRootImports
 
 import dotty.tools.dotc.{semanticdb => s}
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.*
 import dotty.tools.dotc.semanticdb.DiagnosticOps.*
 import scala.util.{Using, Failure, Success}
-import java.nio.file.Path
 
 
 /** Extract symbol references and uses to semanticdb files.
@@ -53,7 +52,7 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
 
   override def isRunnable(using Context) =
     import ExtractSemanticDB.{semanticdbTarget, outputDirectory}
-    def writesToOutputJar = semanticdbTarget.isEmpty && outputDirectory.ext.isJar
+    def writesToOutputJar = semanticdbTarget.isEmpty && outputDirectory.isJar
     (super.isRunnable || ctx.isBestEffort) && ctx.settings.Xsemanticdb.value && !writesToOutputJar
 
   // Check not needed since it does not transform trees
@@ -61,15 +60,15 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
 
   private def computeDiagnostics(
       warnings: Map[SourceFile, List[dotty.tools.dotc.reporting.Diagnostic]],
-      append: ((Path, List[Diagnostic])) => Unit)(using Context): Boolean = monitor(phaseName) {
+      append: ((File, List[Diagnostic])) => Unit)(using Context): Boolean = monitor(phaseName) {
     val unit = ctx.compilationUnit
     warnings.get(unit.source).foreach { ws =>
-      val outputDir =
+      val output =
         ExtractSemanticDB.semanticdbPath(
           unit.source,
           ExtractSemanticDB.semanticdbOutDir
         )
-      append((outputDir, ws.map(_.toSemanticDiagnostic)))
+      append((output, ws.map(_.toSemanticDiagnostic)))
     }
   }
 
@@ -98,7 +97,7 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
     val unitContexts = units.map(ctx.fresh.setCompilationUnit(_).withRootImports)
     if (appendDiagnostics)
       val warningsAndInfos = (ctx.reporter.allWarnings ++ ctx.reporter.allInfos).groupBy(w => w.pos.source)
-      val buf = mutable.ListBuffer.empty[(Path, Seq[Diagnostic])]
+      val buf = mutable.ListBuffer.empty[(File, Seq[Diagnostic])]
       val units0 =
         for unitCtx <- unitContexts if computeDiagnostics(warningsAndInfos, buf += _)(using unitCtx)
         yield unitCtx.compilationUnit
@@ -133,30 +132,25 @@ private[semanticdb] object ExtractSemanticDB:
 
   class AppendDiagnostics extends ExtractSemanticDB(PhaseMode.AppendDiagnostics)
 
-  private def semanticdbTarget(using Context): Option[Path] =
-    Option(ctx.settings.semanticdbTarget.value)
-      .filterNot(_.isEmpty)
-      .map(Paths.get(_))
+  private def semanticdbTarget(using Context): Option[FileContainer] =
+    ctx.settings.semanticdbTarget.value
 
   /** Destination for generated classfiles */
-  private def outputDirectory(using Context): AbstractFile =
+  private def outputDirectory(using Context): FileContainer =
     ctx.settings.outputDir.value
 
   /** Output directory for SemanticDB files */
-  private def semanticdbOutDir(using Context): Path =
-    semanticdbTarget.getOrElse(outputDirectory.jpath.nn)
-
-  private def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
+  private def semanticdbOutDir(using Context): FileContainer =
+    semanticdbTarget.getOrElse(outputDirectory)
 
   private def write(
     source: SourceFile,
     occurrences: List[SymbolOccurrence],
     symbolInfos: List[SymbolInformation],
     synthetics: List[Synthetic],
-    outpath: Path,
+    outpath: File,
     semanticdbText: Boolean
   ): Unit =
-    Files.createDirectories(outpath.getParent())
     val doc: TextDocument = TextDocument(
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
@@ -168,7 +162,7 @@ private[semanticdb] object ExtractSemanticDB:
       synthetics = synthetics,
     )
     val docs = TextDocuments(List(doc))
-    val out = Files.newOutputStream(outpath)
+    val out = outpath.output()
     try
       val stream = internal.SemanticdbOutputStream.newInstance(out)
       docs.writeTo(stream)
@@ -179,14 +173,14 @@ private[semanticdb] object ExtractSemanticDB:
 
   private def appendDiagnostics(
     diagnostics: Seq[Diagnostic],
-    outpath: Path
+    outpath: File
   ): Unit =
     Using.Manager { use =>
-      val in = use(Files.newInputStream(outpath))
+      val in = use(outpath.input())
       val sin = internal.SemanticdbInputStream.newInstance(in)
       val docs = TextDocuments.parseFrom(sin)
 
-      val out = use(Files.newOutputStream(outpath))
+      val out = use(outpath.output())
       val sout = internal.SemanticdbOutputStream.newInstance(out)
       TextDocuments(docs.documents.map(_.withDiagnostics(diagnostics))).writeTo(sout)
       sout.flush()
@@ -195,12 +189,13 @@ private[semanticdb] object ExtractSemanticDB:
       case Success(_) => // success to update semanticdb, say nothing
   end appendDiagnostics
 
-  private def semanticdbPath(source: SourceFile, base: Path): Path =
-    absolutePath(base)
-      .resolve("META-INF")
-      .resolve("semanticdb")
-      .resolve(source.pathRelativeToSourceRoot)
-      .resolveSibling(source.name + ".semanticdb")
+  private def semanticdbPath(source: SourceFile, base: FileContainer): File =
+    base
+      .getOrCreateContainer("META-INF")
+      .getOrCreateContainer("semanticdb")
+      .getOrCreateFile(source.pathRelativeToSourceRoot)
+      .parent
+      .getOrCreateFile(source.name + ".semanticdb")
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser:

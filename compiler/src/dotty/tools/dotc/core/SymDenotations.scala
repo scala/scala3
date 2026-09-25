@@ -9,7 +9,7 @@ import Phases.{Phase, typerPhase, unfusedPhases}
 import Constants.Constant
 import TypeApplications.TypeParamInfo
 import Scopes.Scope
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.File
 import Decorators.*
 import ast.*
 import ast.Trees.{LambdaTypeTree, TypeBoundsTree}
@@ -2681,14 +2681,14 @@ object SymDenotations {
             multi // they are all overloaded variants from the same file
           else
             // pick the variant(s) from the youngest class file
-            val lastModDate = assocFiles.map(_.lastModified).max
-            val youngest = assocFiles.filter(_.lastModified == lastModDate)
+            val lastModDate = assocFiles.map(_.lastModified()).max
+            val youngest = assocFiles.filter(_.lastModified() == lastModDate)
             val chosen = youngest.head
-            def ambiguousFilesMsg(f: AbstractFile) =
+            def ambiguousFilesMsg(f: File) =
               i"""Toplevel definition $name is defined in
-                 |  $chosen
+                 |  ${chosen.path}
                  |and also in
-                 |  $f"""
+                 |  ${f.path}"""
             if youngest.size > 1 then
               throw TypeError(em"""${ambiguousFilesMsg(youngest.tail.head)}
                                   |One of these files should be removed from the classpath.""")
@@ -2697,8 +2697,8 @@ object SymDenotations {
             // In that case picking the youngest file is not necessarily what we want,
             // since the older file might have been loaded from a jar earlier in the
             // classpath.
-            def sameContainer(f: AbstractFile): Boolean =
-              try f.container == chosen.container catch case ex: Exception => true
+            def sameContainer(f: File): Boolean =
+              f.parent == chosen.parent
             if !ambiguityWarningIssued then
               for conflicting <- assocFiles.find(!sameContainer(_)) do
                 report.warning(em"""${ambiguousFilesMsg(conflicting)}

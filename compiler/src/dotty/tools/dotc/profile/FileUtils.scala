@@ -15,29 +15,25 @@
 package dotty.tools.dotc.profile
 
 import java.io.{BufferedWriter, IOException, OutputStreamWriter, Writer}
-import java.nio.CharBuffer
-import java.nio.charset.{Charset, CharsetEncoder, StandardCharsets}
-import java.nio.file.{Files, OpenOption, Path}
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
+import dotty.tools.nio.*
 
-
+import java.nio.CharBuffer
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.{Failure, Success}
 import scala.annotation.internal.sharable
+import scala.io.Codec
 
 private [profile] object FileUtils {
-  def newAsyncBufferedWriter(path: Path, charset: Charset = StandardCharsets.UTF_8.nn, options: Array[OpenOption] = NO_OPTIONS, threadsafe: Boolean = false): LineWriter = {
-    val encoder: CharsetEncoder = charset.newEncoder
-    val writer = new OutputStreamWriter(Files.newOutputStream(path, options*), encoder)
-    newAsyncBufferedWriter(new BufferedWriter(writer), threadsafe)
+  def newAsyncBufferedWriter(file: File, codec: Codec = Codec.UTF8, threadsafe: Boolean = false): LineWriter = {
+    newAsyncBufferedWriter(file.writer(codec), threadsafe)
   }
   def newAsyncBufferedWriter(underlying: Writer, threadsafe: Boolean): LineWriter = {
     val async = new AsyncBufferedWriter(underlying)
     if (threadsafe) new ThreadsafeWriter(async) else async
   }
-  private val NO_OPTIONS = new Array[OpenOption](0)
 
   sealed abstract class LineWriter extends Writer {
     def newLine(): Unit

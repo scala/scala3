@@ -1,9 +1,8 @@
 package dotty.tools
 
 import scala.annotation.tailrec
-import scala.io.Source
-import scala.util.{Try, Success, Failure}
-import java.io.File
+import dotty.tools.dotc.classpath.ClassPath
+import dotty.tools.nio.File
 
 enum CompileMode:
   case Guess
@@ -42,18 +41,19 @@ case class CompileSettings(
   def withScriptArgs(args: String*): CompileSettings =
     this.copy(scriptArgs = scriptArgs.appendedAll(args.toList.filter(_.nonEmpty)))
 
-  def withTargetScript(file: String): CompileSettings =
-    Try(Source.fromFile(file)) match
-      case Success(_) => this.copy(targetScript = file)
-      case Failure(_) =>
-        println(s"not found $file")
-        this.copy(exitCode = 2)
+  def withTargetScript(file: String): CompileSettings = {
+    if File.getOnDisk(file).nonEmpty then
+      this.copy(targetScript = file)
+    else
+      println(s"not found $file")
+      this.copy(exitCode = 2)
+  }
   end withTargetScript
 }
 
 object MainGenericCompiler {
 
-  private val classpathSeparator: String = File.pathSeparator
+  private val classpathSeparator: String = ClassPath.pathSeparator
   private val javaPropOption = raw"""-D([^=]+)=(.*)""".r
 
   private def processClasspath(cp: String, tail: List[String]): (List[String], List[String]) =
