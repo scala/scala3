@@ -1,4 +1,5 @@
 //> using options -Werror -explain
+// (we want to check that both errors and warnings are emitted)
 
 case class A(a: Int)
 case class B(b: Int)

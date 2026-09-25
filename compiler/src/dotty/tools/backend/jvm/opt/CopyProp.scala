@@ -523,6 +523,15 @@ class CopyProp(callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes,
             toRemove += prod
             handleInputs(prod, prod.asInstanceOf[MultiANewArrayInsnNode].dims)
 
+          // Remove "is instance of j.l.Object", a leftover after some optimizations
+          case INSTANCEOF =>
+            val typeInsn = prod.asInstanceOf[TypeInsnNode]
+            if typeInsn.desc == ClassBType.javaLangObjectInternalName then
+              toRemove += prod
+              handleInputs(prod, 1)
+            else
+              popAfterProd()
+
           case _ =>
             popAfterProd()
         }
