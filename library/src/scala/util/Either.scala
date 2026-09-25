@@ -16,6 +16,9 @@ package util
 import scala.language.`2.13`
 import language.experimental.captureChecking
 
+import annotation.experimental
+import scala.compiletime.Maybe
+
 /** Represents a value of one of two possible types (a disjoint union).
  *  An instance of `Either` is an instance of either [[scala.util.Left]] or [[scala.util.Right]].
  *
@@ -523,6 +526,16 @@ sealed abstract class Either[+A, +B] extends Product with Serializable {
     case Right(b) => Success(b)
     case Left(a)  => Failure(a)
   }
+
+  @experimental
+  final def toMaybe: Maybe[B, Unit] = this match
+    case Right(b) => Ok(b)
+    case _        => null.asInstanceOf[Maybe[B, Unit]]
+
+  @experimental
+  final def toResult: Maybe[B, A] = this match
+    case Right(b) => Ok(b)
+    case Left(a) => Err(a)
 
   /** Returns `true` if this is a `Left`, `false` otherwise.
    *
