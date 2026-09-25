@@ -16,6 +16,7 @@ sealed trait Maybe[+T, +E] extends Any, Matchable {
   private[compiletime] def get: T
 }
 
+@experimental
 object Maybe {
   extension [A, E](x: Maybe[A, E])
     transparent inline def ? (using maybe.CanErr[E]): A =
@@ -43,7 +44,15 @@ object Maybe {
       case Ok(y) => f(y)
       case Err(_) =>
 
+    def toEither: Either[E, A] = x.runtimeChecked match
+      case Ok(y) => Right(y)
+      case Err(e) => Left(e)
+
   extension [A](x: Maybe[A, Unit])
+    def toOption: Option[A] = x.runtimeChecked match
+      case Ok(y) => Some(y)
+      case Err(e) => None
+
     def filter(p: A => Boolean): Maybe[A, Unit] = x.runtimeChecked match
       case Ok(y) if p(y) => x
       case _ => null.asInstanceOf[Maybe[A, Unit]]

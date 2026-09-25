@@ -1,0 +1,50 @@
+==== Maybe.toOption
+Some(1)
+None
+Some(abc)
+None
+Some(2)
+None
+Some(null)
+Some(Fail(bad))
+Some(3)
+==== Maybe.toEither
+Right(1)
+Left(bad)
+Right(2)
+Right(abc)
+Left(0)
+Right(3)
+Left(())
+Right(null)
+Right(Err(inner))
+Left(outer)
+==== Option.toMaybe
+Ok(1)
+null
+Ok(abc)
+null
+Ok(null)
+Ok(null)
+Ok(Fail(bad))
+Ok(4)
+==== Either.toMaybe
+Ok(1)
+null
+Ok(abc)
+null
+Ok(null)
+Ok(null)
+Ok(Fail(inner))
+==== Either.toResult
+Ok(1)
+Err(bad)
+Ok(abc)
+Err(0)
+Err(())
+Ok(null)
+Ok(Fail(inner))
+Err(Fail(inner))
+Err(5)
+==== round trips
+ok
