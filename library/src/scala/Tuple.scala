@@ -385,6 +385,15 @@ object Tuple {
   def fromProduct(product: Product): Tuple =
     runtime.Tuples.fromProduct(product)
 
+  /** Converts a `Product` into a tuple whose arity and element types are statically
+   *  known, as described by the product's mirror.
+   *
+   *  @tparam P the type of the product to convert
+   *  @param p the product to convert into a tuple
+   *  @param m the mirror of `P`, which determines the element types of the result
+   *  @return a tuple whose elements are the elements of `p` in declaration order,
+   *          typed as `m.MirroredElemTypes`
+   */
   def fromProductTyped[P <: Product](p: P)(using m: scala.deriving.Mirror.ProductOf[P]): m.MirroredElemTypes =
     runtime.Tuples.fromProduct(p).asInstanceOf[m.MirroredElemTypes]
 
@@ -399,15 +408,30 @@ type EmptyTuple = EmptyTuple.type
 
 /** A tuple of 0 elements. */
 case object EmptyTuple extends Tuple {
+  /** Returns the string representation of the empty tuple, `"()"`. */
   override def toString(): String = "()"
 }
 
 /** Tuple of arbitrary non-zero arity. */
 sealed trait NonEmptyTuple extends Tuple
 
+/** A tuple whose first element has type `H` and whose remaining elements form a
+ *  tuple of type `T`.
+ *
+ *  @tparam H the type of the head element
+ *  @tparam T the type of the tail, itself a tuple
+ */
 @showAsInfix
 sealed abstract class *:[+H, +T <: Tuple] extends NonEmptyTuple
 
 object *: {
+  /** Decomposes a non-empty tuple into its head element and its tail, so that a
+   *  tuple can be matched with the `h *: t` pattern.
+   *
+   *  @tparam H the type of the head element
+   *  @tparam T the type of the tail, itself a tuple
+   *  @param x the tuple to decompose
+   *  @return a pair of the head of `x` and its tail
+   */
   def unapply[H, T <: Tuple](x: H *: T): (H, T) = (x.head, x.tail)
 }

@@ -27,20 +27,21 @@ import scala.language.`2.13`
  *  @tparam T8 the type of the 8th element
  *  @tparam T9 the type of the 9th element
  *  @tparam T10 the type of the 10th element
- *  @param  _1   element 1 of this Tuple10
- *  @param  _2   element 2 of this Tuple10
- *  @param  _3   element 3 of this Tuple10
- *  @param  _4   element 4 of this Tuple10
- *  @param  _5   element 5 of this Tuple10
- *  @param  _6   element 6 of this Tuple10
- *  @param  _7   element 7 of this Tuple10
- *  @param  _8   element 8 of this Tuple10
- *  @param  _9   element 9 of this Tuple10
- *  @param  _10   element 10 of this Tuple10
+ *  @param  _1   the 1st element of this Tuple10
+ *  @param  _2   the 2nd element of this Tuple10
+ *  @param  _3   the 3rd element of this Tuple10
+ *  @param  _4   the 4th element of this Tuple10
+ *  @param  _5   the 5th element of this Tuple10
+ *  @param  _6   the 6th element of this Tuple10
+ *  @param  _7   the 7th element of this Tuple10
+ *  @param  _8   the 8th element of this Tuple10
+ *  @param  _9   the 9th element of this Tuple10
+ *  @param  _10   the 10th element of this Tuple10
  */
 final case class Tuple10[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10](_1: T1, _2: T2, _3: T3, _4: T4, _5: T5, _6: T6, _7: T7, _8: T8, _9: T9, _10: T10)
   extends Product10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]
 {
+  /** Returns a string representation of this tuple, the elements separated by commas and enclosed in parentheses. */
   override def toString(): String = "(" + _1 + "," + _2 + "," + _3 + "," + _4 + "," + _5 + "," + _6 + "," + _7 + "," + _8 + "," + _9 + "," + _10 + ")"
   
 }
