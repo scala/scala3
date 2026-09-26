@@ -682,7 +682,7 @@ object MiMaFilters {
     ).mapValues(_ ++ Seq(
         // No .class files generated in the artifacts, only `scala.scalajs.*` files might be present
         ProblemFilters.exclude[MissingClassProblem]("scala.*"),
-      ))
+      )).toMap
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // We should never break backwards compatibility
