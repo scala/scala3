@@ -2,15 +2,16 @@ package dotty.tools
 package dotc
 package core
 
-import scala.io.Codec
+import scala.collection.mutable
 import util.NameTransformer
 import printing.{Printer, Showable, Texts}
 import Texts.Text
-import StdNames.str
-import util.{HashSet, LinearMap}
+import StdNames.{nme, str}
 
-import java.nio.CharBuffer
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.ConcurrentHashMap
+import dotty.tools.dotc.util.Stats
+
 import scala.annotation.internal.sharable
 
 object Names {
@@ -154,8 +155,7 @@ object Names {
 
     def endsWith(suffix: SimpleName): Boolean = lastPart.endsWith(suffix)
 
-    override def hashCode: Int = System.identityHashCode(this)
-    override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
+    // keep the default reference-based equality and hashcode, since names are interned
   }
 
   /** Names for terms, can be simple or derived */
@@ -184,18 +184,16 @@ object Names {
     def info: NameInfo = SimpleNameKind.info
     def underlying: TermName = unsupported("underlying")
 
-    @sharable // because of synchronized block in `add`
-    private var derivedNames: LinearMap[NameInfo, DerivedName] = LinearMap.empty
-
-    private def add(info: NameInfo): TermName = synchronized {
-      val dnOpt = derivedNames.lookup(info)
-      dnOpt match
-        case null =>
-          val derivedName = new DerivedName(this, info)
-          derivedNames = derivedNames.updated(info, derivedName)
-          derivedName
-        case _ => dnOpt
-    }
+    private val derivedNames = new ConcurrentHashMap[NameInfo, DerivedName]()
+    private def add(info: NameInfo): TermName =
+      val existing = derivedNames.get(info)
+      if existing != null then
+        existing
+      else
+        val candidate = new DerivedName(this, info)
+        val result = derivedNames.putIfAbsent(info, candidate)
+        if result != null then result // concurrent update
+        else candidate
 
     private def rewrap(underlying: TermName) =
       if (underlying eq this.underlying) this else underlying.add(info)
@@ -234,23 +232,18 @@ object Names {
     private var myMangledString: String | Null = null
 
     @sharable // because it's just a cache for performance
-    private var myMangled: Name | Null = null
+    private var myMangled: ThisName | Null = null
 
     protected[Names] def mangle: ThisName
 
-    final def mangled: ThisName = {
-      if (myMangled == null) myMangled = mangle
-      myMangled.asInstanceOf[ThisName]
-    }
+    final def mangled: ThisName =
+      initialize(myMangled, myMangled = _, mangle)
 
-    final def mangledString: String = {
-      if (myMangledString == null)
-        myMangledString = qualToString(_.mangledString, _.mangled.toString)
-      myMangledString.nn
-    }
+    final def mangledString: String =
+      initialize(myMangledString, myMangledString = _, qualToString(_.mangledString, _.mangled.toString))
 
     /** If this a qualified name, split it into underlying, last part, and separator
-     *  Otherwise return an empty name, the name itself, and "")
+     *  Otherwise return an empty name, the name itself, and ""
      */
     def split: (TermName, TermName, String)
 
@@ -262,57 +255,33 @@ object Names {
       val (first, last, sep) = split
       if (first.isEmpty) f2(last) else str.sanitize(f1(first) + sep + f2(last))
     }
-
-    protected def computeToString: String
-
-    @sharable private var myToString: String | Null = null
-
-    override def toString: String =
-      if myToString == null then myToString = computeToString
-      myToString.nn
-
   }
 
   /** A simple name is essentially an interned string */
-  final class SimpleName(val start: Int, override val length: Int) extends TermName {
+  final class SimpleName private[Names](private val value: String) extends TermName {
 
-  /** The n'th character */
-    def apply(n: Int): Char = chrs(start + n)
+    override def length: Int = value.length
+
+    /** The n-th character */
+    def apply(n: Int): Char = value.charAt(n)
 
     /** A character in this name satisfies predicate `p` */
-    def exists(p: Char => Boolean): Boolean = {
-      var i = 0
-      while (i < length && !p(chrs(start + i))) i += 1
-      i < length
-    }
+    def exists(p: Char => Boolean): Boolean = value.exists(p)
 
     /** All characters in this name satisfy predicate `p` */
-    def forall(p: Char => Boolean): Boolean = !exists(!p(_))
+    def forall(p: Char => Boolean): Boolean = value.forall(p)
 
     /** The name contains given character `ch` */
-    def contains(ch: Char): Boolean = {
-      var i = 0
-      while (i < length && chrs(start + i) != ch) i += 1
-      i < length
-    }
+    def contains(ch: Char): Boolean = value.contains(ch)
 
-    /** The index of the last occurrence of `ch` in this name which is at most
-     *  `start`.
-     */
-    def lastIndexOf(ch: Char, start: Int = length - 1): Int = {
-      var i = start
-      while (i >= 0 && apply(i) != ch) i -= 1
-      i
-    }
+    /** The index of the last occurrence of `ch` in this name which is at most `start`. */
+    def lastIndexOf(ch: Char, start: Int = length - 1): Int = value.lastIndexOf(ch, start)
 
     /** The index of the last occurrence of `str` in this name */
-    def lastIndexOfSlice(str: String): Int = toString.lastIndexOfSlice(str)
+    def lastIndexOfSlice(str: String): Int = value.lastIndexOf(str)
 
     /** A slice of this name making up the characters between `from` and `until` (exclusive) */
-    def slice(from: Int, end: Int): SimpleName = {
-      assert(0 <= from && from <= end && end <= length)
-      termName(new String(chrs, start + from, end - from))
-    }
+    def slice(from: Int, end: Int): SimpleName = termName(value.substring(from, end))
 
     def drop(n: Int): SimpleName = slice(n, length)
     def take(n: Int): SimpleName = slice(0, n)
@@ -320,15 +289,14 @@ object Names {
     def takeRight(n: Int): SimpleName = slice(length - n, length)
 
     /** Same as slice, but as a string */
-    def sliceToString(from: Int, end: Int): String =
-      if (end <= from) "" else new String(chrs, start + from, end - from)
+    def sliceToString(from: Int, end: Int): String = value.substring(from, end)
 
-    def head: Char = apply(0)
-    def last: Char = apply(length - 1)
+    def head: Char = value.charAt(0)
+    def last: Char = value.charAt(length - 1)
 
     def toUTF8Bytes(): Array[Byte] =
       if length == 0 then Array.emptyByteArray
-      else Codec.toUTF8(chrs, start, length)
+      else value.getBytes(StandardCharsets.UTF_8)
 
     override def asSimpleName: SimpleName = this
     override def toSimpleName: SimpleName = this
@@ -341,45 +309,34 @@ object Names {
     override def mapParts(f: SimpleName => SimpleName): SimpleName = f(this)
     override def split: (TermName, SimpleName, String) = (EmptyTermName, this, "")
 
-    override def encode: SimpleName = {
-      val dontEncode =
-        this == StdNames.nme.CONSTRUCTOR || this == StdNames.nme.STATIC_CONSTRUCTOR
-      if (dontEncode) this else NameTransformer.encode(this)
-    }
+    override def encode: SimpleName =
+      if (this `eq` StdNames.nme.CONSTRUCTOR) || (this `eq` StdNames.nme.STATIC_CONSTRUCTOR) then this
+      else NameTransformer.encode(this)
 
     override def decode: SimpleName = NameTransformer.decode(this)
 
     override def isEmpty: Boolean = length == 0
 
-    override def startsWith(str: String, start: Int): Boolean = {
-      var i = 0
-      while (i < str.length && start + i < length && apply(start + i) == str(i)) i += 1
-      i == str.length
-    }
+    override def startsWith(str: String, start: Int): Boolean =
+      value.startsWith(str, start)
 
     override def endsWith(suffix: String): Boolean =
-      var i = 1
-      while i <= suffix.length && i <= length && apply(length - i) == suffix(suffix.length - i) do i += 1
-      i > suffix.length
+      value.endsWith(suffix)
 
     override def endsWith(suffix: SimpleName): Boolean =
-      var i = 1
-      while i <= suffix.length && i <= length && apply(length - i) == suffix(suffix.length - i) do i += 1
-      i > suffix.length
+      value.endsWith(suffix.value)
 
     override def firstPart: SimpleName = this
     override def lastPart: SimpleName = this
 
-    override def hashCode: Int = start
+    override def toString: String = value
+    override def debugString: String = value
 
-    protected def computeToString: String =
-      if (length == 0) ""
-      else new String(chrs, start, length)
-
-    def debugString: String = toString
+    def compareTo(other: SimpleName): Int =
+      value.compareTo(other.value)
   }
 
-  final class TypeName(val toTermName: TermName) extends Name {
+  final class TypeName private[Names](val toTermName: TermName) extends Name {
 
     type ThisName = TypeName
 
@@ -420,7 +377,7 @@ object Names {
   /** A term name that's derived from an `underlying` name and that
    *  adds `info` to it.
    */
-  final case class DerivedName(override val underlying: TermName, override val info: NameInfo)
+  final class DerivedName private[Names](override val underlying: TermName, override val info: NameInfo)
   extends TermName {
 
     override def asSimpleName: Nothing = throw new UnsupportedOperationException(s"$debugString is not a simple name")
@@ -473,94 +430,37 @@ object Names {
       case qual: QualifiedInfo => qual.name
       case _ => underlying.lastPart
     }
-    protected def computeToString: String = info.mkString(underlying)
+
+    @sharable private var myToString: String | Null = null
+    override def toString: String =
+      initialize(myToString, myToString = _, info.mkString(underlying))
+
     override def debugString: String = s"${underlying.debugString}[$info]"
   }
 
+  object DerivedName:
+    def unapply(n: Name): Option[(TermName, NameInfo)] = n match
+      case dn: DerivedName => Some((dn.underlying, dn.info))
+      case _ => None
+
   /** The term name represented by the empty string */
-  val EmptyTermName: SimpleName = SimpleName(-1, 0)
-
-  // Nametable
-
-  inline val InitialNameSize = 0x20000
-
-  /** Memory to store all names sequentially. */
-  @sharable // because it's only mutated in synchronized block of enterIfNew
-  private var chrs: Array[Char] = new Array[Char](InitialNameSize)
-
-  /** The number of characters filled. */
-  @sharable // because it's only mutated in synchronized block of enterIfNew
-  private var nc = 0
-
-  /** Make sure the capacity of the character array is at least `n` */
-  private def ensureCapacity(n: Int) =
-    if n > chrs.length then
-      chrs = Array.copyOf(chrs, chrs.length * 2)
-
-  private final class NameTable extends HashSet[SimpleName](initialCapacity = 0x10000, capacityMultiple = 2):
-    import util.Stats
-
-    override def hash(x: SimpleName) = hashValue(chrs, x.start, x.length) // needed for resize
-    override def isEqual(x: SimpleName, y: SimpleName) = ???              // not needed
-
-    def enterIfNew(str: String): SimpleName =
-      Stats.record(statsItem("put"))
-      val myTable = currentTable // could be outdated under parallel execution
-      var idx = str.hashCode & (myTable.length - 1)
-      var name: SimpleName | Null = myTable(idx).asInstanceOf[SimpleName | Null]
-      while name != null do
-        val nnName = name.nn // TODO this should not be needed
-        if Names.equals(nnName.start, nnName.length, str) then
-          return nnName
-        Stats.record(statsItem("miss"))
-        idx = (idx + 1) & (myTable.length - 1)
-        name = myTable(idx).asInstanceOf[SimpleName | Null]
-      Stats.record(statsItem("addEntryAt"))
-      synchronized {
-        if (myTable eq currentTable) && myTable(idx) == null then
-          // Our previous unsynchronized computation of the next free index is still correct.
-          // This relies on the fact that table entries go from null to non-null, and then
-          // stay the same. Note that we do not need the table or the entry in it to be
-          // volatile since SimpleNames are immutable, and hence safely published.
-          // The same holds for the chrs array. We might miss before the synchronized
-          // on published characters but that would make name comparison false, which
-          // means we end up in the synchronized block here, where we get the correct state.
-          name = SimpleName(nc, str.length)
-          ensureCapacity(nc + str.length)
-          str.getChars(0, str.length, chrs, nc)
-          nc += str.length()
-          addEntryAt(idx, name.nn)
-        else
-          enterIfNew(str)
-      }
-
-    addEntryAt(0, EmptyTermName: @unchecked)
-  end NameTable
+  val EmptyTermName: SimpleName = new SimpleName("")
 
   /** Hashtable for finding term names quickly. */
-  @sharable // because it's only mutated in synchronized block of enterIfNew
-  private val nameTable = NameTable()
+  private val nameTable = new ConcurrentHashMap[String, SimpleName](/*initialCapacity =*/ 0x10000, /*loadFactor =*/ 2.0)
+  nameTable.put("", EmptyTermName)
 
-  /** The hash of a name made of from characters cs[offset..offset+len-1]. Same algorithm as java.lang.String. */
-  private def hashValue(cs: Array[Char], offset: Int, len: Int): Int = {
-    var i = offset
-    var hash = 0
-    while (i < len + offset) {
-      hash = 31 * hash + cs(i)
-      i += 1
-    }
-    hash
-  }
-
-  /** Is (the ASCII representation of) name at given index equal to str? */
-  private def equals(index: Int, length: Int, str: String): Boolean = {
-    var i = 0
-    if length != str.length then
-      return false
-    while i < length && chrs(index + i) == str.charAt(i) do
-      i += 1
-    i == length
-  }
+  private def enterIfNew(str: String): SimpleName =
+    Stats.record("NameTable.get")
+    val existing = nameTable.get(str)
+    if existing != null then
+      existing
+    else
+      Stats.record("NameTable.addEntryAt")
+      val candidate = new SimpleName(str)
+      val result = nameTable.putIfAbsent(str, candidate)
+      if result != null then result // concurrent update
+      else candidate
 
   /** Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
    */
@@ -577,7 +477,7 @@ object Names {
   /** Create a term name from a sequence of characters.
    */
   def termName(s: String): SimpleName =
-    nameTable.enterIfNew(s)
+    enterIfNew(s)
 
   /** Create a type name from a sequence of characters */
   def typeName(s: String): TypeName =
@@ -593,7 +493,7 @@ object Names {
         case x: QualifiedInfo =>
           y match {
             case y: QualifiedInfo =>
-              compareSimpleNames(x.name, y.name)
+              x.name.compareTo(y.name)
           }
         case x: NumberedInfo =>
           y match {
@@ -604,20 +504,11 @@ object Names {
           assert(x == y)
           0
       }
-    private def compareSimpleNames(x: SimpleName, y: SimpleName): Int = {
-      val until = x.length min y.length
-      var i = 0
-      while (i < until && x(i) == y(i)) i = i + 1
-      if (i < until)
-        if (x(i) < y(i)) -1
-        else /*(x(i) > y(i))*/ 1
-      else
-        x.length - y.length
-    }
+
     private def compareTermNames(x: TermName, y: TermName): Int = x match {
       case x: SimpleName =>
         y match {
-          case y: SimpleName => compareSimpleNames(x, y)
+          case y: SimpleName => x.compareTo(y)
           case _ => -1
         }
       case DerivedName(xPre, xInfo) =>
