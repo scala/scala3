@@ -12,6 +12,16 @@ final class TupleMirror(arity: Int) extends scala.deriving.Mirror.Product with S
 
   override type MirroredMonoType <: Tuple
 
+  /** Creates a tuple of this mirror's arity from the elements of `product`.
+   *
+   *  Delegates to [[scala.runtime.Tuples.fromProduct]], so if `product` already is a
+   *  tuple in the representation matching its arity, it is returned as is rather
+   *  than copied.
+   *
+   *  @param product the product supplying the elements of the resulting tuple
+   *  @throws IllegalArgumentException if `product.productArity` differs from the
+   *          arity this mirror was constructed with
+   */
   final def fromProduct(product: Product): MirroredMonoType =
     if product.productArity != arity then
       throw IllegalArgumentException(s"expected Product with $arity elements, got ${product.productArity}")
