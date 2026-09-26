@@ -43,9 +43,15 @@ import scala.annotation.compileTimeOnly
  */
 @SerialVersionUID(3L)
 sealed class NumericRange[T](
+  /** The start value of the range; its first element when the range is non-empty. */
   val start: T,
+  /** The end value of the range, a bound that is not necessarily an element itself. */
   val end: T,
+  /** The increment between successive elements; may be negative, must not be zero. */
   val step: T,
+  /** Whether `end` may be an element: an inclusive range contains `end` when it
+   *  is a whole number of steps from `start`; an exclusive range never contains it.
+   */
   val isInclusive: Boolean
 )(implicit
   num: Integral[T]
@@ -57,8 +63,19 @@ sealed class NumericRange[T](
     with IterableFactoryDefaults[T, IndexedSeq]
     with Serializable { self =>
 
+  /** Returns a new iterator over all elements of this range in order. */
   override def iterator: Iterator[T] = new NumericRange.NumericRangeIterator(this, num)
 
+  /** Returns a stepper for the elements of this range.
+   *
+   *  Uses a stepper specialized for `Int` or `Long` elements when `shape` has
+   *  one of those shapes, and a generic stepper otherwise.
+   *
+   *  @tparam S the type of the returned stepper, determined by `shape`
+   *  @param shape the shape of the stepper for elements of type `T`
+   *  @return a stepper over the elements of this range, supporting efficient
+   *          splitting for parallel processing
+   */
   override def stepper[S <: Stepper[?]](implicit shape: StepperShape[T, S]): S & EfficientSplit = {
     import scala.collection.convert._
     import impl._
@@ -77,20 +94,49 @@ sealed class NumericRange[T](
   import num._
 
   // See comment in Range for why this must be lazy.
+  /** The number of elements in this range, computed on first access and cached.
+   *
+   *  @throws IllegalArgumentException if `step` is zero, if the range has more than
+   *          `Int.MaxValue` elements, or, for a `BigDecimal` range, if the endpoints
+   *          cannot represent the step accurately enough to count the elements
+   */
   override lazy val length: Int     = NumericRange.count(start, end, step, isInclusive)
+  /** Whether this range has no elements.
+   *
+   *  Determined from `start`, `end`, the sign of `step`, and `isInclusive`
+   *  alone, so this is safe even on ranges whose `length` would overflow an
+   *  `Int`.
+   */
   override lazy val isEmpty: Boolean = (
     (num.gt(start, end) && num.gt(step, num.zero))
       || (num.lt(start, end) && num.lt(step, num.zero))
       || (num.equiv(start, end) && !isInclusive)
     )
+  /** Returns the last element of this range: the element nearest `end` that
+   *  the range contains, which is not necessarily `end` itself.
+   *
+   *  @throws NoSuchElementException if this range is empty
+   */
   override def last: T =
     if (isEmpty) Nil.head
     else locationAfterN(length - 1)
+  /** Returns a new range with all elements of this range except the last.
+   *
+   *  @throws UnsupportedOperationException if this range is empty
+   */
   override def init: NumericRange[T] =
     if (isEmpty) Nil.init
     else new NumericRange(start, end - step, step, isInclusive)
 
+  /** Returns the first element of this range, which is `start`.
+   *
+   *  @throws NoSuchElementException if this range is empty
+   */
   override def head: T = if (isEmpty) Nil.head else start
+  /** Returns a new range with all elements of this range except the first.
+   *
+   *  @throws UnsupportedOperationException if this range is empty
+   */
   override def tail: NumericRange[T] =
     if (isEmpty) Nil.tail
     else if(isInclusive) new NumericRange.Inclusive(start + step, end, step)
@@ -115,6 +161,12 @@ sealed class NumericRange[T](
   def copy(start: T, end: T, step: T): NumericRange[T] =
     new NumericRange(start, end, step, isInclusive)
 
+  /** Returns the element at the given index, computed as `start + idx * step`.
+   *
+   *  @param idx the zero-based index of the element
+   *  @return the element at index `idx`
+   *  @throws IndexOutOfBoundsException if `idx` is negative or not less than `length`
+   */
   @throws[IndexOutOfBoundsException]
   def apply(idx: Int): T = {
     if (idx < 0 || idx >= length)
@@ -122,6 +174,10 @@ sealed class NumericRange[T](
     else locationAfterN(idx)
   }
 
+  /** Applies `f` to every element of this range in order.
+   *
+   *  @param f the function applied to each element; its result is discarded
+   */
   override def foreach[@specialized(Specializable.Unit) U](f: T => U): Unit = {
     var count = 0
     var current = start
@@ -151,6 +207,18 @@ sealed class NumericRange[T](
       case _                  => -1
     }
 
+  /** Returns the index of the first occurrence of `elem` at or after index
+   *  `from`, or -1 if `elem` does not occur at such an index.
+   *
+   *  When `elem` is a value of this range's element type, its index is
+   *  computed arithmetically from `start` and `step` instead of by scanning
+   *  the elements; otherwise this falls back to the linear search of the
+   *  superclass.
+   *
+   *  @tparam B the type of the value to search for, a supertype of `T`
+   *  @param elem the value to search for
+   *  @param from the lowest index to consider
+   */
   final override def indexOf[B >: T](elem: B, from: Int): Int =
     try indexOfTyped(elem.asInstanceOf[T], from)
     catch { case _: ClassCastException => super.indexOf(elem, from) }
@@ -161,6 +229,19 @@ sealed class NumericRange[T](
       case _                 => -1
     }
 
+  /** Returns the index of the last occurrence of `elem` at or before index
+   *  `end`, or -1 if `elem` does not occur at such an index.
+   *
+   *  A value occurs at most once in a range, so this differs from `indexOf`
+   *  only in bounding the accepted index from above rather than from below.
+   *  When `elem` is a value of this range's element type, its index is
+   *  computed arithmetically from `start` and `step`; otherwise this falls
+   *  back to the linear search of the superclass.
+   *
+   *  @tparam B the type of the value to search for, a supertype of `T`
+   *  @param elem the value to search for
+   *  @param end the highest index to consider
+   */
   final override def lastIndexOf[B >: T](elem: B, end: Int = length - 1): Int =
     try lastIndexOfTyped(elem.asInstanceOf[T], end)
     catch { case _: ClassCastException => super.lastIndexOf(elem, end) }
@@ -266,20 +347,48 @@ sealed class NumericRange[T](
   // based on the given value.
   private def newEmptyRange(value: T) = NumericRange(value, value, step)
 
+  /** Returns a range with the first `n` elements of this range.
+   *
+   *  @param n the number of elements to take
+   *  @return a range of the first `n` elements of this range, this whole
+   *          range if `n` is greater than or equal to `length`, or an empty
+   *          range if `n <= 0`
+   */
   override def take(n: Int): NumericRange[T] = {
     if (n <= 0 || isEmpty) newEmptyRange(start)
     else if (crossesTheEndAfterN(n)) this
     else new NumericRange.Inclusive(start, locationAfterN(n - 1), step)
   }
 
+  /** Returns a range with all elements of this range except the first `n`.
+   *
+   *  @param n the number of elements to drop
+   *  @return a range of the elements of this range after the first `n`, this
+   *          whole range if `n <= 0`, or an empty range if `n` is greater
+   *          than or equal to `length`
+   */
   override def drop(n: Int): NumericRange[T] = {
     if (n <= 0 || isEmpty) this
     else if (crossesTheEndAfterN(n)) newEmptyRange(end)
     else copy(locationAfterN(n), end, step)
   }
 
+  /** Splits this range at a given index.
+   *
+   *  @param n the index at which to split
+   *  @return a pair of ranges `(take(n), drop(n))`
+   */
   override def splitAt(n: Int): (NumericRange[T], NumericRange[T]) = (take(n), drop(n))
 
+  /** Returns a new range with the same elements as this range in reverse
+   *  order: an inclusive range from `last` to `start` with step `-step`.
+   *  Returns this range itself if it is empty.
+   *
+   *  @throws ArithmeticException if this range is non-empty and negating its step
+   *          cannot change the step's sign, either because the element type is
+   *          unsigned or because the step is the minimum value of a signed
+   *          fixed-width type
+   */
   override def reverse: NumericRange[T] =
     if (isEmpty) this
     else {
@@ -291,6 +400,21 @@ sealed class NumericRange[T](
 
   import NumericRange.defaultOrdering
 
+  /** Returns the smallest element of this range under the ordering `ord`.
+   *
+   *  When `ord` is this range's own `Integral` instance, or the default
+   *  ordering of one of the standard numeric types, the result is taken
+   *  directly from an endpoint: the first element for a positive step, the
+   *  last element otherwise. Any other ordering falls back to a linear scan.
+   *
+   *  @tparam T1 the type on which `ord` orders values, a supertype of `T`
+   *  @param ord the ordering used to compare elements
+   *  @return the smallest element of this range according to `ord`
+   *  @throws NoSuchElementException if this range is empty and the endpoint
+   *          shortcut applies
+   *  @throws UnsupportedOperationException if this range is empty and the
+   *          linear scan applies
+   */
   override def min[T1 >: T](implicit ord: Ordering[T1]): T =
   // We can take the fast path:
   // - If the Integral of this NumericRange is also the requested Ordering
@@ -301,6 +425,21 @@ sealed class NumericRange[T](
       else last
     } else super.min(using ord)
 
+  /** Returns the largest element of this range under the ordering `ord`.
+   *
+   *  When `ord` is this range's own `Integral` instance, or the default
+   *  ordering of one of the standard numeric types, the result is taken
+   *  directly from an endpoint: the last element for a positive step, the
+   *  first element otherwise. Any other ordering falls back to a linear scan.
+   *
+   *  @tparam T1 the type on which `ord` orders values, a supertype of `T`
+   *  @param ord the ordering used to compare elements
+   *  @return the largest element of this range according to `ord`
+   *  @throws NoSuchElementException if this range is empty and the endpoint
+   *          shortcut applies
+   *  @throws UnsupportedOperationException if this range is empty and the
+   *          linear scan applies
+   */
   override def max[T1 >: T](implicit ord: Ordering[T1]): T =
   // See comment for fast path in min().
     if ((ord eq num) || defaultOrdering.get(num).exists(ord eq _)) {
@@ -309,13 +448,42 @@ sealed class NumericRange[T](
     } else super.max(using ord)
 
   // a well-typed contains method.
+  /** Returns `true` if `x` is an element of this range, `false` otherwise.
+   *
+   *  Computed arithmetically, without examining elements: `x` must lie
+   *  between `start` and `last` and be a whole number of steps from `start`.
+   *
+   *  @param x the value to test
+   */
   def containsTyped(x: T): Boolean =
     isWithinBoundaries(x) && (((x - start) % step) == zero)
 
+  /** Returns `true` if `x` is an element of this range, `false` otherwise.
+   *
+   *  Returns `false` if `x` is not a value of this range's element type;
+   *  otherwise the answer is computed arithmetically as in `containsTyped`,
+   *  without examining elements.
+   *
+   *  @tparam A1 the type of the value to test, a supertype of `T`
+   *  @param x the value to test
+   */
   override def contains[A1 >: T](x: A1): Boolean =
     try containsTyped(x.asInstanceOf[T])
     catch { case _: ClassCastException => false }
 
+  /** Returns the sum of all elements of this range.
+   *
+   *  For the standard integral types (`Byte`, `Short`, `Char`, `Int`, `Long`,
+   *  `BigInt`, and `BigDecimal`) the sum is computed in constant time using
+   *  the arithmetic series formula `n * (head + last) / 2`, with care taken
+   *  not to overflow intermediate results for the fixed-width types. For any
+   *  other `Numeric` instance the elements are added one by one.
+   *
+   *  @tparam B the type in which the sum is computed, a supertype of `T`
+   *  @param num the `Numeric` instance used to add elements; its identity
+   *         selects the constant-time specializations
+   *  @return the sum of all elements, or `num.zero` if this range is empty
+   */
   override def sum[B >: T](implicit num: Numeric[B]): B = {
     if (isEmpty) num.zero
     else if (size == 1) head
@@ -371,9 +539,29 @@ sealed class NumericRange[T](
     }
   }
 
+  /** The hash code of this range, computed on first access and cached.
+   *  Consistent with `equals`: equal to the hash code of any sequence with
+   *  the same elements.
+   */
   override lazy val hashCode: Int = super.hashCode()
+  /** Returns `Int.MaxValue`: indexed access via `apply` is cheap at every
+   *  length, so element scans (as in `sameElements`) never need to switch to
+   *  an iterator.
+   */
   override protected final def applyPreferredMaxLength: Int = Int.MaxValue
 
+  /** Compares this range to `other` for equality.
+   *
+   *  Two numeric ranges are equal if they have the same length and, when
+   *  non-empty, the same `start` and the same last element; the elements in
+   *  between are then necessarily the same. Comparison with any other kind
+   *  of sequence falls back to the element-by-element comparison of the
+   *  superclass.
+   *
+   *  @param other the value to compare this range with
+   *  @return `true` if `other` is a sequence with the same elements in the
+   *          same order as this range
+   */
   override def equals(other: Any): Boolean = other match {
     case x: NumericRange[?] =>
       (x canEqual this) && (length == x.length) && (
@@ -384,6 +572,11 @@ sealed class NumericRange[T](
       super.equals(other)
   }
 
+  /** Returns a string representation of this range, such as
+   *  `NumericRange 1 until 10 by 2`: `to` for an inclusive range, `until`
+   *  for an exclusive one, prefixed with `empty ` if the range is empty.
+   *  The `by` clause is omitted when `step` is 1.
+   */
   override def toString(): String = {
     val empty = if (isEmpty) "empty " else ""
     val preposition = if (isInclusive) "to" else "until"
@@ -391,6 +584,9 @@ sealed class NumericRange[T](
     s"${empty}NumericRange $start $preposition $end$stepped"
   }
 
+  /** The name `"NumericRange"`, used as the collection-name prefix in string
+   *  representations.
+   */
   override protected def className = "NumericRange"
 }
 
@@ -521,26 +717,82 @@ object NumericRange {
     }
   }
 
+  /** A numeric range that includes its `end` value, when `end` is a whole
+   *  number of steps from `start`.
+   *
+   *  @tparam T the element type of the range
+   *  @param start the start value of the range
+   *  @param end the end value, an element of the range when it is a whole
+   *         number of steps from `start`
+   *  @param step the increment between successive elements; must not be zero
+   *  @param num the `Integral` instance providing arithmetic on `T`
+   */
   @SerialVersionUID(3L)
   class Inclusive[T](start: T, end: T, step: T)(implicit num: Integral[T])
     extends NumericRange(start, end, step, isInclusive = true) {
+    /** Creates an inclusive range with the given start, end, and step.
+     *
+     *  @param start the start value of the new range
+     *  @param end the end value of the new range, included when it is a whole
+     *         number of steps from `start`
+     *  @param step the step value of the new range
+     *  @return a new inclusive range with the given `start`, `end`, and `step`
+     */
     override def copy(start: T, end: T, step: T): Inclusive[T] =
       NumericRange.inclusive(start, end, step)
 
+    /** Returns an exclusive range with the same `start`, `end`, and `step` as this range. */
     def exclusive: Exclusive[T] = NumericRange(start, end, step)
   }
 
+  /** A numeric range that excludes its `end` value.
+   *
+   *  @tparam T the element type of the range
+   *  @param start the start value of the range
+   *  @param end the end value, never an element of the range itself
+   *  @param step the increment between successive elements; must not be zero
+   *  @param num the `Integral` instance providing arithmetic on `T`
+   */
   @SerialVersionUID(3L)
   class Exclusive[T](start: T, end: T, step: T)(implicit num: Integral[T])
     extends NumericRange(start, end, step, isInclusive = false) {
+    /** Creates an exclusive range with the given start, end, and step.
+     *
+     *  @param start the start value of the new range
+     *  @param end the end value of the new range, excluded from it
+     *  @param step the step value of the new range
+     *  @return a new exclusive range with the given `start`, `end`, and `step`
+     */
     override def copy(start: T, end: T, step: T): Exclusive[T] =
       NumericRange(start, end, step)
 
+    /** Returns an inclusive range with the same `start`, `end`, and `step` as this range. */
     def inclusive: Inclusive[T] = NumericRange.inclusive(start, end, step)
   }
 
+  /** Creates an exclusive numeric range, from `start` until `end` (excluded)
+   *  in increments of `step`.
+   *
+   *  @tparam T the element type of the range
+   *  @param start the start value of the range
+   *  @param end the end value, excluded from the range
+   *  @param step the increment between successive elements; must not be zero
+   *  @param num the `Integral` instance providing arithmetic on `T`
+   *  @return a new exclusive range with the given `start`, `end`, and `step`
+   */
   def apply[T](start: T, end: T, step: T)(implicit num: Integral[T]): Exclusive[T] =
     new Exclusive(start, end, step)
+  /** Creates an inclusive numeric range, from `start` to `end` in increments
+   *  of `step`.
+   *
+   *  @tparam T the element type of the range
+   *  @param start the start value of the range
+   *  @param end the end value, an element of the range when it is a whole
+   *         number of steps from `start`
+   *  @param step the increment between successive elements; must not be zero
+   *  @param num the `Integral` instance providing arithmetic on `T`
+   *  @return a new inclusive range with the given `start`, `end`, and `step`
+   */
   def inclusive[T](start: T, end: T, step: T)(implicit num: Integral[T]): Inclusive[T] =
     new Inclusive(start, end, step)
 
