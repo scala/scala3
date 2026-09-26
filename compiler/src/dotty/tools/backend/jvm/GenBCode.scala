@@ -56,9 +56,10 @@ class GenBCode extends Phase { self =>
       val byteCodeRepository = new BCodeRepository(ctx.platform.classPath)
       val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, classBTypeCache)
       val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, Some(bTypesFromClassfile))
-      val knownBTypes = new OptimizerKnownBTypes(bTypeLoader)
+      val knownBTypes = new KnownBTypes(bTypeLoader)
+      val optimizerBTypes = new OptimizerKnownBTypes(bTypeLoader)
       val callGraph = new OptimizerCallGraph(byteCodeRepository, bTypesFromClassfile)
-      _postProcessor = new PostProcessorWithOptimizations(classBTypeCache, byteCodeRepository, bTypesFromClassfile, callGraph, knownBTypes)
+      _postProcessor = new PostProcessorWithOptimizations(classBTypeCache, byteCodeRepository, bTypesFromClassfile, callGraph, knownBTypes, optimizerBTypes)
       _generatedClassHandler = GeneratedClassHandler.withGlobalOptimizations(createClassHandler(_postProcessor), i => report.optimizerWarning(i.msg, i.site, i.pos))
       object impl extends BCodeIdiomatic(callGraph), BCodeSkelBuilder(knownBTypes), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives), BCodeSyncAndTry
       _codeGen = new CodeGen(impl)
