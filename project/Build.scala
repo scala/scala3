@@ -773,6 +773,7 @@ object Build {
       Test    / publishArtifact := false,
       // non-bootstrapped stdlib is publishable (only locally)
       publish / skip := false,
+      Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Raw,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-sbt-bridge-nonbootstrapped",
       fetchedScalaInstanceSettings,
@@ -882,6 +883,7 @@ object Build {
       // "Provider dotty.tools.xsbt.CompilerBridge not found".
       // Declaring `default` (extending `runtime`) to make the local bridge resolvable.
       ivyConfigurations += Configurations.Default.extend(Configurations.Runtime),
+      Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Raw,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-sbt-bridge-bootstrapped",
       // Configure to use the non-bootstrapped compiler
