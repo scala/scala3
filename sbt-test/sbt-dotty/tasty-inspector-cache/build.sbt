@@ -15,10 +15,15 @@ lazy val inspector = project
   .settings(
     scalaVersion := dottyVersion,
     libraryDependencies += "org.scala-lang" %% "scala3-tasty-inspector" % scalaVersion.value,
-    runTest :=
+    runTest := Def.uncached {
       Def.sequential(
-        Def.task(IO.copyFile((lib/Compile/packageBin).value, jarDest)),
-        (Compile/run).toTask(" " + jarDest.getAbsolutePath)
+        Def.task {
+          val converter = fileConverter.value
+          val bin = (lib / Compile / packageBin).value
+          IO.copyFile(converter.toPath(bin).toFile, jarDest)
+        },
+        (Compile / run).toTask(" " + jarDest.getAbsolutePath)
       ).value
+    }
   )
   .dependsOn(lib)

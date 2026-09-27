@@ -1,1 +1,1 @@
-incOptions := incOptions.value.withApiDebug(true)
+incOptions := Def.uncached(incOptions.value.withApiDebug(true))

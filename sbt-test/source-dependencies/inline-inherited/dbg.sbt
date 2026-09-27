@@ -1,3 +1,3 @@
 logLevel := Level.Debug
-incOptions in ThisBuild ~= { _.withApiDebug(true) }
-incOptions in ThisBuild ~= { _.withRelationsDebug(true) }
+ThisBuild / incOptions ~= { _.withApiDebug(true) }
+ThisBuild / incOptions ~= { _.withRelationsDebug(true) }

@@ -15,13 +15,14 @@ val checkJpmsRuntime = taskKey[Unit](
 
 scalaVersion := dottyVersion
 
-def findScala3LibraryJar(cp: Seq[Attributed[File]]): File =
-  cp.map(_.data)
+def findScala3LibraryJar(cp: Seq[Attributed[xsbti.HashedVirtualFileRef]], converter: xsbti.FileConverter): File =
+  cp.map(entry => converter.toPath(entry.data).toFile)
     .find(f => f.getName.startsWith("scala3-library_") && f.getName.endsWith(".jar"))
     .getOrElse(sys.error("scala3-library_3 jar not found on dependency classpath"))
 
-checkManifest := {
-  val jar = findScala3LibraryJar((Runtime / dependencyClasspath).value)
+checkManifest := Def.uncached {
+  val converter = fileConverter.value
+  val jar = findScala3LibraryJar((Runtime / dependencyClasspath).value, converter)
   val jarFile = new java.util.jar.JarFile(jar)
   try {
     val automaticModuleName =
@@ -37,8 +38,9 @@ checkManifest := {
   } finally jarFile.close()
 }
 
-checkJpmsRuntime := {
-  val jar = findScala3LibraryJar((Runtime / dependencyClasspath).value)
+checkJpmsRuntime := Def.uncached {
+  val converter = fileConverter.value
+  val jar = findScala3LibraryJar((Runtime / dependencyClasspath).value, converter)
   val exitCode = Process(
     Seq(
       "java",

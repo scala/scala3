@@ -1,16 +1,18 @@
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+
 lazy val testIRPositions = taskKey[Unit]("test IR positions (#14240)")
 
 enablePlugins(ScalaJSPlugin)
 
 scalaVersion := sys.props("plugin.scalaVersion")
 
-// Test withDottyCompat for %%% dependencies
-libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
+// Test withDottyCompat for platform-aware %% dependencies (sbt 2; was %%%)
+libraryDependencies += ("org.scala-js" %% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
 
 scalaJSUseMainModuleInitializer := true
 
 // #14240 Make sure that generated IR positions are 0-based
-testIRPositions := {
+testIRPositions := Def.uncached {
   import scala.concurrent.{Future, _}
   import scala.concurrent.ExecutionContext.Implicits.global
   import scala.concurrent.duration._

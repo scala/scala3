@@ -8,7 +8,7 @@ lazy val a = project.in(file("a"))
 
 lazy val b = project.in(file("b"))
   .settings(
-    Compile / unmanagedClasspath := Seq(Attributed.blank((ThisBuild / baseDirectory).value / "a-annotation-java-tasty.jar")),
+    Compile / unmanagedClasspath := Seq(Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-annotation-java-tasty.jar").toPath))),
     scalacOptions += "-Ycheck:all",
   )
 
@@ -16,6 +16,6 @@ lazy val b = project.in(file("b"))
 lazy val bAlt = project.in(file("b-alt"))
   .settings(
     Compile / sources := (b / Compile / sources).value,
-    Compile / unmanagedClasspath := Seq(Attributed.blank((ThisBuild / baseDirectory).value / "a-annotation-classes")),
+    Compile / unmanagedClasspath := Seq(Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-annotation-classes").toPath))),
     scalacOptions += "-Ycheck:all",
   )

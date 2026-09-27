@@ -5,5 +5,5 @@ lazy val a = project.in(file("a"))
 
 lazy val b = project.in(file("b"))
   .settings(
-    Compile / unmanagedClasspath += (ThisBuild / baseDirectory).value / "b-input"
+    Compile / unmanagedClasspath += Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "b-input").toPath))
   )
