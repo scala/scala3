@@ -602,7 +602,11 @@ object CheckUnused:
         then
           if tree.hasAttachment(NoWarn) then
             nowarn.addOne(tree.symbol)
-          defs.addOne(tree.symbol.userSymbol -> tree.namePos)
+          val pos =
+            if tree.name.startsWith("given_") then
+              tree.sourcePos.focus
+            else tree.namePos
+          defs.addOne(tree.symbol.userSymbol -> pos)
       case _ =>
         if tree.symbol ne NoSymbol then
           defs.addOne(tree.symbol -> tree.srcPos) // TODO is this a code path
