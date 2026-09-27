@@ -20,7 +20,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@82da71df4e122282484a99a8d70096bc2369dbd8 # v1.5.9
+      - uses: sbt/setup-sbt@ce95da69b39609ea153bad087708da5f37366897 # v1.5.10
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -39,7 +39,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@82da71df4e122282484a99a8d70096bc2369dbd8 # v1.5.9
+      - uses: sbt/setup-sbt@ce95da69b39609ea153bad087708da5f37366897 # v1.5.10
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -58,7 +58,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@82da71df4e122282484a99a8d70096bc2369dbd8 # v1.5.9
+      - uses: sbt/setup-sbt@ce95da69b39609ea153bad087708da5f37366897 # v1.5.10
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -77,7 +77,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@82da71df4e122282484a99a8d70096bc2369dbd8 # v1.5.9
+      - uses: sbt/setup-sbt@ce95da69b39609ea153bad087708da5f37366897 # v1.5.10
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -96,7 +96,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@82da71df4e122282484a99a8d70096bc2369dbd8 # v1.5.9
+      - uses: sbt/setup-sbt@ce95da69b39609ea153bad087708da5f37366897 # v1.5.10
       - name: Build the launcher command
         run: sbt "dist-win-x86_64/Universal/stage"
       - name: Run the launcher command tests
