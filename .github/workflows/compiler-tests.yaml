@@ -51,6 +51,8 @@ jobs:
           cache: 'sbt'
 
       - uses: sbt/setup-sbt@82da71df4e122282484a99a8d70096bc2369dbd8 # v1.5.9
+        with:
+          disk-cache: false
 
       - name: Test `scala3-compiler-bootstrapped`
         run: ./project/scripts/sbt scala3-compiler-bootstrapped/test
