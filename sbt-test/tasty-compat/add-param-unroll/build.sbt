@@ -1,3 +1,6 @@
+def toFileRef(f: File)(using conv: xsbti.FileConverter): xsbti.HashedVirtualFileRef =
+  conv.toVirtualFile(f.toPath)
+
 lazy val commonSettings = Seq(
   scalacOptions += "-preview",
 )
@@ -15,7 +18,10 @@ lazy val a = project.in(file("a"))
 lazy val b = project.in(file("b"))
   .settings(commonSettings)
   .settings(
-    Compile / unmanagedClasspath += Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "b-input").toPath)),
+    Compile / unmanagedClasspath += Attributed.blank {
+      given xsbti.FileConverter = fileConverter.value
+      toFileRef(((ThisBuild / baseDirectory).value / "b-input"))
+    },
     Compile / classDirectory := (ThisBuild / baseDirectory).value / "c-input"
   )
 
@@ -31,6 +37,9 @@ lazy val c = project.in(file("c"))
   .settings(
     // scalacOptions ++= Seq("-from-tasty", "-Ycheck:readTasty", "-Werror", "-Vprint:readTasty", "-Xprint-types"),
     // Compile / sources := Seq(new java.io.File("c-input/B.tasty")),
-    Compile / unmanagedClasspath += Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "c-input").toPath)),
+    Compile / unmanagedClasspath += Attributed.blank {
+      given xsbti.FileConverter = fileConverter.value
+      toFileRef(((ThisBuild / baseDirectory).value / "c-input"))
+    },
     Compile / classDirectory := (ThisBuild / baseDirectory).value / "c-output"
   )

@@ -1,3 +1,6 @@
+def toFileRef(f: File)(using conv: xsbti.FileConverter): xsbti.HashedVirtualFileRef =
+  conv.toVirtualFile(f.toPath)
+
 // NOTE: in this test, we are explictly fixing the classpath of project `c` to be `a-early.jar:b-early-out`
 // to manually test pipelining without sbt/zinc managing the classpath.
 
@@ -18,7 +21,13 @@ lazy val b = project.in(file("b"))
 // reads classpaths from early tasty outputs. No need for extra flags as the full tasty is available.
 lazy val c = project.in(file("c"))
   .settings(
-    Compile / unmanagedClasspath += Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-early.jar").toPath)),
-    Compile / unmanagedClasspath += Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "b-early-out").toPath)),
+    Compile / unmanagedClasspath += Attributed.blank {
+      given xsbti.FileConverter = fileConverter.value
+      toFileRef(((ThisBuild / baseDirectory).value / "a-early.jar"))
+    },
+    Compile / unmanagedClasspath += Attributed.blank {
+      given xsbti.FileConverter = fileConverter.value
+      toFileRef(((ThisBuild / baseDirectory).value / "b-early-out"))
+    },
     scalacOptions += "-Ycheck:all",
   )

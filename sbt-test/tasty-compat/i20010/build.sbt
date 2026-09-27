@@ -1,5 +1,9 @@
 import sbt.internal.util.ConsoleAppender
 
+def toFileRef(f: File)(using conv: xsbti.FileConverter): xsbti.HashedVirtualFileRef =
+  conv.toVirtualFile(f.toPath)
+
+
 // Reproduces https://github.com/scala/scala3/issues/20010
 //
 // Three modules:
@@ -28,9 +32,9 @@ lazy val a = project.in(file("a"))
 lazy val b = project.in(file("b"))
   .settings(
     Compile / unmanagedClasspath := Def.uncached {
-      val converter = fileConverter.value
+      given xsbti.FileConverter = fileConverter.value
       val dir = (ThisBuild / baseDirectory).value / "a-only"
-      Attributed.blank(converter.toVirtualFile(dir.toPath).asInstanceOf[xsbti.HashedVirtualFileRef]) :: Nil
+      Attributed.blank(toFileRef(dir)) :: Nil
     },
     Compile / classDirectory := (ThisBuild / baseDirectory).value / "c-input"
   )
@@ -39,9 +43,9 @@ lazy val c = project.in(file("."))
   .settings(
     // Only `b`'s outputs are visible here – `a-only` is *not* on the classpath.
     Compile / unmanagedClasspath := Def.uncached {
-      val converter = fileConverter.value
+      given xsbti.FileConverter = fileConverter.value
       val dir = (ThisBuild / baseDirectory).value / "c-input"
-      Attributed.blank(converter.toVirtualFile(dir.toPath).asInstanceOf[xsbti.HashedVirtualFileRef]) :: Nil
+      Attributed.blank(toFileRef(dir)) :: Nil
     },
     Compile / classDirectory := (ThisBuild / baseDirectory).value / "c-output",
     extraAppenders := Def.uncached { _ => Seq(ConsoleAppender(FakePrintWriter)) },

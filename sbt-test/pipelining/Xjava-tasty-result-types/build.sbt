@@ -1,3 +1,6 @@
+def toFileRef(f: File)(using conv: xsbti.FileConverter): xsbti.HashedVirtualFileRef =
+  conv.toVirtualFile(f.toPath)
+
 lazy val a = project.in(file("a"))
   .settings(
     scalacOptions += "-Xjava-tasty", // enable pickling of java signatures
@@ -8,22 +11,34 @@ lazy val a = project.in(file("a"))
 
 lazy val b = project.in(file("b"))
   .settings(
-    Compile / unmanagedClasspath := Seq(Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-result-types-java-tasty.jar").toPath))),
+    Compile / unmanagedClasspath := Seq(Attributed.blank {
+      given xsbti.FileConverter = fileConverter.value
+      toFileRef(((ThisBuild / baseDirectory).value / "a-result-types-java-tasty.jar"))
+    }),
     scalacOptions += "-Ycheck:all",
   )
   .settings(
     fork := true, // we have to fork the JVM if we actually want to run the code with correct failure semantics
-    Runtime / unmanagedClasspath += Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-result-types-classes").toPath)), // make sure the java classes are visible at runtime
+    Runtime / unmanagedClasspath += Attributed.blank {
+      given xsbti.FileConverter = fileConverter.value
+      toFileRef(((ThisBuild / baseDirectory).value / "a-result-types-classes"))
+    }, // make sure the java classes are visible at runtime
   )
 
 // same as b, but adds the real classes to the classpath instead of the tasty jar
 lazy val bAlt = project.in(file("b-alt"))
   .settings(
     Compile / sources := (b / Compile / sources).value,
-    Compile / unmanagedClasspath := Seq(Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-result-types-classes").toPath))),
+    Compile / unmanagedClasspath := Seq(Attributed.blank {
+      given xsbti.FileConverter = fileConverter.value
+      toFileRef(((ThisBuild / baseDirectory).value / "a-result-types-classes"))
+    }),
     scalacOptions += "-Ycheck:all",
   )
   .settings(
     fork := true, // we have to fork the JVM if we actually want to run the code with correct failure semantics
-    Runtime / unmanagedClasspath += Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-result-types-classes").toPath)), // make sure the java classes are visible at runtime
+    Runtime / unmanagedClasspath += Attributed.blank {
+      given xsbti.FileConverter = fileConverter.value
+      toFileRef(((ThisBuild / baseDirectory).value / "a-result-types-classes"))
+    }, // make sure the java classes are visible at runtime
   )

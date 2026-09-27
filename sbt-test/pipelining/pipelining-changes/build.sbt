@@ -1,6 +1,8 @@
 import sbt.internal.inc.Analysis
 import complete.DefaultParsers._
 
+Compile / compile := Def.uncached((Compile / compile).value)
+
 ThisBuild / usePipelining := true
 
 // Reset compiler iterations, necessary because tests run in batch mode
