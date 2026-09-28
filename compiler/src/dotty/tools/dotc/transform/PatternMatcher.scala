@@ -387,7 +387,7 @@ object PatternMatcher {
 
       def getOfGetMatch(gm: Tree, isErrMatch: Boolean = false) =
         val getSelection = gm.select(nme.get, _.info.isParameterless)
-        gm.tpe.widen match
+        gm.tpe.widenDealias match
           case MaybeType(res, errArg) =>
             if isErrMatch then
               if errArg.isRef(defn.UnitClass) then
