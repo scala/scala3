@@ -36,7 +36,7 @@ import dotc.util.{SourceFile, SourcePosition}
 import dotc.{CompilationUnit, Driver}
 import dotc.config.{CompilerCommand, Feature}
 import dotty.tools.io
-import dotty.tools.io.{AbstractFileClassLoader => _, *}
+import dotty.tools.io.*
 import dotty.tools.io.PlainFile.toPlainFile
 import dotty.tools.dotc.classpath.FileUtils.isClassContainer
 import dotty.tools.repl.ScalaClassLoader.*
