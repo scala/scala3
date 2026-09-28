@@ -710,17 +710,22 @@ object CheckUnused:
                 if isMutated(aliasSym) then
                   if !infos.hasRef(aliasSym) then
                     return Some(UnusedSymbol.privateVars)
+                else if !infos.hasRef(aliasSym) then
+                  if ctx.settings.WunusedHas.explicits then
+                    return Some(UnusedSymbol.explicitParams(aliasSym))
+                  else if ctx.settings.WunusedHas.privates then
+                    return Some(UnusedSymbol.privateMembers)
                 else
                   return Some(UnusedSymbol.unsetPrivates)
               else if aliasSym.is(Local) then
                 if ctx.settings.WunusedHas.explicits
-                  && !infos.hasRef(alias.symbol)
+                  && !infos.hasRef(aliasSym)
                   && !usedByDefaultGetter(sym, m)
                 then
                   return Some(UnusedSymbol.explicitParams(aliasSym))
               else
                 if ctx.settings.WunusedHas.privates
-                  && !infos.hasRef(alias.symbol)
+                  && !infos.hasRef(aliasSym)
                   && !usedByDefaultGetter(sym, m)
                 then
                   return Some(UnusedSymbol.privateMembers)
@@ -818,6 +823,8 @@ object CheckUnused:
           if infos.asss(sym) then
             if !infos.hasRef(sym) then
               w = Some(UnusedSymbol.localVars)
+          else if !infos.hasRef(sym) then
+            w = Some(UnusedSymbol.localDefs)
           else
             w = Some(UnusedSymbol.unsetLocals)
         else if !infos.hasRef(sym) then

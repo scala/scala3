@@ -27,3 +27,11 @@ class E:
 class F:
   def f(using s: String) = println(42) // warn
   def g(using @unused s: String) = println(42)
+
+// more helpful to warn unused explicit parameter (and not about var or private member)
+class C9a(private[this] var x: Int) // warn // warn was unused explicit parameter
+class C9b(private var x: Int) // warn was unused private member
+
+def method(): Unit =
+  var local = 42 // warn unused local
+  ()
