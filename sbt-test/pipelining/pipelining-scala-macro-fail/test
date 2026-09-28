@@ -1,2 +1,5 @@
 > a/compile
+# FIXME(sbt-2): On sbt 2.x, b/compile may succeed even when project a forces early output
+# (shouldDoEarlyOutput = true). On sbt 1 this fails as intended; pipelining/classpath behavior
+# may have changed — see pipelining-scala-macro for the default safe path.
 -> b/compile
