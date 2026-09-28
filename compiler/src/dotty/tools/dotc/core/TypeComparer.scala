@@ -1266,6 +1266,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *
      *    adaptedTycon := [T_0, ..., T_k-1] =>> otherTycon[bodyArgs]
      *
+     *  Exception: If `otherTycon` is the `Maybe` constructor, we choose left bias
+     *  instead of right bias and define
+     *
+     *    bodyArgs := T_0, ..., T_k-1, otherArgs.dropRight(d)
+     *
      *  where the bounds of `T_i` are set based on the bounds of `otherTycon.typeParams(d+i)`
      *  after substituting type parameter references by the corresponding argument
      *  in `bodyArgs` (see `adaptedBounds` in the implementation).
@@ -1289,13 +1294,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val d = otherArgs.length - args.length
       d >= 0 && {
         val tparams = tycon.typeParams
-        val remainingTparams = otherTycon.typeParams.drop(d)
+        val leftBias = otherTycon.classSymbol == defn.MaybeClass
+        val remainingTparams =
+          if leftBias then otherTycon.typeParams.dropRight(d) else otherTycon.typeParams.drop(d)
         variancesConform(remainingTparams, tparams) && {
           val adaptedTycon =
             if d > 0 then
-              val initialArgs = otherArgs.take(d)
+              val fixedArgs =
+                if leftBias then otherArgs.takeRight(d) else otherArgs.take(d)
               /** The arguments passed to `otherTycon` in the body of `tl` */
-              def bodyArgs(tl: HKTypeLambda) = initialArgs ++ tl.paramRefs
+              def bodyArgs(tl: HKTypeLambda) =
+                if leftBias then tl.paramRefs ++ fixedArgs else fixedArgs ++ tl.paramRefs
               /** The bounds of the type parameters of `tl` */
               def adaptedBounds(tl: HKTypeLambda) =
                 val bodyArgsComputed = bodyArgs(tl)
