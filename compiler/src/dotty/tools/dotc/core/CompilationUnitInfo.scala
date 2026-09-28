@@ -1,13 +1,13 @@
 package dotty.tools.dotc.core
 
 import dotty.tools.initialize
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.File
 
 /** Information about the compilation unit of a class symbol. */
 class CompilationUnitInfo(
   /** The source or class file from which this class or the class containing
    *  this symbol was generated. */
-  val associatedFile: AbstractFile | Null,
+  val associatedFile: File | Null,
 
   // Lazy because such information requires reading files, but is not needed from many compilation units.
   tastyInfoLoader: () => Option[TastyInfo] = () => None

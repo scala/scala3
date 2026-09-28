@@ -387,7 +387,7 @@ object Interpreter:
               |  A possible cause is if the origin of this symbol was built with pipelined compilation;
               |  in which case, this problem may go away by disabling pipelining for that origin.
               |
-              |  $sym is defined in file ${sym.associatedFile}""", pos)
+              |  $sym is defined in file ${sym.associatedFile.nn.path}""", pos)
     else if ctx.settings.YnoSuspendedUnits.value then
       throw StopInterpretation(em"suspension triggered by a dependency on missing ${sym.showLocated} not allowed with -Yno-suspended-units", pos)
     else

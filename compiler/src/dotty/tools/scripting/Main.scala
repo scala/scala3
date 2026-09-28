@@ -1,10 +1,9 @@
 package dotty.tools.scripting
 
-import java.io.File
-import java.nio.file.{Path, Paths}
 import dotty.tools.dotc.config.Properties.isWin
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.io.{FileWriters, JarArchive}
+import dotty.tools.nio.*
+
 import java.util.jar.Attributes.Name
 
 /** Main entry point to the Scripting execution engine */
@@ -15,9 +14,9 @@ object Main:
     val (leftArgs, rest) = args.splitAt(args.indexOf("-script"))
     assert(rest.size >= 2, s"internal error: rest == Array(${rest.mkString(",")})")
 
-    val file = File(rest(1))
+    val file = File.getOrCreateOnDisk(rest(1))
     // write script path to script.path property, so called script can see it
-    sys.props("script.path") = file.toPath.toAbsolutePath.toString
+    sys.props("script.path") = file.path
     val scriptArgs = rest.drop(2)
     var saveJar = false
     var invokeFlag = true // by default, script main method is invoked
@@ -37,9 +36,9 @@ object Main:
   def process(args: Array[String]): Option[Throwable] =
     val (compilerArgs, scriptFile, scriptArgs, saveJar, invokeFlag) = distinguishArgs(args)
     val driver = ScriptingDriver(compilerArgs, scriptFile, scriptArgs)
-    driver.compileAndRun { ctx ?=> (outDir:Path, classpathEntries:Seq[Path], mainClass: String) =>
+    driver.compileAndRun { ctx ?=> (outDir: FileContainer, classpathEntries: Seq[FileContainer], mainClass: String) =>
       // write expanded classpath to java.class.path property, so the called script can see it
-      sys.props("java.class.path") = classpathEntries.map(_.toString).mkString(pathsep)
+      sys.props("java.class.path") = classpathEntries.map(_.path).mkString(pathsep)
       if saveJar then
         // write a standalone jar to the script parent directory
         writeJarfile(outDir, scriptFile, scriptArgs, classpathEntries, mainClass)(using ctx)
@@ -52,60 +51,28 @@ object Main:
       case ex => ex.printStackTrace
    }.foreach(_ => System.exit(1))
 
-  private def writeJarfile(outDir: Path, scriptFile: File, scriptArgs:Array[String],
-      classpathEntries:Seq[Path], mainClassName: String)(using Context): Unit =
+  private def writeJarfile(outDir: FileContainer, scriptFile: File, scriptArgs:Array[String],
+      classpathEntries: Seq[FileSystemEntry], mainClassName: String)(using Context): Unit =
 
-    val jarTargetDir: Path = Option(scriptFile.toPath.toAbsolutePath.getParent) match {
-      case None => sys.error(s"no parent directory for script file [$scriptFile]")
-      case Some(parent) => parent
-    }
+    val jarTargetDir: FileContainer = scriptFile.parent
 
-    def scriptBasename = scriptFile.getName.takeWhile(_!='.')
-    val jarPath = s"$jarTargetDir/$scriptBasename.jar"
+    val jarPath = s"$jarTargetDir/${scriptFile.nameWithoutExtension}.jar"
 
-    val cpPaths = classpathEntries.map { _.toString.toUrl }
+    val cpPaths = classpathEntries.flatMap(_.toURL)
 
     val cpString:String = cpPaths.distinct.mkString(" ")
-    val manifestAttributes:Seq[(Name, String)] = Seq(
-      (Name.MANIFEST_VERSION, "1.0"),
-      (Name.MAIN_CLASS, mainClassName),
-      (Name.CLASS_PATH, cpString),
-    )
-    val jarArchive = JarArchive.create(dotty.tools.io.Path(jarPath))
-    val writer = FileWriters.FileWriter(jarArchive, manifestAttributes)
-    try
-      dotty.tools.io.AbstractFile.getDirectory(outDir, "").nn.deepIterator.foreach(f => {
-        val input = f.input
-        val path = outDir.relativize(f.jpath).toString
-        try writer.writeFile(path, input.readAllBytes())
-        finally input.close()
-      })
-    finally
-      writer.close()
+    val manifestAttributes = Seq(
+      (Name.MAIN_CLASS.toString, mainClassName),
+      (Name.CLASS_PATH.toString, cpString),
+    ).toMap
+    val jarArchive = FileContainer.getFromFile(
+      File.getOrCreateOnDisk(jarPath),
+      FileContainer.DefaultJarVersion,
+      FileContainer.DefaultCompressionLevel,
+      manifestAttributes
+    ).get
+    try outDir.copyRecursivelyTo(jarArchive)
+    finally jarArchive.close()
   end writeJarfile
 
   def pathsep: String = sys.props("path.separator").nn
-
-  extension(path: String) {
-    // Normalize path separator, convert relative path to absolute
-    def norm: String =
-      path.replace('\\', '/') match {
-        case s if s.secondChar == ":" => s
-        case s if s.startsWith("./") => s.drop(2)
-        case s => s
-      }
-
-    // convert to absolute path relative to cwd.
-    def absPath: String = norm match
-      case str if str.isAbsolute => norm
-      case _ => Paths.get(userDir, norm).toString.norm
-
-    def toUrl: String = Paths.get(absPath).toUri.toURL.toString
-
-    // Treat norm paths with a leading '/' as absolute.
-    // Windows java.io.File#isAbsolute treats them as relative.
-    def isAbsolute = path.norm.startsWith("/") || (isWin && path.secondChar == ":")
-    def secondChar: String = path.take(2).drop(1).mkString("")
-  }
-
-  lazy val userDir: String = sys.props("user.dir").nn.norm

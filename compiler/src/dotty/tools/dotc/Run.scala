@@ -11,7 +11,7 @@ import Denotations.Denotation
 import typer.Typer
 import typer.ImportInfo.withRootImports
 import Decorators.*
-import io.AbstractFile
+import nio.File
 import Phases.{unfusedPhases, Phase}
 
 import sbt.interfaces.ProgressCallback
@@ -70,7 +70,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
   private var myUnits: List[CompilationUnit] = Nil
   private var myUnitsCached: List[CompilationUnit] = Nil
-  private var myFiles: Set[AbstractFile] = Set.empty
+  private var myFiles: Set[File] = Set.empty
 
   // `@nowarn` annotations by source file, populated during typer
   private val mySuppressions: mutable.LinkedHashMap[SourceFile, ListBuffer[Suppression]] = mutable.LinkedHashMap.empty
@@ -196,16 +196,16 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
    *  These files do not have to be source files since it's possible to compile
    *  from TASTY.
    */
-  def files: Set[AbstractFile] = {
+  def files: Set[File] = {
     if (myUnits ne myUnitsCached) {
       myUnitsCached = myUnits
-      myFiles = (myUnits ++ suspendedUnits).map(_.source.file).collect{ case f: AbstractFile => f }.toSet
+      myFiles = (myUnits ++ suspendedUnits).map(_.source.file).collect{ case f: File => f }.toSet
     }
     myFiles
   }
 
   /** The source files of all late entered symbols, as a set */
-  private val lateFiles = mutable.Set[AbstractFile]()
+  private val lateFiles = mutable.Set[File]()
 
   /** A cache for static references to packages and classes */
   val staticRefs = util.EqHashMap[Name, Denotation](initialCapacity = 1024)
@@ -330,11 +330,11 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
   private var myEnrichedErrorMessage = false
 
-  def compile(files: List[AbstractFile]): Unit =
+  def compile(files: List[File]): Unit =
     try compileSources(files.map(runContext.getSource(_)))
     catch case ex: Exception if !this.enrichedErrorMessage =>
-      val files1 = if units.isEmpty then files else units.map(_.source)
-      report.echo(this.enrichErrorMessage(s"exception occurred while compiling ${files1.map(_.path)}"))
+      val files1 = if units.isEmpty then files.map(_.path) else units.map(_.source.path)
+      report.echo(this.enrichErrorMessage(s"exception occurred while compiling $files1"))
       throw ex
 
   /** TODO: There's a fundamental design problem here: We assemble phases using `fusePhases`
@@ -494,7 +494,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
    *  If `typeCheck = true`, also run typer on the compilation unit, and set
    *  `rootTreeOrProvider`.
    */
-  def lateCompile(file: AbstractFile, typeCheck: Boolean)(using Context): Unit =
+  def lateCompile(file: File, typeCheck: Boolean)(using Context): Unit =
     if (!files.contains(file) && !lateFiles.contains(file)) {
       lateFiles += file
 

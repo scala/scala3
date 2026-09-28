@@ -4,28 +4,34 @@
 package dotty.tools
 package dotc.classpath
 
-import java.io.File as JFile
-import dotty.tools.io.{AbstractFile, FileExtension}
+import dotty.tools.nio.*
 
 /**
  * Common methods related to Java files and abstract files used in the context of classpath
  */
 object FileUtils {
-  extension (file: AbstractFile) {
-    def isPackage: Boolean = file.isDirectory && mayBeValidPackage(file.name)
+  extension(entry: FileSystemEntry) {
+    def isPackage: Boolean = entry match
+      case c: FileContainer => mayBeValidPackage(c.name)
+      case _ => false
 
     /** Does this abstract file represent something which can contain classfiles? */
-    def isClassContainer: Boolean = file.isDirectory || file.ext.isJarOrZip
+    def isClassContainer: Boolean = entry match
+      case c: FileContainer => true
+      case f: File => f.extension.isJar || f.extension.isZip
+      case _ => false
+  }
 
+  extension (file: File) {
     /**
      * Returns if there is an existing sibling `.tasty` file.
      */
     def hasSiblingTasty: Boolean =
-      assert(file.ext.isClass, s"non-class: $file")
-      file.resolveSibling(classNameToTasty(file.name)) != null
+      assert(file.extension.isClass, s"non-class: ${file.path}")
+      file.getSiblingWithExtension("tasty").nonEmpty
   }
 
-  extension (file: JFile) {
+  /*extension (file: JFile) {
     def isPackage: Boolean = file.isDirectory && mayBeValidPackage(file.getName)
 
     def isClass: Boolean = file.isFile && hasClassExtension
@@ -46,21 +52,21 @@ object FileUtils {
       val tastyPath = path.resolveSibling(classNameToTasty(file.getName))
       java.nio.file.Files.exists(tastyPath)
 
-  }
+  }*/
 
-  def stripSourceExtension(fileName: String): String =
+  /*def stripSourceExtension(fileName: String): String =
     if endsSourceExtension(fileName) then stripExtension(fileName)
     else throw new FatalError("Unexpected source file ending: " + fileName)
 
   def endsSourceExtension(fileName: String): Boolean =
-    ends(fileName, FileExtension.Scala.withDot) || ends(fileName, FileExtension.Java.withDot)
+    ends(fileName, FileExtension.Scala.withDot) || ends(fileName, FileExtension.Java.withDot)*/
 
-  def dirPath(forPackage: String): String = forPackage.replace('.', JFile.separatorChar)
+  def dirPath(forPackage: String): String = forPackage.replace('.', FileSystemEntry.separator)
 
-  inline private def ends (filename:String, suffix:String) = filename.endsWith(suffix) && filename.length > suffix.length
+  //inline private def ends (filename:String, suffix:String) = filename.endsWith(suffix) && filename.length > suffix.length
 
-  def stripExtension(fileName: String): String =
-    fileName.substring(0, fileName.lastIndexOf('.'))
+  //def stripExtension(fileName: String): String =
+  //  fileName.substring(0, fileName.lastIndexOf('.'))
 
   // probably it should match a pattern like [a-z_]{1}[a-z0-9_]* but it cannot be changed
   // because then some tests in partest don't pass
@@ -68,7 +74,7 @@ object FileUtils {
     (dirName != "META-INF") && (dirName != "") && (dirName.charAt(0) != '.')
 
   /** Transforms a .class file name to a .tasty file name */
-  private def classNameToTasty(fileName: String): String =
+  /*private def classNameToTasty(fileName: String): String =
     val classOrModuleName = fileName.stripSuffix(".class")
     val className =
       if classOrModuleName.endsWith("$")
@@ -80,5 +86,5 @@ object FileUtils {
         && classOrModuleName != "$"
       then classOrModuleName.stripSuffix("$")
       else classOrModuleName
-    className + FileExtension.Tasty.withDot
+    className + ".tasty"*/
 }

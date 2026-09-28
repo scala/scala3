@@ -2,7 +2,6 @@ package dotty.tools.dotc.profile
 
 import scala.annotation.*
 import java.io.{FileWriter, PrintWriter}
-import java.nio.file.Paths
 import java.lang.management.{ManagementFactory, GarbageCollectorMXBean, RuntimeMXBean, MemoryMXBean, ClassLoadingMXBean, CompilationMXBean}
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -15,7 +14,7 @@ import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.Symbols.{Symbol, NoSymbol}
 import dotty.tools.dotc.core.Flags
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.*
 import annotation.internal.sharable
 import dotty.tools.dotc.core.Periods.InitialRunId
 import scala.collection.mutable.UnrolledBuffer
@@ -186,14 +185,14 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
       // FIXME: The first assigned runId is equal to 2 instead of 1 (InitialRunId).
       // Fix me when bug described in Compiler.runId is resolved by removing +/- 1 adjustments
       val suffix = if ctx.runId > InitialRunId + 1 then s".${ctx.runId - 1}" else ""
-      ChromeTrace(Paths.get(s"$filename$suffix"))
+      ChromeTrace(File.getOrCreateOnDisk(s"$filename$suffix"))
 
   private val compilerRunEvent: TracedEventId = traceDurationStart(Category.Run, s"scalac-$id")
 
   def completeBackground(threadRange: ProfileRange): Unit =
     reporter.reportBackground(this, threadRange)
 
-  def outDir: AbstractFile = ctx.settings.outputDir.value
+  def outDir: FileContainer = ctx.settings.outputDir.value
 
   @nowarn
   private def doGC(): Unit = {

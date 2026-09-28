@@ -1394,7 +1394,7 @@ class Inliner(val call: tpd.Tree)(using Context):
           val addendum = ", suspension prevented by -Yno-suspended-units"
           report.error(em"Cannot call macro $sym defined in the same compilation run$addendum", call.srcPos)
         if suspendable && printSuspensions then
-          hints.nn += i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}"
+          hints.nn += i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile.nn.path}"
       if suspendable then
         if ctx.settings.YnoSuspendedUnits.value then
           return errorTree(ref(defn.Predef_undefined), em"could not expand macro, suspended units are disabled by -Yno-suspended-units", splicePos)

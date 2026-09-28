@@ -2,11 +2,11 @@ package dotty.tools
 package dotc
 package core
 
-import java.io.{IOException, File}
+import java.io.IOException
 import java.nio.channels.ClosedByInterruptException
 
 import dotty.tools.dotc.classpath.{ClassPath, ClassRepresentation, PackageNameUtils}
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.*
 
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
 import NameOps.*
@@ -135,64 +135,63 @@ object SymbolLoaders {
    *  All entered symbols are given a source completer of `src` as info.
    */
   def enterToplevelsFromSource(
-      owner: Symbol, src: AbstractFile,
+      owner: Symbol, src: File,
       scope: Scope = EmptyScope)(using Context): Unit =
-    if src.exists && !src.isDirectory then
-      val completer = new SourcefileLoader(src)
-      val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList
+    val completer = new SourcefileLoader(src)
+    val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList
 
-      def addPrefix(pid: RefTree, path: List[TermName]): List[TermName] = pid match {
-        case Ident(name: TermName) => name :: path
-        case Select(qual: RefTree, name: TermName) => name :: addPrefix(qual, path)
-        case _ => path
+    def addPrefix(pid: RefTree, path: List[TermName]): List[TermName] = pid match {
+      case Ident(name: TermName) => name :: path
+      case Select(qual: RefTree, name: TermName) => name :: addPrefix(qual, path)
+      case _ => path
+    }
+
+    def enterScanned(unit: CompilationUnit)(using Context) = {
+
+      def checkPathMatches(path: List[TermName], what: String, tree: NameTree): Boolean = {
+        // Ignore empty packages if necessary so we don't warn on top-level package objects
+        // (such as `package object scala` in the top-level "package.scala" of the standard library)
+        val ok = filePath == path || filePath == path.filter(_ != nme.EMPTY_PACKAGE)
+        if (!ok)
+          report.warning(i"""$what ${tree.name} is in the wrong directory.
+                         |It was declared to be in package ${path.reverse.mkString(".")}
+                         |But it is found in directory     ${filePath.reverse.mkString(FileSystemEntry.separator.toString)}""",
+            tree.srcPos.focus)
+        ok
       }
 
-      def enterScanned(unit: CompilationUnit)(using Context) = {
+      /** Run the subset of desugaring necessary to record the correct symbols */
+      def simpleDesugar(tree: Tree): Tree = tree match
+        case tree: PackageDef =>
+          desugar.packageDef(tree)
+        case tree: ModuleDef =>
+          desugar.packageModuleDef(tree)
+        case _ =>
+          tree
 
-        def checkPathMatches(path: List[TermName], what: String, tree: NameTree): Boolean = {
-          // Ignore empty packages if necessary so we don't warn on top-level package objects
-          // (such as `package object scala` in the top-level "package.scala" of the standard library)
-          val ok = filePath == path || filePath == path.filter(_ != nme.EMPTY_PACKAGE)
-          if (!ok)
-            report.warning(i"""$what ${tree.name} is in the wrong directory.
-                           |It was declared to be in package ${path.reverse.mkString(".")}
-                           |But it is found in directory     ${filePath.reverse.mkString(File.separator)}""",
-              tree.srcPos.focus)
-          ok
-        }
-
-        /** Run the subset of desugaring necessary to record the correct symbols */
-        def simpleDesugar(tree: Tree): Tree = tree match
-          case tree: PackageDef =>
-            desugar.packageDef(tree)
-          case tree: ModuleDef =>
-            desugar.packageModuleDef(tree)
-          case _ =>
-            tree
-
-        def traverse(tree: Tree, path: List[TermName]): Unit = simpleDesugar(tree) match {
-          case tree @ PackageDef(pid, body) =>
-            val path1 = addPrefix(pid, path)
-            for (stat <- body) traverse(stat, path1)
-          case tree: TypeDef if tree.isClassDef =>
-            if (checkPathMatches(path, "class", tree))
-              // It might be a case class or implicit class,
-              // so enter class and module to be on the safe side
-              enterClassAndModule(owner, tree.name, completer, scope = scope)
-          case tree: ModuleDef =>
-            if (checkPathMatches(path, "object", tree))
-              enterModule(owner, tree.name, completer, scope = scope)
-          case _ =>
-        }
-
-        traverse(
-          if (unit.isJava) new OutlineJavaParser(unit.source).parse()
-          else new OutlineParser(unit.source).parse(),
-          Nil)
+      def traverse(tree: Tree, path: List[TermName]): Unit = simpleDesugar(tree) match {
+        case tree @ PackageDef(pid, body) =>
+          val path1 = addPrefix(pid, path)
+          for (stat <- body) traverse(stat, path1)
+        case tree: TypeDef if tree.isClassDef =>
+          if (checkPathMatches(path, "class", tree))
+            // It might be a case class or implicit class,
+            // so enter class and module to be on the safe side
+            enterClassAndModule(owner, tree.name, completer, scope = scope)
+        case tree: ModuleDef =>
+          if (checkPathMatches(path, "object", tree))
+            enterModule(owner, tree.name, completer, scope = scope)
+        case _ =>
       }
 
-      val unit = CompilationUnit(ctx.getSource(src))
-      enterScanned(unit)(using ctx.fresh.setCompilationUnit(unit))
+      traverse(
+        if (unit.isJava) new OutlineJavaParser(unit.source).parse()
+        else new OutlineParser(unit.source).parse(),
+        Nil)
+    }
+
+    val unit = CompilationUnit(ctx.getSource(src))
+    enterScanned(unit)(using ctx.fresh.setCompilationUnit(unit))
 
   /** The package objects of scala and scala.reflect should always
    *  be loaded in binary if classfiles are available, even if sourcefiles
@@ -219,13 +218,13 @@ object SymbolLoaders {
         enterToplevelsFromSource(owner, src)
       case (Some(bin), _) =>
         val completer =
-          if bin.ext.isTasty || bin.ext.isBetasty then ctx.platform.newTastyLoader(bin)
+          if bin.extension.isTasty || bin.extension.isBetasty then ctx.platform.newTastyLoader(bin)
           else ctx.platform.newClassLoader(bin)
         enterClassAndModule(owner, termName(classRep.name), completer)
     }
 
-  def needCompile(bin: AbstractFile, src: AbstractFile): Boolean =
-    src.lastModified >= bin.lastModified
+  def needCompile(bin: File, src: File): Boolean =
+    src.lastModified() >= bin.lastModified()
 
   /** Load contents of a package
    */
@@ -395,7 +394,7 @@ abstract class SymbolLoader extends LazyType { self =>
 
   def compilationUnitInfo: CompilationUnitInfo | Null
 
-  /** Description of the resource (ClassPath, AbstractFile)
+  /** Description of the resource (ClassPath, File)
    *  being processed by this loader
    */
   def description(using Context): String
@@ -411,7 +410,7 @@ abstract class SymbolLoader extends LazyType { self =>
   private inline def profileCompletion[T](root: SymDenotation)(inline body: T)(using Context): T = {
     val sym = root.symbol
     def associatedFileName = root.symbol.associatedFile match
-      case file: AbstractFile => Some(file.name)
+      case file: File => Some(file.name)
       case null => None
     ctx.profiler.onCompletion(sym, associatedFileName)(body)
   }
@@ -493,7 +492,7 @@ abstract class SymbolLoader extends LazyType { self =>
   }
 }
 
-class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
+class ClassfileLoader(val classfile: File) extends SymbolLoader {
 
   def compilationUnitInfo: CompilationUnitInfo | Null = CompilationUnitInfo(classfile)
 
@@ -506,8 +505,8 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     classfileParser.run()
 }
 
-class TastyLoader(tastyFile: AbstractFile) extends SymbolLoader {
-  private val isBestEffortTasty = tastyFile.ext.isBetasty
+class TastyLoader(tastyFile: File) extends SymbolLoader {
+  private val isBestEffortTasty = tastyFile.extension.isBetasty
 
   private lazy val unpickler: tasty.DottyUnpickler =
     handleUnpicklingExceptions:
@@ -536,7 +535,7 @@ class TastyLoader(tastyFile: AbstractFile) extends SymbolLoader {
         else
           checkTastyUUID()
       else
-        report.error(em"Cannot read Best Effort TASTy $tastyFile without the ${ctx.settings.YwithBestEffortTasty.name} option")
+        report.error(em"Cannot read Best Effort TASTy ${tastyFile.path} without the ${ctx.settings.YwithBestEffortTasty.name} option")
 
   private def handleUnpicklingExceptions[T](thunk: =>T): T =
     try thunk
@@ -553,24 +552,22 @@ class TastyLoader(tastyFile: AbstractFile) extends SymbolLoader {
 
 
   private def checkTastyUUID()(using Context): Unit =
-    val classfile =
-      val className = tastyFile.name.stripSuffix(".tasty")
-      tastyFile.resolveSibling(className + ".class")
-    if classfile != null then
-      val tastyUUID = unpickler.unpickler.header.uuid
-      new ClassfileTastyUUIDParser(classfile)(ctx).checkTastyUUID(tastyUUID)
-    else
-      // This will be the case when a tasty file compiled by `-Xearly-tasty-output-write` comes from an early output jar.
-      report.inform(s"No classfiles found for $tastyFile when checking TASTy UUID")
+    tastyFile.getSiblingWithExtension("class") match
+      case Some(cf) =>
+        val tastyUUID = unpickler.unpickler.header.uuid
+        new ClassfileTastyUUIDParser(cf)(ctx).checkTastyUUID(tastyUUID)
+      case None =>
+        // This will be the case when a tasty file compiled by `-Xearly-tasty-output-write` comes from an early output jar.
+        report.inform(s"No classfiles found for $tastyFile when checking TASTy UUID")
 
-  private def checkBeTastyUUID(tastyFile: AbstractFile)(using Context): Unit =
-    new BestEffortTastyHeaderUnpickler(tastyFile.toByteArray).readHeader()
+  private def checkBeTastyUUID(tastyFile: File)(using Context): Unit =
+    new BestEffortTastyHeaderUnpickler(tastyFile.readBytes()).readHeader()
 
   private def mayLoadTreesFromTasty(using Context): Boolean =
     ctx.settings.YretainTrees.value || ctx.settings.fromTasty.value
 }
 
-class SourcefileLoader(srcfile: AbstractFile) extends SymbolLoader {
+class SourcefileLoader(srcfile: File) extends SymbolLoader {
   def description(using Context): String = "source file " + srcfile.toString
   def compilationUnitInfo: CompilationUnitInfo | Null = CompilationUnitInfo(srcfile)
   def doComplete(root: SymDenotation)(using Context): Unit =

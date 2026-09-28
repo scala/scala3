@@ -3,7 +3,7 @@ package dotc
 package config
 
 import classpath.ClassPath
-import io.AbstractFile
+import nio.File
 import core.Contexts.*, core.Symbols.*
 import core.SymbolLoader
 import core.StdNames.nme
@@ -43,10 +43,10 @@ abstract class Platform {
   def shouldReceiveJavaSerializationMethods(sym: ClassSymbol)(using Context): Boolean
 
   /** Create a new class loader to load class file `bin` */
-  def newClassLoader(bin: AbstractFile)(using Context): SymbolLoader
+  def newClassLoader(bin: File)(using Context): SymbolLoader
 
   /** Create a new TASTy loader to load class file `bin` */
-  def newTastyLoader(bin: AbstractFile)(using Context): SymbolLoader
+  def newTastyLoader(bin: File)(using Context): SymbolLoader
 
   /** The given symbol is a method with the right name and signature to be a runnable program. */
   def isMainMethod(sym: Symbol)(using Context): Boolean

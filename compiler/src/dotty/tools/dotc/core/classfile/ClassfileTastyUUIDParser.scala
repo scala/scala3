@@ -10,7 +10,7 @@ import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.util.*
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.File
 import dotty.tools.tasty.{ TastyReader, UnpickleException }
 
 import ClassfileParser.Header
@@ -19,7 +19,7 @@ import java.io.IOException
 import java.lang.Integer.toHexString
 import java.util.UUID
 
-class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
+class ClassfileTastyUUIDParser(classfile: File)(ictx: Context) {
 
   import ClassfileConstants.*
 

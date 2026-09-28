@@ -6,8 +6,8 @@ package classfile
 import java.io.{DataInputStream, InputStream}
 import java.nio.ByteBuffer
 
-final class DataReader(file: dotty.tools.io.AbstractFile) {
-  private val bb: ByteBuffer = ByteBuffer.wrap(file.toByteArray)
+final class DataReader(file: dotty.tools.nio.File) {
+  private val bb: ByteBuffer = ByteBuffer.wrap(file.readBytes())
   private val reader: DataInputStream = {
     val stream = new InputStream {
       override def read(): Int =

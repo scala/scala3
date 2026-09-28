@@ -1,5 +1,8 @@
 package dotty.tools.vulpix
 
+// IMPORTANT: This file cannot depend on anything compiler-related,
+// as it is launched in a child process without that classpath.
+
 import java.io.{BufferedReader, File, InputStreamReader}
 import java.net.{URL, URLClassLoader}
 import java.util.ArrayList
