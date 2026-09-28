@@ -34,6 +34,9 @@ final class DirectoryBasedClassLoader(dirs: Iterable[AbstractFile], parent: Clas
       case null => Collections.emptyEnumeration()
       case url  => Collections.enumeration(Collections.singleton(url))
 
-  override def loadClass(name: String): Class[?] =
-    findClassOption(name).getOrElse(super.loadClass(name))
+  override def loadClass(name: String): Class[?] = {
+    val existing = findLoadedClass(name)
+    if existing != null then existing
+    else findClassOption(name).getOrElse(super.loadClass(name))
+  }
 }
