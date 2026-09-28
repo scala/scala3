@@ -7,7 +7,7 @@ import printing.ReplPrinter
 import printing.SyntaxHighlighting
 import reporting.Diagnostic
 import StackTraceOps.*
-import io.{AbstractFile, DirectoryBasedClassLoader}
+import io.AbstractFile
 
 import scala.annotation.nowarn
 import scala.compiletime.uninitialized
@@ -35,7 +35,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
-  private var myClasspathClassLoader: DirectoryBasedClassLoader = uninitialized
+  private var myClasspathClassLoader: io.AbstractFileClassLoader = uninitialized
 
   // Temporary fix until `pprint` special-cases these.
   // (We cannot use, e.g., `isInstanceOf[LazyList]` because we're not in the same classloader)
@@ -225,7 +225,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     else {
       val parent = Option(myClassLoader).getOrElse {
         myClasspathClassLoader = parentClassLoader match
-          case Some(given_) => DirectoryBasedClassLoader(Iterable.empty, given_)
+          case Some(given_) => io.AbstractFileClassLoader(Iterable.empty, given_)
           case None =>
             val compilerClasspath = ctx.platform.classPath(using ctx).searchDirectories
             // We can't use the system classloader as a parent because it would
@@ -235,7 +235,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
             // like `java.sql`, so we use the parent of the system classloader,
             // which should correspond to the platform classloader on Java 9+.
             val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
-            DirectoryBasedClassLoader(compilerClasspath, baseClassLoader)
+            io.AbstractFileClassLoader(compilerClasspath, baseClassLoader)
         myClasspathClassLoader
       }
 
