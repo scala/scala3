@@ -804,6 +804,10 @@ object SymDenotations {
     final def protectedOwner(using Context): Symbol =
       if owner.isJavaStaticsClass then owner.companionClass else owner
 
+    /** Is this a Java static accessed from trait `cls`, which is not a subclass on the JVM? */
+    final def isJavaStaticAccessedInTrait(cls: Symbol)(using Context): Boolean =
+      isTerm && owner.isJavaStaticsClass && cls.is(Trait)
+
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     final def isCoDefinedWith(other: Symbol)(using Context): Boolean =
       (this.effectiveOwner == other.effectiveOwner) &&
@@ -1000,6 +1004,7 @@ object SymDenotations {
         val cls = protectedOwner.enclosingSubClass
         if !cls.exists then
           pre.termSymbol.isPackageObject && accessWithin(pre.termSymbol.owner)
+        else if isJavaStaticAccessedInTrait(cls) then false
         else
           def isConstructorAccessOK = isConstructor && ctx.isSuperCallContext
           // allow accesses to types from arbitrary subclasses fixes #4737
