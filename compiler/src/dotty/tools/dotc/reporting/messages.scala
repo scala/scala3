@@ -3286,8 +3286,8 @@ extends ReferenceMsg(CannotBeAccessedID):
     val where = if (ctx.owner.exists) i" from ${ctx.owner.enclosingClass}" else ""
     val whyNot = new StringBuilder
     for alt <- alts do
-      val cls = alt.owner.enclosingSubClass
-      val owner = if cls.exists then cls else alt.owner
+      val cls = alt.protectedOwner.enclosingSubClass
+      val owner = if cls.exists then cls else alt.protectedOwner
       val location: String =
         if alt.is(Protected) then
           if alt.privateWithin.exists && alt.privateWithin != owner then

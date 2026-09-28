@@ -800,6 +800,10 @@ object SymDenotations {
     final def isJavaStaticsClass(using Context): Boolean =
       isAllOf(JavaDefined | ModuleClass, butNot = PackageClass)
 
+    /** The class whose subclasses may access this symbol if it is protected (for Java statics, their class) */
+    final def protectedOwner(using Context): Symbol =
+      if owner.isJavaStaticsClass then owner.companionClass else owner
+
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     final def isCoDefinedWith(other: Symbol)(using Context): Boolean =
       (this.effectiveOwner == other.effectiveOwner) &&
@@ -993,7 +997,7 @@ object SymDenotations {
 
       /** Is protected access to target symbol permitted? */
       def isProtectedAccessOK: Boolean = {
-        val cls = owner.enclosingSubClass
+        val cls = protectedOwner.enclosingSubClass
         if !cls.exists then
           pre.termSymbol.isPackageObject && accessWithin(pre.termSymbol.owner)
         else
@@ -1568,14 +1572,11 @@ object SymDenotations {
       }
 
     /** The class or term symbol up to which this symbol is accessible,
-     *  or RootClass if it is public.  As java protected statics are
-     *  otherwise completely inaccessible in scala, they are treated
-     *  as public.
+     *  or RootClass if it is public.
      *  @param base  The access boundary to assume if this symbol is protected
      */
     final def accessBoundary(base: Symbol)(using Context): Symbol =
       if (this.is(Private)) owner
-      else if (this.isAllOf(StaticProtected)) defn.RootClass
       else if (privateWithin.exists && (!ctx.phase.erasedTypes || this.is(JavaDefined))) privateWithin
       else if (this.is(Protected)) base
       else defn.RootClass
