@@ -1,5 +1,6 @@
 package dotty.tools.dotc.core
 
+import dotty.tools.io.{AbstractFile, DirectoryBasedClassLoader}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.util.Property
@@ -25,20 +26,22 @@ object MacroClassLoader {
     ctx.setProperty(MacroClassLoaderKey, makeMacroClassLoader(using ctx))
 
   private def makeMacroClassLoader(using Context): ClassLoader = trace("new macro class loader") {
-    val urls: List[java.net.URL] =
-      def settingsUrls: List[java.net.URL] =
+    val dirs: List[AbstractFile] =
+      def settingsUrls: List[AbstractFile] =
         val entries = ClassPath.expandPath(ctx.settings.classpath.value, expandStar=true)
-        entries.map(cp => java.nio.file.Paths.get(cp).toUri.toURL).toList
+        entries.map(cp =>
+          dotty.tools.io.PlainFile(dotty.tools.io.Path(cp)) // may not exist, that's OK
+        )
 
       if ctx.mode.is(Mode.Interactive) then
         try
-          ctx.platform.classPath.asURLs.toList
+          ctx.platform.classPath.searchDirectories.toList
         catch
           case _: IllegalStateException =>
             settingsUrls
       else
         settingsUrls
-    val out = ctx.settings.outputDir.value.toURL // to find classes in case of suspended compilation
-    new java.net.URLClassLoader((urls ++ out.toList).toArray, getClass.getClassLoader)
+    val out = ctx.settings.outputDir.value // to find classes in case of suspended compilation
+    new DirectoryBasedClassLoader((dirs ++ List(out)).toArray, getClass.getClassLoader)
   }
 }

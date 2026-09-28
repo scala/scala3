@@ -7,7 +7,6 @@ import dotty.tools.dotc
 import dotty.tools.io.File.pathSeparator
 import dotty.tools.io.{AbstractFile, Directory, File, FileExtension}
 
-import java.net.URL
 import java.util.regex.PatternSyntaxException
 
 import scala.collection.mutable.ArrayBuffer
@@ -16,11 +15,13 @@ import scala.collection.mutable.ArrayBuffer
  * A representation of the compiler's class- or sourcepath.
  */
 trait ClassPath {
-  def asURLs: Iterable[URL] = Seq.empty
   def hasPackage(pkg: String): Boolean = false
   def packages(inPackage: String): Iterable[String] = Seq.empty
   def classes(inPackage: String): Iterable[BinaryFileEntry] = Seq.empty
   def sources(inPackage: String): Iterable[SourceFileEntry] = Seq.empty
+
+  /** Which directories are searched by this classpath. Used to create a class loader from it. */
+  def searchDirectories: Iterable[AbstractFile]
 
   /**
    * Returns *only* the classfile for an external name, e.g., "java.lang.String". This method does not
