@@ -6,6 +6,7 @@ import org.objectweb.asm.{Handle, Opcodes}
 import dotty.tools.dotc.core.Contexts.Context
 
 import scala.annotation.constructorOnly
+import scala.collection.mutable
 
 // To improve the latency of compiling simple programs, this class's properties are lazy-loaded,
 // except ObjectRef which is always used
@@ -92,19 +93,10 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
       /* itf = */ false
     ))
 
+  private val _boxedClassesOfPrimitive = mutable.Map.empty[PrimitiveBType, ClassBType]
   /**
    * Map from primitive types to their boxed class type.
    */
-  def boxedClassOfPrimitive(bType: BType)(using Context): ClassBType =
-    bType match
-      case UNIT   => loader.classBTypeFromSymbol(requiredClass[java.lang.Void])
-      case BOOL   => loader.classBTypeFromSymbol(requiredClass[java.lang.Boolean])
-      case BYTE   => loader.classBTypeFromSymbol(requiredClass[java.lang.Byte])
-      case SHORT  => loader.classBTypeFromSymbol(requiredClass[java.lang.Short])
-      case CHAR   => loader.classBTypeFromSymbol(requiredClass[java.lang.Character])
-      case INT    => loader.classBTypeFromSymbol(requiredClass[java.lang.Integer])
-      case LONG   => loader.classBTypeFromSymbol(requiredClass[java.lang.Long])
-      case FLOAT  => loader.classBTypeFromSymbol(requiredClass[java.lang.Float])
-      case DOUBLE => loader.classBTypeFromSymbol(requiredClass[java.lang.Double])
-      case _      => throw new AssertionError("Not a primitive: " + bType)
+  def boxedClassOfPrimitive(bType: PrimitiveBType)(using Context): ClassBType =
+    _boxedClassesOfPrimitive.getOrElseUpdate(bType, loader.classBTypeFromSymbol(requiredClass(bType.boxedClass.getName)))
 }

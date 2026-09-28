@@ -28,17 +28,8 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
   /**
    * Map from primitive types to their boxed class type.
    */
-  val boxedClassOfPrimitive: Map[BType, ClassBType] = Map(
-    UNIT   -> ts.classBTypeFromSymbol(requiredClass[java.lang.Void]),
-    BOOL   -> ts.classBTypeFromSymbol(requiredClass[java.lang.Boolean]),
-    BYTE   -> ts.classBTypeFromSymbol(requiredClass[java.lang.Byte]),
-    SHORT  -> ts.classBTypeFromSymbol(requiredClass[java.lang.Short]),
-    CHAR   -> ts.classBTypeFromSymbol(requiredClass[java.lang.Character]),
-    INT    -> ts.classBTypeFromSymbol(requiredClass[java.lang.Integer]),
-    LONG   -> ts.classBTypeFromSymbol(requiredClass[java.lang.Long]),
-    FLOAT  -> ts.classBTypeFromSymbol(requiredClass[java.lang.Float]),
-    DOUBLE -> ts.classBTypeFromSymbol(requiredClass[java.lang.Double])
-  )
+  val boxedClassOfPrimitive: Map[BType, ClassBType] =
+    Set(UNIT, BOOL, BYTE, SHORT, CHAR, INT, LONG, FLOAT, DOUBLE).map(p => p -> ts.classBTypeFromSymbol(requiredClass(p.boxedClass.getName))).toMap
 
   // java/lang/Boolean -> MethodNameAndType(valueOf,(Z)Ljava/lang/Boolean;)
   val javaBoxMethods: Map[InternalName, MethodNameAndType] = _javaBoxMethods(using initctx)
