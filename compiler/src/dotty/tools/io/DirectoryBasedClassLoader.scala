@@ -9,13 +9,14 @@ final class DirectoryBasedClassLoader(dirs: Iterable[AbstractFile], parent: Clas
   def addDirectory(dir: AbstractFile): Unit =
     allDirs = Seq(dir) ++ allDirs
 
+  private def findClassOption(name: String): Option[Class[?]] =
+    dirs.flatMap(_.lookupPath(name, '.', lastSuffix = ".class", directory = false)).headOption.map(file =>
+      val bytes = file.toByteArray
+      defineClass(name, bytes, 0, bytes.length)
+    )
+
   override def findClass(name: String): Class[?] =
-    dirs.flatMap(_.lookupPath(name, '.', lastSuffix = ".class", directory = false)).headOption match
-      case Some(file) =>
-        val bytes = file.toByteArray
-        defineClass(name, bytes, 0, bytes.length)
-      case None =>
-        throw new ClassNotFoundException(name)
+    findClassOption(name).getOrElse(throw new ClassNotFoundException(name))
 
   // on JDK 20 the URL constructor we're using is deprecated,
   // but the recommended replacement, URL.of, doesn't exist on JDK 17
@@ -34,6 +35,5 @@ final class DirectoryBasedClassLoader(dirs: Iterable[AbstractFile], parent: Clas
       case url  => Collections.enumeration(Collections.singleton(url))
 
   override def loadClass(name: String): Class[?] =
-    try findClass(name)
-    catch case _: ClassNotFoundException => super.loadClass(name)
+    findClassOption(name).getOrElse(super.loadClass(name))
 }
