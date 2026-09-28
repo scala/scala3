@@ -700,14 +700,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      *        issue an ambiguity error
      *      - otherwise again return `ownType`
      *    - if the prototype is not an application, return the shadowed type
+     *  We ignore shadowed types if they are in the empty package or if they are experimental
+     *  but the access is not from an experimentl context.
      */
     def checkNotShadowed(ownType: Type): Type =
+      def ignore(shadowed: Symbol) =
+        shadowed.maybeOwner.isEmptyPackage
+        || shadowed.isExperimental && !Feature.isExperimentalEnabled
       ownType match
         case ownType: TermRef
           if ownType.symbol.is(PhantomSymbol)
             && !(ctx.mode.is(Mode.InCaptureSet) && ownType.symbol.isDummyCaptureParam) =>
           findRef(name, pt, EmptyFlags, PhantomSymbol, tree.srcPos) match
-            case shadowed: TermRef if !shadowed.symbol.maybeOwner.isEmptyPackage =>
+            case shadowed: TermRef if !ignore(shadowed.symbol) =>
               pt match
                 case pt: FunOrPolyProto =>
                   def err(shadowedIsApply: Boolean) =
