@@ -3,7 +3,7 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
 
-import scala.util.{Either, Left, Right, Ok, Err}
+import scala.util.{Either, Left, Right}
 
 def show[T, E](x: T ? E): String = x match
   case Ok(y) => s"Ok($y)"

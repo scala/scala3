@@ -3,7 +3,6 @@ package scala.compiletime
 import scala.runtime.Valid
 import annotation.experimental
 import scala.util.boundary.break
-import scala.util.{Ok, Err}
 
 /** Under experimental.maybe, a trait backing maybe types `T?` */
 @experimental
@@ -19,7 +18,7 @@ sealed trait Maybe[+T, +E] extends Any, Matchable {
 @experimental
 object Maybe {
   extension [A, E](x: Maybe[A, E])
-    transparent inline def ? (using maybe.CanErr[E]): A =
+    inline def ? (using maybe.CanErr[E]): A =
       x.runtimeChecked match  // runtime checked needed for non-bootstrapped compilation
       case Ok(y) => y
       case Err(e) => break(Err(e))
@@ -59,7 +58,7 @@ object Maybe {
 
     def filterNot(p: A => Boolean): Maybe[A, Unit] = x.filter(!p(_))
 
-    inline def withFilter(p: A => Boolean): WithFilter[A] = WithFilter(x, p)
+    def withFilter(p: A => Boolean): WithFilter[A] = WithFilter(x, p)
 
   class WithFilter[A](x: Maybe[A, Unit], p: A => Boolean):
     def map[B](f: A => B): Maybe[B, Unit] = x.filter(p).map(f)

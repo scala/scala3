@@ -1,4 +1,4 @@
-package scala.util
+package scala
 
 import scala.runtime.{MaybeCase, Valid}
 import scala.compiletime.Maybe

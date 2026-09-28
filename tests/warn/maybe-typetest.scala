@@ -1,7 +1,7 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
 import language.future
-import scala.util.{Ok, Err}
+
 
 def Test[T](x: T) =
   x match

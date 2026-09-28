@@ -4,7 +4,7 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
 
-import scala.util.{Either, Ok, Err}
+import scala.util.Either
 
 class C:
   def toEitherAny[T](x: Any): Either[Any, Any] = x match

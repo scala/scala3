@@ -1,7 +1,7 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
 
-import scala.util.{Either, Ok, Err}
+import scala.util.Either
 
 def toOptionAny[T](x: Any): Option[Any] = x match
   case Ok(y) => Some(y)

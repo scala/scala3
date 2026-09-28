@@ -504,11 +504,11 @@ class Definitions {
     @tu lazy val maybe_provided2: Symbol = maybeModule.info.member(termName("provided")).suchThat(_.info.isInstanceOf[PolyType]).symbol
     @tu lazy val maybe_CanErr: Symbol = maybeModule.requiredType("CanErr")
 
-  @tu lazy val OkModule: Symbol = requiredModule("scala.util.Ok")
+  @tu lazy val OkModule: Symbol = requiredModule("scala.Ok")
     @tu lazy val Ok_apply: Symbol = OkModule.requiredMethod(nme.apply)
     @tu lazy val Ok_unapply: Symbol = OkModule.requiredMethod(nme.unapply)
 
-  @tu lazy val ErrModule: Symbol = requiredModule("scala.util.Err")
+  @tu lazy val ErrModule: Symbol = requiredModule("scala.Err")
     @tu lazy val Err_unapply: Symbol = ErrModule.requiredMethod(nme.unapply)
 
   // More synthetic symbols

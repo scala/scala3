@@ -1,6 +1,6 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
-import scala.util.Ok
+
 
 // Higher-kinded type inference for `Maybe` is left-biased: matching `F[_]`
 // against `T ? E` infers `F := [X] =>> X ? E`, not `[X] =>> T ? X`.

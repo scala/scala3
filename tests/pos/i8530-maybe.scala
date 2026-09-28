@@ -1,6 +1,6 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
-import util.Ok
+
 
 object MyBoooleanUnapply:
   inline def unapply(x: Int): Boolean = true
