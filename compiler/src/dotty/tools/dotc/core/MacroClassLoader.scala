@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import dotty.tools.io.{AbstractFile, DirectoryBasedClassLoader}
+import dotty.tools.io.{AbstractFile, AbstractFileClassLoader}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.util.Property
@@ -42,6 +42,6 @@ object MacroClassLoader {
       else
         settingsUrls
     val out = ctx.settings.outputDir.value // to find classes in case of suspended compilation
-    new DirectoryBasedClassLoader((dirs ++ List(out)).toArray, getClass.getClassLoader)
+    new AbstractFileClassLoader((dirs ++ List(out)).toArray, getClass.getClassLoader)
   }
 }
