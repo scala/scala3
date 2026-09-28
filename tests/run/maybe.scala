@@ -1,6 +1,5 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
-import util.Ok
 
 class C:
   def toOptionAny[T](x: Any): Option[Any] = x match

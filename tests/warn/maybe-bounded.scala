@@ -1,6 +1,6 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
-import scala.util.{Ok, Err}
+
 
 // Matches on abstract types bounded by a maybe type are checked
 // against the bounding maybe type.

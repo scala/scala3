@@ -1,7 +1,7 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
 
-import scala.util.{Either, Ok, Err}
+import scala.util.Either
 
 def toOptionMissingNull[T](x: T?): Option[T] = x match // warn
   case Ok(y) => Some(y)

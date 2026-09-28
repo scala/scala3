@@ -5,7 +5,7 @@
 // along with the real fix: an extractor pattern with 1 sub-pattern should type check for all extractors
 // that return Option[T], whatever T (even if it's a tuple)
 import language.experimental.errorHandling
-import util.Ok
+
 
 object Foo {
   def unapply[S, T](scrutinee: S)(using evidence: FooHasType[S, T]): T? = scrutinee match {

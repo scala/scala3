@@ -1,6 +1,6 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
-import scala.util.{Ok, Err}
+
 
 class Foo {
   def bar(x: Any): Unit = x match {

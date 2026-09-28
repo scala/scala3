@@ -1,6 +1,5 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
-import util.Ok
 
 object WidenBug:
   def f(x: Int): Long? = x        // no numeric widening inserted

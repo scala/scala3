@@ -1,6 +1,6 @@
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
-import scala.util.{Ok, Err}
+
 
 object LeftOrRight {
   def unapply[A](value: Either[A, A]): A? = value match {

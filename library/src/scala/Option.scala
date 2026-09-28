@@ -17,7 +17,6 @@ import scala.annotation.publicInBinary
 
 import annotation.experimental
 import scala.compiletime.Maybe
-import scala.util.Ok
 
 object Option {
 

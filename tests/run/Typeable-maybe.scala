@@ -18,7 +18,7 @@
  *  or to `C.unapply[T](x)` (which is what TypeLevel Scala 4 did, I believe)
  */
 import language.experimental.errorHandling
-import scala.util.{Ok, Err}
+
 
 trait Typeable[T]:
   def cast(x: Any): Option[T]

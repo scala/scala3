@@ -1,4 +1,4 @@
-package scala.util
+package scala
 
 import compiletime.Maybe
 import annotation.experimental
