@@ -171,6 +171,20 @@ The subtyping rules subsume the ones for maybe types. We have additionally:
  - `T <: T ? E`, if `T` is disjoint from both `Null` and `Fail[Any]`.
  - The maybe type constructor is also covariant in its error part: if `E1 <: E2` then `T ? E1 <: T ? E2`.
 
+
+## Higher-kinded type inference
+
+Higher-kinded type inference in Scala is usually right-biased. This means that
+if an actual type constructor has more type parameters than a higher-kinded type parameter, the leftmost parameters are fixed and the rightmost parameters are lambda-abstracted. For instance, matching a type constructor `F[_]` with a type argument `Either[E, R]` would infer `[X] =>> E ? X`. This is the right thing for
+`Either`, but would be counter-intuitive for maybe types, since matching `F[_]` with
+`R ? E` would infer `[X] =>> R ? X`, whereas we would usually want to have `[X] =>> X ? E` inferred instead.
+
+Right biased higher-kinded type inference was arguably a design mistake caused by overfitting to the `Either` type and blindly copying Haskell. In Haskell, right bias makes sense because type parameters are curried, but in Scala and most other languages it feels unnatural.
+
+We fix the problem by making an exception specifically for maybe types, which use left bias instead. I.e. matching `F[_]` with `R ? E` will now infer `[X] =>> X ? E`,
+so the result is morally the same as for `Either`, even though the roles of the type parameters are swapped.
+
+
 ## One error type with many uses
 
 The new type `T ? E` can express a panoply of existing types in Scala:
@@ -393,17 +407,6 @@ depends on the SIP for explicit nulls to be accepted.
  - I don't know of any other language that lets one treat `T?` as an instance of a maybe type `T ? E`.
  - The postfix `?` operator for expressions looks like the one in Rust, but is more general. Rust always aborts to the enclosing function. The scheme presented here introduces `maybe` as an abort scope, and therefore allows multiple such scopes per function, as well as aborting from nested closures.
 
-
-
-## Compatibility with existing features
-
-There is a potential issue with right-biased higher-kinded type inference.
-Matching a type constructor `F[_]` with a type argument `R ? E` would infer
-`[X] =>> R ? X`, whereas we would usually want to have `[X] =>> X ? E` inferred instead.
-
-Right biased higher-kinded type inference was arguably a design mistake caused by overfitting to the `Either` type and blindly copying Haskell. In Haskell, right bias makes sense because type parameters are curried, but in Scala and most other languages it is unnatural.
-
-One could work around the problem and special case `?` to use left-bias instead. But this is not proposed as part of this SIP.
 
 ## Alternative
 
