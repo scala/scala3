@@ -73,9 +73,6 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
         .flatMap(generateClassNodes)
         .sortBy((cn, _) => cn.name)
         .tapEach((cn, meta) => warnCaseInsensitiveOverwrite(cn.name, meta.position))
-    compilerCallback match
-      case null => ()
-      case cb => cb.onSourceCompiled(ctx.source)
     // If we are doing global optimizations, we must collect class nodes and wait until we have them all,
     // i.e., until `finish` is called.
     // Otherwise, we can already schedule their generation in background threads.
@@ -84,6 +81,11 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
         pendingClassNodes ++= generatedClassNodes
       case None =>
         schedule(generatedClassNodes)
+    // Finally, call the callback at the same logical point the previous version of this code did.
+    // TODO: This appears to be unused. Can we remove it?
+    compilerCallback match
+      case null => ()
+      case cb => cb.onSourceCompiled(ctx.source)
   }
 
   /** Ensures all work is finished, files have been generated. Only call once per instance. */
