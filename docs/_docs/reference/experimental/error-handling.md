@@ -8,7 +8,7 @@ The language import
 ```scala
 import scala.language.experimental.errorHandling
 ```
-enables a new style of error handling based on maybe types `T?` and result types `T ? E`. The import is legal only under explicit nulls, i.e. setting `-Yexplicit-nulls` must be on.
+enables a new style of error handling based on maybe types `T?` and `T ? E`. The import is legal only under explicit nulls, i.e. setting `-Yexplicit-nulls` must be on.
 
 ## Motivation
 
@@ -16,7 +16,7 @@ When it comes to optionals and error handling, do you prefer safety or convenien
 
 And yet, in this particular area there are real tradeoffs between the two, and they will only get worse.
 
-Take optional data. You can express the absence of a value with `None` or with `null`. Of course, `null`s are terribly unsafe, so Scala programmers have generally avoided them, with some exceptions: Java interop is one, high-performance code another. But with explicit nulls, the balance shifts a little. Nulls are now safer to use, because the type system knows whether a value can be null or not. That puts them closer to `Option` when it comes to safety. And nulls are both more convenient and more efficient than `Option`.
+Take optional data. You can express the absence of a value with `None` or with `null`. Of course, `null`s are terribly unsafe, so Scala programmers have generally avoided them, with some exceptions: Java interop is one, high-performance code another. But with explicit nulls, the balance shifts. Nulls are now much safer to use, because the type system knows whether a value can be null or not. That puts them closer to `Option` when it comes to safety. And nulls are both more convenient and more efficient than `Option`.
 
 They are more convenient since we don't have to wrap a value with `Some` to make it an `Option`. Say we have a function `f` that takes a parameter `nickname` of type `String` that could be undefined. If `f` was defined like this
 ```scala
@@ -36,19 +36,23 @@ and `Value` is instantiated with `String | Null`, then a returned `null` is indi
 
 So, even with explicit nulls arriving, there are still good reasons to stick with the parametric types `Option` or `Either`. It's just a shame that these are less convenient and efficient.
 
-But what if we _don't_ have to choose? What if there was a type constructor that is parametric and at the same time just as efficient as, and even more convenient than, unions with `Null`? Such a type constructor can be designed, if we assume a little bit of support from the compiler. The rest of this note explains how.
+But what if we _don't_ have to choose? What if there was a type constructor that is parametric and at the same time just as efficient as, and even more convenient than, unions with `Null`? It turns out that
+such a type constructor can be designed, if we assume a bit of support from the compiler. This SIP
+explains the details and proposes to add this new type constructor to the Scala language.
 
-## The best type for optional values
+## A better type for optional values
 
 Ideally, the construct to express optional values should combine the best aspects of `Option` and union types. Like union types, it should require no ceremonial wrapping in `Some` if the intent is clear, which helps both readability and performance. But like `Option`, it should be parametric. And as an extra bonus, it should provide an easy way to upgrade from legacy code using nulls.
 
 We can achieve this by designing a new type with carefully crafted semantics and subtyping and typing rules. Let's call that new type `T?` (pronounced _maybe T_), acting as a replacement for `Option[T]`.
 
-`T?` is used in C#, Kotlin, and other languages to mean essentially `T | Null`. The type proposed here has a crucial difference that makes it parametric: internally, the maybe type `T?` can be seen as a union of _three_ possible types, `T`, `Null`, and `Valid`.
+`T?` is used in C#, Kotlin, and other languages to mean essentially `T | Null`. The type described here has a crucial difference that makes it parametric: internally, the maybe type `T?` can be seen as a union of _three_ possible types, `T`, `Null`, and `Valid`.
+Even though the actual implementation is different (see below), we can think of it for now
+like this:
 ```scala
   opaque type T? = T | Null | Valid
 ```
-`Valid` is an internal type that can be represented by the following case class:
+`Valid` is an internal type in `scala.runtime` that can be represented by the following case class:
 ```scala
   case class Valid(elem: Any)
 ```
@@ -59,14 +63,14 @@ We can achieve this by designing a new type with carefully crafted semantics and
   Valid(Valid(null))    Some(Some(None))
   ...
 ```
-In fact, `Valid` can only wrap elements that are either `null` or other `Valid` instances. But this is not enforced in its type signature, since `Valid` is hidden from user programs anyway. In place of `Valid`, there is a public-facing `Ok` data constructor that evaluates as follows:
+In fact, `Valid` can only wrap elements that are either `null` or other `Valid` instances. But this is not enforced in its type signature, since `Valid` is hidden from user programs anyway. In place of `Valid`, there is a public-facing `Ok` data constructor in the `scala.util` package that evaluates as follows:
 ```scala
   Ok(x)     --->     Valid(x)   if x == null or x is a Valid instance
             --->     x          otherwise
 ```
 That is, `Ok(x)` is simply `x`, unless `x` is `null` or some wrapped version of `null`.
 
-To take a maybe type apart, you can use a pattern match, just like for `Option`. `Ok` corresponds to `Some`, and `null` corresponds to `None`.
+To take a maybe type apart, one can use a pattern match, just like for `Option`. `Ok` corresponds to `Some`, and `null` corresponds to `None`.
 ```scala
   def maybeReverse(s: String?): String? = s match
     case Ok(str) => str.reverse
@@ -84,6 +88,10 @@ The representation of maybe types is very similar to [@sjrd](https://github.com/
 Combining these subtyping rules with the rules for union types, we can also derive that `T | Null` is equivalent to `T?` by mutual subtyping if `T` is known to be disjoint from `Null`, i.e. `T | Null <: T? <: T | Null`.
 
 Under explicit nulls, Java types `J` often get mapped to `J | Null`. The equivalence means that we can treat these types as maybe types `J?`, as long as `J` is disjoint from `Null` (which is the most common case by far).
+
+**Pattern Matching**
+
+We now allow `T?` as a possible result type of `unapply` methods. This means that extractors can be defined without the usual boxing overhead implied by an `Option` result.
 
 **Erasure**
 
@@ -111,16 +119,16 @@ Here, both `T` and `T?` erase to `Object`. On the other hand, the same example w
 
  - Like `Option[T]`, it is parametric. If type arguments `A` and `B` are different, then so are `A?` and `B?`.
  - If `T` is known to not contain `null` (i.e. in most cases), it can be widened automatically to `T?`, just like `T | Null`.
- - `T?` is practically as efficient as `T | Null`. For injection, most types are widened automatically, which is free. Even when injection goes through `Ok(t)`, a single type test will in most cases establish that no wrapping is needed. An extra object is created only in the case where we do wrap `null` as a normal value, and this case should be rare. For decomposition, the situation is similar. If the type `T` is known to not contain `null`, decomposition of `T?` amounts to a single comparison with `null`, plus a downcast. Otherwise, we need one additional type test.
+ - `T?` is practically as efficient as `T | Null`. For injection, most types are widened automatically, which is free. Even when injection goes through `Ok(t)`, a single type test will in most cases establish that no wrapping is needed. An extra object is created only in the case where we do wrap `null` as a normal value, and this case should be rare. For decomposition, the situation is similar. If the type `T` is known to not contain `null`, decomposition of `T?` amounts to a single comparison with `null`, plus possibly a downcast. Otherwise, we need one additional type test.
 
 Since `T?` is also shorter to write than either `T | Null` or `Option[T]`, there should be a natural tendency to make it the preferred solution for all new code.
 
 
-## The best type for error handling
+## A better type for error handling
 
-`T?` generalizes naturally to a type that's ideal for error handling. It can be seen as a special case of a result type `T ? E`, which can also carry additional error information of type `E` for missing values. So `T ? E` (pronounced _result T or E_) would be an alternative to `Either[E, T]`.
+`T?` generalizes naturally to a type that's ideal for error handling. It can be seen as a special case of a type `T ? E`, which can also carry additional error information of type `E` for missing values. So `T ? E` (pronounced _maybe T unless E_) would be an alternative to `Either[E, T]`.
 
-To go from values `T` to results `T ? E` and back, we use `Ok` as before. For the error part, which was handled by just `null` for maybe types, we now use a new constructor and extractor `Err`. Example:
+To go from values `T` to maybe types `T ? E` and back, we use `Ok` as before. For the error part, which was handled by just `null` for unary maybe types, we now use a new constructor and extractor `Err`. Example:
 ```scala
   def testPos(x: Int): Int ? String =
     if x >= 0 then x else Err(s"negative $x")
@@ -131,15 +139,15 @@ To go from values `T` to results `T ? E` and back, we use `Ok` as before. For th
       log(s)
       0
 ```
-The maybe type `T?` is now simply an abbreviation for `T ? Unit`, a result type where the error component carries no particular information. One tricky aspect is that there are now two ways to signal an error for a maybe type: `null` and `Err(())`. The two ways must come down to the same representation. So we make sure in the `Err` constructor that `Err(()) = null`, and in the `Err` extractor that a `null` value matches an `Err(())` pattern.
+The unary maybe type `T?` is now simply an abbreviation for `T ? Unit` where the error component carries no particular information. One tricky aspect is that there are now two ways to signal an error for a maybe type: `null` and `Err(())`. The two ways must come down to the same representation. So we make sure in the `Err` constructor that `Err(()) = null`, and in the `Err` extractor that a `null` value matches an `Err(())` pattern.
 
 The mechanics of all this are a straightforward extension of the scheme for maybe types.
 
-Internally, the result type `T ? E` can be seen as a union of four possible types:
+Internally, the maybe type `T ? E` can be seen as a union of four possible types:
 ```scala
   opaque type T ? E = T | Valid | Null | Fail[E]
 ```
-Here, `Fail` is the type of invalid (error) values. Like `Valid`, it is an internal type. It can be represented by the following case class:
+Here, `Fail` is the type of invalid (error) values. Like `Valid`, it is an internal type in package `scala.runtime`. It can be represented by the following case class:
 ```scala
   case class Fail[+E](elem: E)
 ```
@@ -161,9 +169,9 @@ The subtyping rules subsume the ones for maybe types. We have additionally:
 
  - `Fail[E] <: T ? E`, for all types `T` and `E`.
  - `T <: T ? E`, if `T` is disjoint from both `Null` and `Fail[Any]`.
- - The result type constructor is also covariant in its error part: if `E1 <: E2` then `T ? E1 <: T ? E2`.
+ - The maybe type constructor is also covariant in its error part: if `E1 <: E2` then `T ? E1 <: T ? E2`.
 
-## One error type to rule them all
+## One error type with many uses
 
 The new type `T ? E` can express a panoply of existing types in Scala:
 
@@ -175,17 +183,30 @@ The new type `T ? E` can express a panoply of existing types in Scala:
 
 Arguably, `T ? E` is more efficient and ergonomic than these types. For instance, compared to `Either[E, T]`, `T ? E` is
 
- - more ergonomic, because you don't need ceremonial `Right(...)` wrapping,
+ - more ergonomic, because one does not need ceremonial `Right(...)` wrapping,
  - more efficient, because the runtime usually does not wrap either,
  - more intuitive, because result and error parts appear in the natural order.
 
-Another big advantage is that `T ? E` is a single type with a large usability spectrum, covering several existing types. So you have to learn error handling patterns only once, and it becomes easier to build re-usable abstractions for error handling (more on that below).
+Another advantage is that `T ? E` is a single type with a large usability spectrum, covering several existing types. So needs to learn error handling patterns only once, and it becomes easier to build re-usable abstractions for error handling (more on that below).
 
-On the other hand, the existing types won't go away, and current and future code bases will surely continue to use them. This is fine. I foresee that adoption of maybe types and result types will begin in codebases where interop with Java is needed, and in greenfield projects where one can start from scratch. If `T?` manages to convince people not to use the non-parametric `T | Null` form, it's already a win.
+On the other hand, the existing types won't go away, and current and future code bases will surely continue to use them. So, it's fair to ask whether there is room for another error type to compete with the existing patterns?
 
-## Higher Level Usage Patterns
+There are two arguments in favor:
 
-Optionals and error handling are often used in higher-level abstractions. For instance, both `Option` and `Either` can be used in for expressions, which replace explicit pattern matching and construction with a higher-level monadic abstraction. Result types can do that as well. The standard library defines the appropriate `map`, `flatMap` and `withFilter` functions to make this work.
+ - Adoption of maybe types will likely begin in codebases where interop with Java is needed, and in greenfield projects where one can start from scratch. We should not deprive ourselves to use a better possible
+ technical solution if one exists.
+ - Non-parametric `T | Null` has enough advantages by itself to attract
+   adoption. This would cause just as bad a split in the ecosystem than `T?`
+   and would be a strictly worse solution because it gives up on parametricity.
+
+In summary, if `T?` manages to convince people not to use the non-parametric `T | Null` form, it's already a win.
+
+But it's also important that code can convert smoothly between `Option` and `Either` and the new maybe types. The standard library will define extension methods that implement such conversions.
+
+
+## Higher level usage patterns
+
+Optionals and error handling are often used in higher-level abstractions. For instance, both `Option` and `Either` can be used in for expressions, which replace explicit pattern matching and construction with a higher-level monadic abstraction. Maybe types can do that as well. The standard library defines the appropriate `map`, `flatMap` and `withFilter` functions to make this work.
 
 As an example of monadic error handling, consider the task of parsing a string as a date in the format "`day/month/year`". For parsing integers, we define an extension method `parseInt`:
 ```scala
@@ -278,20 +299,24 @@ is defined as follows:
       def isEmpty: Boolean
       private[compiletime] def get: T
     ```
-  The trait is a only a compiletime artifact, since the erasure of a maybe type is either the underlying `result` type or `Object`
+   The trait is a only a compile-time artifact, since the erasure of a maybe type
+   is either the erasure of the underlying result type `T` or `Object`
 
-  The trait has members `isEmpty` and `get`, which makes it eligible as a
-  result type of `unapply` methods. Their implementations are special-cased in the pattern matcher.
+   The trait has members `isEmpty` and `get`, which makes it eligible as a
+   result type of `unapply` methods. Their implementations are special-cased in the pattern matcher.
 
-  The `get` method is not accessible from user programs. Therefore, the only way to decompose a maybe type is via a pattern match.
+   The `get` method is not accessible from user programs. Therefore, the only way to decompose a maybe type is via a pattern match.
 
-## Utility Methods
+ - The companion object of `Maybe` defines various extension methods on maybe types. They implement:
 
- - The companion object of `Maybe` defines extension methods on maybe and result types:
+    - the postfix operator `?`,
+    - functions `map`, `flatMap`, and `withFilter` to implement monadic for expressions over maybe types,
+    - functions `withErr` and `mapErr` to replace or map the error portion of a maybe type,
+    - functions `toOption` and `toEither` to convert maybe types to `Option` and `Either`.
 
     ```scala
-    object Maybe:
-      extension [A, E](x: A ? E])
+    object Maybe {
+      extension [A, E](x: A ? E)
         transparent inline def ? (using maybe.CanErr[E]): A = x match
           case Ok(y) => y
           case Err(e) => break(Err(e))
@@ -312,8 +337,105 @@ is defined as follows:
           case Ok(y) => f(y)
           case Err(e) => Err(e)
 
+        def toEither: Either[E, A] = x match
+          case Ok(y) => Right(y)
+          case Err(e) => Left(e)
         ...
+
+      extension [A](x: A?)
+        def toOption: Option[A] = x match
+          case Ok(y) => Some(y)
+          case Err(_) => None
     ```
 
+   The standard library also adds methods that map `Option` and `Either` to the corresponding maybe types.
+
+    ```scala
+    class Option[+A]
+      ...
+      final def toMaybe: A? = this match
+        case Some(y) => Ok(y)
+        case None => null
+
+    class Either[+A, +B]
+      ...
+      final def toMaybe: Maybe[B, Unit] = this match
+        case Right(b) => Ok(b)
+        case _ => null
+
+      final def toResult: Maybe[B, A] = this match
+        case Right(b) => Ok(b)
+        case Left(a) => Err(a)
+
+ - The parser now understands postfix `?` for both types and terms.
+ - The printer prints instances of `Maybe` using the source-level `?` form.
+ - TypeComparer handles three new cases
+
+    - `T <: T?` if `T` is disjoint from `Null` and `Maybe[?, ?]`
+    - `T? <: T | Null` if `T` disjoint from `Null` and `Maybe[?, ?]`
+    - `Null <: T | Unit`
+ - TypeErasure erases `T ? E` to the erasure of `T` if the following
+   conditions are met:
+     - `T` is a reference type disjoint from `Null`
+     - `E` is `Unit` or `Nothing`
+
+   Otherwise `T ? E` is erased to `Object`.
+
+## Prerequisite
+
+The proposed extensions need explicit nulls to be enabled. This SIP therefore
+depends on the SIP for explicit nulls to be accepted.
+
+## Comparison with other languages
+
+ - Many languages use the syntax `T?` for essentially `T | Null`. I don't know of a language that makes this type parametric.
+ - Kotlin treats `T?` as `T | Null` but the union is second class. That means optional types are not first-class types. Type variables cannot be instantiated to them. The [rich errors proposal](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0441-rich-errors-motivation.md#error-unions) would extend `T?` to `T | E` (with the same second class restrictions).
+ - I don't know of any other language that lets one treat `T?` as an instance of a maybe type `T ? E`.
+ - The postfix `?` operator for expressions looks like the one in Rust, but is more general. Rust always aborts to the enclosing function. The scheme presented here introduces `maybe` as an abort scope, and therefore allows multiple such scopes per function, as well as aborting from nested closures.
+
+
+
+## Compatibility with existing features
+
+There is a potential issue with right-biased higher-kinded type inference.
+Matching a type constructor `F[_]` with a type argument `R ? E` would infer
+`[X] =>> R ? X`, whereas we would usually want to have `[X] =>> X ? E` inferred instead.
+
+Right biased higher-kinded type inference was arguably a design mistake caused by overfitting to the `Either` type and blindly copying Haskell. In Haskell, right bias makes sense because type parameters are curried, but in Scala and most other languages it is unnatural.
+
+One could work around the problem and special case `?` to use left-bias instead. But this is not proposed as part of this SIP.
+
+## Alternative
+
+An alternative solution would improve the convenience of `Option` by defining an implicit conversion from `T`  to `Some[T]`. Implicit conversions have downsides which is why we now demand that they only go to `into` targets. For instance, make function `f` from the start of this note more convenient to use by defining:
+```scala
+  def f(nickname: into[Option[String]])
+```
+That would accept `f("s")` and insert an implicit conversion to `Some` in the argument.
+
+The downsides are:
+
+ - It does not solve the efficiency problem. We still need to wrap with `Some`.
+ - It requires forethought and complicated types at the definition site, where `into[Option[T]]`
+   has to be used for a parameter type as opposed to simply `T?`.
+ - Implicit conversions don't interact well with constructors. If `f` was defined as
+     ```scala
+     def g(nicknames: List[Option[String]])
+     ```
+   we would not be able to call it with
+     ```scala
+     g(List("a", "b")) // error
+     ```
+   We could not even widen for repeated arguments. The following would not work either:
+     ```scala
+     def h(nickNames: Option[String]*)
+     h("a", "b")
+     ```
+   By contrast, the solution based on maybe types and subtyping has no problems with these patterns.
+ - Implicit conversions are generally more brittle than subtyping for type inference. For instance, they cannot influence common supertypes of unions and they do not compose among themselves.
+
+
+
+`
 
 
