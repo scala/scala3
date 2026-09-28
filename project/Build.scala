@@ -817,6 +817,14 @@ object Build {
       ).evaluated,
       // ================================ SBT SCRIPT TEST SETTINGS ================================
       sbtTestDirectory := (ThisBuild / baseDirectory).value / "sbt-test",
+
+      // Meta-build uses sbt 2.x; scripted test builds still target sbt 1.x (zinc compilations, pipelining, etc.).
+      scriptedSbt := Constants.scriptedTestSbtVersion,
+      // scripted-sbt is published for Scala 2.12 only; this project uses Scala 3 (ScriptedPlugin uses %%).
+      libraryDependencies ~= { deps =>
+        deps.filterNot(d => d.organization == "org.scala-sbt" && d.name.startsWith("scripted-sbt")) :+
+          "org.scala-sbt" % "scripted-sbt_2.12" % Constants.scriptedTestSbtVersion % ScriptedConf
+      },
       // The batch mode accidentally became the default with no way to disable
       // it in sbt 1.4 (https://github.com/sbt/sbt/issues/5913#issuecomment-716003195).
       // We enable it explicitly here to make it clear that we're using it.
