@@ -18,9 +18,10 @@ import dotty.tools.dotc.sbt.ExtractDependencies
 import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.io.FileWriters
-import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.{ClassTooLargeException, ClassWriter, MethodTooLargeException}
 import org.objectweb.asm.tree.ClassNode
 
+import java.io.IOException
 import java.nio.channels.ClosedByInterruptException
 import java.util.concurrent.{ExecutionException, Executor, ExecutorService, Future, FutureTask}
 import scala.annotation.constructorOnly
@@ -50,7 +51,7 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
       // not take longer than to exhaust the queue for the backend workers.
       val queueSize = initctx.settings.YbackendWorkerQueue.valueSetByUser.getOrElse(n * 2)
       ProfiledThreadPool.newExecutor(ownerPhase, initctx.profiler, n, queueSize, "gen-class-handler")
-  // Java's ExecutorService doesn't let us tell whether there is ongoing work, so we must keep track of that ourselves.
+  // Java's Executor doesn't let us tell whether there is ongoing work, so we must keep track of that ourselves.
   // We anyway need to keep track of the path in order to show it in error messages if something went deeply wrong.
   private val submittedExecutions = ListBuffer.empty[(FutureTask[Unit], String)]
   // If we are globally optimizing, we can only emit class nodes to files once we have them all
@@ -103,12 +104,16 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
     // At this point all we need to do is wait.
     for (submitted, path) <- submittedExecutions do
       try submitted.get()
-      catch case ex: ExecutionException => ex.getCause match
-        case _: ClosedByInterruptException =>
-          throw new InterruptedException()
-        case e: Exception =>
-          report.error(s"Error while emitting $path\n${e.getMessage}")
-          e.printStackTrace()
+      catch case ex: ExecutionException =>
+        // Handle interruption-related exceptions, as well as exceptions that aren't compiler bugs,
+        // and rethrow the rest so the general compiler exception handler can deal with them.
+        ex.getCause match
+          case _: ClosedByInterruptException =>
+            throw new InterruptedException()
+          case e: (ClassTooLargeException | MethodTooLargeException | IOException) =>
+            report.error(s"Error while emitting $path\n${e.getMessage}")
+          case e =>
+            throw e
   }
 
   /* Frees resources used by the code generation. Only call once per instance. */
