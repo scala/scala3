@@ -2327,6 +2327,10 @@ object SymDenotations {
         required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): PreDenotation =
       // constructor proxies are not static members and are not inherited
       val inherited = parentStatics.membersNamedNoShadowingBasedOnFlags(name, required, excluded | Private | PhantomSymbol)
+        .filterWithPredicate: d =>
+          // package access members are only inherited within their package (JLS 8.4.8)
+          val sym = d.symbol
+          !sym.privateWithin.exists || sym.is(Protected) || sym.privateWithin == symbol.enclosingPackageClass
       if parentStatics.companionClass.is(Trait) then
         // static interface methods are not inherited (JLS 8.4.8), static fields are (JLS 8.3)
         inherited.filterWithFlags(EmptyFlags, Method)
