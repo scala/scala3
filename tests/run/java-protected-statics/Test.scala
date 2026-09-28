@@ -6,5 +6,6 @@ object Test:
     println(s.lambda)
     println(s.anon)
     println(s.inner)
+    println(s.viaInline) // inlined outside of the subclass, needs an accessor
     println(s.field)
     println(foo.SamePackage.poll)
