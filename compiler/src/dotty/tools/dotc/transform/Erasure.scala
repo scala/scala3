@@ -774,6 +774,9 @@ object Erasure {
               val specializedInterfaceSym = qual1.tpe.widenDealias.classSymbol.asClass
               val newSym = inContext(preErasureCtx) { sym.overridingSymbol(specializedInterfaceSym) }
               qual1.select(newSym)
+            case qual1 if sym.owner.isJavaStaticsClass && qual1.tpe.typeSymbol.isJavaStaticsClass =>
+              // a Java static, possibly inherited by the qualifier, needs no receiver
+              select(qual1, sym)
             case qual1 if !isJvmAccessible(qual1.tpe.typeSymbol)
                 || !qual1.tpe.derivesFrom(sym.owner) =>
               val castTarget = // Avoid inaccessible cast targets, see i8661

@@ -797,6 +797,9 @@ object SymDenotations {
     final def isStaticOwner(using Context): Boolean =
       myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
 
+    final def isJavaStaticsClass(using Context): Boolean =
+      isAllOf(JavaDefined | ModuleClass, butNot = PackageClass)
+
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     final def isCoDefinedWith(other: Symbol)(using Context): Boolean =
       (this.effectiveOwner == other.effectiveOwner) &&
@@ -2312,7 +2315,30 @@ object SymDenotations {
               denots1
         case nil => denots
       if name.isConstructorName then ownDenots
-      else collect(ownDenots, info.parents)
+      else
+        val denots = collect(ownDenots, info.parents)
+        if name.isTermName && isJavaStaticsClass then
+          javaStaticsParents.foldLeft(denots): (denots1, parentStatics) =>
+            val inherited = inheritedJavaStatics(parentStatics, name, required, excluded)
+            denots1.union(inherited.mapInherited(ownDenots, denots1, thisType))
+        else denots
+
+    private def inheritedJavaStatics(parentStatics: ClassDenotation, name: Name,
+        required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): PreDenotation =
+      // constructor proxies are not static members and are not inherited
+      val inherited = parentStatics.membersNamedNoShadowingBasedOnFlags(name, required, excluded | Private | PhantomSymbol)
+      if parentStatics.companionClass.is(Trait) then
+        // static interface methods are not inherited (JLS 8.4.8), static fields are (JLS 8.3)
+        inherited.filterWithFlags(EmptyFlags, Method)
+      else inherited
+
+    private def javaStaticsParents(using Context): List[ClassDenotation] =
+      companionClass.denot match
+        case cls: ClassDenotation =>
+          cls.parentSyms.collect:
+            case psym if psym.is(JavaDefined) && psym.companionModule.exists =>
+              psym.companionModule.moduleClass.asClass.classDenot
+        case _ => Nil
 
     override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
       val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)
@@ -2504,6 +2530,9 @@ object SymDenotations {
               // reference has been reported by computeBaseData).
               // Skip here to avoid a secondary MatchError.
               // See scala/scala3#20010.
+        if isJavaStaticsClass then
+          for parentStatics <- javaStaticsParents; name <- parentStatics.memberNames(keepOnly) do
+            if name.isTermName && inheritedJavaStatics(parentStatics, name).exists then maybeAdd(name)
         val ownSyms =
           if (keepOnly eq implicitFilter)
             if (this.is(Package)) Iterator.empty
