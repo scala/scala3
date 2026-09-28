@@ -742,7 +742,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     else if tree.tpe.isInstanceOf[ConstantType] then PurePath
     else if (!sym.isStableMember) Impure
     else if (sym.is(Module))
-      if (sym.moduleClass.isNoInitsRealClass) PurePath else IdempotentPath
+      if sym.moduleClass.isNoInitsRealClass || sym.is(Package) || sym.moduleClass.isJavaStaticsClass then PurePath
+      else IdempotentPath
     else if (sym.is(Lazy)) IdempotentPath
     else if sym.isAllOf(InlineParam) then Impure
     else PurePath

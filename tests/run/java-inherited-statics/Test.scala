@@ -11,7 +11,7 @@ import pkg.Facade
   println(Facade.Nested.nested())
   println(pkg.Consts.iface())
   Facade.counter = 41
-  Facade.counter = Facade.counter + 1
+  Facade.counter += 1
   println(Facade.counter)
   locally:
     import Facade.*
