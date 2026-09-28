@@ -3,7 +3,6 @@ ThisBuild / usePipelining := true
 // defines a macro, normally this would cause sbt not to write the early output jar, but we force it
 // this will cause b to fail to compile due to the missing macro class,
 // see `sbt-test/pipelining/pipelining-scala-macro` for how by default sbt does the right thing
-// FIXME(sbt-2): b may still compile on sbt 2.x; see `test` script comment.
 lazy val a = project.in(file("a"))
   .settings(
     scalacOptions += "-Ycheck:all",
