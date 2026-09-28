@@ -3,8 +3,6 @@ import sbt.internal.inc.Analysis
 import xsbti.compile.{PreviousResult, CompileAnalysis, MiniSetup}
 import xsbti.compile.analysis.{ Compilation => XCompilation }
 
-Compile / compile := Def.uncached((Compile / compile).value)
-
 Compile / previousCompile := Def.uncached {
   val previous = (Compile / previousCompile).value
   if (!CompileState.isNew) {

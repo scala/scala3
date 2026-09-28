@@ -4,8 +4,6 @@ import xsbti.api.AnalyzedClass
 import xsbti.compile.{PreviousResult, CompileAnalysis, MiniSetup}
 import xsbti.compile.analysis.{ Compilation => XCompilation }
 
-Compile / compile := Def.uncached((Compile / compile).value)
-
 logLevel := Level.Debug
 
 // Reset compile status because scripted tests are run in batch mode

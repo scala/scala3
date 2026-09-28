@@ -1,7 +1,10 @@
 scalaVersion := "2.12.13"
+
 val Scala3Compiler = config("scala3-compiler")
 val Scala3Bridge = config("scala3-bridge")
+
 val scala3Version = sys.props("plugin.scalaVersion")
+
 lazy val root = project.in(file("."))
   .configs(Scala3Compiler, Scala3Bridge)
   .settings(
@@ -18,8 +21,10 @@ lazy val root = project.in(file("."))
       val converter = fileConverter.value
       def classpathFile(entry: Attributed[xsbti.HashedVirtualFileRef]): File =
         converter.toPath(entry.data).toFile
+
       val scala3File = (Compile / sourceManaged).value / "Scala3.scala"
       val inputFile = (Compile / sourceManaged).value / "Input.scala"
+
       val allJars = (Scala3Compiler / managedClasspath).value.map(classpathFile)
       val compilerJar = allJars
         .find(jar => jar.getName.contains("scala3-compiler"))
@@ -27,10 +32,12 @@ lazy val root = project.in(file("."))
       val libraryJars = allJars
         .filter(jar => jar.getName.contains("library"))
         .map(_.getAbsolutePath.toString)
+
       val bridgeJars = (Scala3Bridge / managedClasspath).value.map(classpathFile)
       val bridgeJar = bridgeJars
         .find(att => att.getName.contains("scala3-sbt-bridge"))
         .get.getAbsolutePath.toString
+
       IO.write(
         scala3File,
         s"""|
@@ -49,9 +56,12 @@ lazy val root = project.in(file("."))
             |}
             |""".stripMargin
       )
+
       val output = target.value / "test-output"
       IO.createDirectory(output)
+
       val sourceFile = baseDirectory.value / "tests" / "Hello.scala"
+
       IO.write(
         inputFile,
         s"""|
@@ -63,6 +73,7 @@ lazy val root = project.in(file("."))
             |}
             |""".stripMargin
       )
+
       Seq(scala3File, inputFile)
     }
   )

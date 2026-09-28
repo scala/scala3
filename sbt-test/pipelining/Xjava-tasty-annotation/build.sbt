@@ -1,6 +1,3 @@
-def toFileRef(f: File)(using conv: xsbti.FileConverter): xsbti.HashedVirtualFileRef =
-  conv.toVirtualFile(f.toPath)
-
 lazy val a = project.in(file("a"))
   .settings(
     scalacOptions += "-Xjava-tasty", // enable pickling of java signatures
@@ -11,10 +8,7 @@ lazy val a = project.in(file("a"))
 
 lazy val b = project.in(file("b"))
   .settings(
-    Compile / unmanagedClasspath := Seq(Attributed.blank {
-      given xsbti.FileConverter = fileConverter.value
-      toFileRef(((ThisBuild / baseDirectory).value / "a-annotation-java-tasty.jar"))
-    }),
+    Compile / unmanagedClasspath := Seq(Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-annotation-java-tasty.jar").toPath))),
     scalacOptions += "-Ycheck:all",
   )
 
@@ -22,9 +16,6 @@ lazy val b = project.in(file("b"))
 lazy val bAlt = project.in(file("b-alt"))
   .settings(
     Compile / sources := (b / Compile / sources).value,
-    Compile / unmanagedClasspath := Seq(Attributed.blank {
-      given xsbti.FileConverter = fileConverter.value
-      toFileRef(((ThisBuild / baseDirectory).value / "a-annotation-classes"))
-    }),
+    Compile / unmanagedClasspath := Seq(Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-annotation-classes").toPath))),
     scalacOptions += "-Ycheck:all",
   )

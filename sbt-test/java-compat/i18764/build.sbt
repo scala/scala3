@@ -1,3 +1,4 @@
+
 scalaVersion := sys.props("plugin.scalaVersion")
 
 lazy val dependencies = Seq(

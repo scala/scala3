@@ -1,8 +1,6 @@
 import sbt.internal.inc.Analysis
 import complete.DefaultParsers._
 
-Compile / compile := Def.uncached((Compile / compile).value)
-
 // Reset compiler iterations, necessary because tests run in batch mode
 val recordPreviousIterations = taskKey[Unit]("Record previous iterations.")
 recordPreviousIterations := Def.uncached {
