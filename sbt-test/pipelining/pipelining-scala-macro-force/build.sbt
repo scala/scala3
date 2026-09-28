@@ -15,7 +15,7 @@ lazy val a = project.in(file("a"))
   .settings(
     scalacOptions += "-Ycheck:all",
     scalacOptions += "-Xprint-suspension",
-    Compile / incOptions := Def.uncached {
+    Compile / incOptions := {
       val old = (Compile / incOptions).value
       val hooks = old.externalHooks
       val newHooks = hooks.withExternalLookup(

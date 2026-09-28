@@ -7,6 +7,5 @@ lazy val `i8847-lib` = (project in file ("lib"))
 lazy val `i8847-test` = (project in file ("main"))
   .dependsOn(`i8847-lib`)
   .settings(
-    allowMismatchScala := true,
     scalaVersion := scala3Version
   )

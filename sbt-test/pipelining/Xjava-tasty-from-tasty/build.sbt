@@ -13,7 +13,7 @@ lazy val a = project.in(file("a"))
 lazy val a_from_tasty = project.in(file("a_from_tasty"))
   .settings(
     Compile / sources := Seq((ThisBuild / baseDirectory).value / "a-pre-java-tasty.jar"),
-    Compile / unmanagedClasspath := Seq(Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-pre-java-tasty.jar").toPath))),
+    Compile / unmanagedClasspath := Seq(Attributed.blank((ThisBuild / baseDirectory).value / "a-pre-java-tasty.jar")),
     scalacOptions += "-from-tasty", // read the jar file tasties as the source files
     scalacOptions += "-Xjava-tasty",
     scalacOptions += "-Xallow-outline-from-tasty", // allow outline signatures to be read with -from-tasty
@@ -25,13 +25,13 @@ lazy val a_from_tasty = project.in(file("a_from_tasty"))
 lazy val b = project.in(file("b"))
   .settings(
     scalacOptions += "-Ycheck:all",
-    Compile / unmanagedClasspath := Seq(Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a_from_tasty-java-tasty.jar").toPath))),
+    Compile / unmanagedClasspath := Seq(Attributed.blank((ThisBuild / baseDirectory).value / "a_from_tasty-java-tasty.jar")),
   )
   .settings(
     // we have to fork the JVM if we actually want to run the code with correct failure semantics
     fork := true,
     // make sure the java classes are visible at runtime
-    Runtime / unmanagedClasspath += Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-pre-classes").toPath)),
+    Runtime / unmanagedClasspath += Attributed.blank((ThisBuild / baseDirectory).value / "a-pre-classes"),
   )
 
 // same as b, but adds the real classes to the classpath instead of the tasty jar
@@ -39,11 +39,11 @@ lazy val bAlt = project.in(file("b-alt"))
   .settings(
     scalacOptions += "-Ycheck:all",
     Compile / sources := (b / Compile / sources).value,
-    Compile / unmanagedClasspath := Seq(Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-pre-classes").toPath))),
+    Compile / unmanagedClasspath := Seq(Attributed.blank((ThisBuild / baseDirectory).value / "a-pre-classes")),
   )
   .settings(
     // we have to fork the JVM if we actually want to run the code with correct failure semantics
     fork := true,
     // make sure the java classes are visible at runtime
-    Runtime / unmanagedClasspath += Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-pre-classes").toPath)),
+    Runtime / unmanagedClasspath += Attributed.blank((ThisBuild / baseDirectory).value / "a-pre-classes"),
   )

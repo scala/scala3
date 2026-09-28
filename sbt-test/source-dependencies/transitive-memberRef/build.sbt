@@ -7,8 +7,8 @@ import xsbti.compile.analysis.{ Compilation => XCompilation }
 logLevel := Level.Debug
 
 // Reset compile status because scripted tests are run in batch mode
-Compile / previousCompile := Def.uncached {
-  val previous = (Compile / previousCompile).value
+previousCompile in Compile := {
+  val previous = (previousCompile in Compile).value
   if (!CompileState.isNew) {
     val res = PreviousResult.of(none[CompileAnalysis].asJava, none[MiniSetup].asJava)
     CompileState.isNew = true
@@ -20,14 +20,15 @@ Compile / previousCompile := Def.uncached {
 // some fraction (e.g. 50%) of files is scheduled to be recompiled
 // in this test we want precise information about recompiled files
 // which that heuristic would distort
-incOptions := Def.uncached(incOptions.value.withRecompileAllFraction(1.0))
+incOptions := incOptions.value.withRecompileAllFraction(1.0)
+
 Global / allowMachinePath := false
 
 /* Performs checks related to compilations:
  *  a) checks in which compilation given set of files was recompiled
  *  b) checks overall number of compilations performed
  */
-TaskKey[Unit]("checkCompilations") := Def.uncached {
+TaskKey[Unit]("checkCompilations") := {
   val log = streams.value.log
   val c = fileConverter.value
   val vs = (Compile / sources).value.toVector map { x =>
@@ -35,8 +36,8 @@ TaskKey[Unit]("checkCompilations") := Def.uncached {
   }
   // log.info(vs.mkString(","))
 
-  val analysis = (Compile / compile).value match { case a: Analysis => a }
-  val srcDir = (Compile / scalaSource).value
+  val analysis = (compile in Compile).value match { case a: Analysis => a }
+  val srcDir = (scalaSource in Compile).value
   def findFile(className: String): VirtualFileRef = {
     analysis.relations.definesClass(className).head
   }

@@ -9,7 +9,6 @@ lazy val lib = project.in(file("lib"))
 lazy val app = project.in(file("app"))
   .dependsOn(lib)
   .settings(
-    allowMismatchScala := true,
     scalaVersion := scala3Version,
     scalacOptions += "-Vprint:inlining"
   )

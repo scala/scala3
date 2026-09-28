@@ -23,13 +23,11 @@ object Reporter {
     }
 
   lazy val checkSettings = Seq(
-    Compile / compile / compilerReporter := Def.uncached(reporter),
-    check := Def.uncached {
-      (Compile / compile).failure.map(_ => {
+    Compile / compile / compilerReporter := reporter,
+    check := (Compile / compile).failure.map(_ => {
       val problems = reporter.problems
       assert(problems.size == 1, problems.size)
       assert(problems.head.position.line.get() == 5, problems.head.position.line)
     }).value
-    }
   )
 }

@@ -10,8 +10,8 @@ lazy val b = project.in(file("b"))
     // 1. Compile `a`
     // 2. Remove a source file in `a`
     // 3. Compile `b` without forcing a recompilation of `a`
-    Compile / unmanagedJars := Def.uncached {
-      val s = Attributed.blank((a / Compile / packageBin).value) :: Nil
+    Compile / unmanagedJars := {
+      val s = Seq(Attributed.blank((a / Compile / packageBin / artifactPath).value))
       println("s: " + s)
       s
     }

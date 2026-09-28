@@ -18,7 +18,7 @@ lazy val b = project.in(file("b"))
 // reads classpaths from early tasty outputs. No need for extra flags as the full tasty is available.
 lazy val c = project.in(file("c"))
   .settings(
-    Compile / unmanagedClasspath += Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-early.jar").toPath)),
-    Compile / unmanagedClasspath += Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "b-early-out").toPath)),
+    Compile / unmanagedClasspath += Attributed.blank((ThisBuild / baseDirectory).value / "a-early.jar"),
+    Compile / unmanagedClasspath += Attributed.blank((ThisBuild / baseDirectory).value / "b-early-out"),
     scalacOptions += "-Ycheck:all",
   )

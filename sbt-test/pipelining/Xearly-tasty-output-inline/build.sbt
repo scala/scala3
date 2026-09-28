@@ -11,6 +11,6 @@ lazy val a = project.in(file("a"))
 // uses the inline method, this is fine as there is no macro classloader involved
 lazy val b = project.in(file("b"))
   .settings(
-    Compile / unmanagedClasspath += Attributed.blank(fileConverter.value.toVirtualFile(((ThisBuild / baseDirectory).value / "a-early.jar").toPath)),
+    Compile / unmanagedClasspath += Attributed.blank((ThisBuild / baseDirectory).value / "a-early.jar"),
     scalacOptions += "-Ycheck:all",
   )

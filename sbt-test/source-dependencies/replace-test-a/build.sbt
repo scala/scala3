@@ -7,9 +7,8 @@ lazy val root = project.in(file(".")).
   )
 
 def checkTask(className: String) = Def.task {
-  val converter = fileConverter.value
-  val runClasspath = (Runtime / fullClasspath).value
-  val cp = runClasspath.map(entry => converter.toPath(entry.data).toFile.toURI.toURL).toArray
+  val runClasspath = (fullClasspath in Runtime).value
+  val cp = runClasspath.map(_.data.toURI.toURL).toArray
   Class.forName(className, false, new URLClassLoader(cp))
   ()
 }

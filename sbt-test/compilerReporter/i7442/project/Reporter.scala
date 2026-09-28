@@ -23,9 +23,8 @@ object Reporter {
     }
 
   lazy val checkSettings = Seq(
-    Compile / compile / compilerReporter := Def.uncached(reporter),
-    check := Def.uncached {
-      (Compile / compile).failure.map(_ => {
+    Compile / compile / compilerReporter := reporter,
+    check := (Compile / compile).failure.map(_ => {
       println(reporter.problems.toList)
       assert(reporter.problems.length == 1)
       val problem = reporter.problems.head
@@ -39,6 +38,5 @@ object Reporter {
       println(pos.pointer)
       println(pos.pointerSpace)
     }).value
-    }
   )
 }

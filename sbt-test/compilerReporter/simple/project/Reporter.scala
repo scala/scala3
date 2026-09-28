@@ -25,9 +25,8 @@ object Reporter {
     }
 
   lazy val checkSettings = Seq(
-    Compile / compile / compilerReporter := Def.uncached(reporter),
-    check := Def.uncached {
-      (Compile / compile).failure.map(_ => {
+    Compile / compile / compilerReporter := reporter,
+    check := (Compile / compile).failure.map(_ => {
       val problems = reporter.problems
       println(problems.toList)
 
@@ -87,6 +86,5 @@ object Reporter {
 
       }
     }).value
-    }
   )
 }

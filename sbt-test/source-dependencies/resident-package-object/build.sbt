@@ -1,3 +1,3 @@
-incOptions := Def.uncached(incOptions.value)
+incOptions := incOptions.value
   .withApiDebug(true)
   .withRelationsDebug(true)

@@ -8,7 +8,6 @@ lazy val dottyApp = project.in(file("dottyApp"))
   .dependsOn(scala2Lib)
   .enablePlugins(ScalaJSPlugin)
   .settings(
-    allowMismatchScala := true,
     scalaVersion := sys.props("plugin.scalaVersion"),
 
     scalaJSUseMainModuleInitializer := true,

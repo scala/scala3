@@ -1,9 +1,10 @@
 // this test is specific to the old incremental compilation algorithm
-incOptions := Def.uncached(incOptions.value.withNameHashing(false))
+incOptions := incOptions.value.withNameHashing(false)
+
 lazy val verifyDeps = taskKey[Unit]("verify inherited dependencies are properly extracted")
 
-verifyDeps := Def.uncached {
-	val a = (Compile / compile).value
+verifyDeps := {
+	val a = compile.in(Compile).value
 	same(a.relations.publicInherited.internal.forwardMap, expectedDeps.forwardMap)
 }
 

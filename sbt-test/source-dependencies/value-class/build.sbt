@@ -1,1 +1,1 @@
-incOptions := Def.uncached(incOptions.value.withRecompileAllFraction(1.0))
+incOptions := incOptions.value.withRecompileAllFraction(1.0)

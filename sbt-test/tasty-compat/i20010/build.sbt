@@ -27,26 +27,18 @@ lazy val a = project.in(file("a"))
 
 lazy val b = project.in(file("b"))
   .settings(
-    Compile / unmanagedClasspath := Def.uncached {
-      val converter = fileConverter.value
-      val dir = (ThisBuild / baseDirectory).value / "a-only"
-      Attributed.blank(converter.toVirtualFile(dir.toPath).asInstanceOf[xsbti.HashedVirtualFileRef]) :: Nil
-    },
+    Compile / unmanagedClasspath += (ThisBuild / baseDirectory).value / "a-only",
     Compile / classDirectory := (ThisBuild / baseDirectory).value / "c-input"
   )
 
 lazy val c = project.in(file("."))
   .settings(
     // Only `b`'s outputs are visible here – `a-only` is *not* on the classpath.
-    Compile / unmanagedClasspath := Def.uncached {
-      val converter = fileConverter.value
-      val dir = (ThisBuild / baseDirectory).value / "c-input"
-      Attributed.blank(converter.toVirtualFile(dir.toPath).asInstanceOf[xsbti.HashedVirtualFileRef]) :: Nil
-    },
+    Compile / unmanagedClasspath += (ThisBuild / baseDirectory).value / "c-input",
     Compile / classDirectory := (ThisBuild / baseDirectory).value / "c-output",
-    extraAppenders := Def.uncached { _ => Seq(ConsoleAppender(FakePrintWriter)) },
-    resetMessages := Def.uncached { FakePrintWriter.resetMessages },
-    assertCleanMissingRefError := Def.uncached {
+    extraAppenders := { _ => Seq(ConsoleAppender(FakePrintWriter)) },
+    resetMessages := { FakePrintWriter.resetMessages },
+    assertCleanMissingRefError := {
       val msgs = FakePrintWriter.messages
       assert(
         msgs.exists(_.contains("Bad symbolic reference")),

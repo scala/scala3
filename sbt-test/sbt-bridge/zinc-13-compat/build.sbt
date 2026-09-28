@@ -18,24 +18,20 @@ lazy val root = project.in(file("."))
     autoScalaLibrary := false,
     run / fork := true,
     Compile / sourceGenerators += Def.task {
-      val converter = fileConverter.value
-      def classpathFile(entry: Attributed[xsbti.HashedVirtualFileRef]): File =
-        converter.toPath(entry.data).toFile
-
       val scala3File = (Compile / sourceManaged).value / "Scala3.scala"
       val inputFile = (Compile / sourceManaged).value / "Input.scala"
 
-      val allJars = (Scala3Compiler / managedClasspath).value.map(classpathFile)
+      val allJars = (Scala3Compiler / managedClasspath).value.seq.map(_.data)
       val compilerJar = allJars
-        .find(jar => jar.getName.contains("scala3-compiler"))
+        .find(jar => jar.name.contains("scala3-compiler"))
         .get.getAbsolutePath.toString
       val libraryJars = allJars
-        .filter(jar => jar.getName.contains("library"))
+        .filter(jar => jar.name.contains("library"))
         .map(_.getAbsolutePath.toString)
 
-      val bridgeJars = (Scala3Bridge / managedClasspath).value.map(classpathFile)
+      val bridgeJars = (Scala3Bridge / managedClasspath).value.seq.map(_.data)
       val bridgeJar = bridgeJars
-        .find(att => att.getName.contains("scala3-sbt-bridge"))
+        .find(att => att.name.contains("scala3-sbt-bridge"))
         .get.getAbsolutePath.toString
 
       IO.write(

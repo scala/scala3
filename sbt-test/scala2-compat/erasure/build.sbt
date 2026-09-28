@@ -8,6 +8,5 @@ lazy val scala2Lib = project.in(file("scala2Lib"))
 lazy val dottyApp = project.in(file("dottyApp"))
   .dependsOn(scala2Lib)
   .settings(
-    allowMismatchScala := true,
     scalaVersion := sys.props("plugin.scalaVersion")
   )

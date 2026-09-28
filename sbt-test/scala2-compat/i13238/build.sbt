@@ -10,6 +10,5 @@ lazy val app = project.in(file("app"))
   .dependsOn(lib)
   .settings(Reporter.checkSettings)
   .settings(
-    allowMismatchScala := true,
     scalaVersion := scala3Version
   )
