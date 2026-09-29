@@ -1,9 +1,6 @@
 package dotty.tools.sbtplugin
 
-import dotty.tools.tasty.TastyHeaderUnpickler
 import org.objectweb.asm.*
-
-import java.nio.ByteBuffer
 
 import sbt._
 
@@ -21,21 +18,64 @@ object StripScala2Annotations {
   def isScala2PickleAnnotation(descriptor: String): Boolean =
     Scala2PickleAnnotations.contains(descriptor)
 
+  private val TastyMagic = Array(0x5c, 0xa1, 0xab, 0x1f)
+
   /** Extract the UUID bytes (16 bytes) from a TASTy file.
    *
-   *  Uses the official TastyHeaderUnpickler to parse the header and extract the UUID,
-   *  ensuring correctness and validating the TASTy format.
+   *  sbt 2.x's parent classloader fixes the meta-build to its own tasty-core, which is a bit
+   *  older than this compiler, so `TastyHeaderUnpickler`'s version check would fail.
    */
   def extractTastyUUID(tastyBytes: Array[Byte]): Array[Byte] = {
-    val unpickler = new TastyHeaderUnpickler(SbtTastyUnpicklerConfig.unpicklerConfig, tastyBytes)
-    val header = unpickler.readFullHeader()
-    val uuid = header.uuid
+    var i = 0
+    def fail(msg: String): Nothing =
+      sys.error(s"$msg (${tastyBytes.length} bytes, offset $i)")
+    def readByte(): Int = {
+      val result = tastyBytes(i) & 0xff
+      i += 1
+      result
+    }
+    // big-endian base 128
+    def readNat(): Int = {
+      val l = readLongNat()
+      if (l > Int.MaxValue) fail(s"Expected a 31-bit nat, got: $l")
+      l.toInt
+    }
+    def readLongNat(): Long = {
+      val start = i
+      var x = 0L
+      var stop = false
+      while (!stop) {
+        val b = readByte()
+        x = (x << 7) | (b & 0x7f)
+        stop = (b & 0x80) != 0
+      }
+      if (i - start > 9) fail(s"Expected a long nat, but read too many bytes (${i - start})")
+      x
+    }
 
-    // Convert UUID (two longs) to 16-byte array in big-endian format
-    val buffer = ByteBuffer.allocate(16)
-    buffer.putLong(uuid.getMostSignificantBits)
-    buffer.putLong(uuid.getLeastSignificantBits)
-    buffer.array()
+    for (j <- TastyMagic.indices)
+      if (readByte() != TastyMagic(j))
+        fail("not a TASTy file")
+    val fileMajor = readNat()
+    if (fileMajor <= 27) { // old header layout, before tasty-core 3.0.0-M4
+      fail(s"TASTy major $fileMajor does not use the header layout this build reads")
+    } else {
+      val _ = readNat() // minor
+      val _ = readNat() // experimental
+      // toolingVersion
+      val length = readNat()
+      val start = i
+      i = start + length
+
+      // uuid
+      val uuid = new Array[Byte](16)
+      var j = 0
+      while (j < 16) {
+        uuid(j) = tastyBytes(i + j)
+        j += 1
+      }
+      uuid
+    }
   }
 
   /** Extract TASTY UUID from class file bytecode, if present */
