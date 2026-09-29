@@ -10,7 +10,7 @@ addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.13.1")
 
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.6")
 
-addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.1")
+addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.12.0")
 
 addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.3.8")
 libraryDependencies += "com.spotify" % "missinglink-core" % "0.2.11"
