@@ -3,10 +3,9 @@
    |  ^^^^^^^^^^^^^^
    |  value < is not a member of Any, but could be made available as an extension method.
    |
-   |  One of the following imports might make progress towards fixing the problem:
+   |  The following import might fix the problem:
    |
-   |    import scala.math.Ordered.orderingToOrdered
-   |    import scala.math.Ordering.Implicits.infixOrderingOps
+   |    import scala.math.Ordering.Unit.<
    |
    |
    |

@@ -20,12 +20,22 @@ trait Integral[T] extends Numeric[T] {
   def quot(x: T, y: T): T
   def rem(x: T, y: T): T
 
+  extension (lhs: T) {
+    def /(rhs: T): T = quot(lhs, rhs)
+
+    def %(rhs: T): T = rem(lhs, rhs)
+
+    def /%(rhs: T): (T, T) = (quot(lhs, rhs), rem(lhs, rhs))
+  }
+  
+  @deprecated("use the extension methods available instead", since = "3.10.0")
   class IntegralOps(lhs: T) extends NumericOps(lhs) {
     def /(rhs: T) = quot(lhs, rhs)
     def %(rhs: T) = rem(lhs, rhs)
     def /%(rhs: T) = (quot(lhs, rhs), rem(lhs, rhs))
   }
-  override implicit def mkNumericOps(lhs: T): IntegralOps = new IntegralOps(lhs)
+  @deprecated("use the extension methods available instead", since = "3.10.0")
+  override def mkNumericOps(lhs: T): IntegralOps = new IntegralOps(lhs)
 }
 
 object Integral {
@@ -41,7 +51,8 @@ object Integral {
      *  @param num the implicit `Integral` instance for type `T`
      *  @return an `IntegralOps` instance providing integral operators on `x`
      */
-    implicit def infixIntegralOps[T](x: T)(implicit num: Integral[T]): Integral[T]#IntegralOps = new num.IntegralOps(x)
+    @deprecated("use the extension methods available instead", since = "3.10.0")
+    def infixIntegralOps[T](x: T)(implicit num: Integral[T]): Integral[T]#IntegralOps = new num.IntegralOps(x)
   }
   object Implicits extends ExtraImplicits
 }

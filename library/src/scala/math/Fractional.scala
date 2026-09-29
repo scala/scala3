@@ -19,10 +19,14 @@ import scala.language.implicitConversions
 trait Fractional[T] extends Numeric[T] {
   def div(x: T, y: T): T
 
+  extension (lhs: T) def /(rhs: T): T = div(lhs, rhs)
+
+  @deprecated("use the extension methods available instead", since = "3.10.0")
   class FractionalOps(lhs: T) extends NumericOps(lhs) {
     def /(rhs: T) = div(lhs, rhs)
   }
-  override implicit def mkNumericOps(lhs: T): FractionalOps =
+  @deprecated("use the extension methods available instead", since = "3.10.0")
+  override def mkNumericOps(lhs: T): FractionalOps =
     new FractionalOps(lhs)
 }
 
@@ -30,7 +34,8 @@ object Fractional {
   @inline def apply[T](implicit frac: Fractional[T]): Fractional[T] = frac
 
   trait ExtraImplicits {
-    implicit def infixFractionalOps[T](x: T)(implicit num: Fractional[T]): Fractional[T]#FractionalOps = new num.FractionalOps(x)
+    @deprecated("use the extension methods available instead", since = "3.10.0")
+    def infixFractionalOps[T](x: T)(implicit num: Fractional[T]): Fractional[T]#FractionalOps = new num.FractionalOps(x)
   }
   object Implicits extends ExtraImplicits
 }
