@@ -76,7 +76,7 @@ object Build {
   lazy val thisBuildSettings = Def.settings(
     organization := dottyOrganization,
     organizationName := "LAMP/EPFL",
-    organizationHomepage := Some(url("http://lamp.epfl.ch")),
+    organizationHomepage := Some(uri("http://lamp.epfl.ch")),
 
     // Note: bench/profiles/projects.yml should be updated accordingly.
     scalacOptions ++= Seq(
@@ -355,7 +355,7 @@ object Build {
       val docScalaInstance = Compiler.makeScalaInstance(
         version = base.version,
         libraryJars = base.libraryJars,
-        allCompilerJars = base.compilerJars,
+        allCompilerJars = base.compilerJars.toSeq,
         extraToolJars = docJars.toSeq,
         state.value,
         scalaInstanceTopLoader.value
@@ -714,7 +714,7 @@ object Build {
         streams.value.log.info("cleaning all projects")
         // Inspired from the Scala.js build:
         // https://github.com/scala-js/scala-js/blob/c4e7f43932551aabb573c925147e3841ac3ca4be/project/Build.scala#L1006
-        clean.dependsOn(allProjects.map(_ / clean): _*).value
+        clean.dependsOn(allProjects.map(_ / clean)*).value
       },
       scalac := scalacTask(
         compilerProject = `scala3-compiler-nonbootstrapped`,
@@ -1794,7 +1794,7 @@ object Build {
   // ==============================================================================================
   // ========================================== SCALADOC ==========================================
   // ==============================================================================================
-  val SourceLinksIntegrationTest = config("sourceLinksIntegrationTest") extend Test
+  val SourceLinksIntegrationTest = config("sourceLinksIntegrationTest").extend(Test)
 
   /* Configuration of the org.scala-lang:scaladoc_3:*.**.**-bootstrapped project */
   lazy val scaladoc = project.in(file("scaladoc"))
@@ -2169,7 +2169,7 @@ object Build {
     )
 
   /** Common settings for sjsSandbox and sjsJUnitTests */
-  lazy val regularScalaJSProjectSettings: Seq[Setting[_]] = Def.settings(
+  lazy val regularScalaJSProjectSettings: Seq[Setting[?]] = Def.settings(
     version       := dottyVersion,
     scalaVersion  := referenceVersion,
     crossPaths    := true,
@@ -2299,7 +2299,7 @@ object Build {
 
       (Test / scalacOptions) += "-scalajs-genStaticForwardersForNonTopLevelObjects",
 
-      scalaJSLinkerConfig ~= { _.withSemantics(build.TestSuiteLinkerOptions.semantics _) },
+      scalaJSLinkerConfig ~= { _.withSemantics(build.TestSuiteLinkerOptions.semantics) },
       (Test / scalaJSModuleInitializers) ++= build.TestSuiteLinkerOptions.moduleInitializers,
 
       // Perform Ycheck after the Scala.js-specific transformation phases
@@ -2437,8 +2437,8 @@ object Build {
       (Test / resourceDirectory)       := baseDirectory.value / "test-resources",
       scalaVersion := (`scala3-compiler-bootstrapped` / scalaVersion).value,
       libraryDependencies ++= Seq(
-        Dependencies.scalaJsLinker % Test cross CrossVersion.for3Use2_13,
-        Dependencies.scalaJsEnvNodeJs % Test cross CrossVersion.for3Use2_13,
+        (Dependencies.scalaJsLinker % Test).cross(CrossVersion.for3Use2_13),
+        (Dependencies.scalaJsEnvNodeJs % Test).cross(CrossVersion.for3Use2_13),
       ),
 
       // Change the baseDirectory when running the tests
@@ -2612,8 +2612,8 @@ object Build {
         "--run-listener=dotty.communitybuild.FailureSummarizer",
       ),
       Compile/run := (Compile/run).dependsOn(prepareCommunityBuild).evaluated,
-      Test / testOnly := ((Test / testOnly) dependsOn prepareCommunityBuild).evaluated,
-      Test / test     := ((Test / test) dependsOn prepareCommunityBuild).evaluated,
+      Test / testOnly := ((Test / testOnly).dependsOn(prepareCommunityBuild)).evaluated,
+      Test / test     := ((Test / test).dependsOn(prepareCommunityBuild)).evaluated,
       scalacOptions -= "-Yexplicit-nulls",
       javaOptions ++= Def.uncached {
         // Propagate the ivy cache directory setting to the tests, which will
@@ -2657,15 +2657,15 @@ object Build {
       id.withExtraAttributes(id.extraAttributes + line)
     },
     Test / publishArtifact := false,
-    homepage := Some(url(homepageUrl)),
-    licenses += License("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0")),
-    scmInfo := Some(ScmInfo(url(dottyGithubUrl), "scm:git:git@github.com:scala/scala3.git")),
+    homepage := Some(uri(homepageUrl)),
+    licenses += License("Apache-2.0", uri("https://www.apache.org/licenses/LICENSE-2.0")),
+    scmInfo := Some(ScmInfo(uri(dottyGithubUrl), "scm:git:git@github.com:scala/scala3.git")),
     developers := List(
       Developer(
         id = "scala",
         name = "The Scala Team",
         email = "security@scala-lang.org",
-        url = url(homepageUrl)
+        url = uri(homepageUrl)
       )
     ),
   )

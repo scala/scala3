@@ -11,7 +11,7 @@ object Process {
     else cmd
 
   def runProcess(cmd: Seq[String], wait: Boolean = false, directory: Option[File] = None, outputCallback: Option[BufferedReader => Unit] = None): Unit = {
-    val pb = new ProcessBuilder(prepareCommand(cmd): _*)
+    val pb = new ProcessBuilder(prepareCommand(cmd)*)
 
     directory match {
       case Some(dir) =>

@@ -114,7 +114,7 @@ object RepublishPlugin extends AutoPlugin {
     args =>
       val cmdLine = cmdLine0 ++ args
       // invoke cmdLine with env, but also capture the output
-      val p = new ProcessBuilder(cmdLine: _*)
+      val p = new ProcessBuilder(cmdLine*)
         .directory(cache)
         .inheritIO()
         .redirectOutput(ProcessBuilder.Redirect.PIPE)
@@ -238,7 +238,7 @@ object RepublishPlugin extends AutoPlugin {
       // relative path from maven2Root
       val relP = maven2Root.relativize(p)
       val parts = relP.iterator().asScala.map(_.toString).toVector
-      val (orgParts :+ name :+ rev :+ artifact) = parts
+      val (orgParts :+ name :+ rev :+ artifact) = parts.runtimeChecked
       val id = SimpleModuleId(orgParts.mkString("."), name, rev)
       if (artifact.endsWith(".jar")) {
         ResolvedArtifacts(id, Some(p.toFile), None)
@@ -276,7 +276,7 @@ object RepublishPlugin extends AutoPlugin {
       val (launcherURL, workFile, prefix, subPart) = {
         if (launcher.startsWith("gz+")) {
           IO.createDirectory(dlCache)
-          val launcherURL = url(launcher.stripPrefix("gz+"))
+          val launcherURL = uri(launcher.stripPrefix("gz+"))
           (launcherURL, dlCache / s"$name.gz", "gz", "")
         } else if (launcher.startsWith("zip+")) {
           IO.createDirectory(dlCache)
@@ -285,11 +285,11 @@ object RepublishPlugin extends AutoPlugin {
             case _ =>
               throw new MessageOnlyException(s"[republish] Invalid zip+ URL, expected ! to mark subpath: $launcher")
           }
-          val launcherURL = url(urlPart.stripPrefix("zip+"))
+          val launcherURL = uri(urlPart.stripPrefix("zip+"))
           (launcherURL, dlCache / s"$name.zip", "zip", subPath)
         } else {
           IO.createDirectory(libexec)
-          (url(launcher), dest, "", "")
+          (uri(launcher), dest, "", "")
         }
       }
       IO.delete(workFile)
@@ -354,7 +354,7 @@ object RepublishPlugin extends AutoPlugin {
     Dist.generateVersionFile(base, distDir, progVersion, log.info(_))
   }
 
-  override val projectSettings: Seq[Def.Setting[_]] = Def.settings(
+  override val projectSettings: Seq[Def.Setting[?]] = Def.settings(
     republishCoursierDir := republishRepo.value / "coursier",
     republishLaunchers := Seq.empty,
     republishCoursier := Seq.empty,
