@@ -18,5 +18,5 @@ addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.1")
 
 addSbtPlugin("com.github.sbt" % "sbt-jdi-tools" % "1.2.0")
 
-addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.3.6")
+addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.3.8")
 libraryDependencies += "com.spotify" % "missinglink-core" % "0.2.11"
