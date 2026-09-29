@@ -24,6 +24,11 @@ class WorksheetSessionTest:
     private def errors: List[WorksheetDiagnostic] =
       result.diagnostics.filter(_.severity == WorksheetDiagnosticSeverity.Error)
 
+    private def rendered: String =
+      result.statements
+        .map(statement => s"${statement.summary}\n${statement.details}")
+        .mkString("\n\n")
+
   @Test def evaluatesDefinitionsAndExpressionsInOneProgram(): Unit =
     val result = driver.evaluate(
       "values.worksheet.scala",
@@ -34,13 +39,17 @@ class WorksheetSessionTest:
     )
 
     assertEquals(Nil, result.diagnostics)
-    assertEquals(3, result.statements.length)
-    assertEquals(": Int = 40", result.statements(0).summary)
-    assertEquals("x: Int = 40", result.statements(0).details)
-    assertEquals(": Int = 42", result.statements(1).summary)
-    assertEquals("y: Int = 42", result.statements(1).details)
-    assertEquals(": Int = 84", result.statements(2).summary)
-    assertEquals("res0: Int = 84", result.statements(2).details)
+    assertEquals(
+      """|: Int = 40
+         |x: Int = 40
+         |
+         |: Int = 42
+         |y: Int = 42
+         |
+         |: Int = 84
+         |res0: Int = 84""".stripMargin,
+      result.rendered
+    )
 
   @Test def reportsLazyValuesAndGivensWithoutEvaluatingThem(): Unit = withProperty: lazyProperty =>
     withProperty: givenProperty =>
@@ -72,10 +81,14 @@ class WorksheetSessionTest:
     )
 
     assertEquals(Nil, result.diagnostics)
-    assertEquals(2, result.statements.length)
-    assertEquals("hello", result.statements.head.summary)
-    assertEquals("// hello", result.statements.head.details)
-    assertEquals(": Int = 42", result.statements(1).summary)
+    assertEquals(
+      """|hello
+         |// hello
+         |
+         |: Int = 42
+         |answer: Int = 42""".stripMargin,
+      result.rendered
+    )
 
   @Test def supportsImportsMultilineExpressionsAndPatternDefinitions(): Unit =
     val result = driver.evaluate(
@@ -90,10 +103,15 @@ class WorksheetSessionTest:
     )
 
     assertEquals(Nil, result.diagnostics)
-    assertEquals(2, result.statements.length)
-    assertEquals("number: Int = 1, text: String = \"two\"", result.statements.head.summary)
-    assertEquals("number: Int = 1\ntext: String = \"two\"", result.statements.head.details)
-    assertEquals(": Int = 4", result.statements(1).summary)
+    assertEquals(
+      """|number: Int = 1, text: String = "two"
+         |number: Int = 1
+         |text: String = "two"
+         |
+         |: Int = 4
+         |res0: Int = 4""".stripMargin,
+      result.rendered
+    )
 
   @Test def stopsAtACompilationError(): Unit =
     val result = driver.evaluate(
@@ -223,10 +241,17 @@ class WorksheetSessionTest:
     )
 
     assertEquals(Nil, result.diagnostics)
-    assertEquals(3, result.statements.length)
-    assertEquals("value: Int = 1", result.statements(0).details)
-    assertEquals("value: Int = 2", result.statements(1).details)
-    assertEquals("res0: Int = 2", result.statements(2).details)
+    assertEquals(
+      """|: Int = 1
+         |value: Int = 1
+         |
+         |: Int = 2
+         |value: Int = 2
+         |
+         |: Int = 2
+         |res0: Int = 2""".stripMargin,
+      result.rendered
+    )
 
   @Test def evaluatesOnlyTheAppendedStatements(): Unit = withProperty: property =>
     val initial =
@@ -286,10 +311,17 @@ class WorksheetSessionTest:
     )
 
     assertEquals(Nil, result.diagnostics)
-    assertEquals(3, result.statements.length)
-    assertEquals("res0: Int = 2", result.statements(0).details)
-    assertEquals("res1: Int = 3", result.statements(1).details)
-    assertEquals("doubled: Int = 6", result.statements(2).details)
+    assertEquals(
+      """|: Int = 2
+         |res0: Int = 2
+         |
+         |: Int = 3
+         |res1: Int = 3
+         |
+         |: Int = 6
+         |doubled: Int = 6""".stripMargin,
+      result.rendered
+    )
 
   @Test def keepsResNumbersTakenByAFlattenedBlock(): Unit =
     val result = driver.evaluate(
@@ -301,9 +333,18 @@ class WorksheetSessionTest:
     )
 
     assertEquals(Nil, result.diagnostics)
-    assertEquals("res1: Int = 42", result.statements(0).details.linesIterator.next())
-    assertEquals("res2: Int = 2", result.statements(1).details)
-    assertEquals("res3: Int = 42", result.statements(2).details)
+    assertEquals(
+      """|: Int = 42
+         |res1: Int = 42
+         |// a
+         |
+         |: Int = 2
+         |res2: Int = 2
+         |
+         |: Int = 42
+         |res3: Int = 42""".stripMargin,
+      result.rendered
+    )
 
   @Test def reusesResNumbersLeftByUnitExpressions(): Unit =
     val result = driver.evaluate(
@@ -315,9 +356,17 @@ class WorksheetSessionTest:
     )
 
     assertEquals(Nil, result.diagnostics)
-    assertEquals("res0: Int = 2", result.statements(0).details)
-    assertEquals("// hi", result.statements(1).details)
-    assertEquals("res1: Int = 3", result.statements(2).details)
+    assertEquals(
+      """|: Int = 2
+         |res0: Int = 2
+         |
+         |hi
+         |// hi
+         |
+         |: Int = 3
+         |res1: Int = 3""".stripMargin,
+      result.rendered
+    )
 
   @Test def propagatesGlobalLanguageImportsToLaterStatements(): Unit =
     val result = driver.evaluate(
@@ -402,10 +451,17 @@ class WorksheetSessionTest:
     )
 
     assertEquals(Nil, result.diagnostics)
-    assertEquals(3, result.statements.length)
-    assertEquals("counter: Int = 1", result.statements(0).details)
-    assertEquals("counter: Int = 2", result.statements(1).details)
-    assertEquals("res0: Int = 2", result.statements(2).details)
+    assertEquals(
+      """|: Int = 1
+         |counter: Int = 1
+         |
+         |: Int = 2
+         |counter: Int = 2
+         |
+         |: Int = 2
+         |res0: Int = 2""".stripMargin,
+      result.rendered
+    )
 
   @Test def marksASummaryIncompleteWhenTheStatementAlsoPrinted(): Unit =
     val result = driver.evaluate(
@@ -489,7 +545,17 @@ class WorksheetSessionTest:
       initial + "1 + 1\nval good = 2\n"
     )
     assertEquals(Nil, fixed.diagnostics)
-    assertEquals("res0: Int = 2", fixed.statements(1).details)
+    assertEquals(
+      """|: Int = 1
+         |x: Int = 1
+         |
+         |: Int = 2
+         |res0: Int = 2
+         |
+         |: Int = 2
+         |good: Int = 2""".stripMargin,
+      fixed.rendered
+    )
 
   @Test def resolvesDirectivesAppendedToAnExistingSession(): Unit =
     val filename = "appended-directives.worksheet.scala"
