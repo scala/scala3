@@ -7,6 +7,7 @@ import dotty.tools.repl.worksheet.interfaces.WorksheetEvaluator;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.stream.Collectors;
 
 import org.junit.Test;
 
@@ -16,6 +17,12 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class WorksheetJavaApiTest {
+  private static String rendered(EvaluatedWorksheet evaluated) {
+    return evaluated.statements().stream()
+        .map(statement -> statement.summary() + "\n" + statement.details())
+        .collect(Collectors.joining("\n\n"));
+  }
+
   @Test
   public void evaluatesThroughJavaInterfaces() {
     Path userClasspath = Path.of("target", "worksheet-user-classes");
@@ -27,9 +34,14 @@ public class WorksheetJavaApiTest {
           "val answer = 21\nanswer * 2\n");
 
       assertTrue(result.diagnostics().isEmpty());
-      assertEquals(2, result.statements().size());
-      assertEquals(": Int = 21", result.statements().get(0).summary());
-      assertEquals(": Int = 42", result.statements().get(1).summary());
+      assertEquals(
+          """
+          : Int = 21
+          answer: Int = 21
+
+          : Int = 42
+          res0: Int = 42""",
+          rendered(result));
       assertEquals(1, result.statements().get(1).position().startLine());
       assertEquals(List.of(userClasspath), result.classpath());
       assertThrows(UnsupportedOperationException.class, () -> result.statements().clear());
