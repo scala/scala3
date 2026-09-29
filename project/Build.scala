@@ -660,7 +660,7 @@ object Build {
         streams.value.log.info("cleaning all projects")
         // Inspired from the Scala.js build:
         // https://github.com/scala-js/scala-js/blob/c4e7f43932551aabb573c925147e3841ac3ca4be/project/Build.scala#L1006
-        clean.dependsOn(allProjects.map(_ / clean): _*).value
+        clean.dependsOn(allProjects.map(_ / clean)*).value
       },
       scalac := scalacTask(
         compilerProject = `scala3-compiler-nonbootstrapped`,
@@ -1536,7 +1536,7 @@ object Build {
           IO.createDirectory(trgDir)
           IO.unzip(scalaJSIRSourcesJar, trgDir)
 
-          val sjsSources = (trgDir ** "*.scala").get.toSet
+          val sjsSources = (trgDir ** "*.scala").get().toSet
           sjsSources.foreach(f => {
             val lines = IO.readLines(f)
             val linesWithPackage = Shading.replacePackage(lines) {
@@ -1664,7 +1664,7 @@ object Build {
           IO.createDirectory(trgDir)
           IO.unzip(scalaJSIRSourcesJar, trgDir)
 
-          val sjsSources = (trgDir ** "*.scala").get.toSet
+          val sjsSources = (trgDir ** "*.scala").get().toSet
           sjsSources.foreach(f => {
             val lines = IO.readLines(f)
             val linesWithPackage = Shading.replacePackage(lines) {
@@ -2051,7 +2051,7 @@ object Build {
           IO.createDirectory(targetDir)
           IO.unzip(mtagsSharedSourceJar, targetDir)
 
-          val mtagsSharedSources = (targetDir ** "*.scala").get.toSet
+          val mtagsSharedSources = (targetDir ** "*.scala").get().toSet
           mtagsSharedSources.foreach(f => {
             val lines = IO.readLines(f)
             val substitutions = (Shading.replaceProtobuf(_)) andThen (Shading.insertUnsafeNullsImport(_))
@@ -2082,7 +2082,7 @@ object Build {
     )
 
   /** Common settings for sjsSandbox and sjsJUnitTests */
-  lazy val regularScalaJSProjectSettings: Seq[Setting[_]] = Def.settings(
+  lazy val regularScalaJSProjectSettings: Seq[Setting[?]] = Def.settings(
     version       := dottyVersion,
     scalaVersion  := referenceVersion,
     crossPaths    := true,
@@ -2248,9 +2248,9 @@ object Build {
         (
           (dir / "test-suite/js/src/main/scala" ** (("*.scala": FileFilter)
             -- "Typechecking*.scala" // defines a Scala 2 macro
-            )).get
+            )).get()
 
-          ++ (dir / "junit-async/js/src/main/scala" ** "*.scala").get
+          ++ (dir / "junit-async/js/src/main/scala" ** "*.scala").get()
         )
       },
 
@@ -2270,7 +2270,7 @@ object Build {
 
         def conditionally(cond: Boolean, subdir: String): Seq[File] =
           if (!cond) Nil
-          else (dir / subdir ** "*.scala").get
+          else (dir / subdir ** "*.scala").get()
 
         (
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
@@ -2278,23 +2278,23 @@ object Build {
             -- "UTF16Test.scala" // refutable pattern match
             -- "CharsetTest.scala" // bogus @tailrec that Scala 2 ignores but Scala 3 flags as an error
             -- "ClassDiffersOnlyInCaseTest.scala" // looks like the Scala 3 compiler itself does not deal with that
-            )).get
+            )).get()
 
-          ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
-          ++ (dir / "shared/src/test/require-jdk8" ** "*.scala").get
-          ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
+          ++ (dir / "shared/src/test/require-sam" ** "*.scala").get()
+          ++ (dir / "shared/src/test/require-jdk8" ** "*.scala").get()
+          ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get()
 
           ++ (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
             -- "OptimizerTest.scala" // something crashes the optimizer, TODO investigate
             -- "TypedArrayConversionTest.scala" // #24321
-            )).get
+            )).get()
 
-          ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
-          ++ (dir / "js/src/test/require-new-target" ** "*.scala").get
-          ++ (dir / "js/src/test/require-sam" ** "*.scala").get
-          ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
+          ++ (dir / "js/src/test/require-2.12" ** "*.scala").get()
+          ++ (dir / "js/src/test/require-new-target" ** "*.scala").get()
+          ++ (dir / "js/src/test/require-sam" ** "*.scala").get()
+          ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get()
 
           ++ conditionally(!hasModules, "js/src/test/require-no-modules")
           ++ conditionally(hasModules, "js/src/test/require-modules")
@@ -2318,12 +2318,12 @@ object Build {
       Test / managedResources ++= {
         val testDir = fetchScalaJSSource.value / "test-suite/js/src/test"
 
-        val common = (testDir / "resources" ** "*.js").get
+        val common = (testDir / "resources" ** "*.js").get()
 
         val moduleSpecific = scalaJSLinkerConfig.value.moduleKind match {
           case ModuleKind.NoModule       => Nil
-          case ModuleKind.CommonJSModule => (testDir / "resources-commonjs" ** "*.js").get
-          case ModuleKind.ESModule       => (testDir / "resources-esmodule" ** "*.js").get
+          case ModuleKind.CommonJSModule => (testDir / "resources-commonjs" ** "*.js").get()
+          case ModuleKind.ESModule       => (testDir / "resources-esmodule" ** "*.js").get()
         }
 
         common ++ moduleSpecific
