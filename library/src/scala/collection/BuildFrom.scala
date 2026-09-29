@@ -29,7 +29,7 @@ import caps.unsafe.unsafeAssumePure
  *  @tparam C Type of collection (e.g. `List[Int]`, `TreeMap[Int, String]`, etc.)
  */
 @implicitNotFound(msg = "Cannot construct a collection of type ${C} with elements of type ${A} based on a collection of type ${From}.")
-trait BuildFrom[-From, -A, +C] extends Any { self: BuildFrom[From, A, C] =>
+into trait BuildFrom[-From, -A, +C] extends Any { self: BuildFrom[From, A, C] =>
   def fromSpecific(from: From)(it: IterableOnce[A]^): C^{it}
 
   /** Gets a Builder for the collection. For non-strict collection types this will use an intermediate buffer.

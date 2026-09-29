@@ -13,5 +13,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: sbt/setup-sbt@82da71df4e122282484a99a8d70096bc2369dbd8 # v1.5.9
+      - uses: sbt/setup-sbt@ce95da69b39609ea153bad087708da5f37366897 # v1.5.10
       - uses: scalacenter/sbt-dependency-submission@7b2f7e1418cb4a77fee99f9eb07c3f7577b9a867 # v3
