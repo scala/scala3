@@ -130,7 +130,7 @@ private[worksheet] final class WorksheetSession(
     current = baseSession
 
     val appended = statements.drop(baseSession.inputStatements.length)
-    val evaluation = baseSession.evaluator.evaluate(appended, baseSession.state)
+    val evaluation = baseSession.compiler.evaluate(appended, baseSession.state)
     val accepted = baseSession.inputStatements ::: evaluation.accepted
     val accumulated = baseSession.diagnostics ::: evaluation.diagnostics
     val ranWholeText = parsesWhole && evaluation.accepted.length == appended.length

@@ -29,7 +29,7 @@ private final case class CompiledStatement(
     state: State
 )
 
-private final class StatementEvaluator(startup: ReplStartup, runner: StatementRunner):
+private final class StatementCompiler(startup: ReplStartup, runner: StatementRunner):
   private val compiler = new ReplCompiler
 
   def evaluate(
@@ -112,18 +112,18 @@ private final class StatementEvaluator(startup: ReplStartup, runner: StatementRu
           case Left((errors, errorState)) =>
             Left(errorState -> errors.map(diagnostic))
           case Right((unit, nextState)) =>
-            val imports = StatementEvaluator.extractTopLevelImports(nextState.context)
+            val imports = StatementCompiler.extractTopLevelImports(nextState.context)
             val stateWithImports = nextState.copy(
               imports =
                 if imports.isEmpty then nextState.imports
                 else nextState.imports.updated(nextState.objectIndex, imports),
-              context = StatementEvaluator.contextWithNewImports(nextState.context, imports)
+              context = StatementCompiler.contextWithNewImports(nextState.context, imports)
             )
             val warnings = nextState.context.reporter
               .removeBufferedMessages(using nextState.context)
               .map(diagnostic)
             val reclaimed =
-              StatementEvaluator.reclaimableResults(nextState.objectIndex, nextState.valIndex)(using
+              StatementCompiler.reclaimableResults(nextState.objectIndex, nextState.valIndex)(using
                 nextState.context
               )
             Right(
@@ -146,7 +146,7 @@ private final class StatementEvaluator(startup: ReplStartup, runner: StatementRu
           )
         )
 
-private object StatementEvaluator:
+private object StatementCompiler:
   private def extractTopLevelImports(context: Context): List[tpd.Import] =
     unfusedPhases(using context)
       .collectFirst { case phase: CollectTopLevelImports => phase.imports }

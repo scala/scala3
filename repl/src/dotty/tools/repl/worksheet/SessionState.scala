@@ -6,7 +6,7 @@ import dotty.tools.repl.State
 private final case class SessionState(
     startup: ReplStartup,
     runner: StatementRunner,
-    evaluator: StatementEvaluator,
+    compiler: StatementCompiler,
     filename: Option[String],
     text: String,
     inputStatements: List[InputStatement],
@@ -46,7 +46,7 @@ private object SessionState:
     SessionState(
       startup,
       runner,
-      new StatementEvaluator(startup, runner),
+      new StatementCompiler(startup, runner),
       None,
       "",
       Nil,
