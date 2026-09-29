@@ -29,6 +29,20 @@ trait Deriving {
     /** A buffer for synthesized symbols for type class instances, with what user asked to synthesize. */
     private val synthetics = ListBuffer.empty[(tpd.Tree, Symbol)]
 
+    private enum TypeClassShape:
+      /** `TC[X]` */
+      case Applied(typeClassType: Type)
+      /** `X is TC`, i.e. `TC { type Self = X }` */
+      case SelfBased(typeClassType: Type)
+
+      def paramBounds(using Context): Type = this match
+        case Applied(tc) => tc.classSymbol.typeParams.head.info
+        case SelfBased(tc) => tc.member(tpnme.Self).info
+
+      def instance(args: List[Type])(using Context): Type = this match
+        case Applied(tc) => tc.appliedTo(args)
+        case SelfBased(tc) => RefinedType(tc, tpnme.Self, TypeAlias(args.head))
+
     /** A version of Type#underlyingClassRef that works also for higher-kinded types */
     private def underlyingClassRef(tp: Type): Type = tp match {
       case tp: TypeRef if tp.symbol.isClass => tp
@@ -93,33 +107,28 @@ trait Deriving {
       def cannotBeUnified =
         report.error(em"${cls.name} cannot be unified with the type argument of ${typeClass.name}", derived.srcPos)
 
-      def addInstance(derivedParams: List[TypeSymbol], evidenceParamInfos: List[List[Type]], instanceTypes: List[Type]): Unit = {
-        val resultType = typeClassType.appliedTo(instanceTypes)
+      def addInstance(derivedParams: List[TypeSymbol], evidenceParamInfos: List[List[Type]], instanceTypes: List[Type],
+                      shape: TypeClassShape): Unit = {
+        val resultType = shape.instance(instanceTypes)
         val monoInfo =
           if evidenceParamInfos.isEmpty then resultType
-          else ImplicitMethodType(evidenceParamInfos.map(typeClassType.appliedTo), resultType)
+          else ImplicitMethodType(evidenceParamInfos.map(shape.instance), resultType)
         val derivedInfo =
           if derivedParams.isEmpty then monoInfo
           else PolyType.fromParams(derivedParams, monoInfo)
         addDerivedInstance(originalTypeClassTree, originalTypeClassType.typeSymbol.name, derivedInfo, derived.srcPos)
       }
 
-      /** `tp is TC`, i.e. `TC { type Self = tp }`, for the self-based type class `typeClassType`. */
-      def selfRefined(tp: Type): Type = RefinedType(typeClassType, tpnme.Self, TypeAlias(tp))
-
-      def addSelfInstance(derivedParams: List[TypeSymbol], evidenceParamTypes: List[Type], instanceType: Type): Unit = {
-        val resultType = selfRefined(instanceType)
-        val monoInfo =
-          if evidenceParamTypes.isEmpty then resultType
-          else ImplicitMethodType(evidenceParamTypes.map(selfRefined), resultType)
-        val derivedInfo =
-          if derivedParams.isEmpty then monoInfo
-          else PolyType.fromParams(derivedParams, monoInfo)
-        addDerivedInstance(originalTypeClassTree, originalTypeClassType.typeSymbol.name, derivedInfo, derived.srcPos)
-      }
-
-      def deriveSingleParameter: Unit = {
+      def deriveSingleParameter(shape: TypeClassShape): Unit = {
         // Single parameter type classes ... (a) and (b) above
+        //
+        // Self-based type classes, i.e. type classes of the form
+        //
+        //     trait TC:
+        //       type Self  // or type Self[T] etc.
+        //
+        // follow the same rules, with the kind of `Self` in place of the kind of
+        // the type parameter, and `X is TC` (aka `TC { type Self = X }`) in place of `TC[X]`.
         //
         // (a) ADT and type class parameters overlap on the right and have the
         //     same kinds at the overlap.
@@ -165,8 +174,7 @@ trait Deriving {
         //     earlier more general multi-parameter type class model for which
         //     the heuristic is typically a good one.
 
-        val typeClassParamType = typeClassParams.head.info
-        val typeClassParamInfos = typeClassParamType.typeParams
+        val typeClassParamInfos = shape.paramBounds.typeParams
         val instanceArity = typeClassParamInfos.length
         val clsType = cls.typeRef
         val clsParams = cls.typeParams
@@ -189,49 +197,16 @@ trait Deriving {
                 tl => clsType.appliedTo(derivedParamTypes ++ tl.paramRefs.takeRight(clsArity)))
             }
 
-          addInstance(derivedParams, Nil, List(instanceType))
+          addInstance(derivedParams, Nil, List(instanceType), shape)
         }
         else if (instanceArity == 0 && !clsParams.exists(_.info.isLambdaSub)) {
           // case (b) ... see description above
           val instanceType = clsType.appliedTo(clsParams.map(_.typeRef))
           val evidenceParamInfos = clsParams.map(param => List(param.typeRef))
-          addInstance(clsParams, evidenceParamInfos, List(instanceType))
+          addInstance(clsParams, evidenceParamInfos, List(instanceType), shape)
         }
         else
           cannotBeUnified
-      }
-
-      def deriveSelfParameter: Unit = {
-        // Self-based type classes, i.e. type classes of the form
-        //
-        //     trait TC:
-        //       type Self
-        //       ...
-        //
-        // which are used via the `is` context-bound syntax (`X is TC`, aka `TC { type Self = X }`)
-        // rather than by being applied to a type argument (`TC[X]`). Since `TC` itself takes no
-        // type parameters, derivation instead pattern-matches on the abstract `Self` member.
-        //
-        // This is the `Self`-based analogue of case (b) in deriveSingleParameter above:
-        //
-        //     Type class: TC (with abstract type member Self)
-        //
-        //     ADT: C[A, B, C]
-        //
-        //          given derived$TC[a, b, c] given (a is TC), (b is TC), (c is TC): (C[a, b, c] is TC)
-        //
-        //     ADT: C   (no type parameters)
-        //
-        //          given derived$TC: (C is TC)
-        val clsType = cls.typeRef
-        val clsParams = cls.typeParams
-
-        if clsParams.exists(_.info.isLambdaSub) then
-          cannotBeUnified
-        else
-          val instanceType = clsType.appliedTo(clsParams.map(_.typeRef))
-          val evidenceParamTypes = clsParams.map(_.typeRef)
-          addSelfInstance(clsParams, evidenceParamTypes, instanceType)
       }
 
       def deriveCanEqual: Unit = {
@@ -294,14 +269,14 @@ trait Deriving {
           yield cls.typeRef.appliedTo(clsParamss.map(row => row(n).typeRef))
 
         // CanEqual[A[T_L, U_L, V_L], A[T_R, U_R, V_R]]
-        addInstance(clsParamss.flatten, evidenceParamInfos, instanceTypes)
+        addInstance(clsParamss.flatten, evidenceParamInfos, instanceTypes, TypeClassShape.Applied(typeClassType))
       }
 
-      if (typeClassArity == 1) deriveSingleParameter
+      if (typeClassArity == 1) deriveSingleParameter(TypeClassShape.Applied(typeClassType))
       else if (typeClass == defn.CanEqualClass) deriveCanEqual
       else if (typeClassArity == 0)
         if Feature.enabled(Feature.modularity) && typeClassType.member(tpnme.Self).symbol.isAbstractOrParamType then
-          deriveSelfParameter
+          deriveSingleParameter(TypeClassShape.SelfBased(typeClassType))
         else
           report.error(em"type ${typeClass.name} in derives clause of ${cls.name} has no type parameters", derived.srcPos)
       else
