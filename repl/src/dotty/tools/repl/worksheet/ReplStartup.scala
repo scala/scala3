@@ -38,17 +38,18 @@ private final class ReplStartup(settings: Array[String]):
       .filter(_.nonEmpty)
       .mkString("\n")
     val message =
-      if reported.nonEmpty then reported
-      else "The compiler rejected its configuration, so the worksheet was not evaluated."
-    Option
-      .when(!isUsable || reported.nonEmpty)(
+      if reported.nonEmpty then Some(reported)
+      else if isUsable then None
+      else Some("The compiler rejected its configuration, so the worksheet was not evaluated.")
+
+    message
+      .map: text =>
         WorksheetDiagnostic(
           WorksheetPosition(0, 0, 0, 0),
-          message,
+          text,
           if isUsable then WorksheetDiagnosticSeverity.Warning
           else WorksheetDiagnosticSeverity.Error
         )
-      )
       .toList
 
   def close(): Unit =
