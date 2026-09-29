@@ -32,6 +32,7 @@ trait PartiallyOrdered[+A] extends Any {
    *
    *  @tparam B a supertype of `A` for which an implicit conversion to `PartiallyOrdered[B]` exists
    *  @param that the value to compare against
+   *  @return `Some(x)` where `x < 0` means this is less than `that`, `x == 0` means they are equal, and `x > 0` means this is greater than `that`; `None` if the operands are not comparable
    */
   def tryCompareTo [B >: A: AsPartiallyOrdered](that: B): Option[Int]
 

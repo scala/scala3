@@ -5,14 +5,18 @@ import CommandLineParser.tokenize
 import Settings.*
 import dotty.tools.Useables.given
 import dotty.tools.dotc.config.ScalaSettingCategories.*
+import dotty.tools.dotc.reporting.StoreReporter
+import core.Contexts.{Context, ContextBase}
+import dotty.tools.vulpix.TestConfiguration
 import org.junit.Test
 import org.junit.Assert.*
 import core.Decorators.toMessage
-import dotty.tools.io.{Path, PlainFile}
+import dotty.tools.io.*
 
 import java.net.URI
 import java.nio.file.Files
 import scala.util.Using
+import scala.io.Codec
 
 import scala.annotation.nowarn
 
@@ -196,7 +200,7 @@ class ScalaSettingsTests:
         warning = reporting.Diagnostic.Warning(
           "A warning".toMessage,
           util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
+            source = util.SourceFile(new PlainFile(Path(file)), new PlainDirectory(Directory(".")), Codec.UTF8),
             span = util.Spans.Span(1L)
           )
         )
@@ -211,7 +215,7 @@ class ScalaSettingsTests:
         warning = reporting.Diagnostic.Warning(
           "A warning".toMessage,
           util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
+            source = util.SourceFile(new PlainFile(Path(file)), new PlainDirectory(Directory(".")), Codec.UTF8),
             span = util.Spans.Span(1L)
           )
         )
@@ -264,6 +268,46 @@ class ScalaSettingsTests:
     assertEquals(2, result.warnings.length)
     assertEquals("Option -Xfatal-warnings is a deprecated alias: use -Werror instead", result.warnings.head)
     assertEquals(0, result.errors.length)
+
+  private def deprecatedLanguageSettingWarnings(deprecation: Boolean): (Int, List[String]) =
+    val rep = new StoreReporter()
+    val base = new ContextBase {}
+    given Context = base.initialCtx.fresh
+      .setReporter(rep)
+      .setSetting(ScalaSettings.classpath, TestConfiguration.basicClasspath)
+      .setSetting(ScalaSettings.language, List("experimental.strictEqualityPatternMatching").asInstanceOf)
+      .setSetting(ScalaSettings.deprecation, deprecation)
+    base.initialize()(using summon[Context])
+    Feature.checkDeprecatedSettingFeatures
+    (rep.warningCount, rep.removeBufferedMessages.map(_.message))
+
+  @Test def `deprecated -language features warn with option name when -deprecation is on`: Unit =
+    val (count, messages) = deprecatedLanguageSettingWarnings(deprecation = true)
+    assertEquals(1, count)
+    assertEquals(
+      "Option -language:experimental.strictEqualityPatternMatching is deprecated: `strictEqualityPatternMatching` is now standard, no language import is needed",
+      messages.head,
+    )
+
+  @Test def `deprecated -language features are summarized when -deprecation is off`: Unit =
+    val (count, _) = deprecatedLanguageSettingWarnings(deprecation = false)
+    assertEquals(0, count)
+
+  @Test def `deprecated -language fewerBraces warns with option name when -deprecation is on`: Unit =
+    val rep = new StoreReporter()
+    val base = new ContextBase {}
+    given Context = base.initialCtx.fresh
+      .setReporter(rep)
+      .setSetting(ScalaSettings.classpath, TestConfiguration.basicClasspath)
+      .setSetting(ScalaSettings.language, List("experimental.fewerBraces").asInstanceOf)
+      .setSetting(ScalaSettings.deprecation, true)
+    base.initialize()(using summon[Context])
+    Feature.checkDeprecatedSettingFeatures
+    assertEquals(1, rep.warningCount)
+    assertEquals(
+      "Option -language:experimental.fewerBraces is deprecated: `fewerBraces` is now standard, no language import is needed",
+      rep.removeBufferedMessages.head.message,
+    )
 
   // see sbt-test/pipelining/pipelining-test/test
   @Test def `-Xearly-tasty-output preferPrevious does not warn on change of value`: Unit =

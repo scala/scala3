@@ -7,6 +7,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   release-maven-artifacts:
     runs-on: ubuntu-latest
@@ -18,15 +21,15 @@ jobs:
       NEWNIGHTLY            : ${{ vars.NEWNIGHTLY }}
       NIGHTLYBUILD          : ${{ vars.NIGHTLYBUILD }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
-          distribution: 'adopt'
+          distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@ce95da69b39609ea153bad087708da5f37366897 # v1.5.10
       - name: Import Scala PGP Key
-        uses: crazy-max/ghaction-import-gpg@v7
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         with:
           gpg_private_key: ${{ secrets.SCALA_PGP_KEY }}
           passphrase     : ${{ secrets.SCALA_PGP_PASSPHRASE }}
@@ -47,7 +50,7 @@ jobs:
           MAVEN_REPOSITORY_USER : ${{ secrets.MAVEN_REPOSITORY_USER }}
           MAVEN_REPOSITORY_TOKEN: ${{ secrets.MAVEN_REPOSITORY_TOKEN }}
 
-  release-maven-lts-artifacts:
+  release-maven-lts-3-3-artifacts:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
@@ -57,16 +60,16 @@ jobs:
       NEWNIGHTLY            : ${{ vars.NEWNIGHTLY }}
       NIGHTLYBUILD          : ${{ vars.NIGHTLYBUILD }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: scala/scala3-lts
           ref: lts-3.3
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: 'temurin'
           java-version: 8
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@ce95da69b39609ea153bad087708da5f37366897 # v1.5.10
       - name: Setup PGP Key
         run: |
           echo -n "$PGP_SECRET" | gpg --batch --import
@@ -97,3 +100,45 @@ jobs:
           SONATYPE_PW   : ${{ secrets.MAVEN_REPOSITORY_TOKEN }}
           PGP_PW        : ${{ secrets.PGP_PW }}
           PGP_SECRET    : ${{ secrets.PGP_SECRET }}
+
+  release-maven-lts-3-9-artifacts:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      MAVEN_REPOSITORY_HOST : ${{ vars.MAVEN_REPOSITORY_HOST }}
+      MAVEN_REPOSITORY_REALM: ${{ vars.MAVEN_REPOSITORY_REALM }}
+      MAVEN_REPOSITORY_URL  : ${{ vars.MAVEN_REPOSITORY_URL }}
+      NEWNIGHTLY            : ${{ vars.NEWNIGHTLY }}
+      NIGHTLYBUILD          : ${{ vars.NIGHTLYBUILD }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: scala/scala3-lts
+          ref: lts-3.9
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@ce95da69b39609ea153bad087708da5f37366897 # v1.5.10
+      - name: Import Scala PGP Key
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.SCALA_PGP_KEY }}
+          passphrase     : ${{ secrets.SCALA_PGP_PASSPHRASE }}
+          fingerprint    : ${{ vars.SCALA_PGP_FINGERPRINT }}
+      - name: Get version string for this build
+        run: |
+          ver=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
+          echo "THISBUILD_VERSION=$ver" >> $GITHUB_ENV
+      - name: Check whether not yet published
+        id: not_yet_published
+        continue-on-error: true
+        run: |
+          ! ./project/scripts/is-version-published.sh "$THISBUILD_VERSION"
+      - name: Publish Artifacts to the Maven Repository
+        if: "steps.not_yet_published.outcome == 'success'"
+        run : sbt scala3-bootstrapped/publishSigned
+        env:
+          MAVEN_REPOSITORY_USER : ${{ secrets.MAVEN_REPOSITORY_USER }}
+          MAVEN_REPOSITORY_TOKEN: ${{ secrets.MAVEN_REPOSITORY_TOKEN }}

@@ -102,6 +102,11 @@ class CCState:
 
   private var discardUses: Boolean = false
 
+  /** A switch allowing to ignore classifiers in subsumption checks for
+   *  asInstanceOf applications created by pattern-matches.
+   */
+  var ignoreClassifiers = false
+
   // ------- Caches for symbols --------------------------------------------------
 
   /* A cache for CaptureOps.useSet */
@@ -181,6 +186,7 @@ object CCState:
 
   /** Should uses not be recorded in markFree? */
   def discardUses(using Context): Boolean = ccState.discardUses
+
 
   /** Perform `op` unless operation has been tried on `c` before.
    *  This is needed to prevent infinite recursions in methods like

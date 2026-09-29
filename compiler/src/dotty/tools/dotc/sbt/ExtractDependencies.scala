@@ -3,33 +3,33 @@ package sbt
 
 import java.io.File
 import java.nio.file.Path
-import java.util.EnumSet
-
+import java.util.{Arrays, EnumSet}
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.classpath.FileUtils.{hasClassExtension, hasTastyExtension}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.StdNames.{nme, str}
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types.*
-
-import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
-import dotty.tools.io
-import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive, NoAbstractFile, FileExtension}
+import dotty.tools.dotc.typer.Applications.*
+import dotty.tools.dotc.util.{NoSourcePosition, SrcPos}
+import dotty.tools.{io, printOnAssertionError}
+import dotty.tools.io.AbstractFile
 import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext.*
 
 import scala.jdk.CollectionConverters.*
-
 import scala.collection.{Set, mutable}
 import scala.compiletime.uninitialized
+import scala.io.Codec
 
-/** This phase sends information on classes' dependencies to sbt via callbacks.
+/** This phase collects information on classes' dependencies for sbt.
+ *  For Scala sources, they are sent in `Inlining`, after the dependencies of inlined code are added.
  *
  *  This is used by sbt for incremental recompilation. Briefly, when a file
  *  changes sbt will recompile it, if its API has changed (determined by what
@@ -74,12 +74,16 @@ class ExtractDependencies extends Phase {
     val rec = unit.depRecorder
     val collector = ExtractDependenciesCollector(rec)
     collector.traverse(unit.tpdTree)
+    // Java units are normally dropped after typer, so don't reach here.
+    // With `-Xjava-tasty`, they do reach here, but they don't reach `Inlining`, where dependencies
+    // are reported to zinc. So do that here for Java units.
+    if unit.typedAsJava then rec.sendToZinc()
   }
 }
 
 object ExtractDependencies {
   val name: String = "sbt-deps"
-  val description: String = "sends information on classes' dependencies to sbt"
+  val description: String = "collects information on classes' dependencies for sbt"
 
   /** Construct String name for the given sym.
    * See https://github.com/sbt/zinc/blob/v1.9.6/internal/zinc-apiinfo/src/main/scala/sbt/internal/inc/ClassToAPI.scala#L86-L99
@@ -94,7 +98,7 @@ object ExtractDependencies {
     def classNameAsString0(sym: Symbol)(using Context): String =
       sym.fullName.stripModuleClassSuffix.toString
     def javaClassNameAsString(sym: Symbol)(using Context): String =
-      if sym.owner.isClass && !sym.owner.isRoot then
+      if sym.owner.isClass && !sym.owner.isEffectiveRoot then
         javaClassNameAsString(sym.owner) + "." + sym.name.stripModuleClassSuffix.toString
       else classNameAsString0(sym)
     if isJava(sym) then javaClassNameAsString(sym)
@@ -123,7 +127,7 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends Abst
    *  can be retrieved using DependencyRecorder.
    */
   override def traverse(tree: Tree)(using Context): Unit =
-    try
+    printOnAssertionError(i"assertion failed while traversing $tree"):
       recordTree(tree)
 
       recordInlineCallArgs(tree)
@@ -143,10 +147,6 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends Abst
           t.body.foreach(traverse)
         case _ =>
           traverseChildren(tree)
-    catch
-      case ex: AssertionError =>
-        println(i"asserted failed while traversing $tree")
-        throw ex
 end ExtractDependenciesCollector
 
 /** Extract the dependency information of a compilation unit.
@@ -265,6 +265,37 @@ trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
         addInheritanceDependencies(t)
       case t: Template =>
         addInheritanceDependencies(t)
+      case UnApply(fun, _, _) =>
+        // PatternMatcher (which runs after this phase) lowers case-class patterns
+        // to direct product-selector calls (_1, _2, …) or case-accessor calls.
+        // Those calls are never present in the typed tree seen here, so they would
+        // not normally be recorded as used names.
+
+        // Always record both unapply and unapplySeq on the extractor so that adding
+        // one alongside the other triggers recompilation.  The typer tries unapply
+        // first and falls back to unapplySeq (see trySelectUnapply); if the set of
+        // available methods changes the winner can change.  The class dependency on
+        // the extractor owner is already established by traversal of `fun`.
+        rec.addUsedRawName(nme.unapply)
+        rec.addUsedRawName(nme.unapplySeq)
+
+        // For a *synthetic* case-class unapply (`def unapply(x: C): C = x`), record
+        // the primary constructor of C.  Its zinc-mangled name (`C;init;`) encodes
+        // the full parameter list: any change to parameter types, arity, or names
+        // changes the name hash and triggers recompilation.
+        val linkedCls = fun.symbol.owner.linkedClass
+        if fun.symbol.is(Synthetic) && linkedCls.is(Case) then
+          addMemberRefDependency(linkedCls.primaryConstructor)
+        else
+          // For other extractors that return a product type, record the _N selectors
+          // so that return-type changes trigger recompilation.  Also record the
+          // selector one past the current arity (_N+1) so that a new member being
+          // added to the product type is detected.  The class dependency needed to
+          // make that raw-name watch effective is established by the selector loop.
+          val selectors = productSelectors(fun.tpe.widen.finalResultType)
+          selectors.foreach(addMemberRefDependency)
+          if selectors.nonEmpty then
+            rec.addUsedRawName(nme.selectorName(selectors.length))
       case _ => ()
 
   /**Reused EqHashSet, safe to use as each TypeDependencyTraverser is used atomically
@@ -472,8 +503,9 @@ class DependencyRecorder {
 
   /** Send the collected dependency information to Zinc and clear the local caches. */
   def sendToZinc()(using Context): Unit =
+    if ctx.settings.YdumpSbtInc.value then dumpInc()
     ctx.withIncCallback: cb =>
-      val siblingClassfiles = new mutable.HashMap[PlainFile, Path]
+      val siblingClassfiles = new mutable.HashMap[AbstractFile, Path]
       _foundDeps.iterator.foreach:
         case (clazz, foundDeps) =>
           val className = classNameAsString(clazz)
@@ -483,6 +515,25 @@ class DependencyRecorder {
             for dep <- deps.asScala do
               recordClassDependency(cb, clazz, toClass, dep, siblingClassfiles)
     clear()
+
+  /** Write the dependencies to a `.inc` file next to the source, for `-Ydump-sbt-inc`. */
+  private def dumpInc()(using Context): Unit =
+    val deps = _foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray[Object]
+    val names = _foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray[Object]
+    Arrays.sort(deps)
+    Arrays.sort(names)
+    ctx.compilationUnit.source.jfile.ifPresent(jpath => {
+      val pw = io.File(jpath.toPath)(using Codec.UTF8).changeExtension(io.FileExtension.Inc).toFile.printWriter()
+      try
+        pw.println("Used Names:")
+        pw.println("===========")
+        names.foreach(pw.println)
+        pw.println()
+        pw.println("Dependencies:")
+        pw.println("=============")
+        deps.foreach(pw.println)
+      finally pw.close()
+    })
 
    /** Clear all state. */
   def clear(): Unit =
@@ -497,7 +548,7 @@ class DependencyRecorder {
    *  run) or from class file and calls respective callback method.
    */
   private def recordClassDependency(cb: interfaces.IncrementalCallback, fromClass: Symbol, toClass: Symbol,
-      depCtx: DependencyContext, siblingClassfiles: mutable.Map[PlainFile, Path])(using Context): Unit = {
+      depCtx: DependencyContext, siblingClassfiles: mutable.Map[AbstractFile, Path])(using Context): Unit = {
     val fromClassName = classNameAsString(fromClass)
     val sourceFile = ctx.compilationUnit.source
 
@@ -517,13 +568,14 @@ class DependencyRecorder {
      * FIXME: we still need a way to resolve the correct classfile when we split tasty and classes between
      * different outputs (e.g. scala2-library-bootstrapped).
      */
-    def cachedSiblingClass(pf: PlainFile): Path =
+    def cachedSiblingClass(pf: AbstractFile): Path =
       siblingClassfiles.getOrElseUpdate(pf, {
-        val jpath = pf.jpath
-        jpath.getParent.resolve(jpath.getFileName.toString.stripSuffix(".tasty") + ".class")
+        val jpath = pf.jpath.nn
+        val moduleSuffix = if fromClass.is(Module) then str.MODULE_SUFFIX else ""
+        jpath.getParent.resolve(jpath.getFileName.toString.stripSuffix(".tasty") + moduleSuffix + ".class")
       })
 
-    def binaryDependency(path: Path, binaryClassName: String) =
+    def binaryDependency(path: Path, binaryClassName: String): Unit =
       cb.binaryDependency(path, binaryClassName, fromClassName, sourceFile, depCtx)
 
     val depClass = toClass
@@ -531,24 +583,20 @@ class DependencyRecorder {
     if depFile != null then {
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = depCtx == DependencyByInheritance || depCtx == LocalDependencyByInheritance
-      val isTastyOrSig = depFile.hasTastyExtension
+      val isTasty = depFile.ext.isTasty
 
-      def processExternalDependency() = {
+      def processExternalDependency(): Unit = {
         val binaryClassName = depClass.binaryClassName
-        depFile match {
-          case ze: ZipArchive#Entry => // The dependency comes from a JAR
-            ze.underlyingSource match
-              case Some(zip) if zip.jpath != null =>
-                binaryDependency(zip.jpath, binaryClassName)
-              case _ =>
-          case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem
-            binaryDependency(if isTastyOrSig then cachedSiblingClass(pf) else pf.jpath, binaryClassName)
+        depFile.enclosing match
+          case Some(archive) if archive.jpath != null => // The dependency comes from a JAR
+            binaryDependency(archive.jpath.nn, binaryClassName)
+          case _ if depFile.jpath != null =>
+            binaryDependency(if isTasty then cachedSiblingClass(depFile) else depFile.jpath.nn, binaryClassName)
           case _ =>
-            internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", fromClass.srcPos)
-        }
+            internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}", fromClass.srcPos)
       }
 
-      if isTastyOrSig || depFile.hasClassExtension then
+      if isTasty || depFile.ext.isClass || depFile.ext.isSig then
         processExternalDependency()
       else if allowLocal || depFile != sourceFile.file then
         // We cannot ignore dependencies coming from the same source file because

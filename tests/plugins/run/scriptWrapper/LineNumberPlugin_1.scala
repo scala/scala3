@@ -36,12 +36,12 @@ class FixLineNumbers extends PluginPhase {
         case s"//USER_SRC_FILE:./$file" => file.trim
       }.getOrElse("<unknown>")
 
-      val adjustedSrc = ctx.source.file.container.lookupName(adjustedFile, directory = false) match
+      val adjustedSrc = ctx.source.file.container.map(_.lookupName(adjustedFile, directory = false)).orNull match
         case null =>
           report.error(s"could not find file $adjustedFile", tree.sourcePos)
           return tree
         case file =>
-          SourceFile(file, scala.io.Codec.UTF8)
+          SourceFile(file, ctx.settings.sourceroot.value, scala.io.Codec.UTF8)
 
       val userCodeOffset = ctx.source.lineToOffset(codeMarkerLine + 1) // lines.take(codeMarkerLine).map(_.length).sum
       val lineMapper = LineMapper(codeMarkerLine, userCodeOffset, adjustedSrc)

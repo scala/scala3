@@ -1,0 +1,5 @@
+-- Error: tests/neg-custom-args/captures/i25093.scala:2:4 --------------------------------------------------------------
+2 |  as(0) // error
+  |  ^^^^^
+  |  Local any in the type of parameter as leaks into capture scope of method oneOf.
+  |  You could try to abstract the capability in a capset variable.

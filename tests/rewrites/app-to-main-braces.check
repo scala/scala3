@@ -1,0 +1,14 @@
+object Hello {
+  def main(args: Array[String]): Unit = {
+    println("Hello, world!")
+    println("Goodbye")
+  }
+}
+
+object Counter {
+  var n = 0
+  def main(args: Array[String]): Unit = {
+    n += 1
+    println(n)
+  }
+}

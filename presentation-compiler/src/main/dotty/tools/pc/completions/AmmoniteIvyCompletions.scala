@@ -33,7 +33,7 @@ object AmmoniteIvyCompletions:
             pos.withStart(rangeStart).withEnd(rangeEnd).toLsp
         val completions = coursierComplete.complete(dependency.nn)
         val normalized = dependency.replace(":::", ":").replace("::", ":")
-        val isVersionCompletion = normalized.split(":").length >= 3
+        val isVersionCompletion = normalized.count(_ == ':') >= 2
         completions
           .map(insertText =>
             CompletionValue.Coursier(

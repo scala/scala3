@@ -1,0 +1,581 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+chained-apply/test.scala
+<empty>
+C
+Class
+<empty>.C
+addMode
+38
+62
+3
+println
+Apply
+false
+0
+false
+println("memberAddMode")
+
+1
+chained-apply/test.scala
+<empty>
+C
+Class
+<empty>.C
+addMode
+11
+22
+2
+addMode
+DefDef
+false
+0
+false
+def addMode
+
+2
+chained-apply/test.scala
+<empty>
+C
+Class
+<empty>.C
+bar
+94
+108
+7
+println
+Apply
+false
+0
+false
+println("bar")
+
+3
+chained-apply/test.scala
+<empty>
+C
+Class
+<empty>.C
+bar
+75
+82
+6
+bar
+DefDef
+false
+0
+false
+def bar
+
+4
+chained-apply/test.scala
+<empty>
+D
+Class
+<empty>.D
+bar
+157
+175
+12
+println
+Apply
+false
+0
+false
+println("dep.bar")
+
+5
+chained-apply/test.scala
+<empty>
+D
+Class
+<empty>.D
+bar
+130
+137
+11
+bar
+DefDef
+false
+0
+false
+def bar
+
+6
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+foo
+203
+217
+16
+println
+Apply
+false
+0
+false
+println("foo")
+
+7
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+foo
+220
+223
+17
+<init>
+Apply
+false
+0
+false
+C()
+
+8
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+foo
+186
+193
+15
+foo
+DefDef
+false
+0
+false
+def foo
+
+9
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+bar
+242
+259
+20
+println
+Apply
+false
+0
+false
+println("argBar")
+
+10
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+bar
+262
+265
+21
+<init>
+Apply
+false
+0
+false
+C()
+
+11
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+bar
+225
+232
+19
+bar
+DefDef
+false
+0
+false
+def bar
+
+12
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+addMode
+292
+310
+24
+println
+Apply
+false
+0
+false
+println("addMode")
+
+13
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+addMode
+267
+278
+23
+addMode
+DefDef
+false
+0
+false
+def addMode
+
+14
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+depFoo
+336
+353
+28
+println
+Apply
+false
+0
+false
+println("depFoo")
+
+15
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+depFoo
+356
+359
+29
+<init>
+Apply
+false
+0
+false
+D()
+
+16
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+depFoo
+316
+326
+27
+depFoo
+DefDef
+false
+0
+false
+def depFoo
+
+17
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+depAddMode
+394
+415
+32
+println
+Apply
+false
+0
+false
+println("depAddMode")
+
+18
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+depAddMode
+361
+375
+31
+depAddMode
+DefDef
+false
+0
+false
+def depAddMode
+
+19
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+446
+460
+37
+addMode
+Apply
+false
+0
+false
+addMode(foo())
+
+20
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+454
+459
+37
+foo
+Apply
+false
+0
+false
+foo()
+
+21
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+463
+483
+38
+bar
+Apply
+false
+0
+false
+addMode(foo()).bar()
+
+22
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+471
+476
+38
+foo
+Apply
+false
+0
+false
+foo()
+
+23
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+463
+477
+38
+addMode
+Apply
+false
+0
+false
+addMode(foo())
+
+24
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+486
+521
+39
+bar
+Apply
+false
+0
+false
+addMode(foo()).addMode(bar()).bar()
+
+25
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+494
+499
+39
+foo
+Apply
+false
+0
+false
+foo()
+
+26
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+509
+514
+39
+bar
+Apply
+false
+0
+false
+bar()
+
+27
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+486
+500
+39
+addMode
+Apply
+false
+0
+false
+addMode(foo())
+
+28
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+486
+515
+39
+addMode
+Apply
+false
+0
+false
+addMode(foo()).addMode(bar())
+
+29
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+524
+550
+40
+bar
+Apply
+false
+0
+false
+depAddMode(depFoo()).bar()
+
+30
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+535
+543
+40
+depFoo
+Apply
+false
+0
+false
+depFoo()
+
+31
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+524
+544
+40
+depAddMode
+Apply
+false
+0
+false
+depAddMode(depFoo())
+
+32
+chained-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+421
+435
+36
+Test
+DefDef
+false
+0
+false
+@main\ndef Test
+

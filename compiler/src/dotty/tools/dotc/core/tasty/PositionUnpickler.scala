@@ -13,7 +13,7 @@ import util.Spans.*
 import Names.TermName
 
 /** Unpickler for tree positions */
-class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
+class PositionUnpickler(reader: TastyReader, nameAtRef: Int => TermName) {
   import reader.*
 
   private var myLineSizes: Array[Int] = uninitialized
@@ -78,5 +78,5 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
   }
 
   def spanAt(addr: Addr): Span = spans.getOrElse(addr, NoSpan)
-  def sourcePathAt(addr: Addr): String = sourceNameRefs.get(addr).fold("")(nameAtRef(_).toString)
+  def sourcePathAt(addr: Addr): String = sourceNameRefs.get(addr).fold("")(r => nameAtRef(r.index).toString)
 }

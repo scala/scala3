@@ -109,36 +109,42 @@ package object math {
    *  @group trig
    *
    *  @param x the angle, in radians
+   *  @return the sine of `x`
    */
   def sin(x: Double): Double = java.lang.Math.sin(x)
   /**
    *  @group trig
    *
    *  @param x the angle, in radians
+   *  @return the cosine of `x`
    */
   def cos(x: Double): Double = java.lang.Math.cos(x)
   /**
    *  @group trig
    *
    *  @param x the angle, in radians
+   *  @return the tangent of `x`
    */
   def tan(x: Double): Double = java.lang.Math.tan(x)
   /**
    *  @group trig
    *
    *  @param x the value whose arc sine is to be returned
+   *  @return the arc sine of `x`, in radians, in the range -π/2 through π/2
    */
   def asin(x: Double): Double = java.lang.Math.asin(x)
   /**
    *  @group trig
    *
    *  @param x the value whose arc cosine is to be returned
+   *  @return the arc cosine of `x`, in radians, in the range 0 through π
    */
   def acos(x: Double): Double = java.lang.Math.acos(x)
   /**
    *  @group trig
    *
    *  @param x the value whose arc tangent is to be returned
+   *  @return the arc tangent of `x`, in radians, in the range -π/2 through π/2
    */
   def atan(x: Double): Double = java.lang.Math.atan(x)
 
@@ -193,12 +199,14 @@ package object math {
    *  @group rounding
    *
    *  @param x the value to be rounded up
+   *  @return the smallest `Double` value greater than or equal to `x` that is equal to a mathematical integer
    */
   def ceil(x: Double): Double  = java.lang.Math.ceil(x)
   /**
    *  @group rounding
    *
    *  @param x the value to be rounded down
+   *  @return the largest `Double` value less than or equal to `x` that is equal to a mathematical integer
    */
   def floor(x: Double): Double = java.lang.Math.floor(x)
 
@@ -240,24 +248,28 @@ package object math {
    *  @group abs
    *
    *  @param x the value whose absolute value is to be determined
+   *  @return the absolute value of `x`
    */
   def abs(x: Int): Int       = java.lang.Math.abs(x)
   /**
    *  @group abs
    *
    *  @param x the value whose absolute value is to be determined
+   *  @return the absolute value of `x`
    */
   def abs(x: Long): Long     = java.lang.Math.abs(x)
   /**
    *  @group abs
    *
    *  @param x the value whose absolute value is to be determined
+   *  @return the absolute value of `x`
    */
   def abs(x: Float): Float   = java.lang.Math.abs(x)
   /**
    *  @group abs
    *
    *  @param x the value whose absolute value is to be determined
+   *  @return the absolute value of `x`
    */
   def abs(x: Double): Double = java.lang.Math.abs(x)
 
@@ -266,6 +278,7 @@ package object math {
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
+   *  @return the larger of `x` and `y`
    */
   def max(x: Int, y: Int): Int          = java.lang.Math.max(x, y)
   /**
@@ -273,6 +286,7 @@ package object math {
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
+   *  @return the larger of `x` and `y`
    */
   def max(x: Long, y: Long): Long       = java.lang.Math.max(x, y)
   /**
@@ -280,6 +294,7 @@ package object math {
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
+   *  @return the larger of `x` and `y`
    */
   def max(x: Float, y: Float): Float    = java.lang.Math.max(x, y)
   /**
@@ -287,6 +302,7 @@ package object math {
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
+   *  @return the larger of `x` and `y`
    */
   def max(x: Double, y: Double): Double = java.lang.Math.max(x, y)
 
@@ -295,6 +311,7 @@ package object math {
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
+   *  @return the smaller of `x` and `y`
    */
   def min(x: Int, y: Int): Int          = java.lang.Math.min(x, y)
   /**
@@ -302,6 +319,7 @@ package object math {
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
+   *  @return the smaller of `x` and `y`
    */
   def min(x: Long, y: Long): Long       = java.lang.Math.min(x, y)
   /**
@@ -309,6 +327,7 @@ package object math {
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
+   *  @return the smaller of `x` and `y`
    */
   def min(x: Float, y: Float): Float    = java.lang.Math.min(x, y)
   /**
@@ -316,6 +335,7 @@ package object math {
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
+   *  @return the smaller of `x` and `y`
    */
   def min(x: Double, y: Double): Double = java.lang.Math.min(x, y)
 
@@ -324,6 +344,7 @@ package object math {
    *  @note Forwards to [[java.lang.Integer]]
    *
    *  @param x the value whose signum is to be computed
+   *  @return `-1` if `x` is negative, `0` if `x` is zero, or `1` if `x` is positive
    */
   def signum(x: Int): Int       = java.lang.Integer.signum(x)
   /**
@@ -331,18 +352,21 @@ package object math {
    *  @note Forwards to [[java.lang.Long]]
    *
    *  @param x the value whose signum is to be computed
+   *  @return `-1` if `x` is negative, `0` if `x` is zero, or `1` if `x` is positive
    */
   def signum(x: Long): Long     = java.lang.Long.signum(x)
   /**
    *  @group signs
    *
    *  @param x the value whose signum is to be computed
+   *  @return `-1` if `x` is negative, `0` if `x` is zero, or `1` if `x` is positive
    */
   def signum(x: Float): Float   = java.lang.Math.signum(x)
   /**
    *  @group signs
    *
    *  @param x the value whose signum is to be computed
+   *  @return `-1` if `x` is negative, `0` if `x` is zero, or `1` if `x` is positive
    */
   def signum(x: Double): Double = java.lang.Math.signum(x)
 
@@ -351,6 +375,7 @@ package object math {
    *
    *  @param x the dividend
    *  @param y the divisor
+   *  @return the largest value that is less than or equal to the algebraic quotient `x / y`
    */
   def floorDiv(x: Int, y: Int): Int = java.lang.Math.floorDiv(x, y)
 
@@ -359,6 +384,7 @@ package object math {
    *
    *  @param x the dividend
    *  @param y the divisor
+   *  @return the largest value that is less than or equal to the algebraic quotient `x / y`
    */
   def floorDiv(x: Long, y: Long): Long = java.lang.Math.floorDiv(x, y)
 
@@ -367,6 +393,7 @@ package object math {
    *
    *  @param x the dividend
    *  @param y the divisor
+   *  @return the floor modulus `x - (floorDiv(x, y) * y)`
    */
   def floorMod(x: Int, y: Int): Int = java.lang.Math.floorMod(x, y)
 
@@ -375,6 +402,7 @@ package object math {
    *
    *  @param x the dividend
    *  @param y the divisor
+   *  @return the floor modulus `x - (floorDiv(x, y) * y)`
    */
   def floorMod(x: Long, y: Long): Long = java.lang.Math.floorMod(x, y)
 
@@ -383,6 +411,7 @@ package object math {
    *
    *  @param magnitude the value providing the magnitude of the result
    *  @param sign the value providing the sign of the result
+   *  @return a value with the magnitude of `magnitude` and the sign of `sign`
    */
   def copySign(magnitude: Double, sign: Double): Double = java.lang.Math.copySign(magnitude, sign)
 
@@ -391,6 +420,7 @@ package object math {
    *
    *  @param magnitude the value providing the magnitude of the result
    *  @param sign the value providing the sign of the result
+   *  @return a value with the magnitude of `magnitude` and the sign of `sign`
    */
   def copySign(magnitude: Float, sign: Float): Float = java.lang.Math.copySign(magnitude, sign)
 
@@ -399,6 +429,7 @@ package object math {
    *
    *  @param start the starting floating-point value
    *  @param direction the value indicating which of `start`'s neighbors should be returned
+   *  @return the floating-point number adjacent to `start` in the direction of `direction`, or `direction` if `start` equals `direction`
    */
   def nextAfter(start: Double, direction: Double): Double = java.lang.Math.nextAfter(start, direction)
 
@@ -407,6 +438,7 @@ package object math {
    *
    *  @param start the starting floating-point value
    *  @param direction the value indicating which of `start`'s neighbors should be returned
+   *  @return the floating-point number adjacent to `start` in the direction of `direction`, or `direction` if `start` equals `direction`
    */
   def nextAfter(start: Float, direction: Double): Float = java.lang.Math.nextAfter(start, direction)
 
@@ -414,6 +446,7 @@ package object math {
    *  @group adjacent-float
    *
    *  @param d the starting floating-point value
+   *  @return the floating-point value adjacent to `d` in the direction of positive infinity
    */
   def nextUp(d: Double): Double = java.lang.Math.nextUp(d)
 
@@ -421,6 +454,7 @@ package object math {
    *  @group adjacent-float
    *
    *  @param f the starting floating-point value
+   *  @return the floating-point value adjacent to `f` in the direction of positive infinity
    */
   def nextUp(f: Float): Float = java.lang.Math.nextUp(f)
 
@@ -428,6 +462,7 @@ package object math {
    *  @group adjacent-float
    *
    *  @param d the starting floating-point value
+   *  @return the floating-point value adjacent to `d` in the direction of negative infinity
    */
   def nextDown(d: Double): Double = java.lang.Math.nextDown(d)
 
@@ -435,6 +470,7 @@ package object math {
    *  @group adjacent-float
    *
    *  @param f the starting floating-point value
+   *  @return the floating-point value adjacent to `f` in the direction of negative infinity
    */
   def nextDown(f: Float): Float = java.lang.Math.nextDown(f)
 
@@ -443,6 +479,7 @@ package object math {
    *
    *  @param d the value to be scaled by a power of two
    *  @param scaleFactor the power of 2 used to scale `d`
+   *  @return `d` × 2^`scaleFactor`^, correctly rounded
    */
   def scalb(d: Double, scaleFactor: Int): Double = java.lang.Math.scalb(d, scaleFactor)
 
@@ -451,6 +488,7 @@ package object math {
    *
    *  @param f the value to be scaled by a power of two
    *  @param scaleFactor the power of 2 used to scale `f`
+   *  @return `f` × 2^`scaleFactor`^, correctly rounded
    */
   def scalb(f: Float, scaleFactor: Int): Float = java.lang.Math.scalb(f, scaleFactor)
 
@@ -508,6 +546,7 @@ package object math {
    *  @group explog
    *
    *  @param f the `Float` value whose unbiased exponent is to be extracted
+   *  @return the unbiased exponent used in the representation of `f`
    */
   def getExponent(f: Float): Int = java.lang.Math.getExponent(f)
 
@@ -515,6 +554,7 @@ package object math {
    *  @group explog
    *
    *  @param d the `Double` value whose unbiased exponent is to be extracted
+   *  @return the unbiased exponent used in the representation of `d`
    */
   def getExponent(d: Double): Int = java.lang.Math.getExponent(d)
 
@@ -577,6 +617,7 @@ package object math {
    *  @group ulp
    *
    *  @param x the `Double` value whose ulp is to be returned
+   *  @return the positive distance between `x` and the `Double` value next larger in magnitude
    */
   def ulp(x: Double): Double = java.lang.Math.ulp(x)
 
@@ -584,6 +625,7 @@ package object math {
    *  @group ulp
    *
    *  @param x the `Float` value whose ulp is to be returned
+   *  @return the positive distance between `x` and the `Float` value next larger in magnitude
    */
   def ulp(x: Float): Float = java.lang.Math.ulp(x)
 
@@ -592,6 +634,7 @@ package object math {
    *
    *  @param x the dividend value
    *  @param y the divisor value
+   *  @return the remainder of `x` divided by `y` as defined by the IEEE 754 standard
    */
   def IEEEremainder(x: Double, y: Double): Double = java.lang.Math.IEEEremainder(x, y)
 
@@ -604,6 +647,7 @@ package object math {
    *
    *  @param x the first addend
    *  @param y the second addend
+   *  @return the sum `x + y`, throwing `ArithmeticException` if the result overflows
    */
   def addExact(x: Int, y: Int): Int = java.lang.Math.addExact(x, y)
 
@@ -612,6 +656,7 @@ package object math {
    *
    *  @param x the first addend
    *  @param y the second addend
+   *  @return the sum `x + y`, throwing `ArithmeticException` if the result overflows
    */
   def addExact(x: Long, y: Long): Long = java.lang.Math.addExact(x, y)
 
@@ -620,6 +665,7 @@ package object math {
    *
    *  @param x the minuend
    *  @param y the subtrahend
+   *  @return the difference `x - y`, throwing `ArithmeticException` if the result overflows
    */
   def subtractExact(x: Int, y: Int): Int = java.lang.Math.subtractExact(x, y)
 
@@ -628,6 +674,7 @@ package object math {
    *
    *  @param x the minuend
    *  @param y the subtrahend
+   *  @return the difference `x - y`, throwing `ArithmeticException` if the result overflows
    */
   def subtractExact(x: Long, y: Long): Long = java.lang.Math.subtractExact(x, y)
 
@@ -636,6 +683,7 @@ package object math {
    *
    *  @param x the first factor
    *  @param y the second factor
+   *  @return the product `x * y`, throwing `ArithmeticException` if the result overflows
    */
   def multiplyExact(x: Int, y: Int): Int = java.lang.Math.multiplyExact(x, y)
 
@@ -644,6 +692,7 @@ package object math {
    *
    *  @param x the first factor
    *  @param y the second factor
+   *  @return the product `x * y`, throwing `ArithmeticException` if the result overflows
    */
   def multiplyExact(x: Long, y: Long): Long = java.lang.Math.multiplyExact(x, y)
 
@@ -651,6 +700,7 @@ package object math {
    *  @group exact
    *
    *  @param x the value to be incremented
+   *  @return `x + 1`, throwing `ArithmeticException` if the result overflows
    */
   def incrementExact(x: Int): Int = java.lang.Math.incrementExact(x)
 
@@ -693,6 +743,7 @@ package object math {
    *  @group exact
    *
    *  @param x the `Long` value to convert to an `Int`
+   *  @return `x` as an `Int`, throwing `ArithmeticException` if the value overflows an `Int`
    */
   def toIntExact(x: Long): Int = java.lang.Math.toIntExact(x)
 

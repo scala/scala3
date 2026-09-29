@@ -1,19 +1,23 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/apply-rule.scala:3:19 ------------------------------------
 3 |  val _: () -> A = x // error
   |                   ^
-  |                   Found:    (x : () ->{s*} A^{})
+  |                   Found:    (x : () => A^{})
   |                   Required: () -> A
   |
   |                   Note that capability `x` cannot flow into capture set {}.
+  |
+  |                   where:    => refers to a root capability in the type of value x
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/apply-rule.scala:5:19 ------------------------------------
 5 |  val _: () -> A = y // error
   |                   ^
-  |                   Found:    (y : () ->{s*} A^{})
+  |                   Found:    (y : () => A^{})
   |                   Required: () -> A
   |
   |                   Note that capability `y` cannot flow into capture set {}.
+  |
+  |                   where:    => refers to a root capability in the type of value y
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/apply-rule.scala:9:19 ------------------------------------

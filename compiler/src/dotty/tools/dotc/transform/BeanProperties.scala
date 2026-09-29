@@ -55,7 +55,7 @@ class BeanProperties(thisPhase: DenotTransformer):
     def prefixedName(prefix: String, valName: Name) =
       (prefix + valName.lastPart.toString.capitalize).toTermName
 
-    val symbol = valDef.denot.symbol
+    val symbol = valDef.symbol
     symbol.getAnnotation(defn.BeanPropertyAnnot)
       .orElse(symbol.getAnnotation(defn.BooleanBeanPropertyAnnot))
       .toList.flatMap { annot =>

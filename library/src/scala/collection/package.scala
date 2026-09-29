@@ -67,6 +67,8 @@ package object collection {
      *
      *  @tparam A the element type of the sequence
      *  @tparam CC the type constructor of the sequence (e.g., `List`, `Vector`)
+     *  @tparam C the concrete sequence type, providing `SeqOps[A, CC, C]` for `head`/`tail` operations
+     *  @param t the sequence to deconstruct into its head and tail
      *  @return `Some((head, tail))` if the sequence is non-empty, `None` otherwise
      */
     def unapply[A, CC[_] <: Seq[?], C <: SeqOps[A, CC, C]](t: (C & SeqOps[A, CC, C])^): Option[(A, C^{t})] =
@@ -80,6 +82,8 @@ package object collection {
      *
      *  @tparam A the element type of the sequence
      *  @tparam CC the type constructor of the sequence (e.g., `List`, `Vector`)
+     *  @tparam C the concrete sequence type, providing `SeqOps[A, CC, C]` for `init`/`last` operations
+     *  @param t the sequence to deconstruct into its init and last element
      *  @return `Some((init, last))` if the sequence is non-empty, `None` otherwise
      */
     def unapply[A, CC[_] <: Seq[?], C <: SeqOps[A, CC, C]](t: (C & SeqOps[A, CC, C])^): Option[(C^{t}, A)] =

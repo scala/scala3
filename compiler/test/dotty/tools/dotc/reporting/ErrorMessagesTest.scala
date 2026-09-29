@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package reporting
 
-import scala.language.unsafeNulls
-
 import core.Contexts.Context
 import org.junit.Assert.*
 
@@ -23,7 +21,7 @@ trait ErrorMessagesTest extends DottyTest {
       assert(this.isInstanceOf[EmptyReport], "errors found when not expected")
   }
 
-  class EmptyReport extends Report(Nil, null) {
+  class EmptyReport extends Report(Nil, newContext) {
     override def expect(f: (Context, List[Message]) => Unit) =
       fail("""|
               |Couldn't capture errors from compiled sources, this can happen if

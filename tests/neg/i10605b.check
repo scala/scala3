@@ -1,0 +1,31 @@
+-- Error: tests/neg/i10605b.scala:7:19 ---------------------------------------------------------------------------------
+7 |  xa(Function.const(superxa2)(_: Int)) // error
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+  |Recursion limit exceeded.
+  |Maybe there is an illegal cyclic reference?
+  |If that's not the case, you could try to increase the fuel and stack size: https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html
+  |For the unprocessed stack overflow trace, compile with -Xno-enrich-error-messages.
+  |A recurring operation is (inner to outer):
+  |
+  |  type proxy of (contextual$2 : B)
+  |  type proxy of A
+  |  type proxy of (contextual$1 : A)
+  |  type proxy of B
+  |  type proxy of (contextual$2 : B)
+  |  type proxy of A
+  |  type proxy of (contextual$1 : A)
+  |  type proxy of B
+  |  type proxy of (contextual$2 : B)
+  |  type proxy of A
+  |  ...
+  |
+  |  type proxy of A
+  |  type proxy of (contextual$1 : A)
+  |  type proxy of B
+  |  type proxy of (contextual$2 : B)
+  |  type proxy of A
+  |  type proxy of (contextual$1 : A)
+  |  type proxy of B
+  |  type proxy of (contextual$2 : B)
+  |  type proxy of A
+  |  type proxy of (contextual$1 : A)

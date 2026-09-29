@@ -6,5 +6,5 @@ scala> type SelChannel[C <: Tuple] = C match { case x *: xs => x | SelChannel[xs
 scala> lazy val a: SelChannel[("A", "B", "C")] = "A"
 lazy val a: "A" | ("B" | ("C" | Nothing))
 
-scala>:type a
+scala> :type a
 ("A" : String) | (("B" : String) | (("C" : String) | Nothing))

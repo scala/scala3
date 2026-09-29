@@ -1,2 +1,8 @@
-11: Match case Unreachable
-16: Match case Unreachable
+-- [E030] Match case Unreachable Warning: tests/patmat/i13485.scala:11:7 -------
+11 |  case _: Foo => 1
+   |       ^^^^^^
+   |       Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/i13485.scala:16:7 -------
+16 |  case _: Foo => 1
+   |       ^^^^^^
+   |       Unreachable case

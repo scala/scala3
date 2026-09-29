@@ -138,6 +138,7 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   /** Clears this buffer and shrinks to @param size (rounding up to the next
    *  natural size)
    *  @param size
+   *  @return this `ArrayBuffer`, now empty and resized to a capacity at least as large as `size`
    */
   def clearAndShrink(size: Int = ArrayBuffer.DefaultInitialSize): this.type = {
     clear()
@@ -211,6 +212,9 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 
   /** Note: This does not actually resize the internal representation.
    *  See trimToSize if you want to also resize internally
+   *
+   *  @param index the zero-based position of the element to remove
+   *  @return the element that was removed at position `index`
    */
   def remove(@deprecatedName("n", "2.13.0") index: Int): A = {
     checkWithinBounds(index, index + 1)
@@ -222,6 +226,11 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 
   /** Note: This does not actually resize the internal representation.
    *  See trimToSize if you want to also resize internally
+   *
+   *  @param index the zero-based position of the first element to remove
+   *  @param count the number of elements to remove
+   *  @throws IllegalArgumentException if `count` is negative
+   *  @throws IndexOutOfBoundsException if the range `[index, index + count)` is out of bounds
    */
   def remove(@deprecatedName("n", "2.13.0") index: Int, count: Int): Unit =
     if (count > 0) {

@@ -202,7 +202,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case MatchTypeNoCasesID // errorNumber: 184
   case UnimportedAndImportedID // errorNumber: 185
   case ImplausiblePatternWarningID // errorNumber: 186
-  case SynchronizedCallOnBoxedClassID // errorNumber: 187
+  case SynchronizedCallOnValueClassID // errorNumber: 187
   case VarArgsParamCannotBeGivenID // errorNumber: 188
   case ExtractorNotFoundID // errorNumber: 189
   case PureUnitExpressionID // errorNumber: 190
@@ -246,7 +246,11 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case AmbiguousTemplateNameID // errorNumber: 228
   case IndentationWarningID // errorNumber: 229
   case IllegalIdentifierID // errorNumber: 230
-  case ConcreteClassHasUnimplementedMethodsID // errorNumer: 231
+  case ConcreteClassHasUnimplementedMethodsID // errorNumber: 231
+  case UseOfAnyMethodAsInterpolatorID // errorNumber: 232
+  case IllegalUseOfSpecializedID // errorNumber: 233
+  case VarianceInSpecializedTraitsLimitationID // errorNumber: 234
+  case UnreasonableCatchID // errorNumber: 235
 
   def errorNumber = ordinal - 1
 

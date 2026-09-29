@@ -70,6 +70,7 @@ object SystemProperties {
    *
    *  @tparam T the return type of the body expression
    *  @param body the code to execute while holding the lock
+   *  @return the result of evaluating `body` while holding the lock
    */
   def exclusively[T](body: => T): T = this.synchronized:
     body

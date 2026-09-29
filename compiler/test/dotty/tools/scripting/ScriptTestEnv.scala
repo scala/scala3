@@ -2,8 +2,6 @@ package dotty
 package tools
 package scripting
 
-import scala.language.unsafeNulls
-
 import java.io.File
 import java.util.Locale
 import java.nio.file.{Path, Paths, Files}
@@ -20,9 +18,9 @@ import scala.jdk.CollectionConverters.*
  * Test scripts run in a bash env, so paths are converted to forward slash via .norm.
  */
 object ScriptTestEnv {
-  def osname: String = sys.props("os.name").toLowerCase
-  def psep: String = sys.props("path.separator")
-  def userDir: String = sys.props("user.dir").norm
+  def osname: String = sys.props("os.name").nn.toLowerCase
+  def psep: String = sys.props("path.separator").nn
+  def userDir: String = sys.props("user.dir").nn.norm
   def testCwd = envOrElse("TEST_CWD", "").norm // optional working directory TEST_CWD
   def verbose = envOrElse("VERBOSE", "").nonEmpty
 
@@ -44,7 +42,7 @@ object ScriptTestEnv {
 
     val bspDir = dottyDir / ".bsp"
     (bspDir / "scala.json").delete()
-    if bspDir.isEmpty then bspDir.delete()
+    if bspDir.walk.isEmpty then bspDir.delete()
   }
 
   lazy val nativePackDir: Option[String] = {

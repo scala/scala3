@@ -10,8 +10,8 @@ on:
   merge_group:
   workflow_dispatch:
 
-env:
-  DOTTY_CI_RUN: true
+permissions:
+  contents: read
 
 jobs:
   specification:
@@ -25,10 +25,10 @@ jobs:
         working-directory: ./docs/_spec
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Keep in sync with ./docs/_spec/Dockerfile
-      - uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@e8944e80fb94b20106697132f8c20c665fab29e9 # v1.325.0
         with:
           ruby-version: '2.7'
       - name: Install required gems
@@ -49,7 +49,7 @@ jobs:
         env:
           USER_FOR_TEST: ${{ secrets.SPEC_DEPLOY_USER }}
         if: ${{ env.USER_FOR_TEST != '' }}
-        uses: burnett01/rsync-deployments@8.0.5
+        uses: burnett01/rsync-deployments@155b6d6c1219ab2224c20c58d423a3f1b850395f # 9.0.1
         with:
           switches: -rzv
           path: docs/_spec/_site/

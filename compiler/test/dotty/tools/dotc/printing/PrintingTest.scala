@@ -3,8 +3,6 @@ package tools
 package dotc
 package printing
 
-import scala.language.unsafeNulls
-
 import vulpix.FileDiff
 import vulpix.TestConfiguration
 import vulpix.ParallelTesting
@@ -39,32 +37,20 @@ class PrintingTest {
       if (!(new File(flagsFilePath)).exists) Nil
       else Using(Source.fromFile(flagsFilePath, StandardCharsets.UTF_8.name))(_.getLines().toList).get
 
-    try {
-      Main.process((path.toString :: options(phase, flags)).toArray, reporter, null)
-    } catch {
-      case e: Throwable =>
-        println(s"Compile $path exception:")
-        e.printStackTrace()
-        throw e
-    }
+    Main.process((path.toString :: options(phase, flags)).toArray, reporter, null)
 
     val actualLines = byteStream.toString(StandardCharsets.UTF_8.name).linesIterator
-    FileDiff.checkAndDumpOrUpdate(path.toString, actualLines.toIndexedSeq, checkFilePath)
+    FileDiff.checkAndDumpOrUpdate(path.toString, actualLines.toIndexedSeq, checkFilePath, tolerateMissingCheckFile = false)
   }
 
   def testIn(testsDir: String, phase: String) =
     val res = Directory(testsDir).list.toList
       .filter(_.ext.isSourceExtension)
       .map(f => compileFile(f.jpath, phase))
-
     val failed = res.filter(!_)
-
     val msg = s"Pass: ${res.length - failed.length}, Failed: ${failed.length}"
-
-    assert(failed.length == 0, msg)
-
+    assert(failed.isEmpty, msg)
     println(msg)
-
   end testIn
 
   @Test

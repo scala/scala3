@@ -26,15 +26,17 @@ object SoftReference {
 
   /** Creates a `SoftReference` pointing to `value`.
    *
-   *  @tparam T the type of the referenced object, must be a reference type
+   *  @tparam T the type of the referenced object; must be a subtype of `AnyRef`
    *  @param value the object to be softly referenced; may be reclaimed by the garbage collector when memory is low
+   *  @return a new `SoftReference` wrapping `value`
    */
   def apply[T <: AnyRef](value: T): SoftReference[T] = new SoftReference(value)
 
   /** Optionally returns the referenced value, or `None` if that value no longer exists.
    *
-   *  @tparam T the type of the referenced object, must be a reference type
+   *  @tparam T the type of the referenced object; must be a subtype of `AnyRef`
    *  @param sr the `SoftReference` to extract the value from
+   *  @return `Some(value)` if the referent has not been reclaimed, otherwise `None`
    */
   def unapply[T <: AnyRef](sr: SoftReference[T]): Option[T] = Option(sr.underlying.get)
 }

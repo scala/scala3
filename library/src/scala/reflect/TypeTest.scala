@@ -22,10 +22,16 @@ trait TypeTest[-S, T] extends Serializable:
    *  Type tests necessary before calling other extractors are treated similarly.
    *  `SomeExtractor(...)` is turned into `tt(SomeExtractor(...))` if `T` in `SomeExtractor.unapply(x: T)`
    *  is uncheckable, but we have an instance of `TypeTest[S, T]`.
+   *
+   *  @param x the value of type `S` to test for being an instance of `T`
+   *  @return an `Option` containing `x` refined to type `x.type & T` if `x` is an instance of `T`, or `None` otherwise
    */
   def unapply(x: S): Option[x.type & T]
 
 object TypeTest:
 
-  /** Trivial type test that always succeeds. */
+  /** Trivial type test that always succeeds.
+   *
+   *  @tparam T the type for both the input and output of the type test, ensuring the test always succeeds
+   */
   def identity[T]: TypeTest[T, T] = Some(_)

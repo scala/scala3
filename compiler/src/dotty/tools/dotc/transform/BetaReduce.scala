@@ -90,17 +90,24 @@ object BetaReduce:
       case TypeApply(Select(expr, nme.asInstanceOfPM), List(tpt)) =>
         recur(expr, argss)
       case _ => None
+    // The reduced body's type may be narrower than the apply's result type when
+    // an opaque type was transparent inside the lambda but not at the call site
+    // (see #25754). Cast back so callers see the originally declared type.
+    def adaptReduced(reduced: Tree, expectedTpe: Type): Tree =
+      if reduced.tpe <:< expectedTpe then reduced
+      else reduced.cast(expectedTpe)
+
     tree match
       case Apply(Select(fn, nme.apply), args) if defn.isFunctionNType(fn.tpe) =>
         recur(fn, List(args)) match
           case Some(reduced) =>
-            seq(bindingsBuf.result(), reduced).withSpan(tree.span)
+            seq(bindingsBuf.result(), adaptReduced(reduced, tree.tpe)).withSpan(tree.span)
           case None =>
             tree
       case Apply(TypeApply(Select(fn, nme.apply), targs), args) if fn.tpe.typeSymbol eq dotc.core.Symbols.defn.PolyFunctionClass =>
         recur(fn, List(targs, args)) match
           case Some(reduced) =>
-            seq(bindingsBuf.result(), reduced).withSpan(tree.span)
+            seq(bindingsBuf.result(), adaptReduced(reduced, tree.tpe)).withSpan(tree.span)
           case None =>
             tree
       case _ =>

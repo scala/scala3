@@ -1,11 +1,12 @@
 package dotty.tools.backend.jvm.opt
 
-import dotty.tools.backend.jvm.BackendUtils
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.reporting.Message
+import dotty.tools.dotc.util.{SourcePosition, SrcPos}
 
-import scala.tools.asm.tree.AbstractInsnNode
+import org.objectweb.asm.tree.AbstractInsnNode
 
+final class OptimizerIssue(val msg: String, val site: String, val pos: SrcPos)
 
 sealed trait OptimizerWarning {
   def emitWarning(settings: OptimizerSettings): Boolean
@@ -67,7 +68,7 @@ sealed trait CalleeInfoWarning extends OptimizerWarning {
 
   def descriptor: String
 
-  private def warningMessageSignature = BackendUtils.methodSignature(declarationClass, name, descriptor)
+  private def warningMessageSignature = OptimizerUtils.methodSignature(declarationClass, name, descriptor)
 
   override def toString: String = this match {
     case MethodInlineInfoIncomplete(_, _, _, cause) =>
@@ -107,7 +108,7 @@ sealed trait CannotInlineWarning extends OptimizerWarning {
   /** Either the callee or the callsite is annotated @inline */
   def annotatedInline: Boolean
 
-  private def calleeMethodSig = BackendUtils.methodSignature(calleeDeclarationClass, name, descriptor)
+  private def calleeMethodSig = OptimizerUtils.methodSignature(calleeDeclarationClass, name, descriptor)
 
   override def toString: String = {
     val annotWarn = if (annotatedInline) " is annotated @inline but" else ""
@@ -126,7 +127,7 @@ sealed trait CannotInlineWarning extends OptimizerWarning {
             |$cause"""
 
       case MethodWithHandlerCalledOnNonEmptyStack(_, _, _, _, callsiteClass, callsiteName, callsiteDesc) =>
-        s"""|The operand stack at the callsite in ${BackendUtils.methodSignature(callsiteClass, callsiteName, callsiteDesc)} contains more values than the
+        s"""|The operand stack at the callsite in ${OptimizerUtils.methodSignature(callsiteClass, callsiteName, callsiteDesc)} contains more values than the
             |arguments expected by the callee $calleeMethodSig. These values would be discarded
             |when entering an exception handler declared in the inlined method."""
 
@@ -136,13 +137,8 @@ sealed trait CannotInlineWarning extends OptimizerWarning {
       case _: NoBytecode =>
         s"Method $calleeMethodSig cannot be inlined because it does not have any instructions, even though it is not abstract. The class may come from a signature jar file (such as a Bazel 'hjar')."
 
-      case StrictfpMismatch(_, _, _, _, callsiteClass, callsiteName, callsiteDesc) =>
-        s"""The callsite method ${BackendUtils.methodSignature(callsiteClass, callsiteName, callsiteDesc)}
-           |does not have the same strictfp mode as the callee $calleeMethodSig.
-       """.stripMargin
-
       case ResultingMethodTooLarge(_, _, _, _, callsiteClass, callsiteName, callsiteDesc) =>
-        s"""The size of the callsite method ${BackendUtils.methodSignature(callsiteClass, callsiteName, callsiteDesc)}
+        s"""The size of the callsite method ${OptimizerUtils.methodSignature(callsiteClass, callsiteName, callsiteDesc)}
            |would exceed the JVM method size limit after inlining $calleeMethodSig.
        """.stripMargin
     }
@@ -169,9 +165,6 @@ final case class MethodWithHandlerCalledOnNonEmptyStack(calleeDeclarationClass: 
 final case class SynchronizedMethod(calleeDeclarationClass: InternalName, name: String, descriptor: String, annotatedInline: Boolean) extends CannotInlineWarning
 
 final case class NoBytecode(calleeDeclarationClass: InternalName, name: String, descriptor: String, annotatedInline: Boolean) extends CannotInlineWarning
-
-final case class StrictfpMismatch(calleeDeclarationClass: InternalName, name: String, descriptor: String, annotatedInline: Boolean,
-                                  callsiteClass: InternalName, callsiteName: String, callsiteDesc: String) extends CannotInlineWarning
 
 case class ResultingMethodTooLarge(calleeDeclarationClass: InternalName, name: String, descriptor: String, annotatedInline: Boolean,
                                    callsiteClass: InternalName, callsiteName: String, callsiteDesc: String) extends CannotInlineWarning
@@ -214,13 +207,13 @@ final case class RewriteClosureIllegalAccess(pos: SourcePosition, callsiteClass:
 sealed trait ClassInlineInfoWarning extends OptimizerWarning {
   override def toString: String = this match {
     case NoInlineInfoAttribute(internalName) =>
-      s"The Scala classfile $internalName does not have a ScalaInlineInfo attribute."
+      s"The Scala classfile $internalName does not have a ${InlineInfoAttribute.attributeName} attribute."
 
     case ClassNotFoundWhenBuildingInlineInfoFromSymbol(missingClass) =>
       s"Failed to build the inline information: $missingClass"
 
     case UnknownScalaInlineInfoVersion(internalName, version) =>
-      s"Cannot read ScalaInlineInfo version $version in classfile $internalName. Use a more recent compiler."
+      s"Cannot read ${InlineInfoAttribute.attributeName} version $version in classfile $internalName. Use a more recent compiler."
   }
 
   def emitWarning(settings: OptimizerSettings): Boolean = this match {

@@ -8,7 +8,7 @@ object EqUtil {
   type PhantomEqEq[T] = PhantomEq[T, T]
 
   extension [T](x: T)
-    def ===[U] (y: U) (using erased PhantomEq[T, U]) = x.equals(y)
+    def ===[U] (y: U) (using erased eq: PhantomEq[T, U]) = x.equals(y)
 
   inline given eqString: PhantomEqEq[String] = new PhantomEq[String, String]
   inline given eqInt: PhantomEqEq[Int]       = new PhantomEq[Int, Int]

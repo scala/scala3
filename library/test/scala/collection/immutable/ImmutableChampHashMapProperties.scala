@@ -215,7 +215,7 @@ object ImmutableChampHashMapProperties extends Properties("HashMap") {
 
   property("rootnode hashCode should be sum of key improved hashcodes") = forAll { (seq: Seq[(K, V)]) =>
     val distinct = seq.distinctBy(_._1)
-    val expectedHash = distinct.map(_._1.hashCode).map(Hashing.improve).sum
+    val expectedHash = distinct.map(_._1.##).map(Hashing.improve).sum
     val b = HashMap.newBuilder[K, V]
     distinct.foreach(b.addOne)
     b.result().rootNode.cachedJavaKeySetHashCode == expectedHash
@@ -242,7 +242,7 @@ object ImmutableChampHashMapProperties extends Properties("HashMap") {
         var timesHashed = 0
         override def hashCode(): Int = {
           timesHashed += 1
-          inner.hashCode()
+          inner.##
         }
       }
 

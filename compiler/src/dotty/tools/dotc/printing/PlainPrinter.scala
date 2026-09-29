@@ -134,9 +134,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def argText(arg: Type, isErased: Boolean = false): Text =
     keywordText("erased ").provided(isErased)
-    ~ specialAnnotText(defn.UseAnnot, arg)
     ~ specialAnnotText(defn.ConsumeAnnot, arg)
-    ~ specialAnnotText(defn.ReserveAnnot, arg)
     ~ homogenizeArg(arg).match
         case arg: TypeBounds => "?" ~ toText(arg)
         case arg => toText(arg)
@@ -245,6 +243,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         ParamRefNameString(tp) ~ hashStr(tp.binder) ~ suffix
       case tp: SingletonType =>
         toTextSingleton(tp)
+      case FlexibleType(tpe) =>
+        "(" ~ toText(tpe) ~ ")?"
       case AppliedType(tycon, args) =>
         (toTextLocal(tycon) ~ "[" ~ argsText(args) ~ "]").close
       case tp: RefinedType =>
@@ -334,8 +334,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
             toText(tpe)
           case _ =>
             toTextLocal(tpe) ~ " " ~ toText(annot)
-      case FlexibleType(_, tpe) =>
-        "(" ~ toText(tpe) ~ ")?"
       case tp: TypeVar =>
         def toTextCaret(tp: Type) = if printDebug then toTextLocal(tp) ~ Str("^") else toText(tp)
         if (tp.isInstantiated)
@@ -380,7 +378,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
     def paramText(ref: ParamRef) =
       val erased = ref.underlying.hasAnnotation(defn.ErasedParamAnnot)
       keywordText("erased ").provided(erased)
-        ~ specialAnnotText(defn.UseAnnot, ref.underlying)
         ~ specialAnnotText(defn.ConsumeAnnot, ref.underlying)
         ~ ParamRefNameString(ref) ~ hashStr(lam) ~ toTextRHS(ref.underlying, isParameter = true)
     Text(lam.paramRefs.map(paramText), ", ")
@@ -464,8 +461,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toTextCapability(c: Capability): Text = c match
     case ReadOnly(c1) => toTextCapability(c1) ~ ".rd"
-    case Restricted(c1, cls) => toTextCapability(c1) ~ s".only[${nameString(cls)}]"
-    case Reach(c1) => toTextCapability(c1) ~ "*"
+    case Classified(c1, only, except) =>
+      val withOnly =
+        if only == defn.AnyClass then toTextCapability(c1)
+        else toTextCapability(c1) ~ s".only[${nameString(only)}]"
+      except.foldLeft(withOnly)((t, e) => t ~ s".except[${nameString(e)}]")
     case Maybe(c1) => toTextCapability(c1) ~ "?"
     case GlobalAny => "any"
     case GlobalFresh => "fresh"
@@ -478,7 +478,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           // Use long output if we are printing a result of a function type, but the
           // ResultCap does not prefer to a prefix in that type
           "<fresh of " ~ toText(c.binder) ~ ">"
-        case n => "outer_" * n ++ "fresh"
+        case n => "outer_" * n + "fresh"
       vbleText ~ Str(idStr).provided(showUniqueIds) ~ Str(hashStr(c.binder)).provided(showUniqueIds | printDebug)
     case c: LocalCap =>
       val idStr = if showUniqueIds then s"#${c.rootId}" else ""
@@ -791,7 +791,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(pos: SourcePosition): Text =
     if (!pos.exists) "<no position>"
-    else if (pos.source.exists) s"${pos.source.file.name}:${pos.line + 1}"
+    else if (pos.source.exists) s"${pos.source.name}:${pos.line + 1}"
     else s"(no source file, offset = ${pos.span.point})"
 
   def toText(cand: Candidate): Text =
@@ -885,4 +885,3 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def coloredText(text: Text, color: String): Text =
     if (ctx.useColors) color ~ text ~ SyntaxHighlighting.NoColor else text
 }
-

@@ -99,6 +99,7 @@ trait Ordered[A] extends Any with java.lang.Comparable[A] {
   /** Result of comparing `this` with operand `that`.
    *
    *  @param that the instance to compare against
+   *  @return a negative integer if `this < that`, zero if `this == that`, or a positive integer if `this > that`
    */
   def compareTo(that: A): Int = compare(that)
 }
@@ -109,6 +110,7 @@ object Ordered {
    *  @tparam T the type of the value to be wrapped as `Ordered`
    *  @param x the value to be converted to an `Ordered` instance
    *  @param ord the implicit `Ordering` instance used to perform comparisons
+   *  @return an `Ordered[T]` view of `x` that delegates comparisons to `ord`
    */
   implicit def orderingToOrdered[T](x: T)(implicit ord: Ordering[T]): Ordered[T] =
     new Ordered[T] { def compare(that: T): Int = ord.compare(x, that) }

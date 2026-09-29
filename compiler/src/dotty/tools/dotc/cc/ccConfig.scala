@@ -7,19 +7,13 @@ import config.{Feature, SourceVersion}
 
 object ccConfig:
 
-  /** If enabled, cache capture sets of infos capabilities */
+  /** If enabled, cache capture sets of infos of capabilities */
   inline val cacheCaptureSetOfInfo = false
 
   /** If this and `preTypeClosureResults` are both enabled, disable `preTypeClosureResults`
    *  for eta expansions. This can improve some error messages.
    */
   inline val handleEtaExpansionsSpecially = true
-
-  /** Don't require @use for reach capabilities that are accessed
-   *  only in a nested closure. This is unsound without additional
-   *  mitigation measures, as shown by unsound-reach-5.scala.
-   */
-  inline val deferredReaches = false
 
   /** Check that if a type map (which is not a BiTypeMap) maps initial capture
    *  set variable elements to themselves it will not map any elements added in
@@ -54,11 +48,7 @@ object ccConfig:
 
   /** Not used currently. Handy for trying out new features */
   def newScheme(using ctx: Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.11`)
-
-  /** Allow @use annotations */
-  def allowUse(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtMost(SourceVersion.`3.7`)
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.10`)
 
   /** Treat arrays as mutable types and force all mutable fields to be in Stateful
    *  classes, unless they are annotated with @untrackedCaptures.

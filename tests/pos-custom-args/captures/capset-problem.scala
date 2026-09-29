@@ -1,5 +1,4 @@
 import language.experimental.captureChecking
-import caps.use
 
 // Some capabilities that should be used locally
 trait Async

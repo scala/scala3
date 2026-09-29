@@ -1,1 +1,20 @@
-2: Pattern Match Exhaustivity: List(_, _, _, _*)
+-- [E190] Potential Issue Warning: tests/patmat/t4408.scala:3:16 ---------------
+3 |    case Nil => Unit
+  |                ^^^^
+  |Discarded non-Unit value of type object Unit. Add `: Unit` to discard silently.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E100] Syntax Warning: tests/patmat/t4408.scala:13:6 ------------------------
+13 |      println
+   |      ^^^^^^^
+   |      method println must be called with () argument
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t4408.scala:2:42 ----
+2 |  def printList(in: List[String]): Unit = in match {
+  |                                          ^^
+  |                          match may not be exhaustive.
+  |
+  |                          It would fail on pattern case: List(_, _, _, _*)
+  |
+  | longer explanation available when compiling with `-explain`

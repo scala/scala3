@@ -69,6 +69,7 @@ trait Prop[+T] {
    *
    *  @tparam T1 a supertype of `T`, the result type
    *  @param alt the alternative value to use if the property is not set
+   *  @return the property value if set, otherwise `alt`
    */
   //def or[T1 >: T](alt: => T1): T1
 
@@ -92,6 +93,7 @@ object Prop {
     /** Creates a Prop[T] of this type based on the given key.
      *
      *  @param key the property name used for lookup
+     *  @return a new `Prop[T]` backed by the given key
      */
     def apply(key: String): Prop[T]
   }

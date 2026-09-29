@@ -3,12 +3,9 @@ package ast
 
 import core.*
 import Symbols.*, Types.*, Contexts.*, Decorators.*, util.Spans.*, Flags.*, Constants.*
-import StdNames.{nme, tpnme}
+import StdNames.nme
+import printing.Formatting.hl
 import ast.Trees.*
-import Names.Name
-import Comments.Comment
-import NameKinds.DefaultGetterName
-import Annotations.Annotation
 
 object MainProxies {
 
@@ -51,7 +48,7 @@ object MainProxies {
 
     def addArgs(call: untpd.Tree, mt: MethodType, idx: Int): untpd.Tree =
       if (mt.isImplicitMethod) {
-        report.error(em"@main method cannot have implicit parameters", pos)
+        report.error(em"${hl("@main")} method cannot have implicit parameters", pos)
         call
       }
       else {
@@ -69,7 +66,7 @@ object MainProxies {
         mt.resType match {
           case restpe: MethodType =>
             if (mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam)
-              report.error(em"varargs parameter of @main method must come last", pos)
+              report.error(em"varargs parameter of ${hl("@main")} method must come last", pos)
             addArgs(call1, restpe, idx + args.length)
           case _ =>
             call1
@@ -78,7 +75,7 @@ object MainProxies {
 
     var result: List[TypeDef] = Nil
     if (!mainFun.owner.isStaticOwner)
-      report.error(em"@main method is not statically accessible", pos)
+      report.error(em"${hl("@main")} method is not statically accessible", pos)
     else {
       var call = ref(mainFun.termRef)
       mainFun.info match {
@@ -86,9 +83,9 @@ object MainProxies {
         case mt: MethodType =>
           call = addArgs(call, mt, 0)
         case _: PolyType =>
-          report.error(em"@main method cannot have type parameters", pos)
+          report.error(em"${hl("@main")} method cannot have type parameters", pos)
         case _ =>
-          report.error(em"@main can only annotate a method", pos)
+          report.error(em"${hl("@main")} can only annotate a method", pos)
       }
       val errVar = Ident(nme.error)
       val handler = CaseDef(

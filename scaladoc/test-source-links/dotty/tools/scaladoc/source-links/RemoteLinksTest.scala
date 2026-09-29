@@ -94,4 +94,4 @@ class RemoteLinksTest:
             }
         }
     IO.foreachFileIn(output, processFile)
-    mtsl.result
+    mtsl.result()

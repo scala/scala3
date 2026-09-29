@@ -80,7 +80,7 @@ abstract class Printer {
   /** The name of the given symbol.
    *  If !settings.debug, the original name where
    *  expansions of operators are translated back to operator symbol.
-   *  E.g. $eq => =.
+   *  E.g. \$eq => =.
    *  If settings.uniqid, adds id.
    */
   def nameString(sym: Symbol): String

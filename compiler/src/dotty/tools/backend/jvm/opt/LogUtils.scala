@@ -4,8 +4,8 @@ import dotty.tools.backend.jvm.analysis.InitialProducer
 
 import scala.jdk.CollectionConverters.*
 import java.io.{PrintWriter, StringWriter}
-import scala.tools.asm.tree.{AbstractInsnNode, ClassNode, InsnList, MethodNode}
-import scala.tools.asm.util.{ASMifier, Textifier, TraceClassVisitor, TraceMethodVisitor}
+import org.objectweb.asm.tree.{AbstractInsnNode, ClassNode, InsnList, MethodNode}
+import org.objectweb.asm.util.{ASMifier, Textifier, TraceClassVisitor, TraceMethodVisitor}
 
 object LogUtils {
   /**

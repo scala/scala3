@@ -1,22 +1,20 @@
 import language.experimental.captureChecking
-import caps.use
 
-class Box[T](items: Seq[T^]):
-  def getOne: T^{items*} = ???
+class Box[T, c^](items: Seq[T^{c}]):
+  def getOne: T^{c} = ???
 
 object Box:
-  def getOne[T, C^](items: Seq[T^{C}]): T^{items*} =
+  def getOne[T, c^](items: Seq[T^{c}]): T^{c} =
     val bx = Box(items)
     bx.getOne
-/*
-  def head[T](items: Seq[T^]): Unit =
+
+  def head[T, c^](items: Seq[T^{c}]): Unit =
     val is = items
     val x = is.head
     ()
 
-  def head2[X^, T](items: Seq[T^{X^}]): T^{X^} =
+  def head2[T, c^](items: Seq[T^{c}]): T^{c} =
     items.head
 
-  def head3[T](items: Seq[T^]): Unit =
-    head2[caps.CapSet^{items*}, T](items)
-*/
+  def head3[T, d^](items: Seq[T^{d}]): Unit =
+    head2[T, {d}](items)

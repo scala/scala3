@@ -1,6 +1,5 @@
 import language.experimental.captureChecking
 import caps.SharedCapability
-import caps.use
 
 trait List[+T]:
   def map[U](f: T => U): List[U]

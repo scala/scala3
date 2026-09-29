@@ -1336,7 +1336,7 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
     val (code, _, offset) = params(original)
     val result = presentationCompiler
       .implementAbstractMembers(
-        CompilerOffsetParams(URI.create(filename), code, offset, cancelToken)
+        CompilerOffsetParams(URI.create("file:///" + filename), code, offset, cancelToken)
       )
       .get()
     result.asScala.toList

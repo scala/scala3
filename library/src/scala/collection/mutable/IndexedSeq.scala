@@ -76,6 +76,7 @@ transparent trait IndexedSeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
    *  @see [[scala.collection.SeqOps.sortWith]]
    *
    *  @param lt the less-than comparison function; should return `true` if the first argument strictly precedes the second in the desired ordering
+   *  @return this $coll sorted in place according to the comparison function `lt`
    */
   def sortInPlaceWith(lt: (A, A) => Boolean): this.type = sortInPlace()(using Ordering.fromLessThan(lt))
 
@@ -87,6 +88,7 @@ transparent trait IndexedSeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
    *  @tparam B the target type of the transformation function `f`, for which an `Ordering` must exist
    *  @param f the transformation function that extracts a sort key of type `B` from each element
    *  @param ord the implicit ordering on type `B` used to compare transformed elements
+   *  @return this $coll sorted in place according to the ordering induced by applying `f` and comparing with `ord`
    */
   def sortInPlaceBy[B](f: A => B)(implicit ord: Ordering[B]): this.type = sortInPlace()(using ord.on(f))
 

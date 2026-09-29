@@ -122,12 +122,12 @@ sealed trait Profiler {
   protected def beforeInlineCall(inlineSym: Symbol): TracedEventId = TracedEventId.Empty
   protected def afterInlineCall(event: TracedEventId): Unit = ()
 
-  inline def onCompletion[T](root: Symbol, associatedFile: => AbstractFile)(inline body: T): T =
-    val (event, completionName) = beforeCompletion(root, associatedFile)
+  inline def onCompletion[T](root: Symbol, associatedFileName: => Option[String])(inline body: T): T =
+    val (event, completionName) = beforeCompletion(root, associatedFileName)
     try body
     finally afterCompletion(event, completionName)
   protected final val EmptyCompletionEvent = (TracedEventId.Empty, "")
-  protected def beforeCompletion(root: Symbol, associatedFile: => AbstractFile): (TracedEventId, String) = EmptyCompletionEvent
+  protected def beforeCompletion(root: Symbol, associatedFileName: => Option[String]): (TracedEventId, String) = EmptyCompletionEvent
   protected def afterCompletion(event: TracedEventId, completionName: String): Unit = ()
 }
 private [profile] object NoOpProfiler extends Profiler {
@@ -181,7 +181,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
     else
       val filename = ctx.settings.YprofileTrace.value
       // Compilation units requiring multi-stage compilation (macros) would create a new profiler instances
-      // We need to store the traces in the seperate file to prevent overriding its content.
+      // We need to store the traces in the separate file to prevent overriding its content.
       // Alternatives: sharing ChromeTrace instance between all runs / manual concatation after all runs are done
       // FIXME: The first assigned runId is equal to 2 instead of 1 (InitialRunId).
       // Fix me when bug described in Compiler.runId is resolved by removing +/- 1 adjustments
@@ -316,12 +316,12 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   override def beforeInlineCall(inlineSym: Symbol): TracedEventId = traceDurationStart(Category.Inline, s"«${symbolName(inlineSym)}»", colour = "olive")
   override def afterInlineCall(event: TracedEventId): Unit = traceDurationEnd(Category.Inline, event, colour = "olive")
 
-  override def beforeCompletion(root: Symbol, associatedFile: => AbstractFile): (TracedEventId, String) =
+  override def beforeCompletion(root: Symbol, associatedFileName: => Option[String]): (TracedEventId, String) =
     if chromeTrace == null
     then EmptyCompletionEvent
     else
-      val completionName = this.completionName(root, associatedFile)
-      val event = TracedEventId(escapeSpecialChars(associatedFile.name))
+      val completionName = this.completionName(root)
+      val event = TracedEventId(associatedFileName.map(escapeSpecialChars).getOrElse(""))
       chromeTrace.traceDurationEventStart(Category.Completion.name, "↯", colour = "thread_state_sleeping")
       chromeTrace.traceDurationEventStart(Category.File.name, event)
       chromeTrace.traceDurationEventStart(Category.Completion.name, completionName)
@@ -352,7 +352,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   private def symbolName(sym: Symbol): String = escapeSpecialChars:
     s"${sym.showKind} ${sym.showName}"
 
-  private def completionName(root: Symbol, associatedFile: AbstractFile): String = escapeSpecialChars:
+  private def completionName(root: Symbol): String = escapeSpecialChars:
     def isTopLevel = root.owner != NoSymbol && root.owner.is(Flags.Package)
     if root.is(Flags.Package) || isTopLevel
     then root.javaBinaryName

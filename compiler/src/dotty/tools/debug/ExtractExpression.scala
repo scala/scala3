@@ -335,7 +335,7 @@ private class ExtractExpression(
   private def isAccessibleMember(tree: Tree)(using Context): Boolean =
     val symbol = tree.symbol
     symbol.owner.isType &&
-    !symbol.isPrivate &&
+    !symbol.is(Private) &&
     !symbol.is(Protected) &&
     isTypeAccessible(widenDealiasQualifierType(tree))
 

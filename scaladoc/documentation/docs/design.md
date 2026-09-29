@@ -103,7 +103,7 @@ To run tests just run `sbt scaladoc/test`
 ### Hack methods
 
 Across the project there are multiple `hackXXX` methods around. The reasons why method is called like that can be various, however they probably do
-some nasty casting, try-catching or any other procedure that was becuase of TASTY/dotty shortcomings or minor bugs. In the near future we should
+some nasty casting, try-catching or any other procedure that was because of TASTY/dotty shortcomings or minor bugs. In the near future we should
 revisit each of them and fix them on `dotty side or fix in any other way.
 
 ## scaladoc-js

@@ -1142,6 +1142,11 @@ object SourceCode {
       case tpe @ Refinement(_, _, _) =>
         printRefinement(tpe)
 
+      case FlexibleType(tp) =>
+        this += "("
+        printType(tp)
+        this += ")?"
+
       case AppliedType(tp, args) =>
         tp match {
           case tp: TypeLambda =>
@@ -1259,11 +1264,6 @@ object SourceCode {
         printType(pat)
         this += " => "
         printType(rhs)
-
-      case FlexibleType(tp) =>
-        this += "("
-        printType(tp)
-        this += ")?"
 
       case _ =>
         cannotBeShownAsSource(tpe.show(using Printer.TypeReprStructure))
@@ -1458,7 +1458,7 @@ object SourceCode {
         namesIndex(name0) = index + 1
         val name =
           if index == 1 then name0
-          else s"`$name0${index.toString.toCharArray.map {x => (x - '0' + '₀').toChar}.mkString}`"
+          else s"`$name0${index.toString.map {x => (x - '0' + '₀').toChar}}`"
         names(sym) = name
         Some(name)
       }

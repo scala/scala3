@@ -52,11 +52,15 @@ private[scala] object language:
     @compileTimeOnly("`erasedDefinitions` can only be used at compile time in import statements")
     object erasedDefinitions
 
+    @compileTimeOnly("`specializedTraits` can only be used at compile time in import statements")
+    object specializedTraits
+
     /** Experimental support for relaxed CanEqual checks for ADT pattern matching
      *
      * @see [[https://github.com/scala/improvement-proposals/pull/97]]
      */
     @compileTimeOnly("`strictEqualityPatternMatching` can only be used at compile time in import statements")
+    @deprecated("`strictEqualityPatternMatching` is now standard, no language import is needed", since = "3.10")
     object strictEqualityPatternMatching
 
     /** Experimental support for using indentation for arguments
@@ -181,6 +185,13 @@ private[scala] object language:
      */
     @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
     object relaxedLambdaSyntax
+
+    /** Experimental support for end markers for method blocks.
+     *
+     *  @see [[https://github.com/scala/improvement-proposals/pull/77]]
+     */
+    @compileTimeOnly("`methodBlockEndMarkers` can only be used at compile time in import statements")
+    object methodBlockEndMarkers
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

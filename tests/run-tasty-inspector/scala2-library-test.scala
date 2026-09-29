@@ -25,8 +25,8 @@ def scalaLibClassesPath =
     s"library/target/scala-library-bootstrapped/classes".replace("/", separator))
 
 lazy val scalaLibTastyPaths =
-  new Directory(scalaLibClassesPath).deepFiles
-    .filter(_.ext.isTasty)
+  new Directory(scalaLibClassesPath)
+    .walkFilter(_.ext.isTasty)
     .map(_.normalize.path.stripPrefix(scalaLibClassesPath.toString + separator))
     .toList
 

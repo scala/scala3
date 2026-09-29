@@ -100,6 +100,7 @@ sealed class NumericRange[T](
    *  a new `step`.
    *
    *  @param newStep the new step value for the range
+   *  @return a new `NumericRange` with the same `start` and `end` as this range but with the given `newStep`
    */
   def by(newStep: T): NumericRange[T] = copy(start, end, newStep)
 
@@ -109,6 +110,7 @@ sealed class NumericRange[T](
    *  @param start the start value of the new range
    *  @param end the end value of the new range
    *  @param step the step value of the new range
+   *  @return a new `NumericRange` with the given `start`, `end`, and `step`, preserving this range's `isInclusive` flag
    */
   def copy(start: T, end: T, step: T): NumericRange[T] =
     new NumericRange(start, end, step, isInclusive)
@@ -421,6 +423,7 @@ object NumericRange {
    *  @param step the increment between successive elements, must not be zero
    *  @param isInclusive whether `end` is included in the range
    *  @param num the `Integral` instance used for arithmetic on `T`
+   *  @return the number of elements that the described range would contain
    */
   def count[T](start: T, end: T, step: T, isInclusive: Boolean)(implicit num: Integral[T]): Int = {
     val zero    = num.zero

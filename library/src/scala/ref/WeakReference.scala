@@ -35,6 +35,7 @@ object WeakReference {
    *
    *  @tparam T the type of the value to wrap in a weak reference
    *  @param value the object to be weakly referenced
+   *  @return a new `WeakReference` wrapping `value`
    */
   def apply[T <: AnyRef](value: T): WeakReference[T] = new WeakReference(value)
 
@@ -42,6 +43,7 @@ object WeakReference {
    *
    *  @tparam T the type of the value to extract from the weak reference
    *  @param wr the weak reference to extract a value from
+   *  @return `Some(value)` if the referent is still reachable, or `None` if it has been garbage collected
    */
   def unapply[T <: AnyRef](wr: WeakReference[T]): Option[T] = Option(wr.underlying.get)
 }

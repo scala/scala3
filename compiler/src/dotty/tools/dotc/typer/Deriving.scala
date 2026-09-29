@@ -42,7 +42,7 @@ trait Deriving {
      *  @param  reportErrors  Report an error if an instance with the same name exists already
      */
     private def addDerivedInstance(derived: tpd.Tree, clsName: Name, info: Type, pos: SrcPos): Unit = {
-      val instanceName = "derived$".concat(clsName)
+      val instanceName = termName("derived$" + clsName.toString)
       if (ctx.denotNamed(instanceName).exists)
         report.error(em"duplicate type class derivation for $clsName", pos)
       else

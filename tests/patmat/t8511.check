@@ -1,1 +1,8 @@
-18: Pattern Match Exhaustivity: Bar(_), Baz(), EatsExhaustiveWarning(_)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t8511.scala:18:42 ---
+18 |  private def logic(head: Expr): String = head match {
+   |                                          ^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: Bar(_), Baz(), EatsExhaustiveWarning(_)
+   |
+   | longer explanation available when compiling with `-explain`

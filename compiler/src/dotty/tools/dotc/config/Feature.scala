@@ -13,6 +13,7 @@ import NameKinds.QualifiedName
 import Annotations.ExperimentalAnnotation
 import Annotations.PreviewAnnotation
 import Settings.Setting.ChoiceWithHelp
+import ast.untpd
 
 object Feature:
 
@@ -34,13 +35,17 @@ object Feature:
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
   val separationChecking = experimental("separationChecking")
-  val into = experimental("into")
   val modularity = experimental("modularity")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
   val multiSpreads = experimental("multiSpreads")
   val subCases = experimental("subCases")
   val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
   val safe = experimental("safe")
+  val dedentedStringLiterals = experimental("dedentedStringLiterals")
+  val magic = experimental("magic")
+  val inlineTraits = experimental("inlineTraits")
+  val specializedTraits = experimental("specializedTraits")
+  val methodBlockEndMarkers = experimental("methodBlockEndMarkers")
 
   val nonViralExperimentalFeatures: Set[TermName] =
     Set(captureChecking, separationChecking, safe)
@@ -73,13 +78,58 @@ object Feature:
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
     (separationChecking, "Enable experimental separation checking (implies captureChecking)"),
-    (into, "Allow into modifier on parameter types"),
     (modularity, "Enable experimental modularity features"),
     (multiSpreads, "Enable experimental varargs with multi-spreads"),
     (subCases, "Enable experimental match expressions with sub-cases"),
     (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
     (safe, "Require safe mode"),
+    (dedentedStringLiterals, "Enable experimental dedented string literals"),
+    (magic, "Enable extensions for working with coding agents"),
+    (inlineTraits, "Allow inline traits"),
+    (specializedTraits, "Allow specialized traits"),
+    (methodBlockEndMarkers, "Enable experimental end markers for method blocks"),
   )
+
+  /** Features that are now standard; the language import / -language choice is
+   *  still accepted but deprecated and has no effect. name -> deprecation message. */
+  val deprecatedFeatures: List[(TermName, String)] = List(
+    (strictEqualityPatternMatching,
+     "`strictEqualityPatternMatching` is now standard, no language import is needed"),
+    (experimental("fewerBraces"),
+     "`fewerBraces` is now standard, no language import is needed"),
+    (experimental("relaxedExtensionImports"),
+     "`experimental.relaxedExtensionImports` is now standard, no language import is needed"),
+    (experimental("clauseInterleaving"),
+     "`clauseInterleaving` is now standard, no language import is needed"),
+    (experimental("betterMatchTypeExtractors"),
+     "`experimental.betterMatchTypeExtractors` is now standard, no language import is needed"),
+    (experimental("namedTuples"),
+     "`experimental.namedTuples` is now standard, no language import is needed"),
+    (experimental("betterFors"),
+     "`experimental.betterFors` is now standard, no language import is needed"),
+    (experimental("into"),
+     "`experimental.into` is now standard, no language import is needed"),
+    (experimental("packageObjectValues"),
+     "The `experimental.packageObjectValues` language import is no longer needed; the feature is now in preview and can be enabled with the -preview flag"),
+    (experimental("relaxedLambdaSyntax"),
+     "The `experimental.relaxedLambdaSyntax` language import is no longer needed; the feature is now in preview and can be enabled with the -preview flag"),
+  )
+
+  /** Deprecated features that were enabled via the -language command-line setting. */
+  def deprecatedSettingFeatures(using Context): List[(TermName, String)] =
+    deprecatedFeatures.filter((n, _) => enabledBySetting(n))
+
+  /** Emit a deprecation warning for each deprecated feature enabled via -language. */
+  def checkDeprecatedSettingFeatures(using Context): Unit =
+    for (name, msg) <- deprecatedSettingFeatures do
+      report.deprecationWarning(em"Option -language:$name is deprecated: $msg", NoSourcePosition)
+
+  /** Warn when a deprecated language feature is imported. */
+  def warnDeprecatedLanguageImports(prefix: TermName, selectors: List[untpd.ImportSelector])(using Context): Unit =
+    for sel <- selectors if !sel.isWildcard && !sel.isUnimport do
+      val feature = QualifiedName(prefix, sel.name)
+      deprecatedFeatures.collectFirst:
+        case (`feature`, msg) => report.deprecationWarning(em"$msg", sel.srcPos)
 
   // legacy language features from Scala 2 that are no longer supported.
   val legacyFeatures = List(
@@ -139,7 +189,12 @@ object Feature:
 
   def quotedPatternsWithPolymorphicFunctionsEnabled(using Context) =
     enabled(quotedPatternsWithPolymorphicFunctions)
-
+  
+  def inlineTraitsEnabled(using Context) = 
+    enabledBySetting(inlineTraits)
+    || enabledBySetting(specializedTraits)
+    || ctx.compilationUnit.knowsInlineTraits
+  
   /** Is pureFunctions enabled for this compilation unit? */
   def pureFunsEnabled(using Context) =
     enabledBySetting(pureFunctions)
@@ -166,6 +221,17 @@ object Feature:
   def safeEnabled(using Context) =
     enabledBySetting(safe)
     || ctx.originalCompilationUnit.safeMode
+
+  /** Is magic enabled for this compilation unit? */
+  def magicEnabled(using Context) =
+    enabledBySetting(magic)
+    || ctx.originalCompilationUnit.magic
+
+  /** Are inline traits enabled for this compilation unit */
+  def inlineTraitsEnabledSomewhere(using Context) =
+    enabledBySetting(inlineTraits)
+    || enabledBySetting(specializedTraits)
+    || ctx.run != null && ctx.run.nn.inlineTraitsImportEncountered
 
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */
   def pureFunsEnabledSomewhere(using Context) =
@@ -253,7 +319,7 @@ object Feature:
    *  snippet compiler so they take effect across inputs (i16250).
    */
   val globalLanguageImports: Set[TermName] =
-    Set(pureFunctions, captureChecking, separationChecking, safe)
+    Set(pureFunctions, captureChecking, separationChecking, safe, inlineTraits)
 
   /** Handle a global language import `import language.<prefix>.<imported>`.
    *  Sets the compilation unit's and current run's fields accordingly.
@@ -278,6 +344,13 @@ object Feature:
         ctx.compilationUnit.needsCaptureChecking = true
         ctx.compilationUnit.safeMode = true
         if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
+        true
+      case `magic` =>
+        ctx.compilationUnit.magic = true
+        true
+      case `inlineTraits` =>
+        ctx.compilationUnit.knowsInlineTraits = true 
+        if ctx.run != null then ctx.run.nn.inlineTraitsImportEncountered = true
         true
       case _ =>
         false

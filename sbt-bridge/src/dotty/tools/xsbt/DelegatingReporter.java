@@ -57,7 +57,11 @@ final public class DelegatingReporter extends AbstractReporter {
     String rendered = messageAndPos(dia, ctx);
     String diagnosticCode = String.valueOf(message.errorId().errorNumber());
     List<CodeAction> actions = CollectionConverters.asJava(message.actions(ctx));
-    Problem problem = new Problem(position, text, severity, rendered, diagnosticCode, actions, lookupVirtualFileId);
+    // Forward the diagnostic's structured related information (scalameta/metals#3214). The concrete
+    // RelatedInformation carries both position and message, so Problem derives its xsbti view from
+    // the same source as Diagnostic.diagnosticRelatedInformation() and reuses positionOf without a cast.
+    List<Diagnostic.RelatedInformation> relatedInformation = CollectionConverters.asJava(dia.relatedInformation());
+    Problem problem = new Problem(position, text, severity, rendered, diagnosticCode, actions, relatedInformation, lookupVirtualFileId);
     delegate.log(problem);
   }
 
@@ -66,7 +70,8 @@ final public class DelegatingReporter extends AbstractReporter {
     Severity severity = Severity.Warn;
     String diagnosticCode = "-1"; // no error code
     List<CodeAction> actions = Collections.emptyList();
-    delegate.log(new Problem(position, message, severity, message, diagnosticCode, actions, lookupVirtualFileId));
+    List<Diagnostic.RelatedInformation> relatedInformation = Collections.emptyList();
+    delegate.log(new Problem(position, message, severity, message, diagnosticCode, actions, relatedInformation, lookupVirtualFileId));
   }
 
   private static Severity severityOf(int level) {

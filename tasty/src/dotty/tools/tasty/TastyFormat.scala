@@ -276,7 +276,8 @@ All elements of a position section are serialized as Ints
 
 Standard Section: "Comments" Comment*
 ```none
-  Comment       = Utf8 LongInt              // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
+  Comment       = Addr Utf8 LongInt         // Address of the commented definition, raw comment's bytes encoded as UTF-8,
+                                            // followed by the comment's coordinates.
 ```
 
 Standard Section: "Attributes" Attribute*
@@ -315,7 +316,7 @@ object TastyFormat {
   /** Natural number. Each increment of the `MajorVersion` begins a
    *  new series of backward compatible TASTy versions.
    *
-   *  A TASTy file in either the preceeding or succeeding series is
+   *  A TASTy file in either the preceding or succeeding series is
    *  incompatible with the current value.
    */
   final val MajorVersion: Int = 28

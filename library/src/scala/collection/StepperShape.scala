@@ -33,6 +33,7 @@ sealed trait StepperShape[-T, S <: Stepper[?]] { self =>
    *  This is an identity operation for reference shapes. 
    *
    *  @param st the boxed `AnyStepper` to convert into a possibly specialized stepper
+   *  @return a sequential `Stepper` of shape `S` that unboxes elements from `st`, or `st` itself for reference shapes
    */
   def seqUnbox(st: AnyStepper[T]^): S^{st}
 
@@ -40,6 +41,7 @@ sealed trait StepperShape[-T, S <: Stepper[?]] { self =>
    *  This is an identity operation for reference shapes. 
    *
    *  @param st the boxed `AnyStepper` with `EfficientSplit` capability to convert into a possibly specialized stepper
+   *  @return a parallel `Stepper` of shape `S` with `EfficientSplit` that unboxes elements from `st`, or `st` itself for reference shapes
    */
   def parUnbox(st: (AnyStepper[T] & EfficientSplit)^): (S & EfficientSplit)^{st}
 }

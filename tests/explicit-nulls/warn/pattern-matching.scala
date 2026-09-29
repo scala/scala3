@@ -1,3 +1,4 @@
+//> using options -Yexplicit-nulls
 class Foo:
 
   val s: String = ???
@@ -18,7 +19,7 @@ class Foo:
 
   s2 match
     case s2: String => 100
-    case _ => 200 // warn: unreachable case except for null
+    case _ => 200 // ok, was warn: unreachable case except for null
 
   s2 match
     case s2: String => 100
@@ -36,13 +37,13 @@ class Foo:
   a match
     case Dog(name) => 100
     case Cat => 200
-    case _ => 300 // warn: unreachable case except for null
+    case _ => 300 // warn
 
   val a2: Animal | Null = ???
   a2 match
     case Dog(_) => 100
     case Cat => 200
-    case _ => 300 // warn: unreachable case except for null
+    case _ => 300 // ok, was warn: unreachable case except for null
 
   a2 match
     case Dog(_) => 100

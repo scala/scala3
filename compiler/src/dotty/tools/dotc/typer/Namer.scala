@@ -194,13 +194,29 @@ class Namer { typer: Typer =>
             simple.length == 2 && simple.endsWith(str.EXPAND_SEPARATOR)
           }
       }
+    // Desugaring of objects / enum cases can drop the Backquoted attachment, so also
+    // treat names that are already enclosed in backticks in the source as exempt.
+    // After atNameSpan, span.point is either on the opening backtick (e.g. comma enum
+    // cases) or just after it (most other defs).
+    def alreadyBackquotedInSource: Boolean =
+      val span = tree.span
+      if !span.exists || span.isSynthetic then false
+      else
+        val content = tree.source.textContent()
+        val point = span.point
+        content.length > point && (
+          content(point) == '`'
+          || point > 0 && content(point - 1) == '`'
+        )
     def exempt =
          isBackquoted(tree)
+      || alreadyBackquotedInSource
       || tree.span.isSynthetic
       || flags.isOneOf(Synthetic | Accessor | CaseAccessor) // check the case param not the accessor
       || flags.is(Param) && ctx.owner.is(Synthetic)
       || isDollars
-    if !exempt && (isModule || !name.toTermName.isInstanceOf[DerivedName]) then
+    // no point in warning about $ in Java, there are no backticks to insert nor other ways to suppress such a warning
+    if !flags.is(JavaDefined) && !exempt && (isModule || !name.toTermName.isInstanceOf[DerivedName]) then
       val simple = name.toSimpleName
       val max = if isModule then simple.length - 1 else simple.length
       val last = simple.lastIndexOf('$', start = max - 1)
@@ -368,7 +384,7 @@ class Namer { typer: Typer =>
         case d: PackageClassDenotation =>
           // Remove existing members coming from a previous compilation of this file,
           // they are obsolete.
-          d.unlinkFromFile(ctx.source.file)
+          d.unlinkFromFile(ctx.source.path)
         case _ =>
       }
       existing
@@ -975,8 +991,6 @@ class Namer { typer: Typer =>
      */
     private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit =
 
-      def isJavaRecord(owner: Symbol) =
-        owner.is(JavaDefined) && owner.derivesFrom(defn.JavaRecordClass)
 
       def isCaseClassOrCompanion(owner: Symbol) =
         owner.isClass && {
@@ -1002,7 +1016,7 @@ class Namer { typer: Typer =>
           )
           ||
           // remove synthetic constructor or method of a java Record if it clashes with a non-synthetic constructor
-          (isJavaRecord(denot.owner)
+          (denot.owner.isJavaRecord
             && denot.is(Method)
             && denot.owner.unforcedDecls.lookupAll(denot.name).exists(c => c != denot.symbol && c.info.matches(denot.info))
           )
@@ -1022,7 +1036,7 @@ class Namer { typer: Typer =>
       val sym = denot.symbol
 
       def register(child: Symbol, parentCls: ClassSymbol) = {
-        if (parentCls.is(Sealed))
+        if (parentCls.is(Sealed) && !(child.isAnonymousClass && parentCls.isSpecializedTrait))
           if ((child.isInaccessibleChildOf(parentCls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
             addChild(parentCls, parentCls)
           else if (!parentCls.is(ChildrenQueried))
@@ -1267,7 +1281,9 @@ class Namer { typer: Typer =>
                it suffices to check if symbol is the same class. */
             cls == id.symbol
           case _ => false
-        if !sym.isAccessibleFrom(pathType) then
+        if mbr.info.isInstanceOf[ErrorType] then
+          No("already has an error")
+        else if !sym.isAccessibleFrom(pathType) then
           No("is not accessible")
         else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(PhantomSymbol) || sym.isAllOf(JavaModule) then
           Skip
@@ -1395,6 +1411,7 @@ class Namer { typer: Typer =>
                   (EmptyFlags, mbrInfo)
               var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
               if sym.is(Erased) then mbrFlags |= Inline
+              if sym.is(Module) then mbrFlags |= Accessor
               if pathMethod.exists then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
@@ -2157,7 +2174,7 @@ class Namer { typer: Typer =>
   )(using Context): Type =
     /** Is this member tracked? This is true if it is marked as `tracked` or if
      *  it overrides a `tracked` member. To account for the later, `isTracked`
-     *  is overriden to `true` as a side-effect of computing `inherited`.
+     *  is overridden to `true` as a side-effect of computing `inherited`.
      */
     var isTracked: Boolean = sym.is(Tracked)
 

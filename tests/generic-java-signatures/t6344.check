@@ -4,7 +4,7 @@ public <A> int C0.v1(int)
 public scala.collection.immutable.List C0.v2()
 public <A> scala.collection.immutable.List<Val<A>> C0.v2()
 public int C0.v3()
-public int C0.v3()
+public <A> int C0.v3()
 public int C0.v4(int,scala.collection.immutable.List)
 public <A extends java.lang.String> int C0.v4(int,scala.collection.immutable.List<Val<A>>)
 
@@ -71,6 +71,8 @@ public int C5.f4(java.lang.Integer)
 public int C5.f4(java.lang.Integer)
 public int C5.f5(java.lang.Integer)
 public int C5.f5(java.lang.Integer)
+public int C5.f5(java.lang.Integer,int)
+public int C5.f5(java.lang.Integer,int)
 
 C6
 public java.lang.Object C6.f1(int,java.lang.Object,java.lang.String,java.lang.Object)

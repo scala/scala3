@@ -1,3 +1,24 @@
-6: Pattern Match Exhaustivity: FailsChild2(_)
-14: Pattern Match Exhaustivity: VarArgs1(_)
-27: Pattern Match Exhaustivity: SeqArgs2(_)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t8178.scala:6:4 -----
+6 |    f match {
+  |    ^
+  |    match may not be exhaustive.
+  |
+  |    It would fail on pattern case: FailsChild2(_)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t8178.scala:14:4 ----
+14 |    f match {
+   |    ^
+   |    match may not be exhaustive.
+   |
+   |    It would fail on pattern case: VarArgs1(_)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t8178.scala:27:4 ----
+27 |    f match {
+   |    ^
+   |    match may not be exhaustive.
+   |
+   |    It would fail on pattern case: SeqArgs2(_)
+   |
+   | longer explanation available when compiling with `-explain`

@@ -62,6 +62,7 @@ object OptionConverters {
      *
      *  @tparam O the target specialized Java `Optional` type, inferred from the available `OptionShape` instance (e.g., `OptionalInt`, `OptionalDouble`, `OptionalLong`)
      *  @param shape implicit evidence that defines how to convert between `Optional[A]` and the specialized type `O`
+     *  @return the specialized Java `Optional` variant containing the same value as `o`, or an empty variant if `o` is empty
      */
     def toJavaPrimitive[O](implicit shape: OptionShape[A, O]): O = shape.fromJava(o)
   }
@@ -83,6 +84,7 @@ object OptionConverters {
      *
      *  @tparam O the specialized Java `Optional` type (e.g., `OptionalInt`, `OptionalDouble`, `OptionalLong`)
      *  @param shape implicit evidence that defines how to convert between `Option[A]` and the specialized type `O`
+     *  @return the specialized Java `Optional` variant containing the value of `o`, or an empty variant if `o` is `None`
      */
     def toJavaPrimitive[O](implicit shape: OptionShape[A, O]): O = shape.fromScala(o)
   }

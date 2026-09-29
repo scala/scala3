@@ -39,6 +39,7 @@ object Integral {
      *  @tparam T the numeric type for which an `Integral` instance exists
      *  @param x the value to wrap with integral operator syntax (`/`, `%`, `/%`)
      *  @param num the implicit `Integral` instance for type `T`
+     *  @return an `IntegralOps` instance providing integral operators on `x`
      */
     implicit def infixIntegralOps[T](x: T)(implicit num: Integral[T]): Integral[T]#IntegralOps = new num.IntegralOps(x)
   }

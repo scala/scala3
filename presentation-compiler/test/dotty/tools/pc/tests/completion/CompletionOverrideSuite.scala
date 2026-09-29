@@ -960,7 +960,7 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  @Test def `overriden-twice` =
+  @Test def `overridden-twice` =
     checkEdit(
       """
         |trait A {

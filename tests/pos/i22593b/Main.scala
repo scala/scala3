@@ -7,7 +7,7 @@ package jam {
         class JamConfig(val brewRecRegex: String)
         inline def brew(implicit inline config: JamConfig): Unit = ${ brewImpl() }
     }
-    private object internal extends JamCoreDsl
+    object internal extends JamCoreDsl
     export internal._
 
     def brewImpl(using q: Quotes)(): Expr[Unit] = {

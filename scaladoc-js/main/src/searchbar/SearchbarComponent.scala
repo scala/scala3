@@ -190,7 +190,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
       }.isEmpty
     }
     if matching.nonEmpty then {
-      resultsDiv.appendChild(createKindSeparator("Recently searched", "fas fa-clock re-icon"))
+      resultsDiv.appendChild(createKindSeparator("Recently searched", ""))
       matching.map(_.toHTML).foreach(resultsDiv.appendChild)
     }
   }
@@ -205,7 +205,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
         span(cls := "search-error")(s)
       )
 
-  var timeoutHandle: SetTimeoutHandle = null
+  private var timeoutHandle: SetTimeoutHandle = null
   def handleNewQuery(query: String) =
     resultsDiv.scrollTop = 0
     resultsDiv.onscroll = (event: Event) => { }

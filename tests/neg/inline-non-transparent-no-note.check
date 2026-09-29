@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/inline-non-transparent-no-note.scala:7:26 -------------------------------------
+7 |val d: Succ[Zero.type] = s(Zero) // error
+  |                         ^^^^^^^
+  |                         Found:    Nat
+  |                         Required: Succ[Zero.type]
+  |
+  | longer explanation available when compiling with `-explain`

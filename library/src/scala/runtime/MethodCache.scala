@@ -35,6 +35,7 @@ private[scala] sealed abstract class MethodCache {
    *  the cache for later use. 
    *
    *  @param forReceiver the runtime `Class` of the receiver object to look up in the cache
+   *  @return the cached `JMethod` compatible with `forReceiver`, or `null` if no such method is cached (in which case the caller should look up the method and `add` it)
    */
   def find(forReceiver: JClass[?]): JMethod | Null
   def add(forReceiver: JClass[?], forMethod: JMethod): MethodCache
@@ -72,6 +73,7 @@ private[scala] final class PolyMethodCache(
    *  from `find`, because the type of next is not `PolyMethodCache`.
    *
    *  @param forReceiver the runtime `Class` of the receiver object to look up in the cache chain via tail recursion
+   *  @return the cached `JMethod` whose receiver class is reference-equal to `forReceiver` anywhere in this chain, or `null` if no match exists
    */
   @tailrec private def findInternal(forReceiver: JClass[?]): JMethod | Null =
     if (forReceiver eq receiver) method

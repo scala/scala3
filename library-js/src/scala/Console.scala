@@ -163,6 +163,8 @@ object Console extends AnsiColor {
    *  @return the results of `thunk`
    *  @see `withOut[T](out:OutputStream)(thunk: => T)`
    *  @group io-redefinition
+   *
+   *  @tparam T the return type of `thunk`
    */
   def withOut[T](out: PrintStream)(thunk: =>T): T =
     outVar.withValue(out)(thunk)
@@ -170,6 +172,7 @@ object Console extends AnsiColor {
   /** Sets the default output stream for the duration
    *  of execution of one thunk.
    *
+   *  @tparam T the return type of `thunk`
    *  @param out the new output stream.
    *  @param thunk the code to execute with
    *               the new output stream active
@@ -192,6 +195,8 @@ object Console extends AnsiColor {
    *  @return the results of `thunk`
    *  @see `withErr[T](err:OutputStream)(thunk: =>T)`
    *  @group io-redefinition
+   *
+   *  @tparam T the return type of `thunk`
    */
   def withErr[T](err: PrintStream)(thunk: =>T): T =
     errVar.withValue(err)(thunk)
@@ -199,6 +204,7 @@ object Console extends AnsiColor {
   /** Sets the default error stream for the duration
    *  of execution of one thunk.
    *
+   *  @tparam T the return type of `thunk`
    *  @param err the new error stream.
    *  @param thunk the code to execute with
    *               the new error stream active
@@ -226,6 +232,9 @@ object Console extends AnsiColor {
    *  @return the results of `thunk`
    *  @see `withIn[T](in:InputStream)(thunk: =>T)`
    *  @group io-redefinition
+   *
+   *  @tparam T the return type of `thunk`
+   *  @param reader the new input reader
    */
   def withIn[T](reader: Reader)(thunk: =>T): T =
     inVar.withValue(new BufferedReader(reader))(thunk)
@@ -233,6 +242,7 @@ object Console extends AnsiColor {
   /** Sets the default input stream for the duration
    *  of execution of one thunk.
    *
+   *  @tparam T the return type of `thunk`
    *  @param in the new input stream.
    *  @param thunk the code to execute with
    *               the new input stream active

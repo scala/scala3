@@ -1,1 +1,8 @@
-2: Pattern Match Exhaustivity: (List(_, _*), Nil), (Nil, List(_, _*))
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t5440.scala:2:61 ----
+2 |  def merge(list1: List[Long], list2: List[Long]): Boolean = (list1, list2) match {
+  |                                                             ^^^^^^^^^^^^^^
+  |     match may not be exhaustive.
+  |
+  |     It would fail on pattern case: (List(_, _*), Nil), (Nil, List(_, _*))
+  |
+  | longer explanation available when compiling with `-explain`

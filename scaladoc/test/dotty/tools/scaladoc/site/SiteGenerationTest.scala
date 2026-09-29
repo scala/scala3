@@ -67,7 +67,10 @@ class SiteGenerationTest extends BaseHtmlTest:
     testApiPages()
 
     withHtmlFile("docs/Adoc.html"){ content  =>
-        content.assertAttr("p a","href", "../tests/site/SomeClass.html")
+        content.assertAttr("p a","href", "../tests/site/SomeClass.html", "#fn-1")
+        content.assertAttr("p sup","id", "fnref-1")
+        content.assertAttr(".footnotes li","id", "fn-1")
+        content.assertAttr(".footnotes a.footnote-backref","href", "#fnref-1")
     }
 
     withHtmlFile("tests/site/SomeClass.html"){ content  =>

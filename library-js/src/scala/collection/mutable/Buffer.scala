@@ -16,6 +16,8 @@ package mutable
 import scala.language.`2.13`
 
 import scala.scalajs.js
+import scala.scalajs.LinkingInfo
+import scala.scalajs.LinkingInfo.linkTimeIf
 
 /** A `Buffer` is a growable and shrinkable `Seq`.
  *
@@ -43,6 +45,7 @@ trait Buffer[A]
   /** Appends the given elements to this buffer.
    *
    *  @param elem  the element to append.
+   *  @return this buffer with the element appended
    */
   @`inline` final def append(elem: A): this.type = addOne(elem)
 
@@ -50,7 +53,9 @@ trait Buffer[A]
   @`inline` final def append(elems: A*): this.type = addAll(elems)
 
   /** Appends the elements contained in a iterable object to this buffer.
+   *
    *  @param xs  the iterable object containing the elements to append.
+   *  @return this buffer with the elements appended
    */
   @`inline` final def appendAll(xs: IterableOnce[A]): this.type = addAll(xs)
 
@@ -228,10 +233,22 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
 }
 
 @SerialVersionUID(3L)
-object Buffer extends SeqFactory.Delegate[Buffer](js.WrappedArray)
+object Buffer extends SeqFactory.Delegate[Buffer](
+  linkTimeIf[SeqFactory[Buffer]](LinkingInfo.isWebAssembly) {
+    ArrayBuffer
+  } {
+    js.WrappedArray
+  }
+)
 
 @SerialVersionUID(3L)
-object IndexedBuffer extends SeqFactory.Delegate[IndexedBuffer](js.WrappedArray)
+object IndexedBuffer extends SeqFactory.Delegate[IndexedBuffer](
+  linkTimeIf[SeqFactory[IndexedBuffer]](LinkingInfo.isWebAssembly) {
+    ArrayBuffer
+  } {
+    js.WrappedArray
+  }
+)
 
 /** Explicit instantiation of the `Buffer` trait to reduce class file size in subclasses. */
 @SerialVersionUID(3L)

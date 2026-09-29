@@ -103,7 +103,7 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
   override def slice(from: Int, until: Int): C^{this} = fromSpecific(new IndexedSeqView.Slice(this, from, until))
 
   override def sliding(size: Int, step: Int): Iterator[C^{this}]^{this} = {
-    require(size >= 1 && step >= 1, f"size=$size%d and step=$step%d, but both must be positive")
+    require(size >= 1 && step >= 1, s"size=$size and step=$step, but both must be positive")
     val it = new IndexedSeqSlidingIterator[A, CC, C](this, size, step)
     it.asInstanceOf[Iterator[Nothing]] // TODO: seems like CC cannot figure this out yet
   }
@@ -167,6 +167,10 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
  *
  *  @tparam A the element type of the sequence
  *  @tparam CC the type constructor for the resulting collection (e.g., `IndexedSeq`)
+ *  @tparam C the type of the concrete collection being sliced
+ *  @param s the underlying indexed sequence from which slices are produced
+ *  @param size the number of elements in each slice; must be positive
+ *  @param step the distance between the starting positions of successive slices; must be positive
  */
 private final class IndexedSeqSlidingIterator[A, CC[_], C](s: IndexedSeqOps[A, CC, C]^, size: Int, step: Int)
   extends AbstractIterator[C^{s}] {

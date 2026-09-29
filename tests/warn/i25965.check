@@ -1,0 +1,8 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i25965.scala:16:39 --------------------------------------------
+16 |def bar[T](x: Expr1[T], y: Expr3[T]) = (x, y) match { // warn
+   |                                       ^^^^^^
+   |                                       match may not be exhaustive.
+   |
+   |                                       It would fail on pattern case: (BooleanExpr(_), _), (_, BoolExpr3(_))
+   |
+   | longer explanation available when compiling with `-explain`

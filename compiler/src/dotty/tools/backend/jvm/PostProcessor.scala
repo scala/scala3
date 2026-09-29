@@ -1,137 +1,80 @@
 package dotty.tools.backend.jvm
 
-import java.util.concurrent.ConcurrentHashMap
+import dotty.tools.backend.jvm.BTypes.InternalName
+
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.FileWriters
-import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.core.Contexts.Context
 
-import scala.tools.asm.ClassWriter
-import scala.tools.asm.tree.ClassNode
+import org.objectweb.asm
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.tree.ClassNode
 import dotty.tools.backend.jvm.opt.*
-import dotty.tools.dotc.report
-import dotty.tools.io.PlainFile.toPlainFile
 
-import java.nio.file.{Files, Paths}
-import scala.tools.asm
-import scala.util.chaining.scalaUtilChainingOps
+import scala.annotation.constructorOnly
+import scala.collection.mutable
 
 /**
  * Implements late stages of the backend, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
+ *
+ * This base class doesn't do optimizations, use the subclass for that if they're enabled.
  */
-class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
-                    byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
-                    callGraph: CallGraph, backendUtils: BackendUtils,
-                    bTypeLoader: BTypeLoader, bTypes: WellKnownBTypes)(using Context) {
+class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(using @constructorOnly initctx: Context) {
 
-  private val optSettings         = new OptimizerSettings()
-  private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
-  private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, bTypes, optSettings)
-  private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, bTypeLoader, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
-  private val localOpt            = new LocalOpt(backendUtils, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
+  private val classfileWriter: FileWriters.ClassfileWriter =
+    FileWriters.ClassfileWriter(initctx.settings.outputDir.value, initctx.settings.XmainClass.valueSetByUser, initctx.settings.XjarCompressionLevel.value, initctx.settings.Xdumpclasses.value)
 
-  given FileWriters.ReadOnlyContext = FileWriters.ReadOnlyContext.eager
-  private val classfileWriter: FileWriters.ClassfileWriter = {
-    val dumpClassesPath =
-      ctx.settings.Xdumpclasses.valueSetByUser
-        .map(p => Paths.get(p))
-        .filter(path => Files.exists(path).tap(ok => if !ok then report.error(em"Output dir does not exist: ${path.toString}")))
-        .map(_.toPlainFile)
-
-    FileWriters.ClassfileWriter(ctx.settings.outputDir.value, ctx.settings.XmainClass.valueSetByUser, dumpClassesPath)
-  }
-
-  private type ClassnamePosition = (String, SourcePosition)
-  private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
-
-  def sendToDisk(clazz: GeneratedClass): Unit = {
+  final def sendToDisk(clazz: GeneratedClass): Unit = {
     val classNode = clazz.classNode
-    val internalName = classNode.name.nn
-    val bytes =
-      try
-        if !clazz.isArtifact then
-          localOpt.methodOptimizations(classNode)
-          setSerializableLambdas(classNode)
-        warnCaseInsensitiveOverwrite(clazz)
-        setInnerClasses(classNode)
-        serializeClass(classNode)
-      catch
-        case ex: Exception =>
-          if ctx.debug then ex.printStackTrace()
-          report.error(em"Error while emitting $internalName\n${ex.getMessage}")
-          null
-
-    if bytes != null then
-      TraceUtils.traceSerializedClassIfRequested(internalName, bytes)
-      val clsFile = classfileWriter.writeClass(internalName, bytes)
-      clazz.onFileCreated(clsFile)
+    runLocalOptimizations(classNode)
+    setInnerClasses(classNode)
+    val bytes = serializeClass(classNode)
+    TraceUtils.traceSerializedClassIfRequested(classNode.name, bytes)
+    val clsFile = classfileWriter.writeClass(classNode.name, bytes)
+    clazz.onFileCreated(clsFile)
   }
 
-  def sendToDisk(tasty: GeneratedTasty): Unit = {
-    val GeneratedTasty(classNode, tastyGenerator) = tasty
-    val internalName = classNode.name.nn
-    classfileWriter.writeTasty(classNode.name.nn, tastyGenerator())
+  final def sendToDisk(tasty: GeneratedTasty): Unit = {
+    val GeneratedTasty(internalName, tastyGenerator) = tasty
+    classfileWriter.writeTasty(internalName, tastyGenerator())
   }
 
-  def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit]): Unit = {
-    // add classes to the bytecode repo before building the call graph: the latter needs to
-    // look up classes and methods in the code repo.
-    for u <- generatedUnits
-        c <- u.classes
-    do
-      byteCodeRepository.add(c.classNode, Some(u.sourceFile.canonicalPath))
-    for u <- generatedUnits
-        c <- u.classes
-        if !c.isArtifact // skip call graph for mirror / bean: we don't inline into them, and they are not referenced from other classes
-    do
-      callGraph.addClass(c.classNode)
-    if ctx.settings.optInlineEnabled then
-      inliner.runInlinerAndClosureOptimizer()
-    else if ctx.settings.optClosureInvocations then
-      closureOptimizer.rewriteClosureApplyInvocations(None, scala.collection.mutable.Map.empty)
-  }
+  def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit], issueSink: OptimizerIssue => Unit): Unit =
+    () // no optimizations by default
 
-  def close(): Unit =
+  protected def runLocalOptimizations(classNode: ClassNode): Unit =
+    () // no optimizations by default
+
+  final def close(): Unit =
     classfileWriter.close()
-
-  private def warnCaseInsensitiveOverwrite(clazz: GeneratedClass): Unit = {
-    val name = clazz.classNode.name
-    val lowerCaseJavaName = name.toLowerCase
-    val clsPos = clazz.position
-    caseInsensitively.putIfAbsent(lowerCaseJavaName, (name, clsPos)) match {
-      case null => ()
-      case (dupName, dupPos) =>
-        // Order is not deterministic so we enforce lexicographic order between the duplicates for error-reporting
-        val ((pos1, pos2), (name1, name2)) =
-          if (name < dupName) ((clsPos, dupPos), (name, dupName))
-          else ((dupPos, clsPos), (dupName, name))
-        val locationAddendum =
-          if pos1.source.path == pos2.source.path then ""
-          else s" (defined in ${pos2.source.file.name})"
-        def nicify(name: String): String = name.replace('/', '.')
-        if name1 == name2 then
-          report.error(
-            em"${nicify(name1)} and ${nicify(name2)} produce classes that overwrite one another", pos1)
-        else
-          report.warning(
-            em"""Generated class ${nicify(name1)} differs only in case from ${nicify(name2)}$locationAddendum.
-                |  Such classes will overwrite one another on case-insensitive filesystems.""", pos1)
-    }
-  }
-
-  private def setSerializableLambdas(classNode: ClassNode): Unit = {
-    import backendUtils.{collectSerializableLambdas, addLambdaDeserialize}
-    val serializableLambdas = collectSerializableLambdas(classNode)
-    if serializableLambdas.nonEmpty then
-      addLambdaDeserialize(classNode, serializableLambdas)
-  }
 
   private def setInnerClasses(classNode: ClassNode): Unit = {
     classNode.innerClasses.nn.clear()
-    val (declared, referred) = bTypeLoader.collectNestedClasses(classNode)
-    backendUtils.addInnerClasses(classNode, declared, referred)
+    val (declared, referred) = collectNestedClasses(classNode)
+    addInnerClasses(classNode, declared, referred)
+  }
+
+  /**
+   * Visit the class node and collect all referenced nested classes.
+   */
+  private def collectNestedClasses(classNode: ClassNode): (Iterable[ClassBType], Iterable[ClassBType]) = {
+    val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
+      def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
+        classBTypeCache.previouslyConstructedClassBType(internalName).get.info.nestedClasses
+
+      def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
+        val c = classBTypeCache.previouslyConstructedClassBType(internalName).get
+        Option.when(c.isNestedClass)(c)
+      }
+
+      def raiseError(msg: String, sig: String, e: Option[Throwable]): Unit = {
+        // don't crash on invalid generic signatures
+      }
+    }
+    c.visit(classNode)
+    (c.declaredInnerClasses, c.referredInnerClasses)
   }
 
   private def serializeClass(classNode: ClassNode): Array[Byte] = {
@@ -139,6 +82,32 @@ class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
     classNode.accept(cw)
     cw.toByteArray.nn
   }
+
+  /*
+   * Populates the InnerClasses JVM attribute with `refedInnerClasses`. See also the doc on inner
+   * classes in BTypes.scala.
+   *
+   * `refedInnerClasses` may contain duplicates, need not contain the enclosing inner classes of
+   * each inner class it lists (those are looked up and included).
+   *
+   * This method serializes in the InnerClasses JVM attribute in an appropriate order,
+   * not necessarily that given by `refedInnerClasses`.
+   *
+   * can-multi-thread
+   */
+  private def addInnerClasses(jclass: asm.ClassVisitor, declaredInnerClasses: Iterable[ClassBType], refedInnerClasses: Iterable[ClassBType]): Unit = {
+    // sorting ensures nested classes are listed after their enclosing class thus satisfying the Eclipse Java compiler
+    val allNestedClasses = new mutable.TreeSet[ClassBType]()(using Ordering.by(_.internalName))
+    allNestedClasses ++= declaredInnerClasses
+    refedInnerClasses.foreach(allNestedClasses ++= _.enclosingNestedClassesChain)
+    for nestedClass <- allNestedClasses
+      do {
+        // Extract the innerClassEntry - we know it exists, enclosingNestedClassesChain only returns nested classes.
+        val Some(e) = nestedClass.innerClassAttributeEntry: @unchecked
+        jclass.visitInnerClass(e.name, e.outerName, e.innerName, e.flags)
+      }
+  }
+
 
   // -----------------------------------------------------------------------------------------
   // finding the least upper bound in agreement with the bytecode verifier (given two internal names handed by ASM)
@@ -153,16 +122,15 @@ class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
    *  It's what ASM needs to know in order to compute stack map frames, http://asm.ow2.org/doc/developer-guide.html#controlflow
    */
   private final class ClassWriterWithBTypeLub(flags: Int) extends ClassWriter(flags) {
-
     /**
      * This method is used by asm when computing stack map frames.
      */
     override def getCommonSuperClass(inameA: String, inameB: String): String = {
       // All types that appear in a class node need to have their ClassBType cached,
       // i.e., have been loaded either from symbols or from class files.
-      val a = bTypeLoader.previouslyConstructedClassBType(inameA).get
-      val b = bTypeLoader.previouslyConstructedClassBType(inameB).get
-      val lub = a.jvmWiseLUB(b, bTypes)
+      val a = classBTypeCache.previouslyConstructedClassBType(inameA).get
+      val b = classBTypeCache.previouslyConstructedClassBType(inameB).get
+      val lub = a.jvmWiseLUB(b, bTypes.ObjectRef)
       val lubName = lub.internalName
       assert(lubName != "scala/Any")
       lubName // ASM caches the answer during the lifetime of a ClassWriter. We outlive that. Not sure whether caching on our side would improve things.
@@ -170,15 +138,37 @@ class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
   }
 }
 
-/**
- * The result of code generation. [[isArtifact]] is `true` for mirror.
- */
+final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
+                                           callGraph: OptimizerCallGraph,
+                                           bTypes: OptimizerKnownBTypes)(using @constructorOnly initctx: Context) extends PostProcessor(classBTypeCache, bTypes) {
+  private val optSettings         = new OptimizerSettings()
+  private val closureOptimizer    = new ClosureOptimizer(byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
+  private val heuristics          = new InlinerHeuristics(byteCodeRepository, callGraph, bTypes, optSettings)
+  private val inliner             = new InlinerImpl(callGraph, classBTypeCache, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
+  private val localOpt            = new LocalOpt(callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
+
+  override def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit], issueSink: OptimizerIssue => Unit): Unit = {
+    // add classes to the bytecode repo before building the call graph: the latter needs to
+    // look up classes and methods in the code repo.
+    for u <- generatedUnits
+        c <- u.classes
+    do
+      byteCodeRepository.add(c.classNode, u.sourcePath)
+    for u <- generatedUnits
+        c <- u.classes
+    do
+      callGraph.addClass(c.classNode)
+    inliner.run(issueSink)
+  }
+
+  protected override def runLocalOptimizations(classNode: ClassNode): Unit =
+    localOpt.methodOptimizations(classNode)
+}
+
 case class GeneratedClass(
   classNode: ClassNode,
-  sourceClassName: String,
   position: SourcePosition,
-  isArtifact: Boolean,
   onFileCreated: AbstractFile => Unit)
-case class GeneratedTasty(classNode: ClassNode, tastyGen: () => Array[Byte])
-case class GeneratedCompilationUnit(sourceFile: AbstractFile, classes: List[GeneratedClass], tasty: List[GeneratedTasty])
+case class GeneratedTasty(internalName: String, tastyGen: () => Array[Byte])
+case class GeneratedCompilationUnit(sourcePath: String, classes: List[GeneratedClass], tasty: List[GeneratedTasty])
 

@@ -2,7 +2,6 @@ package dotty.tools.dotc.classpath
 
 import dotty.DottyBytecodeTest
 
-import scala.language.unsafeNulls
 import dotty.tools.dotc.core.Contexts.Context
 
 import java.io.{ByteArrayOutputStream, IOException}
@@ -13,7 +12,6 @@ import org.junit.Assert.*
 import org.junit.Test
 
 import scala.jdk.CollectionConverters.*
-import scala.util.Properties
 
 class MultiReleaseJarTest extends DottyBytecodeTest {
 

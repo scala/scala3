@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import java.util.regex.Pattern
 
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
@@ -25,7 +23,7 @@ class ReplCompilerTests extends ReplTest:
     initially {
       run("import scala.collection.*")
     } andThen {
-      println(lines().mkString("* ", "\n  * ", ""))
+      assertEquals(0, lines().length)
     }
   }
 
@@ -342,7 +340,7 @@ class ReplCompilerTests extends ReplTest:
     state
   } andThen {
     run("a")   // `a` should retain its original binding
-    assertEquals("val res2: Int = 1234", storedOutput().trim)
+    assertEquals("val res0: Int = 1234", storedOutput().trim)
   }
 
   @Test def i4416_imports = initially {
@@ -411,6 +409,11 @@ class ReplCompilerTests extends ReplTest:
 
   @Test def `i13097 expect template after colon` = contextually:
     assert(ParseResult.isIncomplete("class C:"))
+
+  @Test def `i26585 expect more members in braceless template` = contextually:
+    assert(ParseResult.isIncomplete("class C:\n  private var i = 0"))
+    assert(ParseResult.isIncomplete("class C:\n  private var i = 0\n  def get = i"))
+    assertFalse(ParseResult.isIncomplete("class C:\n  private var i = 0\n"))
 
   @Test def i15562: Unit = initially {
     val s1 = run("List(1, 2).filter(_ % 2 == 0).foreach(println)")
@@ -905,7 +908,7 @@ class ReplHighlightTests extends ReplTest(ReplTest.defaultOptions.filterNot(_.st
       def deepTree(depth: Int): Tree
       deepTree(300)""")
 
-class ReplUnrollTests extends ReplTest(ReplTest.defaultOptions ++ Seq("-preview", "-Xprint:pickler")):
+class ReplUnrollTests extends ReplTest(ReplTest.defaultOptions ++ Seq("-preview", "-Vprint:pickler")):
   override val redirectOutput = true
   @Test def i23408: Unit = initially:
     run("""
@@ -935,6 +938,19 @@ class ReplUnrollTests extends ReplTest(ReplTest.defaultOptions ++ Seq("-preview"
         s"Output: '$output' did not contain expected definition: ${defn}",
         normalizedOutput.contains(normalizedDefn)
       )
+
+class ReplInferUnionTests extends ReplTest(ReplTest.defaultOptions :+ "-Wall"):
+  @Test def i25991: Unit = initially:
+    run("""Some(42).contains("answer")""")
+    val expected =
+      """#1 warning found
+         #-- [E225] Type Warning: --------------------------------------------------------
+         #1 |Some(42).contains("answer")
+         #  |^^^^^^^^^^^^^^^^^
+         #  |A type argument was inferred to be union type Int | String
+         #  |This may indicate a programming error.
+         #val res0: Boolean = false""".stripMargin('#')
+    assertEquals(expected, storedOutput().trim())
 
 class ReplPrintDimentionsTests extends ReplTest(ReplTest.defaultOptions) {
   private def runTest(settings: List[String], expected: String): Unit =

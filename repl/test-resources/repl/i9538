@@ -1,5 +1,5 @@
-scala>:type
+scala> :type
 :type <expression>
 
-scala>:doc
+scala> :doc
 :doc <expression>

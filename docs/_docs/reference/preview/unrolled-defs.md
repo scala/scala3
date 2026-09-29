@@ -143,7 +143,7 @@ object C:
 
 ## Background Motivation
 
-The Scala language library ecosystem is based upon compatability of API's represented via both the TASTy format (TASTy compatibility), and the Java class file format (binary compatibility).
+The Scala language library ecosystem is based upon compatibility of API's represented via both the TASTy format (TASTy compatibility), and the Java class file format (binary compatibility).
 
 Adding a parameter to a method or constructor is a binary backwards incompatible change:
 clients compiled against the previous version will expect the old signature to exist, and cause a `LinkageError` to be thrown at runtime.

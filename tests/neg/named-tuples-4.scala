@@ -1,7 +1,4 @@
-import language.experimental.namedTuples
-import scala.annotation.experimental
-
-@experimental object Test:
+object Test:
 
   case class PersonCaseClass(name: String, age: Int)
 

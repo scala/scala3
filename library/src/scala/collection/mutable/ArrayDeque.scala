@@ -447,8 +447,15 @@ class ArrayDeque[A] protected (
     * See clearAndShrink if you want to also resize internally
     */
   def clear(): Unit = {
-    while(nonEmpty) {
-      removeHeadAssumingNonEmpty()
+    if (nonEmpty) {
+      if (start < end) {
+        java.util.Arrays.fill(array, start, end, null)
+      } else {
+        java.util.Arrays.fill(array, start, array.length, null)
+        java.util.Arrays.fill(array, 0, end, null)
+      }
+      start = 0
+      end = 0
     }
   }
 
@@ -585,16 +592,16 @@ transparent trait ArrayDequeOps[A, +CC[_] <: caps.Pure, +C <: AnyRef] extends St
     if (idx < 0 || idx >= until)
       throw CommonErrors.indexOutOfBounds(index = idx, max = until - 1)
 
-  /**
-    * This is a more general version of copyToArray - this also accepts a srcStart unlike copyToArray
-    * This copies maxItems elements from this collections srcStart to dest's destStart
-    * If we reach the end of either collections before we could copy maxItems, we simply stop copying
-    *
-    * @param dest
-    * @param srcStart
-    * @param destStart
-    * @param maxItems
-    */
+  /** This is a more general version of copyToArray - this also accepts a srcStart unlike copyToArray
+   *  This copies maxItems elements from this collections srcStart to dest's destStart
+   *  If we reach the end of either collection before we could copy maxItems, we simply stop copying
+   *
+   *  @param dest
+   *  @param srcStart
+   *  @param destStart
+   *  @param maxItems
+   *  @return the `dest` array, after the copied elements have been written into it
+   */
   def copySliceToArray(srcStart: Int, dest: Array[?], destStart: Int, maxItems: Int): dest.type = {
     requireBounds(destStart, dest.length+1)
     val toCopy = Math.min(maxItems, Math.min(length - srcStart, dest.length - destStart))

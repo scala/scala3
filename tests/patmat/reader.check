@@ -1,1 +1,4 @@
-8: Match case Unreachable
+-- [E030] Match case Unreachable Warning: tests/patmat/reader.scala:8:9 --------
+8 |    case 'r' =>
+  |         ^^^
+  |         Unreachable case

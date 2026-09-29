@@ -635,8 +635,9 @@ object Semantic:
                 reporter.report(error)
                 Hot
             else
-              val error = AccessNonInit(target)(trace)
-              reporter.report(error)
+              if !receiver.classSymbol.isInlineTrait then // See tests/pos/inline-trait-y-equals-x-inlined-nowarn.scala
+                val error = AccessNonInit(target)(trace)
+                reporter.report(error)
               Hot
           else
             report.warning("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + Trace.show, Trace.position)
@@ -782,7 +783,7 @@ object Semantic:
 
         case Fun(body, thisV, klass) =>
           // meth == NoSymbol for poly functions
-          if meth.name.toString == "tupled" then value // a call like `fun.tupled`
+          if meth.name == nme.tupled then value // a call like `fun.tupled`
           else
             promoteArgs()
             eval(body, thisV, klass, cacheResult = true)

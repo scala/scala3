@@ -14,6 +14,7 @@ import com.vladsch.flexmark.util.{ast => mdu, sequence}
 import com.vladsch.flexmark.{ast => mda}
 import com.vladsch.flexmark.formatter.Formatter
 import scala.jdk.CollectionConverters._
+import org.junit.Test
 
 import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
 
@@ -135,7 +136,8 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags) extends Scaladoc
     }
   }
 
-  def runTest = {
+  @Test
+  def runTest(): Unit = {
     org.junit.Assume.assumeTrue("Running on Windows", java.io.File.separatorChar == '/')
     withModule(moduleTestingFunc)
   }

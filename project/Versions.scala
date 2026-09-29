@@ -12,7 +12,7 @@ object Versions {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.8.4"
+  val referenceVersion = "3.10.0-RC3"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -23,7 +23,7 @@ object Versions {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.10.0"
+  val developedVersion = "3.10.1"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -83,18 +83,18 @@ object Versions {
   /** Minor version against which we check binary compatibility.
    *
    *  This must be the earliest published release in the same versioning line.
-   *  For a developedVersion `3.M.P` the mimaPreviousDottyVersion should be set to:
+   *  For a developedVersion `3.M.P` the mimaPreviousVersion should be set to:
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.8.0" // TODO: update to 3.9.0 when released
+  val mimaPreviousVersion = "3.10.0-RC1" // TODO: update to 3.10.0 when released
 
-  /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.14.0"
-  /** Version of Coursier to download for initializing the local maven repo of Scala command */
-  val coursierJarVersion = "2.1.25-M25"
-
-  val mtagsVersion = "1.6.7"
+  /** LTS version against which we check binary compatibility.
+   *
+   *  This must be the earliest published release in the LTS versioning line.
+   *  For example, if the latest LTS release is 3.3.4, then this must be set to 3.3.0.
+   */
+  val mimaPreviousLTSVersion = "3.9.0"
 
   /* Tests TASTy version invariants during NIGHLY, RC or Stable releases */
   def checkReleasedTastyVersion(): Unit = {

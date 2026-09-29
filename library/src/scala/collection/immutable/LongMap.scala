@@ -126,6 +126,7 @@ private[immutable] abstract class LongMapIterator[V, T](it: LongMap[V]) extends 
   /** What value do we assign to a tip?
    *
    *  @param tip the leaf node to extract a value from
+   *  @return the element of type `T` (e.g. the key, the value, or the key-value pair) extracted from `tip`
    */
   def valueOf(tip: LongMap.Tip[V]): T
 
@@ -459,10 +460,10 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
    *  @return        A map with all the keys both in `this` and `that`, mapped to corresponding values from `this`.
    */
   def intersection[R](that: LongMap[R]): LongMap[T] =
-    this.intersectionWith(that, (key: Long, value: T, value2: R) => value)
+    this.intersectionWith(that, (_key: Long, value: T, _value2: R) => value)
 
   def ++[S >: T](that: LongMap[S]) =
-    this.unionWith[S](that, (key, x, y) => y)
+    this.unionWith[S](that, (_key, _x, y) => y)
 
   @tailrec
   final def firstKey: Long = this match {

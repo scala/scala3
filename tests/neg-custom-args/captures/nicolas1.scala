@@ -6,6 +6,6 @@ trait Rand extends SharedCapability:
 def nextInt(max: Int): Rand ?-> Int =
   r ?=> r.range(0, max)
 
-def oneOf[A](head: Rand ?=> A, tail: (Rand ?=> A)*): Rand ?->{head} A =
-  val all: Seq[Rand ?->{head, tail*} A] = head +: tail
+def oneOf[A, c^](head: Rand ?->{c} A, tail: (Rand ?->{c} A)*): Rand ?->{head} A =
+  val all: Seq[Rand ?->{c} A] = head +: tail
   all(nextInt(all.length)) // error

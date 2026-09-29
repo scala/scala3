@@ -30,7 +30,6 @@ import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, 
 
 import scala.annotation.internal.sharable
 import config.Printers.typr
-import dotty.tools.dotc.classpath.FileUtils.isScalaBinary
 
 import scala.compiletime.uninitialized
 import dotty.tools.tasty.TastyVersion
@@ -167,11 +166,11 @@ object Symbols extends SymUtils {
       * symbols defined by the user in a prior run of the REPL, that are still valid.
       */
     final def isDefinedInSource(using Context): Boolean =
-      span.exists && isValidInCurrentRun && associatedFileMatches(!_.isScalaBinary)
+      span.exists && isValidInCurrentRun && associatedFileMatches(!_.ext.isScalaBinary)
 
     /** Is this symbol valid in the current run, but comes from the classpath? */
     final def isDefinedInBinary(using Context): Boolean =
-      isValidInCurrentRun && associatedFileMatches(_.isScalaBinary)
+      isValidInCurrentRun && associatedFileMatches(_.ext.isScalaBinary)
 
     /** Is symbol valid in current run? */
     final def isValidInCurrentRun(using Context): Boolean =
@@ -182,28 +181,19 @@ object Symbols extends SymUtils {
         // periods check out OK. But once a package member is overridden it is not longer
         // valid. If the option would be removed, the check would be no longer needed.
 
-    final def isTerm(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isTerm
-    final def isType(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isType
+    final def isTerm(using Context): Boolean = lastDenot.isTerm
+    final def isType(using Context): Boolean = lastDenot.isType
     final def asTerm(using Context): TermSymbol = {
-      assert(isTerm, s"asTerm called on not-a-Term $this" );
+      assert(isTerm, s"asTerm called on not-a-Term $this")
       asInstanceOf[TermSymbol]
     }
     final def asType(using Context): TypeSymbol = {
-      assert(isType, s"asType called on not-a-Type $this");
+      assert(isType, s"asType called on not-a-Type $this")
       asInstanceOf[TypeSymbol]
     }
 
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
-
-    /** Test whether symbol is private. This
-     *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
-     *  is a class that is not yet read.
-     */
-    final def isPrivate(using Context): Boolean =
-      lastDenot.flagsUNSAFE.is(Private)
 
     /** Is the symbol a pattern bound symbol?
      */
@@ -245,7 +235,7 @@ object Symbols extends SymUtils {
             if (this.is(Module)) this.moduleClass.validFor |= InitialPeriod
           }
           else owner.ensureFreshScopeAfter(phase)
-          assert(isPrivate || phase.changesMembers, i"$this entered in $owner at undeclared phase $phase")
+          assert(this.is(Private) || phase.changesMembers, i"$this entered in $owner at undeclared phase $phase")
           entered
         case _ => this
       }
@@ -266,7 +256,7 @@ object Symbols extends SymUtils {
       else {
         assert (!this.owner.is(Package))
         this.owner.asClass.ensureFreshScopeAfter(phase)
-        assert(isPrivate || phase.changesMembers, i"$this deleted in ${this.owner} at undeclared phase $phase")
+        assert(this.is(Private) || phase.changesMembers, i"$this deleted in ${this.owner} at undeclared phase $phase")
         drop()
       }
 
@@ -287,7 +277,7 @@ object Symbols extends SymUtils {
      */
     def associatedFile(using Context): AbstractFile | Null =
       val compUnitInfo = compilationUnitInfo
-      if compUnitInfo == null then (null: AbstractFile | Null)
+      if compUnitInfo == null then null
       else compUnitInfo.associatedFile
 
     /** The compilation unit info (associated file, tasty versions, ...).
@@ -307,7 +297,7 @@ object Symbols extends SymUtils {
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(using Context): AbstractFile | Null = {
       val file = associatedFile
-      if file != null && file.isScalaBinary then file else null
+      if file != null && file.ext.isScalaBinary then file else null
     }
 
     /** A trap to avoid calling x.symbol on something that is already a symbol.
@@ -319,7 +309,7 @@ object Symbols extends SymUtils {
 
     final def source(using Context): SourceFile = {
       def valid(src: SourceFile): SourceFile =
-        if (src.exists && !src.file.isScalaBinary) src
+        if (src.exists && !src.ext.isScalaBinary) src
         else NoSource
 
       if (!denot.exists) NoSource
@@ -421,7 +411,7 @@ object Symbols extends SymUtils {
         compUnitInfo: CompilationUnitInfo | Null = null // Can be `= owner.compilationUnitInfo` once we have new default args
     ): Symbol = {
       val coord1 = if (coord == NoCoord) owner.coord else coord
-      val compilationUnitInfo1 = if (compilationUnitInfo == null) owner.compilationUnitInfo else compilationUnitInfo
+      val compilationUnitInfo1 = if (compUnitInfo == null) owner.compilationUnitInfo else compUnitInfo
 
       if isClass then
         newClassSymbol(owner, name.asTypeName, flags, _ => info, privateWithin, coord1, compilationUnitInfo1)
@@ -518,11 +508,11 @@ object Symbols extends SymUtils {
 
     private var mySource: SourceFile = NoSource
 
-    final def sourceOfClass(using Context): SourceFile = {
+    final def sourceOfClass(using Context): SourceFile = atPhaseNoLater(flattenPhase) {
       if !mySource.exists && !denot.is(Package) then
         // this allows sources to be added in annotations after `sourceOfClass` is first called
         val file = associatedFile
-        if file != null && !file.isScalaBinary then
+        if file != null && !file.ext.isScalaBinary then
           mySource = ctx.getSource(file)
         else if !mySource.exists then
           val compUnitInfo = compilationUnitInfo
@@ -531,12 +521,12 @@ object Symbols extends SymUtils {
               case Some(path) => mySource = ctx.getSource(path)
               case _ =>
           if !mySource.exists then
-            mySource = atPhaseNoLater(flattenPhase) {
+            mySource = {
               denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match
                 case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match
                   case Some(Constant(path: String)) => ctx.getSource(path)
-                  case none => NoSource
-                case none => NoSource
+                  case _ => NoSource
+                case _ => NoSource
             }
       mySource
     }

@@ -17,7 +17,7 @@ class ScalaCliCompletions(
     )
 
     lazy val supportsUsing =
-      val filename = pos.source.file.path
+      val filename = pos.source.path
       filename.endsWith(".sc.scala") ||
       filename.endsWith(".worksheet.sc")
 
@@ -35,7 +35,7 @@ class ScalaCliCompletions(
     val (editStart, editEnd) = CoursierComplete.inferEditRange(pos.point, text)
     val editRange = pos.withStart(editStart).withEnd(editEnd).toLsp
     val normalized = dependency.replace(":::", ":").replace("::", ":")
-    val isVersionCompletion = normalized.split(":").length >= 3
+    val isVersionCompletion = normalized.count(_ == ':') >= 2
     completions
       .map(insertText =>
         CompletionValue.Coursier(

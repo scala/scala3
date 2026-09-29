@@ -21,6 +21,7 @@ private[hashing] class MurmurHash3 {
    *
    *  @param hash the intermediate hash value
    *  @param data the new block of data to mix in
+   *  @return the updated intermediate hash value with `data` mixed in
    */
   final def mix(hash: Int, data: Int): Int = {
     var h = mixLast(hash, data)
@@ -34,6 +35,7 @@ private[hashing] class MurmurHash3 {
    *
    *  @param hash the intermediate hash value
    *  @param data the last block of data to mix in
+   *  @return the hash value with `data` mixed in, without further rotation or mixing
    */
   final def mixLast(hash: Int, data: Int): Int = {
     var k = data
@@ -49,12 +51,14 @@ private[hashing] class MurmurHash3 {
    *
    *  @param hash the intermediate hash value after all mix steps
    *  @param length the number of elements hashed
+   *  @return the finalized hash value with `length` incorporated and all bits avalanched
    */
   final def finalizeHash(hash: Int, length: Int): Int = avalanche(hash ^ length)
 
   /** Force all bits of the hash to avalanche. Used for finalizing the hash.
    *
    *  @param hash the intermediate hash value whose bits should be thoroughly mixed
+   *  @return the hash value with all bits avalanched for a well-distributed result
    */
   private final def avalanche(hash: Int): Int = {
     var h = hash
@@ -102,6 +106,7 @@ private[hashing] class MurmurHash3 {
    *  @param x the case class instance to hash
    *  @param seed the initial seed for the hash computation
    *  @param caseClassName the case class name used for hashing, or `null` to fall back to `x.productPrefix`
+   *  @return the hash code of `x`, derived from the class name and each product element
    */
   final def caseClassHash(x: Product, seed: Int, caseClassName: String | Null): Int = {
     val arr = x.productArity
@@ -124,6 +129,7 @@ private[hashing] class MurmurHash3 {
    *
    *  @param str the string to hash
    *  @param seed the initial seed for the hash computation
+   *  @return the hash of `str`, computed by packing successive pairs of UTF-16 chars into 32-bit blocks and finalizing with the string length
    */
   final def stringHash(str: String, seed: Int): Int = {
     var h = seed
@@ -143,6 +149,7 @@ private[hashing] class MurmurHash3 {
    *
    *  @param xs the elements to hash (order-independent)
    *  @param seed the initial seed for the hash computation
+   *  @return a hash code that is the same for any permutation of `xs`
    */
   final def unorderedHash(xs: IterableOnce[Any], seed: Int): Int = {
     var a, b, n = 0
@@ -168,6 +175,7 @@ private[hashing] class MurmurHash3 {
    *
    *  @param xs the elements to hash in traversal order
    *  @param seed the initial seed for the hash computation
+   *  @return a hash code that depends on element order, matching `rangeHash` when `xs` has at least three elements and forms an arithmetic progression with non-zero step
    */
   final def orderedHash(xs: IterableOnce[Any], seed: Int): Int = {
     val it = xs.iterator
@@ -207,6 +215,7 @@ private[hashing] class MurmurHash3 {
    *
    *  @param a the array to hash
    *  @param seed the initial seed for the hash computation
+   *  @return the hash of `a`, compatible with `rangeHash` when `a` has at least three elements forming an arithmetic progression with non-zero step
    */
   final def arrayHash[@specialized T](a: Array[T], seed: Int): Int = {
     var h = seed
@@ -250,6 +259,7 @@ private[hashing] class MurmurHash3 {
    *  @param step the increment between successive elements
    *  @param last the actual last element produced by the range
    *  @param seed the initial seed for the hash computation
+   *  @return the hash of the range, compatible with `orderedHash` and `arrayHash` for the same element sequence
    */
   final def rangeHash(start: Int, step: Int, last: Int, seed: Int): Int =
     avalanche(mix(mix(mix(seed, start), step), last))
@@ -260,6 +270,7 @@ private[hashing] class MurmurHash3 {
    *
    *  @param data the byte array to hash
    *  @param seed the initial seed for the hash computation
+   *  @return the hash of `data` computed four bytes at a time (not compatible with `arrayHash`)
    */
   final def bytesHash(data: Array[Byte], seed: Int): Int = {
     var len = data.length
@@ -297,6 +308,7 @@ private[hashing] class MurmurHash3 {
    *
    *  @param a the indexed sequence to hash
    *  @param seed the initial seed for the hash computation
+   *  @return the hash of `a`, compatible with `rangeHash` when `a` has at least three elements forming an arithmetic progression with non-zero step
    */
   final def indexedSeqHash(a: scala.collection.IndexedSeq[Any], seed: Int): Int = {
     var h = seed
@@ -337,6 +349,7 @@ private[hashing] class MurmurHash3 {
    *
    *  @param xs the list to hash
    *  @param seed the initial seed for the hash computation
+   *  @return the hash of `xs`, compatible with `rangeHash` when `xs` has at least three elements forming an arithmetic progression with non-zero step
    */
   final def listHash(xs: scala.collection.immutable.List[?], seed: Int): Int = {
     var n = 0
@@ -452,6 +465,7 @@ object MurmurHash3 extends MurmurHash3 {
   /** To offer some potential for optimization.
    *
    *  @param xs the sequence to hash (dispatches to specialized implementations for `IndexedSeq` and `List`)
+   *  @return the order-dependent hash of `xs`, compatible with `rangeHash` for arithmetic progressions
    */
   def seqHash(xs: scala.collection.Seq[?]): Int    = xs match {
     case xs: scala.collection.IndexedSeq[?] => indexedSeqHash(xs, seqSeed)

@@ -34,24 +34,18 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.Contains",
   "scala.caps.Contains$",
   "scala.caps.Contains$.containsImpl",
-  "scala.caps.Exists",
   "scala.caps.ExclusiveCapability",
   "scala.caps.Stateful",
-  "scala.caps.Separate",
   "scala.caps.Unscoped",
   "scala.caps.Mutable",
-  "scala.caps.Read",
   "scala.caps.internal",
   "scala.caps.internal$",
   "scala.caps.any",
   "scala.caps.any$",
-  "scala.caps.cap",
-  "scala.caps.cap$",
   "scala.caps.fresh",
   "scala.caps.fresh$",
   "scala.caps.unsafe",
   "scala.caps.unsafe$",
-  "scala.caps.use",
   "scala.caps.reserve",
   "scala.caps.assumeSafe",
   "scala.caps.rejectSafe",
@@ -102,9 +96,10 @@ val experimentalDefinitionInLibrary = Set(
 
   // New feature: Erased trait
   "scala.compiletime.Erased",
-
-  // New API: Multiversal equality for Named Tuples
-  "scala.NamedTuple$.namedTupleCanEqual",
+  
+  // New feature: Specialized traits
+  "scala.specialize.Specialized",
+  "scala.specialize.Specialized$"
 )
 
 
@@ -152,7 +147,7 @@ val experimentalDefinitionInLibrary = Set(
 
    // Artefact of the current test infrastructure
   // TODO improve infrastructure to avoid needing this code on each test
-  val libJarClasspath = dotty.tools.dotc.util.ClasspathFromClassloader(this.getClass.getClassLoader).split(java.io.File.pathSeparator).find(x => x.contains("scala-library-bootstrapped") && x.endsWith(".jar")).get
+  val libJarClasspath = dotty.tools.dotc.util.ClasspathFromClassloader(getClass.getClassLoader).split(java.io.File.pathSeparator).find(x => x.contains("scala-library-bootstrapped") && x.endsWith(".jar")).get
 
   TastyInspector.inspectTastyFilesInJar(libJarClasspath)(inspector)
 }

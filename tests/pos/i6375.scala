@@ -2,7 +2,7 @@
  * The output of the program should instead look like this:
 
       package <empty> {
-        @scala.annotation.internal.SourceFile("i6375.scala") class Test() extends
+        class Test() extends
           Object
         () {
           final given def given_Int: Int = 0

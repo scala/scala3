@@ -14,5 +14,9 @@ package scala.annotation.meta
 
 import scala.language.`2.13`
 
-/** An annotation giving particulars for a language feature in object `scala.language`. */
+/** An annotation giving particulars for a language feature in object `scala.language`.
+ *
+ *  @param feature the name of the language feature being described
+ *  @param enableRequired whether an explicit import of the feature is required to suppress the compiler warning about its usage
+ */
 final class languageFeature(feature: String, enableRequired: Boolean) extends scala.annotation.StaticAnnotation

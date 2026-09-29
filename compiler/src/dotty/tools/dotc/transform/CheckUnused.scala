@@ -2,14 +2,13 @@ package dotty.tools.dotc
 package transform
 
 import ast.*, desugar.{ForArtifact, PatternVar}, tpd.*, untpd.ImportSelector
-import config.ScalaSettings
 import core.*, Contexts.*, Decorators.*, Flags.*
 import Names.{Name, SimpleName, DerivedName, TermName, termName}
-import NameKinds.{BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
-import NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
+import NameKinds.{BodyRetainerName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
+import NameOps.{isReplWrapperName, setterName}
 import Scopes.newScope
 import StdNames.nme
-import Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
+import Symbols.{NoSymbol, Symbol, defn, isDeprecated}
 import Types.*
 import reporting.{CodeAction, Diagnostic, UnusedSymbol}
 import rewrites.Rewrites.ActionPatch
@@ -17,14 +16,14 @@ import rewrites.Rewrites.ActionPatch
 import MegaPhase.MiniPhase
 import typer.{ImportInfo, Typer, TyperPhase}
 import typer.Deriving.OriginalTypeClass
-import typer.Implicits.{ContextualImplicits, RenamedImplicitRef}
+import typer.Implicits.RenamedImplicitRef
 import util.{Property, Spans, SrcPos}, Spans.Span
 import util.Chars.{isLineBreakChar, isWhitespace}
 import util.chaining.*
 
 import java.util.IdentityHashMap
 
-import scala.collection.mutable, mutable.{ArrayBuilder, ListBuffer, Stack}
+import scala.collection.mutable, mutable.ArrayBuilder
 
 import CheckUnused.*
 
@@ -57,6 +56,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     tree
 
   override def transformIdent(tree: Ident)(using Context): tree.type =
+    val name = tree.removeAttachment(OriginalName).getOrElse(tree.name)
     if tree.symbol.exists then
       // if in an inline expansion, resolve at summonInline (synthetic pos) or in an enclosing call site
       val resolvingImports =
@@ -69,9 +69,9 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
             loopOverPrefixes(prefix.normalizedPrefix, depth + 1)
         if tree.srcPos.isZeroExtentSynthetic then
           loopOverPrefixes(tree.typeOpt.normalizedPrefix, depth = 0)
-        resolveUsage(tree.symbol, tree.name, tree.typeOpt.importPrefix.skipPackageObject, tree.srcPos, resolvingImports)
+        resolveUsage(tree.symbol, name, tree.typeOpt.importPrefix.skipPackageObject, tree.srcPos, resolvingImports)
     else if tree.hasType then
-      resolveUsage(tree.tpe.classSymbol, tree.name, tree.tpe.importPrefix.skipPackageObject, tree.srcPos)
+      resolveUsage(tree.tpe.classSymbol, name, tree.tpe.importPrefix.skipPackageObject, tree.srcPos)
     tree
 
   // import x.y; y may be rewritten x.y, also import x.z as y
@@ -143,7 +143,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForAssign(tree: Assign)(using Context): Context =
     if tree.lhs.symbol.exists then
       refInfos.addAssignmentTarget(tree.lhs.symbol)
-      ctx.fresh.setTree(tree)
+      ctx.fresh.setProperty(EnclosingAssigns, tree :: enclosingAssigns)
     else ctx
 
   override def prepareForMatch(tree: Match)(using Context): Context =
@@ -328,10 +328,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
    *  Also check that every enclosing element is not a synthetic member
    *  of the sym's case class companion module.
    *
-   *  The LHS of a current Assign is never recorded as a reference (that is, a usage).
+   *  A reference to the LHS of a current Assign is not recorded as a usage, nor is a reference
+   *  in its RHS that does not escape into a call that might observe the value.
    */
   def refUsage(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    if !refInfos.hasRef(sym) then
+    if !refInfos.hasRef(sym) && !isUnobservedUpdate(sym, pos) then
       val isCase = sym.is(Case) && sym.isClass
       if !ctx.outersIterator.exists: outer =>
         val owner = outer.owner
@@ -340,11 +341,24 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
            && owner.exists
            && owner.is(Synthetic)
            && owner.owner.eq(sym.companionModule.moduleClass)
-        || outer.tree.match
-           case Assign(lhs, _) => lhs.symbol.eq(sym) && outer.tree.srcPos.sourcePos.contains(pos.sourcePos)
-           case _ => false
       then
         refInfos.addRef(sym)
+
+  /** Is a reference at `pos` an unobserved update of `sym`: the LHS of an enclosing assignment
+   *  to `sym`, or a read in its RHS which does not escape into an application that might observe
+   *  the value?
+   */
+  private def isUnobservedUpdate(sym: Symbol, pos: SrcPos)(using Context): Boolean =
+    def mightObserve(rhs: Tree): Boolean =
+      rhs.existsSubTree: t =>
+        t.srcPos.sourcePos.contains(pos.sourcePos) && t.match
+          case t: GenericApply => !InstrumentCoverage.isCoverageProbe(t) && !isKnownPureOp(funPart(t).symbol)
+          case _: DefDef => true
+          case _ => false
+    enclosingAssigns.exists: assign =>
+         assign.lhs.symbol.eq(sym)
+      && assign.srcPos.sourcePos.contains(pos.sourcePos)
+      && !mightObserve(assign.rhs)
 
   /** Look up a reference in enclosing contexts to determine whether it was introduced by a definition or import.
    *  The binding of highest precedence must then be correct.
@@ -426,10 +440,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       val cur = ctxs.next()
       if cur.owner.userSymbol == sym && !sym.is(Package) then
         enclosed = true // found enclosing definition, don't record the reference
-      if cur.isImportContext then
-        val sel = matchingSelector(cur.importInfo.nn)
+      val importInfo = cur.importInfoIfImportContext
+      if importInfo `ne` null then
+        val sel = matchingSelector(importInfo)
         if sel != null then
-          if cur.importInfo.nn.isRootImport then
+          if importInfo.isRootImport then
             if precedence.weakerThan(OtherUnit) then
               precedence = OtherUnit
               candidate = cur
@@ -469,27 +484,27 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
    *  Avoid cached ctx.implicits because it needs the precise import context that introduces the given.
    */
   def resolveScoped(tp: Type, pos: SrcPos)(using Context): Unit =
-    var done = false
     val ctxs = ctx.outersIterator
-    while !done && ctxs.hasNext do
+    while ctxs.hasNext do
       val cur = ctxs.next()
+      val importInfo = cur.importInfoIfImportContext
       val implicitRefs: List[ImplicitRef] =
         if (cur.isClassDefContext) cur.owner.thisType.implicitMembers
-        else if (cur.isImportContext) cur.importInfo.nn.importedImplicits
+        else if (importInfo `ne` null) importInfo.importedImplicits
         else if (cur.isNonEmptyScopeContext) cur.scope.implicitDecls
         else Nil
       implicitRefs.find(ref => ref.underlyingRef.widen <:< tp) match
       case Some(found: TermRef) =>
-        refUsage(found.denot.symbol, pos)
-        if cur.isImportContext then
-          cur.importInfo.nn.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
+        refUsage(found.symbol, pos)
+        if importInfo `ne` null then
+          importInfo.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
           case Some(sel) =>
             refInfos.sels.put(sel, ())
           case _ =>
         return
-      case Some(found: RenamedImplicitRef) if cur.isImportContext =>
-        refUsage(found.underlyingRef.denot.symbol, pos)
-        cur.importInfo.nn.selectors.find(sel => sel.rename == found.implicitName) match
+      case Some(found: RenamedImplicitRef) if importInfo `ne` null =>
+        refUsage(found.underlyingRef.symbol, pos)
+        importInfo.selectors.find(sel => sel.rename == found.implicitName) match
         case Some(sel) =>
           refInfos.sels.put(sel, ())
         case _ =>
@@ -515,8 +530,24 @@ object CheckUnused:
 
   inline def refInfos(using Context): RefInfos = ctx.property(refInfosKey).get
 
+  /** The assignments enclosing the tree being traversed, innermost first.
+   *  Typed, unlike Context.tree, which is untyped-generic.
+   */
+  private val EnclosingAssigns = Property.Key[List[Assign]]
+
+  private def enclosingAssigns(using Context): List[Assign] =
+    ctx.property(EnclosingAssigns).getOrElse(Nil)
+
   /** Attachment holding the name of an Ident as written by the user. */
   val OriginalName = Property.StickyKey[Name]
+
+  /** Record the name as written by the user when it differs from the referenced
+   *  symbol's name, such as a renamed import or a renamed extension method, so that
+   *  CheckUnused can match the reference against the import selector that renamed it.
+   */
+  def withOriginalName(tree: Tree, written: Name)(using Context): tree.type =
+    if tree.symbol.name != written then tree.withAttachment(OriginalName, written)
+    tree
 
   /** Suppress warning in a tree, such as a patvar name allowed by special convention. */
   val NoWarn = Property.StickyKey[Unit]
@@ -656,8 +687,10 @@ object CheckUnused:
            m.isDeprecated
         || m.is(Synthetic) && !m.isAnonymousFunction
         || m.hasAnnotation(defn.UnusedAnnot) // param of unused method
+        || sym.name.startsWith("_") // convenient syntax to avoid needing @unused
         || sym.info.isSingleton
         || m.isConstructor && m.owner.thisType.baseClasses.contains(defn.AnnotationClass)
+        || sym.isErased // erased param may be unused by design
       def checkExplicit(): Unit =
         // A class param is unused if its param accessor is unused.
         // (The class param is not assigned to a field until constructors.)
@@ -724,6 +757,7 @@ object CheckUnused:
              tps.hasAnnotation(dd.LanguageFeatureMetaAnnot)
         || sym.info.isSingleton // DSL friendly
         || sym.info.dealias.isInstanceOf[RefinedType] // can't be expressed as a context bound
+        || sym.isErased // erased param is unused by design
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
         && !m.isEffectivelyOverride
@@ -791,7 +825,7 @@ object CheckUnused:
         def editPosAt(srcPos: SrcPos, forDeletion: Boolean): SrcPos =
           val start = srcPos.span.start
           val end = srcPos.span.end
-          val content = srcPos.sourcePos.source.content()
+          val content = srcPos.sourcePos.source.textContent()
           val prev = content.lastIndexWhere(c => !isWhitespace(c), end = start - 1)
           val emptyLeft = prev < 0 || isLineBreakChar(content(prev))
           val next = content.indexWhere(c => !isWhitespace(c), from = end)
@@ -823,8 +857,8 @@ object CheckUnused:
         def deletion(editPos: SrcPos): List[CodeAction] = actionsOf(editPos -> "")
         def textFor(impsel: ImpSel): String =
           val (imp, sel) = impsel
-          val content = imp.srcPos.sourcePos.source.content()
-          def textAt(pos: SrcPos) = String(content.slice(pos.span.start, pos.span.end))
+          val content = imp.srcPos.sourcePos.source.textContent()
+          def textAt(pos: SrcPos) = content.substring(pos.span.start, pos.span.end)
           val qual = textAt(imp.expr.srcPos) // keep original
           val selector = textAt(sel.srcPos)  // keep original
           s"$qual.$selector"                 // don't succumb to vagaries of show
@@ -863,9 +897,9 @@ object CheckUnused:
               for imp <- lostClauses do
                 val actions =
                   if imp == existing.last then
-                    val content = imp.srcPos.sourcePos.source.content()
+                    val content = imp.srcPos.sourcePos.source.textContent()
                     val prev = existing.lastIndexWhere(i0 => keeping.exists((i, _) => i == i0))
-                    val comma = content.indexOf(',', from = existing(prev).srcPos.span.end)
+                    val comma = content.indexOf(',', /*fromIndex =*/ existing(prev).srcPos.span.end)
                     val commaPos = imp.srcPos.sourcePos.withSpan:
                       Span(start = comma, end = existing(prev + 1).srcPos.span.start)
                     val srcPos = imp.srcPos
@@ -895,9 +929,9 @@ object CheckUnused:
                 else if !lostClauses.contains(imp) then
                   val actions =
                     if sel == imp.selectors.last then
-                      val content = sel.srcPos.sourcePos.source.content()
+                      val content = sel.srcPos.sourcePos.source.textContent()
                       val prev = imp.selectors.lastIndexWhere(s0 => keeping.exists((_, s) => s == s0))
-                      val comma = content.indexOf(',', from = imp.selectors(prev).srcPos.span.end)
+                      val comma = content.indexOf(',', /*fromIndex =*/ imp.selectors(prev).srcPos.span.end)
                       val commaPos = sel.srcPos.sourcePos.withSpan:
                         Span(start = comma, end = imp.selectors(prev + 1).srcPos.span.start)
                       val editPos = sel.srcPos
@@ -1080,7 +1114,7 @@ object CheckUnused:
     def namePos: SrcPos =
       sym.srcPos.sourcePos.withSpan:
         val span = sym.span
-        Span(span.start, span.start + sym.name.toString.length)
+        Span(span.start, span.start + sym.name.length)
 
   extension (sel: ImportSelector)
     def boundTpe: Type = sel.bound match

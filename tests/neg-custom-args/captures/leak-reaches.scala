@@ -20,9 +20,9 @@ def runAll2(consume xs: List[Proc]): Unit =
     cur = cur.tail
 
 def runAll3(xs: List[Proc]): Unit =
-  val cur = Ref[List[Proc]](xs) // error
+  val cur = Ref[List[Proc]](xs)
   while cur.get.nonEmpty do
-    val next: () => Unit = cur.get.head // error // error
+    val next: () => Unit = cur.get.head // error
     next()
     cur.set(cur.get.tail: List[Proc])
 
@@ -45,9 +45,6 @@ object Nil extends List[Nothing]
 
 def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
   z => g(f(z))
-
-def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
-  ps.map((x, y) => compose1(x, y)) // error // error // error
 
 def mapCompose2[A, C^](ps: List[(A ->{C} A, A ->{C} A)]): List[A ->{C} A] =
   ps.map((x, y) => compose1(x, y)) // error

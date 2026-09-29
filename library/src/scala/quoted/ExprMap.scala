@@ -1,6 +1,7 @@
 package scala.quoted
 
 import language.experimental.captureChecking
+import scala.annotation.unused
 
 trait ExprMap:
 
@@ -10,6 +11,7 @@ trait ExprMap:
    *
    *  @tparam T the type of the expression being transformed
    *  @param e the expression to transform
+   *  @return the transformed expression of type `T`
    */
   def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T]
 
@@ -19,6 +21,7 @@ trait ExprMap:
    *
    *  @tparam T the type of the expression whose children are transformed
    *  @param e the expression whose direct sub-expressions will be transformed via `transform`
+   *  @return an expression of type `T` with each direct sub-expression replaced by the result of applying `transform` to it
    */
   def transformChildren[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = {
     import quotes.reflect.*
@@ -128,7 +131,7 @@ trait ExprMap:
           case _ =>
             transformTermChildren(tree, tpe)(owner)
 
-      def transformTypeTree(tree: TypeTree)(owner: Symbol): TypeTree = tree
+      def transformTypeTree(tree: TypeTree)(@unused owner: Symbol): TypeTree = tree
 
       def transformCaseDef(tree: CaseDef, tpe: TypeRepr)(owner: Symbol): CaseDef =
         CaseDef.copy(tree)(tree.pattern, tree.guard.map(x => transformTerm(x, TypeRepr.of[Boolean])(owner)), transformTerm(tree.rhs, tpe)(owner))

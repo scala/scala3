@@ -26,7 +26,11 @@ import Capabilities.Capability
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
 import reporting.Message.Note
+import reporting.IllegalVarianceInSpecializedTraitsNote
 import scala.util.boundary, boundary.break
+import dotty.tools.dotc.transform.Specialization
+import dotty.tools.dotc.transform.DesugarSpecializedTraits
+import scala.util.control.NonFatal
 
 /** Provides methods to compare types.
  */
@@ -50,6 +54,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     GADTused = false
     opaquesUsed = false
     recCount = 0
+    appliedRecCount = 0
+    appliedMonitored = false
     needsGc = false
     maxErrorLevel = -1
     errorNotes = Nil
@@ -58,6 +64,33 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
+  /** Tracks the `(tycon, args, other, fromBelow, constraint)` tuples currently
+   *  being compared by [[compareAppliedTypeParamRef]] to guard against infinite recursion.
+   *  See https://github.com/scala/scala3/issues/24537.
+   */
+  private var pendingAppliedTypeParamRefs:
+    util.MutableSet[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)] | Null = null
+  private var appliedRecCount = 0
+  private var appliedMonitored = false
+
+  private inline def guardAppliedTypeParamRef(
+      tycon: TypeParamRef, args: List[Type], other: AppliedType, fromBelow: Boolean)(inline op: Boolean): Boolean =
+    def monitoredAppliedTypeParamRef =
+      if pendingAppliedTypeParamRefs == null then
+        pendingAppliedTypeParamRefs = util.HashSet[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)]()
+      val key = (tycon, args, other, fromBelow, constraint)
+      !pendingAppliedTypeParamRefs.nn.contains(key) && {
+        pendingAppliedTypeParamRefs.nn += key
+        try op finally pendingAppliedTypeParamRefs.nn -= key
+      }
+
+    appliedRecCount += 1
+    try
+      if appliedRecCount >= Config.LogPendingAppliedTypeParamRefsThreshold then
+        appliedMonitored = true
+      if appliedMonitored then monitoredAppliedTypeParamRef else op
+    finally appliedRecCount -= 1
+
   private var recCount = 0
   private var monitored = false
 
@@ -111,6 +144,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     pendingSubTypes match
       case null => ()
       case ps => assert(ps.isEmpty)
+    pendingAppliedTypeParamRefs match
+      case null => ()
+      case ps => assert(ps.isEmpty)
     assert(canCompareAtoms == true)
     assert(successCount == 0)
     assert(totalCount == 0)
@@ -160,7 +196,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def testSubType(tp1: Type, tp2: Type): CompareResult =
     GADTused = false
     opaquesUsed = false
-    if !topLevelSubType(tp1, tp2) then CompareResult.Fail(Nil)
+    errorNotes = Nil
+    if !topLevelSubType(tp1, tp2) then CompareResult.Fail(errorNotes.map(_._2))
     else if GADTused then CompareResult.OKwithGADTUsed
     else if opaquesUsed then CompareResult.OKwithOpaquesUsed // we cast on GADTused, so handles if both are used
     else CompareResult.OK
@@ -225,14 +262,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       this.leftRoot = tp1
     }
     else this.approx = a
-    try recur(tp1, tp2)
-    catch {
-      case ex: Throwable => handleRecursive("subtype", i"$tp1 <:< $tp2", ex, weight = 2)
-    }
-    finally {
+    try
+      recur(tp1, tp2)
+    finally
       this.approx = savedApprox
       this.leftRoot = savedLeftRoot
-    }
   }
 
   def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, ApproxState.Fresh)
@@ -548,19 +582,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1 @ CapturingType(parent1, refs1) =>
         def compareCapturing =
           if tp2.isAny then true
-          else if compareCaptures(tp1, refs1, tp2, tp2.captureSet)
+          else if compareCaptures(tp1, refs1, tp2)
             || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
             || parent1.isSingleton && refs1.elems.forall(parent1 eq _)
           then
-            def remainsBoxed1 = parent1.isBoxedCapturing || parent1.dealias.match
+            def remainsBoxed1 = parent1.hasBoxedCapset || parent1.dealias.match
               case parent1: TypeRef =>
-                parent1.superType.isBoxedCapturing
+                parent1.superType.hasBoxedCapset
                 // When comparing a type parameter with boxed upper bound on the left
                 // we should not strip the box on the right. See i24543.scala.
               case _ =>
                 false
             val tp2a =
-              if tp1.isBoxedCapturing && !remainsBoxed1 then tp2.unboxed else tp2
+              if tp1.hasBoxedCapset && !remainsBoxed1 then tp2.unboxed else tp2
             recur(parent1, tp2a)
           else thirdTry
         compareCapturing
@@ -672,8 +706,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // TODO: Merge with isSubInfo in hasMatchingMember. Currently, we can't since
             // the isSubinfo of hasMatchingMember has problems dealing with PolyTypes
             // (---> orphan params during pickling)
-            def isSubInfo(info1: Type, info2: Type): Boolean =
-              try (info1, info2) match
+            def isSubInfo(info1: Type, info2: Type): Boolean = printOnAssertionError(i"error while subinfo $info1 <:< $info2"):
+              (info1, info2) match
                 case (info1: PolyType, info2: PolyType) =>
                   info1.paramNames.hasSameLengthAs(info2.paramNames)
                   && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
@@ -682,18 +716,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
                 case (info1 @ CapturingType(parent1, refs1), info2: Type)
                 if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
-                  compareCaptures(info1, refs1, info2, info2.captureSet)
+                  compareCaptures(info1, refs1, info2)
                     && isSubInfo(parent1, info2)
-                case (info1: Type, CapturingType(parent2, refs2))
+                case (info1: Type, CapturingType(parent2, _))
                 if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
                   val refs1 = info1.captureSet
-                  (refs1.isAlwaysEmpty || compareCaptures(info1, refs1, info2, refs2))
+                  (refs1.isAlwaysEmpty || compareCaptures(info1, refs1, info2))
                     && isSubInfo(info1, parent2)
                 case _ =>
                   isSubType(info1, info2)
-              catch case ex: AssertionError =>
-                println(i"error while subinfo $info1 <:< $info2")
-                throw ex
 
             if defn.isFunctionType(tp2) then
               if tp2.derivesFrom(defn.PolyFunctionClass) then
@@ -702,10 +733,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 tp1w.widenDealias match
                   case tp1: RefinedType =>
                     return
-                      try isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
-                      catch case ex: AssertionError =>
-                        println(i"error while subInfo ${tp1.refinedInfo} <:< ${tp2.refinedInfo}")
-                        throw ex
+                      printOnAssertionError(i"error while subInfo ${tp1.refinedInfo} <:< ${tp2.refinedInfo}"):
+                        isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
                   case _ =>
           end if
 
@@ -876,7 +905,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case CapturingType(parent2, refs2) =>
         def compareCapturing: Boolean =
           val refs1 = tp1.captureSet
-          try
+          printOnAssertionError(i"assertion failed while compare captured $tp1 <:< $tp2"):
             if refs1.isAlwaysEmpty && refs1.mutability == CaptureSet.Mutability.Ignored then
               recur(tp1, parent2)
             else parent2 match
@@ -896,15 +925,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   case _ =>
                     false
                 singletonOK
-                || compareCaptures(tp1, refs1, tp2, refs2)
-                    && (recur(tp1.widen.stripCapturing, parent2)
+                || compareCaptures(tp1, refs1, tp2)
+                    && (recur(tp1.widen.stripOneCapturing, parent2)
                       || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
                           // this alternative is needed in case the right hand side is a
                           // capturing type that contains the lhs as an alternative of a union type.
                       )
-          catch case ex: AssertionError =>
-            println(i"assertion failed while compare captured $tp1 <:< $tp2")
-            throw ex
         compareCapturing || fourthTry
       case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || tp1.isBottomType) &&
@@ -917,8 +943,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
         compareClassInfo
-      case tp2: FlexibleType =>
-        recur(tp1, tp2.lo)
       case _ =>
         fourthTry
     }
@@ -1049,15 +1073,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         def tp1widened =
           val tp1w = tp1.underlying.widenExpr
-          if isCaptureCheckingOrSetup then
-            tp1
-              .match
-                case tp1: Capability if isCaptureCheckingOrSetup && tp1.isTracked =>
-                  CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
-                case _ =>
-                  tp1w
-              .withReachCaptures(tp1)
-          else tp1w
+          tp1 match
+            case tp1: Capability if isCaptureCheckingOrSetup && tp1.isTracked =>
+              CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
+            case _ =>
+              tp1w
 
         comparePaths || isSubType(tp1widened, tp2, approx.addLow)
       case tp1: RefinedType =>
@@ -1131,8 +1151,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1: ExprType if ctx.phaseId > gettersPhase.id =>
         // getters might have converted T to => T, need to compensate.
         recur(tp1.widenExpr, tp2)
-      case tp1: FlexibleType =>
-        recur(tp1.hi, tp2)
       case _ =>
         false
     }
@@ -1277,9 +1295,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 tl => otherTycon.appliedTo(bodyArgs(tl)))
             else
               otherTycon
-          rollbackConstraintsUnless:
-            (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon))
-              && directionalRecur(adaptedTycon.appliedTo(args), other)
+          /** Break the i24537 cycle when neither the comparison nor its constraint changes. */
+          guardAppliedTypeParamRef(tycon, args, other, fromBelow):
+            rollbackConstraintsUnless:
+              (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon))
+                && directionalRecur(adaptedTycon.appliedTo(args), other)
         }
       }
     end compareAppliedTypeParamRef
@@ -1450,7 +1470,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        *    tp1 <:< app2   using isSubType (this might instantiate params in tp2)
        */
       def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean =
-        if ((tycon2bounds.lo `eq` tycon2bounds.hi) && !tycon2bounds.isMatchAlias)
+        val tyconKeepsMatchAlias =
+          if tyconIsTypeRef then
+            tycon2 match
+              case tycon2ref: TypeRef => TypeApplications.isNonRecursiveMatchAlias(tycon2ref)
+              case _ => false
+          else
+            tycon2bounds.isMatchAlias
+        if ((tycon2bounds.lo `eq` tycon2bounds.hi) && !tyconKeepsMatchAlias)
           if (tyconIsTypeRef) recur(tp1, tp2.superTypeNormalized) && recordGadtUsageIf(MatchType.thatReducesUsingGadt(tp2))
           else isSubApproxHi(tp1, tycon2bounds.lo.applyIfParameterized(args2))
         else
@@ -1633,9 +1660,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           rollBack(savedLogSize)
       val savedSuccessCount = successCount
       try
-        val result = inNestedLevel:
-          if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
-          if monitored then monitoredIsSubType else firstTry
+        val result =
+          ctx.handleRecursive("is subtype?", () => i"$tp1 <:< $tp2"):
+            inNestedLevel:
+              if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
+              if monitored then monitoredIsSubType else firstTry
         if !result then restore()
         else if recCount == 0 && needsGc then
           state.gc()
@@ -1643,13 +1672,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if (Stats.monitored) recordStatistics(result, savedSuccessCount)
         result
       catch
-        case ex: AssertionError =>
-          showGoal(tp1, tp2)
-          recCount -= 1
-          restore()
-          successCount = savedSuccessCount
-          throw ex
-        case ex: Exception =>
+        case NonFatal(ex) =>
+          if ex.isInstanceOf[AssertionError] then showGoal(tp1, tp2)
           recCount -= 1
           restore()
           successCount = savedSuccessCount
@@ -1928,15 +1952,38 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   // to the argument type. If subCapturesRange returns true we know that arg1's'
                   // capture set can be unified with arg2's capture set, so it only remains to
                   // check the underlying types with `isSubArg`.
-                  && isSubArg(arg1.hi.stripCapturing, arg2.stripCapturing)
+                  && isSubArg(arg1.hi.stripOneCapturing, arg2.stripOneCapturing)
                 || compareCaptured(arg1, arg2)
               case ExprType(arg1res)
               if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
                    && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
-                if v < 0 then isSubType(arg2, arg1)
-                else if v > 0 then isSubType(arg1, arg2)
+                if v < 0 then 
+                  val isValidSubtype = isSubType(arg2, arg1)
+                  // Specialized traits have special variance rules because they have special erasure
+                  if tp1.classSymbol.isSpecializedTrait
+                     && Specialization.traitParamIsSpecialized(tp1.classSymbol, tparam.paramRef.typeSymbol)
+                     && isValidSubtype
+                     && !(DesugarSpecializedTraits.isSameErasureBucket(arg1, arg2))
+                  then
+                    addErrorNote(IllegalVarianceInSpecializedTraitsNote())
+                    false
+                  else // Normal contravariance case
+                    isValidSubtype
+                else if v > 0 then 
+                  val isValidSubtype = isSubType(arg1, arg2)
+                  // Specialized traits have special variance rules because they have special erasure
+                  if tp1.classSymbol.isSpecializedTrait
+                     && Specialization.traitParamIsSpecialized(tp1.classSymbol, tparam.paramRef.typeSymbol)
+                     && isValidSubtype
+                     && (arg1 ne arg2)
+                     && (arg1.classSymbol == defn.NothingClass)
+                  then
+                    addErrorNote(IllegalVarianceInSpecializedTraitsNote())
+                    false
+                  else // Normal covariance case
+                    isValidSubtype
                 else isSameType(arg2, arg1)
 
         val arg1 = args1.head
@@ -2066,7 +2113,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       // check whether `op2` generates a weaker constraint than `op1`
       val leftConstraint = constraint
       constraint = preConstraint
-      val res = try op catch case _: TypeError => false
+      // See tests/pos-deep-subtype/i21015.scala for an example of why this try/catch is needed
+      val res =
+        try
+          op
+        catch
+          case _: RecursionOverflow => false
       if !(res && subsumes(leftConstraint, constraint, preConstraint)) then
         if constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint) then
           constr.println(i"CUT - prefer $leftConstraint over $constraint")
@@ -2534,7 +2586,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   }
 
   /** The greatest lower bound of two types */
-  def glb(tp1: Type, tp2: Type): Type = // trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true):
+  def glb(tp1: Type, tp2: Type): Type = ctx.handleRecursive("find the greatest lower bound of", () => i"$tp1 and $tp2"): // trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true):
     if tp1 eq tp2 then tp1
     else if !tp1.exists || (tp1 eq WildcardType) then tp2
     else if !tp2.exists || (tp2 eq WildcardType) then tp1
@@ -2940,11 +2992,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet,
       vs: CaptureSet.VarState = makeVarState())(using Context): Boolean =
-    try
+    printOnAssertionError(i"fail while subCaptures $refs1 <:< $refs2"):
       refs1.subCaptures(refs2, vs)
-    catch case ex: AssertionError =>
-      println(i"fail while subCaptures $refs1 <:< $refs2")
-      throw ex
 
   /**
    *  - Compare capture sets using subCaptures. If the lower type derives from Stateful and the
@@ -2953,20 +3002,32 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *    whether the capture set `refs1` of `tp1` is subcapture of the empty set?
    *    In the latter case, boxing status does not matter.
    */
-  protected def compareCaptures(tp1: Type, refs1: CaptureSet, tp2: Type, refs2: CaptureSet): Boolean =
+  protected def compareCaptures(tp1: Type, refs1: CaptureSet, tp2: Type): Boolean =
     val refs1Adapted =
       if tp1.derivesFromStateful && !tp2.derivesFromStateful
       then refs1.readOnly
       else refs1
-    val subc = subCaptures(refs1Adapted, refs2)
+    val subc = subCaptures(refs1Adapted, tp2.captureSet)
     if !subc then
       errorNotes match
         case (level, CaptureSet.MutAdaptFailure(cs, NoType, NoType)) :: rest =>
           errorNotes = (level, CaptureSet.MutAdaptFailure(cs, tp1, tp2)) :: rest
         case _ =>
-    subc
-    && (tp1.isBoxedCapturing == tp2.isBoxedCapturing
-        || refs1.subCaptures(CaptureSet.EmptyOfBoxed(tp1, tp2), makeVarState()))
+    subc && (tp1.isBoxCompatibleWith(tp2) || healBoxDifference(tp1, tp2))
+
+  /** Try to heal a box difference of `tp1` with another unboxed type `tp2` by forcing
+   *  all boxed capture capture sets in `tp1` to be empty.
+   */
+  private def healBoxDifference(tp1: Type, tp2: Type)(using Context): Boolean = tp1.dealias match
+    case tp1 @ CapturingType(parent, refs) =>
+      (  !tp1.isBoxed || tp2.isBoxed
+      || refs.subCaptures(CaptureSet.EmptyOfBoxed(tp1, tp2), makeVarState())
+      || { capt.println(i"box mismatch for $tp1 <:< $tp2, ${tp1.hasBoxedCapset}")
+           false
+         }
+      ) && healBoxDifference(parent, tp2)
+    case _ =>
+      true
 
   protected def logUndoAction(action: () => Unit) =
     undoLog += action
@@ -3222,7 +3283,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case AppliedType(_, args) => args
           cls.typeParams.sizeCompare(typeArgs) == 0
 
-        def existsCommonBaseTypeWithDisjointArguments: Boolean =
+        def existsCommonBaseTypeWithDisjointArguments: Boolean = ctx.handleRecursive("check if there is a common base type with disjoint arguments of", () => i"$tp1 $tp2"):
           if !typeArgsMatch(tp1, cls1) || !typeArgsMatch(tp2, cls2) then
             /* We have an unapplied polymorphic class type or otherwise not star-kinded one.
              * This does not happen with match types, but happens when coming from the Space engine.
@@ -3344,18 +3405,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           || (cannotBeNothing(tp1) || cannotBeNothing(tp2))
       }
 
-    args1.lazyZip(args2).lazyZip(cls.typeParams).exists {
-      (arg1, arg2, tparam) =>
-        val v = tparam.paramVarianceSign
-        if (v > 0)
-          covariantDisjoint(arg1, arg2, tparam)
-        else if (v < 0)
-          // Contravariant case: a value where this type parameter is
-          // instantiated to `Any` belongs to both types.
-          false
-        else
-          invariantDisjoint(arg1, arg2, tparam)
-    }
+    ctx.handleRecursive("are args provably disjoint for", cls):
+      args1.lazyZip(args2).lazyZip(cls.typeParams).exists {
+        (arg1, arg2, tparam) =>
+          val v = tparam.paramVarianceSign
+          if (v > 0)
+            covariantDisjoint(arg1, arg2, tparam)
+          else if (v < 0)
+            // Contravariant case: a value where this type parameter is
+            // instantiated to `Any` belongs to both types.
+            false
+          else
+            invariantDisjoint(arg1, arg2, tparam)
+      }
   end provablyDisjointTypeArgs
 
   protected def explainingTypeComparer(short: Boolean) = ExplainingTypeComparer(comparerContext, short)
@@ -3462,7 +3524,7 @@ object TypeComparer {
         def show: String =
           val lo = if low then " (left is approximated)" else ""
           val hi = if high then " (right is approximated)" else ""
-          lo ++ hi
+          lo + hi
   end ApproxState
   type ApproxState = ApproxState.Repr
 
@@ -3594,7 +3656,7 @@ object TypeComparer {
   def logUndoAction(action: () => Unit)(using Context): Unit =
     currentComparer.logUndoAction(action)
 
-  def inNestedLevel(op: => Boolean)(using Context): Boolean =
+  inline def inNestedLevel(inline op: Boolean)(using Context): Boolean =
     currentComparer.inNestedLevel(op)
 
   def addErrorNote(note: Note)(using Context): Unit =
@@ -3643,7 +3705,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
 
   override def matchReducer = this
 
-  def matchCases(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = {
+  def matchCases(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = ctx.handleRecursive("match cases for", scrut) {
     // a reference for the type parameters poisoned during matching
     // for use during the reduction step
     var poisoned: Set[TypeParamRef] = Set.empty
@@ -4011,7 +4073,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
 }
 
 /** A type comparer that can record traces of subtype operations
- *  @param short  if true print only failing forward traces; never print succesful
+ *  @param short  if true print only failing forward traces; never print successful
  *                subtraces; never print backtraces starting with `<==`.
  */
 class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeComparer(initctx) {

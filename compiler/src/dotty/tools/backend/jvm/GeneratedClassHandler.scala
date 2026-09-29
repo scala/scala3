@@ -1,5 +1,7 @@
 package dotty.tools.backend.jvm
 
+import dotty.tools.backend.jvm.opt.OptimizerIssue
+
 import java.nio.channels.ClosedByInterruptException
 import java.util.concurrent.*
 import scala.collection.mutable.ListBuffer
@@ -24,9 +26,9 @@ private[jvm] sealed trait GeneratedClassHandler {
 
   /**
    * If running in parallel, block until all generated classes are handled.
-   * Returns any exceptions encountered during processing, with the corresponding file.
+   * Returns any exceptions encountered during processing, with the corresponding file path.
    */
-  def complete(): List[(Throwable, AbstractFile)]
+  def complete(): List[(Throwable, String)]
 
   /**
     * Invoked at the end of the jvm phase
@@ -44,20 +46,20 @@ private[jvm] object GeneratedClassHandler {
     new AsyncWritingClassHandler(postProcessor, javaExecutor)
   }
 
-  def withGlobalOptimizations(handler: GeneratedClassHandler): GeneratedClassHandler =
-    new GlobalOptimisingGeneratedClassHandler(handler)
+  def withGlobalOptimizations(handler: GeneratedClassHandler, issueSink: OptimizerIssue => Unit): GeneratedClassHandler =
+    new GlobalOptimisingGeneratedClassHandler(handler, issueSink)
 
-  private class GlobalOptimisingGeneratedClassHandler(underlying: GeneratedClassHandler) extends GeneratedClassHandler {
+  private class GlobalOptimisingGeneratedClassHandler(underlying: GeneratedClassHandler, issueSink: OptimizerIssue => Unit) extends GeneratedClassHandler {
     override val postProcessor: PostProcessor = underlying.postProcessor
 
     private val generatedUnits = ListBuffer.empty[GeneratedCompilationUnit]
 
     def process(unit: GeneratedCompilationUnit): Unit = generatedUnits += unit
 
-    def complete(): List[(Throwable, AbstractFile)] = {
+    def complete(): List[(Throwable, String)] = {
       val allGeneratedUnits = generatedUnits.result()
       generatedUnits.clear()
-      postProcessor.runGlobalOptimizations(allGeneratedUnits)
+      postProcessor.runGlobalOptimizations(allGeneratedUnits, issueSink)
       allGeneratedUnits.foreach(underlying.process)
       underlying.complete()
     }
@@ -85,7 +87,7 @@ private[jvm] object GeneratedClassHandler {
         tastyRef.elem.foreach(postProcessor.sendToDisk)
         tastyRef.elem = null
 
-      processingUnits += new CompilationUnitInPostProcess(unit.sourceFile, task)
+      processingUnits += new CompilationUnitInPostProcess(unit.sourcePath, task)
     }
 
     private val executionContext: ExecutionContextExecutor = ExecutionContext.fromExecutor(javaExecutor)
@@ -96,7 +98,7 @@ private[jvm] object GeneratedClassHandler {
       result
     }
 
-    final def complete(): List[(Exception, AbstractFile)] = {
+    final def complete(): List[(Exception, String)] = {
       def stealWhileWaiting(unitInPostProcess: CompilationUnitInPostProcess): Unit = {
         val task = unitInPostProcess.task
         while (!task.isCompleted)
@@ -127,7 +129,7 @@ private[jvm] object GeneratedClassHandler {
           Nil
         catch
           case _: ClosedByInterruptException => throw new InterruptedException()
-          case e: Exception => List((e, unitInPostProcess.sourceFile))
+          case e: Exception => List((e, unitInPostProcess.sourcePath))
       }
     }
   }
@@ -157,5 +159,5 @@ private[jvm] object GeneratedClassHandler {
    * State for a compilation unit being post-processed.
    * Keeps a reference to the future that runs the post-processor.
    */
-  final private class CompilationUnitInPostProcess(val sourceFile: AbstractFile, val task: Future[Unit])
+  final private class CompilationUnitInPostProcess(val sourcePath: String, val task: Future[Unit])
 }

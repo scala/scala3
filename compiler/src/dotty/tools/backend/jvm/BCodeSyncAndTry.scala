@@ -3,7 +3,7 @@ package backend
 package jvm
 
 import scala.collection.immutable
-import scala.tools.asm
+import org.objectweb.asm
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.ast.tpd
@@ -22,8 +22,8 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
    */
   class SyncAndTryBuilder extends PlainBodyBuilder {
 
-    def genSynchronized(tree: Apply, expectedType: BType)(using Context): BType = (tree: @unchecked) match {
-      case Apply(TypeApply(fun, _), args) =>
+    /** Precondition: the target of the 'synchronized' call must already be on the stack. (`tree` is only used for positions) */
+    def genSynchronized(tree: Tree, args: List[Tree], expectedType: BType)(using Context): BType = {
       val monitor = locals.makeLocal(bTypes.ObjectRef, "monitor", defn.ObjectType, tree.span)
       val monCleanup = new asm.Label
 
@@ -32,8 +32,9 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       val hasResult = expectedType != UNIT
       val monitorResult: Symbol | Null = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", defn.ObjectType, tree.span) else null
 
-      /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
-      genLoadQualifier(fun)
+      /* ------ (0) the monitor itself has been pushed to stack already, precondition of this method. ------ */
+
+      /* ------ (1) entering the monitor, also keeping a reference to it in a local var. ------ */
       bc.dup(bTypes.ObjectRef)
       locals.store(monitor)
       emit(asm.Opcodes.MONITORENTER)
@@ -402,7 +403,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
           val local = stashLocals(i)
           bc.load(local.idx, local.tk)
           if local.tk.isRef then
-            bc.emit(asm.Opcodes.ACONST_NULL)
+            bc.nullconst()
             bc.store(local.idx, local.tk)
 
         stack.restoreFullStack(acquiredStack.nn)
@@ -410,7 +411,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
         if resultLoc != null then
           bc.load(resultLoc.idx, kind)
           if kind.isRef then
-            bc.emit(asm.Opcodes.ACONST_NULL)
+            bc.nullconst()
             bc.store(resultLoc.idx, kind)
       end if // stashLocals != null
 

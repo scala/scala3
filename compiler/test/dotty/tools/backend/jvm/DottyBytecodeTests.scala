@@ -2,15 +2,14 @@ package dotty.tools.backend.jvm
 
 import dotty.DottyBytecodeTest
 
-import scala.language.unsafeNulls
 import org.junit.Assert.*
 import org.junit.Test
 
-import scala.tools.asm
-import scala.tools.asm.*
-import scala.tools.asm.tree.*
-import scala.tools.asm.Opcodes
-import scala.tools.asm.Opcodes.*
+import org.objectweb.asm
+import org.objectweb.asm.*
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.Opcodes.*
 import scala.jdk.CollectionConverters.*
 
 class DottyBytecodeTests extends DottyBytecodeTest {
@@ -27,7 +26,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn)
       val methodNode = getMethod(clsNode, "foo")
       correctNumberOfNullChecks(2, methodNode.instructions)
@@ -42,7 +41,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn)
       val methodNode: MethodNode = getMethod(clsNode, "byNameParam")
 
@@ -64,8 +63,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
                  |}""".stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Foo$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val methodNode = getMethod(moduleNode, "foo")
       assert(verifySwitch(methodNode))
     }
@@ -86,8 +85,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
                  |}""".stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Foo$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val methodNode = getMethod(moduleNode, "foo")
       assert(verifySwitch(methodNode))
     }
@@ -107,8 +106,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Foo$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val methodNode = getMethod(moduleNode, "foo")
       assert(verifySwitch(methodNode))
     }
@@ -129,8 +128,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Foo$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val methodNode = getMethod(moduleNode, "foo")
       assert(verifySwitch(methodNode))
     }
@@ -151,8 +150,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Foo$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val methodNode = getMethod(moduleNode, "foo")
       assert(verifySwitch(methodNode))
     }
@@ -172,8 +171,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Foo$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val methodNode = getMethod(moduleNode, "foo")
       assert(verifySwitch(methodNode))
     }
@@ -193,8 +192,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Foo$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val methodNode = getMethod(moduleNode, "foo")
       assert(verifySwitch(methodNode))
     }
@@ -215,8 +214,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Foo$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val methodNode = getMethod(moduleNode, "foo")
       assert(verifySwitch(methodNode))
     }
@@ -243,8 +242,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Foo$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val methodNode = getMethod(moduleNode, "foo")
       assert(verifySwitch(methodNode))
     }
@@ -271,8 +270,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Foo$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val methodNode = getMethod(moduleNode, "foo")
       assert(verifySwitch(methodNode))
     }
@@ -289,8 +288,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn = dir.lookupName("Test.class", directory = false)
-      val clsNode = loadClassNode(clsIn.input)
+      val clsIn = lookupClass(dir, "Test.class")
+      val clsNode = loadClassNode(clsIn)
       val method = getMethod(clsNode, "test")
       val throwMatchError = instructionsFromMethod(method).exists {
         case Op(Opcodes.ATHROW) => true
@@ -310,8 +309,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
                  |  }
                  |}""".stripMargin
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Foo$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val methodNode = getMethod(moduleNode, "foo")
 
       assert(verifySwitch(methodNode, shouldFail = true))
@@ -327,8 +326,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
                  |  def arr = Array.ofDim[Int](2, 1)
                  |}""".stripMargin
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Arr$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Arr$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val method     = getMethod(moduleNode, "arr")
 
       val hadCorrectInstr =
@@ -354,8 +353,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
                  |  def arr4 = Array.ofDim[Map[String, String]](2)
                  |}""".stripMargin
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Arr$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Arr$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val arr1       = getMethod(moduleNode, "arr1")
       val arr2       = getMethod(moduleNode, "arr2")
       val arr3       = getMethod(moduleNode, "arr3")
@@ -406,8 +405,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
                  |}""".stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn   = dir.lookupName("Arr$.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn   = lookupClass(dir, "Arr$.class")
+      val moduleNode = loadClassNode(moduleIn)
       val arr1       = getMethod(moduleNode, "arr1")
       val arr2       = getMethod(moduleNode, "arr2")
 
@@ -434,8 +433,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn = dir.lookupName("Test.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn = lookupClass(dir, "Test.class")
+      val moduleNode = loadClassNode(moduleIn)
       val method = getMethod(moduleNode, "test")
 
       val arrayWrapped = instructionsFromMethod(method).exists {
@@ -460,8 +459,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn = dir.lookupName("Test.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn = lookupClass(dir, "Test.class")
+      val moduleNode = loadClassNode(moduleIn)
       val method = getMethod(moduleNode, "test")
 
       val hasInstanceof = instructionsFromMethod(method).exists {
@@ -482,8 +481,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
     checkBCode(source) { dir =>
       for ((clsName, methodName) <- List(("Case", "equals"), ("Value$", "equals$extension"))) {
-        val moduleIn = dir.lookupName(s"$clsName.class", directory = false)
-        val moduleNode = loadClassNode(moduleIn.input)
+        val moduleIn = lookupClass(dir, s"$clsName.class")
+        val moduleNode = loadClassNode(moduleIn)
         val equalsMethod = getMethod(moduleNode, methodName)
 
         val callsEquals = instructionsFromMethod(equalsMethod).exists {
@@ -507,7 +506,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
     checkBCode(source) { dir =>
       // We check the method call signature to make sure we don't call a Java bridge
-      val clsIn = dir.lookupName("Test.class", directory = false).input
+      val clsIn = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val testMethod = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(testMethod)
@@ -530,7 +529,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
     checkBCode(source) { dir =>
       // We test that the anonymous class generated for the partial function
       // holds the method implementations and does not use forwarders
-      val clsIn = dir.lookupName("Foo$$anon$1.class", directory = false).input
+      val clsIn = lookupClass(dir, "Foo$$anon$1.class")
       val clsNode = loadClassNode(clsIn)
       val applyOrElse = getMethod(clsNode, "applyOrElse")
       val instructions = instructionsFromMethod(applyOrElse)
@@ -554,8 +553,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn = dir.lookupName("Test.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn = lookupClass(dir, "Test.class")
+      val moduleNode = loadClassNode(moduleIn)
       val method = getMethod(moduleNode, "test")
 
       val fooInvoke = instructionsFromMethod(method).exists {
@@ -579,8 +578,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val moduleIn = dir.lookupName("Test.class", directory = false)
-      val moduleNode = loadClassNode(moduleIn.input)
+      val moduleIn = lookupClass(dir, "Test.class")
+      val moduleNode = loadClassNode(moduleIn)
       val method = getMethod(moduleNode, "test")
 
       val instructions = instructionsFromMethod(method)
@@ -604,7 +603,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val test    = getMethod(clsNode, "test")
       val ref     = getMethod(clsNode, "ref")
@@ -630,7 +629,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
 
@@ -659,7 +658,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "x$lzyINIT1$1")
       assertEquals(32, instructionsFromMethod(method).size)
@@ -675,7 +674,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
 
@@ -707,14 +706,14 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(sourceUnsafe) { dir =>
-      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
       assertEquals(14, instructionsFromMethod(method).size)
     }
 
     checkBCode(sourceSafe) { dir =>
-      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
       assertEquals(23, instructionsFromMethod(method).size)
@@ -725,8 +724,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
   private def checkReleaseFence(releaseFenceExpected: Boolean, outputClassName: String, source: String): Unit = {
     checkBCode(source) { dir =>
-      val clsIn = dir.lookupName(outputClassName, directory = false)
-      val clsNode = loadClassNode(clsIn.input)
+      val clsIn = lookupClass(dir, outputClassName)
+      val clsNode = loadClassNode(clsIn)
       val method = getMethod(clsNode, "<init>")
 
       val hasReleaseFence = instructionsFromMethod(method).exists {
@@ -813,8 +812,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
   private def checkFinalClass(outputClassName: String, source: String) = {
     checkBCode(source) {
       dir =>
-        val moduleIn   = dir.lookupName(outputClassName, directory = false)
-        val moduleNode = loadClassNode(moduleIn.input)
+        val moduleIn   = lookupClass(dir, outputClassName)
+        val moduleNode = loadClassNode(moduleIn)
         assert((moduleNode.access & Opcodes.ACC_FINAL) != 0)
     }
   }
@@ -878,7 +877,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
 
@@ -906,7 +905,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
 
@@ -948,7 +947,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Base.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Base.class")
       val clsNode = loadClassNode(clsIn)
       val f = getMethod(clsNode, "f")
       val x = getField(clsNode, "x")
@@ -976,7 +975,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Base.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Base.class")
       val clsNode = loadClassNode(clsIn)
       val f = getMethod(clsNode, "f")
       val x = getField(clsNode, "x")
@@ -1009,8 +1008,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(List(sourceA, sourceB)) { dir =>
-      val clsNodeA = loadClassNode(dir.lookupName("A.class", directory = false).input, skipDebugInfo = false)
-      val clsNodeB = loadClassNode(dir.lookupName("B.class", directory = false).input, skipDebugInfo = false)
+      val clsNodeA = loadClassNode(lookupClass(dir, "A.class"), skipDebugInfo = false)
+      val clsNodeB = loadClassNode(lookupClass(dir, "B.class"), skipDebugInfo = false)
       val a1 = getMethod(clsNodeA, "a1")
       val a2 = getMethod(clsNodeA, "a2")
       val b1 = getMethod(clsNodeB, "b1")
@@ -1048,7 +1047,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         |}
       """.stripMargin
     checkBCode(code) { dir =>
-      val c = loadClassNode(dir.lookupName("C.class", directory = false).input, skipDebugInfo = false)
+      val c = loadClassNode(lookupClass(dir, "C.class"), skipDebugInfo = false)
       val t = getMethod(c, "t")
       val instructions = instructionsFromMethod(t)
       val isFrameLine = (x: Instruction) => x.isInstanceOf[FrameEntry] || x.isInstanceOf[LineNumber]
@@ -1087,7 +1086,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
     checkBCode(source) { dir =>
       // The mutable local vars for n and acc reuse the slots of the params n and acc
 
-      val fooClass = loadClassNode(dir.lookupName("Foo.class", directory = false).input)
+      val fooClass = loadClassNode(lookupClass(dir, "Foo.class"))
       val factMeth = getMethod(fooClass, "fact")
 
       assertSameCode(factMeth, List(
@@ -1115,7 +1114,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
       // The mutable local vars for this and acc reuse the slots of `this` and of the param acc
 
-      val intListClass = loadClassNode(dir.lookupName("IntList.class", directory = false).input)
+      val intListClass = loadClassNode(lookupClass(dir, "IntList.class"))
       val sumMeth = getMethod(intListClass, "sum")
 
       assertSameCode(sumMeth, List(
@@ -1162,7 +1161,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
          """.stripMargin
 
     checkBCode(source) { dir =>
-      val fooClass = loadClassNode(dir.lookupName("Foo.class", directory = false).input)
+      val fooClass = loadClassNode(lookupClass(dir, "Foo.class"))
 
       // ---------------
 
@@ -1189,19 +1188,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         VarOp(ILOAD, 5),
         Op(IRETURN),
         Label(19),
-        Field(GETSTATIC, "scala/package$", "MODULE$", "Lscala/package$;"),
-        Invoke(INVOKEVIRTUAL, "scala/package$", "Nil", "()Lscala/collection/immutable/Nil$;", false),
-        VarOp(ALOAD, 2),
-        Invoke(INVOKESTATIC, "java/util/Objects", "equals", "(Ljava/lang/Object;Ljava/lang/Object;)Z", false),
-        Jump(IFEQ, Label(28)),
         IntOp(BIPUSH, 20),
-        Op(IRETURN),
-        Label(28),
-        TypeOp(NEW, "scala/MatchError"),
-        Op(DUP),
-        VarOp(ALOAD, 2),
-        Invoke(INVOKESPECIAL, "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false),
-        Op(ATHROW),
+        Op(IRETURN)
       ))
 
       // ---------------
@@ -1275,7 +1263,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
          """.stripMargin
 
     checkBCode(source) { dir =>
-      val fooClass = loadClassNode(dir.lookupName("Foo.class", directory = false).input)
+      val fooClass = loadClassNode(lookupClass(dir, "Foo.class"))
 
       // ---------------
 
@@ -1390,7 +1378,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
          """.stripMargin
 
     checkBCode(source) { dir =>
-      val sourceMapWriterClass = loadClassNode(dir.lookupName("SourceMapWriter.class", directory = false).input)
+      val sourceMapWriterClass = loadClassNode(lookupClass(dir, "SourceMapWriter.class"))
 
       // ---------------
 
@@ -1483,7 +1471,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn)
       val before1    = instructionsFromMethod(getMethod(clsNode, "before1"))
       val before2    = instructionsFromMethod(getMethod(clsNode, "before2"))
@@ -1503,21 +1491,21 @@ class DottyBytecodeTests extends DottyBytecodeTest {
     import Opcodes.*
 
     checkBCode(List(invocationReceiversTestCode.definitions("Object"))) { dir =>
-      val c1 = loadClassNode(dir.lookupName("C1.class", directory = false).input)
-      val c2 = loadClassNode(dir.lookupName("C2.class", directory = false).input)
+      val c1 = loadClassNode(lookupClass(dir, "C1.class"))
+      val c2 = loadClassNode(lookupClass(dir, "C2.class"))
       assertSameCode(getMethod(c1, "clone"), List(VarOp(ALOAD, 0), Invoke(INVOKESTATIC, "T", "clone$", "(LT;)Ljava/lang/Object;", true), Op(ARETURN)))
       assertInvoke(getMethod(c1, "f1"), "T", "clone")
-      assertInvoke(getMethod(c1, "f2"), "T", "clone")
+      assertInvoke(getMethod(c1, "f2"), "U", "clone")
       assertInvoke(getMethod(c1, "f3"), "C1", "clone")
       assertInvoke(getMethod(c2, "f1"), "T", "clone")
-      assertInvoke(getMethod(c2, "f2"), "T", "clone")
+      assertInvoke(getMethod(c2, "f2"), "U", "clone")
       assertInvoke(getMethod(c2, "f3"), "C1", "clone")
     }
     checkBCode(List(invocationReceiversTestCode.definitions("String"))) { dir =>
-      val c1b = loadClassNode(dir.lookupName("C1.class", directory = false).input)
-      val c2b = loadClassNode(dir.lookupName("C2.class", directory = false).input)
-      val tb = loadClassNode(dir.lookupName("T.class", directory = false).input)
-      val ub = loadClassNode(dir.lookupName("U.class", directory = false).input)
+      val c1b = loadClassNode(lookupClass(dir, "C1.class"))
+      val c2b = loadClassNode(lookupClass(dir, "C2.class"))
+      val tb = loadClassNode(lookupClass(dir, "T.class"))
+      val ub = loadClassNode(lookupClass(dir, "U.class"))
 
       def ms(c: ClassNode, n: String) = c.methods.asScala.toList.filter(_.name == n)
       assert(ms(tb, "clone").length == 1)
@@ -1567,7 +1555,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(scalaSources = List(cC), javaSources = List(aC, bC, iC, jC)) { dir =>
-      val clsIn   = dir.subdirectoryNamed("b").lookupName("C.class", directory = false).input
+      val clsIn = lookupClass(dir.subdirectoryNamed("b"), "C.class")
       val c = loadClassNode(clsIn)
 
       assertInvoke(getMethod(c, "f1"), "a/B", "f") // receiver needs to be B (A is not accessible in class C, package b)
@@ -1587,7 +1575,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         |}
       """.stripMargin
     checkBCode(code) { dir =>
-      val c = loadClassNode(dir.lookupName("C.class", directory = false).input)
+      val c = loadClassNode(lookupClass(dir, "C.class"))
 
       assertInvoke(getMethod(c, "f1"), "[Ljava/lang/String;", "clone") // array descriptor as receiver
       assertInvoke(getMethod(c, "f2"), "java/lang/Object", "hashCode") // object receiver
@@ -1606,7 +1594,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         |}
       """.stripMargin
     checkBCode(code) { dir =>
-      val c = loadClassNode(dir.lookupName("C.class", directory = false).input)
+      val c = loadClassNode(lookupClass(dir, "C.class"))
       val f1 = getMethod(c, "f1")
       assertNoInvoke(f1, "scala/Tuple2$", "apply") // no Tuple2.apply call
       // no `new` instruction
@@ -1635,7 +1623,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(code) { dir =>
-      val c = loadClassNode(dir.lookupName("Test.class", directory = false).input)
+      val c = loadClassNode(lookupClass(dir, "Test.class"))
       assert((c.access & Opcodes.ACC_DEPRECATED) != 0)
       assert((getMethod(c, "f").access & Opcodes.ACC_DEPRECATED) != 0)
 
@@ -1660,7 +1648,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
          """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn)
       val meth1      = getMethod(clsNode, "meth1")
       val meth2      = getMethod(clsNode, "meth2")
@@ -1697,7 +1685,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         |}
         |""".stripMargin
     checkBCode(source){dir =>
-      val clsIn      = dir.lookupName("A.class", directory = false).input
+      val clsIn      = lookupClass(dir, "A.class")
       val clsNode    = loadClassNode(clsIn)
       def isFinal(access: Int) = (access & Opcodes.ACC_FINAL) != 0
 
@@ -1722,7 +1710,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
          """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn)
       def testSig(methodName: String, expectedDescriptor: String) = {
         val descriptor = clsNode.methods.asScala.filter(_.name == methodName).map(_.desc)
@@ -1748,7 +1736,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Main$.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Main$.class")
       val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
       val method  = getMethod(clsNode, "m")
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
@@ -1789,7 +1777,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Main$.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Main$.class")
       val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
       val method  = getMethod(clsNode, "m")
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
@@ -1824,7 +1812,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         |}
         |""".stripMargin
     checkBCode(c1) {dir =>
-      val clsIn = dir.lookupName("C.class", directory = false).input
+      val clsIn = lookupClass(dir, "C.class")
       val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
       val method = getMethod(clsNode, "m")
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
@@ -1852,7 +1840,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("A$.class", directory = false).input
+      val clsIn   = lookupClass(dir, "A$.class")
       val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
       val method  = getMethod(clsNode, "m2$1")
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
@@ -1877,7 +1865,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
          """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsIn      = lookupClass(dir, "Test.class")
       val clsNode    = loadClassNode(clsIn)
       val meth1      = getMethod(clsNode, "meth1")
       val meth2      = getMethod(clsNode, "meth2")
@@ -1903,7 +1891,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
          """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsIn      = lookupClass(dir, "Test.class")
       val clsNode    = loadClassNode(clsIn)
       val meth1      = getMethod(clsNode, "meth1")
       val meth2      = getMethod(clsNode, "meth2")
@@ -1931,7 +1919,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Main$.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Main$.class")
       val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
       val method  = getMethod(clsNode, "main")
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
@@ -1960,7 +1948,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Main$.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Main$.class")
       val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
       val method  = getMethod(clsNode, "main")
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
@@ -1991,7 +1979,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       |    super.receive()
       |    super.timers()""".stripMargin
     checkBCode(scalaSources = List(source), javaSources = List(javaSource)) { dir =>
-      val clsIn   = dir.lookupName("PersistentShardCoordinator.class", directory = false).input
+      val clsIn   = lookupClass(dir, "PersistentShardCoordinator.class")
       val clsNode = loadClassNode(clsIn)
 
       val expected = List("Actor", "Timers")
@@ -2017,7 +2005,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         |""".stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn = dir.lookupName("Test.class", directory = false).input
+      val clsIn = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
 
       // Get instructions for both methods
@@ -2054,7 +2042,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
     checkBCode(source) { dir =>
       // The main verification is that it compiles.
       // We can also check that `test` method exists.
-      val clsIn = dir.lookupName("Test.class", directory = false).input
+      val clsIn = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       assert(clsNode.methods.asScala.exists(_.name == "test"))
     }
@@ -2076,7 +2064,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
          |  @scala.annotation.varargs def v(x: String*): String = x(0)
          |""".stripMargin
     checkBCode(source) { dir =>
-      val clsIn = dir.lookupName("Test$.class", directory = false).input
+      val clsIn = lookupClass(dir, "Test$.class")
       val clsNode = loadClassNode(clsIn)
       for noMeth <- clsNode.methods.asScala if noMeth.name.startsWith("no") do
         assert(noMeth.signature == null, s"${noMeth.name} should not have a signature but does: ${noMeth.signature}")
@@ -2086,6 +2074,140 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val varargMeths = clsNode.methods.asScala.filter(_.name.startsWith("v"))
       val bridge = varargMeths.filter(_.desc == "([Ljava/lang/String;)Ljava/lang/String;").head
       assert(bridge.signature == null, "vararg bridges should not have generic signatures")
+    }
+  }
+
+  /** Java record patterns compile to plain accessor calls: the synthesized identity
+   *  `unapply` and the anonymous class hosting it are eliminated by InlinePatterns,
+   *  for monomorphic and polymorphic records alike.
+   */
+  @Test def javaRecordPatternsAreInlined = {
+    val recJava = "public record Rec(int x, String y) {}"
+    val recGenJava = "public record RecGen<T>(int x, T y) {}"
+    val source =
+      """class Test {
+        |  def mono(r: Rec): String = r match {
+        |    case Rec(i, s) => s * i
+        |  }
+        |  def poly(r: RecGen[String]): String = r match {
+        |    case RecGen(i, s) => s * i
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(List(source), List(recJava, recGenJava)) { dir =>
+      val classfiles = getGeneratedClassfiles(dir).map(_._1)
+      assert(!classfiles.exists(_.contains("$anon")),
+        s"no anonymous classes should be generated for record patterns, found: $classfiles")
+
+      val clsNode = loadClassNode(lookupClass(dir, "Test.class"))
+      for methName <- List("mono", "poly") do
+        val meth = getMethod(clsNode, methName)
+        val invokes = instructionsFromMethod(meth).collect { case i: Invoke => i.name }
+        assert(!invokes.contains("unapply"),
+          s"no unapply call should remain in $methName, found calls to: $invokes")
+        assert(invokes.contains("x") && invokes.contains("y"),
+          s"$methName should call the record's accessors directly, found calls to: $invokes")
+    }
+  }
+
+  @Test def synchronizedClassMethods = {
+    val source =
+      """|class A {
+         |  def yesBasic: Int = synchronized {
+         |    1
+         |  }
+         |  def yesExplicit: Int =
+         |    this.synchronized {
+         |      1
+         |    }
+         |  def yesExplicitWithBraces: Int = {
+         |    this.synchronized {
+         |      1
+         |    }
+         |  }
+         |  inline def noIsInline: Int = synchronized {
+         |    1
+         |  }
+         |  def noHasOtherCode: Int =
+         |    synchronized {
+         |      ()
+         |    }
+         |    1
+         |}
+         |object A {
+         |  @scala.annotation.static
+         |  def yesStaticOne: Int = synchronized {
+         |    1
+         |  }
+         |  def yesInModule: Int = synchronized {
+         |    1
+         |  }
+         |}
+         |""".stripMargin
+    checkBCode(source) { dir =>
+      val cls = loadClassNode(lookupClass(dir, "A.class"))
+      val clsMod = loadClassNode(lookupClass(dir, "A$.class"))
+      // ignore the forwarder one
+      val meths = cls.methods.asScala.filter(_.name != "yesInModule") ++ clsMod.methods.asScala
+      meths.filter(_.name.startsWith("yes")).foreach(m =>
+        assert((m.access & ACC_SYNCHRONIZED) != 0, s"method ${m.name} is not ACC_SYNCHRONIZED")
+        assertSameCode(m, List(
+          Op(ICONST_1),
+          Op(IRETURN)
+        ))
+      )
+      meths.filter(_.name.startsWith("no")).foreach(m =>
+        assert((m.access & ACC_SYNCHRONIZED) == 0, s"method ${m.name} is ACC_SYNCHRONIZED")
+      )
+    }
+  }
+
+  @Test def synchronizedInterfaceMethod = {
+    val source =
+      """|trait Test:
+         |  def m(x: Int): Int = synchronized { x }
+         |""".stripMargin
+    checkBCode(source) { dir =>
+      val clsIn = lookupClass(dir, "Test.class")
+      val clsNode = loadClassNode(clsIn)
+      val meth = clsNode.methods.asScala.find(_.name == "m").get
+      assert((meth.access & ACC_SYNCHRONIZED) == 0) // illegal!
+      val instrs = instructionsFromMethod(meth)
+      assert(instrs.contains(Op(MONITORENTER)))
+      assert(instrs.contains(Op(MONITOREXIT)))
+    }
+  }
+
+  @Test def arrayGetSetLength = {
+    val source =
+      """class Foo {
+         |  def get(a: Array[Int]) = a(1)
+         |  def set(a: Array[Double]) = a(2) = 0.0
+         |  def length(a: Array[Boolean]) = a.length
+         |}
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val fooClass = loadClassNode(lookupClass(dir, "Foo.class"))
+      assertSameCode(getMethod(fooClass, "get"), List(
+        VarOp(ALOAD, 1),
+        Op(ICONST_1),
+        Op(IALOAD),
+        Op(IRETURN)
+      ))
+      assertSameCode(getMethod(fooClass, "set"), List(
+        VarOp(ALOAD, 1),
+        Op(ICONST_2),
+        Op(DCONST_0),
+        Op(DASTORE),
+        Op(RETURN)
+      ))
+      assertSameCode(getMethod(fooClass, "length"), List(
+        VarOp(ALOAD, 1),
+        Op(ARRAYLENGTH),
+        Op(IRETURN)
+      ))
     }
   }
 }
@@ -2104,9 +2226,7 @@ object invocationReceiversTestCode {
         |  // invokeinterface T.clone
         |  def f1 = (this: T).clone()
         |
-        |  // cannot invokeinterface U.clone (NoSuchMethodError). Object.clone would work here, but
-        |  // not in the example in C2 (illegal access to protected). T.clone works in all cases and
-        |  // resolves correctly.
+        |  // invokeinterface U.clone
         |  def f2 = (this: U).clone()
         |
         |  // invokevirtual C1.clone()
@@ -2115,7 +2235,7 @@ object invocationReceiversTestCode {
         |
         |class C2 {
         |  def f1(t: T) = t.clone()  // invokeinterface T.clone
-        |  def f2(t: U) = t.clone()  // invokeinterface T.clone -- Object.clone would be illegal (protected, explained in C1)
+        |  def f2(t: U) = t.clone()  // invokeinterface U.clone -- Object.clone would be illegal (protected, explained in C1)
         |  def f3(t: C1) = t.clone() // invokevirtual C1.clone -- Object.clone would be illegal
         |}
     """.stripMargin

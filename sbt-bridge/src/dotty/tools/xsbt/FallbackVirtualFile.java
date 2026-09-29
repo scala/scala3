@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
  * the real virtual file can not be found.
  *
  * This has a very basic implementation of contentHash that is almost certainly colliding more than the implementation
- * in Zinc. It does not matter anyway as Zinc will recompile the associated source file, because it did not recieve the
+ * in Zinc. It does not matter anyway as Zinc will recompile the associated source file, because it did not receive the
  * same virtual file back.
  */
 public class FallbackVirtualFile extends xsbti.BasicVirtualFileRef implements xsbti.VirtualFile {
@@ -20,17 +20,12 @@ public class FallbackVirtualFile extends xsbti.BasicVirtualFileRef implements xs
     this.sourceFile = sourceFile;
   }
 
-  private static byte[] toBytes(char[] chars) {
-    return new String(chars).getBytes(StandardCharsets.UTF_8);
-  }
-
   public InputStream input() {
-    return new java.io.ByteArrayInputStream(toBytes(sourceFile.content()));
+    return new java.io.ByteArrayInputStream(sourceFile.textContent().getBytes(StandardCharsets.UTF_8));
   }
 
   public long contentHash() {
-    int murmurHash3 = scala.util.hashing.MurmurHash3$.MODULE$.bytesHash(toBytes(sourceFile.content()));
-    return (long) murmurHash3;
+      return scala.util.hashing.MurmurHash3$.MODULE$.stringHash(sourceFile.textContent());
   }
 
 }

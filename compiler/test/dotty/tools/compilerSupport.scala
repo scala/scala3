@@ -1,7 +1,5 @@
 package dotty.tools
 
-import scala.language.unsafeNulls
-
 import javax.tools.*
 import java.io.*
 import java.nio.file.*
@@ -43,7 +41,7 @@ def withJavaCompiled[T](javaSources: JavaFileObject*)(op: Path => T): T =
   try
     val javac = ToolProvider.getSystemJavaCompiler()
     val options = List("-d", javaOutputDir.toString)
-    javac.getTask(null, null, null, options.asJava, null, javaSources.asJava).call();
+    javac.getTask(null, null, null, options.asJava, null, javaSources.asJava).call()
     op(javaOutputDir)
   finally
     deleteDirectory(javaOutputDir.toFile)

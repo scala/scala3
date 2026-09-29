@@ -3,9 +3,8 @@ package dotc
 package config
 
 import WrappedProperties.AccessControl
-import io.{ClassPath, Directory, Path}
-import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath}
-import ClassPath.split
+import io.{Directory, Path}
+import classpath.{AggregateClassPath, ClassPath, ClassPathFactory, JrtClassPath}
 import PartialFunction.condOpt
 import core.Contexts.*
 import Settings.*
@@ -18,15 +17,9 @@ object PathResolver {
   // security exceptions.
   import AccessControl.*
 
-  def firstNonEmpty(xs: String*): String = xs find (_ != "") getOrElse ""
-
-  /** Map all classpath elements to absolute paths and reconstruct the classpath.
-   */
-  def makeAbsolute(cp: String): String = ClassPath.map(cp, x => Path(x).toAbsolute.path)
-
   /** pretty print class path
    */
-  def ppcp(s: String): String = split(s) match {
+  def ppcp(s: String): String = ClassPath.split(s) match {
     case Nil      => ""
     case Seq(x)   => x
     case xs       => xs.map("\n" + _).mkString
@@ -34,7 +27,7 @@ object PathResolver {
 
   /** Values found solely by inspecting environment or property variables.
    */
-  object Environment {
+  private object Environment {
     private def searchForBootClasspath = {
       import scala.jdk.CollectionConverters.*
       val props = System.getProperties
@@ -135,13 +128,6 @@ object PathResolver {
       )
   }
 
-  def fromPathString(path: String)(using Context): ClassPath = {
-    val settings = ctx.settings.classpath.update(path)
-    inContext(ctx.fresh.setSettings(settings)) {
-      new PathResolver().result
-    }
-  }
-
   /** Show values in Environment and Defaults when no argument is provided.
    *  Otherwise, show values in Calculated as if those options had been given
    *  to a scala runner.
@@ -163,7 +149,7 @@ object PathResolver {
 
       pr.result match {
         case cp: AggregateClassPath =>
-          println(s"ClassPath has ${cp.aggregates.size} entries and results in:\n${cp.asClassPathStrings}")
+          println(s"ClassPath has ${cp.aggregates.size} entries and results in:\n${cp.asURLs}")
       }
     }
 }
@@ -253,10 +239,8 @@ class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(usi
       )
   }
 
-  def containers: List[ClassPath] = Calculated.containers
-
   lazy val result: ClassPath = {
-    val cp = AggregateClassPath(containers.toIndexedSeq)
+    val cp = AggregateClassPath(Calculated.containers)
 
     if (settings.YlogClasspath.value) {
       Console.println("Classpath built from " + settings.toConciseString(ctx.settingsState))
@@ -269,6 +253,4 @@ class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(usi
     }
     cp
   }
-
-  def asURLs: Seq[java.net.URL] = result.asURLs
 }

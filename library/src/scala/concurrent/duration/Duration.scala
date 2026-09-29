@@ -37,6 +37,7 @@ object Duration {
    *
    *  @param length the duration length as a whole number
    *  @param unit the time unit in which `length` is measured
+   *  @return a finite duration of the given length in the given unit
    */
   def apply(length: Long, unit: TimeUnit): FiniteDuration = new FiniteDuration(length, unit)
 
@@ -61,6 +62,7 @@ object Duration {
    *  Undefined is designated by `"Duration.Undefined"`.
    *
    *  @param s the string to parse into a duration
+   *  @return the duration represented by the string, possibly infinite or undefined
    *  @throws NumberFormatException if format is not parsable
    */
   def apply(s: String): Duration = {
@@ -109,6 +111,7 @@ object Duration {
    *  The extractor will not match for malformed strings or non-finite durations.
    *
    *  @param s the string to parse and extract a length and time unit from
+   *  @return `Some` pair of length and time unit if the string parses to a finite duration, `None` otherwise
    */
   def unapply(s: String): Option[(Long, TimeUnit)] =
     ( try Some(apply(s)) catch { case _: RuntimeException => None } ) flatMap unapply
@@ -116,6 +119,7 @@ object Duration {
   /** Extracts length and time unit out of a duration, if it is finite.
    *
    *  @param d the duration to decompose into length and time unit
+   *  @return `Some` pair of length and time unit if `d` is finite, `None` otherwise
    */
   def unapply(d: Duration): Option[(Long, TimeUnit)] =
     if (d.isFinite) Some((d.length, d.unit)) else None
@@ -157,6 +161,7 @@ object Duration {
    *  this duration.
    *
    *  @param nanos the number of nanoseconds
+   *  @return a finite duration equal to `nanos` nanoseconds, expressed using the coarsest time unit that represents it exactly
    *  @throws IllegalArgumentException for `Long.MinValue` since that would lead to inconsistent behavior afterwards (cannot be negated)
    */
   def fromNanos(nanos: Long): FiniteDuration = {
@@ -273,6 +278,7 @@ object Duration {
    *
    *  @param length the duration length as a whole number
    *  @param unit the time unit in which `length` is measured
+   *  @return a finite duration of the given length in the given unit
    */
   def create(length: Long, unit: TimeUnit): FiniteDuration = apply(length, unit)
   /** Constructs a Duration from the given length and unit. Observe that nanosecond precision may be lost if
@@ -304,6 +310,7 @@ object Duration {
    *  designated by `"Inf"`, `"PlusInf"`, `"+Inf"` and `"-Inf"` or `"MinusInf"`.
    *
    *  @param s the string to parse into a duration
+   *  @return the duration represented by the string, possibly infinite or undefined
    *  @throws NumberFormatException if format is not parsable
    */
   def create(s: String): Duration                          = apply(s)
@@ -454,6 +461,7 @@ sealed abstract class Duration extends Serializable with Ordered[Duration] {
    *  - [[Duration.MinusInf]] is mapped to Double.NegativeInfinity
    *
    *  @param unit the time unit to convert to
+   *  @return the length of this duration expressed in the given `unit` as a `Double`
    */
   def toUnit(unit: TimeUnit): Double
 
@@ -531,6 +539,7 @@ sealed abstract class Duration extends Serializable with Ordered[Duration] {
    *  determined by Double as if calculating the quotient of the nanosecond lengths of both factors.
    *
    *  @param other the duration to divide by
+   *  @return the quotient of this and `other` as a floating-point number
    */
   def div(other: Duration): Double   = this / other
   def gt(other: Duration): Boolean   = this > other

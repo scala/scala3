@@ -169,6 +169,7 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     /** Given a possible new lower bound, chooses and returns the most constraining one (the maximum).
      *
      *  @param newFrom a possible new lower bound wrapped in a `Some`, or `None` if unconstrained
+     *  @return the more constraining of the current `from` and `newFrom` lower bounds, or `None` if both are unconstrained
      */
     private def pickLowerBound(newFrom: Option[K]): Option[K] = (from, newFrom) match {
       case (Some(fr), Some(newFr)) => Some(ordering.max(fr, newFr))
@@ -179,6 +180,7 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     /** Given a possible new upper bound, chooses and returns the most constraining one (the minimum).
      *
      *  @param newUntil a possible new upper bound wrapped in a `Some`, or `None` if unconstrained
+     *  @return the more constraining of the current `until` and `newUntil` upper bounds, or `None` if both are unconstrained
      */
     private def pickUpperBound(newUntil: Option[K]): Option[K] = (until, newUntil) match {
       case (Some(unt), Some(newUnt)) => Some(ordering.min(unt, newUnt))
@@ -189,6 +191,7 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     /** Returns true if the argument is inside the view bounds (between `from` and `until`).
      *
      *  @param key the key to check against the view bounds
+     *  @return `true` if `key` is at or above `from` (when defined) and strictly below `until` (when defined)
      */
     private def isInsideViewBounds(key: K): Boolean = {
       val afterFrom = from.isEmpty || ordering.compare(from.get, key) <= 0

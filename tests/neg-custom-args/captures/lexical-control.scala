@@ -15,7 +15,7 @@ def test =
       val z = 3
       val w = suspend(outer) {() => z} // ok
       val v = suspend(inner) {() => y} // ok
-      val u = suspend(inner): () =>
+      val u = suspend(inner): () =>  // error, was OK (???)
         suspend(outer) {() => y} // ok
         suspend(outer) {() => y} // ok
         y

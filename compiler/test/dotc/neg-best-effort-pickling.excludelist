@@ -20,6 +20,7 @@ i11226.scala # missing type
 i974.scala # cyclic reference
 i13864.scala # missing symbol in pickling
 type-params.scala # recursion limit exceeded
+26037.scala # recursion limit exceeded
 
 unsafe-dollar-in-name.scala # missing owner in unpickler
 unsafe-dollar-in-name-2.scala # missing owner in unpickler

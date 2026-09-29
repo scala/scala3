@@ -1,4 +1,4 @@
 class Bar(val i: Int) {
-  self: Any with AnyRef =>
+  self: Any & AnyRef =>
   def this() = this(0)
 }

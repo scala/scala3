@@ -131,7 +131,7 @@ class TypeTests extends ReplTest:
       storedOutput()
       // :type on a method reference shows its eta-expanded function type
       run(":type readRef")
-      assertEquals("Ref^{any.rd} -> Int", storedOutput().trim)
+      assertEquals("(r: Ref^{any.rd}) -> Int", storedOutput().trim)
     }
 
   // :type should display classifier-restricted captures (.only[...])
@@ -148,7 +148,7 @@ class TypeTests extends ReplTest:
     } andThen {
       storedOutput()
       run(":type restricted")
-      assertEquals("(() ->{any.only[Control]} Unit) -> Unit", storedOutput().trim)
+      assertEquals("(f: () ->{any.only[Control]} Unit) -> Unit", storedOutput().trim)
     }
 
   // :type should display capture sets on values

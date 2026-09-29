@@ -7,33 +7,23 @@ import dotty.tools.dotc.parsing.JavaParsers
 import dotty.tools.dotc.parsing.Parsers
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.AbstractFile
-import dotty.tools.io.ClassPath
 import dotty.tools.io.FileExtension
 import dotty.tools.io.Path
+import dotty.tools.dotc.classpath.ClassPath
 
-import java.io.File
-import scala.collection.mutable
-import dotty.tools.dotc.core.Contexts
+import scala.io.Codec
 
 /**
  * A compiler component that adds support for parsing Scala and Java source files and finding out
  * the logical package structure of the whole source path.
  */
-class LogicalPackagesProvider(sourcePath: String){
-
-  // We only use it for parser
-  private given Context = new ContextBase().initialCtx
-
-  private lazy val sourceRoots: Seq[SourceFile] =
-    allSources(sourcePath).map(f => SourceFile(f, f.toCharArray))
-
-  lazy val root: LogicalPackage = parseSourcePath()
-
+class LogicalPackagesProvider(sourcePath: String) {
   /**
    * Parse all source files in the sourcepath and build the logical package structure.
    */
-  def parseSourcePath(): LogicalPackage =
+  def root(using Context): LogicalPackage =
     val pkg: ParsedLogicalPackage = newPackage()
+    val sourceRoots = allSources(sourcePath).map(f => SourceFile(f, ctx.settings.sourceroot.value, Codec(ctx.settings.encoding.value)))
     for sourceFile <- sourceRoots do
       try
         parseSourceFile(sourceFile, pkg)
@@ -45,43 +35,32 @@ class LogicalPackagesProvider(sourcePath: String){
   private def newPackage(): ParsedLogicalPackage =
     new ParsedLogicalPackage("", None)
 
-  private def parseSourceFile(
-      sourceFile: SourceFile,
-      rootPackage: ParsedLogicalPackage
-  ): Unit =
+  private def parseSourceFile(sourceFile: SourceFile, rootPackage: ParsedLogicalPackage)(using Context): Unit =
     val fileName = sourceFile.path
-    if fileName.endsWith(".scala") then
-      parseScalaSourceFile(sourceFile, fileName, rootPackage)
-    else if fileName.endsWith(".java") then
-      parseJavaSourceFile(sourceFile, fileName, rootPackage)
+    if sourceFile.ext ==  FileExtension.Scala then
+      parseScalaSourceFile(sourceFile, rootPackage)
+    else if sourceFile.ext == FileExtension.Java then
+      parseJavaSourceFile(sourceFile, rootPackage)
 
-  private def parseScalaSourceFile(
-      sourceFile: SourceFile,
-      fileName: String,
-      rootPackage: ParsedLogicalPackage
-  ): Unit =
+  private def parseScalaSourceFile(sourceFile: SourceFile, rootPackage: ParsedLogicalPackage)(using Context): Unit =
     try
       // Use OutlineParser for fast parsing that skips method bodies
       val parser = new Parsers.OutlineParser(sourceFile)
       val tree = parser.parse()
-      val traverser = new SourceFileTraverser(fileName, rootPackage)
+      val traverser = new SourceFileTraverser(sourceFile, rootPackage)
       traverser.traverse(tree)
     catch
       case e: Exception =>
         // Silently ignore parsing errors
 
-  private def parseJavaSourceFile(
-      sourceFile: SourceFile,
-      fileName: String,
-      rootPackage: ParsedLogicalPackage
-  ): Unit =
+  private def parseJavaSourceFile(sourceFile: SourceFile, rootPackage: ParsedLogicalPackage)(using Context): Unit =
     try
       // Use OutlineJavaParser for fast parsing
       val parser = new JavaParsers.OutlineJavaParser(sourceFile)
       val tree = parser.parse()
 
       // Traverse the tree to extract package info
-      val traverser = new SourceFileTraverser(fileName, rootPackage)
+      val traverser = new SourceFileTraverser(sourceFile, rootPackage)
       traverser.traverse(tree)
     catch
       case e: Exception =>
@@ -91,7 +70,7 @@ class LogicalPackagesProvider(sourcePath: String){
    * Traverse an untyped AST to extract package and class definitions.
    */
   private class SourceFileTraverser(
-      fileName: String,
+      sourceFile: SourceFile,
       rootPackage: ParsedLogicalPackage
   ) {
     private var currentPackage = rootPackage
@@ -103,7 +82,7 @@ class LogicalPackagesProvider(sourcePath: String){
         traversePackageDef(pkg)
       case _: untpd.MemberDef =>
         // Top-level class or object in default package
-        currentPackage.enterSource(fileName)
+        currentPackage.enterSource(sourceFile.file.nn)
       case _ =>
 
     private def traversePackageDef(pkg: untpd.PackageDef): Unit = {
@@ -139,10 +118,10 @@ class LogicalPackagesProvider(sourcePath: String){
   /**
    * Return all Scala and Java sources from the given sourcepath string.
    */
-  private def allSources(srcPath: String): Seq[AbstractFile] = {
-    val entries = ClassPath.split(srcPath).map(Path(_))
-    def isRelevantFile(path: Path) =
-      path.ext == FileExtension.Scala || path.ext == FileExtension.Java
+  private def allSources(srcPath: String)(using Context): Seq[AbstractFile] = {
+    val entries = ClassPath.split(srcPath)
+    def isRelevantFile(path: String) =
+      path.endsWith(FileExtension.Scala.withDot) || path.endsWith(FileExtension.Java.withDot)
     // avoid using IO operation, assume standard extensions, Metals sends files so no sense checking for directories eagerly
     val rootDirs = entries.filter(f => !isRelevantFile(f))
     val rootFiles = for {
@@ -150,18 +129,15 @@ class LogicalPackagesProvider(sourcePath: String){
       if isRelevantFile(e)
       f <- Option(AbstractFile.getFile(e))
     } yield f
-    rootFiles ++ rootDirs.flatMap{ dir =>
-      Option(AbstractFile.getDirectory(dir)).toSeq.flatMap(sourcesIn(_, "scala", "java"))
+    rootFiles ++ rootDirs.flatMap { dir =>
+      Option(AbstractFile.getDirectory(dir, ctx.settings.javaOutputVersion.value)).toSeq.flatMap(sourcesIn(_, FileExtension.Scala.toLowerCase, FileExtension.Java.toLowerCase))
     }
   }
 
   /**
    * Recursively find all source files with given extensions in a directory.
    */
-  private def sourcesIn(
-      dir: AbstractFile,
-      extensions: String*
-  ): Seq[AbstractFile] =
+  private def sourcesIn(dir: AbstractFile, extensions: String*)(using Context): Seq[AbstractFile] =
     dir.iterator.toSeq.flatMap { file =>
       if (file.isDirectory) sourcesIn(file, extensions*)
       else if (extensions.exists(ext => file.name.endsWith(s".$ext"))) Seq(file)

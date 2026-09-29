@@ -1,9 +1,58 @@
-32: Pattern Match Exhaustivity: _: Trait & C1{val x: Int}
-48: Pattern Match Exhaustivity: _: Trait & (C1 | (C2 | T1)){val x: Int} & (C3 | (C4 | T2)){val x: Int}, _: Clazz & (C1 | (C2 | T1)){val x: Int} & (C3 | (C4 | T2)){val x: Int}
-54: Pattern Match Exhaustivity: _: Trait & (C1 | (C2 | T1)){val x: Int} & C3{val x: Int}
-59: Pattern Match Exhaustivity: _: Trait & (C1 & C2){val x: Int}
-65: Pattern Match Exhaustivity: _: Trait & (C1 | C2){val x: Int} & (C3 | SubC1){val x: Int}
-72: Pattern Match Exhaustivity: _: Trait & (T1 & (C1 | SubC2)){val x: Int} & (T2 & (C2 | C3 | SubC1)){val x: Int} &
-   SubSubC1{val x: Int}
-79: Pattern Match Exhaustivity: _: Trait & (T1 & (C1 | SubC2)){val x: Int} & (T2 & (C2 | C3 | SubC1)){val x: Int} &
-   SubSubC2{val x: Int}
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype-refinedtype-interaction.scala:32:41 
+32 |  def basic2(s: S & C1 { val x: Int }) = s match {
+   |                                         ^
+   |                match may not be exhaustive.
+   |
+   |                It would fail on pattern case: _: Trait & C1{val x: Int}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype-refinedtype-interaction.scala:48:4 
+48 |    s match {
+   |    ^
+   |match may not be exhaustive.
+   |
+   |It would fail on pattern case: _: Trait & (C1 | (C2 | T1)){val x: Int} & (C3 | (C4 | T2)){val x: Int}, _: Clazz & (C1 | (C2 | T1)){val x: Int} & (C3 | (C4 | T2)){val x: Int}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype-refinedtype-interaction.scala:54:4 
+54 |    s match {
+   |    ^
+   |match may not be exhaustive.
+   |
+   |It would fail on pattern case: _: Trait & (C1 | (C2 | T1)){val x: Int} & C3{val x: Int}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype-refinedtype-interaction.scala:59:4 
+59 |    s match {
+   |    ^
+   |    match may not be exhaustive.
+   |
+   |    It would fail on pattern case: _: Trait & (C1 & C2){val x: Int}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype-refinedtype-interaction.scala:65:4 
+65 |    s match {
+   |    ^
+   |match may not be exhaustive.
+   |
+   |It would fail on pattern case: _: Trait & (C1 | C2){val x: Int} & (C3 | SubC1){val x: Int}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype-refinedtype-interaction.scala:72:4 
+72 |    s match {
+   |    ^
+   |match may not be exhaustive.
+   |
+   |It would fail on pattern case: _: Trait & (T1 & (C1 | SubC2)){val x: Int} & (T2 & (C2 | C3 | SubC1)){val x: Int} &
+   |   SubSubC1{val x: Int}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype-refinedtype-interaction.scala:79:4 
+79 |    s match {
+   |    ^
+   |match may not be exhaustive.
+   |
+   |It would fail on pattern case: _: Trait & (T1 & (C1 | SubC2)){val x: Int} & (T2 & (C2 | C3 | SubC1)){val x: Int} &
+   |   SubSubC2{val x: Int}
+   |
+   | longer explanation available when compiling with `-explain`

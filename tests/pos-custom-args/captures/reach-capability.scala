@@ -1,7 +1,6 @@
 import language.experimental.captureChecking
 import annotation.experimental
 import caps.SharedCapability
-import caps.use
 
 @experimental object Test2:
 

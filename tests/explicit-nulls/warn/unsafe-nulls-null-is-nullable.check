@@ -1,0 +1,4 @@
+-- [E121] Pattern Match Warning: tests/explicit-nulls/warn/unsafe-nulls-null-is-nullable.scala:18:9 --------------------
+18 |    case _ => -1 // warn
+   |         ^
+   |         Unreachable case except for null (if this is intentional, consider writing case null => instead).

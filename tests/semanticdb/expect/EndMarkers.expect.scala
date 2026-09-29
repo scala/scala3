@@ -1,6 +1,6 @@
 package endmarkers:
 
-  class MultiCtor/*<-endmarkers::MultiCtor#*/(val i/*<-endmarkers::MultiCtor#i.*/: Int/*->scala::Int#*/):
+  class MultiCtor/*<-endmarkers::MultiCtor#*/(val i/*<-endmarkers::MultiCtor#i.*//*<-endmarkers::MultiCtor#`<init>`().(i)*/: Int/*->scala::Int#*/):
     def this/*<-endmarkers::MultiCtor#`<init>`(+1).*/() =
       this(23)
     end this/*->endmarkers::MultiCtor#`<init>`(+1).*/

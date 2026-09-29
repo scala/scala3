@@ -74,6 +74,7 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
    *  be more efficient than x.from(y).iterator
    *
    *  @param start The lower-bound (inclusive) of the iterator
+   *  @return an iterator over all elements greater than or equal to `start`, in this collection's ordering
    */
   def iteratorFrom(start: A): Iterator[A]
 
@@ -122,6 +123,7 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
    *
    *  @tparam B     the element type of the returned collection.
    *  @param f      the function to apply to each element.
+   *  @param ev     the `Ordering` for the new element type `B`, required to build the resulting sorted collection
    *  @return       a new $coll resulting from applying the given function
    *                `f` to each element of this $coll and collecting the results.
    */
@@ -133,6 +135,7 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
    *
    *  @tparam B     the element type of the returned collection.
    *  @param f      the function to apply to each element.
+   *  @param ev     the `Ordering` for the new element type `B`, required to build the resulting sorted collection
    *  @return       a new $coll resulting from applying the given collection-valued function
    *                `f` to each element of this $coll and concatenating the results.
    */
@@ -145,6 +148,7 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
    *
    *  @tparam  B     the type of the second half of the returned pairs
    *  @param   that  The iterable providing the second half of each result pair
+   *  @param ev      the `Ordering` for the resulting pair type `(A, B)`, required to build the resulting sorted collection
    *  @return        a new $coll containing pairs consisting of corresponding elements of this $coll and `that`.
    *                 The length of the returned collection is the minimum of the lengths of this $coll and `that`.
    */
@@ -159,6 +163,7 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
    *
    *  @tparam B     the element type of the returned collection.
    *  @param pf     the partial function which filters and maps the $coll.
+   *  @param ev     the `Ordering` for the new element type `B`, required to build the resulting sorted collection
    *  @return       a new $coll resulting from applying the given partial function
    *                `pf` to each element on which it is defined and collecting the results.
    *                The order of the elements is preserved.
@@ -177,6 +182,7 @@ object SortedSetOps {
    *
    *  @tparam A the element type of the sorted collection
    *  @tparam IterableCC the type constructor for the unsorted collection type
+   *  @tparam CC the type constructor for the sorted collection type, which must be a subtype of `SortedSet`
    */
   class WithFilter[+A, +IterableCC[_], +CC[X] <: SortedSet[X]](
     self: SortedSetOps[A, CC, ?] & IterableOps[A, IterableCC, ?],

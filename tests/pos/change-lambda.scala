@@ -1,4 +1,4 @@
-import language.experimental.relaxedLambdaSyntax
+//> using options -preview
 
 def foo(x: Any) = ???
 
