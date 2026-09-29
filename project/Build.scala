@@ -818,12 +818,21 @@ object Build {
       // ================================ SBT SCRIPT TEST SETTINGS ================================
       sbtTestDirectory := (ThisBuild / baseDirectory).value / "sbt-test",
 
-      // Meta-build uses sbt 2.x; scripted test builds still target sbt 1.x (zinc compilations, pipelining, etc.).
-      scriptedSbt := Constants.scriptedTestSbtVersion,
-      // scripted-sbt is published for Scala 2.12 only; this project uses Scala 3 (ScriptedPlugin uses %%).
+      // Run scripted test in sbt 1.x.
+      // TODO: migrate sbt 2.x scripted tests.
+      // On sbt 2, Zinc's stored analysis leaves compilations empty
+      // (allCompilations / getAllCompilations stay 0 after a real compile),
+      // so checkIterations and checkCompilations cannot read a count.
+      //
+      // We can't use scriptedSbt := "1.13.0", because it tries to resolve
+      // scripted-sbt_3 1.13.0, which isn't available
+      // (1.13.0 is published only for scripted-sbt_2.12).
+      // https://github.com/sbt/sbt/blob/121bab88bb46f73c1103f811cc3dce3dfcf2c930/main/src/main/scala/sbt/ScriptedPlugin.scala#L76-L79
+      // Here, we swap the sbt-launch (sbt-launcher for scripted test) to 1.x
+      // and keep scripted-sbt to use 2.x.
       libraryDependencies ~= { deps =>
-        deps.filterNot(d => d.organization == "org.scala-sbt" && d.name.startsWith("scripted-sbt")) :+
-          "org.scala-sbt" % "scripted-sbt_2.12" % Constants.scriptedTestSbtVersion % ScriptedConf
+        deps.filterNot(d => d.organization == "org.scala-sbt" && d.name == "sbt-launch") :+
+          "org.scala-sbt" % "sbt-launch" % Constants.scriptedTestSbtVersion % ScriptedLaunchConf
       },
       // The batch mode accidentally became the default with no way to disable
       // it in sbt 1.4 (https://github.com/sbt/sbt/issues/5913#issuecomment-716003195).
