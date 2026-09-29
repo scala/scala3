@@ -103,7 +103,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
     // We need to redefine it which requires reflective access
     Compile / missinglinkCheck := Def.uncached {
       val log = streams.value.log
-      given FileConverter = fileConverter.value
+      val converter: FileConverter = fileConverter.value
       val cp = (Compile / fullClasspath).value
       val classDir = (Compile / classDirectory).value
 
@@ -112,7 +112,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
           .find(_.getName == "loadArtifactsAndCheckConflicts")
           .getOrElse(sys.error("MissingLinkPlugin.loadArtifactsAndCheckConflicts not found"))
         method.setAccessible(true)
-        method.invoke(MissingLinkPlugin, cp, classDir, java.lang.Boolean.FALSE, (_ => true):ModuleFilter, log, summon[FileConverter])
+        method.invoke(MissingLinkPlugin, cp, classDir, java.lang.Boolean.FALSE, (_ => true):ModuleFilter, log, converter)
           .asInstanceOf[(Seq[Conflict], Map[?, ModuleID])]
       }
 
