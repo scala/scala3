@@ -1,5 +1,7 @@
 package dotty.tools.repl.worksheet
 
+import dotty.tools.repl.worksheet.WorksheetOutput.rendered
+
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -8,6 +10,10 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.jdk.CollectionConverters.*
 
 class WorksheetApiTest:
+  extension (evaluated: interfaces.EvaluatedWorksheet)
+    private def messages: List[String] =
+      evaluated.diagnostics.asScala.map(_.message).toList
+
   @Test def cancelsAnEvaluationInProgress(): Unit =
     val property = s"scala3.worksheet.cancel.${java.util.UUID.randomUUID()}"
     val evaluator = new WorksheetDriver()
@@ -17,9 +23,10 @@ class WorksheetApiTest:
         evaluator.evaluate(
           "cancel.worksheet.scala",
           s"""val before = 1
-             |System.setProperty("$property", "running")
              |var spin = 0L
-             |while true do spin += 1
+             |val ticking =
+             |  System.setProperty("$property", "running")
+             |  while true do spin += 1
              |val after = 2
              |""".stripMargin
         )
@@ -40,11 +47,15 @@ class WorksheetApiTest:
         Thread.sleep(100)
 
       assertFalse("the evaluation did not stop", worker.isAlive)
-      val details = outcome.get.statements.asScala.map(_.details).toList
-      assertFalse(details.mkString("\n"), details.exists(_.startsWith("after:")))
-      assertTrue(details.mkString("\n"), details.headOption.contains("before: Int = 1"))
-      val messages = outcome.get.diagnostics.asScala.map(_.message).toList
-      assertTrue(messages.mkString("\n"), messages.exists(_.contains("cancelled")))
+      assertEquals(
+        """|: Int = 1
+           |before: Int = 1
+           |
+           |: Long = 0L
+           |spin: Long = 0L""".stripMargin,
+        outcome.get.rendered
+      )
+      assertEquals(List("The worksheet evaluation was cancelled."), outcome.get.messages)
     finally
       System.clearProperty(property)
       if !worker.isAlive then evaluator.shutdown()

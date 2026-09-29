@@ -1,6 +1,7 @@
 package dotty.tools.repl.worksheet
 
 import dotty.tools.repl.ReplTest
+import dotty.tools.repl.worksheet.WorksheetOutput.rendered
 
 import WorksheetDiagnosticSeverity.Warning
 
@@ -23,11 +24,6 @@ class WorksheetSessionTest:
   extension (result: WorksheetResult)
     private def errors: List[WorksheetDiagnostic] =
       result.diagnostics.filter(_.severity == WorksheetDiagnosticSeverity.Error)
-
-    private def rendered: String =
-      result.statements
-        .map(statement => s"${statement.summary}\n${statement.details}")
-        .mkString("\n\n")
 
   @Test def evaluatesDefinitionsAndExpressionsInOneProgram(): Unit =
     val result = driver.evaluate(
