@@ -78,7 +78,7 @@ private[worksheet] final class WorksheetSession(
           errors.map(WorksheetDiagnostic.fromCompiler)
         )
 
-      case _ =>
+      case _ => // the rest of possible values related to commands, which are not supported
         current = current.copy(stale = true)
         if text.isBlank then WorksheetResult(Nil, Nil)
         else
