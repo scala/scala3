@@ -1,9 +1,11 @@
 package dotty.tools.repl.worksheet.interfaces;
 
+import dotty.tools.dotc.interfaces.SourcePosition;
+
 /** The output produced by one worksheet statement. */
 public interface EvaluatedWorksheetStatement {
   /** @return The statement's range in the original worksheet source */
-  RangePosition position();
+  SourcePosition position();
 
   /** @return A short result suitable for an inline editor hint */
   String summary();

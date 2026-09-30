@@ -1,5 +1,6 @@
 package dotty.tools.repl.worksheet
 
+import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.repl.ReplDriver
 import dotty.tools.repl.ScalaClassLoader.fromURLsParallelCapable
 import dotty.tools.repl.State
@@ -45,7 +46,7 @@ private final class ReplStartup(settings: Array[String]):
     message
       .map: text =>
         WorksheetDiagnostic(
-          WorksheetPosition(0, 0, 0, 0),
+          NoSourcePosition,
           text,
           if isUsable then WorksheetDiagnosticSeverity.Warning
           else WorksheetDiagnosticSeverity.Error

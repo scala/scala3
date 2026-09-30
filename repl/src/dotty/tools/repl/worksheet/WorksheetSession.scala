@@ -2,7 +2,10 @@ package dotty.tools.repl.worksheet
 
 import dotty.tools.directives.UsingDirectiveDiagnostic
 import dotty.tools.dotc.ast.untpd
+import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.repl.ParseResult
 import dotty.tools.repl.Parsed
 import dotty.tools.repl.ReplDirectives
@@ -31,16 +34,16 @@ private[worksheet] final class WorksheetSession(
 
       evaluated.copy(
         diagnostics =
-          current.startup.diagnostics ::: evaluated.diagnostics ::: cancellation(evaluated, text)
+          current.startup.diagnostics ::: evaluated.diagnostics ::: cancellation(evaluated, SourceFile.virtual(filename, text))
       )
 
-  private def cancellation(evaluated: WorksheetResult, text: String): List[WorksheetDiagnostic] =
+  private def cancellation(evaluated: WorksheetResult, source: SourceFile): List[WorksheetDiagnostic] =
     if !current.runner.isCancelled then Nil
     else if evaluated.diagnostics.exists(_.message == WorksheetDiagnostic.cancelled) then Nil
     else
       List(
         WorksheetDiagnostic(
-          WorksheetSession.lineRange(text, 0),
+          WorksheetSession.lineRange(source, 0),
           WorksheetDiagnostic.cancelled,
           WorksheetDiagnosticSeverity.Error
         )
@@ -48,30 +51,31 @@ private[worksheet] final class WorksheetSession(
 
   private def evaluateParsed(filename: String, text: String): WorksheetResult =
     given State = current.state
+    val source = SourceFile.virtual(filename, text)
     val declared = ReplDirectives.read(text)
-    ParseResult.complete(text) match
+    ParseResult(source) match
       case Parsed(_, trees, _, directiveDiagnostics) =>
-        val statements = WorksheetSource.statements(SourceFile.virtual(filename, text), trees)
+        val statements = WorksheetSource.statements(source, trees)
         if !current.canAppend(filename, text, statements, declared.lines) then
           current.close()
           current = SessionState.initial(settings, screenWidth)
         evaluateStatements(
           filename,
-          text,
+          source,
           declared,
           statements,
           parsesWhole = true,
-          WorksheetSession.directiveWarnings(text, directiveDiagnostics.toList)
+          WorksheetSession.directiveWarnings(source, directiveDiagnostics.toList)
         )
 
       case SyntaxErrors(_, errors, trees) =>
-        val statements = completeStatements(filename, text, trees)
+        val statements = completeStatements(source, trees)
         if !current.canAppend(filename, text, statements, declared.lines) then
           current.close()
           current = SessionState.initial(settings, screenWidth)
         evaluateStatements(
           filename,
-          text,
+          source,
           declared,
           statements,
           parsesWhole = false,
@@ -85,7 +89,7 @@ private[worksheet] final class WorksheetSession(
           WorksheetResult(
             List(
               WorksheetDiagnostic(
-                WorksheetSession.lineRange(text, 0),
+                WorksheetSession.lineRange(source, 0),
                 "REPL commands are not supported in worksheets.",
                 WorksheetDiagnosticSeverity.Error
               )
@@ -94,12 +98,11 @@ private[worksheet] final class WorksheetSession(
           )
 
   private def completeStatements(
-      filename: String,
-      text: String,
+      source: SourceFile,
       trees: List[untpd.Tree]
   )(using State): List[InputStatement] =
     WorksheetSource
-      .statements(SourceFile.virtual(filename, text), trees)
+      .statements(source, trees)
       .takeWhile: statement =>
         ParseResult.complete(statement.source) match
           case _: Parsed => true
@@ -107,7 +110,7 @@ private[worksheet] final class WorksheetSession(
 
   private def evaluateStatements(
       filename: String,
-      text: String,
+      source: SourceFile,
       declared: DirectiveLines,
       statements: List[InputStatement],
       parsesWhole: Boolean,
@@ -116,7 +119,7 @@ private[worksheet] final class WorksheetSession(
     val baseSession =
       if current.filename.isDefined then current
       else
-        val outcome = WorksheetDependencies.resolve(declared, text, current.state)
+        val outcome = WorksheetDependencies.resolve(declared, source, current.state)
         current.runner.addToClasspath(outcome.classpath, outcome.state)
         current.copy(
           state = outcome.state,
@@ -137,8 +140,8 @@ private[worksheet] final class WorksheetSession(
     current = baseSession.copy(
       filename = Some(filename),
       text =
-        if ranWholeText then text
-        else accepted.lastOption.fold("")(last => text.take(last.end)),
+        if ranWholeText then source.textContent()
+        else accepted.lastOption.fold("")(last => source.textContent().take(last.end)),
       inputStatements = accepted,
       evaluatedStatements = baseSession.evaluatedStatements ::: evaluation.statements,
       state = evaluation.state,
@@ -163,19 +166,21 @@ private[worksheet] final class WorksheetSession(
 
 private[worksheet] object WorksheetSession:
   private def directiveWarnings(
-      text: String,
+      source: SourceFile,
       parserDiagnostics: List[UsingDirectiveDiagnostic]
   ): List[WorksheetDiagnostic] =
     parserDiagnostics
       .distinctBy(diagnostic => (diagnostic.message, diagnostic.position.line))
       .map: diagnostic =>
         WorksheetDiagnostic(
-          lineRange(text, diagnostic.position.line),
+          lineRange(source, diagnostic.position.line),
           diagnostic.message,
           WorksheetDiagnosticSeverity.Warning
         )
 
-  private[worksheet] def lineRange(text: String, line: Int): WorksheetPosition =
-    text.linesIterator.drop(line).nextOption() match
-      case Some(content) => WorksheetPosition(line, 0, line, content.length)
-      case None => WorksheetPosition.none
+  private[worksheet] def lineRange(source: SourceFile, line: Int): SourcePosition =
+    source.textContent().linesIterator.drop(line).nextOption() match
+      case Some(content) =>
+        val start = source.lineToOffset(line)
+        source.atSpan(Span(start, start + content.length))
+      case None => NoSourcePosition

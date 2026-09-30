@@ -1,5 +1,7 @@
 package dotty.tools.repl.worksheet.interfaces;
 
+import dotty.tools.dotc.interfaces.Diagnostic;
+
 import java.nio.file.Path;
 import java.util.List;
 

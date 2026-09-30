@@ -1,5 +1,7 @@
 package dotty.tools.repl.worksheet
 
+import dotty.tools.dotc.util.SourceFile
+
 import dotty.tools.repl.DependencyResolver
 import dotty.tools.repl.ReplDirectives
 import dotty.tools.repl.ReplDirectives.DirectiveLines
@@ -24,13 +26,13 @@ private object WorksheetDependencies:
 
   def resolve(
       declared: DirectiveLines,
-      text: String,
+      source: SourceFile,
       state: State
   ): DirectiveOutcome =
     if declared.lines.isEmpty then DirectiveOutcome(Nil, Nil, Nil, Nil, state)
     else
       def diagnostic(line: Int, message: String, severity: WorksheetDiagnosticSeverity) =
-        WorksheetDiagnostic(WorksheetSession.lineRange(text, line), message, severity)
+        WorksheetDiagnostic(WorksheetSession.lineRange(source, line), message, severity)
 
       def error(line: Int, message: String) =
         diagnostic(line, message, WorksheetDiagnosticSeverity.Error)

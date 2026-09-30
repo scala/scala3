@@ -1,5 +1,8 @@
 package dotty.tools.repl.worksheet
 
+import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.util.Spans.Span
+
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -7,7 +10,7 @@ class WorksheetRenderingTest:
   private def summaryOf(value: String, screenWidth: Int): String =
     WorksheetRendering
       .render(
-        WorksheetPosition(0, 0, 0, 9),
+        SourceFile.virtual("rendering.worksheet.scala", "x" * 9).atSpan(Span(0, 9)),
         List(RenderedBinder.Value("x", "String", value)),
         "",
         screenWidth
