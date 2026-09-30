@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.TypeError
 import dotty.tools.dotc.core.tasty.TastyUnpickler
 import dotty.tools.dotc.interfaces.CompilerCallback
 import dotty.tools.dotc.profile.ProfiledThreadPool
-import dotty.tools.dotc.report
+import dotty.tools.dotc.{CompilationUnit, report}
 import dotty.tools.dotc.sbt.ExtractDependencies
 import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import dotty.tools.dotc.util.SourcePosition
@@ -81,15 +81,10 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
         pendingClassNodes ++= generatedClassNodes
       case None =>
         schedule(generatedClassNodes)
-    // Finally, call the callback at the same logical point the previous version of this code did.
-    // TODO: This appears to be unused. Can we remove it?
-    compilerCallback match
-      case null => ()
-      case cb => cb.onSourceCompiled(ctx.source)
   }
 
   /** Ensures all work is finished, files have been generated. Only call once per instance. */
-  def finish()(using ctx: Context): Unit = {
+  def finish(allUnits: List[CompilationUnit])(using ctx: Context): Unit = {
     // If we are running global optimizations, we haven't scheduled anything yet; run such optimizations first, then schedule everything.
     // Otherwise, we have scheduled everything already.
     globalOpt match
@@ -116,6 +111,9 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
             report.error(s"Error while emitting $path\n${e.getMessage}")
           case e =>
             throw e
+    // Finally, call the source compilation callback if requested.
+    // This is later than possible but correct.
+    if compilerCallback != null then allUnits.foreach(u => compilerCallback.onSourceCompiled(u.source))
   }
 
   /* Frees resources used by the code generation. Only call once per instance. */
