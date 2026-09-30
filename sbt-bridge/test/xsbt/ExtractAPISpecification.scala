@@ -155,6 +155,29 @@ class ExtractAPISpecification {
     assertTrue(SameAPI(namerApi1, namerApi2))
   }
 
+  // issue 27189: the API of a type projection must not depend on whether it is read from TASTy
+  @Test
+  def extractStableRepresentationOfTypeProjection = {
+    val srcLib =
+      """|trait BasicBackend { type Database >: Null <: AnyRef }
+         |trait JdbcBackend extends BasicBackend { class JdbcDatabaseDef; type Database = JdbcDatabaseDef }
+         |trait BasicProfile { type Backend <: BasicBackend }
+         |trait JdbcProfile extends BasicProfile { type Backend = JdbcBackend }
+         |trait PostgresProfile extends JdbcProfile
+         |""".stripMargin
+    val srcHas = "trait Has { def db: PostgresProfile#Backend#Database = ??? }"
+    val srcC = "class C extends Has"
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val apis = compilerForTesting.extractApisFromSrcs(List(srcLib), List(srcHas, srcC), List(srcC))
+    val _ :: _ :: fromSource :: fromTasty :: Nil = apis.toList: @unchecked
+    def db(apis: Seq[ClassLike]): String =
+      val c = apis.find(_.name == "C").get
+      dotty.tools.dotc.sbt.DefaultShowAPI(c.structure.inherited.find(_.name == "db").get)
+    // TODO: should be the same
+    assertEquals("def db: this#JdbcBackend#Database", db(fromSource))
+    assertEquals("def db: this#JdbcBackend#JdbcDatabaseDef", db(fromTasty))
+  }
+
   @Ignore
   def extractDifferentRepresentationForAnInheritedClass = {
     val src =
