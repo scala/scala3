@@ -1206,9 +1206,11 @@ trait Checking {
         then
           report.error(em"no aliases can be used to refer to a language import", path.srcPos)
 
-  /** Check that `path` is a legal prefix for an export clause */
-  def checkLegalExportPath(path: Tree, selectors: List[untpd.ImportSelector])(using Context): Unit =
-    checkLegalImportOrExportPath(path, "export prefix")
+  /** Check that `path` is a legal prefix for an export clause.
+   *  @return whether the path itself is legal
+   */
+  def checkLegalExportPath(path: Tree, selectors: List[untpd.ImportSelector])(using Context): Boolean =
+    val isLegalPath = !ctx.reporter.reportsErrorsFor(checkLegalImportOrExportPath(path, "export prefix"))
     if
       selectors.exists(_.isWildcard)
       && path.tpe.classSymbol.is(PackageClass)
@@ -1218,6 +1220,7 @@ trait Checking {
       report.error(
         em"Implementation restriction: ${path.tpe.classSymbol} is not a valid prefix for a wildcard export, as it is a package",
         path.srcPos)
+    isLegalPath
 
   /** Check that the definition name isn't root. */
   def checkNonRootName(name: Name, nameSpan: Span)(using Context): Unit =

@@ -22,6 +22,7 @@ object StripScala2Annotations {
 
   /** Extract the UUID bytes (16 bytes) from a TASTy file.
    *
+   *  Using our own TASTy header parser, instead of including tasty/src to metabuild.
    *  sbt 2.x's parent classloader fixes the meta-build to its own tasty-core, which is a bit
    *  older than this compiler, so `TastyHeaderUnpickler`'s version check would fail.
    */
@@ -34,12 +35,13 @@ object StripScala2Annotations {
       i += 1
       result
     }
-    // big-endian base 128
     def readNat(): Int = {
       val l = readLongNat()
       if (l > Int.MaxValue) fail(s"Expected a 31-bit nat, got: $l")
       l.toInt
     }
+    // big-endian base 128
+    // Derived from `readLongNat` impl in tasty/TastyReader
     def readLongNat(): Long = {
       val start = i
       var x = 0L
@@ -60,8 +62,8 @@ object StripScala2Annotations {
     if (fileMajor <= 27) { // old header layout, before tasty-core 3.0.0-M4
       fail(s"TASTy major $fileMajor does not use the header layout this build reads")
     } else {
-      val _ = readNat() // minor
-      val _ = readNat() // experimental
+      readNat() // minor
+      readNat() // experimental
       // toolingVersion
       val length = readNat()
       val start = i

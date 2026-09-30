@@ -169,7 +169,7 @@ object AccessProxies {
   def hostForAccessorOf(accessed: Symbol)(using Context): Symbol = {
     def recur(cls: Symbol): Symbol =
       if (!cls.exists) NoSymbol
-      else if ((cls.derivesFrom(accessed.owner) && !(accessed.is(Private) && (cls ne accessed.owner)))
+      else if ((cls.derivesFrom(accessed.protectedOwner) && !(accessed.is(Private) && (cls ne accessed.owner)))
               || cls.companionModule.moduleClass == accessed.owner)
       then cls
       else recur(cls.owner)
