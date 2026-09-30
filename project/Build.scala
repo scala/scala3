@@ -1054,12 +1054,14 @@ object Build {
       moduleName    := "scala2-library",
       scalaVersion  := Versions.scala2Version,
       version       := scalaVersion.value,
-      // This project uses Scala 2.13; replace inherited Scala 3 ThisBuild scalacOptions entirely.
-      Compile / scalacOptions := Seq(
-        "-feature",
-        "-deprecation",
-        "-unchecked",
-        "-encoding", "UTF8",
+      // Remove Scala 3 specific settings (and the unused params one, which is an issue that should be fixed in the 2.x stdlib)
+      scalacOptions --= Seq(
+        "--java-output-version:17",
+        "-Yexplicit-nulls",
+        "-Wsafe-init",
+        "-Wunused:params"
+      ),
+      scalacOptions ++= Seq(
         "-release:17",
         s"-sourcepath:${(Compile / sourceDirectory).value}",
         "-opt:local", // Important: local optimization are fine, inlining is prohibited!
@@ -1290,8 +1292,8 @@ object Build {
       // (not the actual version we use to compile the project)
       scalaVersion  := dottyNonBootstrappedVersion,
       // Add the source directories for the stdlib (non-bootstrapped)
-      Compile / unmanagedSourceDirectories :=
-        Seq(baseDirectory.value / "src") ++
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories ++=
         (`scala-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
       // Configure the source maps to point to GitHub for releases
       Compile / compile / scalacOptions ++= {
@@ -2562,11 +2564,9 @@ object Build {
     }
 
   def generateStaticAssetsTask = Def.task {
-    val contributors = (`scaladoc-js-contributors` / Compile / fullOptJS).value.data
-    val main = (`scaladoc-js-main` / Compile / fullOptJS).value.data
     DocumentationWebsite.generateStaticAssets(
-      contributors,
-      main,
+      (`scaladoc-js-contributors` / Compile / fullOptJS).value.data,
+      (`scaladoc-js-main` / Compile / fullOptJS).value.data,
       (`scaladoc-js-contributors` / Compile / baseDirectory).value / "css",
       (`scaladoc-js-common` / Compile / baseDirectory).value / "css",
       (Compile / resourceManaged).value,
