@@ -558,7 +558,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
             fBounded = tvar.origin.occursIn(ctx.typerState.constraint.nonParamBounds(tvar.origin).hi)
           yield
             if fBounded
-            then tl.paramInfos(pref.paramNum).hi.substParams(tl, List.fill(tl.paramNames.size)(defn.NothingType))
+            then tvar.instantiateWith(tl.paramInfos(pref.paramNum).hi.substParams(tl, List.fill(tl.paramNames.size)(defn.NothingType)))
             else tvar.instantiate(fromBelow = false)
           (AppliedType(classRef, targs), tl.instantiate(targs).asInstanceOf[MethodType], symss(1))
         case mt: MethodType =>
