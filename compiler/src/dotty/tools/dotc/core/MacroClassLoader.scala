@@ -28,7 +28,8 @@ object MacroClassLoader {
   private def makeMacroClassLoader(using Context): ClassLoader = trace("new macro class loader") {
     val dirs: List[AbstractFile] =
       def settingsUrls: List[AbstractFile] =
-        val entries = ClassPath.expandPath(ctx.settings.classpath.value, expandStar=true)
+        val cp = ctx.settings.classpath.value
+        val entries = ClassPath.expandPath(cp, expandStar=true)
         entries.map(cp =>
           dotty.tools.io.PlainFile(dotty.tools.io.Path(cp)) // may not exist, that's OK
         )
@@ -42,6 +43,6 @@ object MacroClassLoader {
       else
         settingsUrls
     val out = ctx.settings.outputDir.value // to find classes in case of suspended compilation
-    new AbstractFileClassLoader((dirs ++ List(out)).toArray, getClass.getClassLoader)
+    new AbstractFileClassLoader(dirs ++ Seq(out), getClass.getClassLoader)
   }
 }
