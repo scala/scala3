@@ -129,11 +129,11 @@ abstract class TokensCommon {
   def buildKeywordMap(keywords: TokenSet): Map[SimpleName, Token] = {
     val pairs =
       for
-        kw <- keywords
+        kw <- keywords.iterator
         ts = tokenString(kw)
         if ts != null && !ts.contains(' ')
       yield
-        (termName(ts), kw)
+        (termName(ts.nn), kw)
     pairs.toMap
   }
 }
