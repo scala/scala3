@@ -1261,8 +1261,11 @@ class Namer { typer: Typer =>
           val path = typedAhead(expr, _.withType(pathMethod.termRef))
           (path, pathMethod.info.finalResultType)
         else
-          val path = typedAheadExpr(expr, AnySelectionProto)
-          checkLegalExportPath(path, selectors)
+          // Local owner avoids clashes, which improves error reporting (#21976)
+          val path = typedAheadExpr(expr, AnySelectionProto)(using ctx.withOwner(newLocalDummy(cls, exp.span)))
+          // Nothing to forward from an illegal path, forwarders would only add errors (#21976)
+          if !checkLegalExportPath(path, selectors) then
+            return Nil
           (path, path.tpe)
       lazy val wildcardBound = importBound(selectors, isGiven = false)
       lazy val givenBound = importBound(selectors, isGiven = true)
