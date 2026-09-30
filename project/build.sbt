@@ -5,3 +5,4 @@ libraryDependencies += "org.ow2.asm" % "asm" % "9.9"
 // Used for manipulating YAML files in sidebar generation script
 libraryDependencies += "org.yaml" % "snakeyaml" % "2.4"
 
+scalacOptions += "-Xsource:3"
