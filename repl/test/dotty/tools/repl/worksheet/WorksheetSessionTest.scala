@@ -130,10 +130,7 @@ class WorksheetSessionTest:
         |""".stripMargin
     )
 
-    assertTrue(
-      result.diagnostics.toString,
-      result.diagnostics.exists(_.message.contains("RuntimeException: boom"))
-    )
+    assertEquals(List("java.lang.RuntimeException: boom"), result.diagnostics.map(_.message))
     assertEquals(List("before: Int = 1"), result.statements.map(_.details))
 
   @Test def honoursTheDependencyDirective(): Unit =
@@ -146,10 +143,8 @@ class WorksheetSessionTest:
     )
 
     assertEquals(result.diagnostics.toString, Nil, result.diagnostics)
-    assertTrue(
-      result.statements.last.details,
-      result.statements.last.details.startsWith("separator: Char = ")
-    )
+    val separator = java.nio.file.Path.of("").toAbsolutePath.toString.head
+    assertEquals(s"separator: Char = '$separator'", result.statements.last.details)
     assertEquals(
       List(WorksheetDependency("com.lihaoyi", "os-lib_3", "0.11.8")),
       result.dependencies
@@ -167,7 +162,11 @@ class WorksheetSessionTest:
     val errors = result.errors
     assertEquals(result.diagnostics.toString, 1, errors.length)
     assertEquals(0, errors.head.position.startLine)
-    assertTrue(errors.head.message, errors.head.message.contains("Unable to resolve"))
+    assertEquals(
+      """Unable to resolve dependencies: Failed to resolve dependencies: Error downloading com.lihaoyi:os-lib_3:0.0.0-does-not-exist
+        |  not found: https://repo1.maven.org/maven2/com/lihaoyi/os-lib_3/0.0.0-does-not-exist/os-lib_3-0.0.0-does-not-exist.pom""".stripMargin,
+      errors.head.message
+    )
     assertEquals(Nil, result.dependencies)
     assertEquals(List("res0: Int = 2"), result.statements.map(_.details))
 
@@ -182,7 +181,7 @@ class WorksheetSessionTest:
 
     assertEquals(result.diagnostics.toString, Nil, result.diagnostics)
     assertEquals("held: String = \"EvaluatedWorksheet\"", result.statements.last.details)
-    assertTrue(result.classpath.toString, result.classpath.contains(jar))
+    assertEquals(List(jar), result.classpath)
 
   @Test def reportsAJarThatDoesNotExist(): Unit =
     val result = driver.evaluate(
@@ -194,7 +193,7 @@ class WorksheetSessionTest:
 
     val errors = result.errors
     assertEquals(result.diagnostics.toString, 1, errors.length)
-    assertTrue(errors.head.message, errors.head.message.contains("does not exist"))
+    assertEquals("The jar `/does/not/exist.jar` does not exist.", errors.head.message)
     assertEquals(List("res0: Int = 2"), result.statements.map(_.details))
 
   @Test def reportsADirectiveThatWorksheetsDoNotSupport(): Unit =
@@ -431,10 +430,10 @@ class WorksheetSessionTest:
         |""".stripMargin
 
     val first = driver.evaluate("growing.worksheet.scala", initial)
-    assertTrue(first.diagnostics.toString, first.diagnostics.exists(_.message.contains("boom")))
+    assertEquals(List("java.lang.RuntimeException: boom"), first.diagnostics.map(_.message))
 
     val second = driver.evaluate("growing.worksheet.scala", initial + "val after = 2\n")
-    assertTrue(second.diagnostics.toString, second.diagnostics.exists(_.message.contains("boom")))
+    assertEquals(List("java.lang.RuntimeException: boom"), second.diagnostics.map(_.message))
     assertEquals(List("before: Int = 1"), second.statements.map(_.details))
 
   @Test def reportsReassignmentsUnderTheAssignedName(): Unit =
@@ -663,13 +662,13 @@ class WorksheetSessionTest:
     )
 
     assertTrue(result.diagnostics.toString, result.diagnostics.nonEmpty)
-    assertTrue(result.classpath.toString, result.classpath.contains(jar))
+    assertEquals(List(jar), result.classpath)
 
   @Test def reportsNoClasspathForAnInputThatIsNotAWorksheet(): Unit =
     val filename = "then-command.worksheet.scala"
     val jar = WorksheetSessionTest.interfacesJar
     val evaluated = driver.evaluate(filename, s"//> using jar $jar\nval value = 1\n")
-    assertTrue(evaluated.classpath.toString, evaluated.classpath.contains(jar))
+    assertEquals(List(jar), evaluated.classpath)
 
     val result = driver.evaluate(filename, ":quit\n")
 
@@ -710,14 +709,17 @@ class WorksheetSessionTest:
     val strict = new WorksheetSession(ReplTest.defaultOptions ++ Array("-Wunused:all"))
     val text = """val value = { val unused = 1; throw new RuntimeException("boom") }
                  |""".stripMargin
-    def unusedWarnings(result: WorksheetResult): List[String] =
-      result.diagnostics.filter(_.message.contains("unused")).map(_.message)
+    def warnings(result: WorksheetResult): List[String] =
+      result.diagnostics.filter(_.severity == Warning).map(_.message)
     try
-      assertEquals(1, unusedWarnings(strict.evaluate("warned.worksheet.scala", text)).length)
+      assertEquals(
+        List("unused local definition"),
+        warnings(strict.evaluate("warned.worksheet.scala", text))
+      )
 
       val again = strict.evaluate("warned.worksheet.scala", text)
 
-      assertEquals(unusedWarnings(again).toString, 1, unusedWarnings(again).length)
+      assertEquals(List("unused local definition"), warnings(again))
     finally strict.shutdown()
 
   @Test def rebuildsASessionLeftByAnotherWorksheetsSyntaxError(): Unit = withProperty: property =>
@@ -759,7 +761,7 @@ class WorksheetSessionTest:
     )
 
     assertEquals(Nil, result.diagnostics)
-    assertTrue(result.statements.head.details, result.statements.head.details.contains("child-output"))
+    assertEquals(List("answer: Int = 42\n// child-output"), result.statements.map(_.details))
 
   @Test def rebuildsASessionAfterACommandReplacesTheSameWorksheet(): Unit = withProperty: property =>
     val text = s"""System.setProperty("$property", "1")

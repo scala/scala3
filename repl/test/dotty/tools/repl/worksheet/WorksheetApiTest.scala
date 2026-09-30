@@ -151,7 +151,7 @@ class WorksheetApiTest:
 
       assertFalse("the evaluation did not stop", worker.isAlive)
       val messages = outcome.get.diagnostics.asScala.map(_.message).toList
-      assertTrue(messages.mkString("\n"), messages.exists(_.contains("cancelled")))
+      assertEquals(List("The worksheet evaluation was cancelled."), messages)
     finally
       System.clearProperty(property)
       if !worker.isAlive then evaluator.shutdown()
@@ -196,8 +196,7 @@ class WorksheetApiTest:
       )
       assertEquals("held: String = \"EvaluatedWorksheet\"", result.statements().get(0).details())
       val reported = result.classpath().asScala.toList
-      assertTrue(reported.toString, reported.contains(configured))
-      assertTrue(reported.toString, reported.contains(jar))
+      assertEquals(List(configured, jar), reported)
     finally evaluator.shutdown()
 
   @Test def startsACompilerSessionOnlyWhenAWorksheetIsEvaluated(): Unit =
@@ -222,10 +221,7 @@ class WorksheetApiTest:
     val strict = new WorksheetDriver().withScalacOptions(List("-Wunused:all").asJava)
     try
       val diagnostics = strict.evaluate("strict.worksheet.scala", text).diagnostics().asScala.toList
-      assertTrue(
-        diagnostics.map(_.message).toString,
-        diagnostics.exists(_.message.contains("unused"))
-      )
+      assertEquals(List("unused local definition"), diagnostics.map(_.message))
     finally strict.shutdown()
 
   @Test def formatsSummariesForTheConfiguredScreenWidth(): Unit =
@@ -253,7 +249,7 @@ class WorksheetApiTest:
       assertEquals(1, result.statements().size)
       val diagnostic = result.diagnostics().get(0)
       assertEquals(dotty.tools.dotc.interfaces.Diagnostic.WARNING, diagnostic.level())
-      assertTrue(diagnostic.message(), diagnostic.message().contains("-Wnosuchthing"))
+      assertEquals(List("bad option '-Wnosuchthing' was ignored"), result.messages)
     finally evaluator.shutdown()
 
   @Test def reportsNothingExtraForValidCompilerOptions(): Unit =
@@ -273,8 +269,13 @@ class WorksheetApiTest:
       assertEquals(1, result.diagnostics().size)
       val diagnostic = result.diagnostics().get(0)
       assertEquals(dotty.tools.dotc.interfaces.Diagnostic.ERROR, diagnostic.level())
-      assertTrue(diagnostic.message(), diagnostic.message().contains("not a valid choice"))
-      assertTrue(diagnostic.message(), diagnostic.message().contains("Available choices"))
+      assertEquals(
+        """definitely-not-a-source-version is not a valid choice for -source.
+          |Expected a source version.
+          |Available choices: 3.0-migration, 3.0, 3.1, 3.2-migration, 3.2, 3.3-migration, 3.3, 3.4-migration, 3.4, 3.5-migration, 3.5, 3.6-migration, 3.6, 3.7-migration, 3.7, 3.8-migration, 3.8, 3.9-migration, 3.9, 3.10-migration, 3.10, 3.11-migration, 3.11, future-migration, future
+          |scala -help  gives more information""".stripMargin,
+        diagnostic.message()
+      )
     finally evaluator.shutdown()
 
   @Test def keepsConfigurationDiagnosticsWhenTheTextDoesNotParse(): Unit =
@@ -284,6 +285,11 @@ class WorksheetApiTest:
       val messages = evaluator
         .evaluate("unparseable.worksheet.scala", "val x = (\n")
         .diagnostics().asScala.map(_.message()).toList
-      assertTrue(messages.toString, messages.exists(_.contains("incompatible")))
-      assertTrue(messages.toString, messages.exists(_.contains("expected")))
+      assertEquals(
+        List(
+          "Options incompatible with repl will be ignored: -Ybest-effort",
+          s"expression expected but ${Console.RED}eof${Console.RESET} found"
+        ),
+        messages
+      )
     finally evaluator.shutdown()
