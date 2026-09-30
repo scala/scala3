@@ -1211,7 +1211,7 @@ object RefChecks {
         || memberIsImplicit && !methTp.isImplicitMethod // see above
         || paramsCorrespond // match by type and opacity
       // receiver to be reported, if it has a member that hides the extension
-      def targetOfHiddenExtension: Symbol =
+      def targetOfHiddenExtension: (Symbol, Type) =
         val receiver = explicitInfo.firstParamTypes.head // required for extension method; the nominal receiver
         val target = // type to inspect for member that nullifies the extension
           val dealiased = receiver.hiBound.typeSymbol.typeRef.dealiasKeepOpaques
@@ -1229,9 +1229,9 @@ object RefChecks {
               member.symbol.isPublic && memberHidesMethod(member)
           // report the receiver not the target type where member was found
           if member.exists then
-            receiver.hiBound.typeSymbol
-          else NoSymbol
-        else NoSymbol
+            (receiver.hiBound.typeSymbol, target)
+          else (NoSymbol, NoType)
+        else (NoSymbol, NoType)
       if sym.is(HasDefaultParams) then
         val getterDenot =
           val receiverName = explicitInfo.firstParamNames.head
@@ -1241,9 +1241,9 @@ object RefChecks {
         if getterDenot.exists
         then report.warning(ExtensionHasDefault(sym), getterDenot.symbol.srcPos)
       if !sym.nextOverriddenSymbol.exists then
-        val target = targetOfHiddenExtension
-        if target.exists then
-          report.warning(ExtensionNullifiedByMember(sym, target), sym.srcPos)
+        val (receiver, target) = targetOfHiddenExtension
+        if receiver.exists then
+          report.warning(ExtensionNullifiedByMember(sym, receiver, target), sym.srcPos)
   end checkExtensionMethods
 
   /** Check that public (and protected) methods/fields do not expose flexible types. */
