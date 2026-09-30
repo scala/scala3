@@ -6,11 +6,3 @@ libraryDependencies += "org.ow2.asm" % "asm" % "9.9"
 libraryDependencies += "org.yaml" % "snakeyaml" % "2.4"
 
 scalacOptions += "-Xsource:3"
-
-Compile / unmanagedSourceDirectories ++= {
-  val root = baseDirectory.value.getParentFile()
-  Seq(
-    root / "tasty/src",
-    root / "tasty/src/dotty/tools/tasty/util",
-  )
-}

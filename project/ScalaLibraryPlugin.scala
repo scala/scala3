@@ -17,8 +17,6 @@ import ch.epfl.scala.sbtmissinglink.MissingLinkPlugin.autoImport.missinglinkChec
 import com.spotify.missinglink.Conflict
 import xsbti.FileConverter
 
-import dotty.tools.tasty.TastyHeaderUnpickler
-
 object ScalaLibraryPlugin extends AutoPlugin {
 
   override def trigger = noTrigger
