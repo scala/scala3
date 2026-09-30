@@ -63,7 +63,7 @@ final class GenBCode extends Phase:
   override def runOn(units: List[CompilationUnit])(using ctx: Context): List[CompilationUnit] =
     try
       val result = super.runOn(units)
-      if codeGen != null then codeGen.finish(units)
+      if codeGen != null then codeGen.finish(result)
       result
     finally
       ctx.settings.outputDir.value match
