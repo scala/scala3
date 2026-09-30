@@ -22,8 +22,8 @@
 -- [E194] Potential Issue Warning: tests/warn/i22232.scala:21:39 -------------------------------------------------------
 21 |  extension (arr: MyStuff[String]) def add(s: String): MyStuff[String] = ??? // warn
    |                                       ^
-   |                          Extension method add will never be selected from type MyList
-   |                          because MyList already has a member with the same name and compatible parameter types.
+   |                         Extension method add will never be selected from type MyStuff
+   |                         because MyStuff already has a member with the same name and compatible parameter types.
    |
    | longer explanation available when compiling with `-explain`
 -- [E194] Potential Issue Warning: tests/warn/i22232.scala:25:46 -------------------------------------------------------
