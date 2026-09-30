@@ -890,7 +890,15 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
                 bc.invokevirtual(target, sym.javaSimpleName, methodBType.descriptor, app)
                 generatedType = methodBType.returnType
               } else {
-                val receiverClass = if (!invokeStyle.isVirtual) null else {
+                val receiverClass = if (!invokeStyle.isVirtual) {
+                  // use the qualifier as owner like javac (JLS 13.1), the method may be inherited
+                  val qualSym = qual.tpe.typeSymbol
+                  if invokeStyle == InvokeStyle.Static && sym.is(JavaDefined) && qualSym.isJavaStaticsClass then
+                    assert(qualSym == sym.owner || !sym.owner.companionClass.is(Trait),
+                      s"static interface method ${sym.showFullName} called through ${qualSym.showFullName}")
+                    qualSym
+                  else null
+                } else {
                   // receiverClass is used in the bytecode to as the method receiver. using sym.owner
                   // may lead to IllegalAccessErrors, see 9954eaf / aladdin bug 455.
                   val qualSym = qual.tpe.typeSymbol

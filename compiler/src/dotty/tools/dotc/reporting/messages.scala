@@ -3286,8 +3286,9 @@ extends ReferenceMsg(CannotBeAccessedID):
     val where = if (ctx.owner.exists) i" from ${ctx.owner.enclosingClass}" else ""
     val whyNot = new StringBuilder
     for alt <- alts do
-      val cls = alt.owner.enclosingSubClass
-      val owner = if cls.exists then cls else alt.owner
+      val cls = alt.protectedOwner.enclosingSubClass
+      val inTrait = alt.is(Protected) && cls.exists && alt.isJavaStaticAccessedInTrait(cls)
+      val owner = if cls.exists && !inTrait then cls else alt.protectedOwner
       val location: String =
         if alt.is(Protected) then
           if alt.privateWithin.exists && alt.privateWithin != owner then
@@ -3303,6 +3304,9 @@ extends ReferenceMsg(CannotBeAccessedID):
         else ""
       whyNot.append(i"""
           |  $accessMod$within $alt can only be accessed from $location.""")
+      if inTrait then
+        whyNot.append(i"""
+          |  The code of $cls is not in a subclass of ${alt.protectedOwner} on the JVM.""")
     i"$whatCanNot be accessed as a member of $pre$where.$whyNot"
   def explain(using Context) = ""
 
