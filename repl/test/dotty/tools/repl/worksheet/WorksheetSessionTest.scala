@@ -176,12 +176,12 @@ class WorksheetSessionTest:
     val result = driver.evaluate(
       "jar.worksheet.scala",
       s"""//> using jar $jar
-         |val held = classOf[dotty.tools.repl.worksheet.interfaces.RangePosition].getSimpleName
+         |val held = classOf[dotty.tools.repl.worksheet.interfaces.EvaluatedWorksheet].getSimpleName
          |""".stripMargin
     )
 
     assertEquals(result.diagnostics.toString, Nil, result.diagnostics)
-    assertEquals("held: String = \"RangePosition\"", result.statements.last.details)
+    assertEquals("held: String = \"EvaluatedWorksheet\"", result.statements.last.details)
     assertTrue(result.classpath.toString, result.classpath.contains(jar))
 
   @Test def reportsAJarThatDoesNotExist(): Unit =
@@ -780,5 +780,5 @@ class WorksheetSessionTest:
 private object WorksheetSessionTest:
   val interfacesJar: java.nio.file.Path =
     java.nio.file.Path.of(
-      classOf[interfaces.RangePosition].getProtectionDomain.getCodeSource.getLocation.toURI
+      classOf[interfaces.EvaluatedWorksheet].getProtectionDomain.getCodeSource.getLocation.toURI
     )

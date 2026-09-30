@@ -1,12 +1,14 @@
 package dotty.tools.repl.worksheet
 
+import dotty.tools.dotc.util.SourcePosition
+
 private enum RenderedBinder:
   case Value(name: String, tpe: String, value: String)
   case Declaration(text: String)
 
 private object WorksheetRendering:
   def render(
-      position: WorksheetPosition,
+      position: SourcePosition,
       values: List[RenderedBinder],
       output: String,
       screenWidth: Int

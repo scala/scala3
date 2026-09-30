@@ -14,6 +14,63 @@ class WorksheetApiTest:
     private def messages: List[String] =
       evaluated.diagnostics.asScala.map(_.message).toList
 
+  @Test def reusesASessionIdentifiedByAPath(): Unit =
+    val filename = "worksheets/nested/append.worksheet.scala"
+    val property = s"scala3.worksheet.append.${java.util.UUID.randomUUID()}"
+    val initial =
+      s"""val runs = Option(System.getProperty("$property")).fold(1)(_.toInt + 1)
+         |System.setProperty("$property", runs.toString)
+         |""".stripMargin
+    val evaluator = new WorksheetDriver()
+    try
+      val first = evaluator.evaluate(filename, initial)
+      assertEquals(Nil, first.messages)
+      assertEquals("1", System.getProperty(property))
+
+      val appended = evaluator.evaluate(filename, initial + "runs + 1\n")
+      assertEquals(Nil, appended.messages)
+      assertEquals("1", System.getProperty(property))
+      assertEquals("res1: Int = 2", appended.statements().get(2).details())
+    finally
+      evaluator.shutdown()
+      System.clearProperty(property)
+
+  @Test def reportsSyntaxErrorsInTheOriginalWorksheetSource(): Unit =
+    val filename = "worksheets/syntax.worksheet.scala"
+    val text = "val before = 1\nval broken = )\n"
+    val evaluator = new WorksheetDriver()
+    try
+      val result = evaluator.evaluate(filename, text)
+      val errors = result.diagnostics().asScala
+        .filter(_.level() == dotty.tools.dotc.interfaces.Diagnostic.ERROR)
+      assertFalse(result.messages.toString, errors.isEmpty)
+      errors.foreach: diagnostic =>
+        val position = diagnostic.position().orElseThrow()
+        assertEquals(filename, position.source().path())
+        assertEquals(text, position.source().textContent())
+        assertEquals(1, position.startLine())
+    finally evaluator.shutdown()
+
+  @Test def preservesTheDiagnosticPointInAMultilineStatement(): Unit =
+    val filename = "diagnostic-point.worksheet.scala"
+    val text = "val before = 1\nList(1)\n  .doesNotExist\n"
+    val evaluator = new WorksheetDriver()
+    try
+      val result = evaluator.evaluate(filename, text)
+      val errors = result.diagnostics().asScala
+        .filter(_.level() == dotty.tools.dotc.interfaces.Diagnostic.ERROR)
+      assertEquals(result.messages.toString, 1, errors.size)
+      val position = errors.head.position().orElseThrow()
+      assertEquals(text.indexOf("doesNotExist"), position.point())
+      assertEquals(2, position.line())
+      assertEquals(3, position.column())
+      assertEquals("  .doesNotExist", position.lineContent().stripLineEnd)
+      assertEquals(text.indexOf("List"), position.start())
+      assertEquals(text.indexOf("doesNotExist") + "doesNotExist".length, position.end())
+      assertEquals(filename, position.source().path())
+      assertEquals(text, position.source().textContent())
+    finally evaluator.shutdown()
+
   @Test def cancelsAnEvaluationInProgress(): Unit =
     val property = s"scala3.worksheet.cancel.${java.util.UUID.randomUUID()}"
     val evaluator = new WorksheetDriver()
@@ -120,7 +177,7 @@ class WorksheetApiTest:
   @Test def keepsAConfiguredClasspathOption(): Unit =
     val configured = java.nio.file.Path.of(System.getProperty("java.io.tmpdir"))
     val jar = java.nio.file.Path.of(
-      classOf[interfaces.RangePosition].getProtectionDomain.getCodeSource.getLocation.toURI
+      classOf[interfaces.EvaluatedWorksheet].getProtectionDomain.getCodeSource.getLocation.toURI
     )
     val evaluator = new WorksheetDriver()
       .withScalacOptions(java.util.List.of("-classpath", configured.toString))
@@ -128,7 +185,7 @@ class WorksheetApiTest:
       val result = evaluator.evaluate(
         "configured-classpath.worksheet.scala",
         s"""//> using jar $jar
-           |val held = classOf[dotty.tools.repl.worksheet.interfaces.RangePosition].getSimpleName
+           |val held = classOf[dotty.tools.repl.worksheet.interfaces.EvaluatedWorksheet].getSimpleName
            |""".stripMargin
       )
 
@@ -137,7 +194,7 @@ class WorksheetApiTest:
         Nil,
         result.diagnostics().asScala.toList
       )
-      assertEquals("held: String = \"RangePosition\"", result.statements().get(0).details())
+      assertEquals("held: String = \"EvaluatedWorksheet\"", result.statements().get(0).details())
       val reported = result.classpath().asScala.toList
       assertTrue(reported.toString, reported.contains(configured))
       assertTrue(reported.toString, reported.contains(jar))
@@ -195,7 +252,7 @@ class WorksheetApiTest:
       val result = evaluator.evaluate("unknown.worksheet.scala", "val x = 40\n")
       assertEquals(1, result.statements().size)
       val diagnostic = result.diagnostics().get(0)
-      assertEquals(interfaces.DiagnosticSeverity.Warning, diagnostic.severity())
+      assertEquals(dotty.tools.dotc.interfaces.Diagnostic.WARNING, diagnostic.level())
       assertTrue(diagnostic.message(), diagnostic.message().contains("-Wnosuchthing"))
     finally evaluator.shutdown()
 
@@ -215,7 +272,7 @@ class WorksheetApiTest:
       assertEquals(0, result.statements().size)
       assertEquals(1, result.diagnostics().size)
       val diagnostic = result.diagnostics().get(0)
-      assertEquals(interfaces.DiagnosticSeverity.Error, diagnostic.severity())
+      assertEquals(dotty.tools.dotc.interfaces.Diagnostic.ERROR, diagnostic.level())
       assertTrue(diagnostic.message(), diagnostic.message().contains("not a valid choice"))
       assertTrue(diagnostic.message(), diagnostic.message().contains("Available choices"))
     finally evaluator.shutdown()

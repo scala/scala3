@@ -20,14 +20,14 @@ private[worksheet] final case class WorksheetDependency(
 )
 
 private[worksheet] final case class WorksheetStatement(
-    position: WorksheetPosition,
+    position: SourcePosition,
     summary: String,
     details: String,
     isSummaryComplete: Boolean
 )
 
 private[worksheet] final case class WorksheetDiagnostic(
-    position: WorksheetPosition,
+    position: SourcePosition,
     message: String,
     severity: WorksheetDiagnosticSeverity
 )
@@ -36,11 +36,11 @@ private[worksheet] object WorksheetDiagnostic:
   val cancelled = "The worksheet evaluation was cancelled."
 
   def fromCompiler(diagnostic: Diagnostic): WorksheetDiagnostic =
-    fromCompiler(diagnostic, WorksheetPosition.fromCompiler(diagnostic.pos))
+    fromCompiler(diagnostic, diagnostic.pos)
 
   def fromCompiler(
       diagnostic: Diagnostic,
-      position: WorksheetPosition
+      position: SourcePosition
   ): WorksheetDiagnostic =
     WorksheetDiagnostic(
       position,
@@ -57,29 +57,6 @@ private[worksheet] object WorksheetDiagnosticSeverity:
       case interfaces.Diagnostic.ERROR => WorksheetDiagnosticSeverity.Error
       case interfaces.Diagnostic.WARNING => WorksheetDiagnosticSeverity.Warning
       case _ => WorksheetDiagnosticSeverity.Info
-
-private[worksheet] final case class WorksheetPosition(
-    startLine: Int,
-    startColumn: Int,
-    endLine: Int,
-    endColumn: Int
-)
-
-private[worksheet] object WorksheetPosition:
-  val none: WorksheetPosition = WorksheetPosition(-1, -1, -1, -1)
-
-  def fromCompiler(position: SourcePosition): WorksheetPosition =
-    if position.exists then
-      WorksheetPosition(
-        position.startLine,
-        position.startColumn,
-        position.endLine,
-        position.endColumn
-      )
-    else none
-
-  def fromOffsets(source: SourceFile, start: Int, end: Int): WorksheetPosition =
-    fromCompiler(source.atSpan(Span(start, end)))
 
 private[worksheet] object WorksheetOptions:
   private val classpathOptions = Set("-classpath", "-cp", "--class-path")

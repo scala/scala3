@@ -1,16 +1,17 @@
 package dotty.tools.repl.worksheet
 
 import dotty.tools.repl.worksheet.interfaces.Dependency as ApiDependency
-import dotty.tools.repl.worksheet.interfaces.Diagnostic as ApiDiagnostic
-import dotty.tools.repl.worksheet.interfaces.DiagnosticSeverity as ApiDiagnosticSeverity
+import dotty.tools.dotc.interfaces.Diagnostic as ApiDiagnostic
+import dotty.tools.dotc.interfaces.DiagnosticRelatedInformation as ApiRelatedInformation
+import dotty.tools.dotc.interfaces.SourcePosition as ApiPosition
 import dotty.tools.repl.worksheet.interfaces.EvaluatedWorksheet as ApiEvaluation
 import dotty.tools.repl.worksheet.interfaces.WorksheetEvaluator as ApiEvaluator
-import dotty.tools.repl.worksheet.interfaces.RangePosition as ApiPosition
 import dotty.tools.repl.worksheet.interfaces.EvaluatedWorksheetStatement as ApiStatement
 
 import java.io.File
 import java.nio.file.Path
 import java.util.List as JavaList
+import java.util.Optional
 import scala.jdk.CollectionConverters.*
 import scala.language.unsafeNulls
 import scala.util.Try
@@ -122,29 +123,25 @@ private final class ApiDependencyImpl(dependency: WorksheetDependency) extends A
   override def version(): String = dependency.version
 
 private final class ApiStatementImpl(statement: WorksheetStatement) extends ApiStatement:
-  private val evaluatedPosition = ApiPositionImpl(statement.position)
-
-  override def position(): ApiPosition = evaluatedPosition
+  override def position(): ApiPosition = statement.position
   override def summary(): String = statement.summary
   override def details(): String = statement.details
   override def isSummaryComplete(): Boolean = statement.isSummaryComplete
 
 private final class ApiDiagnosticImpl(diagnostic: WorksheetDiagnostic) extends ApiDiagnostic:
-  private val evaluatedPosition = ApiPositionImpl(diagnostic.position)
+  override def position(): Optional[ApiPosition] =
+    if diagnostic.position.exists then Optional.of(diagnostic.position) else Optional.empty()
 
-  override def position(): ApiPosition = evaluatedPosition
   override def message(): String = diagnostic.message
-  override def severity(): ApiDiagnosticSeverity =
-    diagnostic.severity match
-      case WorksheetDiagnosticSeverity.Info => ApiDiagnosticSeverity.Info
-      case WorksheetDiagnosticSeverity.Warning => ApiDiagnosticSeverity.Warning
-      case WorksheetDiagnosticSeverity.Error => ApiDiagnosticSeverity.Error
 
-private final class ApiPositionImpl(position: WorksheetPosition) extends ApiPosition:
-  override def startLine(): Int = position.startLine
-  override def startColumn(): Int = position.startColumn
-  override def endLine(): Int = position.endLine
-  override def endColumn(): Int = position.endColumn
+  override def level(): Int =
+    diagnostic.severity match
+      case WorksheetDiagnosticSeverity.Info => ApiDiagnostic.INFO
+      case WorksheetDiagnosticSeverity.Warning => ApiDiagnostic.WARNING
+      case WorksheetDiagnosticSeverity.Error => ApiDiagnostic.ERROR
+
+  override def diagnosticRelatedInformation(): JavaList[ApiRelatedInformation] =
+    JavaList.of()
 
 private def immutableJavaList[A](values: List[A]): JavaList[A] =
   JavaList.copyOf(values.asJava)

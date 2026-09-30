@@ -1,6 +1,6 @@
 package dotty.tools.repl.worksheet;
 
-import dotty.tools.repl.worksheet.interfaces.DiagnosticSeverity;
+import dotty.tools.dotc.interfaces.Diagnostic;
 import dotty.tools.repl.worksheet.interfaces.EvaluatedWorksheet;
 import dotty.tools.repl.worksheet.interfaces.WorksheetEvaluator;
 
@@ -71,8 +71,8 @@ public class WorksheetJavaApiTest {
           "val answer: String = 42\n");
 
       assertTrue(result.statements().isEmpty());
-      assertEquals(DiagnosticSeverity.Error, result.diagnostics().get(0).severity());
-      assertEquals(0, result.diagnostics().get(0).position().startLine());
+      assertEquals(Diagnostic.ERROR, result.diagnostics().get(0).level());
+      assertEquals(0, result.diagnostics().get(0).position().orElseThrow().startLine());
     }
   }
 
