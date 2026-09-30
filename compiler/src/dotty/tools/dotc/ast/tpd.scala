@@ -1425,8 +1425,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   @tailrec
   def sameTypes(trees: List[tpd.Tree], trees1: List[tpd.Tree]): Boolean =
-    if (trees.isEmpty) trees1.isEmpty
-    else if (trees1.isEmpty) trees.isEmpty
+    if trees eq trees1 then true
+    else if trees.isEmpty then trees1.isEmpty
+    else if trees1.isEmpty then trees.isEmpty
     else (trees.head.tpe eq trees1.head.tpe) && sameTypes(trees.tail, trees1.tail)
 
   /** If `tree`'s purity level is less than `level`, let-bind it so that it gets evaluated

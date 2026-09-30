@@ -186,7 +186,7 @@ object Formatting {
       inline def isLineBreak(c: Char) = c == Chars.LF || c == Chars.FF
       def stripTrailingPart(s: String) = {
         val (pre, post) = s.span(c => !isLineBreak(c))
-        pre ++ post.stripMargin
+        pre + post.stripMargin
       }
       val (prefix, suffixes) = sc.parts.toList match {
         case head :: tail => (head.stripMargin, tail map stripTrailingPart)

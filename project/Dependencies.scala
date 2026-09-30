@@ -1,7 +1,6 @@
 import sbt.*
 import dotty.tools.sbtplugin.Versions
 
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 /**
@@ -36,11 +35,9 @@ object Dependencies {
 
   val guava = "com.google.guava" % "guava" % "33.7.1-jre"
 
-  private val jacksonVersion = "3.2.2"
-  val jacksonDatabind = "tools.jackson.core" % "jackson-databind" % jacksonVersion
-  val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
+  val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % "3.2.2"
 
-  private val jlineVersion = "4.4.2"
+  private val jlineVersion = "4.4.3"
   val jlineReader = "org.jline" % "jline-reader" % jlineVersion
   val jlineTerminal = "org.jline" % "jline-terminal" % jlineVersion
   val jlineTerminalJni = "org.jline" % "jline-terminal-jni" % jlineVersion
@@ -48,8 +45,13 @@ object Dependencies {
   val jsoup = "org.jsoup" % "jsoup" % "1.23.2"
 
   val liqp = "nl.big-o" % "liqp" % "0.9.2.3"
-
-  val lsp4j = "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "1.0.0"
+  // otherwise the jackson versions are ancient, with known vulnerabilities
+  val liqpDependencyOverrides = Seq(
+    "com.fasterxml.jackson.core" % "jackson-annotations" % "2.22",
+    "com.fasterxml.jackson.core" % "jackson-core" % "2.22.2",
+    "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.2",
+    "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % "2.22.2"
+  )
 
   val lz4 = "at.yawk.lz4" % "lz4-java" % "1.11.2"
 
@@ -64,7 +66,7 @@ object Dependencies {
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.20.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.16.0"
+  val scalaCliLauncherVersion = "1.17.1"
 
   val scalaJsDomVersion = "2.8.1" // needs %%% which isn't usable within a val here
   val scalaJsEnvNodeJs = "org.scala-js" %% "scalajs-env-nodejs" % "1.6.0"

@@ -7,7 +7,7 @@ import java.nio.file.Paths
 
 import org.jsoup.Jsoup
 import scala.jdk.CollectionConverters._
-
+import scala.util.control.NonFatal
 
 case class LazyEntry(getKey: String, value: () => String) extends JMapEntry[String, Object]:
   lazy val getValue: Object = value()
@@ -24,7 +24,7 @@ case class LoadedTemplate(
       val code = Jsoup.parse(resolveToHtml(ctx).code)
       Option(code.select("p").first()).fold("...")(_.outerHtml())
     catch
-      case e: Throwable =>
+      case NonFatal(e) =>
         val msg = s"[ERROR] Unable to process brief for ${templateFile.file}"
         report.error(msg, templateFile.file, e)(using ctx.outerCtx)
         "..."
@@ -33,7 +33,7 @@ case class LoadedTemplate(
     lazy val entrySet: JSet[JMapEntry[String, Object]] =
       val site = templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]]
       site.asJava.entrySet() ++ JSet(
-        LazyEntry("url", () => "/" ++ ctx.pathFromRoot(LoadedTemplate.this).toString),
+        LazyEntry("url", () => "/" + ctx.pathFromRoot(LoadedTemplate.this).toString),
         LazyEntry("title", () => templateFile.title.name),
         LazyEntry("excerpt", () => brief(ctx))
       )

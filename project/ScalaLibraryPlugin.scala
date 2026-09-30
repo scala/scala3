@@ -15,6 +15,7 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSVersion
 import ch.epfl.scala.sbtmissinglink.MissingLinkPlugin
 import ch.epfl.scala.sbtmissinglink.MissingLinkPlugin.autoImport.missinglinkCheck
 import com.spotify.missinglink.Conflict
+import xsbti.FileConverter
 
 import dotty.tools.tasty.TastyHeaderUnpickler
 
@@ -106,16 +107,17 @@ object ScalaLibraryPlugin extends AutoPlugin {
     // We need to redefine it which requires reflective access
     Compile / missinglinkCheck := {
       val log = streams.value.log
+      val converter: FileConverter = fileConverter.value
       val cp = (Compile / fullClasspath).value
       val classDir = (Compile / classDirectory).value
 
-      val conflicts: Seq[Conflict] = {
+      val (conflicts, sourceModules) = {
         val method = MissingLinkPlugin.getClass.getDeclaredMethods()
           .find(_.getName == "loadArtifactsAndCheckConflicts")
           .getOrElse(sys.error("MissingLinkPlugin.loadArtifactsAndCheckConflicts not found"))
         method.setAccessible(true)
-        method.invoke(MissingLinkPlugin, cp, classDir, java.lang.Boolean.FALSE, (_ => true):ModuleFilter, log)
-          .asInstanceOf[Seq[Conflict]]
+        method.invoke(MissingLinkPlugin, cp, classDir, java.lang.Boolean.FALSE, (_ => true):ModuleFilter, log, converter)
+          .asInstanceOf[(Seq[Conflict], Map[_, ModuleID])]
       }
 
       val filteredConflicts = conflicts.filterNot { conflict =>
@@ -134,7 +136,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
             .find(_.getName == "outputConflicts")
             .getOrElse(sys.error("MissingLinkPlugin.outputConflicts not found"))
           method.setAccessible(true)
-          method.invoke(MissingLinkPlugin, filteredConflicts, log)
+          method.invoke(MissingLinkPlugin, filteredConflicts, sourceModules, java.lang.Boolean.TRUE, log)
         }
         throw new MessageOnlyException(s"There were $filteredTotal conflicts")
       }

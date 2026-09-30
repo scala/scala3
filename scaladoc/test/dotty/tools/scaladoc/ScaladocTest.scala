@@ -7,8 +7,11 @@ import java.io.File
 
 abstract class ScaladocTest(val name: String):
 
+  /** The compiler context the Scaladoc run uses; override to set compiler settings. */
+  protected def compilerContext: CompilerContext = testContext
+
   def afterRendering(op: DocContext ?=> Unit) =
-    val ctx = Scaladoc.run(args)(using testContext)
+    val ctx = Scaladoc.run(args)(using compilerContext)
     op(using ctx)
 
   def moduleDocContext = testDocContext(tastyFiles(name))

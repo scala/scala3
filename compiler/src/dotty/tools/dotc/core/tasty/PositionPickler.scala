@@ -43,8 +43,18 @@ object PositionPickler:
 
     /** Pickle the number of lines followed by the size of each line */
     def pickleLinesSizes(): Unit = {
-      val content = source.content()
-      buf.writeNat(content.count(_ == '\n') + 1) // number of lines
+      val content = source.textContent()
+      // Inlined and simplified version of `count` because this is hot,
+      // and we can't have the optimizer inline the stdlib into the compiler as it may run under a different stdlib.
+      // Note that we start at 1 since #lines = #separators + 1.
+      var lineCount = 1
+      var idx = -1
+      while
+        idx = content.indexOf('\n', idx + 1)
+        idx != -1
+      do
+        lineCount += 1
+      buf.writeNat(lineCount)
       var lastIndex = content.indexOf('\n')
       buf.writeNat(if lastIndex != -1 then lastIndex else content.length) // size of first line
       while lastIndex != -1 do
