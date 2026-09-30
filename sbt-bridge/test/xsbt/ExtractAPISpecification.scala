@@ -173,9 +173,8 @@ class ExtractAPISpecification {
     def db(apis: Seq[ClassLike]): String =
       val c = apis.find(_.name == "C").get
       dotty.tools.dotc.sbt.DefaultShowAPI(c.structure.inherited.find(_.name == "db").get)
-    // TODO: should be the same
-    assertEquals("def db: this#JdbcBackend#Database", db(fromSource))
-    assertEquals("def db: this#JdbcBackend#JdbcDatabaseDef", db(fromTasty))
+    assertEquals("def db: this#JdbcBackend#JdbcDatabaseDef", db(fromSource))
+    assertEquals(db(fromSource), db(fromTasty))
   }
 
   @Ignore

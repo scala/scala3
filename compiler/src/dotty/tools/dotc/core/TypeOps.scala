@@ -100,7 +100,14 @@ object TypeOps:
             val sym = tp.symbol
             if sym.isStatic && !sym.maybeOwner.seesOpaques || (tp.prefix `eq` NoPrefix)
             then tp
-            else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
+            else atVariance(variance max 0)(this(tp.prefix)) match
+              case Range(_, hi) if sym.isClass && tp.prefix.isInstanceOf[ThisType] && MatchTypes.isConcrete(hi) =>
+                // `this(tp.prefix)` approximated `C.this` by a range up to `P` (`hi`), as `P` is not a path.
+                // For a class reference `C.this.D`, the projection `P#D` is exact, so it is used instead of the range.
+                // The range stays counted in approxCount (needed for neg/i15939.scala).
+                derivedSelect(tp, hi)
+              case prefix1 =>
+                derivedSelect(tp, prefix1)
           case tp: LambdaType =>
             mapOverLambda(tp) // special cased common case
           case tp: ThisType =>
