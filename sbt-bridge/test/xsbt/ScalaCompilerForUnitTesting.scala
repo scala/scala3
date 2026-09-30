@@ -135,7 +135,7 @@ class ScalaCompilerForUnitTesting {
    * The sequence of temporary files corresponding to passed snippets and analysis
    * callback is returned as a result.
    */
-  def compileSrcs(groupedSrcs: List[List[String]], sourcePath: List[String] = Nil, compileToJar: Boolean = false, incEnabled: Boolean = true): CompileOutput = {
+  def compileSrcs(groupedSrcs: List[List[String]], sourcePath: List[String] = Nil, compileToJar: Boolean = false, incEnabled: Boolean = true, extraArgs: List[String] = Nil): CompileOutput = {
       val temp = IO.createTemporaryDirectory
       val (forceSbtArgs, analysisCallback) =
         if (incEnabled)
@@ -178,7 +178,7 @@ class ScalaCompilerForUnitTesting {
         bridge.run(
           virtualSrcFiles,
           new TestDependencyChanges,
-          (forceSbtArgs ++: Array("-classpath", classesOutputPath, "-usejavacp", "-d", classesOutputPath)) ++ maybeSourcePath,
+          (forceSbtArgs ++: Array("-classpath", classesOutputPath, "-usejavacp", "-d", classesOutputPath)) ++ maybeSourcePath ++ extraArgs,
           output,
           analysisCallback,
           new TestReporter,

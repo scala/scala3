@@ -1725,6 +1725,8 @@ trait Checking {
         if (!sym.owner.is(Module) || !sym.owner.isStatic)
           report.error(em"$sym cannot be a main method since it cannot be accessed statically", pos)
       }
+      else if (annotCls == defn.ThrowsAnnot && !sym.is(Method) && !sym.isConstructor)
+        report.error(em"`@throws` only allowed for methods and constructors", pos)
       // TODO: Add more checks here
     }
 

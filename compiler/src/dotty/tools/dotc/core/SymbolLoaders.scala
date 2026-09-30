@@ -296,7 +296,10 @@ object SymbolLoaders {
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
       if (!root.isRoot) {
-        val classReps = classPath.classes(packageName) ++ classPath.sources(packageName)
+        val classReps = ClassPath.mergeClassesAndSources(
+          classPath.classes(packageName),
+          classPath.sources(packageName),
+        )
 
         for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
@@ -375,7 +378,7 @@ object SymbolLoaders {
     // e.g. scala-parallel-collections adds both classes to scala.collection
     // and the new scala.collection.parallel sub-package.
     for p <- jarClasspath.packages(fullPackageName) do
-      val subPackageName = PackageNameUtils.separatePkgAndClassNames(p)._2.toTermName
+      val subPackageName = PackageNameUtils.separateClassName(p).toTermName
       val subPackage = packageClass.info.decl(subPackageName).orElse:
         // package does not exist in symbol table, create a new symbol
         enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))

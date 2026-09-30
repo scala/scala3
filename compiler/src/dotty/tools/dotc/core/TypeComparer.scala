@@ -30,6 +30,7 @@ import reporting.IllegalVarianceInSpecializedTraitsNote
 import scala.util.boundary, boundary.break
 import dotty.tools.dotc.transform.Specialization
 import dotty.tools.dotc.transform.DesugarSpecializedTraits
+import scala.util.control.NonFatal
 
 /** Provides methods to compare types.
  */
@@ -705,8 +706,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // TODO: Merge with isSubInfo in hasMatchingMember. Currently, we can't since
             // the isSubinfo of hasMatchingMember has problems dealing with PolyTypes
             // (---> orphan params during pickling)
-            def isSubInfo(info1: Type, info2: Type): Boolean =
-              try (info1, info2) match
+            def isSubInfo(info1: Type, info2: Type): Boolean = printOnAssertionError(i"error while subinfo $info1 <:< $info2"):
+              (info1, info2) match
                 case (info1: PolyType, info2: PolyType) =>
                   info1.paramNames.hasSameLengthAs(info2.paramNames)
                   && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
@@ -724,9 +725,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     && isSubInfo(info1, parent2)
                 case _ =>
                   isSubType(info1, info2)
-              catch case ex: AssertionError =>
-                println(i"error while subinfo $info1 <:< $info2")
-                throw ex
 
             if defn.isFunctionType(tp2) then
               if tp2.derivesFrom(defn.PolyFunctionClass) then
@@ -735,10 +733,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 tp1w.widenDealias match
                   case tp1: RefinedType =>
                     return
-                      try isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
-                      catch case ex: AssertionError =>
-                        println(i"error while subInfo ${tp1.refinedInfo} <:< ${tp2.refinedInfo}")
-                        throw ex
+                      printOnAssertionError(i"error while subInfo ${tp1.refinedInfo} <:< ${tp2.refinedInfo}"):
+                        isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
                   case _ =>
           end if
 
@@ -909,7 +905,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case CapturingType(parent2, refs2) =>
         def compareCapturing: Boolean =
           val refs1 = tp1.captureSet
-          try
+          printOnAssertionError(i"assertion failed while compare captured $tp1 <:< $tp2"):
             if refs1.isAlwaysEmpty && refs1.mutability == CaptureSet.Mutability.Ignored then
               recur(tp1, parent2)
             else parent2 match
@@ -935,9 +931,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                           // this alternative is needed in case the right hand side is a
                           // capturing type that contains the lhs as an alternative of a union type.
                       )
-          catch case ex: AssertionError =>
-            println(i"assertion failed while compare captured $tp1 <:< $tp2")
-            throw ex
         compareCapturing || fourthTry
       case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || tp1.isBottomType) &&
@@ -950,8 +943,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
         compareClassInfo
-      case tp2: FlexibleType =>
-        recur(tp1, tp2.lo)
       case _ =>
         fourthTry
     }
@@ -1160,8 +1151,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1: ExprType if ctx.phaseId > gettersPhase.id =>
         // getters might have converted T to => T, need to compensate.
         recur(tp1.widenExpr, tp2)
-      case tp1: FlexibleType =>
-        recur(tp1.hi, tp2)
       case _ =>
         false
     }
@@ -1683,13 +1672,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if (Stats.monitored) recordStatistics(result, savedSuccessCount)
         result
       catch
-        case ex: AssertionError =>
-          showGoal(tp1, tp2)
-          recCount -= 1
-          restore()
-          successCount = savedSuccessCount
-          throw ex
-        case ex: Exception =>
+        case NonFatal(ex) =>
+          if ex.isInstanceOf[AssertionError] then showGoal(tp1, tp2)
           recCount -= 1
           restore()
           successCount = savedSuccessCount
@@ -3008,11 +2992,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet,
       vs: CaptureSet.VarState = makeVarState())(using Context): Boolean =
-    try
+    printOnAssertionError(i"fail while subCaptures $refs1 <:< $refs2"):
       refs1.subCaptures(refs2, vs)
-    catch case ex: AssertionError =>
-      println(i"fail while subCaptures $refs1 <:< $refs2")
-      throw ex
 
   /**
    *  - Compare capture sets using subCaptures. If the lower type derives from Stateful and the
@@ -3543,7 +3524,7 @@ object TypeComparer {
         def show: String =
           val lo = if low then " (left is approximated)" else ""
           val hi = if high then " (right is approximated)" else ""
-          lo ++ hi
+          lo + hi
   end ApproxState
   type ApproxState = ApproxState.Repr
 
@@ -3675,7 +3656,7 @@ object TypeComparer {
   def logUndoAction(action: () => Unit)(using Context): Unit =
     currentComparer.logUndoAction(action)
 
-  def inNestedLevel(op: => Boolean)(using Context): Boolean =
+  inline def inNestedLevel(inline op: Boolean)(using Context): Boolean =
     currentComparer.inNestedLevel(op)
 
   def addErrorNote(note: Note)(using Context): Unit =

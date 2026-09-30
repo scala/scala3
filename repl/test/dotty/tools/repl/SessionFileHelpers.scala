@@ -17,6 +17,14 @@ trait SessionFileHelpers:
     new JarOutputStream(new FileOutputStream(jar.toFile)).close()
     jar
 
+  protected def resourceDir(name: String, contents: String): Path =
+    val dir = Files.createTempDirectory("repl_resources")
+    dir.toFile.deleteOnExit()
+    val file = dir.resolve(name)
+    Files.writeString(file, contents)
+    file.toFile.deleteOnExit()
+    dir
+
   protected def contentOf(f: Path): String = Files.readString(f)
 
   protected val header: String = Save.sessionHeader

@@ -369,7 +369,7 @@ object Comments {
         if (depth >= expandLimit)
           throw new ExpansionLimitExceeded(str)
 
-        val out    = new StringBuilder
+        val out    = new java.lang.StringBuilder
         var idx    = -1
         var copied = 0
         while
@@ -390,9 +390,9 @@ object Comments {
           // useful to document things like `Symbol#decode`
           else if idx == 0 || str.charAt(idx - 1) != '\\' then
             val vstart = idx
-            def replaceWith(repl: CharSequence): Unit = {
-              out.append(str.subSequence(copied, vstart))
-              out.append(repl)
+            def replaceWith(repl: String, replBegin: Int, replEnd: Int): Unit = {
+              out.append(str, copied, vstart)
+              out.append(repl, replBegin, replEnd)
               copied = idx
             }
             idx = skipVariable(str, idx + 1)
@@ -405,16 +405,16 @@ object Comments {
                     var end = startTag(sc, superSections)
                     // Avoid including trailing whitespace
                     while end > 0 && Character.isWhitespace(sc.charAt(end - 1)) do end -= 1
-                    replaceWith(sc.subSequence(3, end))
+                    replaceWith(sc, 3, end)
                     for sec @ (start, end) <- superSections
                       if !isMovable(sc, sec)
-                        do out.append(sc.subSequence(start, end))
+                        do out.append(sc, start, end)
                   case None =>
                     report.warning(em"$$${hl("super")} reference does not refer to anything in comment for $sym", site)
               case vname =>
                 lookupVariable(vname, site) match
                   case Some(replacement) =>
-                    replaceWith(replacement)
+                    replaceWith(replacement, 0, replacement.length)
                   case None =>
                     report.warning(
                       em"Variable $$${hl(vname)} undefined in comment for $sym.\n(You can escape with \"\\$$\" to produce a single '$$' if necessary)",
@@ -426,7 +426,7 @@ object Comments {
           // we can't do this as we go, because then the next round of expanding would treat them as unescaped.
           str.replace("\\$", "$")
         else
-          out.append(str.subSequence(copied, str.length))
+          out.append(str, copied, str.length)
           expandInternal(out.toString, depth + 1)
       }
 

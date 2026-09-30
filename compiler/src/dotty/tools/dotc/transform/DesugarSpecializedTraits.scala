@@ -54,6 +54,7 @@ import dotty.tools.dotc.inlines.Inlines.InlineTraitState
 import dotty.tools.dotc.core.Decorators.em
 
 class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
+  import SpecializationCache.CacheKind
 
   override def phaseName: String = DesugarSpecializedTraits.name
   override def description: String = DesugarSpecializedTraits.description
@@ -64,17 +65,18 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
 
   override def allowsImplicitSearch: Boolean = true
 
-  private def newInterfaceTrait(specialization: Specialization, cache: SpecializationCache)(using Context): (ClassSymbol, SpecializationCache) = {
+  private def newInterfaceTrait(specialization: Specialization, cache: SpecializationCache)(using Context): ClassSymbol = {
     val tm = specialization.getTypeMap
     val inheritedParents = specialization.symbol.denot.info.parents.filterNot(_.typeSymbol == defn.ObjectClass).map(tm(_))
     // Parents may be specializable and so we need to specialize them as well
     // See ArrayIterator extends Iterator in specialized-trait-collections-example.scala
-    val specializations1 = inheritedParents.foldLeft(cache)((specializations, parent) => 
-        (parent, specialization.span) match {
-          case Specialization(spec) if spec.isSpecialized => specializations.addInterface(spec) 
-          case _ => specializations
+    
+    inheritedParents foreach { 
+      parent => (parent, specialization.span) match {
+          case Specialization(spec) if spec.isSpecialized => addInterface(spec, cache) 
+          case _ => ()
         }
-    )
+    }
 
     // Order is depended on in Erasure::typedClassDef and TypeErasure:eraseParent
     val parents = defn.ObjectType
@@ -105,7 +107,7 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
     )
 
     buildTypeParameters(traitSymbol, specialization)
-    (traitSymbol.entered, specializations1)
+    traitSymbol.entered
   }
 
   private def buildInterfaceTraitTree(specialization: Specialization, interfaceSymbol: ClassSymbol)(using Context) = {
@@ -289,7 +291,7 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
   }
 
   // Returns (new stmts including original, new symbols including original)
-  private def transformStatements(stats1: List[Tree], cache: SpecializationCache)(using Context): (List[Tree], SpecializationCache) = {
+  private def transformStatements(stats1: List[Tree], cache: SpecializationCache)(using Context): List[Tree] = {
 
     val inlineSpecializedMethods = new TreeMapWithPreciseStatContexts {
       override def transform(tree: Tree)(using Context): Tree = tree match {
@@ -302,12 +304,14 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
     }
     
     val stats = inlineSpecializedMethods.transform(stats1)
+    
+    val localCache = SpecializationCache(Some(cache))
 
-    val specializations1 = collectReferencedSpecializations(stats, cache)
-    val generatedTraitStats = specializations1.getNewInterfaceSymbols.toList.map(buildInterfaceTraitTree)
-    val generatedClassStats = specializations1.getNewImplementationSymbols.toList.map(buildImplementationClassTree)
+    collectReferencedSpecializations(stats, localCache)
+    val generatedTraitStats = localCache.getInterfaceSymbols.toList.map(buildInterfaceTraitTree)
+    val generatedClassStats = localCache.getImplementationSymbols.toList.map(buildImplementationClassTree)
 
-    val specializations2 = specializations1.installNewInterfaceSymbols.installNewImplementationSymbols
+    cache.mergeFrom(localCache)
     
     val generatedTraitStats1 = generatedTraitStats.map {
       case tree: TypeDef =>
@@ -338,14 +342,14 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
         transformFollowing(inlined)(using newInlineCtx)
     }
 
-    val (generatedTraitStatsFinal, generatedClassStatsFinal, specializationsFinal) = 
+    val (generatedTraitStatsFinal, generatedClassStatsFinal) = 
       if (generatedTraitStats1.isEmpty && generatedClassStats1.isEmpty)
-        (generatedTraitStats1, generatedClassStats1, specializations2)
+        (generatedTraitStats1, generatedClassStats1)
       else 
-        val (generatedTraitStats2, specializations3) = transformStatements(generatedTraitStats1, specializations2)
-        val (generatedClassStats2, specializations4) = transformStatements(generatedClassStats1, specializations3)
+        val generatedTraitStats2 = transformStatements(generatedTraitStats1, cache)
+        val generatedClassStats2 = transformStatements(generatedClassStats1, cache)
         
-        (generatedTraitStats2, generatedClassStats2, specializations4)
+        (generatedTraitStats2, generatedClassStats2)
 
     // Since the only change we make to stats1 => stats is inlining we could arguably "undo" 
     // the inlining and then redo it at the "correct" point later -  so we don't actually modify 
@@ -353,16 +357,13 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
     // we wouldn't need a transform statements method at all
     // (just a "generateInlineTraitsInterfaceAndImplementation" or something), 
     // but not sure if that's worth doing (it would be throwing away work).
-    (generatedTraitStatsFinal ++ generatedClassStatsFinal ++ stats, specializationsFinal) 
+    (generatedTraitStatsFinal ++ generatedClassStatsFinal ++ stats) 
   }
 
   private def specializedTraitCtx(using Context): Context = 
     ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.SpecializedTraits))
 
-  private var specializedTraitCache = SpecializationCache(
-    genInterfaceSymbol = newInterfaceTrait, 
-    genImplementationSymbol = newImplementationClass
-  )
+  private val specializedTraitCache = new SpecializationCache()
 
   // TODO: I reckon to get the best miniphase style processing we can do everything except 
   // outputting the final $impl$ / $sp$ classes in the normal miniphase methods.
@@ -376,11 +377,7 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
     if !ctx.compilationUnit.hasSpecializations then tree 
     else tree match {
       case pkg@PackageDef(pid, stats) =>
-        val (stats1, specializedTraitCache2) = transformStatements(stats, specializedTraitCache)
-        
-        specializedTraitCache = specializedTraitCache2 
-          
-        val grouped = stats1.groupBy(tree => tree.symbol.enclosingPackageClass)
+        val grouped = transformStatements(stats, specializedTraitCache).groupBy(tree => tree.symbol.enclosingPackageClass)
           
         // We need to copy the existing package so we don't lose any attachments 
         // e.g. attachments used to calculate Wunused
@@ -394,114 +391,143 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
         ).withType(defn.EmptyPackageVal.namedType)
       case t => t
     }
+  
+  def addInterface(spec: Specialization, cache: SpecializationCache)(using Context): Unit = 
+    if !cache.contains(CacheKind.Interface, spec) then
+      val sym = newInterfaceTrait(spec, cache)
+      cache.add(CacheKind.Interface, spec, sym)
+      
+  def addErasedImplementation(spec: Specialization, cache: SpecializationCache)(using Context): Unit =
+    val erased = Specialization(
+      spec.symbol, 
+      spec.mapTypeArguments(_ => defn.AnyClass.typeRef, spec.unspecializedTypeArgs), 
+      spec.span
+    )
 
-  private def collectReferencedSpecializations(stats: List[Tree], specializations: SpecializationCache)(using Context): SpecializationCache =
-    stats.foldLeft(specializations) {
-      (specializations, tree) => {
-        tree.deepFold(specializations) {
-          (specializations, tree) => tree match
-            case tdef@TypeDef(name, tmpl: Template) if tdef.symbol.isSpecializedTrait => 
-              if !tdef.symbol.isStatic then
-                // The approach we use for flattening makes this quite tricky: 
-                // see e.g. tests/neg/specialized-trait-scoped-inside-object-deep-nesting.scala.
-                // In theory can scan the tree to find where to put the generated traits instead, 
-                // but this still doesn't work cross-CU, so for now we ban.
-                report.error(
-                  """
-                    Specialized traits may not be defined inside classes or traits 
-                    this would make them path-dependent which is not currently supported); 
-                    They may be defined inside objects.
-                  """, 
-                  tdef.symbol.srcPos
-                )
+    if !cache.contains(CacheKind.Implementation, erased) then
+      val cls =  newImplementationClass(erased, cache.get((CacheKind.Interface, erased)))
+      cache.add(CacheKind.Implementation, erased, cls)
+      
+  def addInterfaceAndImplementation(spec: Specialization, cache: SpecializationCache)(using Context): Unit = 
+    if !cache.contains(CacheKind.Implementation, spec) then
+      addInterface(spec, cache)
+      val cls = newImplementationClass(spec, cache.get(CacheKind.Interface, spec))
+      cache.add(CacheKind.Implementation, spec, cls)
+      
+  private def collectReferencedSpecializations(stats: List[Tree], cache: SpecializationCache)(using Context): Unit =
+    new TreeTraverser {
+      override def traverse(tree: Tree)(using Context): Unit = 
+        tree match
+          case tdef @ TypeDef(name, tmpl: Template) if tdef.symbol.isSpecializedTrait => 
+            if !tdef.symbol.isStatic then
+              // The approach we use for flattening makes this quite tricky: 
+              // see e.g. tests/neg/specialized-trait-scoped-inside-object-deep-nesting.scala.
+              // In theory can scan the tree to find where to put the generated traits instead, 
+              // but this still doesn't work cross-CU, so for now we ban.
+              report.error(
+                """
+                  Specialized traits may not be defined inside classes or traits 
+                  this would make them path-dependent which is not currently supported); 
+                  They may be defined inside objects.
+                """, 
+                tdef.symbol.srcPos
+              )
                 
-              tdef.symbol.typeParams.foreach {
-                param =>
-                  val isVariant = param.paramVariance.isOneOf(Flags.Contravariant | Flags.Covariant) && 
-                    Specialization.classSpecializedTypeParams(tdef.symbol).exists(tpe => tpe.typeSymbol == param)
-                  if isVariant then
-                    report.warning(VarianceInSpecializedTraitsLimitation(), param.srcPos)
-              }
-              specializations
-            case Typed(Apply(Select(New(anon),ctor),List()), tpt: TypeTree) if anon.symbol.isAnonymousClass =>
-              (tpt.tpe, tpt.span) match {
-                case Specialization(spec) if spec.isFullySpecializedToTopClassesOrNothing => 
-                  // We never inline into anonymous class instances (avoids cycles in inline trait inlining), 
-                  // so all anonymous class instances must have a non-anonymous class final representation as an $impl$ class.
-                  specializations.addErasedImplementation(spec)
-                                                                                                                                          
-                case Specialization(spec) if spec.isSpecialized => 
-                  specializations.addInterfaceAndImplementation(spec)
-
-                case _ => specializations
-              }
-            case Specialization(specialization) =>
-              if (specialization.hasSpecializedParams) {
-                // Block Vec[?] and similar
-                specialization.specializedTypeArgs filter {
-                  case _: WildcardType => true
-                  case _: RealTypeBounds => true
-                  case tpe => 
-                    false
-                } foreach { tpe => 
-                    report.error(
-                      "Wildcard types may not be substituted for Specialized type parameters.", 
-                      ctx.source.atSpan(specialization.span)
-                    )
-                }
-              }
-              if (specialization.isSpecialized) {            
-                specializations.addInterface(specialization)
-              } else {
-                // Check foo[S: Specialized] <= Vec[S: Specialized]
-                specialization.specializedTypeArgs flatMap {
-                  // For each type we are using in a Specialized position
-                  // Find all type params within that type that are not marked as Specialized so we can error
-                  arg =>            
-                    arg.widen.dealias.namedPartsWith {
-                      part => 
-                        def hasCorrectlyMarkedTypeParam: Boolean = 
-                          val owner = 
-                            if part.typeSymbol.owner.isClass then 
-                              part.typeSymbol.owner.primaryConstructor 
-                            else 
-                              part.typeSymbol.owner
-                          
-                          owner.paramSymss.flatten.exists {
-                            sym => sym.info match {
-                              case SpecializedEvidence(tpeArg) =>
-                                tpeArg.typeSymbol.isTypeParam && tpeArg.typeSymbol.name == part.name
-                              case _ => false
-                            }
-                          }
-                      
-                        part.typeSymbol.isTypeParam && !hasCorrectlyMarkedTypeParam
-                    }
-                } foreach { tpe => 
-                  if tpe.denot.symbol.srcPos.span.exists then
-                    report.error(
-                      s"${tpe.typeSymbol} used in a Specialized position, so it must be marked as Specialized at its definition.", 
-                      tpe.denot.symbol.srcPos
-                    )
-                }
-                
-                specializations
-              }
-            
-            case app @ Apply(_, _) => tpd.methPart(app) match { // class / object Bar extends Foo[Int](params)
-              case fun @ Select(New(tpt), init) if fun.symbol.isConstructor => tpd.allArgss(tree) match {
-                  case typeArgs :: valueArgss => 
-                    val spec = Specialization(fun.symbol.owner, typeArgs.map(_.tpe), app.span)
-                    if spec.isSpecialized then specializations.addInterface(spec) else specializations
-                  case _ => specializations
-                }
-              case _ => specializations
+            tdef.symbol.typeParams.foreach {
+              param =>
+                val isVariant = param.paramVariance.isOneOf(Flags.Contravariant | Flags.Covariant) && 
+                  Specialization.classSpecializedTypeParams(tdef.symbol).exists(tpe => tpe.typeSymbol == param)
+                if isVariant then
+                  report.warning(VarianceInSpecializedTraitsLimitation(), param.srcPos)
             }
+            
+            traverseChildren(tdef)
 
-            case _ => specializations
-        }
-      }
-    }
+          case tree @ Typed(Apply(Select(New(anon),ctor),List()), tpt: TypeTree) if anon.symbol.isAnonymousClass =>
+            (tpt.tpe, tpt.span) match {
+              case Specialization(spec) if spec.isFullySpecializedToTopClassesOrNothing => 
+                // We never inline into anonymous class instances (avoids cycles in inline trait inlining), 
+                // so all anonymous class instances must have a non-anonymous class final representation as an $impl$ class.
+                addErasedImplementation(spec, cache)
+                                                                                                                                          
+              case Specialization(spec) if spec.isSpecialized => 
+                addInterfaceAndImplementation(spec, cache)
+
+              case _ => ()
+            }
+            
+            traverseChildren(tree)
+          case tree @ Specialization(specialization) =>
+            if (specialization.hasSpecializedParams) {
+              // Block Vec[?] and similar
+               specialization.specializedTypeArgs filter {
+                case _: WildcardType => true
+                case _: RealTypeBounds => true
+                 case tpe => 
+                   false
+               } foreach { tpe => 
+                  report.error(
+                    "Wildcard types may not be substituted for Specialized type parameters.", 
+                    ctx.source.atSpan(specialization.span)
+                   )
+              }
+            }
+            if (specialization.isSpecialized) {            
+              addInterface(specialization, cache)
+            } else {
+              // Check foo[S: Specialized] <= Vec[S: Specialized]
+              specialization.specializedTypeArgs flatMap {
+                // For each type we are using in a Specialized position
+                // Find all type params within that type that are not marked as Specialized so we can error
+                arg =>            
+                  arg.widen.dealias.namedPartsWith {
+                    part => 
+                      def hasCorrectlyMarkedTypeParam: Boolean = 
+                        val owner = 
+                          if part.typeSymbol.owner.isClass then 
+                            part.typeSymbol.owner.primaryConstructor 
+                          else 
+                            part.typeSymbol.owner
+                          
+                        owner.paramSymss.flatten.exists {
+                          sym => sym.info match {
+                            case SpecializedEvidence(tpeArg) =>
+                              tpeArg.typeSymbol.isTypeParam && tpeArg.typeSymbol.name == part.name
+                            case _ => false
+                          }
+                        }
+                      
+                      part.typeSymbol.isTypeParam && !hasCorrectlyMarkedTypeParam
+                  }
+              } foreach { tpe => 
+                if tpe.denot.symbol.srcPos.span.exists then
+                  report.error(
+                    s"${tpe.typeSymbol} used in a Specialized position, so it must be marked as Specialized at its definition.", 
+                    tpe.denot.symbol.srcPos
+                  )
+              }
+          
+            }
+            
+            traverseChildren(tree)
+            
+          case app @ Apply(_, _) => 
+            tpd.methPart(app) match { // class / object Bar extends Foo[Int](params)
+              case fun @ Select(New(tpt), init) if fun.symbol.isConstructor => tpd.allArgss(tree) match {
+                case typeArgs :: valueArgss => 
+                  val spec = Specialization(fun.symbol.owner, typeArgs.map(_.tpe), app.span)
+                  if spec.isSpecialized then addInterface(spec, cache)
+                case _ => ()
+              }
+              case _ => ()
+            }
+ 
+            traverseChildren(app)
+
+          case _ => traverseChildren(tree)
+    }.apply((), stats)
+      
+  
 end DesugarSpecializedTraits
 
 object DesugarSpecializedTraits:
@@ -552,87 +578,52 @@ end DesugarSpecializedTraits
   for the "erased" implementationsclass Foo$impl which correspond to the ordinary erased interface Foo which is not stored.
 */
 object SpecializationCache:
-  type SymbolMap = Map[Specialization, ClassSymbol]
-  type GenInterfaceSymbol = (Specialization, SpecializationCache) => Context ?=> (ClassSymbol, SpecializationCache)
-  type GenImplementationSymbol = (Specialization, Option[ClassSymbol]) => Context ?=> ClassSymbol
-
+  enum CacheKind:
+    case Interface
+    case Implementation
+  
+  type Key = (CacheKind, Specialization)
+  
+  type SymbolMap = Map[Key, ClassSymbol]
+  
 class SpecializationCache(
-  private val newInterfaceSymbols: SpecializationCache.SymbolMap = Map.empty,
-  private val newImplementationSymbols: SpecializationCache.SymbolMap = Map.empty,
-  private val interfaceSymbols: SpecializationCache.SymbolMap = Map.empty,
-  private val implementationSymbols: SpecializationCache.SymbolMap = Map.empty,
-  private val genInterfaceSymbol: SpecializationCache.GenInterfaceSymbol,
-  private val genImplementationSymbol: SpecializationCache.GenImplementationSymbol
+  private val parent: Option[SpecializationCache] = None
 ):
+  import SpecializationCache.*
+  import CacheKind.*
 
-  def copy(
-    newInterfaceSymbols: SpecializationCache.SymbolMap = this.newInterfaceSymbols,
-    newImplementationSymbols: SpecializationCache.SymbolMap = this.newImplementationSymbols,
-    interfaceSymbols: SpecializationCache.SymbolMap = this.interfaceSymbols,
-    implementationSymbols: SpecializationCache.SymbolMap = this.implementationSymbols,
-    genInterfaceSymbol: SpecializationCache.GenInterfaceSymbol = this.genInterfaceSymbol,
-    genImplementationSymbol: SpecializationCache.GenImplementationSymbol = this.genImplementationSymbol)
-      = SpecializationCache(
-        newInterfaceSymbols, 
-        newImplementationSymbols, 
-        interfaceSymbols, 
-        implementationSymbols, 
-        genInterfaceSymbol, 
-        genImplementationSymbol
-      )
+  private var symbols: SpecializationCache.SymbolMap = Map.empty
 
-  def getInterfaceSymbol(spec: Specialization): Option[ClassSymbol] = 
-    newInterfaceSymbols.orElse(interfaceSymbols).lift(spec)
+  def getInterfaceSymbols: List[(Specialization, ClassSymbol)] = 
+    symbols.toList.flatMap {
+      case ((Interface, s), cls) => Some(s -> cls)
+      case _ => None
+    }
   
-  def getImplementationSymbol(spec: Specialization): Option[ClassSymbol] = 
-    newImplementationSymbols.orElse(implementationSymbols).lift(spec)
+  def getImplementationSymbols: List[(Specialization, Option[ClassSymbol], ClassSymbol)] = 
+    symbols.flatMap {
+      case ((Implementation, k), v) => Some((k, get(Interface, k), v))
+      case _ => None
+    }.toList
+    
+  def get(kind: CacheKind, spec: Specialization): Option[ClassSymbol] =
+    get((kind, spec))
+    
+  def get(key: Key): Option[ClassSymbol] =
+    symbols.get(key).orElse(parent.flatMap(_.get(key)))
+    
+  def add(kind: CacheKind, spec: Specialization, cls: ClassSymbol): Unit = add((kind, spec), cls)
 
-  def getNewInterfaceSymbols: List[(Specialization, ClassSymbol)] = newInterfaceSymbols.toList
+  def add(key: Key, cls: ClassSymbol): Unit = 
+    symbols += key -> cls
   
-  def getNewImplementationSymbols: List[(Specialization, Option[ClassSymbol], ClassSymbol)] = 
-    newImplementationSymbols.map((k, v) => (k, getInterfaceSymbol(k), v)).toList
+  def contains(kind: CacheKind, spec: Specialization): Boolean = contains((kind, spec))
+  
+  def contains(key: Key): Boolean = 
+    symbols.contains(key) || parent.exists(_.contains(key))
 
-  def addInterface(spec: Specialization)(using Context): SpecializationCache = 
-    if (newInterfaceSymbols.contains(spec) || interfaceSymbols.contains(spec)) then
-      this
-    else
-      val (targetSymbol, resultingCache) = genInterfaceSymbol(spec, this)
-      resultingCache.copy(newInterfaceSymbols = resultingCache.newInterfaceSymbols + (spec -> targetSymbol))
-      
-  def addErasedImplementation(spec: Specialization)(using Context): SpecializationCache =
-    val erased = Specialization(
-      spec.symbol, 
-      spec.mapTypeArguments(_ => defn.AnyClass.typeRef, spec.unspecializedTypeArgs), 
-      spec.span
-    )
-
-    if (newImplementationSymbols.contains(erased) || implementationSymbols.contains(erased)) then
-      this
-    else
-      copy(
-        newImplementationSymbols = 
-          newImplementationSymbols + (erased -> genImplementationSymbol(erased, getInterfaceSymbol(erased)))
-      )
-      
-  def addInterfaceAndImplementation(spec: Specialization)(using Context): SpecializationCache = 
-    if (newImplementationSymbols.contains(spec) || implementationSymbols.contains(spec)) then
-      this
-    else
-      val withInterface = addInterface(spec)
-      withInterface.copy(
-        newImplementationSymbols = 
-          withInterface.newImplementationSymbols + (spec -> genImplementationSymbol(spec, withInterface.getInterfaceSymbol(spec)))
-      )
-
-  def installNewInterfaceSymbols =
-    this.copy(
-      newInterfaceSymbols = Map.empty,
-      interfaceSymbols = interfaceSymbols ++ newInterfaceSymbols)
-
-  def installNewImplementationSymbols =
-    this.copy(
-      newImplementationSymbols = Map.empty,
-      implementationSymbols = implementationSymbols ++ newImplementationSymbols)
+  def mergeFrom(child: SpecializationCache) = 
+    symbols = symbols ++ child.symbols
 
 end SpecializationCache
 

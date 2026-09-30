@@ -1662,16 +1662,14 @@ class CheckCaptures extends Recheck, SymTransformer:
             CaptureSet.Var(curEnv.owner), curEnv)
         case _ =>
       val res =
-        try
-          if capt eq noPrinter then
-            super.recheck(tree, pt)
-          else
-            trace.force(i"rechecking $tree with pt = $pt", recheckr, show = true):
+        printOnAssertionError(i"error while rechecking $tree against $pt"):
+          try
+            if capt eq noPrinter then
               super.recheck(tree, pt)
-        catch case ex: AssertionError =>
-          println(i"error while rechecking $tree against $pt")
-          throw ex
-        finally curEnv = saved
+            else
+              trace.force(i"rechecking $tree with pt = $pt", recheckr, show = true):
+                super.recheck(tree, pt)
+          finally curEnv = saved
       if tree.isTerm && !pt.isBoxed && pt != LhsProto then
         markFree(res.boxedCaptureSet, tree)
       res
@@ -1722,16 +1720,14 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: List[Note])(using Context): Type =
       val saved = ccState.ignoreClassifiers
-      try
-        tree match
-          case tree: TypeApply if tree.symbol == defn.Any_typeCast => ccState.ignoreClassifiers = true
-          case _ =>
-        testAdapted(actual, expected, tree, notes)(err.typeMismatch)
-      catch case ex: AssertionError =>
-        println(i"error while checking $tree: $actual against $expected")
-        throw ex
-      finally
-        ccState.ignoreClassifiers = saved
+      printOnAssertionError(i"error while checking $tree: $actual against $expected"):
+        try
+          tree match
+            case tree: TypeApply if tree.symbol == defn.Any_typeCast => ccState.ignoreClassifiers = true
+            case _ =>
+          testAdapted(actual, expected, tree, notes)(err.typeMismatch)
+        finally
+          ccState.ignoreClassifiers = saved
 
     @annotation.tailrec
     private def findImpureUpperBound(tp: Type)(using Context): Type = tp match
@@ -1995,8 +1991,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
 
         actual match
-          case actual: FlexibleType =>
-            return actual.derivedFlexibleType(recur(actual.hi, expected, covariant))
+          case actual @ FlexibleType(hi) =>
+            return actual.derivedFlexibleType(recur(hi, expected, covariant))
           case _ =>
 
         // Decompose the actual type into the inner shape type, the capture set and the box status

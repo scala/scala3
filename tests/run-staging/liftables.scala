@@ -1,3 +1,4 @@
+import language.experimental.genericNumberLiterals
 import scala.quoted.*
 import scala.quoted.staging.*
 object Test {

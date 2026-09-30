@@ -1931,7 +1931,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               member.info.substThis(self.classSymbol.asClass, self)
             else
               member.info
-          
+
           // We treat the constructor type parameters as if they were the same as corresponding type members.
           // That's how Scala 2 symbols are unpickled to begin with.
           val memberInfoSubstituted =
@@ -1981,9 +1981,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.subst(from, to)
 
         def typeArgs: List[TypeRepr] = self match
+          case FlexibleType(tp) => tp.typeArgs
           case AppliedType(_, args) => args
           case AnnotatedType(parent, _) => parent.typeArgs
-          case FlexibleType(underlying) => underlying.typeArgs
           case _ => List.empty
       end extension
     end TypeReprMethods
@@ -2473,24 +2473,28 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def unapply(x: NoPrefix): true = true
     end NoPrefix
 
-    type FlexibleType = dotc.core.Types.FlexibleType
+    // A flexible type is represented as an `AppliedType` over the synthetic
+    // `<FlexibleType>` symbol. We use an opaque type so that `FlexibleType` is
+    // nominally distinct from `AppliedType`, otherwise the two `TypeTest`s would
+    // be indistinguishable and `case FlexibleType(_)` could match plain applied types.
+    opaque type FlexibleType <: TypeRepr = dotc.core.Types.AppliedType
 
     object FlexibleTypeTypeTest extends TypeTest[TypeRepr, FlexibleType]:
       def unapply(x: TypeRepr): Option[FlexibleType & x.type] = x match
-        case x: (Types.FlexibleType & x.type) => Some(x)
+        case x: (Types.AppliedType & x.type) if Types.FlexibleType.isInstance(x) => Some(x)
         case _ => None
     end FlexibleTypeTypeTest
 
     object FlexibleType extends FlexibleTypeModule:
-      def apply(tp: TypeRepr): FlexibleType = Types.FlexibleType(tp)
-      def unapply(x: FlexibleType): Some[TypeRepr] = Some(x.hi)
+      def apply(tp: TypeRepr): FlexibleType = Types.FlexibleType(tp).asInstanceOf[FlexibleType]
+      def unapply(x: FlexibleType): Option[TypeRepr] = Types.FlexibleType.unapply(x)
     end FlexibleType
 
     given FlexibleTypeMethods: FlexibleTypeMethods with
       extension (self: FlexibleType)
-        def underlying: TypeRepr = self.hi
-        def lo: TypeRepr = self.lo
-        def hi: TypeRepr = self.hi
+        def underlying: TypeRepr = Types.FlexibleType.unapply(self).get
+        def lo: TypeRepr = Types.OrNull(Types.FlexibleType.unapply(self).get)
+        def hi: TypeRepr = Types.FlexibleType.unapply(self).get
       end extension
     end FlexibleTypeMethods
 
@@ -3383,9 +3387,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def startColumn: Int = self.startColumn
         def endColumn: Int = self.endColumn
         def sourceCode: Option[String] =
-          val contents = self.source.content()
+          val contents = self.source.textContent()
           if contents.length < self.end then None
-          else Some(new String(contents, self.start, self.end - self.start))
+          else Some(contents.substring(self.start, self.end))
       end extension
     end PositionMethods
 
@@ -3408,7 +3412,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def getJPath: Option[java.nio.file.Path] = Option(self.jfile.map(_.toPath).orElse(null))
         def name: String = self.name
         def path: String = self.path
-        def content: Option[String] = Option.when(self.exists)(new String(self.content()))
+        def content: Option[String] = Option.when(self.exists)(self.textContent())
       end extension
     end SourceFileMethods
 

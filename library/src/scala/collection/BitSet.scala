@@ -230,7 +230,12 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
   }
 
   /** Tests whether this bitset is empty, that is, whether every word is zero. */
-  override def isEmpty: Boolean = 0 until nwords forall (i => word(i) == 0)
+  override def isEmpty: Boolean =
+    var i = 0
+    while i < nwords do
+      if word(i) != 0 then return false
+      i += 1
+    true
 
   @inline private def smallestInt: Int = {
     val thisnwords = nwords

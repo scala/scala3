@@ -28,7 +28,7 @@ import scala.annotation.constructorOnly
 import scala.concurrent.Promise
 import dotty.tools.dotc.transform.Pickler.*
 import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
-import dotty.tools.dotc.sbt.asyncZincPhasesCompleted
+import dotty.tools.dotc.sbt.asyncZincPhaseCompleted
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.dotc.util.chaining.*
 
@@ -47,53 +47,84 @@ object Pickler {
    */
   inline val ParallelPickling = true
 
-  /**A holder for synchronization points and reports when writing TASTy asynchronously.
-   * The callbacks should only be called once.
+  /** Pipelining support. With `-Yearly-tasty-output`, TASTy files are written after the pickler,
+   *  and zinc is notified via `apiPhaseCompleted` / `dependencyPhaseCompleted`. sbt can then start
+   *  downstream projects while this compiler still runs.
+   *
+   *  Signals (promises in this class):
+   *  - TASTy written: by the async TASTy writer when it's done, on its executor.
+   *  - API sent: by ExtractAPI, on the compiler thread.
+   *  - Dependencies sent: by Inlining, on the compiler thread.
+   *
+   *  The zinc callbacks run on the `ExecutionContext`:
+   *  - `apiPhaseCompleted` once the API is sent and TASTy is written.
+   *  - `dependencyPhaseCompleted` after that, once dependencies are sent.
+   *  Both are skipped if a signal was canceled, there are errors, or units were suspended.
+   *
+   *  At the end of the run: `cancel` completes signals that are still pending, since their
+   *  phase may have been skipped (e.g., due to errors). A scheduled TASTy write is not
+   *  canceled, we wait for it to complete.
+   *  The `sync` method blocks until the two zinc callbacks (and therefore TASTy writing)
+   *  are done. This ensures zinc has a consistent state when the compiler run ends.
    */
   class AsyncTastyHolder private (
       val earlyOut: Option[AbstractFile], incCallback: IncrementalCallback | Null)(using @constructorOnly ex: ExecutionContext):
     import scala.concurrent.Future as StdFuture
     import scala.concurrent.Await
     import scala.concurrent.duration.Duration
-    import AsyncTastyHolder.Signal
+    import AsyncTastyHolder.{Signal, State}
 
-    private val _cancelled = AtomicBoolean(false)
+    private var writeScheduled = false
 
-    /**Cancel any outstanding work.
-     * This should be done at the end of a run, e.g. background work may be running even though
-     * errors in main thread will prevent reaching the backend. */
+    /** Called by the pickler once the TASTy write is queued; `sync` then waits for it to finish. */
+    def signalWriteScheduled(): Unit = writeScheduled = true
+
+    /** Stop waiting for work that will never happen. Called at the end of a run, which may not
+     *  have reached the phases this work waits for, e.g. because of errors. A queued TASTy write is not
+     *  canceled: zinc's callbacks depend on it, and it always completes. */
     def cancel(): Unit =
-      if _cancelled.compareAndSet(false, true) then
+      if !writeScheduled then
         asyncTastyWritten.trySuccess(None) // cancel the wait for TASTy writing
-        if incCallback != null then
-          asyncAPIComplete.trySuccess(Signal.Cancelled) // cancel the wait for API completion
-      else
-        () // nothing else to do
-
-    /** check if the work has been cancelled. */
-    def cancelled: Boolean = _cancelled.get()
+      if incCallback != null then
+        // cancel the wait for API and dependencies
+        asyncAPISent.trySuccess(Signal.Cancelled)
+        asyncDependenciesSent.trySuccess(Signal.Cancelled)
 
     private val asyncTastyWritten = Promise[Option[AsyncTastyHolder.State]]()
-    private val asyncAPIComplete =
-      if incCallback == null then Promise.successful(Signal.Done) // no need to wait for API completion
+    private val asyncAPISent = zincSignal()
+    private val asyncDependenciesSent = zincSignal()
+
+    private def zincSignal(): Promise[Signal] =
+      if incCallback == null then Promise.successful(Signal.Done) // no need to wait for Zinc
       else Promise[Signal]()
 
+    /** Once `prev` completes and `sent` is signaled, tell Zinc that `phase` is complete. */
+    private def completeZincPhase(prev: StdFuture[Option[State]], sent: Promise[Signal], phase: String)(
+        signal: => Unit)(using ExecutionContext): StdFuture[Option[State]] =
+      prev.zipWith(sent.future): (optState, sentSignal) =>
+        optState.map: state =>
+          if incCallback != null && sentSignal == Signal.Done && state.done && !state.hasErrors then
+            val reporter = asyncZincPhaseCompleted(state.pending, phase)(signal)
+            State(hasErrors = reporter.hasErrors, done = true, pending = reporter.toBuffered)
+          else state
+
+    // `dependencyPhaseCompleted` waits for the dependencies, which are sent after the API
     private val backendFuture: StdFuture[Option[BufferingReporter]] =
-      val asyncState = asyncTastyWritten.future
-        .zipWith(asyncAPIComplete.future)((state, api) => state.filterNot(_ => api == Signal.Cancelled))
-      asyncState.map: optState =>
-        optState.flatMap: state =>
-          if incCallback != null && state.done && !state.hasErrors then
-            asyncZincPhasesCompleted(incCallback, state.pending).toBuffered
-          else state.pending
+      val apiCompleted = completeZincPhase(asyncTastyWritten.future, asyncAPISent, "API")(incCallback.nn.apiPhaseCompleted())
+      completeZincPhase(apiCompleted, asyncDependenciesSent, "Dependencies")(incCallback.nn.dependencyPhaseCompleted())
+        .map(_.flatMap(_.pending))
 
     /** awaits the state of async TASTy operations indefinitely, returns optionally any buffered reports. */
     def sync(): Option[BufferingReporter] =
       Await.result(backendFuture, Duration.Inf)
 
-    def signalAPIComplete(): Unit =
+    def signalAPISent(): Unit =
       if incCallback != null then
-        asyncAPIComplete.trySuccess(Signal.Done)
+        asyncAPISent.trySuccess(Signal.Done)
+
+    def signalDependenciesSent(): Unit =
+      if incCallback != null then
+        asyncDependenciesSent.trySuccess(Signal.Done)
 
     /** should only be called once */
     def signalAsyncTastyWritten()(using ctx: ReadOnlyContext): Unit =
@@ -102,7 +133,6 @@ object Pickler {
         try
           // when we are done, i.e. no suspended units,
           // we should close the file system so it can be read in the same JVM process.
-          // Note: we close even if we have been cancelled.
           earlyOut match
             case Some(jar: JarArchive) => jar.close()
             case _ =>
@@ -162,8 +192,7 @@ object Pickler {
     try
       try
         for (internalName, pickled) <- tasks do
-          if !async.cancelled then
-            val _ = writer.writeTasty(internalName, pickled)
+          val _ = writer.writeTasty(internalName, pickled)
       catch
         case ex: Exception => ctx.reporter.exception(em"writing TASTy to early output", ex)
       finally
@@ -491,19 +520,22 @@ class Pickler extends Phase {
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     val useExecutor = this.useExecutor
 
-    val writeTask: Option[() => Unit] =
-      ctx.run.nn.asyncTasty.map: async =>
-        fastDoAsyncTasty = true
-        () => async.earlyOut match {
-          case Some(out) =>
-            given ReadOnlyContext = if useExecutor then ReadOnlyContext.buffered else ReadOnlyContext.eager
-            val writer = Pickler.EarlyFileWriter(out)
-            writeSigFilesAsync(serialized.result(), writer, async)
-          case None =>
+    val asyncTasty = ctx.run.nn.asyncTasty
+    if asyncTasty.isDefined then fastDoAsyncTasty = true
+
+    val writeTask: Option[(AsyncTastyHolder, () => Unit)] =
+      for async <- asyncTasty; out <- async.earlyOut yield
+        async -> { () =>
+          given ReadOnlyContext = if useExecutor then ReadOnlyContext.buffered else ReadOnlyContext.eager
+          val writer = Pickler.EarlyFileWriter(out)
+          writeSigFilesAsync(serialized.result(), writer, async)
         }
 
     def runPhase(writeCB: (doWrite: () => Unit) => Unit) =
-      super.runOn(units).tap(_ => writeTask.foreach(writeCB))
+      super.runOn(units).tap: _ =>
+        for (async, doWrite) <- writeTask do
+          writeCB(doWrite)
+          async.signalWriteScheduled()
 
     val result =
       if useExecutor then
@@ -554,7 +586,7 @@ class Pickler extends Phase {
     for ((cls, (unit, unpickler, optCheck)) <- unpicklers) do
       val testJava = unit.typedAsJava
       if testJava then
-        if unpickler.unpickler.nameAtRef.contents.exists(_ == nme.FromJavaObject) then
+        if unpickler.unpickler.nameAtRef.exists(_ == nme.FromJavaObject) then
           report.error(em"Pickled reference to FromJavaObject in Java defined $cls in ${cls.source}")
       val unpickled = unpickler.rootTrees
       val freshUnit = CompilationUnit(rootCtx.compilationUnit.source)

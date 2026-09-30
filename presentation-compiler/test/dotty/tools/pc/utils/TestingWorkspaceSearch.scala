@@ -128,6 +128,6 @@ class TestingWorkspaceSearch(classpath: Seq[String]):
             val name = sym.last.name
             if Fuzzy.matches(query.query, name)
             then
-              val symbolsString = sym.map { case SymbolPart(name, suffix) => name ++ suffix }.mkString
+              val symbolsString = sym.map { case SymbolPart(name, suffix) => name + suffix }.mkString
               visitor.visitWorkspaceSymbol(Paths.get(""), symbolsString, null, null)
       case _ =>
