@@ -94,19 +94,16 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
       case `stopReplName` => ownStopRepl(name)
 
       case _ =>
-        try findClass(name)
+        try super.loadClass(name)
         catch case _: ClassNotFoundException =>
           // Not in REPL output, try to load from parent and instrument it
-          try
-            val resourceName = name.replace('.', '/') + ".class"
-            getParent.getResourceAsStream(resourceName) match {
-              case null => super.loadClass(name)
-              case is =>
-                try defineClassInstrumented(name, is.readAllBytes())
-                finally is.close()
-            }
-          catch
-            case ex: Exception => super.loadClass(name)
+          val resourceName = name.replace('.', '/') + ".class"
+          getParent.getResourceAsStream(resourceName) match {
+            case null => throw new ClassNotFoundException(name)
+            case is =>
+              try defineClassInstrumented(name, is.readAllBytes())
+              finally is.close()
+          }
     }
 
 end AbstractFileClassLoader
