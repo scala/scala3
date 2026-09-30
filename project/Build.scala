@@ -83,7 +83,7 @@ object Build {
       "-feature",
       "-deprecation",
       "-unchecked",
-      // "-Werror",
+      "-Werror",
       // temporary duplicate 'caps' while CC is developed?
       "-Wconf:msg=package scala contains object and package with same name:i",
       // Scaladoc and PC testcases contain deliberately weird code
