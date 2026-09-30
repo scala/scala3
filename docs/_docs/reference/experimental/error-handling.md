@@ -175,7 +175,7 @@ The subtyping rules subsume the ones for maybe types. We have additionally:
 ## Higher-kinded type inference
 
 Higher-kinded type inference in Scala is usually right-biased. This means that
-if an actual type constructor has more type parameters than a higher-kinded type parameter, the leftmost parameters are fixed and the rightmost parameters are lambda-abstracted. For instance, matching a type constructor `F[_]` with a type argument `Either[E, R]` would infer `[X] =>> E ? X`. This is the right thing for
+if an actual type constructor has more type parameters than a higher-kinded type parameter, the leftmost parameters are fixed and the rightmost parameters are lambda-abstracted. For instance, matching a type constructor `F[_]` with a type argument `Either[E, R]` would infer `[X] =>> Either[E, X]`. This is the right thing for
 `Either`, but would be counter-intuitive for maybe types, since matching `F[_]` with
 `R ? E` would infer `[X] =>> R ? X`, whereas we would usually want to have `[X] =>> X ? E` inferred instead.
 
