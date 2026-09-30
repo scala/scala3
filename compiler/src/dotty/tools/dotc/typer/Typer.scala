@@ -1218,9 +1218,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case Whole(radix) => return lit(intFromDigits(digits, radix))
           case _ =>
         }
-      else if (target.isRef(defn.LongClass))
+      else if (Feature.genericNumberLiteralsEnabled && target.isRef(defn.LongClass))
         tree.kind match {
-          case Whole(radix) if Feature.genericNumberLiteralsEnabled =>
+          case Whole(radix) =>
             val long = longFromDigits(digits, radix)
             try
               if long != intFromDigits(digits, radix).toLong then
@@ -1232,12 +1232,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else if (target.isRef(defn.FloatClass))
         tree.kind match {
           case Whole(16) => // cant parse hex literal as float
-          case _ if Feature.genericNumberLiteralsEnabled =>
+          case _  =>
             val float = floatFromDigits(digits)
             if digits.toIntOption.exists(_ != float.toInt) then
               report.warning(LossyWideningConstantConversion(defn.IntType, target), tree.srcPos)
             return lit(float)
-          case _ =>
         }
       else if (target.isRef(defn.DoubleClass))
         tree.kind match {
