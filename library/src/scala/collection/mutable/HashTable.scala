@@ -70,7 +70,11 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
   /** The initial size of the hash table. */
   protected def initialSize: Int = 16
 
-  /** The initial threshold. */
+  /** The initial threshold.
+   *
+   *  @param _loadFactor the load factor expressed in units of 0.001 (e.g. `750` means 75%)
+   *  @return the threshold at which the hash table should be resized, computed from `_loadFactor` and the initial capacity
+   */
   private def initialThreshold(_loadFactor: Int): Int = newThreshold(_loadFactor, initialCapacity)
 
   private def initialCapacity = capacity(initialSize)
@@ -134,6 +138,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
   /** Finds entry with given key in table, null if not found.
    *
    *  @param key the key to look up in the hash table
+   *  @return the entry whose key equals `key`, or `null` if no such entry exists
    */
   final def findEntry(key: A): Entry | Null =
     findEntry0(key, index(elemHashCode(key)))
@@ -170,6 +175,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
    *
    *  @param key the key to find or insert
    *  @param value the value to associate with the key if a new entry is created
+   *  @return the existing entry whose key equals `key`, or `null` if a new entry was created and added
    */
   def findOrAddEntry(key: A, value: B): Entry | Null = {
     val h = index(elemHashCode(key))
@@ -183,12 +189,14 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
    *
    *  @param key the key for the new entry
    *  @param value the value to associate with the key
+   *  @return a newly constructed entry holding `key` and `value`, ready to be inserted into the table
    */
   def createNewEntry(key: A, value: B): Entry
 
   /** Removes entry from table if present.
    *
    *  @param key the key of the entry to remove
+   *  @return the removed entry, or `null` if no entry with key `key` was present
    */
   final def removeEntry(key: A) : Entry | Null = {
     removeEntry0(key, index(elemHashCode(key)))
@@ -197,6 +205,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
    *
    *  @param key the key of the entry to remove
    *  @param h the hash index into the table
+   *  @return the removed entry, or `null` if no entry with key `key` was present at index `h`
    */
   private[collection] final def removeEntry0(key: A, h: Int) : Entry | Null = {
     var e = table(h).asInstanceOf[Entry | Null]
@@ -381,6 +390,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
    *  this is of crucial importance when populating the table in parallel
    *
    *  @param hcode the hash code of the element to index
+   *  @return a bucket index in the range `[0, table.length)` derived from `hcode`
    */
   protected[collection] final def index(hcode: Int): Int = {
     val ones = table.length - 1
@@ -414,6 +424,7 @@ private[collection] object HashTable {
      *
      *  @param hcode the original hash code to improve
      *  @param seed the seed value derived from the table size, used to rotate the hash
+     *  @return an improved hash code with better bit distribution for use as a table index
      */
     protected final def improve(hcode: Int, seed: Int): Int = rotateRight(byteswap32(hcode), seed)
   }
@@ -421,6 +432,7 @@ private[collection] object HashTable {
   /** Returns a power of two >= `target`.
    *
    *  @param target the minimum value for the returned power of two
+   *  @return the smallest positive power of two that is greater than or equal to `target`
    */
   private[collection] def nextPositivePowerOfTwo(target: Int): Int = 1 << -numberOfLeadingZeros(target - 1)
 }

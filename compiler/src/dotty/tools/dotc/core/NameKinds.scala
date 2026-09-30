@@ -17,10 +17,10 @@ object NameKinds {
   // These are sharable since all NameKinds are created eagerly at the start of the program
   // before any concurrent threads are forked. for this to work, NameKinds should never
   // be created lazily or in modules that start running after compilers are forked.
-  @sharable private val simpleNameKinds = util.HashMap[Int, ClassifiedNameKind]()
-  @sharable private val qualifiedNameKinds = util.HashMap[Int, QualifiedNameKind]()
-  @sharable private val numberedNameKinds = util.HashMap[Int, NumberedNameKind]()
-  @sharable private val uniqueNameKinds = util.HashMap[String, UniqueNameKind]()
+  @sharable private val simpleNameKinds = new Array[ClassifiedNameKind](64)
+  @sharable private val qualifiedNameKinds = new Array[QualifiedNameKind](64)
+  @sharable private val numberedNameKinds = new Array[NumberedNameKind](64)
+  @sharable private val uniqueNameKinds = util.EqHashMap[TermName, UniqueNameKind]()
 
   /** A class for the info stored in a derived name */
   abstract class NameInfo {
@@ -80,10 +80,9 @@ object NameKinds {
     def apply(underlying: TermName): TermName = underlying.derived(info)
 
     /** Extractor operation for names of this kind */
-    def unapply(name: DerivedName): Option[TermName] =  name match {
-      case DerivedName(underlying, `info`) => Some(underlying)
-      case _ => None
-    }
+    def unapply(name: DerivedName): Option[TermName] =
+      // `eq` since `Info` has no `equals` override; avoids the virtual dispatch on this hot path
+      if name.info eq info then Some(name.underlying) else None
 
     simpleNameKinds(tag) = this: @unchecked
   }
@@ -116,7 +115,7 @@ object NameKinds {
   /** The kind of qualified names, consisting of an underlying name as a prefix,
    *  followed by a separator, followed by a simple selector name.
    *
-   *  A qualified names always constitutes a new name, different from its underlying name.
+   *  A qualified name always constitutes a new name, different from its underlying name.
    */
   class QualifiedNameKind(tag: Int, val separator: String)
   extends NameKind(tag) {
@@ -124,7 +123,7 @@ object NameKinds {
     case class QualInfo(name: SimpleName) extends Info with QualifiedInfo {
       override def map(f: SimpleName => SimpleName): NameInfo = new QualInfo(f(name))
       override def toString: String = s"$infoString $name"
-      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
+      override def hashCode: Int = name.hashCode * 31 + kind.hashCode
     }
 
     def apply(qual: TermName, name: SimpleName): TermName =
@@ -172,9 +171,9 @@ object NameKinds {
   /** The kind of numbered names consisting of an underlying name and a number */
   abstract class NumberedNameKind(tag: Int, val infoString: String) extends NameKind(tag) { self =>
     type ThisInfo = NumberedInfo
-    case class NumberedInfo(val num: Int) extends Info with NameKinds.NumberedInfo {
+    case class NumberedInfo(num: Int) extends Info with NameKinds.NumberedInfo {
       override def toString: String = s"$infoString $num"
-      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
+      override def hashCode: Int = num * 31 + kind.hashCode
     }
     def apply(qual: TermName, num: Int): TermName =
       qual.derived(new NumberedInfo(num))
@@ -186,7 +185,7 @@ object NameKinds {
       var i = name.length
       while i > 0 && name(i - 1).isDigit do i -= 1
       if i >= separator.length && i < name.length
-          && name.slice(i - separator.length, i).toString == separator
+          && name.sliceToString(i - separator.length, i) == separator
       then i
       else -1
 
@@ -204,9 +203,9 @@ object NameKinds {
   /** The kind of unique names that consist of an underlying name (can be empty),
    *  a separator indicating the class of unique name, and a unique number.
    *
-   *  A unique names always constitutes a new name, different from its underlying name.
+   *  A unique name always constitutes a new name, different from its underlying name.
    */
-  case class UniqueNameKind(val separator: String)
+  case class UniqueNameKind(separator: String)
   extends NumberedNameKind(UNIQUE, s"Unique $separator") {
     override def definesNewName: Boolean = true
 
@@ -225,7 +224,7 @@ object NameKinds {
     def fresh(prefix: TypeName)(using Context): TypeName =
       fresh(prefix.toTermName).toTypeName
 
-    uniqueNameKinds(separator) = this: @unchecked
+    uniqueNameKinds(separatorName) = this: @unchecked
   }
 
   /** An extractor for unique names of arbitrary kind */
@@ -290,25 +289,33 @@ object NameKinds {
 
   /** The name of the term parameter generated for a context bound:
    *
+   *  ```
    *      def foo[T: A](...): ...
+   *  ```
    *
    *  becomes:
    *
+   *  ```
    *      def foo[T](...)(using evidence$1: A[T]): ...
+   *  ```
    *
-   *  The "evidence$" prefix is a convention copied from Scala 2.
+   *  The `evidence$` prefix is a convention copied from Scala 2.
    */
   val ContextBoundParamName: UniqueNameKind = new UniqueNameKindWithUnmangle("evidence$")
 
   /** The name of an inferred contextual function parameter:
    *
+   *  ```
    *      val x: A ?=> B = b
    *      val f: (x: A) ?=> B = b
+   *  ```
    *
    *  becomes:
    *
+   *  ```
    *      val x: A ?=> B = (contextual$1: A) ?=> b
    *      val f: (x: A) ?=> B = (xcontextual$1: A) ?=> b
+   *  ```
    */
   val ContextFunctionParamName: UniqueNameKind =
     new UniqueNameKind("contextual$"):
@@ -417,7 +424,7 @@ object NameKinds {
       override def toString: String =
         val targetStr = if target.isEmpty then "" else s" @$target"
         s"$infoString $sig$targetStr"
-      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
+      override def hashCode: Int = ((sig.hashCode * 31) + target.hashCode * 31) + kind.hashCode
     }
     type ThisInfo = SignedInfo
 
@@ -434,13 +441,13 @@ object NameKinds {
 
   /** Possible name kinds of a method that comes from Scala2 pickling info.
    *  and that need to be unmangled. Note: Scala2 protected accessors and setters
-   *  can be left mangled, so they are not included in thus list.
+   *  can be left mangled, so they are not included in this list.
    */
   val Scala2MethodNameKinds: List[NameKind] =
     List(DefaultGetterName, ExtMethName, UniqueExtMethName)
 
-  def simpleNameKindOfTag      : util.ReadOnlyMap[Int, ClassifiedNameKind] = simpleNameKinds
-  def qualifiedNameKindOfTag   : util.ReadOnlyMap[Int, QualifiedNameKind]  = qualifiedNameKinds
-  def numberedNameKindOfTag    : util.ReadOnlyMap[Int, NumberedNameKind]   = numberedNameKinds
-  def uniqueNameKindOfSeparator: util.ReadOnlyMap[String, UniqueNameKind]  = uniqueNameKinds
+  def simpleNameKindOfTag      : Array[ClassifiedNameKind] = simpleNameKinds
+  def qualifiedNameKindOfTag   : Array[QualifiedNameKind]  = qualifiedNameKinds
+  def numberedNameKindOfTag    : Array[NumberedNameKind]   = numberedNameKinds
+  def uniqueNameKindOfSeparator: util.EqHashMap[TermName, UniqueNameKind]  = uniqueNameKinds
 }

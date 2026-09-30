@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import org.junit.Assert._
 import org.junit.Test
 
@@ -113,7 +111,7 @@ class TabcompleteTests extends ReplTest {
     val comp = tabComplete("(null: AnyRef).")
     assertEquals(
       List("!=", "##", "->", "==", "asInstanceOf", "ensuring", "eq", "equals", "formatted",
-          "getClass", "hashCode", "isInstanceOf", "ne", "nn", "notify", "notifyAll", "runtimeChecked", "synchronized", "toString", "wait", "→"),
+          "getClass", "hashCode", "isInstanceOf", "ne", "nn", "notify", "notifyAll", "runtimeChecked", "synchronized", "toString", "wait"),
       comp.distinct.sorted)
   }
 
@@ -169,8 +167,7 @@ class TabcompleteTests extends ReplTest {
         "toString",
         "valueOf",
         "values",
-        "wait",
-        "→"
+        "wait"
       ),
       tabComplete("""|enum Foo:
                      |  case `back-tick`
@@ -218,12 +215,18 @@ class TabcompleteTests extends ReplTest {
         ":jar",
         ":kind",
         ":load",
+        ":paste",
         ":quit",
+        ":replay",
+        ":repository",
         ":require",
         ":reset",
+        ":resource",
+        ":save",
         ":settings",
         ":sh",
         ":silent",
+        ":toolkit",
         ":type"
       ),
       tabComplete(":")
@@ -269,5 +272,29 @@ class TabcompleteTests extends ReplTest {
       val comp = tabComplete("t.")
       assertTrue(s"should contain 'a' but was: ${comp.mkString(", ")}", comp.contains("a"))
       assertTrue(s"should contain 'b' but was: ${comp.mkString(", ")}", comp.contains("b"))
+    }
+
+  @Test def i26073 = initially {
+    assertEquals(
+      List(
+        "(separator: Char): Array[String]",
+        "(separators: Array[Char]): Array[String]",
+        "(x$0: String): Array[String]",
+        "(x$0: String, x$1: Int): Array[String]"
+      ),
+      tabCompleteSignatures(""""".split""", "split")
+    )
+  }
+
+  @Test def `i26073 extension shadowed by a member` =
+    initially {
+      run("extension (s: String) def split(everyChar: Boolean): List[String] = List(s)")
+    } andThen {
+      storedOutput()
+      val signatures = tabCompleteSignatures(""""".split""", "split")
+      assertTrue(
+        s"should offer the extension but was: ${signatures.mkString(", ")}",
+        signatures.contains("(everyChar: Boolean): List[String]")
+      )
     }
 }

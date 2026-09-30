@@ -393,6 +393,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   val RetainsAnnot: Property.StickyKey[Unit] = Property.StickyKey()
 
+  /** Property key for marking Apply trees with end markers */
+  val HasEndMarker: Property.StickyKey[Unit] = Property.StickyKey()
+
+  /** Property key for storing method name in Apply trees for end marker matching */
+  val MethodName: Property.StickyKey[Name] = Property.StickyKey()
+
   // ------ Creation methods for untyped only -----------------
 
   def Ident(name: Name)(implicit src: SourceFile): Ident = new Ident(name)
@@ -575,6 +581,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   def makeOnlyAnnot(qid: Tree)(using Context) =
     New(AppliedTypeTree(scalaAnnotationInternalDot(tpnme.onlyCapability), qid :: Nil), Nil :: Nil)
+
+  def makeExceptAnnot(qid: Tree)(using Context) =
+    New(AppliedTypeTree(scalaAnnotationInternalDot(tpnme.exceptCapability), qid :: Nil), Nil :: Nil)
 
   def makeConsumeAnnot()(using Context): Tree =
     New(scalaCapsInternalDot(tpnme.consume), Nil :: Nil)

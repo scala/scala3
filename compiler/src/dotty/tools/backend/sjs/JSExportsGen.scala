@@ -826,7 +826,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     } else {
       if (sym.isClassConstructor)
         js.New(encodeClassName(currentClass), encodeMethodSym(sym), args)
-      else if (sym.isPrivate)
+      else if (sym.is(Private))
         boxIfNeeded(genApplyMethodStatically(receiver, sym, args))
       else
         boxIfNeeded(genApplyMethod(receiver, sym, args))

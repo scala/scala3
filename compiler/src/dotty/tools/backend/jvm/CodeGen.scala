@@ -1,136 +1,301 @@
 package dotty.tools.backend.jvm
 
-
-import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
-import dotty.tools.dotc.ast.tpd
-
-import scala.collection.mutable
-import dotty.tools.dotc.{CompilationUnit, interfaces, report, util}
-import dotty.tools.dotc.sbt.ExtractDependencies
-import dotty.tools.dotc.core.*
-import Contexts.*
-import Phases.*
-import Symbols.*
-import StdNames.nme
-import dotty.tools.tasty.{TastyBuffer, TastyHeaderUnpickler}
+import dotty.tools.backend.jvm.BTypes.InternalName
+import dotty.tools.backend.jvm.opt.{GlobalOptimizer, LocalOptimizer}
+import dotty.tools.dotc.ast.Trees.PackageDef
+import dotty.tools.dotc.ast.tpd.{EmptyTree, Tree, TypeDef, ValDef}
+import dotty.tools.dotc.core.Contexts.{Context, atPhase}
+import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.core.Phases.{Phase, sbtExtractDependenciesPhase}
+import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.Symbols.ClassSymbol
+import dotty.tools.dotc.core.TypeError
 import dotty.tools.dotc.core.tasty.TastyUnpickler
-
-import scala.tools.asm.tree.*
-import tpd.*
-import dotty.tools.io.AbstractFile
-import dotty.tools.dotc.ast.Positioned
-import dotty.tools.dotc.util.NoSourcePosition
-import SymbolUtils.given
-import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.dotc.interfaces.CompilerCallback
-import opt.{OptimizerUtils, CallGraph}
+import dotty.tools.dotc.profile.ProfiledThreadPool
+import dotty.tools.dotc.{CompilationUnit, report}
+import dotty.tools.dotc.sbt.ExtractDependencies
+import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
+import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.io.FileWriters
+import org.objectweb.asm.{ClassTooLargeException, ClassWriter, MethodTooLargeException}
+import org.objectweb.asm.tree.ClassNode
 
-class CodeGen(val primitives: ScalaPrimitives,
-              val callGraph: Option[CallGraph], val bTypeLoader: BTypeLoader, val knownBTypes: KnownBTypes,
-              val generatedClassHandler: GeneratedClassHandler) {
-  private class Impl extends BCodeIdiomatic(callGraph), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives, knownBTypes), BCodeSyncAndTry
-  private val impl = new Impl()
+import java.io.IOException
+import java.nio.channels.ClosedByInterruptException
+import java.util.concurrent.{ExecutionException, Executor, ExecutorService, Future, FutureTask}
+import scala.annotation.constructorOnly
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
-  private lazy val mirrorCodeGen = impl.JMirrorBuilder()
+final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimizer], globalOpt: Option[GlobalOptimizer])(using @constructorOnly initctx: Context):
+  // Save the compiler callbacks to avoid having to capture a Context
+  private val compilerCallback = initctx.compilerCallback
+  private val incrementalCallback = initctx.incCallback
+  // Keep track of written class names so we can report (potential) conflicts
+  private val caseInsensitiveClassNames = new java.util.HashMap[String, (String, SourcePosition)]
+  // Create the classfile writer now to avoid having to capture a Context
+  private val classfileWriter = FileWriters.ClassfileWriter(
+    initctx.settings.outputDir.value,
+    initctx.settings.XmainClass.valueSetByUser,
+    initctx.settings.XjarCompressionLevel.value,
+    initctx.settings.Xdumpclasses.value
+  )
+  // Let the profiler create an executor in the multithreaded case, since individual threads need to be profiled
+  private val executor: Executor = initctx.settings.YbackendParallelism.value match
+    case 1 => _.run()
+    case n =>
+      // The thread pool queue is limited in size. When it's full,
+      // a new task is executed on the main thread, which provides back-pressure.
+      // The queue size is large enough to ensure that running a task on the main thread does
+      // not take longer than to exhaust the queue for the backend workers.
+      val queueSize = initctx.settings.YbackendWorkerQueue.valueSetByUser.getOrElse(n * 2)
+      ProfiledThreadPool.newExecutor(ownerPhase, initctx.profiler, n, queueSize, "gen-class-handler")
+  // Java's Executor doesn't let us tell whether there is ongoing work, so we must keep track of that ourselves.
+  // We anyway need to keep track of the path in order to show it in error messages if something went deeply wrong.
+  private val submittedExecutions = ListBuffer.empty[(FutureTask[Unit], String)]
+  // If we are globally optimizing, we can only emit class nodes to files once we have them all
+  private val pendingClassNodes = ListBuffer.empty[(ClassNode, ClassNodeMetadata)]
 
-  /**
-   * Generate ASM ClassNodes for classes found in the context's compilation unit. The resulting classes are
-   * passed to the `generatedClassHandler`.
-   */
-  def genUnit()(using ctx: Context): Unit = {
-    val generatedClasses = mutable.ListBuffer.empty[GeneratedClass]
-    val generatedTasty = mutable.ListBuffer.empty[GeneratedTasty]
+  /** Adds the context's compilation unit to the work queue of units to be generated. */
+  def addCompilationUnit()(using ctx: Context): Unit = {
+    def iterateTypeDefs(tree: Tree): List[TypeDef] = tree match
+      case td: TypeDef => List(td)
+      case PackageDef(_, stats) => stats.flatMap(iterateTypeDefs)
+      case EmptyTree | _: ValDef => Nil
 
-    def genClassDef(cd: TypeDef): Unit =
-      try
-        val sym = cd.symbol
-        val sourceFile = ctx.compilationUnit.source.file
-        val mainClassNode = genClass(cd)
-        val mirrorClassNode =
-          if !sym.isTopLevelModuleClass then null
-          else if sym.companionClass == NoSymbol then mirrorCodeGen.genMirrorClass(sym)
-          else
-            report.log(s"No mirror class for module with linked class: ${sym.fullName}", NoSourcePosition)
-            null
+    // Begin by generating class nodes.
+    // This must be done on the main thread because it requires a Context.
+    // Once we have the class node(s), we can emit any necessary error or warning related to names,
+    // but order is not deterministic so we enforce lexicographic order for error-reporting
+    val generatedClassNodes =
+      iterateTypeDefs(ctx.compilationUnit.tpdTree)
+        .flatMap(generateClassNodes)
+        .sortBy((cn, _) => cn.name)
+        .tapEach((cn, meta) => warnCaseInsensitiveOverwrite(cn.name, meta.position))
+    // If we are doing global optimizations, we must collect class nodes and wait until we have them all,
+    // i.e., until `finish` is called.
+    // Otherwise, we can already schedule their generation in background threads.
+    globalOpt match
+      case Some(_) =>
+        pendingClassNodes ++= generatedClassNodes
+      case None =>
+        schedule(generatedClassNodes)
+  }
 
-        if sym.isClass then
-          val tastyAttrNode = if (mirrorClassNode ne null) mirrorClassNode else mainClassNode
-          genTastyAndSetAttributes(sym, tastyAttrNode)
+  /** Ensures all work is finished, files have been generated. Only call once per instance. */
+  def finish(allUnits: List[CompilationUnit])(using ctx: Context): Unit = {
+    // If we are running global optimizations, we haven't scheduled anything yet; run such optimizations first, then schedule everything.
+    // Otherwise, we have scheduled everything already.
+    globalOpt match
+      case Some(opt) =>
+        opt.run(
+          pendingClassNodes.map((n, m) => (n, m.position.source.path)),
+          i => report.optimizerWarning(i.msg, i.site, i.pos)
+        )
+        schedule(pendingClassNodes)
+        // Ensure we don't keep any potentially large objects alive for any more time than necessary.
+        pendingClassNodes.clear()
+      case None =>
+        assert(pendingClassNodes.isEmpty)
+    // At this point all we need to do is wait.
+    for (submitted, path) <- submittedExecutions do
+      try submitted.get()
+      catch case ex: ExecutionException =>
+        // Handle interruption-related exceptions, as well as exceptions that aren't compiler bugs,
+        // and rethrow the rest so the general compiler exception handler can deal with them.
+        ex.getCause match
+          case _: ClosedByInterruptException =>
+            throw new InterruptedException()
+          case e: (ClassTooLargeException | MethodTooLargeException | IOException) =>
+            report.error(s"Error while emitting $path\n${e.getMessage}")
+          case e =>
+            throw e
+    // Finally, call the source compilation callback if requested.
+    // This is later than possible but correct.
+    if compilerCallback != null then allUnits.foreach(u => compilerCallback.onSourceCompiled(u.source))
+  }
 
-        def registerGeneratedClass(classNode: ClassNode | Null, isArtifact: Boolean): Unit =
-          if classNode ne null then
-            generatedClasses += GeneratedClass(classNode,
-              sourceClassName = sym.javaClassName,
-              position = sym.srcPos.sourcePos,
-              isArtifact = isArtifact,
-              onFileCreated = onFileCreated(classNode, sym, ctx.compilationUnit.source)
-            )
+  /* Frees resources used by the code generation. Only call once per instance. */
+  def close(): Unit = {
+    classfileWriter.close()
+    executor match
+      case pool: ExecutorService => pool.shutdownNow()
+      case _ => ()
+  }
 
-        registerGeneratedClass(mainClassNode, isArtifact = false)
-        registerGeneratedClass(mirrorClassNode, isArtifact = true)
-      catch
-        case ex: TypeError =>
-          report.error(s"Error while emitting ${ctx.compilationUnit.source}\n${ex.getMessage}", cd.sourcePos)
+  // This method MUST NOT take a Context, since it schedules work for concurrent execution
+  private def schedule(classNodes: Iterable[(ClassNode, ClassNodeMetadata)]): Unit = {
+    for (classNode, metadata) <- classNodes do
+      // We want to release memory for GC as soon as processing is done, even if the Future is still referenced
+      val classNodeRef = scala.runtime.ObjectRef(classNode)
+      val metadataRef = scala.runtime.ObjectRef(metadata)
+      val future = FutureTask(() => {
+        val serializedClassNode = serializeClassNode(classNodeRef.elem)
+        writeSerializedClassNode(classNodeRef.elem, metadataRef.elem, serializedClassNode)
+        classNodeRef.elem = null
+        metadataRef.elem = null
+      })
+      executor.execute(future)
+      submittedExecutions += (future -> metadata.position.source.path)
+  }
 
-    def genTastyAndSetAttributes(claszSymbol: Symbol, store: ClassNode): Unit =
-      for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
-        generatedTasty += GeneratedTasty(store, binary)
-        val tasty =
-          val uuid = new TastyHeaderUnpickler(TastyUnpickler.scala3CompilerConfig, binary()).readHeader()
-          val lo = uuid.getMostSignificantBits
-          val hi = uuid.getLeastSignificantBits
-
-          // TASTY attribute is created but only the UUID bytes are stored in it.
-          // A TASTY attribute has length 16 if and only if the .tasty file exists.
-          val buffer = new TastyBuffer(16)
-          buffer.writeUncompressedLong(lo)
-          buffer.writeUncompressedLong(hi)
-          buffer.bytes
-
-        val dataAttr = impl.createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
-        store.visitAttribute(dataAttr)
+  private def generateClassNodes(typeDef: TypeDef)(using ctx: Context): List[(ClassNode, ClassNodeMetadata)] = {
+    val typeSym = typeDef.symbol
+    try
+      // First, generate the class nodes; the mirror is only generated if needed.
+      val mainClassNode = gen.genClassNode(typeDef)
+      val mirrorClassNode = gen.genMirrorClassNode(typeDef)
+      // If the type def represents a class, and we have TASTY available, we must emit a TASTY attribute.
+      // We must also store the TASTY for later emitting.
+      val serializedTasty = typeSym match
+        case classSymbol: ClassSymbol =>
+          ctx.compilationUnit.pickled.get(classSymbol) match
+            case Some(func) =>
+              val forced = func()
+              val nodeWithTastyAttribute = mirrorClassNode.getOrElse(mainClassNode)
+              addTastyUuidToClassNode(nodeWithTastyAttribute, forced)
+              Some(forced)
+            case None => None
+        case _ => None
+      // Precompute callback-related information,
+      val (fullName, isLocal) = atPhase(sbtExtractDependenciesPhase) {
+        (ExtractDependencies.classNameAsString(typeDef.symbol), typeDef.symbol.isLocal)
       }
-
-    def genClassDefs(tree: Tree): Unit =
-      tree match {
-        case EmptyTree => ()
-        case PackageDef(_, stats) => stats.foreach(genClassDefs)
-        case ValDef(_, _, _) => () // module val not emitted
-        case td: TypeDef => genClassDef(td)
+      // and return the nodes decorated with this info.
+      mirrorClassNode match {
+        case Some(mirror) => List(
+          (mainClassNode, ClassNodeMetadata(fullName, isLocal, typeSym.sourcePos, None)),
+          (mirror, ClassNodeMetadata(fullName, isLocal, typeSym.sourcePos, serializedTasty))
+        )
+        case None => List(
+          (mainClassNode, ClassNodeMetadata(fullName, isLocal, typeSym.sourcePos, serializedTasty))
+        )
       }
-
-    genClassDefs(ctx.compilationUnit.tpdTree)
-    generatedClassHandler.process(
-      GeneratedCompilationUnit(ctx.compilationUnit.source.file, generatedClasses.toList, generatedTasty.toList)
-    )
+    catch
+      case ex: TypeError =>
+        report.error(s"Error while emitting ${ctx.compilationUnit.source}\n${ex.getMessage}", typeSym.srcPos)
+        Nil
   }
 
-  // Creates a callback that will be evaluated in PostProcessor after creating a file
-  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: util.SourceFile)(using Context): AbstractFile => Unit = {
-    val isLocal = atPhase(sbtExtractDependenciesPhase) {
-      claszSymbol.isLocal
+  private def warnCaseInsensitiveOverwrite(name: String, pos: SourcePosition)(using Context): Unit =
+    caseInsensitiveClassNames.putIfAbsent(name.toLowerCase, (name, pos)) match {
+      case null => ()
+      case (dupName, dupPos) =>
+        val locationAddendum =
+          if pos.source.path == dupPos.source.path then ""
+          else s" (defined in ${dupPos.source.name})"
+        if name == dupName then
+          report.error(em"${dotted(name)} and ${dotted(dupName)} produce classes that overwrite one another", pos)
+        else
+          report.warning(
+            em"""Generated class ${dotted(name)} differs only in case from ${dotted(dupName)}$locationAddendum.
+                |  Such classes will overwrite one another on case-insensitive filesystems.""", pos)
     }
-    clsFile => {
-      val className = cls.name.replace('/', '.')
-      ctx.compilerCallback match
-        case cb: CompilerCallback => cb.onClassGenerated(sourceFile, clsFile, className)
-        case null => ()
 
-      ctx.withIncCallback: cb =>
-        if isLocal then
-          cb.generatedLocalClass(sourceFile, clsFile.jpath)
-        else if !cb.enabled() then
-          // callback is not enabled, so nonLocalClasses were not reported in ExtractAPI
-          val fullClassName = atPhase(sbtExtractDependenciesPhase) {
-            ExtractDependencies.classNameAsString(claszSymbol)
-          }
-          cb.generatedNonLocalClass(sourceFile, clsFile.jpath, className, fullClassName)
+  private def addTastyUuidToClassNode(classNode: ClassNode, serializedTasty: Array[Byte]): Unit = {
+    // TASTY attribute is created but only the UUID bytes are stored in it.
+    // A TASTY attribute has length 16 if and only if the .tasty file exists.
+    val uuidBytes = TastyUnpickler.getUuidBytes(serializedTasty)
+    val dataAttr = BCodeUtils.createJAttribute(nme.TASTYATTR.mangledString, uuidBytes, 0, uuidBytes.length)
+    classNode.visitAttribute(dataAttr)
+  }
+
+  private def serializeClassNode(classNode: ClassNode): Array[Byte] = {
+    /** Visit the class node and collect all referenced nested classes. */
+    def collectNestedClasses(): (Iterable[ClassBType], Iterable[ClassBType]) = {
+      val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
+        override def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
+          gen.classBTypeCache().previouslyConstructedClassBType(internalName).get.info.nestedClasses
+
+        override def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
+          val c = gen.classBTypeCache().previouslyConstructedClassBType(internalName).get
+          Option.when(c.isNestedClass)(c)
+        }
+      }
+      c.visit(classNode)
+      (c.declaredInnerClasses, c.referredInnerClasses)
     }
+
+    /**
+     * Populates the InnerClasses JVM attribute with `refedInnerClasses`. See also the doc on inner
+     * classes in BTypes.scala.
+     *
+     * `refedInnerClasses` may contain duplicates, need not contain the enclosing inner classes of
+     * each inner class it lists (those are looked up and included).
+     *
+     * This method serializes in the InnerClasses JVM attribute in an appropriate order,
+     * not necessarily that given by `refedInnerClasses`.
+     */
+    def addInnerClasses(declaredInnerClasses: Iterable[ClassBType], refedInnerClasses: Iterable[ClassBType]): Unit = {
+      // sorting ensures nested classes are listed after their enclosing class thus satisfying the Eclipse Java compiler
+      val allNestedClasses = new mutable.TreeSet[ClassBType]()(using Ordering.by(_.internalName))
+      allNestedClasses ++= declaredInnerClasses
+      refedInnerClasses.foreach(allNestedClasses ++= _.enclosingNestedClassesChain)
+      for nestedClass <- allNestedClasses do
+        // Extract the innerClassEntry - we know it exists, enclosingNestedClassesChain only returns nested classes.
+        val Some(e) = nestedClass.innerClassAttributeEntry: @unchecked
+        classNode.visitInnerClass(e.name, e.outerName, e.innerName, e.flags)
+    }
+
+    // Do local optimizations on the class node if requested
+    localOpt.foreach(opt => opt.run(classNode))
+    // Ensure we indicate all used inner classes, as required by the JVM
+    classNode.innerClasses.clear()
+    val (declared, referred) = collectNestedClasses()
+    addInnerClasses(declared, referred)
+    // Finally, convert the class node to bytes
+    val writer = new ClassWriterWithBTypeLub(gen.classBTypeCache())
+    classNode.accept(writer)
+    writer.toByteArray
   }
 
-  private def genClass(cd: TypeDef)(using Context): ClassNode = {
-    val b = new impl.SyncAndTryBuilder
-    b.genPlainClass(cd)
+  private def writeSerializedClassNode(classNode: ClassNode, metadata: ClassNodeMetadata, serialized: Array[Byte]): Unit = {
+    TraceUtils.traceSerializedClassIfRequested(classNode.name, serialized)
+
+    val dottedName = dotted(classNode.name)
+    val writtenClassFile = classfileWriter.writeClass(dottedName, serialized)
+    metadata.serializedTasty.foreach(classfileWriter.writeTasty(classNode.name, _))
+
+    compilerCallback match
+      case null => ()
+      case cb => cb.onClassGenerated(metadata.position.source, writtenClassFile, dottedName)
+
+    incrementalCallback match
+      case null => ()
+      case cb if metadata.isLocal => cb.generatedLocalClass(metadata.position.source, writtenClassFile.jpath)
+      case cb if !cb.enabled() =>
+        // callback is not enabled, so nonLocalClasses were not reported in ExtractAPI
+        cb.generatedNonLocalClass(metadata.position.source, writtenClassFile.jpath, dottedName, metadata.fullName)
+      case cb => ()
   }
 
+  private def dotted(name: String): String =
+    name.replace('/', '.')
+
+/** Metadata required for callbacks */
+private final class ClassNodeMetadata(val fullName: String, val isLocal: Boolean, val position: SourcePosition, val serializedTasty: Option[Array[Byte]])
+
+/**
+ * An `asm.ClassWriter` that uses `jvmWiseLUB()`
+ * The internal name of the least common ancestor of the types given by inameA and inameB.
+ * It's what ASM needs to know in order to compute stack map frames, http://asm.ow2.org/doc/developer-guide.html#controlflow
+ * Background:
+ * http://gallium.inria.fr/~xleroy/publi/bytecode-verification-JAR.pdf
+ * http://comments.gmane.org/gmane.comp.java.vm.languages/2293
+ * https://github.com/scala/bug/issues/3872
+ */
+private final class ClassWriterWithBTypeLub(cache: ClassBType.Cache) extends ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES) {
+  private val objectBType = cache.previouslyConstructedClassBType(ClassBType.javaLangObjectInternalName).get
+
+  override def getCommonSuperClass(inameA: String, inameB: String): String = {
+    // All types that appear in a class node need to have their ClassBType cached,
+    // i.e., have been loaded either from symbols or from class files.
+    val a = cache.previouslyConstructedClassBType(inameA).get
+    val b = cache.previouslyConstructedClassBType(inameB).get
+    val lub = a.jvmWiseLUB(b, objectBType)
+    val lubName = lub.internalName
+    assert(lubName != "scala/Any")
+    lubName // ASM caches the answer during the lifetime of a ClassWriter. We outlive that. Not sure whether caching on our side would improve things.
+  }
 }

@@ -17,6 +17,7 @@ object CommandLineParser {
    *  @param str the command line argument string to parse
    *  @param n the zero-based index of the argument, used for error reporting
    *  @param fs the type class instance (usually provided implicitly) that converts a string to type `T`
+   *  @return the value of type `T` parsed from `str`
    *  @throws ParseError if argument cannot be converted to type `T`.
    */
   def parseString[T](str: String, n: Int)(using fs: FromString[T]^): T = {
@@ -32,6 +33,7 @@ object CommandLineParser {
    *  @param args the command line arguments array
    *  @param n the zero-based index of the argument to parse
    *  @param fs the type class instance that converts a string to type `T`
+   *  @return the value of type `T` parsed from the argument at index `n`
    *  @throws ParseError if argument does not exist or cannot be converted to type `T`.
    */
   def parseArgument[T](args: Array[String], n: Int)(using fs: FromString[T]^): T =
@@ -44,6 +46,7 @@ object CommandLineParser {
    *  @param args the command line arguments array
    *  @param n the zero-based index of the first remaining argument to parse
    *  @param fs the type class instance that converts a string to type `T`
+   *  @return a list of values of type `T` parsed from arguments at indices `n` through the end, or an empty list if `n` is past the last argument
    *  @throws ParseError if some of the arguments cannot be converted to type `T`.
    */
   def parseRemainingArguments[T](args: Array[String], n: Int)(using fs: FromString[T]^): List[T] =
@@ -66,6 +69,7 @@ object CommandLineParser {
     /** Can throw java.lang.IllegalArgumentException.
      *
      *  @param s the string to convert to type `T`
+     *  @return the value of type `T` parsed from `s`
      */
     def fromString(s: String): T
 

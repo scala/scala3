@@ -42,23 +42,6 @@ TypeLambdas
 Object
 covtest.TypeLambdas
 test
-310
-318
-14
-->
-Apply
-false
-0
-false
-1 -> "1"
-
-2
-TypeLambdas.scala
-covtest
-TypeLambdas
-Object
-covtest.TypeLambdas
-test
 324
 334
 15
@@ -69,7 +52,7 @@ false
 false
 println(m)
 
-3
+2
 TypeLambdas.scala
 covtest
 TypeLambdas
@@ -86,7 +69,7 @@ false
 false
 ("a", "b")
 
-4
+3
 TypeLambdas.scala
 covtest
 TypeLambdas
@@ -103,7 +86,7 @@ false
 false
 println(tuple)
 
-5
+4
 TypeLambdas.scala
 covtest
 TypeLambdas

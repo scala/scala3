@@ -108,7 +108,7 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
       base = showBase(unpickler.namesStart.index),
       lineEnd = true
     ))
-    for ((name, idx) <- nameAtRef.contents.zipWithIndex) {
+    for ((name, idx) <- nameAtRef.zipWithIndex) {
       val index = nameStr("%6d".format(idx))
       sb.append(index).append(": ").append(refs.nameRefToString(NameRef(idx))).append("\n")
     }
@@ -229,7 +229,7 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
       for ((addr, nameRef) <- sortedPath) {
         sb.append(treeStr("%6d".format(addr.index)))
         sb.append(": ")
-        sb.append(nameStr(s"${nameRef.index} [${tastyName(nameRef)}]"))
+        sb.append(nameStr(s"${nameRef.index} [${tastyName(nameRef.index)}]"))
         sb.append("\n")
       }
     }
@@ -262,20 +262,20 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
         if isBooleanAttrTag(tag) then ()
         else if isStringAttrTag(tag) then
           val utf8Ref = readNameRef()
-          val value = nameAtRef(utf8Ref).toString
+          val value = nameAtRef(utf8Ref.index).toString
           sb.append(nameStr(s" ${utf8Ref.index} [$value]"))
         sb.append("\n")
       sb.result()
     }
   }
 
-  class NameRefs(sourceFileRefs: Set[NameRef]) extends (NameRef => TermName):
+  class NameRefs(sourceFileRefs: Set[NameRef]) extends (Int => TermName):
     private val isSourceFile = sourceFileRefs.map(_.index).to(BitSet)
 
-    def nameRefToString(ref: NameRef): String = this(ref).debugString
+    def nameRefToString(ref: NameRef): String = this(ref.index).debugString
 
-    def apply(ref: NameRef): TermName =
-      if isSourceFile(ref.index) then NameRefs.elidedSourceFile
+    def apply(ref: Int): TermName =
+      if isSourceFile(ref) then NameRefs.elidedSourceFile
       else nameAtRef(ref)
 
   object NameRefs:

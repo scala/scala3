@@ -87,7 +87,8 @@ object NameTransformer {
           buf = new StringBuilder()
           buf.append(name.substring(0, i))
         }
-        buf.append("$u%04X".format(c.toInt))
+        buf.append("$u")
+        appendHex4(buf, c)
       }
       else if (buf ne null) {
         buf.append(c)
@@ -95,6 +96,21 @@ object NameTransformer {
       i += 1
     }
     if (buf eq null) name else buf.toString()
+  }
+
+  /** Append a 4-uppercase-hex-digit representation of `c` to the given `buf`.
+   *
+   *  The result is '0'-padded if necessary.
+   */
+  private def appendHex4(buf: StringBuilder, c: Char): Unit = {
+    var x = c.toInt
+    var j = 0
+    while (j != 4) {
+      val d = (x >>> 12) & 0xf
+      buf.append((d + (if (d < 10) '0' else ('A' - 10))).toChar)
+      x <<= 4
+      j += 1
+    }
   }
 
   /** Replaces `\$opname` by corresponding operator symbol.

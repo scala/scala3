@@ -123,6 +123,9 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val generateApi: Setting[Boolean] =
     BooleanSetting(RootSetting, "Ygenerate-api", "Controls whether API documentation should be generated. If disabled, only documentation pages will be generated", true)
 
+  val warnOnUnusedOptions: Setting[Boolean] =
+    BooleanSetting(RootSetting, "warn-on-unused-options", "Controls whether a warning is emitted when scaladoc receives scalac options that have no effect.", false)
+
   val scastieConfiguration: Setting[String] =
     StringSetting(RootSetting, "scastie-configuration", "Scastie configuration", "Additional configuration passed to Scastie in code snippets", "")
 

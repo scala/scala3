@@ -5,7 +5,7 @@ trait Quux
 
 object Test {
   def f(x: Bip) = 1
-  def g1(x: Foo with Bip) = f(x)
+  def g1(x: Foo & Bip) = f(x)
 
   def main(args: Array[String]): Unit = {
     f(new Bip with Foo { })

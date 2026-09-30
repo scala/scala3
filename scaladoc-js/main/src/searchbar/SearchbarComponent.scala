@@ -205,7 +205,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
         span(cls := "search-error")(s)
       )
 
-  var timeoutHandle: SetTimeoutHandle = null
+  private var timeoutHandle: SetTimeoutHandle = null
   def handleNewQuery(query: String) =
     resultsDiv.scrollTop = 0
     resultsDiv.onscroll = (event: Event) => { }

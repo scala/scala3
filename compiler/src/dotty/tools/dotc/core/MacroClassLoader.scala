@@ -4,7 +4,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.reporting.trace
-import dotty.tools.io.ClassPath
+import dotty.tools.dotc.classpath.ClassPath
 
 object MacroClassLoader {
 
@@ -38,7 +38,7 @@ object MacroClassLoader {
             settingsUrls
       else
         settingsUrls
-    val out = Option(ctx.settings.outputDir.value.toURL) // to find classes in case of suspended compilation
+    val out = ctx.settings.outputDir.value.toURL // to find classes in case of suspended compilation
     new java.net.URLClassLoader((urls ++ out.toList).toArray, getClass.getClassLoader)
   }
 }

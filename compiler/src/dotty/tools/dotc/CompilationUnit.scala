@@ -17,6 +17,7 @@ import config.{SourceVersion, Feature}
 import scala.annotation.internal.sharable
 import scala.util.control.NoStackTrace
 import transform.MacroAnnotations.isMacroAnnotation
+import scala.io.Codec
 
 class CompilationUnit protected (val source: SourceFile, val info: CompilationUnitInfo | Null) {
 
@@ -26,12 +27,14 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
 
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
+  private val myIsJava: Boolean = source.ext.isJava // `source` and `ext` are immutable, so cache the answer
+
   /** Is this the compilation unit of a Java file */
-  def isJava: Boolean = source.file.ext.isJava
+  def isJava: Boolean = myIsJava
 
   /** Is this the compilation unit of a Java file, or TASTy derived from a Java file */
-  def typedAsJava =
-    val ext = source.file.ext
+  def typedAsJava: Boolean =
+    val ext = source.ext
     ext.isJava || ext.isTasty && tastyInfo.exists(_.attributes.isJava)
 
   def tastyInfo: Option[TastyInfo] =
@@ -56,6 +59,12 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
    */
   var needsInlining: Boolean = false
 
+  /** Set to `true` if there are inline traits (with or without Specialized context bounds)
+   *  This is used by:
+   *  DesugarSpecializedTraits, SpecializeInlineTraits, PruneInlinedMethods, PruneInlineTraits
+   */
+  var hasSpecializations: Boolean = false
+
   var hasMacroAnnotations: Boolean = false
 
   def hasUnrollDefs: Boolean = unrolledClasses.nonEmpty
@@ -75,11 +84,17 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   /** Will be set to true if the unit contains a captureChecking language import */
   var needsSeparationChecking: Boolean = false
 
-  /** Will be set to true is unit was compiled with `safe` language import. */
+  /** Will be set to true if unit was compiled with `safe` language import. */
   var safeMode: Boolean = false
+
+  /** Will be set to true if unit was compiled with `magic` language import. */
+  var magic: Boolean = false
 
   /** Will be set to true if the unit contains a pureFunctions language import */
   var knowsPureFuns: Boolean = false
+  
+  /** Will be set to true if the unit contains an inlineTrait language import */
+  var knowsInlineTraits: Boolean = false
 
   var suspended: Boolean = false
   var suspendedAtInliningPhase: Boolean = false
@@ -146,7 +161,7 @@ object CompilationUnit {
   def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit =
     val compilationUnitInfo = clsd.symbol.compilationUnitInfo.nn
     val file = compilationUnitInfo.associatedFile
-    apply(SourceFile(file, Array.empty[Char]), unpickled, forceTrees, compilationUnitInfo)
+    apply(SourceFile(file, ctx.settings.sourceroot.value, Codec(ctx.settings.encoding.value)), unpickled, forceTrees, compilationUnitInfo)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
   def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean, info: CompilationUnitInfo)(using Context): CompilationUnit = {
@@ -166,24 +181,28 @@ object CompilationUnit {
   /** Create a compilation unit corresponding to an in-memory String.
    *  Used for `compiletime.testing.typeChecks`.
    */
-  def apply(name: String, source: String): CompilationUnit = {
-    val src = SourceFile.virtual(name = name, content = source, maybeIncomplete = false)
+  def apply(path: String, source: String): CompilationUnit = {
+    val src = SourceFile.virtual(path, source)
     new CompilationUnit(src, null)
   }
 
   /** Create a compilation unit corresponding to `source`.
-   *  If `mustExist` is true, this will fail if `source` does not exist.
+   *  If `mustExistIfNotNull` is true, this will fail if `source` is not null but does not exist.
    */
-  def apply(source: SourceFile, mustExist: Boolean = true)(using Context): CompilationUnit = {
+  def apply(source: SourceFile, mustExistIfNotNull: Boolean = true)(using Context): CompilationUnit = {
+    val file = source.file
     val src =
-      if (!mustExist)
+      if (!mustExistIfNotNull)
         source
-      else if (source.file.isDirectory) {
-        report.error(em"expected file, received directory '${source.file.path}'")
+      else if (file == null) {
+        source
+      }
+      else if (file.isDirectory) {
+        report.error(em"expected file, received directory '${source.path}'")
         NoSource
       }
-      else if (!source.file.exists) {
-        report.error(em"source file not found: ${source.file.path}")
+      else if(!file.exists) {
+        report.error(em"source file not found: ${source.path}")
         NoSource
       }
       else source

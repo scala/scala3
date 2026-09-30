@@ -1,15 +1,12 @@
 package dotty
 package tools
 
-import scala.language.unsafeNulls
-
 import vulpix.TestConfiguration
 
 import dotc.core.*
 import dotc.core.Comments.{ContextDoc, ContextDocstrings}
 import dotc.core.Contexts.*
-import dotc.core.Symbols.*
-import Types.*, Symbols.*, Decorators.*
+import Types.*, Symbols.*
 import dotc.core.Decorators.*
 import dotc.ast.tpd
 import dotc.Compiler
@@ -34,7 +31,7 @@ trait DottyTest extends ContextEscapeDetection {
 
   override def getCtx: Context = ctx
   override def clearCtx() = {
-    ctx = null
+    ctx = NoContext
   }
 
   protected def initializeCtx(fc: FreshContext): Unit = {

@@ -105,21 +105,21 @@ object CollectionStrawMan4 {
   }
 
   /** Implementation of MonoTransforms for all generic collections */
-  implicit class IterableMonoTransforms[A, C[X] <: Iterable[X]](val c: Iterable[A] with FromIterable[C])
+  implicit class IterableMonoTransforms[A, C[X] <: Iterable[X]](val c: Iterable[A] & FromIterable[C])
   extends AnyVal with MonoTransforms[A, C[A]] {
     protected def coll = c
     protected def fromIterable(it: Iterable[A]): C[A] = c.fromIterable(it)
   }
 
   /** Implementation of PolyTransforms for all generic collections */
-  implicit class IterablePolyTransforms[A, C[X] <: Iterable[X]](val c: Iterable[A] with FromIterable[C])
+  implicit class IterablePolyTransforms[A, C[X] <: Iterable[X]](val c: Iterable[A] & FromIterable[C])
   extends AnyVal with PolyTransforms[A, C] {
     protected def coll = c
     protected def fromIterable[B](it: Iterable[B]): C[B] = c.fromIterable(it)
   }
 
   /** Implementation of MonoTransformsForSeqs for all generic collections */
-  implicit class SeqMonoTransforms[A, C[X] <: Seq[X]](val c: Seq[A] with FromIterable[C])
+  implicit class SeqMonoTransforms[A, C[X] <: Seq[X]](val c: Seq[A] & FromIterable[C])
   extends AnyVal with MonoTransformsOfSeqs[A, C[A]] {
     protected def coll = c
     protected def fromIterable(it: Iterable[A]): C[A] = c.fromIterable(it)

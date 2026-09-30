@@ -1,1 +1,8 @@
-15: Pattern Match Exhaustivity: _: NodeType2
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t4691.scala:15:23 ---
+15 |  def test (x: Node) = x match {
+   |                       ^
+   |                       match may not be exhaustive.
+   |
+   |                       It would fail on pattern case: _: NodeType2
+   |
+   | longer explanation available when compiling with `-explain`

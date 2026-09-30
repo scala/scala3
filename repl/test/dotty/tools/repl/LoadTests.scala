@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import java.nio.file.{Path, Files}
 import java.util.Comparator
 import java.util.regex.Pattern
@@ -61,6 +59,31 @@ class LoadTests extends ReplTest {
                  |""".stripMargin
   )
 
+  @Test def mutuallyRecursiveDefsResolve = loadTest(
+    file    = """|def isEven(n: Int): Boolean = if n == 0 then true else isOdd(n - 1)
+                 |def isOdd(n: Int): Boolean = if n == 0 then false else isEven(n - 1)
+                 |""".stripMargin,
+    defs    = """|def isEven(n: Int): Boolean
+                 |def isOdd(n: Int): Boolean
+                 |""".stripMargin,
+    runCode = "isEven(10)",
+    output  = """|val res0: Boolean = true
+                 |""".stripMargin
+  )
+
+  @Test def separatorCommentInPlainFileIsNotABoundary = loadTest(
+    file    = s"""|def isEven(n: Int): Boolean = if n == 0 then true else isOdd(n - 1)
+                  |${Save.entrySeparator}
+                  |def isOdd(n: Int): Boolean = if n == 0 then false else isEven(n - 1)
+                  |""".stripMargin,
+    defs    = """|def isEven(n: Int): Boolean
+                 |def isOdd(n: Int): Boolean
+                 |""".stripMargin,
+    runCode = "isEven(10)",
+    output  = """|val res0: Boolean = true
+                 |""".stripMargin
+  )
+
   def loadTest(file: String, defs: String, runCode: String, output: String) =
     eval(s":load ${writeFile(file)}") andThen {
       assertMultiLineEquals(defs, storedOutput())
@@ -73,7 +96,7 @@ class LoadTests extends ReplTest {
 
 object LoadTests {
 
-  private var dir: Path = null
+  private var dir: Path | Null = null
 
   @BeforeClass def setupDir: Unit =
     dir = Files.createTempDirectory("repl_load_src")

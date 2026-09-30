@@ -33,6 +33,7 @@ trait Seq[+A] extends Iterable[A]
  *
  *  @tparam A the element type of the sequence
  *  @tparam CC the type constructor for the collection type, constrained to be pure
+ *  @tparam C the concrete type of this sequence
  */
 transparent trait SeqOps[+A, +CC[B] <: caps.Pure, +C] extends Any with collection.SeqOps[A, CC, C] with caps.Pure
 
@@ -128,6 +129,7 @@ object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](Vector) {
  *
  *  @tparam A the element type of the indexed sequence
  *  @tparam CC the type constructor for the collection type, constrained to be pure
+ *  @tparam C the concrete type of this indexed sequence
  */
 transparent trait IndexedSeqOps[+A, +CC[B] <: caps.Pure, +C]
   extends SeqOps[A, CC, C]

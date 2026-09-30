@@ -1,1 +1,8 @@
-6: Pattern Match Exhaustivity: (IExpr(_), BExpr(_)), (BExpr(_), IExpr(_))
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/gadt-covariant.scala:6:40 
+6 |   def foo[T](x: Expr[T], y: Expr[T]) = (x, y) match {
+  |                                        ^^^^^^
+  | match may not be exhaustive.
+  |
+  | It would fail on pattern case: (IExpr(_), BExpr(_)), (BExpr(_), IExpr(_))
+  |
+  | longer explanation available when compiling with `-explain`

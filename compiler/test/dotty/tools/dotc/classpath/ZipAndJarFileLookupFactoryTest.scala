@@ -1,7 +1,5 @@
 package dotty.tools.dotc.classpath
 
-import scala.language.unsafeNulls
-
 import org.junit.Test
 import java.nio.file.*
 import java.nio.file.attribute.FileTime
@@ -21,7 +19,7 @@ class ZipAndJarFileLookupFactoryTest {
     given Context = new ContextBase().initialCtx
     assert(!ctx.settings.YdisableFlatCpCaching.value) // we're testing with our JAR metadata caching enabled.
 
-    def createCp = ZipAndJarClassPathFactory.create(AbstractFile.getFile(f))
+    def createCp = ZipAndJarClassPathFactory.create(AbstractFile.getFile(f).nn)
     try {
       createZip(f, Array(), "p1/C.class")
       createZip(f, Array(), "p2/X.class")

@@ -30,8 +30,8 @@
    |Capability `f` outlives its scope: it leaks into outer capture set 's7 which is owned by value later.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (f: java.io.OutputStream^) ->'s8 Int ->{f} Unit
-   |Required: java.io.OutputStream^ => Int ->'s7 Unit
+   |Found:    (f: java.io.OutputStream^) ->'s8 (y: Int) ->{f} Unit
+   |Required: java.io.OutputStream^ => (y: Int) ->'s7 Unit
    |
    |where:    => refers to a root capability created in value later when checking argument to parameter op of method usingFile
    |          ^  refers to the root capability caps.any

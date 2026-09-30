@@ -373,6 +373,7 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
   /** A bitset containing all the bits in an array.
    *
    *  @param elems the array of `Long` words representing the bits; a defensive copy is made
+   *  @return a new bitset backed by a copy of `elems`
    */
   def fromBitMask(elems: Array[Long]): BitSet = {
     val len = elems.length
@@ -387,6 +388,7 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
    *  array without copying.
    *
    *  @param elems the array of `Long` words representing the bits, used directly without copying; the caller must not mutate the array afterward
+   *  @return a new bitset backed directly by `elems`
    */
   def fromBitMaskNoCopy(elems: Array[Long]): BitSet = {
     val len = elems.length

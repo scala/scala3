@@ -1,3 +1,24 @@
-14: Pattern Match Exhaustivity: _: Trait & Alias1, _: Clazz & Alias1
-19: Pattern Match Exhaustivity: _: Trait & Alias2
-23: Pattern Match Exhaustivity: _: Trait & (Alias2 & OpenTrait2){val x: Int}
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/aliasing.scala:14:37 
+14 |  def traitAndClass(s: T & Alias1) = s match {
+   |                                     ^
+   |     match may not be exhaustive.
+   |
+   |     It would fail on pattern case: _: Trait & Alias1, _: Clazz & Alias1
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/aliasing.scala:19:33 
+19 |  def classOnly(s: T & Alias2) = s match {
+   |                                 ^
+   |                        match may not be exhaustive.
+   |
+   |                        It would fail on pattern case: _: Trait & Alias2
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/aliasing.scala:23:70 
+23 |  def classOnlyRefined(s: T & (Alias2 & OpenTrait2) { val x: Int }) = s match {
+   |                                                                      ^
+   |match may not be exhaustive.
+   |
+   |It would fail on pattern case: _: Trait & (Alias2 & OpenTrait2){val x: Int}
+   |
+   | longer explanation available when compiling with `-explain`

@@ -2,6 +2,7 @@ package dotty.tools.dotc.interactive
 
 import scala.collection.mutable
 import dotty.tools.io.AbstractFile
+
 import scala.jdk.CollectionConverters.*
 
 /**
@@ -27,7 +28,7 @@ class ParsedLogicalPackage(
 
   private val subpackages =
     mutable.LinkedHashMap.empty[String, ParsedLogicalPackage]
-  private val directSources = mutable.ListBuffer.empty[String]
+  private val directSources = mutable.ListBuffer.empty[AbstractFile]
 
   def fullName: String =
     if (parent.isEmpty || parent.get.name.isEmpty) name
@@ -55,8 +56,8 @@ class ParsedLogicalPackage(
   def getPackage(name: String): Option[ParsedLogicalPackage] =
     subpackages.get(name)
 
-  def enterSource(fileName: String): this.type = synchronized:
-    directSources += fileName
+  def enterSource(file: AbstractFile): this.type = synchronized:
+    directSources += file
     this
 
   /** Return all member packages. Only direct members are returned. */
@@ -67,7 +68,7 @@ class ParsedLogicalPackage(
    *
    * The return type is a sequence and not a Set in order to have deterministic runs
    */
-  def sources: Seq[AbstractFile] = directSources.toSeq.distinct.flatMap(name => Option(AbstractFile.getFile(name)))
+  def sources: Seq[AbstractFile] = directSources.toSeq.distinct
 
   override def toString(): String =
     s"package $name(${packages.size} packages and ${sources.size} files)"
@@ -100,7 +101,9 @@ object ParsedLogicalPackage{
       // symbols into it, since they might hide standard library symbols, such as scala.Option.
       if p.name.nonEmpty && !disallowedPackages.contains(p.fullName) then
         for path <- paths.asScala if isSupported(path) do
-          p.enterSource(path.toString)
+          val f = AbstractFile.getFile(path.toString)
+          if f != null then
+            p.enterSource(f)
 
     root.removeEmptyPackages()
     root

@@ -1,2 +1,8 @@
-6: Match case Unreachable
-14: Match case Unreachable
+-- [E030] Match case Unreachable Warning: tests/patmat/i12530.scala:6:11 -------
+6 |      case (_, false) => // error: unreachable
+  |           ^^^^^^^^^^
+  |           Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/i12530.scala:14:11 ------
+14 |      case (_, false) => // reachable: null
+   |           ^^^^^^^^^^
+   |           Unreachable case

@@ -15,10 +15,10 @@ package backend.jvm
 package analysis
 
 import scala.annotation.switch
-import scala.tools.asm.Opcodes.*
-import scala.tools.asm.Type
-import scala.tools.asm.tree.*
-import scala.tools.asm.tree.analysis.{Frame, Value}
+import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.Type
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.tree.analysis.{Frame, Value}
 import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
 
 object InstructionStackEffect {

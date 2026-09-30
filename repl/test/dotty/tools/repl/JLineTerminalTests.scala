@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import java.io.{ByteArrayOutputStream, PipedInputStream, PipedOutputStream}
 
 import org.junit.Assert.*

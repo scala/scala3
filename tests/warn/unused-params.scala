@@ -29,6 +29,8 @@ trait BadAPI extends InterFace {
     a
   }
 
+  def withUnderscores(_a: Int, _b: String, c: Double): Double = c // no warn
+
   def meth(x: Int) = x
 
   override def equals(other: Any): Boolean = true  // no warn
@@ -165,3 +167,5 @@ object Optional:
 class Nested {
   @annotation.unused private def actuallyNotUsed(fresh: Int, stale: Int) = fresh // no warn if owner is unused
 }
+
+class UnusedUnderscoreParam(_x: Int) { } // no warn

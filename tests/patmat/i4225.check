@@ -1,1 +1,4 @@
-10: Match case Unreachable
+-- [E030] Match case Unreachable Warning: tests/patmat/i4225.scala:10:11 -------
+10 |      case _ => x // should be unreachable
+   |           ^
+   |           Unreachable case

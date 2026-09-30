@@ -168,6 +168,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
   /** A `collection.WithFilter` which allows GC of the head of stream during processing.
    *
    *  @param p the predicate used to test elements
+   *  @return a `WithFilter` over this stream restricted to elements satisfying `p`, suitable for chained `map`, `flatMap`, `foreach`, and further `withFilter` calls
    */
   override final def withFilter(p: A => Boolean): collection.WithFilter[A, Stream] =
     Stream.withFilter(coll, p)
@@ -371,6 +372,7 @@ object Stream extends SeqFactory[Stream] {
      *  @tparam A the element type of the stream
      *  @param hd   The first element of the result stream
      *  @param tl   The remaining elements of the result stream
+     *  @return a non-empty `Stream` whose head is `hd` and whose tail is lazily produced from `tl`
      */
     def apply[A](hd: A, tl: => Stream[A]): Stream[A] = new Cons(hd, tl)
 
@@ -378,6 +380,7 @@ object Stream extends SeqFactory[Stream] {
      *
      *  @tparam A the element type of the stream
      *  @param xs the stream to decompose
+     *  @return `Some((head, tail))` if `xs` is non-empty, or `None` if `xs` is empty
      */
     def unapply[A](xs: Stream[A]): Option[(A, Stream[A])] = #::.unapply(xs)
   }

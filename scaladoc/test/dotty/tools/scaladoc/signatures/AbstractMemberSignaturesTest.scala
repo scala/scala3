@@ -12,10 +12,12 @@ import dotty.tools.scaladoc.test.BuildInfo
 import org.jsoup.Jsoup
 import util.IO
 import org.junit.Assert.assertTrue
+import org.junit.Test
 
 class AbstractMembers extends ScaladocTest("abstractmembersignatures"):
 
-  def runTest = {
+  @Test
+  def runTest(): Unit = {
     afterRendering {
       val actualSignatures = signaturesFromDocumentation()
       actualSignatures.foreach { (k, v) => k match

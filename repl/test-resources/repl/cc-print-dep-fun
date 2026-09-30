@@ -1,0 +1,47 @@
+//> using options -language:experimental.captureChecking
+scala> import caps.*
+scala> import caps.fresh
+scala> class A
+// defined class A
+scala> class B
+// defined class B
+scala> class C
+// defined class C
+scala> class Box[+T](val value: T)
+// defined class Box
+scala> def unused: (x: A) -> B = ???
+def unused: (x: A) -> B
+scala> def used(a: A^): A^{a} -> B = ???
+def used(a: A^): A^{a} -> B
+scala> def freshScope: (x: A^) -> B^{fresh} = ???
+def freshScope: (x: A^) -> B^{fresh}
+scala> def curriedAllUnused: (x: A) -> (y: B) -> C = ???
+def curriedAllUnused: (x: A) -> (y: B) -> C
+scala> def curriedFirstUsed(io: A^): (xs: A^{io}) -> (ys: B) -> C = ???
+def curriedFirstUsed(io: A^): (xs: A^{io}) -> (ys: B) -> C
+scala> def curriedInnerFresh: (x: A) -> (y: B^) -> C^{fresh} = ???
+def curriedInnerFresh: (x: A) -> (y: B^) -> C^{fresh}
+scala> def curriedOuterFresh: (x: A^) -> B^{fresh} -> C = ???
+def curriedOuterFresh: (x: A^) -> B^{fresh} -> C
+scala> def multiParamUnused: (x: A, y: B) -> C = ???
+def multiParamUnused: (x: A, y: B) -> C
+scala> def multiParamOneUsed(io: A^): (a: A^{io}, b: B) -> C = ???
+def multiParamOneUsed(io: A^): (a: A^{io}, b: B) -> C
+scala> def depFun(io: A^): (x: A^{io}) -> B^{x} = ???
+def depFun(io: A^): (x: A^{io}) -> B^{x}
+scala> def insideBox: Box[(x: A) -> B] = ???
+def insideBox: Box[(x: A) -> B]
+scala> def insideBoxFresh: Box[(x: A^) -> B^{fresh}] = ???
+def insideBoxFresh: Box[(x: A^) -> B^{fresh}]
+scala> def polyFn: [T] => (x: A) -> T = ???
+def polyFn: [T] => (x: A) -> T
+scala> def polyFnUsed: [T] => (a: A^) -> A^{a} = ???
+def polyFnUsed: [T] => (a: A^) -> A^{a}
+scala> def ctxUnused: (x: A) ?-> B = ???
+def ctxUnused: (x: A) ?-> B
+scala> def ctxUsed(io: A^): (a: A^{io}) ?-> B = ???
+def ctxUsed(io: A^): (a: A^{io}) ?-> B
+scala> def impureUnused: (x: A) => B = ???
+def impureUnused: (x: A) ->{fresh} B
+scala> def freshArrow: (x: A) ->{fresh} B = ???
+def freshArrow: (x: A) ->{fresh} B

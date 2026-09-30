@@ -5,6 +5,7 @@ package tasty
 import java.util.regex.Pattern
 
 import scala.util.{Try, Success, Failure}
+import scala.util.control.NonFatal
 import scala.tasty.inspector.{ScaladocInternalTastyInspector, Inspector, Tasty}
 import scala.quoted._
 
@@ -243,8 +244,8 @@ case class TastyParser(
         seen = seen.tail
 
     try Traverser.traverseTree(root)(Symbol.spliceOwner)
-    catch case e: Throwable =>
-      println(s"Problem parsing ${root.pos}, documentation may not be generated.")
+    catch case NonFatal(e) =>
+      report.warning(s"Problem parsing ${root.pos}, documentation may not be generated. (Error message: ${e.getMessage})")
       // e.printStackTrace()
 
     docs.result()

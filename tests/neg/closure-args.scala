@@ -1,4 +1,4 @@
-import language.experimental.relaxedLambdaSyntax
+//> using options -preview
 val x = List(1).map: (x: => Int) => // error
   ???
 val z = List(1).map: + => // ok
@@ -12,6 +12,9 @@ val b: Int = xs
 val d = xs
   .map: x => x.toString + xs.dropWhile:
     y => y > 0  // error // error
+
+val _ = xs
+  .map: x => x.toString + xs.dropWhile: y => y > 0 // error
 
 val c = List(xs.map: y => y + y)  // error // error // error // error
 

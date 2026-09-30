@@ -95,7 +95,7 @@ class PickleQuotes extends MacroTransform {
           val (holeContents, quote1) = extractHolesContents(quote)
           val quote2 = encodeTypeArgs(quote1)
           val holeContents1 = holeContents.map(transform(_))
-          PickleQuotes.pickle(quote2, quotes, holeContents1)
+          PickleQuotes.pickle(quote2, quotes, holeContents1)(using ctx.withSource(quote.source))
         case tree: DefDef if !tree.rhs.isEmpty && tree.symbol.isInlineMethod =>
           tree
         case _ =>
@@ -325,7 +325,7 @@ object PickleQuotes {
               defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
             args =>
               val cases = holeContents.zipWithIndex.map { case (splice, idx) =>
-                val defn.FunctionNOf(argTypes, defn.FunctionNOf(quotesType :: _, _, _), _) = splice.tpe: @unchecked
+                val defn.FunctionOf(argTypes, defn.FunctionOf(quotesType :: _, _, _), _) = splice.tpe: @unchecked
                 val rhs = {
                   val spliceArgs = argTypes.zipWithIndex.map { (argType, i) =>
                     args(1).select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argType)

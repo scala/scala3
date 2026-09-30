@@ -45,4 +45,4 @@
 -- Error: tests/neg/unicodeEscapes-interpolations.scala:14:29 ----------------------------------------------------------
 14 |  val badInterother = s"this \p ain't legal either" // error
    |                             ^
-   |invalid escape '\p' not one of [\b, \t, \n, \f, \r, \\, \", \', \uxxxx] at index 5 in "this \p ain't legal either". Use \\ for literal \.
+   |invalid escape '\p' not one of [\b, \t, \n, \f, \s, \r, \\, \", \', \uxxxx] at index 5 in "this \p ain't legal either". Use \\ for literal \.

@@ -2,17 +2,17 @@ package dotty.tools.scaladoc
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.{Success,Failure}
+import scala.util.{Failure, Success}
+import org.scalajs.dom.*
+import org.scalajs.dom.ext.*
 
-import org.scalajs.dom._
-import org.scalajs.dom.ext._
 import scala.scalajs.js.annotation.JSExportTopLevel
-import org.scalajs.dom._
-import scala.scalajs.js
-import scala.scalajs.js.JSON
-import scala.scalajs.js.Thenable.Implicits.thenable2future
+import org.scalajs.dom.*
 
-import utils.HTML._
+import scala.scalajs.js
+import scala.scalajs.js.{JSON, Promise}
+import scala.scalajs.js.Thenable.Implicits.thenable2future
+import utils.HTML.*
 
 trait Versions extends js.Object:
   def versions: js.Dictionary[String]
@@ -25,8 +25,28 @@ class DropdownHandler:
   private def addVersionsList(json: String) =
     val ver = JSON.parse(json).asInstanceOf[Versions]
     val ddc = document.getElementById("version-dropdown")
-    for (k, v) <- ver.versions do
-      var child = a(cls := "text-button", href := v)(k)
+    val currentUrl = window.location.href
+    val versionPrefix = ver.versions.keysIterator.find(currentUrl.startsWith)
+    val urlSuffix = versionPrefix.map(v => currentUrl.substring(v.length)).getOrElse("")
+    for (k, versionUrl) <- ver.versions do
+      val child = a(cls := "text-button", href := versionUrl)(k)
+      child.addEventListener("click", (e: Event) => {
+        e.preventDefault()
+
+        val fullUrl = versionUrl + urlSuffix
+        val req = fetch(fullUrl, new RequestInit { method = HttpMethod.HEAD })
+          .toFuture
+          .map(_.status == 200)
+          .recover { case _ => false }
+
+        val timeoutPromise = scala.concurrent.Promise[Unit]()
+        window.setTimeout(() => timeoutPromise.success(()), 100) // 100 ms of timeout should be plenty
+
+        Future.firstCompletedOf(Seq(
+          req,
+          timeoutPromise.future.map(_ => false)
+        )).foreach(linkIsAlive => window.location.href = if linkIsAlive then fullUrl else versionUrl)
+      })
       ddc.appendChild(child)
 
   private def disableButton() =

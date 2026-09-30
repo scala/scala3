@@ -1,3 +1,24 @@
-10: Pattern Match Exhaustivity: Nil
-24: Pattern Match Exhaustivity: true, false
-28: Pattern Match Exhaustivity: _: Int
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmat-indent.scala:10:29 
+10 |  def foo1a[T](l: List[T]) = l match {
+   |                             ^
+   |                             match may not be exhaustive.
+   |
+   |                             It would fail on pattern case: Nil
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmat-indent.scala:24:25 
+24 |  def foo2(b: Boolean) = b match {
+   |                         ^
+   |                         match may not be exhaustive.
+   |
+   |                         It would fail on pattern case: true, false
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmat-indent.scala:28:21 
+28 |  def foo3(x: Int) = x match {
+   |                     ^
+   |                     match may not be exhaustive.
+   |
+   |                     It would fail on pattern case: _: Int
+   |
+   | longer explanation available when compiling with `-explain`

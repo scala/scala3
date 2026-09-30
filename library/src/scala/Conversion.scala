@@ -7,7 +7,9 @@ import annotation.internal.preview
  *  The implicit resolution algorithm will act as if there existed
  *  the additional implicit definition:
  *
- *    def $implicitConversion[T, U](x: T)(c: Conversion[T, U]): U = c(x)
+ *  ```
+ *  def $implicitConversion[T, U](x: T)(c: Conversion[T, U]): U = c(x)
+ *  ```
  *
  *  However, the presence of this definition would slow down implicit search since
  *  its outermost type matches any pair of types. Therefore, implicit search

@@ -1,1 +1,8 @@
-11: Pattern Match Exhaustivity: _: List
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/exhaustive_heuristics.scala:11:6 
+11 |  List(1) match {
+   |  ^^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: _: List
+   |
+   | longer explanation available when compiling with `-explain`

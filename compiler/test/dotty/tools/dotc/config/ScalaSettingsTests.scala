@@ -11,11 +11,12 @@ import dotty.tools.vulpix.TestConfiguration
 import org.junit.Test
 import org.junit.Assert.*
 import core.Decorators.toMessage
-import dotty.tools.io.{Path, PlainFile}
+import dotty.tools.io.*
 
 import java.net.URI
 import java.nio.file.Files
 import scala.util.Using
+import scala.io.Codec
 
 import scala.annotation.nowarn
 
@@ -199,7 +200,7 @@ class ScalaSettingsTests:
         warning = reporting.Diagnostic.Warning(
           "A warning".toMessage,
           util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
+            source = util.SourceFile(new PlainFile(Path(file)), new PlainDirectory(Directory(".")), Codec.UTF8),
             span = util.Spans.Span(1L)
           )
         )
@@ -214,7 +215,7 @@ class ScalaSettingsTests:
         warning = reporting.Diagnostic.Warning(
           "A warning".toMessage,
           util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
+            source = util.SourceFile(new PlainFile(Path(file)), new PlainDirectory(Directory(".")), Codec.UTF8),
             span = util.Spans.Span(1L)
           )
         )
@@ -291,6 +292,22 @@ class ScalaSettingsTests:
   @Test def `deprecated -language features are summarized when -deprecation is off`: Unit =
     val (count, _) = deprecatedLanguageSettingWarnings(deprecation = false)
     assertEquals(0, count)
+
+  @Test def `deprecated -language fewerBraces warns with option name when -deprecation is on`: Unit =
+    val rep = new StoreReporter()
+    val base = new ContextBase {}
+    given Context = base.initialCtx.fresh
+      .setReporter(rep)
+      .setSetting(ScalaSettings.classpath, TestConfiguration.basicClasspath)
+      .setSetting(ScalaSettings.language, List("experimental.fewerBraces").asInstanceOf)
+      .setSetting(ScalaSettings.deprecation, true)
+    base.initialize()(using summon[Context])
+    Feature.checkDeprecatedSettingFeatures
+    assertEquals(1, rep.warningCount)
+    assertEquals(
+      "Option -language:experimental.fewerBraces is deprecated: `fewerBraces` is now standard, no language import is needed",
+      rep.removeBufferedMessages.head.message,
+    )
 
   // see sbt-test/pipelining/pipelining-test/test
   @Test def `-Xearly-tasty-output preferPrevious does not warn on change of value`: Unit =

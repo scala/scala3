@@ -6,7 +6,7 @@ import core.Names.*, core.Contexts.*, core.Decorators.*, util.Spans.*
 import core.StdNames.*, core.Comments.*
 import util.SourceFile
 import util.Chars.*
-import util.{SourcePosition, CharBuffer}
+import util.SourcePosition
 import util.Spans.Span
 import config.Config
 import Tokens.*
@@ -102,8 +102,9 @@ object Scanners {
       token == ARROW || token == CTXARROW
   }
 
-  abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
-    val buf: Array[Char] = source.content
+  abstract class ScannerCommon(source: SourceFile, limit: Offset = -1)(using Context) extends StringReader with TokenData {
+    val buf: String = source.textContent()
+    val endIdx = if limit >= 0 && limit < buf.length then limit else buf.length
     def nextToken(): Unit
 
     // Errors -----------------------------------------------------------------
@@ -142,7 +143,7 @@ object Scanners {
 
     /** A character buffer for literals
       */
-    protected val litBuf = CharBuffer(initialCharBufferSize)
+    protected val litBuf = java.lang.StringBuilder(initialCharBufferSize)
 
     /** append Unicode character to "litBuf" buffer
       */
@@ -155,9 +156,9 @@ object Scanners {
      *  If `target` is different from `this`, don't treat identifiers as end tokens.
      */
     def finishNamedToken(idtoken: Token, target: TokenData): Unit =
-      val name = termName(litBuf.chars, 0, litBuf.length)
+      val name = termName(litBuf.toString)
       target.name = name
-      litBuf.clear()
+      litBuf.setLength(0)
       if name.contains('$') && Feature.safeEnabled && !SafeRefs.allowDollarIn(name) then
         report.error(em"Identifier may not contain '$$' in safe mode", sourcePos())
       target.token = idtoken
@@ -171,19 +172,20 @@ object Scanners {
     /** Clear buffer and set string */
     def setStrVal(): Unit =
       strVal = litBuf.toString
-      litBuf.clear()
+      litBuf.setLength(0)
 
     inline def isNumberSeparator(c: Char): Boolean = c == '_'
 
-    def removeNumberSeparators(s: String): String = if (s.indexOf('_') == -1) s else s.replace("_", "")
+    def removeNumberSeparators(s: String): String = s.replace("_", "")
 
     // disallow trailing numeric separator char, but continue lexing
     def checkNoTrailingSeparator(): Unit =
-      if (!litBuf.isEmpty && isNumberSeparator(litBuf.last))
+      if (!litBuf.isEmpty && isNumberSeparator(litBuf.charAt(litBuf.length - 1)))
         errorButContinue(em"trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile, allowIndent: Boolean = true)(using Context) extends ScannerCommon(source) {
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0, limit: Offset = -1, profile: Profile = NoProfile, allowIndent: Boolean = true)(using Context)
+      extends ScannerCommon(source, limit) {
     val keepComments = !ctx.settings.XdropComments.value
 
     /** A switch whether operators at the start of lines can be infix operators */
@@ -192,7 +194,7 @@ object Scanners {
     var debugTokenStream = false
     val showLookAheadOnDebug = false
 
-    val rewrite = ctx.settings.rewrite.value.isDefined
+    val rewrite = ctx.settings.rewrite.value
     val oldSyntax = ctx.settings.oldSyntax.value
     val newSyntax = ctx.settings.newSyntax.value || sourceVersion.requiresNewSyntax
 
@@ -223,6 +225,9 @@ object Scanners {
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
     def trackedEnabled = featureEnabled(Feature.modularity)
+    def dedentedStringLiteralsEnabled =
+         featureEnabled(Feature.dedentedStringLiterals)
+      || Feature.magicEnabled
 
     private var postfixOpsEnabledCache = false
     private var postfixOpsEnabledCtx: Context = NoContext
@@ -260,7 +265,7 @@ object Scanners {
     def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
 
     /** A buffer for comments */
-    private val currentCommentBuf = CharBuffer(initialCharBufferSize)
+    private val currentCommentBuf = java.lang.StringBuilder(initialCharBufferSize)
 
     def toToken(identifier: SimpleName): Token =
       def handleMigration(keyword: Token): Token =
@@ -275,9 +280,7 @@ object Scanners {
             patch(source, Span(offset + identifier.length), "`")
           IDENTIFIER
         else keyword
-      val idx = identifier.start
-      if (idx >= 0 && idx <= lastKeywordStart) handleMigration(kwArray(idx))
-      else IDENTIFIER
+      kwMap.get(identifier).map(handleMigration).getOrElse(IDENTIFIER)
 
     def newTokenData: TokenData = new TokenData {}
 
@@ -488,12 +491,12 @@ object Scanners {
       }
 
     /** The indentation width of the given offset. */
-    def indentWidth(offset: Offset, buf: Array[Char] = this.buf): IndentWidth =
+    def indentWidth(offset: Offset, buf: String = this.buf): IndentWidth =
       import IndentWidth.{Run, Conc}
       def recur(idx: Int, ch: Char, n: Int, k: IndentWidth => IndentWidth): IndentWidth =
         if (idx < 0) k(Run(ch, n))
         else {
-          val nextChar = buf(idx)
+          val nextChar = buf.charAt(idx)
           if (nextChar == LF) k(Run(ch, n))
           else if (nextChar == ' ' || nextChar == '\t')
             if (nextChar == ch)
@@ -613,9 +616,9 @@ object Scanners {
       // can emit OUTDENT if line is not non-empty blank line at EOF
       inline def isTrailingBlankLine: Boolean =
         token == EOF && {
-          val end = buf.length - 1 // take terminal NL as empty last line
+          val end = endIdx - 1 // take terminal NL as empty last line
           val prev = buf.lastIndexWhere(!isWhitespace(_), end = end)
-          prev < 0 || end - prev > 0 && isLineBreakChar(buf(prev))
+          prev < 0 || end - prev > 0 && isLineBreakChar(buf.charAt(prev))
         }
 
       inline def canDedent: Boolean =
@@ -818,7 +821,7 @@ object Scanners {
       val end = offset
       def recur(idx: Offset, isBlank: Boolean): Boolean =
         idx < end && {
-          val ch = buf(idx)
+          val ch = buf.charAt(idx)
           if (ch == LF || ch == FF) isBlank || recur(idx + 1, true)
           else recur(idx + 1, isBlank && ch <= ' ')
         }
@@ -898,7 +901,7 @@ object Scanners {
           recognizeInterpolationId()
         case '<' => // is XMLSTART?
           def fetchLT() = {
-            val last = if (charOffset >= 2) buf(charOffset - 2) else ' '
+            val last = if (charOffset >= 2) buf.charAt(charOffset - 2) else ' '
             nextChar()
             last match {
               case ' ' | '\t' | '\n' | '{' | '(' | '>' if xml.Utility.isNameStart(ch) || ch == '!' || ch == '?' =>
@@ -954,7 +957,7 @@ object Scanners {
               case _ =>
                 error(em"unclosed character literal")
 
-          if lookaheadChar() == '\'' && featureEnabled(Feature.dedentedStringLiterals) then
+          if lookaheadChar() == '\'' && dedentedStringLiteralsEnabled then
             delimChar = '\''
             delimCount = 1
             fetchString()
@@ -1051,7 +1054,7 @@ object Scanners {
         if (keepComments) {
           val pos = Span(start, charOffset - 1, start)
           val comment = Comment(pos, currentCommentBuf.toString)
-          currentCommentBuf.clear()
+          currentCommentBuf.setLength(0)
           commentBuf += comment
 
           if (comment.isDocComment)
@@ -1068,7 +1071,7 @@ object Scanners {
       else if (ch == '*') { nextChar(); skipComment(); finishComment() }
       else {
         // This was not a comment, remove the `/` from the buffer
-        currentCommentBuf.clear()
+        currentCommentBuf.setLength(0)
         false
       }
     }
@@ -1210,6 +1213,13 @@ object Scanners {
 
 // String Parsing -----------------------------------------------------------------
 
+    private def unclosedStringLit(): Unit =
+      error(em"unclosed string literal")
+      // Recover as best we can by pretending the line has ended
+      litBuf.setLength(0)
+      adjustSepRegions(STRINGLIT)
+      token = SEMI
+
     def multiline = delimCount >= 3
 
     def nextStrChar() =
@@ -1221,7 +1231,8 @@ object Scanners {
         setStrVal()
         nextChar()
         token = STRINGLIT
-      else error(em"unclosed string literal")
+      else
+        unclosedStringLit()
 
     private def getMultilineStringLit(): Unit =
       if ch == delimChar then
@@ -1305,7 +1316,7 @@ object Scanners {
           if multiline then
             incompleteInputError(em"unclosed multi-line string literal")
           else
-            error(em"unclosed string literal")
+            unclosedStringLit()
         else
           putChar(ch)
           nextStrChar()
@@ -1331,7 +1342,9 @@ object Scanners {
 
     private def stringPart() =
       getStringPart()
-      currentRegion = InString(delimChar, delimCount, currentRegion)
+      // don't edit the region if we recovered from a parsing error by inserting a semicolon
+      if token != SEMI then
+        currentRegion = InString(delimChar, delimCount, currentRegion)
 
     private def emptyString() =
       if delimChar == '\'' then
@@ -1346,6 +1359,16 @@ object Scanners {
         while ch == delimChar do
           delimCount += 1
           nextChar()
+
+    def isSpecString(): Boolean =
+      var i = charOffset
+      while i < endIdx && buf.charAt(i) == '\'' do
+        i += 1
+      Feature.magicEnabled
+      && i + 4 < endIdx
+      && i - charOffset >= 2
+      && buf.charAt(i) == 's' && buf.charAt(i + 1) == 'p' && buf.charAt(i + 2) == 'e' && buf.charAt(i + 3) == 'c'
+      && (isWhitespace(buf.charAt(i + 4)) || buf.charAt(i + 4) == LF)
 
     def fetchString() =
       delimCount = 1
@@ -1362,6 +1385,9 @@ object Scanners {
             emptyString()
         else
           stringPart()
+      else if delimChar == '\'' && isSpecString() then
+        token = INTERPOLATIONID
+        name = nme.SPEC.asSimpleName
       else
         nextChar()
         if ch == delimChar then
@@ -1403,6 +1429,7 @@ object Scanners {
         case 'n'  => putChar('\n')
         case 'f'  => putChar('\f')
         case 'r'  => putChar('\r')
+        case 's'  => putChar(' ')
         case '\"' => putChar('\"')
         case '\'' => putChar('\'')
         case '\\' => putChar('\\')
@@ -1558,7 +1585,7 @@ object Scanners {
       else {
         token = op
         strVal = Objects.toString(name)
-        litBuf.clear()
+        litBuf.setLength(0)
       }
     }
 
@@ -1737,12 +1764,12 @@ object Scanners {
 
     def < (that: IndentWidth): Boolean = this <= that && !(that <= this)
 
-    final def advance(buf: Array[Char], start: Int): Int = this match
+    final def advance(buf: String, start: Int): Int = this match
       case Run(ch, n) =>
         if start + n > buf.length then -1
         else
           var i = 0
-          while i < n && buf(start + i) == ch do i += 1
+          while i < n && buf.charAt(start + i) == ch do i += 1
           if i < n then -1 else n
       case Conc(w1, w2) =>
         val len1 = w1.advance(buf, start)
@@ -1762,7 +1789,12 @@ object Scanners {
 
     def toPrefix: String = this match {
       case Run(ch, n) => ch.toString * n
-      case Conc(l, r) => l.toPrefix ++ r.toPrefix
+      case Conc(l, r) => l.toPrefix + r.toPrefix
+    }
+
+    def toPrefixSize: Int = this match {
+      case Run(ch, n) => n
+      case Conc(l, r) => l.toPrefixSize + r.toPrefixSize
     }
 
     override def toString: String = {
@@ -1793,5 +1825,5 @@ object Scanners {
 
   // ------------- keyword configuration -----------------------------------
 
-  private val (lastKeywordStart, kwArray) = buildKeywordArray(keywords)
+  private val kwMap = buildKeywordMap(keywords)
 }

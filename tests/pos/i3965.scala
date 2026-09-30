@@ -11,7 +11,7 @@ class TreeSet[A]
 
 class Test {
   def optionSequence1[CCos[X] <: IterableOps[X, CCos, _], A](xs: CCos[Option[A]]): Option[CCos[A]] = ???
-  def optionSequence1[CC[X] <: SortedSet[X] with SortedSetOps[X, CC, CC[X]], A : Ordering](xs: CC[Option[A]]): Option[CC[A]] = ???
+  def optionSequence1[CC[X] <: SortedSet[X] & SortedSetOps[X, CC, CC[X]], A : Ordering](xs: CC[Option[A]]): Option[CC[A]] = ???
 
   def test(xs2: TreeSet[Option[String]]) = {
     optionSequence1(xs2)

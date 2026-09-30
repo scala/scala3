@@ -3,9 +3,8 @@ package dotc
 package config
 
 import WrappedProperties.AccessControl
-import io.{ClassPath, Directory, Path}
-import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath}
-import ClassPath.split
+import io.{Directory, Path}
+import classpath.{AggregateClassPath, ClassPath, ClassPathFactory, JrtClassPath}
 import PartialFunction.condOpt
 import core.Contexts.*
 import Settings.*
@@ -20,7 +19,7 @@ object PathResolver {
 
   /** pretty print class path
    */
-  def ppcp(s: String): String = split(s) match {
+  def ppcp(s: String): String = ClassPath.split(s) match {
     case Nil      => ""
     case Seq(x)   => x
     case xs       => xs.map("\n" + _).mkString
@@ -127,13 +126,6 @@ object PathResolver {
         scalaLibDirFound, scalaLibFound,
         ppcp(scalaBootClassPath), ppcp(scalaPluginPath)
       )
-  }
-
-  def fromPathString(path: String)(using Context): ClassPath = {
-    val settings = ctx.settings.classpath.update(path)
-    inContext(ctx.fresh.setSettings(settings)) {
-      new PathResolver().result
-    }
   }
 
   /** Show values in Environment and Defaults when no argument is provided.
@@ -247,10 +239,8 @@ class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(usi
       )
   }
 
-  def containers: List[ClassPath] = Calculated.containers
-
   lazy val result: ClassPath = {
-    val cp = AggregateClassPath(containers.toIndexedSeq)
+    val cp = AggregateClassPath(Calculated.containers)
 
     if (settings.YlogClasspath.value) {
       Console.println("Classpath built from " + settings.toConciseString(ctx.settingsState))
@@ -263,6 +253,4 @@ class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(usi
     }
     cp
   }
-
-  def asURLs: Seq[java.net.URL] = result.asURLs
 }

@@ -1,1 +1,8 @@
-9: Pattern Match Exhaustivity: (C4(), _), (_, C4())
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i4030.scala:9:69 ----
+9 |  def f[A <: Seq[?], B, Foo >: A => B](v: Root[Foo], u: Root[Foo]) = (v, u) match {
+  |                                                                     ^^^^^^
+  |                       match may not be exhaustive.
+  |
+  |                       It would fail on pattern case: (C4(), _), (_, C4())
+  |
+  | longer explanation available when compiling with `-explain`

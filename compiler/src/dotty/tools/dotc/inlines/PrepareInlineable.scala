@@ -135,6 +135,7 @@ object PrepareInlineable {
      *  require additional type parameters for the inline accessor. An example is in the
      *  `TestPassing` class in test `run/inline/inlines_1`:
      *
+     *  ```
      *    class C[T](x: T) {
      *      private[inlines] def next[U](y: U): (T, U) = (x, y)
      *    }
@@ -147,13 +148,16 @@ object PrepareInlineable {
      *      val c = new C[A](x)
      *      c.next("")
      *    }
+     *  ```
      *
      *  `C` could be compiled separately, so we cannot place the inline accessor in it.
      *  Instead, the inline accessor goes into `TestPassing` and takes the actual receiver
      *  type as argument:
      *
+     *  ```
      *    def inline$next$i1[A, U](x$0: C[A])(y: U): (A, U) =
      *      x$0.next[U](y)
+     *  ```
      *
      *  Since different calls might have different receiver types, we need to generate one
      *  such accessor per call, so they need to have unique names.
@@ -256,7 +260,10 @@ object PrepareInlineable {
 
   /** The type ascription `rhs: tpt`, unless `original` is `transparent`. */
   def wrapRHS(original: untpd.DefDef, tpt: Tree, rhs: Tree)(using Context): Tree =
-    if original.mods.is(Transparent) then rhs else Typed(rhs, tpt)
+    val isInferred = tpt match
+      case tpt: TypeTree => tpt.isInferred
+      case _ => false
+    if original.mods.is(Transparent) then rhs else Typed(rhs, TypeTree(tpt.tpe, inferred = isInferred).withSpan(tpt.span))
 
   /** Return result of evaluating `op`, but drop `Inline` flag and `Body` annotation
    *  of `sym` in case that leads to errors.

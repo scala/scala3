@@ -1,7 +1,6 @@
 import sbt.*
 import dotty.tools.sbtplugin.Versions
 
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 /**
@@ -9,12 +8,13 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
  * PLEASE KEEP ALPHABETIZED!
  */
 object Dependencies {
-  val asm = "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1"
+  val asmUtil = "org.ow2.asm" % "asm-util" % "9.10.1"
+  val asmCommons = "org.ow2.asm" % "asm-commons" % "9.10.1"
 
-  val coursier = "io.get-coursier" %% "coursier" % "2.1.24"
+  /** Version of Coursier to use + download for initializing the local maven repo of Scala command */
+  val coursierJarVersion = "2.1.25-M26"
+  val coursier = "io.get-coursier" %% "coursier" % coursierJarVersion
   val coursierInterface = "io.get-coursier" % "interface" % "1.0.29-M4"
-
-  val fansi = "com.lihaoyi" %% "fansi" % "0.5.1"
 
   private val flexmarkVersion = "0.64.8"
   val flexmarkDeps = Seq(
@@ -25,6 +25,7 @@ object Dependencies {
     "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-emoji" % flexmarkVersion,
+    "com.vladsch.flexmark" % "flexmark-ext-footnotes" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-wikilink" % flexmarkVersion,
@@ -32,36 +33,40 @@ object Dependencies {
     "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
   )
 
-  val guava = "com.google.guava" % "guava" % "33.6.0-jre"
+  val guava = "com.google.guava" % "guava" % "33.7.1-jre"
 
-  private val jacksonVersion = "3.1.2"
-  val jacksonDatabind = "tools.jackson.core" % "jackson-databind" % jacksonVersion
-  val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
+  val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % "3.2.2"
 
-  private val jlineVersion = "4.0.14"
+  private val jlineVersion = "4.4.3"
   val jlineReader = "org.jline" % "jline-reader" % jlineVersion
   val jlineTerminal = "org.jline" % "jline-terminal" % jlineVersion
   val jlineTerminalJni = "org.jline" % "jline-terminal-jni" % jlineVersion
 
-  val jsoup = "org.jsoup" % "jsoup" % "1.22.2"
+  val jsoup = "org.jsoup" % "jsoup" % "1.23.2"
 
   val liqp = "nl.big-o" % "liqp" % "0.9.2.3"
+  // otherwise the jackson versions are ancient, with known vulnerabilities
+  val liqpDependencyOverrides = Seq(
+    "com.fasterxml.jackson.core" % "jackson-annotations" % "2.22",
+    "com.fasterxml.jackson.core" % "jackson-core" % "2.22.2",
+    "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.2",
+    "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % "2.22.2"
+  )
 
-  val lsp4j = "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "1.0.0"
+  val lz4 = "at.yawk.lz4" % "lz4-java" % "1.11.2"
 
-  val lz4 = "org.lz4" % "lz4-java" % "1.8.1"
-
-  private val mtagsVersion = "1.6.7"
+  private val mtagsVersion = "1.6.8"
   val mtagsInterfaces = "org.scalameta" % "mtags-interfaces" % mtagsVersion
   val mtagsShared = "org.scalameta" % s"mtags-shared_${Versions.scala2Version}" % mtagsVersion
 
-  val pprint = "com.lihaoyi" %% "pprint" % "0.9.3"
-
-  val sbtCompilerInterface = "org.scala-sbt" % "compiler-interface" % "1.12.0"
+  val sbtCompilerInterface = "org.scala-sbt" % "compiler-interface" % "1.12.1"
   val sbtJunitInterface = "com.github.sbt" % "junit-interface" % "0.13.3"
-  val sbtZincApiInfo = "org.scala-sbt" %% "zinc-apiinfo" % "1.12.0"
+  val sbtZincApiInfo = "org.scala-sbt" %% "zinc-apiinfo" % "1.12.1"
 
-  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.19.0"
+  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.20.0"
+
+  /** Version of Scala CLI to download */
+  val scalaCliLauncherVersion = "1.17.1"
 
   val scalaJsDomVersion = "2.8.1" // needs %%% which isn't usable within a val here
   val scalaJsEnvNodeJs = "org.scala-js" %% "scalajs-env-nodejs" % "1.6.0"
@@ -70,8 +75,4 @@ object Dependencies {
   val scalaJsJunitTestRuntime = "org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion
   val scalaJsLibrary = "org.scala-js" %% "scalajs-library" % scalaJSVersion
   val scalaJsLinker = "org.scala-js" %% "scalajs-linker" % scalaJSVersion
-
-  val sourcecode = "com.lihaoyi" %% "sourcecode" % "0.4.4"
-
-  val usingDirectives = "org.virtuslab" % "using_directives" % "1.1.4"
 }

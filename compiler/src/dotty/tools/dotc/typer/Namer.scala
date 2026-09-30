@@ -194,8 +194,23 @@ class Namer { typer: Typer =>
             simple.length == 2 && simple.endsWith(str.EXPAND_SEPARATOR)
           }
       }
+    // Desugaring of objects / enum cases can drop the Backquoted attachment, so also
+    // treat names that are already enclosed in backticks in the source as exempt.
+    // After atNameSpan, span.point is either on the opening backtick (e.g. comma enum
+    // cases) or just after it (most other defs).
+    def alreadyBackquotedInSource: Boolean =
+      val span = tree.span
+      if !span.exists || span.isSynthetic then false
+      else
+        val content = tree.source.textContent()
+        val point = span.point
+        content.length > point && (
+          content(point) == '`'
+          || point > 0 && content(point - 1) == '`'
+        )
     def exempt =
          isBackquoted(tree)
+      || alreadyBackquotedInSource
       || tree.span.isSynthetic
       || flags.isOneOf(Synthetic | Accessor | CaseAccessor) // check the case param not the accessor
       || flags.is(Param) && ctx.owner.is(Synthetic)
@@ -369,7 +384,7 @@ class Namer { typer: Typer =>
         case d: PackageClassDenotation =>
           // Remove existing members coming from a previous compilation of this file,
           // they are obsolete.
-          d.unlinkFromFile(ctx.source.file)
+          d.unlinkFromFile(ctx.source.path)
         case _ =>
       }
       existing
@@ -976,8 +991,6 @@ class Namer { typer: Typer =>
      */
     private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit =
 
-      def isJavaRecord(owner: Symbol) =
-        owner.is(JavaDefined) && owner.derivesFrom(defn.JavaRecordClass)
 
       def isCaseClassOrCompanion(owner: Symbol) =
         owner.isClass && {
@@ -1003,7 +1016,7 @@ class Namer { typer: Typer =>
           )
           ||
           // remove synthetic constructor or method of a java Record if it clashes with a non-synthetic constructor
-          (isJavaRecord(denot.owner)
+          (denot.owner.isJavaRecord
             && denot.is(Method)
             && denot.owner.unforcedDecls.lookupAll(denot.name).exists(c => c != denot.symbol && c.info.matches(denot.info))
           )
@@ -1023,7 +1036,7 @@ class Namer { typer: Typer =>
       val sym = denot.symbol
 
       def register(child: Symbol, parentCls: ClassSymbol) = {
-        if (parentCls.is(Sealed))
+        if (parentCls.is(Sealed) && !(child.isAnonymousClass && parentCls.isSpecializedTrait))
           if ((child.isInaccessibleChildOf(parentCls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
             addChild(parentCls, parentCls)
           else if (!parentCls.is(ChildrenQueried))
@@ -1248,8 +1261,11 @@ class Namer { typer: Typer =>
           val path = typedAhead(expr, _.withType(pathMethod.termRef))
           (path, pathMethod.info.finalResultType)
         else
-          val path = typedAheadExpr(expr, AnySelectionProto)
-          checkLegalExportPath(path, selectors)
+          // Local owner avoids clashes, which improves error reporting (#21976)
+          val path = typedAheadExpr(expr, AnySelectionProto)(using ctx.withOwner(newLocalDummy(cls, exp.span)))
+          // Nothing to forward from an illegal path, forwarders would only add errors (#21976)
+          if !checkLegalExportPath(path, selectors) then
+            return Nil
           (path, path.tpe)
       lazy val wildcardBound = importBound(selectors, isGiven = false)
       lazy val givenBound = importBound(selectors, isGiven = true)
@@ -1398,6 +1414,7 @@ class Namer { typer: Typer =>
                   (EmptyFlags, mbrInfo)
               var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
               if sym.is(Erased) then mbrFlags |= Inline
+              if sym.is(Module) then mbrFlags |= Accessor
               if pathMethod.exists then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)

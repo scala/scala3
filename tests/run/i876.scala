@@ -12,7 +12,7 @@ object Test extends App {
 object Test3781 {
   class Foo[T](val value : T)
   object Foo {
-    implicit def fromXInt[T <: Int with Singleton](i : T): Foo[T] = new Foo[T](i)
+    implicit def fromXInt[T <: Int & Singleton](i : T): Foo[T] = new Foo[T](i)
   }
   class FooUser[T] {
     def op[T2](that : Foo[T2]) : FooUser[T2] = new FooUser[T2]

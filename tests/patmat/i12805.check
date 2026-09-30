@@ -1,3 +1,12 @@
-10: Match case Unreachable
-16: Match case Unreachable
-22: Match case Unreachable
+-- [E030] Match case Unreachable Warning: tests/patmat/i12805.scala:10:7 -------
+10 |  case "4H" => ??? // was: no reachability warning
+   |       ^^^^
+   |       Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/i12805.scala:16:7 -------
+16 |  case "4H" => ??? // was: no reachability warning
+   |       ^^^^
+   |       Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/i12805.scala:22:7 -------
+22 |  case 240 => ??? // was: no reachability warning
+   |       ^^^
+   |       Unreachable case

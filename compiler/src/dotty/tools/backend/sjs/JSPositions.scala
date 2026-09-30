@@ -62,7 +62,6 @@ class JSPositions()(using Context) {
     sourceAndSpan2irPos(sourcePos.source, sourcePos.span)
 
   private object span2irPosCache {
-    import dotty.tools.dotc.util.*
 
     private var lastDotcSource: SourceFile | Null = null
     private var lastIRSource: ir.Position.SourceFile | Null = null
@@ -76,9 +75,15 @@ class JSPositions()(using Context) {
     }
 
     private def convert(dotcSource: SourceFile): ir.Position.SourceFile = {
-      dotcSource.file.file match {
-        case null =>
-          dotcSource.file.path match {
+      dotcSource.jfile.map(file =>{
+        val srcURI = file.toURI
+        sourceURIMaps.collectFirst {
+          case URIMap(from, to) if from.relativize(srcURI) != srcURI =>
+            val relURI = from.relativize(srcURI)
+            to.fold(relURI)(_.resolve(relURI))
+        }.getOrElse(srcURI)
+      }).orElseGet(() => {
+          dotcSource.path match {
             case "" =>
               // creating a virtualfile: URI with an empty scheme-specific part is not allowed
               ir.Position.NoPosition.source
@@ -89,14 +94,7 @@ class JSPositions()(using Context) {
                 null // Fragment
               )
           }
-        case file =>
-          val srcURI = file.toURI
-          sourceURIMaps.collectFirst {
-            case URIMap(from, to) if from.relativize(srcURI) != srcURI =>
-              val relURI = from.relativize(srcURI)
-              to.fold(relURI)(_.resolve(relURI))
-          }.getOrElse(srcURI)
-      }
+      })
     }
   }
 }

@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/transparent-inline-refined-no-note.scala:13:22 --------------------------------
+13 |    val s: String = b.value // error
+   |                    ^^^^^^^
+   |                    Found:    b.Out
+   |                    Required: String
+   |
+   | longer explanation available when compiling with `-explain`

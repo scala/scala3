@@ -34,7 +34,7 @@ class ReportingTest:
   }
 
   @Test
-  def errorsInCaseOfIncompletClasspath =
+  def errorsInCaseOfIncompleteClasspath =
     val notTasty = Files.createTempFile("broken", ".notTasty")
     try
       Files.write(notTasty, "Random file".getBytes)

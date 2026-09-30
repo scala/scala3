@@ -1,1 +1,8 @@
-34: Pattern Match Exhaustivity: foo.bar.C()
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i3938.scala:34:4 ----
+34 |    a match {
+   |    ^
+   |    match may not be exhaustive.
+   |
+   |    It would fail on pattern case: foo.bar.C()
+   |
+   | longer explanation available when compiling with `-explain`

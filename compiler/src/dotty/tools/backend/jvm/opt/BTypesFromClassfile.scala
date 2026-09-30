@@ -20,10 +20,10 @@ import dotty.tools.dotc.core.StdNames.nme
 import scala.annotation.{switch, unused}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm.Opcodes
-import scala.tools.asm.tree.{ClassNode, InnerClassNode, ModuleNode}
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.{ClassNode, InnerClassNode, ModuleNode}
 
-class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTypeLoader) extends InlineInfoLoader {
+class BTypesFromClassfile(byteCodeRepository: BCodeRepository, cache: ClassBType.Cache) extends InlineInfoLoader {
 
   /**
    * Obtain the BType for a type descriptor or internal name. For class descriptors, the ClassBType
@@ -62,7 +62,7 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTyp
    * be found in the `byteCodeRepository`, the `info` of the resulting ClassBType is undefined.
    */
   def classBTypeFromParsedClassfile(internalName: InternalName): Either[OptimizerWarning, ClassBType] = {
-    bTypeLoader.classBType(internalName) { _ =>
+    cache(internalName) { _ =>
       byteCodeRepository.classNode(internalName) match {
         case Left(msg) => Left(NoClassBTypeInfo(msg))
         case Right(c, m) => computeClassInfoFromClassNode(c, m)
@@ -74,7 +74,7 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTyp
    * Construct the [[BTypes.ClassBType]] for a parsed classfile.
    */
   def classBTypeFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): Either[OptimizerWarning, ClassBType] = {
-    bTypeLoader.classBType(classNode.name) { _ =>
+    cache(classNode.name) { _ =>
       computeClassInfoFromClassNode(classNode, moduleNode)
     }
   }
@@ -167,7 +167,7 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTyp
 
   /**
    * Build the InlineInfo for a class. For Scala classes, the information is stored in the
-   * ScalaInlineInfo attribute. If the attribute is missing, the InlineInfo is built using the
+   * inline info attribute. If the attribute is missing, the InlineInfo is built using the
    * metadata available in the classfile (ACC_FINAL flags, etc.).
    */
   private def inlineInfoFromClassfile(classNode: ClassNode, moduleNode: Option[ModuleNode]): InlineInfo = {

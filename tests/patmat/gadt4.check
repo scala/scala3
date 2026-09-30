@@ -1,1 +1,8 @@
-12: Pattern Match Exhaustivity: (VN(), VC(_, _)), (VC(_, _), VN())
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/gadt4.scala:12:63 ---
+12 |  def foo[N <: Nat[?], A, B](v1: Vect[N, A], v2: Vect[N, B]) = (v1, v2) match {
+   |                                                               ^^^^^^^^
+   |       match may not be exhaustive.
+   |
+   |       It would fail on pattern case: (VN(), VC(_, _)), (VC(_, _), VN())
+   |
+   | longer explanation available when compiling with `-explain`

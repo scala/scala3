@@ -299,6 +299,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         Str("")
 
     homogenize(tp) match {
+      case tp @ FlexibleType(_) =>
+        super.toText(tp)
       case tp: AppliedType =>
         val refined = appliedText(tp)
         if refined.isEmpty then super.toText(tp) else refined
@@ -505,13 +507,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         optDotPrefix(tree) ~ keywordStr("this") ~ idText(tree)
       case Super(qual: This, mix) =>
         optDotPrefix(qual) ~ keywordStr("super") ~ optText(mix)("[" ~ _ ~ "]")
+      case BinaryOp(l, op, r) if isInfix(op) && op.name.endsWith(":") =>
+        toTextLocal(l) ~ "." ~ toText(op.name) ~ "(" ~ toText(r) ~ ")"
       case BinaryOp(l, op, r) if isInfix(op) =>
-        val isRightAssoc = op.name.endsWith(":")
         val opPrec = parsing.precedence(op.name)
-        val leftPrec = if isRightAssoc then opPrec + 1 else opPrec
-        val rightPrec = if !isRightAssoc then opPrec + 1 else opPrec
         changePrec(opPrec):
-          atPrec(leftPrec)(toText(l))  ~ " " ~ toText(op.name) ~ " " ~ atPrec(rightPrec)(toText(r))
+          atPrec(opPrec)(toText(l)) ~ " " ~ toText(op.name) ~ " " ~ atPrec(opPrec + 1)(toText(r))
       case app @ Apply(fun, args) =>
         if (fun.hasType && fun.symbol == defn.throwMethod)
           changePrec (GlobalPrec) {

@@ -1,2 +1,12 @@
-3: Pattern Match Exhaustivity: _: Int
-59: Match case Unreachable
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i10174b.scala:3:4 ---
+3 |    x match {
+  |    ^
+  |    match may not be exhaustive.
+  |
+  |    It would fail on pattern case: _: Int
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E030] Match case Unreachable Warning: tests/patmat/i10174b.scala:59:11 -----
+59 |      case 55 =>
+   |           ^^
+   |           Unreachable case

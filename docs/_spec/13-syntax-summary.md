@@ -32,7 +32,7 @@ opchar           ::=  ‘!’ | ‘#’ | ‘%’ | ‘&’ | ‘*’ | ‘+’ 
 printableChar    ::=  all characters in [\u0020, \u007E] inclusive
 UnicodeEscape    ::=  ‘\’ ‘u’ {‘u’} hexDigit hexDigit hexDigit hexDigit
 hexDigit         ::=  ‘0’ | ... | ‘9’ | ‘A’ | ... | ‘F’ | ‘a’ | ... | ‘f’
-charEscapeSeq    ::=  ‘\’ (‘b’ | ‘t’ | ‘n’ | ‘f’ | ‘r’ | ‘"’ | ‘'’ | ‘\’)
+charEscapeSeq    ::=  ‘\’ (‘b’ | ‘t’ | ‘n’ | ‘f’ | ‘r’ | ‘s’ | ‘"’ | ‘'’ | ‘\’)
 escapeSeq        ::=  UnicodeEscape | charEscapeSeq
 
 op               ::=  opchar {opchar}

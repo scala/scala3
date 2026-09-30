@@ -5,12 +5,9 @@ import dotty.tools.io.JarArchive
 import dotty.tools.io.PlainFile
 
 import java.io.BufferedOutputStream
-import java.io.DataOutputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.nio.ByteBuffer
 import java.nio.channels.ClosedByInterruptException
-import java.nio.channels.FileChannel
 import java.nio.file.{FileAlreadyExistsException, Files, Path, Paths, StandardOpenOption}
 import java.nio.file.attribute.FileAttribute
 import java.util
@@ -96,7 +93,7 @@ object FileWriters {
       val basicClassWriter = new SingleClassWriter(FileWriter(output, manifest, jarCompressionLevel))
       dumpClassesPath match
         case None => basicClassWriter
-        case Some(out) => new DebugClassWriter(basicClassWriter, FileWriter(out, Seq.empty))
+        case Some(out) => new DebugClassWriter(basicClassWriter, FileWriter(out, Seq.empty, jarCompressionLevel))
     }
 
     private final class SingleClassWriter(underlying: FileWriter) extends ClassfileWriter {
@@ -135,18 +132,14 @@ object FileWriters {
   }
 
   object FileWriter {
-    def apply(file: AbstractFile, jarManifest: Seq[(Attributes.Name, String)], jarCompressionLevel: Int = Deflater.DEFAULT_COMPRESSION): FileWriter =
-      if file.isInstanceOf[JarArchive] then
-        // Writing to non-empty JAR might be an undefined behaviour, e.g. in case if other files where
-        // created using `AbstractFile.bufferedOutputStream` instead of JarWriter
-        val jarFile = file.underlyingSource.getOrElse {
-          throw new IllegalStateException("No underlying source for jar")
-        }
-        assert(file.isEmpty, s"Unsafe writing to non-empty JAR: $jarFile")
+    def apply(file: AbstractFile, jarManifest: Seq[(Attributes.Name, String)], jarCompressionLevel: Int = Deflater.DEFAULT_COMPRESSION): FileWriter = file match
+      case jar: JarArchive =>
+        val jarFile = jar.underlyingSource
+        assert(jar.iterator.isEmpty, s"Unsafe writing to non-empty JAR: $jarFile")
         new JarEntryWriter(jarFile, jarManifest, jarCompressionLevel)
-      else if file.isVirtual then new VirtualFileWriter(file)
-      else if file.isDirectory then new DirEntryWriter(file.file.nn.toPath)
-      else throw new IllegalStateException(s"don't know how to handle an output of $file [${file.getClass}]")
+      case _ if file.isVirtual => new VirtualFileWriter(file)
+      case _ if file.isDirectory => new DirEntryWriter(file.file.nn.toPath)
+      case _ => throw new IllegalStateException(s"don't know how to handle an output of $file [${file.getClass}]")
   }
 
   private final class JarEntryWriter(file: AbstractFile, extraManifest: Seq[(Attributes.Name, String)], compressionLevel: Int) extends FileWriter {
@@ -195,7 +188,7 @@ object FileWriters {
       val pathInJar =
         if java.io.File.separatorChar == '/' then relativePath
         else relativePath.replace('/', java.io.File.separatorChar)
-      PlainFile.toPlainFile(Paths.get(s"${file.absolutePath}!$pathInJar"))
+      PlainFile.toPlainFile(Paths.get(s"${file.path}!$pathInJar"))
     }
 
     override def close(): Unit = this.synchronized(jarWriter.close())
@@ -231,28 +224,24 @@ object FileWriters {
     // because there is not an options in the Windows API that corresponds to this so the truncate is applied as a separate call
     // even if the file is new.
     // as this is rare, it's best to always try to create a new file, and it that fails, then open with truncate if that fails
-    private val fastOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
-    private val fallbackOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
+    // TODO: The comment above is very old. It would be good to check this. (Win32's CreateFile can take CREATE_ALWAYS which truncates, so... why would that not be ok?)
+    private val fastOpenOptions = Array(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
+    private val fallbackOpenOptions = Array(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
 
     override def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile = {
       val path = base.resolve(relativePath)
       try {
         ensureDirForPath(base, path)
-        val os = if (isWindows) {
-          try FileChannel.open(path, fastOpenOptions)
-          catch {
-            case _: FileAlreadyExistsException => FileChannel.open(path, fallbackOpenOptions)
-          }
-        } else FileChannel.open(path, fallbackOpenOptions)
-
-        try os.write(ByteBuffer.wrap(bytes), 0L)
-        catch {
+        try
+          if isWindows then
+            try Files.write(path, bytes, fastOpenOptions*)
+            catch case _: FileAlreadyExistsException => Files.write(path, bytes, fallbackOpenOptions*)
+          else Files.write(path, bytes, fallbackOpenOptions*)
+        catch
           case ex: ClosedByInterruptException =>
             try Files.deleteIfExists(path) // don't leave an empty of half-written classfile around after an interrupt
-            catch { case _: java.io.IOException => () }
+            catch case _: java.io.IOException => ()
             throw ex
-        }
-        os.close()
       } catch {
         case e: IOException => throw new IOException(s"Error writing $path: ${e.getClass.getName}: ${e.getMessage}", e)
       }
@@ -291,7 +280,7 @@ object FileWriters {
     }
 
     private def writeBytes(outFile: AbstractFile, bytes: Array[Byte]): Unit = {
-      val out = new DataOutputStream(outFile.bufferedOutput)
+      val out = outFile.output
       try out.write(bytes, 0, bytes.length)
       finally out.close()
     }

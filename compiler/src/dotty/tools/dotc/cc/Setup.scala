@@ -258,13 +258,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       val saved = isTopLevel
       if variance < 0 then isTopLevel = false
       try tp match
-        case defn.RefinedFunctionOf(rinfo: MethodType) =>
-          val rinfo1 = apply(rinfo)
-          if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
-          else tp
-        case _ =>
-          innerApply(tp)
+        case defn.RefinedFunctionOf(rinfo: MethodType) => mapRefinedFunction(tp, rinfo)
+        case _ => innerApply(tp)
       finally isTopLevel = saved
+
+    def mapRefinedFunction(tp: Type, rinfo: MethodType): Type =
+      val rinfo1 = apply(rinfo)
+      if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
+      else tp
 
     override def mapArg(arg: Type, tparam: ParamInfo): Type =
       super.mapArg(Recheck.mapExprType(arg), tparam)
@@ -375,21 +376,23 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             case _ => tp
         case _ => tp
 
-      def innerApply(tp: Type) = {
+      /** Normalize `tp1` and add a capture set variable to it if necessary. */
+      def addVar(tp1: Type, orig: Type) =
+        decorate(
+          addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, orig))),
+          CaptureSet.VarInTypeTree(ctx.owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining = inCaptureRefinement),
+          transformExplicitType(_, sym, initialVariance = variance),
+          typeArgFormal)
 
-        /** Normalize `tp` and add a capture set variable to it if necessary. */
-        def addVar(tp1: Type) =
-          decorate(
-            addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, tp))),
-            CaptureSet.VarInTypeTree(ctx.owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining = inCaptureRefinement),
-            transformExplicitType(_, sym, initialVariance = variance),
-            typeArgFormal)
+      override def mapRefinedFunction(tp: Type, rinfo: MethodType): Type =
+        addVar(super.mapRefinedFunction(tp, rinfo), tp)
 
+      def innerApply(tp: Type) =
         tp match
           case AnnotatedType(parent, annot)
           if annot.symbol.isRetains || annot.symbol == defn.InferredAnnot =>
             // Drop explicit retains and @inferred annotations
-            addVar(apply(parent))
+            addVar(apply(parent), tp)
           case AnnotatedType(parent, annot)
           if annot.symbol == defn.DeclaredAnnot =>
             transformExplicitType(parent, sym, initialVariance = variance)
@@ -397,20 +400,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             val saved = refiningNames
             refiningNames += rname
             val parent1 = try this(parent) finally refiningNames = saved
-            addVar(tp.derivedRefinedType(parent1, rname, this(rinfo)))
+            addVar(tp.derivedRefinedType(parent1, rname, this(rinfo)), tp)
           case _ =>
-            addVar(mapFollowingAliases(tp))
-      }
+            addVar(mapFollowingAliases(tp), tp)
     }
 
-    try
+    printOnAssertionError(i"error while mapping inferred $tp"):
       ccState.withNoVarsMapped:
         mapInferred(inCaptureRefinement = false)(tp)
       .tap: tp1 =>
         if tp1 ne tp then capt.println(i"expanded inferred in ${ctx.owner}: $tp  -->  $tp1")
-    catch case ex: AssertionError =>
-      println(i"error while mapping inferred $tp")
-      throw ex
   }
 
   /** Transform an explicitly given type by performing the following transformation
@@ -433,7 +432,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
      */
     def stripImpliedCaptureSet(tp: Type): Type = tp match
       case tp @ CapturingType(parent, refs)
-      if refs.isInstanceOf[CaptureSet.CSImpliedByCapability] && !tp.isBoxedCapturing =>
+      if refs.isInstanceOf[CaptureSet.CSImpliedByCapability] && !tp.isBoxed =>
         parent
       case tp: AliasingBounds =>
         tp.derivedAlias(stripImpliedCaptureSet(tp.alias))
@@ -754,14 +753,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         def paramsToCap(psymss: List[List[Symbol]], mt: Type)(using Context): Type = mt match
           case mt: MethodType =>
-            try
+            printOnAssertionError(i"error while mapping params ${mt.paramInfos} of $sym"):
               mt.derivedLambdaType(
                 paramInfos =
                   psymss.head.lazyZip(mt.paramInfos).map(localCapToGlobal),
                 resType = paramsToCap(psymss.tail, mt.resType))
-            catch case ex: AssertionError =>
-              println(i"error while mapping params ${mt.paramInfos} of $sym")
-              throw ex
           case mt: PolyType =>
             mt.derivedLambdaType(resType = paramsToCap(psymss.tail, mt.resType))
           case _ => mt
@@ -925,6 +921,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         val sym = tp.typeSymbol
         if sym.isClass then
           !sym.isPureClass && sym != defn.AnyClass
+          && sym != defn.MatchCaseClass
         else
           val tp1 = tp.dealiasKeepAnnotsAndOpaques
           if tp1 ne tp then needsVariable(tp1)
@@ -1068,17 +1065,24 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             && !ref.coreType.derivesFromCapSet
         then
           if ref.captureSetOfInfo.elems.isEmpty then
-            report.error(em"$ref cannot be tracked since its capture set is empty", pos)
-          check(parent.captureSet, parent)
+            ref match
+              case ref: DerivedCapability if ref.core.isTracked =>
+                // an empty projection (`.only[C]`/`.except[C]`) of a tracked ref denotes {}
+              case _ =>
+                // a plain reference with an empty capture set, or a projection
+                // of an untracked core, is vacuous
+                report.error(em"$ref cannot be tracked since its capture set is empty", pos)
+          else
+            check(parent.captureSet, parent)
 
-          val others =
-            for
-              j <- 0 until retained.length if j != i
-              r = retained(j)
-              if !r.isTerminalCapability
-            yield r
-          val remaining = CaptureSet(others*)
-          check(remaining, remaining)
+            val others =
+              for
+                j <- 0 until retained.length if j != i
+                r = retained(j)
+                if !r.isTerminalCapability
+              yield r
+            val remaining = CaptureSet(others*)
+            check(remaining, remaining)
       end for
     catch case ex: IllegalCaptureRef =>
       report.error(em"Illegal capture reference: ${ex.getMessage}", tpt.srcPos)

@@ -2,7 +2,7 @@ function currentChapter() {
   return parseInt(document.location.pathname.split('/').pop().substr(0, 2), 10);
 }
 
-function heading(i, heading, $heading) {
+function heading(i, heading) {
   const currentLevel = parseInt(heading.tagName.substring(1));
 
   if (currentLevel === this.headerLevel) {
@@ -19,12 +19,12 @@ function heading(i, heading, $heading) {
       this.headerCounts[this.headerLevel] = 1;
     }
   }
-  return `${this.headerCounts[this.headerLevel]} ${$heading.text()}`;
+  return `${this.headerCounts[this.headerLevel]} ${heading.innerText}`;
 }
 
 // ignore when using wkhtmltopdf, or it won't work...
 if (window.jekyllEnv !== 'spec-pdf') {
-  $('#toc').toc(
+  addTOC(document.getElementById('toc'),
     {
       'selectors': 'h1,h2,h3',
       'smoothScrolling': false,
@@ -53,12 +53,16 @@ document.addEventListener("DOMContentLoaded", function() {
   // syntax highlighting after KaTeX is loaded,
   // so that math can be used in code blocks
   hljs.initHighlighting();
-  $("pre nobr").addClass("fixws");
+  document.querySelectorAll("pre nobr").forEach((element) => {
+    element.classList.add("fixws")
+  });
+
   // point when all necessary js is done, so PDF to be rendered
   window.status = "loaded";
 });
 
-$("#chapters a").each(function (index) {
-  const href = $(this).attr("href");
-  $(this).toggleClass("chapter-active", document.location.pathname.endsWith(href));
+document.querySelectorAll("#chapters a").forEach(function (element) {
+  const href = element.attributes.getNamedItem("href");
+  const toggle = href != null && document.location.pathname.endsWith(href.value);
+  element.classList.toggle("chapter-active", toggle);
 });

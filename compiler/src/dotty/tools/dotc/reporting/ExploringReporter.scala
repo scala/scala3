@@ -6,7 +6,7 @@ import collection.mutable
 import core.Contexts.Context
 import Diagnostic.*
 
-/** A re-usable Reporter used in Contexts#test */
+/** A re-usable Reporter used in Contexts#explore */
 class ExploringReporter extends StoreReporter(null, fromTyperState = false):
   infos = new mutable.ListBuffer[Diagnostic]
 
@@ -19,6 +19,8 @@ class ExploringReporter extends StoreReporter(null, fromTyperState = false):
   override def mapBufferedMessages(f: Diagnostic => Diagnostic)(using Context): Unit =
     infos.nn.mapInPlace(f)
 
-  def reset(): Unit = infos.nn.clear()
+  def reset(): Unit =
+    infos.nn.clear()
+    clearReportedLoadingFailures()
 
 end ExploringReporter

@@ -1,1 +1,8 @@
-16: Pattern Match Exhaustivity: _: A, B(), _: C, D
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/nontrivial-andtype.scala:16:26 
+16 |  def m1(s: T & Marker) = s match {
+   |                          ^
+   |                       match may not be exhaustive.
+   |
+   |                       It would fail on pattern case: _: A, B(), _: C, D
+   |
+   | longer explanation available when compiling with `-explain`

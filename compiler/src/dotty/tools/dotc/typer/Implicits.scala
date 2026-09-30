@@ -4,16 +4,16 @@ package typer
 
 import backend.sjs.JSDefinitions
 import core.*
-import ast.{TreeTypeMap, untpd, tpd}
+import ast.{TreeTypeMap, tpd, untpd}
 import util.Spans.*
-import util.Stats.{record, monitored}
-import printing.{Showable, Printer}
+import util.Stats.{monitored, record}
+import printing.{Printer, Showable}
 import printing.Texts.*
 import Contexts.*
 import Types.*
 import Flags.*
 import Mode.ImplicitsEnabled
-import NameKinds.{LazyImplicitName, ContextBoundParamName}
+import NameKinds.{ContextBoundParamName, LazyImplicitName}
 import Symbols.*
 import Types.*
 import Decorators.*
@@ -23,7 +23,8 @@ import ProtoTypes.*
 import ErrorReporting.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import Scopes.newScope
-import Typer.BindingPrec, BindingPrec.*
+import Typer.BindingPrec
+import BindingPrec.*
 import Hashable.*
 import util.{EqHashMap, Stats}
 import config.{Config, Feature, SourceVersion}
@@ -37,7 +38,7 @@ import annotation.tailrec
 import NullOpsDecorator.stripNull
 
 import scala.annotation.internal.sharable
-import scala.annotation.threadUnsafe
+import scala.annotation.{nowarn, threadUnsafe}
 import scala.compiletime.uninitialized
 
 /** Implicit resolution */
@@ -306,7 +307,7 @@ object Implicits:
   class ContextualImplicits(
       val refs: List[ImplicitRef],
       val outerImplicits: ContextualImplicits | Null,
-      val isImport: Boolean)(initctx: Context) extends ImplicitRefs(initctx) {
+      val importInfo: ImportInfo | Null)(initctx: Context) extends ImplicitRefs(initctx) {
     private val eligibleCache = EqHashMap[Type, List[Candidate]]()
 
     /** The level increases if current context has a different owner or scope than
@@ -319,7 +320,7 @@ object Implicits:
       outerImplicits match
         case null => 1
         case oi if migrateTo3(using irefCtx)
-                || (irefCtx.owner eq oi.irefCtx.owner) && (isImport || (irefCtx.scope eq oi.irefCtx.scope) && !isLazyImplicit) => oi.level
+                || (irefCtx.owner eq oi.irefCtx.owner) && ((importInfo ne null) || (irefCtx.scope eq oi.irefCtx.scope) && !isLazyImplicit) => oi.level
         case oi => oi.level + 1
     end level
 
@@ -332,14 +333,14 @@ object Implicits:
     }
 
     def bindingPrec: BindingPrec =
-      if isImport then if ctx.importInfo.uncheckedNN.isWildcardImport then WildImport else NamedImport else Definition
+      if importInfo != null then if importInfo.isWildcardImport then WildImport else NamedImport else Definition
 
     private def combineEligibles(ownEligible: List[Candidate], outerEligible: List[Candidate]): List[Candidate] =
       if ownEligible.isEmpty then outerEligible
       else if outerEligible.isEmpty then ownEligible
       else
         val ownNames = mutable.Set(ownEligible.map(_.ref.implicitName)*)
-        val outer = outerImplicits.uncheckedNN
+        val outer = outerImplicits.nn
         if !migrateTo3(using irefCtx) && level == outer.level && outer.bindingPrec.beats(bindingPrec) then
           val keptOuters = outerEligible.filterConserve: cand =>
             if ownNames.contains(cand.ref.implicitName) then
@@ -406,7 +407,7 @@ object Implicits:
         val outerExcluded = outerImplicits.nn.exclude(root)
         if (irefCtx.importInfo.nn.site.termSymbol == root) outerExcluded
         else if (outerExcluded eq outerImplicits) this
-        else new ContextualImplicits(refs, outerExcluded, isImport)(irefCtx)
+        else new ContextualImplicits(refs, outerExcluded, importInfo)(irefCtx)
       }
   }
 
@@ -656,7 +657,7 @@ trait ImplicitRunInfo:
       private var parts: mutable.LinkedHashSet[Type] = uninitialized
       private val partSeen = util.HashSet[Type]()
 
-      def traverse(t: Type) = try
+      def traverse(t: Type) = ctx.handleRecursive("collectParts of", t):
         if partSeen.contains(t) then ()
         else if implicitScopeCache.contains(t) then parts += t
         else
@@ -688,7 +689,6 @@ trait ImplicitRunInfo:
               traverseChildren(t)
             case t =>
               traverseChildren(t)
-      catch case ex: Throwable => handleRecursive("collectParts of", t.show, ex)
 
       def apply(tp: Type): collection.Set[Type] =
         parts = mutable.LinkedHashSet()
@@ -897,6 +897,7 @@ trait Implicits:
   /** Find an implicit conversion to apply to given tree `from` so that the
    *  result is compatible with type `to`.
    */
+  @nowarn("msg=Catching AssertionError can lead to unexpected behavior") // we immediately rethrow
   def inferView(from: Tree, to: Type)(using Context): SearchResult = {
     record("inferView")
     if !ctx.mode.is(Mode.ImplicitsEnabled) || from.isInstanceOf[Super] then
@@ -1052,6 +1053,13 @@ trait Implicits:
     // This is done to check whether such types might plausibly be comparable to each other.
     val lift = new TypeMap {
       def apply(t: Type): Type = t match {
+        case t @ FlexibleType(hi) =>
+          // Keep the flexible wrapper (it admits null), but lift the underlying
+          // type to its upper bound like any other abstract type. Mapping the
+          // flexible type with `mapOver` instead would lift its tycon to the
+          // tycon's upper bound and collapse the flexible type entirely, losing
+          // the nullability information.
+          t.derivedFlexibleType(apply(hi))
         case t: TypeRef =>
           t.info match {
             case TypeBounds(lo, hi) if lo.ne(hi) && !t.symbol.is(Opaque) => apply(hi)
@@ -1784,9 +1792,7 @@ trait Implicits:
                     // Otherwise, proceed with a search of the implicit scope.
                     val newCtxImplicits =
                       if eligible eq preEligible then null
-                      else ctxImplicits.nn.outerImplicits: ContextualImplicits | Null
-                        // !!! Dotty problem: without the ContextualImplicits | Null type ascription
-                        // we get a Ycheck failure after arrayConstructors due to "Types differ"
+                      else ctxImplicits.nn.outerImplicits
                     searchImplicit(newCtxImplicits, SearchMode.New).recoverWith:
                       failure2 => failure2.reason match
                         case _: AmbiguousImplicits => failure2

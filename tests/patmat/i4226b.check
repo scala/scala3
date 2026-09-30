@@ -1,1 +1,8 @@
-11: Pattern Match Exhaustivity: Just(_), _: Empty[Int]
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i4226b.scala:11:40 --
+11 |  def main(args: Array[String]): Unit = a match {
+   |                                        ^
+   |                   match may not be exhaustive.
+   |
+   |                   It would fail on pattern case: Just(_), _: Empty[Int]
+   |
+   | longer explanation available when compiling with `-explain`

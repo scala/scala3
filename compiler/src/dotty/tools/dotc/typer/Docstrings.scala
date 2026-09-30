@@ -50,7 +50,6 @@ object Docstrings {
 
   private def expandComment(sym: Symbol, owner: Symbol, comment: Comment)(using Context)(using docCtx: ContextDocstrings): Comment = {
     val tplExp = docCtx.templateExpander
-    tplExp.defineVariables(sym)
     val newComment = comment.expand(tplExp.expandedDocComment(sym, owner, _))
     docCtx.addDocstring(sym, Some(newComment))
     newComment

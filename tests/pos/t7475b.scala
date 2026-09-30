@@ -2,7 +2,7 @@ trait U {
 }
 
 trait T {
-  type TT = Any with T with U
+  type TT = Any & T & U
   private val priv = 0
   (??? : TT).priv
 }

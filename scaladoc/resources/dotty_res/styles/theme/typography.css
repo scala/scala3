@@ -93,6 +93,6 @@ h1, h2, h3, h4, h5, h6 {
 
 :root {
   font-variant-ligatures: none;
-  --body-font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif;
-  --code-font-family: 'DejaVu Sans Mono', monospace;
+  --body-font-family: system-ui, 'Segoe UI', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --code-font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 }

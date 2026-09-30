@@ -17,9 +17,8 @@ def b(b: B) = 3
 // @targetName("c_a") def c(p: Seq[A]) = 6
 // @targetName("c_b") def c(p: Seq[B]) = 7
 
-// scala3 doc right now is not differentiating between fields and nested classlikes
-// class C(val b: Int):
-//   trait b
+class C(val b: Int):
+  trait b
 
 class D:
   trait b:

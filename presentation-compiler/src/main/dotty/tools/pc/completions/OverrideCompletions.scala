@@ -111,6 +111,7 @@ object OverrideCompletions:
 
     overridables
       .map(sym =>
+        val content = indexedContext.ctx.compilationUnit.source.textContent()
         toCompletionValue(
           sym.denot,
           start,
@@ -120,8 +121,7 @@ object OverrideCompletions:
           shouldMoveCursor = true,
           config,
           autoImportsGen,
-          indexedContext.ctx.compilationUnit.source.content
-            .startsWith("o", start)
+          start < content.length && content(start) == 'o'
         )
       )
       .toList
@@ -171,7 +171,7 @@ object OverrideCompletions:
 
     val uri = params.uri().nn
     val text = params.text().nn
-    driver.run(uri, SourceFile.virtual(uri.toASCIIString().nn, text))
+    driver.run(uri, SourceFile.virtual(uri, text))
 
     val unit = driver.currentCtx.run.nn.units.headOption
     unit match

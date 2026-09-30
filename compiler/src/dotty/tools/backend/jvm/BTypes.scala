@@ -3,14 +3,14 @@ package backend
 package jvm
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.tools.asm
+import org.objectweb.asm
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.ClassBType.runtimeNullInternalName
-import dotty.tools.backend.jvm.opt.OptimizerWarning
+import dotty.tools.backend.jvm.opt.{InlineInfoAttribute, OptimizerWarning}
 import dotty.tools.dotc.core.Definitions
 
 import scala.collection.SortedMap
-import scala.tools.asm.Opcodes
+import org.objectweb.asm.Opcodes
 
 
 /**
@@ -648,6 +648,8 @@ final case class MethodInlineInfo(effectivelyFinal: Boolean = false,
 
 /**
  * A ClassBType represents a class or interface type.
+ * Because created ClassBTypes need to be cached to ensure we have access to them by name while emitting bytecode (for LUBs),
+ * a ClassBType can only be created through ClassBType.Cache.
  */
 final case class ClassBType private(internalName: String) extends RefBType {
   /**
@@ -680,7 +682,7 @@ final case class ClassBType private(internalName: String) extends RefBType {
 
     assert(!ClassBType.isInternalPhantomType(internalName), s"Cannot create ClassBType for phantom type $this")
     assert(
-      if (info.superClass.isEmpty) { isJLO(this) || ClassBType.hasNoSuper(internalName) }
+      if (info.superClass.isEmpty) ClassBType.hasNoSuper(internalName)
       else if (isInterface) isJLO(info.superClass.get)
       else !isJLO(this) && ifInit(info.superClass.get)(!_.isInterface),
       s"Invalid superClass in $this: ${info.superClass}"
@@ -746,6 +748,9 @@ final case class ClassBType private(internalName: String) extends RefBType {
         flags = adjustStatic(info.flags)
       )
   }
+
+  def inlineInfoAttribute: InlineInfoAttribute =
+    InlineInfoAttribute(info.inlineInfo)
 
   def isSubtypeOf(other: ClassBType): Boolean = {
     if (this == other) return true
@@ -815,45 +820,9 @@ object ClassBType {
   val javaLangObjectInternalName: String = "java/lang/Object"
   val scalaRuntimeBoxesRunTimeInternalName: String = "scala/runtime/BoxesRunTime"
 
-  /**
-   * Retrieve the `ClassBType` for the class with the given internal name, creating the entry if it doesn't
-   * already exist in the cache
-   *
-   * @param internalName The name of the class
-   * @param cache        The cache to use. If you're wondering what to pass here, you're in the wrong place and should not be directly calling this.
-   * @param init         Function to initialize the info of this `BType`. During execution of this function,
-   *                     code _may_ reenter into `apply(internalName, ...)` and retrieve the initializing
-   *                     `ClassBType`.
-   * @tparam T           The type of the error result.
-   * @return             The `ClassBType`
-   */
-  final def apply[T](internalName: InternalName, cache: ConcurrentHashMap[InternalName, ClassBType])
-                    (init: ClassBType => Either[T, ClassInfo]): Either[T, ClassBType] = {
-    val cached = cache.get(internalName)
-    if cached ne null then Right(cached)
-    else {
-      val newRes = new ClassBType(internalName)
-      // synchronized is required to ensure proper initialization of info.
-      // see comment on def info
-      newRes.synchronized {
-        cache.putIfAbsent(internalName, newRes) match {
-          case null =>
-            // We first create and add the ClassBType to the hash map before computing its info. This
-            // allows initializing cyclic dependencies, see the comment on variable ClassBType._info.
-            init(newRes).map(ci => {
-              newRes.info = ci
-              newRes
-            })
-          case old =>
-            Right(old)
-        }
-      }
-    }
-  }
-
-  // Primitive classes have no super class. A ClassBType for those is only created when
-  // they are actually being compiled (e.g., when compiling scala/Boolean.scala).
   private val hasNoSuper = Set(
+    // Primitive classes have no super class. A ClassBType for those is only created when
+    // they are actually being compiled (e.g., when compiling scala/Boolean.scala).
     "scala/Unit",
     "scala/Boolean",
     "scala/Char",
@@ -862,13 +831,65 @@ object ClassBType {
     "scala/Int",
     "scala/Float",
     "scala/Long",
-    "scala/Double"
+    "scala/Double",
+    // java.lang.Object and scala.AnyKind have no super either
+    javaLangObjectInternalName,
+    "scala/AnyKind"
   )
 
   private val isInternalPhantomType = Set(
     "scala/Null",
     "scala/Nothing"
   )
+
+  final class Cache {
+    // Concurrent map because stack map frames are computed when in the class writer, which
+    // might run on multiple classes concurrently.
+    private val cache = new ConcurrentHashMap[InternalName, ClassBType]
+
+    /**
+     * Retrieve the `ClassBType` for the class with the given internal name, creating the entry if it doesn't
+     * already exist in the cache
+     *
+     * @param internalName The name of the class
+     * @param init         Function to initialize the info of this `BType`. During execution of this function,
+     *                     code _may_ reenter into `apply(internalName, ...)` and retrieve the initializing
+     *                     `ClassBType`.
+     *
+     * @tparam T           The type of the error result.
+     * @return The `ClassBType`
+     */
+    def apply[T](internalName: InternalName)(init: ClassBType => Either[T, ClassInfo]): Either[T, ClassBType] = {
+      val cached = cache.get(internalName)
+      if cached ne null then Right(cached)
+      else {
+        val newRes = new ClassBType(internalName)
+        // synchronized is required to ensure proper initialization of info.
+        // see comment on def info
+        newRes.synchronized {
+          cache.putIfAbsent(internalName, newRes) match {
+            case null =>
+              // We first create and add the ClassBType to the hash map before computing its info. This
+              // allows initializing cyclic dependencies, see the comment on variable ClassBType._info.
+              init(newRes).map(ci => {
+                newRes.info = ci
+                newRes
+              })
+            case old =>
+              Right(old)
+          }
+        }
+      }
+    }
+
+    /** Version of apply that cannot fail. */
+    def apply(internalName: InternalName)(init: ClassBType => ClassInfo): ClassBType =
+      apply(internalName)(ct => Right(init(ct))).fold(_ => assert(false), identity)
+
+    /** Obtain a previously constructed ClassBType for a given internal name, or None if no such ClassBType was constructed. */
+    def previouslyConstructedClassBType(internalName: InternalName): Option[ClassBType] =
+      Option(cache.get(internalName))
+  }
 }
 
 final case class ArrayBType(componentType: BType) extends RefBType {

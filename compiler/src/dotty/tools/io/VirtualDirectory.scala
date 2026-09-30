@@ -6,6 +6,7 @@ package dotty.tools.io
 
 import scala.collection.mutable
 import java.io.{InputStream, OutputStream}
+import java.net.URL
 /**
  * An in-memory directory.
  *
@@ -13,21 +14,20 @@ import java.io.{InputStream, OutputStream}
  *
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
-class VirtualDirectory(val name: String, maybeContainer: Option[VirtualDirectory] = None) extends AbstractFile {
+class VirtualDirectory private[io] (val name: String, maybeContainer: Option[VirtualDirectory] = None) extends AbstractFile {
   override def path: String =
     maybeContainer match {
       case None => name
       case Some(parent) => parent.path + '/' + name
     }
 
-  override def absolute: AbstractFile = this
-
-  override def container: VirtualDirectory = maybeContainer.get
+  override def container: Option[VirtualDirectory] = maybeContainer
   override def isDirectory: Boolean = true
   override def isVirtual: Boolean = true
   override val lastModified: Long = System.currentTimeMillis
 
   override def jpath: JPath | Null = null
+  override def toURL: Option[URL] = None
   override def input: InputStream = sys.error("directories cannot be read")
   override def output: OutputStream = sys.error("directories cannot be written")
 
@@ -42,7 +42,7 @@ class VirtualDirectory(val name: String, maybeContainer: Option[VirtualDirectory
 
   override def fileNamed(name: String): AbstractFile =
     Option(lookupName(name, directory = false)) getOrElse {
-      val newFile = new VirtualFile(name, s"$path/$name")
+      val newFile = new VirtualFile(s"$path/$name", Array.emptyByteArray)
       files(name) = newFile
       newFile
     }

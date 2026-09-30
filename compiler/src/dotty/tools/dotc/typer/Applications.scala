@@ -185,7 +185,23 @@ object Applications {
     (0 until argsNum).map(i => if (i < arity - 1) selectorTypes(i) else elemTp).toList
   end seqSelectors
 
-  /** A utility class that matches results of unapplys with patterns. Two queriable members:
+  /** The component names of the Java record type `tp`, and whether its last
+   *  component is a repeated (vararg) parameter, from its
+   *  `@JavaRecordFields` annotation. The annotation is attached by
+   *  `JavaParsers.recordDecl` (from the record header) and by the
+   *  `ClassfileParser` (from the `Record` classfile attribute); since
+   *  annotations are pickled, it is also available on record symbols
+   *  unpickled from TASTy in pipelined compilation.
+   */
+  def javaRecordFields(tp: Type)(using Context): (Boolean, List[Name]) =
+    tp.classSymbol.getAnnotation(defn.JavaRecordFieldsAnnot) match
+      case Some(annot) =>
+        annot.tree match
+          case JavaRecordFieldsAnnot(isVararg, names) => (isVararg, names)
+          case _ => (false, Nil)
+      case None => (false, Nil)
+
+  /** A utility class that matches results of unapplys with patterns. Two queryable members:
    *     val argTypes: List[Type]
    *     def typedPatterns(qual: untpd.Tree, typer: Typer): List[Tree]
    *  TODO: Move into Applications trait. No need to keep it outside. But it's a large
@@ -263,7 +279,7 @@ object Applications {
             case _ => None
         case _ => None
 
-    /** The computed argument types which will be the scutinees of the sub-patterns. */
+    /** The computed argument types which will be the scrutinees of the sub-patterns. */
     val argTypes: List[Type] =
       if unapplyName == nme.unapplySeq then
         unapplySeq(unapplyResult):
@@ -565,10 +581,10 @@ trait Applications extends Compatibility {
     protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
 
     /** Signal failure with given message at position of given argument */
-    protected def fail(msg: Message, arg: Arg): Unit
+    protected def fail(msg: => Message, arg: Arg): Unit
 
     /** Signal failure with given message at position of the application itself */
-    protected def fail(msg: Message): Unit
+    protected def fail(msg: => Message): Unit
 
     protected def appPos: SrcPos
 
@@ -695,7 +711,7 @@ trait Applications extends Compatibility {
 
       extension (dna: Annotation)
         def deprecatedName: Name =
-          dna.argumentConstantString(0).map(_.toTermName).getOrElse(nme.NO_NAME)
+          dna.argumentConstantStringOrSymbol(0).map(_.toTermName).getOrElse(nme.NO_NAME)
         def since: String =
           val version = dna.argumentConstantString(1).filter(!_.isEmpty)
           version.map(v => s" (since $v)").getOrElse("")
@@ -997,9 +1013,9 @@ trait Applications extends Compatibility {
         // However, for overload resolution, we want to check applicability:
         // "could this work with some type instantiation?" (yes, if ? = String)
         def wildcardArgOK =
-          argtpe match
+          argtpe.stripNull() match
             case at @ AppliedType(tycon1, args1) if at.hasWildcardArg =>
-              formal match
+              formal.stripNull() match
                 case AppliedType(tycon2, args2)
                 if tycon1 =:= tycon2 && args1.length == args2.length =>
                   // We need to handle all 4 cases, in addition to
@@ -1065,9 +1081,9 @@ trait Applications extends Compatibility {
     def typedArg(arg: Arg, formal: Type): Arg = arg
     final def addArg(arg: TypedArg, formal: Type): Unit = ok = ok & argOK(arg, formal)
     def makeVarArg(n: Int, elemFormal: Type): Unit = {}
-    def fail(msg: Message, arg: Arg): Unit =
+    def fail(msg: => Message, arg: Arg): Unit =
       ok = false
-    def fail(msg: Message): Unit =
+    def fail(msg: => Message): Unit =
       ok = false
     def appPos: SrcPos = NoSourcePosition
     @threadUnsafe lazy val normalizedFun: Tree = ref(methRef, needLoad = false)
@@ -1139,12 +1155,12 @@ trait Applications extends Compatibility {
 
     override def appPos: SrcPos = app.srcPos
 
-    def fail(msg: Message, arg: Trees.Tree[T]): Unit = {
+    def fail(msg: => Message, arg: Trees.Tree[T]): Unit = {
       report.error(msg, arg.srcPos)
       ok = false
     }
 
-    def fail(msg: Message): Unit = {
+    def fail(msg: => Message): Unit = {
       report.error(msg, app.srcPos)
       ok = false
     }
@@ -1649,18 +1665,21 @@ trait Applications extends Compatibility {
 
   /** Is `tp` a unary function type or an overloaded type with only unary function
    *  types as alternatives?
+   *  If `skipImplicit` is true, leading implicit parameter sections are
+   *  skipped first.
    */
-  def isUnary(tp: Type)(using Context): Boolean = tp match {
-    case tp: MethodicType =>
-      tp.firstParamTypes match {
-        case ptype :: Nil => !ptype.isRepeatedParam
-        case _ => false
-      }
+  def isUnary(tp: Type, skipImplicit: Boolean)(using Context): Boolean = tp.stripPoly match
+    case mt: MethodType =>
+      if skipImplicit && mt.isImplicitMethod then
+        isUnary(tp.resultType, skipImplicit)
+      else
+        mt.paramInfos match
+          case ptype :: Nil => !ptype.isRepeatedParam
+          case _ => false
     case tp: TermRef =>
-      tp.denot.alternatives.forall(alt => isUnary(alt.info))
+      tp.denot.alternatives.forall(alt => isUnary(alt.info, skipImplicit))
     case _ =>
       false
-  }
 
   /** Should we tuple or untuple the argument before application?
     *  If auto-tupling is enabled then
@@ -1671,14 +1690,15 @@ trait Applications extends Compatibility {
     *     does not consist only of unary alternatives.
     */
   def needsTupledDual(funType: Type, pt: FunProto)(using Context): Boolean =
+    val skipImplicit = pt.applyKind != ApplyKind.Using
     pt.args match
       case untpd.Tuple(elems) :: Nil =>
         elems.length > 1
         && pt.applyKind == ApplyKind.InfixTuple
-        && !isUnary(funType)
+        && !isUnary(funType, skipImplicit)
       case args =>
         args.lengthCompare(1) > 0
-        && isUnary(funType)
+        && isUnary(funType, skipImplicit)
         && Feature.autoTuplingEnabled
 
   /** If `tree` is a complete application of a compiler-generated `apply`
@@ -1863,6 +1883,90 @@ trait Applications extends Compatibility {
       }
     }
 
+    // If `qual` denotes a Java record class, its class symbol, otherwise None
+    def javaRecordClass(qual: untpd.Tree): Option[ClassSymbol] = qual match
+      case qual: untpd.RefTree =>
+        val nestedCtx = ctx.fresh.setNewTyperState()
+        val typeTree = typedType(untpd.rename(qual, qual.name.toTypeName))(using nestedCtx)
+        typeTree.tpe.classSymbol match
+          case cls: ClassSymbol if cls.isJavaRecord && !nestedCtx.reporter.hasErrors => Some(cls)
+          case _ => None
+      case _ => None
+
+    /** For Java record, generate synthetic unapply/unapplySeq:
+     *  ```
+     *    {
+     *      class $anon:
+     *        def unapply[...](x: JavaRecord[...]): (T_1, ..., T_n) = (x.f_1(), ..., x.f_n())
+     *      new $anon
+     *    }.unapply
+     *  ```
+     *  For a record with no components the result type is `Boolean` and the body is `true`.
+     * 
+     *  For a vararg record - Rec(T_1, ..., T_n, T*) - generate unapplySeq.
+     *  The vararg component is exposed through `Array.UnapplySeqWrapper`. The result type is:
+     *  - Array.UnapplySeqWrapper[T]                  when n = 0
+     *  - (T_1, ..., T_n, Array.UnapplySeqWrapper[T]) when n > 0
+     */
+    def javaRecordUnapply(recCls: ClassSymbol): Tree =
+      val recType = recCls.typeRef
+      val (isVararg, fields) = javaRecordFields(recType)
+
+      def methType(recTp: Type) =
+        val componentTypes = fields.map: name =>
+          recTp.member(name).suchThat(_.paramSymss == List(Nil)).info.resultType
+
+        val resType =
+          // For `Rec()` we do `Boolean`
+          if componentTypes.isEmpty then defn.BooleanType
+          else if isVararg then
+            val defn.ArrayOf(elemType) = componentTypes.last.stripNull().runtimeChecked
+            val wrapperType = defn.Array_UnapplySeqWrapper.typeRef.appliedTo(elemType)
+            // For `Rec(T*)` we do `Array.UnapplySeqWrapper[T]`
+            if componentTypes.length == 1 then wrapperType
+            // For `Rec(T1, ..., Tn, T*)` we do `(T1, ..., Tn, Array.UnapplySeqWrapper[T])`
+            else defn.tupleType(componentTypes.init :+ wrapperType)
+          // For `Rec(T1, ..., Tn)` we do `(T1, ..., Tn)`
+          else defn.tupleType(componentTypes)
+        MethodType(List(nme.x_0), List(recTp), resType)
+
+      val tparams = recCls.typeParams
+      val unapplyInfo =
+        if tparams.isEmpty then
+          methType(recType)
+        else
+          PolyType(tparams.map(_.name))(
+            pt => tparams.map(_.info.subst(tparams, pt.paramRefs).bounds),
+            pt => methType(recType.appliedTo(pt.paramRefs))
+          )
+      val methName = if isVararg then nme.unapplySeq else nme.unapply
+      val anon = AnonClass(ctx.owner, List(defn.ObjectType), coord = tree.span) { cls =>
+        val unapplySym = newSymbol(cls, methName, Synthetic | Method, unapplyInfo, coord = tree.span).entered
+        val unapplyDef = DefDef(unapplySym.asTerm, paramss =>
+          val x0 = paramss.last.last
+          def accessor(field: Name) = x0.select(field, _.paramSymss == List(Nil)).appliedToArgs(Nil)
+          if fields.isEmpty then Literal(Constant(true))
+          else if isVararg then
+            val lastField = accessor(fields.last)
+            val defn.ArrayOf(lastElemType) = lastField.tpe.stripNull().runtimeChecked
+            val lastFieldSeq = ref(defn.ArrayModule.requiredMethod(nme.unapplySeq))
+              .appliedToType(lastElemType).appliedTo(lastField)
+            if fields.length == 1 then lastFieldSeq
+            else tupleTree(fields.init.map(accessor) :+ lastFieldSeq)
+          else tupleTree(fields.map(accessor))
+        )
+        List(unapplyDef)
+      }
+
+      trySelectUnapply(untpd.TypedSplice(anon)):
+        (sel, state) => reportErrors(sel, state)
+    end javaRecordUnapply
+
+    def tryJavaRecordUnapply(qual: untpd.Tree)(fallback: => Tree): Tree =
+      javaRecordClass(qual) match
+        case Some(recCls) => javaRecordUnapply(recCls)
+        case None => fallback
+
     /** Produce a typed qual.unapply or qual.unapplySeq tree, or
      *  else if this fails follow a type alias and try again.
      */
@@ -1870,9 +1974,9 @@ trait Applications extends Compatibility {
       trySelectUnapply(qual) {
         (sel, state) =>
           val qual1 = followTypeAlias(qual)
-          if (qual1.isEmpty) reportErrors(sel, state)
+          if (qual1.isEmpty) tryJavaRecordUnapply(qual)(reportErrors(sel, state))
           else trySelectUnapply(qual1) {
-            (_, state) => reportErrors(sel, state)
+            (_, state) => tryJavaRecordUnapply(qual)(reportErrors(sel, state))
           }
       }
 
@@ -3034,23 +3138,20 @@ trait Applications extends Compatibility {
     val methodRefTree = ref(methodRef, needLoad = false)
     val truncatedSym = methodRef.symbol.asTerm.copy(info = truncateExtension(methodRef.info))
     val truncatedRefTree = untpd.TypedSplice(ref(truncatedSym)).withSpan(receiver.span)
-    val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
+    val newCtx = ctx.fresh.setNewScope
 
-    try
-      val appliedTree = inContext(newCtx) {
-        // Introducing an auxiliary symbol in a temporary scope.
-        // Entering the symbol indirectly by `newCtx.enter`
-        // could instead add the symbol to the enclosing class
-        // which could break the REPL.
-        newCtx.scope.openForMutations.enter(truncatedSym)
-        newCtx.typer.extMethodApply(truncatedRefTree, receiver, WildcardType)
-      }
-      if appliedTree.tpe.exists && !appliedTree.tpe.isError then
-        Some(replaceCallee(appliedTree, methodRefTree))
-      else
-        None
-    catch
-      case ex: UnhandledError => None
+    val appliedTree = inContext(newCtx) {
+      // Introducing an auxiliary symbol in a temporary scope.
+      // Entering the symbol indirectly by `newCtx.enter`
+      // could instead add the symbol to the enclosing class
+      // which could break the REPL.
+      newCtx.scope.openForMutations.enter(truncatedSym)
+      newCtx.typer.extMethodApply(truncatedRefTree, receiver, WildcardType)
+    }
+    if appliedTree.tpe.exists && !appliedTree.tpe.isError then
+      Some(replaceCallee(appliedTree, methodRefTree))
+    else
+      None
 
   def isApplicableExtensionMethod(methodRef: TermRef, receiverType: Type)(using Context): Boolean =
     methodRef.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&

@@ -27,6 +27,7 @@ object MacroAnnotations:
   extension (annot: Annotation)
     /** Is this an annotation that implements `scala.annation.MacroAnnotation` */
     def isMacroAnnotation(using Context): Boolean =
+      annot.symbol.exists &&
       annot.tree.symbol.maybeOwner.derivesFrom(defn.MacroAnnotationClass)
   end extension
 

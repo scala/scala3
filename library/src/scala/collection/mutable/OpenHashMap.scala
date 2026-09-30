@@ -137,6 +137,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
    *
    *  @param hash the hash code of `key`
    *  @param key the key to search for in the hash table
+   *  @return the index of the slot containing `key` if present; otherwise the index of the first deleted slot encountered during probing, or the first empty slot if no deleted slot was found
    */
   private def findIndex(key: Key, hash: Int): Int = {
     var index = hash & mask

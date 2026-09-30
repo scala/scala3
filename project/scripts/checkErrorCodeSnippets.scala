@@ -550,6 +550,15 @@ def extractScalacOptions(options: List[String]): List[String] =
     .filter(_.startsWith("sc-opts:"))
     .flatMap(_.stripPrefix("sc-opts:").split(",").toList)
 
+def forceWerror(options: List[String]): List[String] =
+  val withoutWerror = options.flatMap { opt =>
+    if opt.startsWith("sc-opts:") then
+      val kept = opt.stripPrefix("sc-opts:").split(",").filter(_ != "-Werror")
+      if kept.isEmpty then None else Some(s"sc-opts:${kept.mkString(",")}")
+    else Some(opt)
+  }
+  withoutWerror :+ "sc-opts:-Werror"
+
 /** Strip ANSI escape codes from a string */
 def stripAnsi(s: String): String =
   s.replaceAll("\u001b\\[[0-9;]*m", "")
@@ -641,8 +650,7 @@ object SnippetCompiler:
     val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
     // Create virtual source file
-    val virtualFile = VirtualFile("snippet.scala", code.getBytes("UTF-8"))
-    val sourceFile = dotty.tools.dotc.util.SourceFile(virtualFile, scala.io.Codec.UTF8)
+    val sourceFile = dotty.tools.dotc.util.SourceFile.virtual("snippet.scala", code)
 
     // Process all options
     val allOpts = baseOpts ++ List("-d", outputDir.toString) ++ extraOpts
@@ -757,9 +765,7 @@ def checkSolutionSnippet(snippet: Snippet, index: Int)(using log: Logger): Boole
   if snippet.options.nonEmpty then log.debug(s"    Options: ${snippet.options.mkString(", ")}")
 
   // Always compile solutions with -Werror to catch warnings
-  val snippetWithWerror = snippet.copy(
-    options = snippet.options.filterNot(_.contains("-Werror")) :+ "sc-opts:-Werror"
-  )
+  val snippetWithWerror = snippet.copy(options = forceWerror(snippet.options))
 
   val result = compileSnippet(snippetWithWerror)
 

@@ -15,7 +15,6 @@ class TastyUnpickerTest {
     val bytesArray = bytes.map(_.toByte).toArray
     val dotty = new DottyUnpickler(
       tastyFile = new VirtualFile("bytes.tasty", bytesArray),
-      bytes = bytesArray,
       isBestEffortTasty = false
     )
     dotty.enter(roots = Set.empty)

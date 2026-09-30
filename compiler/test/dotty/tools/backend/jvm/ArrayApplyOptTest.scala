@@ -5,7 +5,7 @@ import dotty.DottyBytecodeTest
 import org.junit.Test
 import org.junit.Assert.*
 
-import scala.tools.asm.Opcodes.*
+import org.objectweb.asm.Opcodes.*
 
 class ArrayApplyOptTest extends DottyBytecodeTest {
   import dotty.AsmConverters.*
@@ -152,7 +152,7 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
        """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn   = lookupClass(dir, "Foo.class")
       val clsNode = loadClassNode(clsIn)
       val meth   = getMethod(clsNode, "test")
 
@@ -333,7 +333,7 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
 
   def checkApplyAvoidsIntermediateArray(name: String)(source: String): Unit = {
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn   = lookupClass(dir, "Foo.class")
       val clsNode = loadClassNode(clsIn)
       val meth1   = getMethod(clsNode, "meth1")
       val meth2   = getMethod(clsNode, "meth2")

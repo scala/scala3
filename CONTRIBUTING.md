@@ -98,6 +98,7 @@ Principal areas of the compiler and internal team members responsible for their 
 **Tooling**
 - REPL: @SolalPirelli
 - Runner/CLI: @Gedochao, (@tgodzik)
+- Directives' Parser: @Gedochao
 - IDE: @tgodzik, @zielinsky
 - Scaladoc: (@Florian3k)
 - Bytecode Optimizer: @SolalPirelli, (@lrytz)
@@ -115,6 +116,7 @@ Principal areas of the compiler and internal team members responsible for their 
 - Vulpix: @SolalPirelli
 - Benchmarks: @mbovel
 - Releases: @WojciechMazur (Scala 3 Next), @tgodzik (Scala 3.3 LTS)
+- CLA Checker: @warcholjakub, @sjrd
 
 **Misc**
 - Issue tracker: @Gedochao

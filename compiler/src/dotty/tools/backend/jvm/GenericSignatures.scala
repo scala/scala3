@@ -31,11 +31,15 @@ object GenericSignatures {
    *
    *  @param sym0 The symbol for which to define the signature
    *  @param info The type of the symbol
+   *  @param onClassRef Invoked for every class whose name is written into the signature
    *  @return The signature if it could be generated, `null` otherwise.
    */
-  def javaSig(sym0: Symbol, info: Type)(using Context): StringBuilder | Null =
-    if mayNeedSignature(sym0, info) then atPhase(erasurePhase)(javaSig0(sym0, info))
-    else null
+  def javaSig(sym0: Symbol, info: Type, onClassRef: ClassSymbol => Unit)(using Context): StringBuilder | Null =
+    ctx.handleRecursive("generating the generic signature of", sym0, sym0):
+      atPhase(erasurePhase):
+        if mayNeedSignature(sym0, info) then
+          javaSig0(sym0, info, onClassRef)
+        else null
 
   private def mayNeedSignature(sym0: Symbol, info: Type)(using Context) = {
     def mayNeedSignature(t: Type): Boolean = t match
@@ -49,7 +53,7 @@ object GenericSignatures {
     else mayNeedSignature(info)
   }
 
-  private def javaSig0(sym0: Symbol, info: Type)(using Context): StringBuilder | Null = {
+  private def javaSig0(sym0: Symbol, info: Type, onClassRef: ClassSymbol => Unit)(using Context): StringBuilder | Null = {
     // This works as long as mangled names are always valid Java identifiers (see git history of this method).
     def sanitizeName(name: Name): String = name.mangledString
 
@@ -221,21 +225,28 @@ object GenericSignatures {
                     builder.append("*")
                 else
                   // For bounded arguments, we can't translate it cleanly so emit an erased type
-                  jsig(erasure(a.tycon))
+                  boxedSig(erasure(a.tycon))
               case res =>
                 // value classes cannot appear as generic arguments
                 jsig(res, vcBoxing = ValueClassBoxing.Box)
           case _ =>
-            val typeSym = tp.typeSymbol
-            if typeSym.isTypeParam then
-              typeParamSig(typeSym.name)
-            else
+            boxedSig(tp.widenDealias.widenNullaryMethod)
               // `tp` might be a singleton type referring to a getter.
               // Hence the widenNullaryMethod.
-              boxedSig(tp.widenDealias.widenNullaryMethod)
         }
 
-      pre.widenDealias match {
+      onClassRef(sym)
+
+      // when generating a java generic signature that includes
+      // a selection of an inner class p.I, (p = `pre`, I = `cls`) must
+      // rewrite to p'.I, where p' refers to the class that directly defines
+      // the nested class I. see:
+      // https://github.com/scala/scala3/issues/26532
+      // https://github.com/scala/bug/issues/2585
+      val reboundPre =
+        if pre.exists then pre.baseType(sym.owner)
+        else pre
+      reboundPre.widenDealias match {
         // If the class is an inner class of a generic class, we must emit the outer generic class with its parameters
         // (see test `inner-of-generic` for an example of Java compatibility)
         case RefOrAppliedType(preSym: ClassSymbol, prePre, preArgs) if preArgs.nonEmpty =>
@@ -310,16 +321,16 @@ object GenericSignatures {
           arraySig(elemtp)
 
         case RefOrAppliedType(sym, pre, args) =>
-          if isTypeParameterInSig(sym, sym0) then
+          if (sym == defn.PairClass && tupleArity(tp) > Definitions.MaxTupleArity)
+            jsig(defn.TupleXXLClass.typeRef)
+          else if isTypeParameterInSig(sym, sym0) then
             assert(!sym.isAliasType || sym.info.isLambdaSub, s"Unexpected alias type: $sym")
             typeParamSig(sym.targetName.lastPart)
           else defn.specialErasure.get(sym) match
             case Some(special) =>
               jsig(special.typeRef)
             case None =>
-              if (sym == defn.PairClass && tupleArity(tp) > Definitions.MaxTupleArity)
-                jsig(defn.TupleXXLClass.typeRef)
-              else if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
+              if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
                 jsig(defn.BoxedUnitClass.typeRef)
               else if (sym == defn.NothingClass)
                 builder.append("Lscala/runtime/Nothing$;")
@@ -352,11 +363,11 @@ object GenericSignatures {
                 case _ => jsig(erasure(tp), toplevel = toplevel, vcBoxing = vcBoxing)
 
         case ExprType(restpe) =>
-          if toplevel then
+          // Exported modules have a method-like type since what is actually exported is an accessor method,
+          // but they are not methods, so they must not have a method signature. Thus we must check whether it's really a method.
+          if toplevel && sym0.is(Method) then
             builder.append("()")
-            methodResultSig(restpe)
-          else
-            jsig(defn.FunctionType(0).appliedTo(restpe))
+          methodResultSig(restpe)
 
         case mtd: MethodOrPoly =>
           val collectTParams = toplevel && !sym0.isConstructor
@@ -428,7 +439,7 @@ object GenericSignatures {
     jsig(info, toplevel = true)
     for annot <- sym0.annotations do
       annot match
-        case ThrownException(e) =>
+        case ThrownException(e) if sym0.is(Method) => // ThrowsSignature is only valid in MethodSignature
           builder.append('^')
           jsig(e, toplevel = true)
         case _ => ()

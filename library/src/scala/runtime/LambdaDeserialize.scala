@@ -15,6 +15,7 @@ package scala.runtime
 import java.lang.invoke._
 import java.util
 
+import scala.annotation.unused
 import scala.annotation.varargs
 import scala.collection.immutable
 
@@ -36,7 +37,7 @@ final class LambdaDeserialize private (lookup: MethodHandles.Lookup, targetMetho
 
 object LambdaDeserialize {
   @varargs @throws[Throwable]
-  def bootstrap(lookup: MethodHandles.Lookup, invokedName: String, invokedType: MethodType, targetMethods: MethodHandle*): CallSite = {
+  def bootstrap(lookup: MethodHandles.Lookup, @unused invokedName: String, invokedType: MethodType, targetMethods: MethodHandle*): CallSite = {
     val targetMethodsArray = targetMethods.asInstanceOf[immutable.ArraySeq[?]].unsafeArray.asInstanceOf[Array[MethodHandle]]
     val exact = MethodHandleConstants.LAMBDA_DESERIALIZE_DESERIALIZE_LAMBDA.bindTo(new LambdaDeserialize(lookup, targetMethodsArray)).asType(invokedType)
     new ConstantCallSite(exact)

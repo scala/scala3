@@ -134,6 +134,14 @@ trait ClassifierExamples:
   def restricted(f: () ->{any.only[Control]} Unit): Unit //expected: def restricted(f: () ->{any.only[Control]} Unit): Unit
   def sharedOnly: AnyRef^{any.only[Control]} //expected: def sharedOnly: AnyRef^{any.only[Control]}
 
+// .except[Classifier] excluded capabilities
+trait ExceptExamples:
+  val a: AnyRef^
+  def excluded(f: () ->{any.except[Control]} Unit): Unit //expected: def excluded(f: () ->{any.except[Control]} Unit): Unit
+  def sharedExcept: AnyRef^{any.except[Control]} //expected: def sharedExcept: AnyRef^{any.except[Control]}
+  def pathExcept: AnyRef^{a.except[Control]} //expected: def pathExcept: AnyRef^{a.except[Control]}
+  def onlyThenExcept: AnyRef^{a.only[Control].except[Control]} //expected: def onlyThenExcept: AnyRef^{a.only[Control].except[Control]}
+
 // --- Capture set variables and capability members ---
 
 class Box[X^](val value: AnyRef^{X})

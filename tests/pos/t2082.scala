@@ -23,9 +23,9 @@ object TestSubject extends MetaTestSubject
 
 object Main {
 
-  def oneToOneJoin[PType <: KeyedMapper[Long, PType] with IdPK,
-                   CType <: KeyedMapper[Long, CType] with IdPK,
-                   CMetaType <: CType with KeyedMetaMapper[Long, CType],
+  def oneToOneJoin[PType <: KeyedMapper[Long, PType] & IdPK,
+                   CType <: KeyedMapper[Long, CType] & IdPK,
+                   CMetaType <: CType & KeyedMetaMapper[Long, CType],
                    FKType <: MappedForeignKey[Long, PType, CType]]
   (parents: List[PType], metaMapper: CMetaType, keyGetter: (PType) => FKType ):
   Map[Long, CType] = Map.empty

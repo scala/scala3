@@ -4,7 +4,7 @@ import dotty.DottyBytecodeTest
 
 import org.junit.Test
 
-import scala.tools.asm.Opcodes
+import org.objectweb.asm.Opcodes
 import Opcodes.*
 
 class LabelBytecodeTests extends DottyBytecodeTest {
@@ -149,7 +149,7 @@ class LabelBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn   = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
 
