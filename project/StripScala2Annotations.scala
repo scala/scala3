@@ -35,12 +35,13 @@ object StripScala2Annotations {
       i += 1
       result
     }
-    // big-endian base 128
     def readNat(): Int = {
       val l = readLongNat()
       if (l > Int.MaxValue) fail(s"Expected a 31-bit nat, got: $l")
       l.toInt
     }
+    // big-endian base 128
+    // Derived from `readLongNat` impl in tasty/TastyReader
     def readLongNat(): Long = {
       val start = i
       var x = 0L
