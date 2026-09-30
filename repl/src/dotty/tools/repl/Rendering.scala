@@ -225,9 +225,9 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     else {
       val parent = Option(myClassLoader).getOrElse {
         myClasspathClassLoader = parentClassLoader match
-          case Some(given_) => io.AbstractFileClassLoader(Iterable.empty, given_)
+          case Some(given_) => io.AbstractFileClassLoader(Seq.empty, given_)
           case None =>
-            val compilerClasspath = ctx.platform.classPath(using ctx).searchDirectories
+            val compilerClasspath = ctx.platform.classPath(using ctx).searchDirectories.toSeq
             // We can't use the system classloader as a parent because it would
             // pollute the user classpath with everything passed to the JVM
             // `-classpath`. We can't use `null` as a parent either because on Java
@@ -249,7 +249,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   private[repl] def addToClasspath(dirs: Iterable[AbstractFile])(using Context): Unit =
     classLoader()
-    dirs.foreach(myClasspathClassLoader.addDirectory)
+    dirs.foreach(myClasspathClassLoader.add)
 
   private[repl] def addResource(dir: AbstractFile)(using Context): Unit = addToClasspath(Seq(dir))
 
