@@ -23,7 +23,7 @@ class AbstractFileClassLoader(entries: Seq[AbstractFile], parent: ClassLoader) e
   private var searchLocations = entries.map(open)
 
   def add(entry: AbstractFile): Unit =
-    searchLocations = open(entry) +: searchLocations
+    searchLocations = searchLocations :+ open(entry)
 
   // used by the REPL
   def root: AbstractFile =
