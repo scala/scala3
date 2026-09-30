@@ -2914,7 +2914,8 @@ object Build {
   }
 
   /** Helper to validate JAR contents */
-  private def validateJarIsEmpty(jar: File): File = {
+  private def validateJarIsEmpty(ref: HashedVirtualFileRef, conv: FileConverter): HashedVirtualFileRef = {
+    val jar = conv.toPath(ref).toFile
     val jarFile = new java.util.jar.JarFile(jar)
     try {
       import _root_.scala.jdk.CollectionConverters._
@@ -2934,7 +2935,7 @@ object Build {
         )
       }
     } finally jarFile.close()
-    jar
+    ref
   }
 
   private def automaticModuleNameAttribute(name: String) =
@@ -2962,22 +2963,13 @@ object Build {
     Test / sources := Seq(),
     Test / resources := Seq(),
     Compile / packageBin := Def.uncached {
-      given FileConverter = fileConverter.value
-      val ref = (Compile / packageBin).value
-      validateJarIsEmpty(ref.toFile)
-      ref
+      validateJarIsEmpty((Compile / packageBin).value, fileConverter.value)
     },
     Compile / packageSrc := Def.uncached {
-      given FileConverter = fileConverter.value
-      val ref = (Compile / packageSrc).value
-      validateJarIsEmpty(ref.toFile)
-      ref
+      validateJarIsEmpty((Compile / packageSrc).value, fileConverter.value)
     },
     Compile / packageDoc := Def.uncached {
-      given FileConverter = fileConverter.value
-      val ref = (Compile / packageDoc).value
-      validateJarIsEmpty(ref.toFile)
-      ref
+      validateJarIsEmpty((Compile / packageDoc).value, fileConverter.value)
     },
   )
 }
