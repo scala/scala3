@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package sbt
 
-import java.io.File
 import java.nio.file.Path
 import java.util.{Arrays, EnumSet}
 import dotty.tools.dotc.ast.tpd
@@ -17,7 +16,7 @@ import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.typer.Applications.*
 import dotty.tools.dotc.util.{NoSourcePosition, SrcPos}
-import dotty.tools.{io, printOnAssertionError}
+import dotty.tools.printOnAssertionError
 import dotty.tools.io.AbstractFile
 import xsbti.UseScope
 import xsbti.api.DependencyContext
@@ -26,7 +25,6 @@ import xsbti.api.DependencyContext.*
 import scala.jdk.CollectionConverters.*
 import scala.collection.{Set, mutable}
 import scala.compiletime.uninitialized
-import scala.io.Codec
 
 /** This phase collects information on classes' dependencies for sbt.
  *  For Scala sources, they are sent in `Inlining`, after the dependencies of inlined code are added.
@@ -71,6 +69,7 @@ class ExtractDependencies extends Phase {
 
   protected def run(using Context): Unit = {
     val unit = ctx.compilationUnit
+    if ctx.settings.YdumpSbtInc.value then writeIncFile(append = false)(_ => ())
     val rec = unit.depRecorder
     val collector = ExtractDependenciesCollector(rec)
     collector.traverse(unit.tpdTree)
@@ -522,18 +521,14 @@ class DependencyRecorder {
     val names = _foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray[Object]
     Arrays.sort(deps)
     Arrays.sort(names)
-    ctx.compilationUnit.source.jfile.ifPresent(jpath => {
-      val pw = io.File(jpath.toPath)(using Codec.UTF8).changeExtension(io.FileExtension.Inc).toFile.printWriter()
-      try
-        pw.println("Used Names:")
-        pw.println("===========")
-        names.foreach(pw.println)
-        pw.println()
-        pw.println("Dependencies:")
-        pw.println("=============")
-        deps.foreach(pw.println)
-      finally pw.close()
-    })
+    writeIncFile(append = true): pw =>
+      pw.println("Used Names:")
+      pw.println("===========")
+      names.foreach(pw.println)
+      pw.println()
+      pw.println("Dependencies:")
+      pw.println("=============")
+      deps.foreach(pw.println)
 
    /** Clear all state. */
   def clear(): Unit =

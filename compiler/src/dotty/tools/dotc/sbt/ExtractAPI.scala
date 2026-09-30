@@ -18,9 +18,7 @@ import NameOps.*
 import inlines.Inlines
 import transform.ValueClasses
 import transform.Pickler
-import dotty.tools.io.{File, FileExtension}
 import util.{Property, SourceFile}
-import java.io.PrintWriter
 
 import ExtractAPI.NonLocalClassSymbolsInCurrentUnits
 
@@ -132,16 +130,9 @@ class ExtractAPI extends Phase {
     val classes = apiTraverser.apiSource(unit.tpdTree)
     val mainClasses = apiTraverser.mainClasses
 
-    if (ctx.settings.YdumpSbtInc.value) {
-      // Append to existing file that should have been created by ExtractDependencies
-      val sourceFileJPath = sourceFile.jfile
-      assert(sourceFileJPath.isPresent, s"unexpected null jpath for $sourceFile")
-      val pw = new PrintWriter(File(sourceFileJPath.get().toPath).changeExtension(FileExtension.Inc).toFile
-        .bufferedWriter(append = true), true)
-      try {
+    if ctx.settings.YdumpSbtInc.value then
+      writeIncFile(append = true): pw =>
         classes.foreach(source => pw.println(DefaultShowAPI(source)))
-      } finally pw.close()
-    }
 
     ctx.withIncCallback: cb =>
       if !ctx.compilationUnit.suspendedAtInliningPhase then // already registered before this unit was suspended
