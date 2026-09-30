@@ -556,11 +556,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
             tvars = constrained(tl)
             (tvar, pref) <- tvars.lazyZip(tl.paramRefs)
             fBounded = tvar.origin.occursIn(ctx.typerState.constraint.nonParamBounds(tvar.origin).hi)
-            inst = tvar.instantiate(fromBelow = false)
           yield
             if fBounded
             then tl.paramInfos(pref.paramNum).hi.substParams(tl, List.fill(tl.paramNames.size)(defn.NothingType))
-            else inst
+            else tvar.instantiate(fromBelow = false)
           (AppliedType(classRef, targs), tl.instantiate(targs).asInstanceOf[MethodType], symss(1))
         case mt: MethodType =>
           (classRef, mt, symss.head)
