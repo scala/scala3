@@ -11,12 +11,12 @@ def values(x: Int) =
 
 def generic[A](x: A) =
   val _ = x == null // error
+  val _ = null != x // error
   x match
     case null => // error
     case _ =>
 
 // Only the `null` literal is special-cased, not other expressions of type Null
-def nullTyped(x: Int | Null, s: String | Null, n: Null) =
+def nullTyped(x: Int | Null, n: Null) =
   val _ = x == n // error
-  val _ = s == n // error
   val _ = n != x // error

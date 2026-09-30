@@ -89,7 +89,7 @@ object Implicits:
   def relaxedNullChecks(using Context): Boolean =
     Feature.enabled(Feature.relaxedNullChecks)
 
-/** A common base class of contextual implicits and of-type implicits which
+  /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
    */
   abstract class ImplicitRefs(initctx: Context) {

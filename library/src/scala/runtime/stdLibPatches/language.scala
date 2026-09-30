@@ -62,7 +62,7 @@ private[scala] object language:
 
     /** Experimental support for relaxed null checks under strictEquality (SIP-79)
      *
-     * @see [[https://github.com/scala/improvement-proposals/pull/133]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/relaxed-null-checks]]
      */
     @compileTimeOnly("`relaxedNullChecks` can only be used at compile time in import statements")
     object relaxedNullChecks

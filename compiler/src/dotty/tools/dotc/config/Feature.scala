@@ -70,7 +70,7 @@ object Feature:
     (scala2macros, "Allow Scala 2 macros"),
     (dependent, "Allow dependent method types"),
     (erasedDefinitions, "Allow erased definitions"),
-    (relaxedNullChecks, "relaxed null checks under strictEquality (SIP-79)"),
+    (relaxedNullChecks, "Allow comparisons with null under strictEquality (SIP-79)"),
     (symbolLiterals, "Allow symbol literals"),
     (saferExceptions, "Enable safer exceptions"),
     (pureFunctions, "Enable pure functions for capture checking"),

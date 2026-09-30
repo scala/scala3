@@ -167,6 +167,7 @@ subsection:
         hidden: true
       - page: reference/experimental/numeric-literals.md
       - page: reference/experimental/explicit-nulls.md
+      - page: reference/experimental/relaxed-null-checks.md
       - page: reference/experimental/main-annotation.md
       - title: Capture Checking
         index: reference/experimental/capture-checking/cc.md
