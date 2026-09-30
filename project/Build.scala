@@ -472,9 +472,6 @@ object Build {
   def findArtifactPath(classpath: Def.Classpath, name: String)(using conv: FileConverter): String =
     findArtifact(classpath, name).getAbsolutePath
 
-  def pkgPath(ref: HashedVirtualFileRef)(using conv: FileConverter): String =
-    ref.toFile.getAbsolutePath
-
   def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
     val (beforeCp, fromCp) = args.span(_ != "-classpath")
     val classpath = fromCp.drop(1).headOption.fold(cp)(_ + File.pathSeparator + cp)
@@ -499,7 +496,7 @@ object Build {
   ): Def.Initialize[InputTask[Unit]] = Def.inputTaskDyn {
     given FileConverter = fileConverter.value
     val log = streams.value.log
-    val stdlib = pkgPath((libraryProject / Compile / packageBin).value)
+    val stdlib = (libraryProject / Compile / packageBin).value.toFile.getAbsolutePath
     val args: List[String] = spaceDelimited("<arg>").parsed.toList
     val main = "dotty.tools.MainGenericCompiler"
 
@@ -533,11 +530,11 @@ object Build {
   def withCompilerClasspath(compilerProject: ProjectReference): Def.Initialize[Task[Seq[String]]] = Def.task {
     given FileConverter = fileConverter.value
     val externalDeps = (compilerProject / Runtime / externalDependencyClasspath).value
-    val dottyCompiler = pkgPath((compilerProject / Compile / packageBin).value)
-    val dottyInterfaces = pkgPath((`scala3-interfaces` / Compile / packageBin).value)
-    val dottyStaging = pkgPath((`scala3-staging` / Compile / packageBin).value)
-    val dottyTastyInspector = pkgPath((`scala3-tasty-inspector` / Compile / packageBin).value)
-    val tastyCore = pkgPath((`tasty-core-bootstrapped` / Compile / packageBin).value)
+    val dottyCompiler = (compilerProject / Compile / packageBin).value.toFile.getAbsolutePath
+    val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.toFile.getAbsolutePath
+    val dottyStaging = (`scala3-staging` / Compile / packageBin).value.toFile.getAbsolutePath
+    val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.toFile.getAbsolutePath
+    val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.toFile.getAbsolutePath
     val asm =
       Seq("asm", "asm-util", "asm-commons", "asm-analysis", "asm-tree")
         .map(name => findArtifactPath(externalDeps, name))
@@ -558,7 +555,7 @@ object Build {
   ): Def.Initialize[InputTask[Unit]] = Def.inputTask {
     given FileConverter = fileConverter.value
     val args: List[String] = spaceDelimited("<arg>").parsed.toList
-    val scalaLib = pkgPath((libraryProject / Compile / packageBin).value)
+    val scalaLib = (libraryProject / Compile / packageBin).value.toFile.getAbsolutePath
     def run(args: List[String]): Unit = {
       val fullArgs = insertClasspathInArgs(args, List(".", scalaLib).mkString(File.pathSeparator))
       Process.runProcess("java" :: fullArgs, wait = true, outputCallback = Some { reader =>
@@ -1020,7 +1017,7 @@ object Build {
       // Needed for the JSR223 tests which are "run" tests
       Test / javaOptions += Def.uncached {
         given FileConverter = fileConverter.value
-        s"-Ddotty.tests.classes.scalaLibrary=${pkgPath((`scala-library-bootstrapped` / Compile / packageBin).value)}"
+        s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value.toFile.getAbsolutePath}"
       },
       Test / javaOptions += s"-Ddotty.tests.scalaCliVersion=${Dependencies.scalaCliLauncherVersion}",
       excludeDependencies += "org.scala-lang" %% "scala3-library",
@@ -1041,7 +1038,7 @@ object Build {
       fetchedScalaInstanceSettings,
       Test / javaOptions += Def.uncached {
         given FileConverter = fileConverter.value
-        s"-Ddotty.tests.classes.scalaLibrary=${pkgPath((`scala-library-nonbootstrapped` / Compile / packageBin).value)}"
+        s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-nonbootstrapped` / Compile / packageBin).value.toFile.getAbsolutePath}"
       },
       bspEnabled := true,
     )
@@ -1656,11 +1653,11 @@ object Build {
         }
         val externalDeps = (ThisProject / Runtime / externalDependencyClasspath).value
         Seq(
-          s"-Ddotty.tests.classes.dottyInterfaces=${pkgPath((`scala3-interfaces` / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.dottyCompiler=${pkgPath((ThisProject / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.tastyCore=${pkgPath((`tasty-core-nonbootstrapped` / Compile / packageBin).value)}",
+          s"-Ddotty.tests.classes.dottyInterfaces=${(`scala3-interfaces` / Compile / packageBin).value.toFile.getAbsolutePath}",
+          s"-Ddotty.tests.classes.dottyCompiler=${(ThisProject / Compile / packageBin).value.toFile.getAbsolutePath}",
+          s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-nonbootstrapped` / Compile / packageBin).value.toFile.getAbsolutePath}",
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
-          s"-Ddotty.tests.classes.scalaLibrary=${pkgPath((`scala-library-nonbootstrapped` / Compile / packageBin).value)}",
+          s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-nonbootstrapped` / Compile / packageBin).value.toFile.getAbsolutePath}",
           s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
         )
       },
@@ -1788,15 +1785,15 @@ object Build {
         }
         val externalDeps = (ThisProject / Runtime / externalDependencyClasspath).value
         Seq(
-          s"-Ddotty.tests.classes.dottyInterfaces=${pkgPath((`scala3-interfaces` / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.dottyCompiler=${pkgPath((ThisProject / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.tastyCore=${pkgPath((`tasty-core-bootstrapped` / Compile / packageBin).value)}",
+          s"-Ddotty.tests.classes.dottyInterfaces=${(`scala3-interfaces` / Compile / packageBin).value.toFile.getAbsolutePath}",
+          s"-Ddotty.tests.classes.dottyCompiler=${(ThisProject / Compile / packageBin).value.toFile.getAbsolutePath}",
+          s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-bootstrapped` / Compile / packageBin).value.toFile.getAbsolutePath}",
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
-          s"-Ddotty.tests.classes.scalaLibrary=${pkgPath((`scala-library-bootstrapped` / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.scalaJSScalalib=${pkgPath((`scala-library-sjs` / Compile / packageBin).value)}",
+          s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value.toFile.getAbsolutePath}",
+          s"-Ddotty.tests.classes.scalaJSScalalib=${(`scala-library-sjs` / Compile / packageBin).value.toFile.getAbsolutePath}",
           s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
-          s"-Ddotty.tests.classes.dottyStaging=${pkgPath((LocalProject("scala3-staging") / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.dottyTastyInspector=${pkgPath((LocalProject("scala3-tasty-inspector") / Compile / packageBin).value)}",
+          s"-Ddotty.tests.classes.dottyStaging=${(LocalProject("scala3-staging") / Compile / packageBin).value.toFile.getAbsolutePath}",
+          s"-Ddotty.tests.classes.dottyTastyInspector=${(LocalProject("scala3-tasty-inspector") / Compile / packageBin).value.toFile.getAbsolutePath}",
         )
       },
       bspEnabled := enableBspAllProjects,
@@ -2470,13 +2467,13 @@ object Build {
         val externalDeps = (`scala3-compiler-bootstrapped` / Runtime / externalDependencyClasspath).value
 
         Seq(
-          s"-Ddotty.tests.classes.dottyInterfaces=${pkgPath((`scala3-interfaces` / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.dottyCompiler=${pkgPath((`scala3-compiler-bootstrapped` / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.tastyCore=${pkgPath((`tasty-core-bootstrapped` / Compile / packageBin).value)}",
+          s"-Ddotty.tests.classes.dottyInterfaces=${(`scala3-interfaces` / Compile / packageBin).value.toFile.getAbsolutePath}",
+          s"-Ddotty.tests.classes.dottyCompiler=${(`scala3-compiler-bootstrapped` / Compile / packageBin).value.toFile.getAbsolutePath}",
+          s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-bootstrapped` / Compile / packageBin).value.toFile.getAbsolutePath}",
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
-          s"-Ddotty.tests.classes.scalaLibrary=${pkgPath((`scala-library-bootstrapped` / Compile / packageBin).value)}",
+          s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value.toFile.getAbsolutePath}",
           s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
-          "-Ddotty.tests.classes.scalaJSScalalib=" + pkgPath((`scala-library-sjs` / Compile / packageBin).value),
+          "-Ddotty.tests.classes.scalaJSScalalib=" + (`scala-library-sjs` / Compile / packageBin).value.toFile.getAbsolutePath,
           "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),
           "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13"),
         )
