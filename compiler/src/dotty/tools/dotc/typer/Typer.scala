@@ -1233,12 +1233,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         tree.kind match {
           case Whole(16) => // cant parse hex literal as float
           case _  =>
-            val double = doubleFromDigits(digits)
             val float = floatFromDigits(digits)
-            if double != float then
-              report.warning(LossyWideningConstantConversion(defn.DoubleType, target), tree.srcPos)
             if digits.toIntOption.exists(_ != float.toInt) then
               report.warning(LossyWideningConstantConversion(defn.IntType, target), tree.srcPos)
+            else if doubleFromDigits(digits) != float then
+              report.warning(LossyWideningConstantConversion(defn.DoubleType, target), tree.srcPos)
             return lit(float)
         }
       else if (target.isRef(defn.DoubleClass))
