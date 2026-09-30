@@ -140,12 +140,12 @@ class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(usin
 
 final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
                                            callGraph: OptimizerCallGraph,
-                                           bTypes: OptimizerKnownBTypes)(using @constructorOnly initctx: Context) extends PostProcessor(classBTypeCache, bTypes) {
+                                           bTypes: KnownBTypes, optimizerKnownBTypes: OptimizerKnownBTypes)(using @constructorOnly initctx: Context) extends PostProcessor(classBTypeCache, bTypes) {
   private val optSettings         = new OptimizerSettings()
-  private val closureOptimizer    = new ClosureOptimizer(byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
-  private val heuristics          = new InlinerHeuristics(byteCodeRepository, callGraph, bTypes, optSettings)
+  private val closureOptimizer    = new ClosureOptimizer(byteCodeRepository, callGraph, optimizerKnownBTypes, bTypesFromClassfile, optSettings)
+  private val heuristics          = new InlinerHeuristics(byteCodeRepository, callGraph, optimizerKnownBTypes, optSettings)
   private val inliner             = new InlinerImpl(callGraph, classBTypeCache, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
-  private val localOpt            = new LocalOpt(callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
+  private val localOpt            = new LocalOpt(callGraph, inliner, optimizerKnownBTypes, bTypesFromClassfile, optSettings)
 
   override def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit], issueSink: OptimizerIssue => Unit): Unit = {
     // add classes to the bytecode repo before building the call graph: the latter needs to
