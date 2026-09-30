@@ -186,9 +186,7 @@ object Names {
 
     private val derivedNames = new ConcurrentHashMap[NameInfo, DerivedName]()
     private def add(info: NameInfo): TermName =
-      val candidate = new DerivedName(this, info)
-      val result = derivedNames.putIfAbsent(info, candidate)
-      if result == null then candidate else result
+      derivedNames.computeIfAbsent(info, i => new DerivedName(this, i))
 
     private def rewrap(underlying: TermName) =
       if (underlying eq this.underlying) this else underlying.add(info)
@@ -447,9 +445,7 @@ object Names {
 
   private def enterIfNew(str: String): SimpleName =
     Stats.record("NameTable.get")
-    val candidate = new SimpleName(str)
-    val result = nameTable.putIfAbsent(str, candidate)
-    if result == null then candidate else result
+    nameTable.computeIfAbsent(str, s => new SimpleName(s))
 
   /** Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
    */
