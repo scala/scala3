@@ -452,6 +452,8 @@ object Build {
       customMimaReportBinaryIssues("MiMaFilters.Interfaces"),
     )
 
+  // Copy from sbt2-compat
+  // https://github.com/sbt/sbt2-compat/blob/5129ab5990e29107be86d1a29ba80fded667ada2/src/main/scala-3/sbtcompat/PluginCompat.scala#L72-L75
   private def parseArtifactStrAttribute(str: String): sbt.librarymanagement.Artifact =
     import sbt.librarymanagement.LibraryManagementCodec.ArtifactFormat
     import sjsonnew.support.scalajson.unsafe.*
