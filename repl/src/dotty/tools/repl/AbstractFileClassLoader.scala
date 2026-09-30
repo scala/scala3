@@ -56,28 +56,26 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
   }
 
   private def ownStopRepl(name: String): Class[?] = getClassLoadingLock(name).synchronized:
-    val loaded = findLoadedClass(name)
-    if loaded != null then loaded
-    else
-      // Load StopRepl bytecode from parent but ensure each classloader gets its own copy
-      val classFileName = name.replace('.', '/') + ".class"
-      val is = Option(getParent.getResourceAsStream(classFileName))
-        // Can't get as resource, use the classloader that loaded this AbstractFileClassLoader
-        // class itself, which must have access to StopRepl
-        .getOrElse(classOf[AbstractFileClassLoader].getClassLoader.getResourceAsStream(classFileName))
-      try
-        val bytes = is.readAllBytes()
-        defineClass(name, bytes, 0, bytes.length)
-      finally is.close()
+    // Load StopRepl bytecode from parent but ensure each classloader gets its own copy
+    val classFileName = name.replace('.', '/') + ".class"
+    val is = Option(getParent.getResourceAsStream(classFileName))
+      // Can't get as resource, use the classloader that loaded this AbstractFileClassLoader
+      // class itself, which must have access to StopRepl
+      .getOrElse(classOf[AbstractFileClassLoader].getClassLoader.getResourceAsStream(classFileName))
+    try
+      val bytes = is.readAllBytes()
+      defineClass(name, bytes, 0, bytes.length)
+    finally is.close()
 
   override def loadClass(name: String): Class[?] =
+    val loaded = findLoadedClass(name)
+    if loaded != null then return loaded
+
     if interruptInstrumentation.isOneOf(InterruptInstrumentation.Disabled, InterruptInstrumentation.Local) then
       if interruptInstrumentation == InterruptInstrumentation.Local && name == stopReplName then
         return ownStopRepl(name)
-      return super.loadClass(name)
-
-    val loaded = findLoadedClass(name) // Check if already loaded
-    if loaded != null then return loaded
+      try return findClass(name)
+      catch case _: ClassNotFoundException => ()
 
     name match {
       // Don't instrument JDK classes. These are often restricted to load from a single classloader
@@ -94,7 +92,7 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
       case `stopReplName` => ownStopRepl(name)
 
       case _ =>
-        try super.loadClass(name)
+        try findClass(name)
         catch case _: ClassNotFoundException =>
           // Not in REPL output, try to load from parent and instrument it
           val resourceName = name.replace('.', '/') + ".class"
