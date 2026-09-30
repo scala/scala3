@@ -126,12 +126,16 @@ abstract class TokensCommon {
   inline val firstParen = LPAREN
   inline val lastParen = OUTDENT
 
-  def buildKeywordMap(keywords: TokenSet): Map[SimpleName, Token] =
-    keywords.toList.map((kw: Token) =>
-      val ts = tokenString(kw)
-      if ts == null || ts.contains(' ') then (EmptyTermName, kw)
-      else (termName(ts), kw)
-    ).filter(_._1 != EmptyTermName).toMap
+  def buildKeywordMap(keywords: TokenSet): Map[SimpleName, Token] = {
+    val pairs =
+      for
+        kw <- keywords
+        ts = tokenString(kw)
+        if ts != null && !ts.contains(' ')
+      yield
+        (termName(ts), kw)
+    pairs.toMap
+  }
 }
 
 object Tokens extends TokensCommon {
