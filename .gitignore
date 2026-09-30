@@ -87,7 +87,6 @@ community-build/dotty-community-build-deps
 # semanticdb test output files
 *.expect.scala.out
 *.expect.out
-**/*.semanticdb
 
 # Bloop
 .bsp
