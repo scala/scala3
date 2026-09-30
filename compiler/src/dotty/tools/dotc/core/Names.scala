@@ -9,10 +9,8 @@ import Texts.Text
 import StdNames.{nme, str}
 
 import java.nio.charset.StandardCharsets
-import java.util.concurrent.ConcurrentHashMap
-import dotty.tools.dotc.util.Stats
-
 import scala.annotation.internal.sharable
+import dotty.tools.dotc.util.Stats
 
 object Names {
   import NameKinds.*
@@ -184,9 +182,17 @@ object Names {
     def info: NameInfo = SimpleNameKind.info
     def underlying: TermName = unsupported("underlying")
 
-    private val derivedNames = new ConcurrentHashMap[NameInfo, DerivedName]()
-    private def add(info: NameInfo): TermName =
-      derivedNames.computeIfAbsent(info, i => new DerivedName(this, i))
+    @sharable // because of synchronized block in `add`
+    private val derivedNames = mutable.HashMap.empty[NameInfo, DerivedName]
+
+    private def add(info: NameInfo): TermName = synchronized {
+      derivedNames.get(info) match
+        case Some(dnOpt) => dnOpt
+        case None =>
+          val derivedName = DerivedName(this, info)
+          derivedNames(info) = derivedName
+          derivedName
+    }
 
     private def rewrap(underlying: TermName) =
       if (underlying eq this.underlying) this else underlying.add(info)
@@ -440,12 +446,20 @@ object Names {
   val EmptyTermName: SimpleName = new SimpleName("")
 
   /** Hashtable for finding term names quickly. */
-  private val nameTable = new ConcurrentHashMap[String, SimpleName](/*initialCapacity =*/ 0x10000, /*loadFactor =*/ 2.0)
-  nameTable.put("", EmptyTermName)
+  @sharable // because it's only mutated in enterIfNew which is synchronized
+  private val nameTable: mutable.HashMap[String, SimpleName] = new mutable.HashMap[String, SimpleName](initialCapacity = 0x10000, loadFactor = 2.0)
+  nameTable("") = EmptyTermName
 
-  private def enterIfNew(str: String): SimpleName =
+  private def enterIfNew(str: String): SimpleName = synchronized {
     Stats.record("NameTable.get")
-    nameTable.computeIfAbsent(str, s => new SimpleName(s))
+    nameTable.get(str) match
+      case Some(n) => n
+      case None =>
+        Stats.record("NameTable.add")
+        val res = SimpleName(str)
+        nameTable(str) = res
+        res
+  }
 
   /** Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
    */
