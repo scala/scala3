@@ -1215,7 +1215,9 @@ object RefChecks {
         val receiver = explicitInfo.firstParamTypes.head // required for extension method; the nominal receiver
         val target = // type to inspect for member that nullifies the extension
           val dealiased = receiver.hiBound.typeSymbol.typeRef.dealiasKeepOpaques
-          if dealiased.typeSymbol.isOpaqueAlias then
+          if !dealiased.typeSymbol.exists then
+            NoType
+          else if dealiased.typeSymbol.isOpaqueAlias then
             dealiased.typeSymbol.info match
               case TypeBounds(lo, hi) if lo ne hi =>
                 if hi.typeSymbol.isOpaqueAlias then NoType
