@@ -1110,6 +1110,9 @@ object Inlines:
             ctx.inlineTraitState.registerInlineOrigin(newSym, child, parentSym)
 
             tpd.ClassDefWithParents(newSym.asClass, ctor, tmpl1.parents, tmpl1.body)
+          case tree @ Return(expr, from) 
+            if ctx.owner.is(Method) && ctx.owner.overriddenSymbol(from.symbol.enclosingClass.asClass) == from.symbol =>
+              cpy.Return(tree)(expr = expr, from = Ident(ctx.owner.termRef))
           case tree => tree
         })
 
