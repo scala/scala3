@@ -362,6 +362,13 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
   var profile: Profile = NoProfile
 
+  private val executor = util.concurrent.Executor[Unit]()
+  executor.start()
+  private val backgroundDiagnostics = mutable.ArrayBuffer[Diagnostic]()
+
+  def submitBackgroundTask(task: () => Iterable[Diagnostic]): Unit =
+    executor.schedule(() => { backgroundDiagnostics ++= task(); () })
+
   private def compileUnits()(using Context) = Stats.maybeMonitored {
     if (!ctx.mode.is(Mode.Interactive)) // IDEs might have multi-threaded access, accesses are synchronized
       ctx.base.checkSingleThreaded()
@@ -583,6 +590,10 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     r.summarizeUnreportedWarnings()
     r.printSummary()
   }
+
+  def finish(): Unit =
+    executor.close()
+    for dia <- backgroundDiagnostics do myCtx.reporter.report(dia)(using myCtx)
 
   override def reset(): Unit = {
     super[ImplicitRunInfo].reset()

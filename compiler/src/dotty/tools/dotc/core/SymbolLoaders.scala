@@ -13,11 +13,8 @@ import NameOps.*
 import StdNames.*
 import classfile.{ClassfileParser, ClassfileTastyUUIDParser}
 import Decorators.*
-
-import util.Stats
-import reporting.{Message, trace}
-import reporting.Diagnostic.LoadingFailure
-
+import util.{NoSourcePosition, Stats}
+import reporting.{Diagnostic, Message, trace}
 import ast.desugar
 
 import parsing.JavaParsers.OutlineJavaParser
@@ -424,7 +421,7 @@ abstract class SymbolLoader extends LazyType { self =>
       else em"""error while loading ${root.name},
                |$msg"""
     }
-    var failure: Option[LoadingFailure] = None
+    var failure: Option[Diagnostic.LoadingFailure] = None
     try {
       val start = System.currentTimeMillis
       trace.onDebug("loading") {
@@ -438,7 +435,7 @@ abstract class SymbolLoader extends LazyType { self =>
       case ex: IOException =>
         val message = loadingMessage(ex)
         if ctx.retainedSymbolLoadingFailures != null then
-          val loadFailure = LoadingFailure(message)
+          val loadFailure = Diagnostic.LoadingFailure(message)
           failure = Some(loadFailure)
           report.loadingError(loadFailure)
         else report.error(message)
@@ -531,10 +528,10 @@ class TastyLoader(tastyFile: AbstractFile) extends SymbolLoader {
           classRoot.classSymbol.rootTreeOrProvider = unpickler
           moduleRoot.classSymbol.rootTreeOrProvider = unpickler
         if isBestEffortTasty then
-          checkBeTastyUUID(tastyFile)
+          checkBeTastyUUID()
           ctx.setUsedBestEffortTasty()
         else
-          checkTastyUUID()
+          ctx.run.nn.submitBackgroundTask(() => checkTastyUUID(ctx.settings.verbose.value))
       else
         report.error(em"Cannot read Best Effort TASTy $tastyFile without the ${ctx.settings.YwithBestEffortTasty.name} option")
 
@@ -552,18 +549,20 @@ class TastyLoader(tastyFile: AbstractFile) extends SymbolLoader {
       throw IOException(message, e)
 
 
-  private def checkTastyUUID()(using Context): Unit =
+  private def checkTastyUUID(verbose: Boolean): Iterable[Diagnostic] =
     val classfile =
       val className = tastyFile.name.stripSuffix(".tasty")
       tastyFile.resolveSibling(className + ".class")
     if classfile != null then
       val tastyUUID = unpickler.unpickler.header.uuid
-      new ClassfileTastyUUIDParser(classfile)(ctx).checkTastyUUID(tastyUUID)
-    else
+      new ClassfileTastyUUIDParser(classfile).checkTastyUUID(tastyUUID)
+    else if verbose then
       // This will be the case when a tasty file compiled by `-Xearly-tasty-output-write` comes from an early output jar.
-      report.inform(s"No classfiles found for $tastyFile when checking TASTy UUID")
+      Seq(new Diagnostic.Info(s"No classfiles found for $tastyFile when checking TASTy UUID", NoSourcePosition))
+    else
+      Iterable.empty
 
-  private def checkBeTastyUUID(tastyFile: AbstractFile)(using Context): Unit =
+  private def checkBeTastyUUID()(using Context): Unit =
     new BestEffortTastyHeaderUnpickler(tastyFile.toByteArray).readHeader()
 
   private def mayLoadTreesFromTasty(using Context): Boolean =

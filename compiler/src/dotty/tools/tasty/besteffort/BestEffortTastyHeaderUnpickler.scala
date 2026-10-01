@@ -70,10 +70,6 @@ class BestEffortTastyHeaderUnpickler(config: UnpicklerConfig, reader: TastyReade
     val uuid = new UUID(readUncompressedLong(), readUncompressedLong())
     new BestEffortTastyHeader(uuid, fileMajor, fileMinor, filePatch, fileExperimental, toolingVersion) {}
   }
-
-  private def check(cond: Boolean, msg: => String): Unit = {
-    if (!cond) throw new UnpickleException(msg)
-  }
 }
 
 // Copy pasted from dotty.tools.tasty.TastyHeaderUnpickler
