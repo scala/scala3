@@ -71,6 +71,10 @@ class ReadTasty extends Phase {
           clsd.infoOrCompleter match {
             case info: ClassfileLoader =>
               info.load(clsd) // sets cls.rootTreeOrProvider and cls.moduleClass.treeProvider as a side-effect
+              // Roots not defined in the classfile (e.g. a missing companion) are left with
+              // a NoLoader that cannot be completed, so they have to be marked absent.
+              for root <- List(clsd, clsd.scalacLinkedClass.denot) do
+                if root.infoOrCompleter.isInstanceOf[NoLoader] then root.markAbsent()
             case _ =>
           }
           def moduleClass = clsd.owner.info.member(className.moduleClassName).symbol
