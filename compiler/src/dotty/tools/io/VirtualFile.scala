@@ -6,7 +6,7 @@
 package dotty.tools.io
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream}
-import java.net.{URI, URL}
+import java.net.URI
 
 /** This class implements an in-memory file.
  *
@@ -30,8 +30,6 @@ class VirtualFile(override val path: String, initialContents: Array[Byte]) exten
 
   // For compatibility, until we remove `AbstractFile.jpath`.
   override def jpath: JPath | Null = try java.nio.file.Path.of(path) catch case _: Exception => null
-
-  override def toURL: Option[URL] = None
 
   /** Always returns true, even if jpath is a non-existing file. */
   override def exists: Boolean = true

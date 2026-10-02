@@ -149,7 +149,7 @@ object PathResolver {
 
       pr.result match {
         case cp: AggregateClassPath =>
-          println(s"ClassPath has ${cp.aggregates.size} entries and results in:\n${cp.asURLs}")
+          println(s"ClassPath has ${cp.aggregates.size} entries")
       }
     }
 }
