@@ -73,7 +73,6 @@ class Driver {
       val run1 = compiler.newRun
       run1.compileSuspendedUnits(suspendedUnits, !run.suspendedAtTyperPhase)
       finish(compiler, run1)(using MacroClassLoader.init(ctx.fresh))
-    run.finish()
 
   protected def initCtx: Context = (new ContextBase).initialCtx
 

@@ -139,7 +139,7 @@ class TastyUnpickler(protected val reader: TastyReader, isBestEffortTasty: Boole
     result
   }
 
-  val header: CommonTastyHeader =
+  def readHeader(): CommonTastyHeader =
     if isBestEffortTasty then
       new CommonTastyHeader(new BestEffortTastyHeaderUnpickler(scala3CompilerConfig, reader).readFullHeader())
     else

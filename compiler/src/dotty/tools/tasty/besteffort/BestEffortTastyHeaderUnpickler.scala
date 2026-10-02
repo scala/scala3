@@ -39,9 +39,6 @@ class BestEffortTastyHeaderUnpickler(config: UnpicklerConfig, reader: TastyReade
   def this(reader: TastyReader) = this(UnpicklerConfig.generic, reader)
   def this(bytes: Array[Byte]) = this(new TastyReader(bytes))
 
-  def readHeader(): UUID =
-    readFullHeader().uuid
-
   def readFullHeader(): BestEffortTastyHeader = {
     val hasBestEffortHeader = {
       val readHeader = (for (i <- 0 until header.length) yield readByte()).toArray
