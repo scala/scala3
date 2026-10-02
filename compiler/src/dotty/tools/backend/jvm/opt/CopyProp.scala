@@ -42,7 +42,7 @@ class CopyProp(callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes,
     Limits.sizeOKForAliasing(method) && {
       var changed = false
       val numParams = parametersSize(method)
-      lazy val aliasAnalysis = new BasicAliasingAnalyzer(method, owner)
+      val aliasAnalysis = new BasicAliasingAnalyzer(method, owner)
 
       // Remember locals that are used in a `LOAD` instruction. Assume a program has two LOADs:
       //
@@ -148,7 +148,7 @@ class CopyProp(callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes,
    */
   def eliminateStaleStoresAndRewriteSomeIntrinsics(method: MethodNode, owner: InternalName): (Boolean, Boolean, Boolean) = {
     if (!Limits.sizeOKForSourceValue(method)) (false, false, false) else {
-      lazy val prodCons = new ProdConsAnalyzer(method, owner)
+      val prodCons = new ProdConsAnalyzer(method, owner)
       def hasNoCons(varIns: AbstractInsnNode, slot: Int) = prodCons.consumersOfValueAt(varIns.getNext, slot).isEmpty
 
       def popFor(vi: VarInsnNode): AbstractInsnNode = getPop(if (isSize2LoadOrStore(vi.getOpcode)) 2 else 1)
@@ -316,7 +316,7 @@ class CopyProp(callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes,
       var castAdded = false
       var nullCheckAdded = false
 
-      lazy val prodCons = new ProdConsAnalyzer(method, owner)
+      val prodCons = new ProdConsAnalyzer(method, owner)
 
       /*
        * Returns the producers for the stack value `inputSlot` consumed by `cons`, if the consumer
