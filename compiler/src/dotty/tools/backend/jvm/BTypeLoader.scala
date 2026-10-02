@@ -10,10 +10,11 @@ import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.toTermName
 import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, Trait}
-import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
+import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase, unfusedPhases}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.{StdNames, Types}
 import dotty.tools.dotc.core.Types.{JavaArrayType, Type, TypeRef, abstractTermNameFilter}
+import dotty.tools.dotc.transform.RestoreScopes
 import dotty.tools.dotc.util.EqHashMap
 
 import scala.annotation.tailrec
@@ -327,7 +328,12 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     // so it would return `false`.
     if atPhase(picklerPhase.next) {
       classSym.isDefinedInCurrentRun
-    } then buildInlineInfoFromClassSymbol(classSym) // // InlineInfo required for classes being compiled, we have to create the classfile attribute
+    } then {
+      // Before RestoreScopes, the class scope lacks the methods moved into it by LambdaLift
+      val restored = unfusedPhases.find(_.phaseName == RestoreScopes.name).fold(ctx.phase)(_.next)
+      if ctx.phase.id < restored.id then atPhase(restored)(buildInlineInfoFromClassSymbol(classSym))
+      else buildInlineInfoFromClassSymbol(classSym)
+    } // // InlineInfo required for classes being compiled, we have to create the classfile attribute
     // For classes not being compiled, the InlineInfo is read from the classfile attribute. This
     // fixes an issue with mixed-in methods: the mixin phase enters mixin methods only to class
     // symbols being compiled. For non-compiled classes, we could not build MethodInlineInfos
