@@ -49,19 +49,44 @@ sealed class ListMap[K, +V]
     with MapFactoryDefaults[K, V, ListMap, Iterable]
     with DefaultSerializable {
 
+  /** The factory used to build list maps, the [[ListMap$ `ListMap`]] companion object. */
   override def mapFactory: MapFactory[ListMap] = ListMap
 
+  /** Returns `0`; an instance of `ListMap` itself, as opposed to one of its nodes, is empty. */
   override def size: Int = 0
 
+  /** Returns `true`; an instance of `ListMap` itself, as opposed to one of its nodes, is empty. */
   override def isEmpty: Boolean = true
 
+  /** Returns `0`; the size of an empty list map is known without traversal. */
   override def knownSize: Int = 0
+  /** Returns `None`; this map is empty, so it binds no key.
+   *
+   *  @param key the key to look for; never used
+   */
   def get(key: K): Option[V] = None
 
+  /** Returns a map binding `key` to `value` alone, since this map is empty.
+   *
+   *  @tparam V1 the type of the value, a supertype of `V`
+   *  @param key the key to bind
+   *  @param value the value to bind it to
+   *  @return a one-entry list map whose remainder is this empty map
+   */
   def updated[V1 >: V](key: K, value: V1): ListMap[K, V1] = new ListMap.Node[K, V1](key, value, this)
 
+  /** Returns this map itself; an empty map has no binding to remove.
+   *
+   *  @param key the key to remove; never used
+   */
   def removed(key: K): ListMap[K, V] = this
 
+  /** Returns an iterator over the key-value pairs of this map, in the order in which
+   *  their keys were first inserted.
+   *
+   *  The entries are held in reverse insertion order, so the whole chain is walked and
+   *  reversed into a `List` before the iterator is returned; this costs `O(n)`.
+   */
   def iterator: Iterator[(K, V)] = {
     var curr: ListMap[K, V] = this
     var res: List[(K, V)] = Nil
@@ -72,6 +97,11 @@ sealed class ListMap[K, +V]
     res.iterator
   }
 
+  /** Returns the keys of this map, in the order in which they were first inserted.
+   *
+   *  Unlike the inherited implementation this returns a strict [[List]] rather than a
+   *  view, built by walking and reversing the chain in `O(n)`.
+   */
   @nowarn("msg=overriding method keys")
   override def keys: Iterable[K] = {
     var curr: ListMap[K, V] = this
@@ -83,6 +113,12 @@ sealed class ListMap[K, +V]
     res
   }
 
+  /** Returns the hash code of this map, computed from its bindings and independent of
+   *  their order.
+   *
+   *  The chain is traversed in its internal, reversed order, which the order-insensitive
+   *  hash of a map makes harmless and which avoids reversing the entries first.
+   */
   override def hashCode(): Int = {
     if (isEmpty) MurmurHash3.emptyMapHash
     else {
@@ -110,7 +146,20 @@ sealed class ListMap[K, +V]
   private[immutable] def value: V = throw new NoSuchElementException("value of empty map")
   private[immutable] def next: ListMap[K, V] = throw new NoSuchElementException("next of empty map")
 
+  /** Applies `op` to the entries of this map and `z`, going right to left in insertion
+   *  order.
+   *
+   *  Since the entries are held newest first, the fold starts at the head of the chain
+   *  and runs tail recursively, building neither a reversed copy nor a stack.
+   *
+   *  @tparam Z the result type of the fold
+   *  @param z the start value, combined with the last entry first
+   *  @param op the binary operator, applied to an entry and the result accumulated so far
+   *  @return the result of inserting `op` between consecutive entries and `z`, or `z`
+   *          itself if this map is empty
+   */
   override def foldRight[Z](z: Z)(op: ((K, V), Z) => Z): Z = ListMap.foldRightInternal(this, z, op)
+  /** The prefix of this map's string representation: `"ListMap"`. */
   override protected def className = "ListMap"
 
 }
@@ -242,10 +291,29 @@ object ListMap extends MapFactory[ListMap] {
 
   }
 
+  /** Returns the empty list map.
+   *
+   *  All calls return the same instance, cast to the requested key and value types.
+   *
+   *  @tparam K the key type of the map
+   *  @tparam V the value type of the map
+   */
   def empty[K, V]: ListMap[K, V] = EmptyListMap.asInstanceOf[ListMap[K, V]]
 
   private object EmptyListMap extends ListMap[Any, Nothing]
 
+  /** Returns a list map containing the bindings of `it`, in the order `it` gives them
+   *  out, with a key that occurs more than once kept at the position of its first
+   *  occurrence and bound to its last value.
+   *
+   *  If `it` is already a `ListMap` it is returned unchanged. A `Map`, `MapView` or
+   *  `LinkedHashMap` cannot repeat a key, so its entries are chained up directly;
+   *  anything else goes through the builder, which costs `O(n^2^)`.
+   *
+   *  @tparam K the key type
+   *  @tparam V the value type
+   *  @param it the collection whose bindings are to be contained
+   */
   def from[K, V](it: collection.IterableOnce[(K, V)]^): ListMap[K, V] =
     (it: @unchecked) match {
       case lm: ListMap[K, V] => lm
