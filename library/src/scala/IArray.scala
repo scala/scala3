@@ -364,6 +364,8 @@ object IArray:
   /** Sorts this array according to the Ordering which results from transforming
    *  an implicitly given Ordering with a transformation function.
    *
+   *  **Capture Checking notes**: `f` defaults to allowing only pure functions. See [[scala.math.Ordering]].
+   *
    *  @tparam U the target type of the transformation function, for which an `Ordering` must be available
    *  @param f the transformation function mapping elements to their sort keys
    *  @return a new array consisting of the elements of this array sorted by the value `f` produces for each
@@ -372,6 +374,8 @@ object IArray:
     genericArrayOps(arr).sortBy(f)
 
   /** Sorts this array according to a comparison function.
+   *
+   *  **Capture Checking notes**: `f` defaults to allowing only pure functions. See [[scala.math.Ordering]].
    *
    *  @param f the comparison function returning true if its first argument should come first
    *  @return a new array consisting of the elements of this array sorted according to `f`

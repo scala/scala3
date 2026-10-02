@@ -77,6 +77,12 @@ import scala.annotation.unchecked.uncheckedOverride
  *  You can `import scala.math.Ordering.Implicits._` to gain access to other
  *  implicit orderings.
  *
+ *  **Capture Checking notes**: `Ordering` is used in an unpredictable
+ *  pattern during sorting, and are liberally derived from many given instances.
+ *  We default to requiring pure functions (mapping and comparison) for `Ordering`.
+ *  To include impure capabilities in `Ordering` instances (as well as in `sortWith` and `sortBy`),
+ *  use [[scala.caps.unsafe.unsafeAssumePure unsafeAssumePure]].
+ *
  *  @see [[scala.math.Ordered]], [[scala.util.Sorting]], [[scala.math.Ordering.Implicits]]
  *
  *  @tparam T the type of objects that this ordering can compare

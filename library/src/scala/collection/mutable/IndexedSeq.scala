@@ -73,6 +73,8 @@ transparent trait IndexedSeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
 
   /** Sorts this $coll in place according to a comparison function.
    *
+   *  **Capture Checking notes**: `lt` defaults to allowing only pure functions. See [[scala.math.Ordering]].
+   *
    *  @see [[scala.collection.SeqOps.sortWith]]
    *
    *  @param lt the less-than comparison function; should return `true` if the first argument strictly precedes the second in the desired ordering
@@ -82,6 +84,8 @@ transparent trait IndexedSeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
 
   /** Sorts this $coll in place according to the Ordering which results from transforming
    *  an implicitly given Ordering with a transformation function.
+   *
+   *  **Capture Checking notes**: `f` defaults to allowing only pure functions. See [[scala.math.Ordering]].
    *
    *  @see [[scala.collection.SeqOps.sortBy]]
    *

@@ -1728,6 +1728,8 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *  The sort is stable. That is, elements that are equal (as determined by
    *  `lt`) appear in the same order in the sorted sequence as in the original.
    *
+   *  **Capture Checking notes**: `lt` defaults to allowing only pure functions. See [[scala.math.Ordering]].
+   *
    *  @param  lt  the comparison function which tests whether
    *              its first argument precedes its second argument in
    *              the desired ordering.
@@ -1742,6 +1744,8 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *
    *  The sort is stable. That is, elements that are equal (as determined by
    *  `ord.compare`) appear in the same order in the sorted sequence as in the original.
+   *
+   *  **Capture Checking notes**: `f` defaults to allowing only pure functions. See [[scala.math.Ordering]].
    *
    *  @see [[scala.math.Ordering]]
    *  @tparam  B the target type of the transformation `f`, and the type where

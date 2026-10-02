@@ -81,7 +81,7 @@ package object sys {
    *
    *  Note that shutdown hooks are NOT guaranteed to be run.
    *
-   *  Capture Checking notes: at the moment, shutdown hooks are required to be pure. See [[scala.sys.ShutdownHookThread#apply ShutdownHookThread]].
+   *  **Capture Checking notes**: at the moment, shutdown hooks are required to be pure. See [[scala.sys.ShutdownHookThread#apply ShutdownHookThread]].
    *
    *  @param    body  the body of code to run at shutdown
    *  @return   the `ShutdownHookThread` which will run the shutdown hook
