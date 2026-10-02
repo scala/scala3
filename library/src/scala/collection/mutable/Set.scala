@@ -26,6 +26,7 @@ trait Set[A]
     with SetOps[A, Set, Set[A]]
     with IterableFactoryDefaults[A, Set] {
 
+  /** The factory used to build mutable sets, the [[Set$ `Set`]] companion object, which delegates to [[HashSet]]. */
   override def iterableFactory: IterableFactory[Set] = Set
 }
 
@@ -45,6 +46,9 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
     with Growable[A]
     with Shrinkable[A] {
 
+  /** Returns this set. A mutable set is its own builder: elements are added with
+   *  `+=` and `result()` returns the set itself rather than a copy.
+   */
   def result(): C = coll
 
   /** Checks whether the set contains the given element, and adds it if not.
@@ -90,9 +94,20 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
     res
   }
 
+  /** Returns a new set of the same kind containing those elements of this set
+   *  that are not also contained in `that`.
+   *
+   *  @param that the set of elements to exclude
+   *  @return a new set containing all elements of this set that are not in `that`
+   */
   def diff(that: collection.Set[A]): C =
     foldLeft(empty)((result, elem) => if (that contains elem) result else result += elem)
 
+  /** Alias for [[filterInPlace]]: removes all elements from this set for which
+   *  `p` returns `false`.
+   *
+   *  @param p the test predicate; elements for which `p` returns `true` are retained
+   */
   @deprecated("Use filterInPlace instead", "2.13.0")
   @inline final def retain(p: A => Boolean): Unit = filterInPlace(p)
 
@@ -119,8 +134,15 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
     this
   }
 
+  /** Returns a new set of the same kind containing the same elements as this set. */
   override def clone(): C = empty ++= this
 
+  /** Returns the number of elements in this set, if it can be cheaply computed,
+   *  -1 otherwise.
+   *
+   *  This override selects the `IterableOps` implementation over the `Growable`
+   *  default of -1.
+   */
   override def knownSize: Int = super[IterableOps].knownSize
 }
 
