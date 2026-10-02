@@ -74,13 +74,14 @@ package object sys {
     s
   }
 
-  // CC note: shutdown hooks capture until the end of the program, so they must be pure.
   /** Registers a shutdown hook to be run when the VM exits.
    *  The hook is automatically registered: the returned value can be ignored,
    *  but is available in case the Thread requires further modification.
    *  It can also be unregistered by calling ShutdownHookThread#remove().
    *
    *  Note that shutdown hooks are NOT guaranteed to be run.
+   *
+   *  Capture Checking notes: at the moment, shutdown hooks are required to be pure. See [[scala.sys.ShutdownHookThread#apply ShutdownHookThread]].
    *
    *  @param    body  the body of code to run at shutdown
    *  @return   the `ShutdownHookThread` which will run the shutdown hook
