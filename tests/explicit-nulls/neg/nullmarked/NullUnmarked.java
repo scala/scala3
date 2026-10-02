@@ -2,8 +2,6 @@ package org.jspecify.annotations;
 
 import java.lang.annotation.*;
 
-// Minimal stub of JSpecify's scope marker that re-enables implicit nullability.
-@Target({ElementType.TYPE, ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.PACKAGE})
+@Target({ElementType.PACKAGE, ElementType.TYPE, ElementType.METHOD, ElementType.CONSTRUCTOR})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface NullUnmarked {
-}
+public @interface NullUnmarked {}
