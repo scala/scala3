@@ -31,14 +31,22 @@ import caps.unsafe.unsafeAssumePure
  */
 trait View[+A] extends Iterable[A] with IterableOps[A, View, View[A]] with IterableFactoryDefaults[A, View] with Serializable {
 
+  /** Returns this view unchanged: a view is already a view. */
   override def view: View[A]^{this} = this
 
+  /** Returns the companion object `View`, used as the factory for views of any element type. */
   override def iterableFactory: IterableFactory[View] = View
 
+  /** Returns an empty view. */
   override def empty: scala.collection.View[A] = iterableFactory.empty
 
+  /** Returns a string consisting of this view's class name followed by `(<not computed>)`.
+   *
+   *  The elements of this view are never evaluated by `toString`.
+   */
   override def toString(): String  = className + "(<not computed>)"
 
+  /** Returns `"View"`, the prefix used in the string representation of this view. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix: String = "View"
 
@@ -80,57 +88,93 @@ object View extends IterableFactory[View] {
     case _                      => LazyList.from(it).view
   }
 
+  /** Returns the empty view, [[View.Empty]].
+   *
+   *  @tparam A the element type of the view; no elements are ever produced
+   */
   def empty[A]: View[A] = Empty
 
+  /** Returns a new builder for a view.
+   *
+   *  The builder is strict: elements added to it are buffered eagerly, and
+   *  `result()` returns a view over the buffered elements.
+   *
+   *  @tparam A the element type of the view to build
+   *  @return a builder that buffers the added elements and returns a view of them
+   */
   def newBuilder[A]: Builder[A, View[A]] = ArrayBuffer.newBuilder[A].mapResult(from)
 
+  /** Returns a view of the given elements.
+   *
+   *  @tparam A the element type of the view
+   *  @param xs the elements of the view
+   *  @return a view iterating over `xs`
+   */
   override def apply[A](xs: A*): View[A] = new Elems(xs*)
 
   /** The empty view. */
   @SerialVersionUID(3L)
   case object Empty extends AbstractView[Nothing] {
+    /** Returns the empty iterator. */
     def iterator = Iterator.empty
+    /** Returns 0: this view never has elements. */
     override def knownSize = 0
+    /** Returns `true`: this view is always empty. */
     override def isEmpty: Boolean = true
   }
 
   /** A view with exactly one element. */
   @SerialVersionUID(3L)
   class Single[A](a: A) extends AbstractView[A] {
+    /** Returns an iterator producing the single element `a`. */
     def iterator: Iterator[A] = Iterator.single(a)
+    /** Returns 1: this view always has exactly one element. */
     override def knownSize: Int = 1
+    /** Returns `false`: this view always has one element. */
     override def isEmpty: Boolean = false
   }
 
   /** A view with given elements. */
   @SerialVersionUID(3L)
   class Elems[A](xs: A*) extends AbstractView[A] {
+    /** Returns an iterator over the given elements. */
     def iterator = xs.iterator
+    /** Returns the number of given elements, or -1 if the argument sequence does not know its size. */
     override def knownSize = xs.knownSize
+    /** Returns `true` if no elements were given. */
     override def isEmpty: Boolean = xs.isEmpty
   }
 
   /** A view containing the results of some element computation a number of times. */
   @SerialVersionUID(3L)
   class Fill[A](n: Int)(elem: => A) extends AbstractView[A] {
+    /** Returns an iterator that evaluates `elem` anew for each of the `n` elements it produces. */
     def iterator = Iterator.fill(n)(elem)
+    /** Returns `n`, or 0 if `n` is negative. */
     override def knownSize: Int = 0 max n
+    /** Returns `true` if `n <= 0`; `elem` is not evaluated. */
     override def isEmpty: Boolean = n <= 0
   }
 
   /** A view containing values of a given function over a range of integer values starting from 0. */
   @SerialVersionUID(3L)
   class Tabulate[A](n: Int)(f: Int => A) extends AbstractView[A] {
+    /** Returns an iterator that applies `f` on demand to each index from 0 until `n`. */
     def iterator: Iterator[A]^{f} = Iterator.tabulate(n)(f)
+    /** Returns `n`, or 0 if `n` is negative. */
     override def knownSize: Int = 0 max n
+    /** Returns `true` if `n <= 0`; `f` is not called. */
     override def isEmpty: Boolean = n <= 0
   }
 
   /** A view containing repeated applications of a function to a start value. */
   @SerialVersionUID(3L)
   class Iterate[A](start: A, len: Int)(f: A => A) extends AbstractView[A] {
+    /** Returns an iterator producing on demand `start`, `f(start)`, `f(f(start))`, ..., limited to `len` elements. */
     def iterator: Iterator[A]^{f} = Iterator.iterate(start)(f).take(len)
+    /** Returns `len`, or 0 if `len` is negative. */
     override def knownSize: Int = 0 max len
+    /** Returns `true` if `len <= 0`; `f` is not called. */
     override def isEmpty: Boolean = len <= 0
   }
 
@@ -139,6 +183,9 @@ object View extends IterableFactory[View] {
    */
   @SerialVersionUID(3L)
   class Unfold[A, S](initial: S)(f: S => Option[(A, S)]) extends AbstractView[A] {
+    /** Returns an iterator that, on demand, applies `f` to the current state, yielding the
+     *  element and next state of each `Some` result and ending when `f` returns `None`.
+     */
     def iterator: Iterator[A]^{f} = Iterator.unfold(initial)(f)
   }
 
@@ -148,12 +195,34 @@ object View extends IterableFactory[View] {
   /** A view that filters an underlying collection. */
   @SerialVersionUID(3L)
   class Filter[A](val underlying: SomeIterableOps[A]^, val p: A => Boolean, val isFlipped: Boolean) extends AbstractView[A] {
+    /** Returns an iterator that evaluates `p` on demand and produces the underlying elements
+     *  that satisfy `p`, or that fail `p` if `isFlipped` is `true`.
+     */
     def iterator = underlying.iterator.filterImpl(p, isFlipped)
+    /** Returns 0 if the underlying collection is known to be empty, -1 otherwise
+     *  (how many elements pass the filter cannot be known without evaluating `p`).
+     */
     override def knownSize: Int = if (underlying.knownSize == 0) 0 else super.knownSize
+    /** Returns `true` if no underlying element passes the filter, that is, if none
+     *  satisfies `p`, or, when `isFlipped` is set, if all of them do. `p` is evaluated
+     *  on the underlying elements only until a first match is found.
+     */
     override def isEmpty: Boolean = iterator.isEmpty
   }
 
   object Filter {
+    /** Returns a view that filters `underlying` with `p`.
+     *
+     *  If `underlying` is itself a `Filter` with the same `isFlipped` polarity, the two
+     *  predicates are combined by conjunction into a single `Filter` over the original
+     *  collection instead of stacking two view layers.
+     *
+     *  @tparam A the element type of the view
+     *  @param underlying the collection to filter
+     *  @param p the predicate to apply to each element
+     *  @param isFlipped if `true`, keeps the elements that fail `p` instead of those that satisfy it
+     *  @return a view of the underlying elements selected by `p` and `isFlipped`
+     */
     def apply[A](underlying: Iterable[A]^, p: A => Boolean, isFlipped: Boolean): Filter[A]^{underlying, p} =
       (underlying: @unchecked) match {
         case filter : Filter[A] if filter.isFlipped == isFlipped => {
@@ -168,13 +237,32 @@ object View extends IterableFactory[View] {
   /** A view that removes the duplicated elements as determined by the transformation function `f`. */
   @SerialVersionUID(3L)
   class DistinctBy[A, B](underlying: SomeIterableOps[A]^, f: A -> B) extends AbstractView[A] {
+    /** Returns an iterator over the underlying elements, skipping any element whose image
+     *  under `f` equals that of an already produced element.
+     */
     def iterator: Iterator[A]^{underlying} = underlying.iterator.distinctBy(f)
+    /** Returns 0 if the underlying collection is known to be empty, -1 otherwise
+     *  (the number of distinct elements cannot be known without evaluating `f`).
+     */
     override def knownSize: Int = if (underlying.knownSize == 0) 0 else super.knownSize
+    /** Returns `true` if the underlying collection is empty; `f` is not called. */
     override def isEmpty: Boolean = underlying.isEmpty
   }
 
+  /** A view of the `Left` values produced by applying `f` to the elements of an
+   *  underlying collection; elements for which `f` yields a `Right` are skipped.
+   *
+   *  @tparam A the element type of the underlying collection
+   *  @tparam A1 the `Left` type of the results of `f`, and the element type of this view
+   *  @tparam A2 the `Right` type of the results of `f`; values of this type are discarded
+   *  @param underlying the collection whose elements are partitioned
+   *  @param f the function applied on demand to each underlying element
+   */
   @SerialVersionUID(3L)
   class LeftPartitionMapped[A, A1, A2](underlying: SomeIterableOps[A]^, f: A => Either[A1, A2]) extends AbstractView[A1] {
+    /** Returns an iterator that applies `f` on demand to the underlying elements and
+     *  produces the value inside each `Left` result, skipping `Right` results.
+     */
     def iterator: AbstractIterator[A1]^{this} = new AbstractIterator[A1] {
       private val self = underlying.iterator
       private var hd: A1 = compiletime.uninitialized
@@ -198,8 +286,20 @@ object View extends IterableFactory[View] {
     }
   }
 
+  /** A view of the `Right` values produced by applying `f` to the elements of an
+   *  underlying collection; elements for which `f` yields a `Left` are skipped.
+   *
+   *  @tparam A the element type of the underlying collection
+   *  @tparam A1 the `Left` type of the results of `f`; values of this type are discarded
+   *  @tparam A2 the `Right` type of the results of `f`, and the element type of this view
+   *  @param underlying the collection whose elements are partitioned
+   *  @param f the function applied on demand to each underlying element
+   */
   @SerialVersionUID(3L)
   class RightPartitionMapped[A, A1, A2](underlying: SomeIterableOps[A]^, f: A => Either[A1, A2]) extends AbstractView[A2] {
+      /** Returns an iterator that applies `f` on demand to the underlying elements and
+       *  produces the value inside each `Right` result, skipping `Left` results.
+       */
       def iterator: AbstractIterator[A2]^{this} = new AbstractIterator[A2] {
         private val self = underlying.iterator
         private var hd: A2 = compiletime.uninitialized
@@ -226,98 +326,206 @@ object View extends IterableFactory[View] {
   /** A view that drops leading elements of the underlying collection. */
   @SerialVersionUID(3L)
   class Drop[A](underlying: SomeIterableOps[A]^, n: Int) extends AbstractView[A] {
+    /** Returns an iterator over the underlying elements, skipping the first `n` of them. */
     def iterator = underlying.iterator.drop(n)
+    /** The number of elements to drop, clamped to be non-negative. */
     protected val normN = n max 0
+    /** Returns the underlying collection's known size minus the drop count (at least 0),
+     *  or -1 if the underlying size is not known.
+     */
     override def knownSize = {
       val size = underlying.knownSize
       if (size >= 0) (size - normN) max 0 else -1
     }
+    /** Returns `true` if no element remains after the drop, determined by iterating
+     *  past the dropped prefix.
+     */
     override def isEmpty: Boolean = iterator.isEmpty
   }
 
   /** A view that drops trailing elements of the underlying collection. */
   @SerialVersionUID(3L)
   class DropRight[A](underlying: SomeIterableOps[A]^, n: Int) extends AbstractView[A] {
+    /** Returns an iterator over the underlying elements except the last `n`, or over
+     *  all of them if `n` is not positive.
+     *
+     *  If `n` is positive and the underlying size is not known, the iterator maintains
+     *  an `n`-element lookahead buffer, so it reads `n` elements ahead of the one it
+     *  produces.
+     */
     def iterator = dropRightIterator(underlying.iterator, n)
+    /** The number of elements to drop, clamped to be non-negative. */
     protected val normN = n max 0
+    /** Returns the underlying collection's known size minus the drop count (at least 0),
+     *  or -1 if the underlying size is not known.
+     */
     override def knownSize = {
       val size = underlying.knownSize
       if (size >= 0) (size - normN) max 0 else -1
     }
+    /** Returns `true` if this view has no elements, using `knownSize` when available and
+     *  otherwise asking the iterator, which reads up to `normN + 1` underlying elements.
+     */
     override def isEmpty: Boolean =
       if(knownSize >= 0) knownSize == 0
       else iterator.isEmpty
   }
 
+  /** A view of the elements of an underlying collection that follow its longest prefix
+   *  of elements satisfying a predicate.
+   *
+   *  @tparam A the element type of the view
+   *  @param underlying the collection whose leading elements are dropped
+   *  @param p the predicate that selects the prefix to drop, evaluated on demand
+   */
   @SerialVersionUID(3L)
   class DropWhile[A](underlying: SomeIterableOps[A]^, p: A => Boolean) extends AbstractView[A] {
+    /** Returns an iterator over the underlying elements, skipping the longest prefix
+     *  whose elements all satisfy `p`.
+     */
     def iterator = underlying.iterator.dropWhile(p)
+    /** Returns 0 if the underlying collection is known to be empty, -1 otherwise
+     *  (the length of the dropped prefix cannot be known without evaluating `p`).
+     */
     override def knownSize: Int = if (underlying.knownSize == 0) 0 else super.knownSize
+    /** Returns `true` if every underlying element satisfies `p`, determined by iterating
+     *  past the dropped prefix.
+     */
     override def isEmpty: Boolean = iterator.isEmpty
   }
 
   /** A view that takes leading elements of the underlying collection. */
   @SerialVersionUID(3L)
   class Take[+A](underlying: SomeIterableOps[A]^, n: Int) extends AbstractView[A] {
+    /** Returns an iterator over the first `n` underlying elements, or all of them
+     *  if there are fewer than `n`.
+     */
     def iterator = underlying.iterator.take(n)
+    /** The number of elements to take, clamped to be non-negative. */
     protected val normN = n max 0
+    /** Returns the smaller of the underlying collection's known size and the take count,
+     *  or -1 if the underlying size is not known.
+     */
     override def knownSize = {
       val size = underlying.knownSize
       if (size >= 0) size min normN else -1
     }
+    /** Returns `true` if this view has no elements, determined by iterating. */
     override def isEmpty: Boolean = iterator.isEmpty
   }
 
   /** A view that takes trailing elements of the underlying collection. */
   @SerialVersionUID(3L)
   class TakeRight[+A](underlying: SomeIterableOps[A]^, n: Int) extends AbstractView[A] {
+    /** Returns an iterator over the last `n` underlying elements, or all of them
+     *  if there are fewer than `n`. The iterator is empty if `n` is not positive, and
+     *  is the underlying iterator itself if `n` is `Int.MaxValue`.
+     *
+     *  Otherwise, if the underlying size is not known, the first query of the iterator
+     *  consumes the entire underlying iterator, buffering at most `n` elements.
+     */
     def iterator = takeRightIterator(underlying.iterator, n)
+    /** The number of elements to take, clamped to be non-negative. */
     protected val normN = n max 0
+    /** Returns the smaller of the underlying collection's known size and the take count,
+     *  or -1 if the underlying size is not known.
+     */
     override def knownSize = {
       val size = underlying.knownSize
       if (size >= 0) size min normN else -1
     }
+    /** Returns `true` if this view has no elements, using `knownSize` when available and
+     *  otherwise asking the iterator, which traverses the whole underlying collection
+     *  unless `normN` is 0 or `n` is `Int.MaxValue`.
+     */
     override def isEmpty: Boolean =
       if(knownSize >= 0) knownSize == 0
       else iterator.isEmpty
   }
 
+  /** A view of the longest prefix of an underlying collection whose elements all
+   *  satisfy a predicate.
+   *
+   *  @tparam A the element type of the view
+   *  @param underlying the collection whose prefix is taken
+   *  @param p the predicate that selects the prefix, evaluated on demand
+   */
   @SerialVersionUID(3L)
   class TakeWhile[A](underlying: SomeIterableOps[A]^, p: A => Boolean) extends AbstractView[A] {
+    /** Returns an iterator over the underlying elements that stops before the first
+     *  element failing `p`.
+     */
     def iterator = underlying.iterator.takeWhile(p)
+    /** Returns 0 if the underlying collection is known to be empty, -1 otherwise
+     *  (the length of the prefix cannot be known without evaluating `p`).
+     */
     override def knownSize: Int = if (underlying.knownSize == 0) 0 else super.knownSize
+    /** Returns `true` if the underlying collection is empty or its first element fails `p`. */
     override def isEmpty: Boolean = iterator.isEmpty
   }
 
+  /** A view of the cumulative results of applying an operator going left to right over
+   *  an underlying collection, starting with an initial value.
+   *
+   *  @tparam A the element type of the underlying collection
+   *  @tparam B the element type of the view
+   *  @param underlying the collection to scan
+   *  @param z the initial value, the first element of the view
+   *  @param op the operator applied on demand to the previous result and the next underlying element
+   */
   @SerialVersionUID(3L)
   class ScanLeft[+A, +B](underlying: SomeIterableOps[A]^, z: B, op: (B, A) => B) extends AbstractView[B] {
+    /** Returns an iterator producing `z`, then on demand each successive result of
+     *  applying `op` to the previous result and the next underlying element.
+     */
     def iterator = underlying.iterator.scanLeft(z)(op)
+    /** Returns the underlying collection's known size plus 1 (for the initial value `z`),
+     *  or -1 if the underlying size is not known.
+     */
     override def knownSize: Int = {
       val size = underlying.knownSize
       if (size >= 0) size + 1 else -1
     }
+    /** Returns `false`: this view always contains at least the initial value `z`. */
     override def isEmpty: Boolean = iterator.isEmpty
   }
 
   /** A view that maps elements of the underlying collection. */
   @SerialVersionUID(3L)
   class Map[+A, +B](underlying: SomeIterableOps[A]^, f: A => B) extends AbstractView[B] {
+    /** Returns an iterator that applies `f` on demand to each underlying element. */
     def iterator = underlying.iterator.map(f)
+    /** Returns the underlying collection's known size, or -1 if it is not known;
+     *  mapping does not change the number of elements.
+     */
     override def knownSize = underlying.knownSize
+    /** Returns `true` if the underlying collection is empty; `f` is not called. */
     override def isEmpty: Boolean = underlying.isEmpty
   }
 
   /** A view that flatmaps elements of the underlying collection. */
   @SerialVersionUID(3L)
   class FlatMap[A, B](underlying: SomeIterableOps[A]^, f: A => IterableOnce[B]^) extends AbstractView[B] {
+    /** Returns an iterator that applies `f` on demand to each underlying element and
+     *  produces the elements of each result in turn.
+     */
     def iterator = underlying.iterator.flatMap(f)
+    /** Returns 0 if the underlying collection is known to be empty, -1 otherwise
+     *  (the total number of elements cannot be known without evaluating `f`).
+     */
     override def knownSize: Int = if (underlying.knownSize == 0) 0 else super.knownSize
+    /** Returns `true` if `f` yields an empty collection for every underlying element,
+     *  evaluating `f` on the underlying elements until a first non-empty result.
+     */
     override def isEmpty: Boolean = iterator.isEmpty
   }
 
   /** A view that collects elements of the underlying collection. */
   @SerialVersionUID(3L)
   class Collect[+A, B](underlying: SomeIterableOps[A]^, pf: PartialFunction[A, B]^) extends AbstractView[B] {
+    /** Returns an iterator that, on demand, applies `pf` to each underlying element on
+     *  which it is defined, skipping the elements on which it is not.
+     */
     def iterator = underlying.iterator.collect(pf)
   }
 
@@ -326,7 +534,9 @@ object View extends IterableFactory[View] {
    */
   @SerialVersionUID(3L)
   class Concat[A](prefix: SomeIterableOps[A]^, suffix: SomeIterableOps[A]^) extends AbstractView[A] {
+    /** Returns an iterator over the prefix elements followed by the suffix elements. */
     def iterator = prefix.iterator ++ suffix.iterator
+    /** Returns the sum of the two known sizes, or -1 if either is not known. */
     override def knownSize = {
       val prefixSize = prefix.knownSize
       if (prefixSize >= 0) {
@@ -336,6 +546,7 @@ object View extends IterableFactory[View] {
       }
       else -1
     }
+    /** Returns `true` if both the prefix and the suffix are empty. */
     override def isEmpty: Boolean = prefix.isEmpty && suffix.isEmpty
   }
 
@@ -344,7 +555,13 @@ object View extends IterableFactory[View] {
    */
   @SerialVersionUID(3L)
   class Zip[A, B](underlying: SomeIterableOps[A]^, other: Iterable[B]^) extends AbstractView[(A, B)] {
+    /** Returns an iterator producing pairs of corresponding elements, ending when either
+     *  collection runs out of elements.
+     */
     def iterator = underlying.iterator.zip(other)
+    /** Returns the smaller of the two known sizes; 0 if either collection is known to be
+     *  empty, and -1 if neither is known to be empty and either size is not known.
+     */
     override def knownSize = {
       val s1 = underlying.knownSize
       if (s1 == 0) 0 else {
@@ -352,6 +569,7 @@ object View extends IterableFactory[View] {
         if (s2 == 0) 0 else s1 min s2
       }
     }
+    /** Returns `true` if either collection is empty. */
     override def isEmpty: Boolean = underlying.isEmpty || other.isEmpty
   }
 
@@ -361,7 +579,11 @@ object View extends IterableFactory[View] {
    */
   @SerialVersionUID(3L)
   class ZipAll[A, B](underlying: SomeIterableOps[A]^, other: Iterable[B]^, thisElem: A, thatElem: B) extends AbstractView[(A, B)] {
+    /** Returns an iterator producing pairs of corresponding elements, substituting
+     *  `thisElem` or `thatElem` once the shorter collection runs out of elements.
+     */
     def iterator = underlying.iterator.zipAll(other, thisElem, thatElem)
+    /** Returns the larger of the two known sizes, or -1 if either is not known. */
     override def knownSize = {
       val s1 = underlying.knownSize
       if(s1 == -1) -1 else {
@@ -369,33 +591,58 @@ object View extends IterableFactory[View] {
         if(s2 == -1) -1 else s1 max s2
       }
     }
+    /** Returns `true` if both collections are empty. */
     override def isEmpty: Boolean = underlying.isEmpty && other.isEmpty
   }
 
   /** A view that appends an element to its elements. */
   @SerialVersionUID(3L)
   class Appended[+A](underlying: SomeIterableOps[A]^, elem: A) extends AbstractView[A] {
+    /** Returns an iterator over the underlying elements followed by `elem`. */
     def iterator = new Concat(underlying, new View.Single(elem)).iterator
+    /** Returns the underlying collection's known size plus 1, or -1 if it is not known. */
     override def knownSize: Int = {
       val size = underlying.knownSize
       if (size >= 0) size + 1 else -1
     }
+    /** Returns `false`: this view always contains at least the appended element. */
     override def isEmpty: Boolean = false
   }
 
   /** A view that prepends an element to its elements. */
   @SerialVersionUID(3L)
   class Prepended[+A](elem: A, underlying: SomeIterableOps[A]^) extends AbstractView[A] {
+    /** Returns an iterator producing `elem` followed by the underlying elements. */
     def iterator = new Concat(new View.Single(elem), underlying).iterator
+    /** Returns the underlying collection's known size plus 1, or -1 if it is not known. */
     override def knownSize: Int = {
       val size = underlying.knownSize
       if (size >= 0) size + 1 else -1
     }
+    /** Returns `false`: this view always contains at least the prepended element. */
     override def isEmpty: Boolean = false
   }
 
+  /** A view of the elements of an underlying collection with the element at one position
+   *  replaced by another value.
+   *
+   *  If `index` is greater than or equal to the number of underlying elements, iterating
+   *  past the end throws an `IndexOutOfBoundsException`; if `index` is negative, no
+   *  element is replaced and the view contains the underlying elements unchanged.
+   *
+   *  @tparam A the element type of the view
+   *  @param underlying the collection providing the elements
+   *  @param index the position at which to substitute `elem`
+   *  @param elem the replacement element
+   */
   @SerialVersionUID(3L)
   class Updated[A](underlying: SomeIterableOps[A]^, index: Int, elem: A) extends AbstractView[A] {
+    /** Returns an iterator over the underlying elements that produces `elem` instead of
+     *  the element at position `index`.
+     *
+     *  @throws IndexOutOfBoundsException if the underlying collection is exhausted
+     *          before position `index` is reached
+     */
     def iterator: Iterator[A]^{underlying} = new AbstractIterator[A] {
       private val it = underlying.iterator
       private var i = 0
@@ -409,7 +656,16 @@ object View extends IterableFactory[View] {
         else if(index >= i) throw new IndexOutOfBoundsException(index.toString)
         else false
     }
+    /** Returns the underlying collection's known size, or -1 if it is not known;
+     *  updating does not change the number of elements.
+     */
     override def knownSize: Int = underlying.knownSize
+    /** Returns `false` if the underlying collection has elements, determined by iterating.
+     *
+     *  @throws IndexOutOfBoundsException if the underlying collection is empty and
+     *          `index` is non-negative; `true` is returned only for a negative `index`
+     *          on an empty underlying collection
+     */
     override def isEmpty: Boolean = iterator.isEmpty
   }
 
@@ -426,21 +682,49 @@ object View extends IterableFactory[View] {
     override def isEmpty: Boolean = if (knownSize == 0) true else iterator.isEmpty
   }
 
+  /** A view that pairs each element of an underlying collection with its index,
+   *  counting from 0.
+   *
+   *  @tparam A the element type of the underlying collection
+   *  @param underlying the collection whose elements are paired with their indices
+   */
   @SerialVersionUID(3L)
   class ZipWithIndex[A](underlying: SomeIterableOps[A]^) extends AbstractView[(A, Int)] {
+    /** Returns an iterator producing each underlying element paired with its index,
+     *  starting from `(firstElem, 0)`.
+     */
     def iterator: Iterator[(A, Int)]^{this} = underlying.iterator.zipWithIndex
+    /** Returns the underlying collection's known size, or -1 if it is not known. */
     override def knownSize: Int = underlying.knownSize
+    /** Returns `true` if the underlying collection is empty. */
     override def isEmpty: Boolean = underlying.isEmpty
   }
 
+  /** A view of the elements of an underlying collection, followed by as many copies of a
+   *  padding element as are needed to reach a given length.
+   *
+   *  If the underlying collection already has `len` or more elements, no padding is added.
+   *
+   *  @tparam A the element type of the view
+   *  @param underlying the collection providing the leading elements
+   *  @param len the minimum length of the view
+   *  @param elem the padding element
+   */
   @SerialVersionUID(3L)
   class PadTo[A](underlying: SomeIterableOps[A]^, len: Int, elem: A) extends AbstractView[A] {
+    /** Returns an iterator over the underlying elements, then over copies of `elem` until
+     *  `len` elements in total have been produced.
+     */
     def iterator: Iterator[A]^{this} = underlying.iterator.padTo(len, elem)
 
+    /** Returns the larger of the underlying collection's known size and `len`, or -1 if
+     *  the underlying size is not known.
+     */
     override def knownSize: Int = {
       val size = underlying.knownSize
       if (size >= 0) size max len else -1
     }
+    /** Returns `true` if the underlying collection is empty and `len <= 0`. */
     override def isEmpty: Boolean = underlying.isEmpty && len <= 0
   }
 
