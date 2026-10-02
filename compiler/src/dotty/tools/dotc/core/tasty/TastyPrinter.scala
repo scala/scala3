@@ -95,7 +95,7 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
       sb.append("  tooling: <elided>\n")
       sb.append("     UUID: <elided>\n")
     else
-      val header = unpickler.readHeader()
+      val header = unpickler.header
       sb.append(s"  version: ${header.majorVersion}.${header.minorVersion}.${header.experimentalVersion}\n")
       sb.append("  tooling: ").append(header.toolingVersion).append("\n")
       sb.append("     UUID: ").append(header.uuid).append("\n")
