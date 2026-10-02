@@ -139,6 +139,7 @@ class TastyUnpickler(protected val reader: TastyReader, isBestEffortTasty: Boole
     result
   }
 
+  // This advances the reader position, it cannot be a lazy val or def!
   val header: CommonTastyHeader =
     if isBestEffortTasty then
       new CommonTastyHeader(new BestEffortTastyHeaderUnpickler(scala3CompilerConfig, reader).readFullHeader())

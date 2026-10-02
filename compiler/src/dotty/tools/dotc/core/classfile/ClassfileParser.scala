@@ -32,11 +32,11 @@ object ClassfileParser {
     object Version:
       val Unknown: Version = -1L
 
-      def brokenVersionAddendum(classfileVersion: Version)(using Context): String =
+      def brokenVersionAddendum(classfileVersion: Version): String =
         if classfileVersion.exists then
           val (maj, min) = (classfileVersion.majorVersion, classfileVersion.minorVersion)
           val scalaVersion = config.Properties.versionNumberString
-          i""" (version $maj.$min),
+          s""" (version $maj.$min),
             |  please check the JDK compatibility of your Scala version ($scalaVersion)"""
         else
           ""
