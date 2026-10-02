@@ -1120,10 +1120,12 @@ object JavaParsers {
       val buf = ListBuffer.empty[Tree]
       var start = in.offset
       val leadingAnnots = if (in.token == AT) annotations() else Nil
+      var packageAnnots: List[Tree] = Nil
       val pkg: RefTree =
         if in.token == PACKAGE then
           if leadingAnnots.nonEmpty then
             start = in.offset
+            packageAnnots = leadingAnnots
           accept(PACKAGE)
           val pkg = qualId()
           accept(SEMI)
@@ -1146,6 +1148,14 @@ object JavaParsers {
       if buf.isEmpty then
         while (in.token == IMPORT)
           buf ++= importDecl()
+      // Annotations of a package declaration (in `package-info.java`) are kept on a synthetic
+      // `package-info` interface, which is how they are represented in class files. It comes
+      // after the imports, which the annotations may refer to.
+      if packageAnnots.nonEmpty then
+        buf += atSpan(start) {
+          TypeDef(tpnme.PACKAGE_INFO, makeTemplate(List(ObjectTpt()), Nil, Nil, needsDummyConstr = false))
+            .withMods(Modifiers(Flags.JavaInterface).withAnnotations(packageAnnots))
+        }
       while (in.token != EOF && in.token != RBRACE) {
         while (in.token == SEMI) in.nextToken()
         if (in.token != EOF) {
