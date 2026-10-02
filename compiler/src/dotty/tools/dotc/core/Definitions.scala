@@ -1276,23 +1276,13 @@ class Definitions {
     "io.reactivex.rxjava3.annotations.Nullable" ::
     "org.jspecify.annotations.Nullable" :: Nil)
 
-  // Scope-level markers (JSpecify) that flip the implicit-nulls default within their scope:
-  // inside a `@NullMarked` module/package/class/method, unannotated reference types are non-null,
-  // and only an explicit `@Nullable` reintroduces nullability. `@NullUnmarked` re-enables the
-  // implicit-nulls default within an enclosing `@NullMarked` scope. As with the other null
-  // annotations, we don't require these to be on the class path.
-  @tu lazy val NullMarkedAnnots: List[ClassSymbol] = getClassesIfDefined(
-    "org.jspecify.annotations.NullMarked" :: Nil)
-
-  @tu lazy val NullUnmarkedAnnots: List[ClassSymbol] = getClassesIfDefined(
-    "org.jspecify.annotations.NullUnmarked" :: Nil)
-
-  /** The name of the synthetic member that carries a package's annotations, loaded from
-   *  `package-info.java` / `package-info.class` (`package-info` is not a legal Java identifier,
-   *  so it never collides with a real member). Used by the explicit-nulls interop to read a
-   *  package-level `@NullMarked` / `@NullUnmarked`.
-   */
-  val PackageInfoName: TypeName = typeName("package-info")
+  // JSpecify declaration annotations that set the nullness default of Java code in their scope,
+  // see `ImplicitNullInterop.isNullMarked`. As with the other null annotations, we don't require
+  // them to be on the class path.
+  @tu lazy val NullMarkedAnnot: Symbol = getClassIfDefined("org.jspecify.annotations.NullMarked")
+  @tu lazy val NullUnmarkedAnnot: Symbol = getClassIfDefined("org.jspecify.annotations.NullUnmarked")
+  // Classes compiled by Kotlin carry this annotation. JSpecify treats them as not null-marked.
+  @tu lazy val KotlinMetadataAnnot: Symbol = getClassIfDefined("kotlin.Metadata")
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)

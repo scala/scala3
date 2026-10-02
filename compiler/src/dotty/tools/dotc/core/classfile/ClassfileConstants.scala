@@ -109,6 +109,24 @@ object ClassfileConstants {
   inline val T_INT     = 10
   inline val T_LONG    = 11
 
+  // target types of type annotations outside of method bodies
+  inline val TA_CLASS_TYPE_PARAMETER        = 0x00
+  inline val TA_METHOD_TYPE_PARAMETER       = 0x01
+  inline val TA_CLASS_EXTENDS               = 0x10
+  inline val TA_CLASS_TYPE_PARAMETER_BOUND  = 0x11
+  inline val TA_METHOD_TYPE_PARAMETER_BOUND = 0x12
+  inline val TA_FIELD                       = 0x13
+  inline val TA_METHOD_RETURN               = 0x14
+  inline val TA_METHOD_RECEIVER             = 0x15
+  inline val TA_METHOD_FORMAL_PARAMETER     = 0x16
+  inline val TA_THROWS                      = 0x17
+
+  // kinds of steps in the path to an annotated type
+  inline val TYPE_PATH_ARRAY          = 0
+  inline val TYPE_PATH_NESTED         = 1
+  inline val TYPE_PATH_WILDCARD_BOUND = 2
+  inline val TYPE_PATH_TYPE_ARGUMENT  = 3
+
   // JVM mnemonics
   inline val nop         = 0x00
   inline val aconst_null = 0x01

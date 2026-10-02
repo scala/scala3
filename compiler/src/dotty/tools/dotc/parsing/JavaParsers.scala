@@ -1120,7 +1120,6 @@ object JavaParsers {
       val buf = ListBuffer.empty[Tree]
       var start = in.offset
       val leadingAnnots = if (in.token == AT) annotations() else Nil
-      // Annotations placed before a `package` declaration (only legal in `package-info.java`).
       var packageAnnots: List[Tree] = Nil
       val pkg: RefTree =
         if in.token == PACKAGE then
@@ -1149,16 +1148,13 @@ object JavaParsers {
       if buf.isEmpty then
         while (in.token == IMPORT)
           buf ++= importDecl()
-      // Retain package-level annotations (e.g. JSpecify `@NullMarked`) by attaching them to a
-      // synthetic `package-info` class, mirroring how `package-info.class` represents them. This
-      // lets downstream logic (nullification) read them via the package's `package-info` member.
-      // It is added after imports so the annotation names resolve against them.
+      // Annotations of a package declaration (in `package-info.java`) are kept on a synthetic
+      // `package-info` interface, which is how they are represented in class files. It comes
+      // after the imports, which the annotations may refer to.
       if packageAnnots.nonEmpty then
         buf += atSpan(start) {
-          TypeDef(
-            defn.PackageInfoName,
-            makeTemplate(List(ObjectTpt()), Nil, Nil, needsDummyConstr = true)
-          ).withMods(Modifiers(Flags.JavaDefined).withAnnotations(packageAnnots))
+          TypeDef(tpnme.PACKAGE_INFO, makeTemplate(List(ObjectTpt()), Nil, Nil, needsDummyConstr = false))
+            .withMods(Modifiers(Flags.JavaInterface).withAnnotations(packageAnnots))
         }
       while (in.token != EOF && in.token != RBRACE) {
         while (in.token == SEMI) in.nextToken()

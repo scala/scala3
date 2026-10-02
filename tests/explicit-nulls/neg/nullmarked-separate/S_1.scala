@@ -1,3 +1,5 @@
+// Same as tests/explicit-nulls/neg/nullmarked, but the Java classes are read from class files,
+// where `@Nullable` is a type annotation.
 //> using options -Yno-flexible-types
 
 import marked.*
@@ -64,3 +66,11 @@ def g12(g: G[String, String]): java.util.List[? <: CharSequence | Null] = g.wild
 def g13(g: G[String, String]): java.util.List[?] = g.unboundedWildcard()
 def g14(g: G[String, String]): java.util.Map[String, java.util.List[String]] = g.nested() // error
 def g15(g: G[String, String]): java.util.Map[String, java.util.List[String] | Null] = g.nested()
+
+// Arrays
+def a1(a: A): Array[String] = a.nullableElements() // error
+def a2(a: A): Array[String | Null] = a.nullableElements()
+def a3(a: A): Array[String] = a.nullableArray() // error
+def a4(a: A): Array[String] | Null = a.nullableArray()
+def a5(a: A): Unit = a.varargs(null, "")
+def a6(a: A): Unit = a.nonNullVarargs(null, "") // error
