@@ -1,6 +1,6 @@
 package dotty.tools.repl.worksheet
 
-import dotty.tools.repl.worksheet.WorksheetOutput.rendered
+import dotty.tools.repl.worksheet.WorksheetChecks.*
 
 import org.junit.Assert.*
 import org.junit.Test
@@ -24,11 +24,11 @@ class WorksheetApiTest:
     val evaluator = new WorksheetDriver()
     try
       val first = evaluator.evaluate(filename, initial)
-      assertEquals(Nil, first.messages)
+      checkDiagnostics(first)
       assertEquals("1", System.getProperty(property))
 
       val appended = evaluator.evaluate(filename, initial + "runs + 1\n")
-      assertEquals(Nil, appended.messages)
+      checkDiagnostics(appended)
       assertEquals("1", System.getProperty(property))
       assertEquals("res1: Int = 2", appended.statements().get(2).details())
     finally
@@ -71,27 +71,20 @@ class WorksheetApiTest:
       assertEquals(text, position.source().textContent())
     finally evaluator.shutdown()
 
-  @Test def cancelsAnEvaluationInProgress(): Unit =
+  private def checkCancellation(
+      filename: String,
+      source: String => String,
+      initial: Option[(String, String)] = None,
+      expectedOutput: Option[String] = None
+  ): Unit =
     val property = s"scala3.worksheet.cancel.${java.util.UUID.randomUUID()}"
     val evaluator = new WorksheetDriver()
     val outcome = new AtomicReference[interfaces.EvaluatedWorksheet]()
-    val worker = new Thread(() =>
-      outcome.set(
-        evaluator.evaluate(
-          "cancel.worksheet.scala",
-          s"""val before = 1
-             |var spin = 0L
-             |val ticking =
-             |  System.setProperty("$property", "running")
-             |  while true do spin += 1
-             |val after = 2
-             |""".stripMargin
-        )
-      )
-    )
+    val worker = new Thread(() => outcome.set(evaluator.evaluate(filename, source(property))))
     worker.setDaemon(true)
     System.clearProperty(property)
     try
+      initial.foreach((path, text) => evaluator.evaluate(path, text))
       worker.start()
       val ready = System.currentTimeMillis() + 60000
       while System.getProperty(property) == null && System.currentTimeMillis() < ready do
@@ -104,57 +97,44 @@ class WorksheetApiTest:
         Thread.sleep(100)
 
       assertFalse("the evaluation did not stop", worker.isAlive)
-      assertEquals(
+      expectedOutput match
+        case Some(expected) => checkOutput(outcome.get, expected, "The worksheet evaluation was cancelled.")
+        case None => checkDiagnostics(outcome.get, "The worksheet evaluation was cancelled.")
+    finally
+      System.clearProperty(property)
+      if !worker.isAlive then evaluator.shutdown()
+
+  @Test def cancelsAnEvaluationInProgress(): Unit =
+    checkCancellation(
+      "cancel.worksheet.scala",
+      property =>
+        s"""val before = 1
+           |var spin = 0L
+           |val ticking =
+           |  System.setProperty("$property", "running")
+           |  while true do spin += 1
+           |val after = 2
+           |""".stripMargin,
+      expectedOutput = Some(
         """|: Int = 1
            |before: Int = 1
            |
            |: Long = 0L
-           |spin: Long = 0L""".stripMargin,
-        outcome.get.rendered
-      )
-      assertEquals(List("The worksheet evaluation was cancelled."), outcome.get.messages)
-    finally
-      System.clearProperty(property)
-      if !worker.isAlive then evaluator.shutdown()
-
-  @Test def cancelsAnEvaluationThatReplacedAnEarlierSession(): Unit =
-    val property = s"scala3.worksheet.cancel-reset.${java.util.UUID.randomUUID()}"
-    val evaluator = new WorksheetDriver()
-    val outcome = new AtomicReference[interfaces.EvaluatedWorksheet]()
-    val worker = new Thread(() =>
-      outcome.set(
-        evaluator.evaluate(
-          "second.worksheet.scala",
-          s"""val before = 1
-             |System.setProperty("$property", "running")
-             |var spin = 0L
-             |while true do spin += 1
-             |""".stripMargin
-        )
+           |spin: Long = 0L""".stripMargin
       )
     )
-    worker.setDaemon(true)
-    System.clearProperty(property)
-    try
-      evaluator.evaluate("first.worksheet.scala", "val unrelated = 1\n")
 
-      worker.start()
-      val ready = System.currentTimeMillis() + 60000
-      while System.getProperty(property) == null && System.currentTimeMillis() < ready do
-        Thread.sleep(50)
-      assertEquals("the worksheet never started running", "running", System.getProperty(property))
-
-      val deadline = System.currentTimeMillis() + 60000
-      while worker.isAlive && System.currentTimeMillis() < deadline do
-        evaluator.cancel()
-        Thread.sleep(100)
-
-      assertFalse("the evaluation did not stop", worker.isAlive)
-      val messages = outcome.get.diagnostics.asScala.map(_.message).toList
-      assertEquals(List("The worksheet evaluation was cancelled."), messages)
-    finally
-      System.clearProperty(property)
-      if !worker.isAlive then evaluator.shutdown()
+  @Test def cancelsAnEvaluationThatReplacedAnEarlierSession(): Unit =
+    checkCancellation(
+      "second.worksheet.scala",
+      property =>
+        s"""val before = 1
+           |System.setProperty("$property", "running")
+           |var spin = 0L
+           |while true do spin += 1
+           |""".stripMargin,
+      initial = Some("first.worksheet.scala" -> "val unrelated = 1\n")
+    )
 
   @Test def acceptsACancellationWhileTheSessionIsStillStarting(): Unit =
     val evaluator = new WorksheetDriver()
@@ -189,11 +169,7 @@ class WorksheetApiTest:
            |""".stripMargin
       )
 
-      assertEquals(
-        result.diagnostics().asScala.map(_.message()).toString,
-        Nil,
-        result.diagnostics().asScala.toList
-      )
+      checkDiagnostics(result)
       assertEquals("held: String = \"EvaluatedWorksheet\"", result.statements().get(0).details())
       val reported = result.classpath().asScala.toList
       assertEquals(List(configured, jar), reported)
@@ -215,13 +191,12 @@ class WorksheetApiTest:
     val text = "def compute = { val unused = 1; 2 }\n"
 
     val default = new WorksheetDriver()
-    try assertEquals(Nil, default.evaluate("default.worksheet.scala", text).diagnostics().asScala.toList)
+    try checkDiagnostics(default.evaluate("default.worksheet.scala", text))
     finally default.shutdown()
 
     val strict = new WorksheetDriver().withScalacOptions(List("-Wunused:all").asJava)
     try
-      val diagnostics = strict.evaluate("strict.worksheet.scala", text).diagnostics().asScala.toList
-      assertEquals(List("unused local definition"), diagnostics.map(_.message))
+      checkDiagnostics(strict.evaluate("strict.worksheet.scala", text), "unused local definition")
     finally strict.shutdown()
 
   @Test def formatsSummariesForTheConfiguredScreenWidth(): Unit =
@@ -249,7 +224,7 @@ class WorksheetApiTest:
       assertEquals(1, result.statements().size)
       val diagnostic = result.diagnostics().get(0)
       assertEquals(dotty.tools.dotc.interfaces.Diagnostic.WARNING, diagnostic.level())
-      assertEquals(List("bad option '-Wnosuchthing' was ignored"), result.messages)
+      checkDiagnostics(result, "bad option '-Wnosuchthing' was ignored")
     finally evaluator.shutdown()
 
   @Test def reportsNothingExtraForValidCompilerOptions(): Unit =
@@ -257,7 +232,7 @@ class WorksheetApiTest:
       .withScalacOptions(java.util.List.of("-Wunused:all"))
     try
       val result = evaluator.evaluate("valid-options.worksheet.scala", "val x = 40\n")
-      assertEquals(List(), result.diagnostics().asScala.map(_.message()).toList)
+      checkDiagnostics(result)
     finally evaluator.shutdown()
 
   @Test def reportsCompilerOptionsWithAnInvalidValue(): Unit =

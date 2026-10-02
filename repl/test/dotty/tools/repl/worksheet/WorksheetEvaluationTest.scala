@@ -1,28 +1,25 @@
 package dotty.tools.repl.worksheet
 
-import dotty.tools.repl.ReplTest
+import dotty.tools.repl.worksheet.WorksheetChecks.*
 
 import org.junit.Assert.*
-import org.junit.After
 import org.junit.Test
 
-class WorksheetEvaluationTest:
-  private val driver = new WorksheetSession(ReplTest.defaultOptions)
-
-  @After def shutdownDriver(): Unit = driver.shutdown()
-
+class WorksheetEvaluationTest extends WorksheetTest:
   private def checkStatements(text: String, expected: (String, String)*): WorksheetResult =
     val result = driver.evaluate("evaluation.worksheet.scala", text)
-    assertEquals(Nil, result.diagnostics)
+    checkDiagnostics(result)
     val expectedStatements = expected.toList.map: (source, details) =>
       val start = text.indexOf(source)
-      assertTrue(s"Expected statement is missing from the test source: $source", start >= 0)
-      (start, start + source.length, details)
-    assertEquals(
-      expectedStatements,
-      result.statements.map: statement =>
-        val position = statement.position
-        (position.start, position.end, statement.details)
+      require(start >= 0, s"Expected statement is missing from the test source: $source")
+      s"[$start..${start + source.length}]\n$details"
+    val obtained = result.statements.map: statement =>
+      val position = statement.position
+      s"[${position.start}..${position.end}]\n${statement.details}"
+    checkText(
+      obtained.mkString("\n\n"),
+      expectedStatements.mkString("\n\n"),
+      s"Worksheet statement ranges and details:\n$text"
     )
     result
 
@@ -68,8 +65,7 @@ class WorksheetEvaluationTest:
   @Test def produceMultilineOutput(): Unit =
     val text = "1 to 3 foreach println"
     val result = checkStatements(text, text -> "// 1\n// 2\n// 3")
-    assertEquals(List("1"), result.statements.map(_.summary))
-    assertEquals(List(false), result.statements.map(_.isSummaryComplete))
+    checkSummaries(result, "1" -> false)
 
   @Test def patternMatching0(): Unit =
     val text =
@@ -88,4 +84,4 @@ class WorksheetEvaluationTest:
         val position = diagnostic.position
         (text.slice(position.start, position.end), diagnostic.message, diagnostic.severity)
     )
-    assertEquals(Nil, result.statements)
+    checkDetails(result)
