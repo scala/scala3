@@ -1,0 +1,16 @@
+-- Error: tests/neg/i22631.scala:3:16 ----------------------------------------------------------------------------------
+3 |    private def bar: Int = 0 // error
+  |                ^
+  |                not allowed
+-- Error: tests/neg/i22631.scala:8:16 ----------------------------------------------------------------------------------
+8 |    private def bar: Int = 0 // error
+  |                ^
+  |                not allowed
+-- Error: tests/neg/i22631.scala:13:16 ---------------------------------------------------------------------------------
+13 |    private def bar: Int = 0 // error
+   |                ^
+   |                not allowed
+-- Error: tests/neg/i22631.scala:18:16 ---------------------------------------------------------------------------------
+18 |    private def bar: Int = 0 // error
+   |                ^
+   |                not allowed
