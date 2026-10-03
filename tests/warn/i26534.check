@@ -1,0 +1,43 @@
+-- Warning: tests/warn/i26534.scala:32:17 ------------------------------------------------------------------------------
+32 |class C9a(private[this] var x: Int) // warn // warn was unused explicit parameter
+   |                 ^^^^^^
+   |                 Ignoring [this] qualifier.
+   |                 The syntax `private[this]` will be deprecated in the future; just write `private` instead.
+   |                 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+   |                 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:6:16 ----------------------------------------------------------
+6 |  def f(@unused inUse: Int): Int = inUse // warn
+  |                ^^^^^
+  |                useless @unused annotation on parameter inUse
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:7:8 -----------------------------------------------------------
+7 |  def g(x: Int, @unused y: Int): Int = y // warn // warn
+  |        ^
+  |        unused explicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:7:24 ----------------------------------------------------------
+7 |  def g(x: Int, @unused y: Int): Int = y // warn // warn
+  |                        ^
+  |                        useless @unused annotation on parameter y
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:9:36 ----------------------------------------------------------
+9 |class C(private val x: Int, y: Int, z: Int, @unused w: Int): // warn
+  |                                    ^
+  |                                    unused explicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:20:22 ---------------------------------------------------------
+20 |  @unused private var x = 27 // warn unused unused, x is read and assigned
+   |                      ^
+   |                      useless @unused annotation on variable x
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:28:14 ---------------------------------------------------------
+28 |  def f(using s: String) = println(42) // warn
+   |              ^
+   |              unused implicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:32:28 ---------------------------------------------------------
+32 |class C9a(private[this] var x: Int) // warn // warn was unused explicit parameter
+   |                            ^
+   |                            unused explicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:33:22 ---------------------------------------------------------
+33 |class C9b(private var x: Int) // warn was unused private member
+   |                      ^
+   |                      unused explicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i26534.scala:36:6 ----------------------------------------------------------
+36 |  var local = 42 // warn unused local
+   |      ^^^^^
+   |      unused local definition

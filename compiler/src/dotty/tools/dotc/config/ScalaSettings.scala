@@ -183,7 +183,8 @@ private sealed trait WarningSettings:
       ChoiceWithHelp("explicits", "Warn if an explicit parameter is unused"),
       ChoiceWithHelp("implicits", "Warn if an implicit parameter is unused"),
       ChoiceWithHelp("params", "Enable -Wunused:explicits,implicits"),
-      ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
+      ChoiceWithHelp("patvars", "Warn if a variable bound in a pattern is unused"),
+      ChoiceWithHelp("unused", "Warn about spurious `@unused` annotation"),
       //ChoiceWithHelp("inlined", "Apply -Wunused to inlined expansions"), // TODO
       ChoiceWithHelp("linted", "Enable -Wunused:imports,privates,locals,implicits"),
     ),
@@ -211,6 +212,7 @@ private sealed trait WarningSettings:
     def privates(using Context) =
       allOr("privates") || allOr("linted")
     def patvars(using Context) = allOr("patvars") || isChoiceSet("unsafe-warn-patvars")
+    def unused(using Context) = allOr("unused")
     def inlined(using Context) = isChoiceSet("inlined")
     def linted(using Context) =
       allOr("linted")
