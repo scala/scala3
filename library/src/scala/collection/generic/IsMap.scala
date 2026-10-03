@@ -62,6 +62,12 @@ object IsMap {
   type Tupled[F[+_]] = { type Ap[X, Y] = F[(X, Y)] }
 
   // Map collections
+  /** Provides an `IsMap` instance for any `MapOps` collection type.
+   *
+   *  @tparam CC0 the collection type constructor, which must be a subtype of `MapOps[X, Y, Tupled[Iterable]#Ap, CC0[X, Y]]`
+   *  @tparam K0 the type of keys in the map
+   *  @tparam V0 the type of values in the map
+   */
   implicit def mapOpsIsMap[CC0[X, Y] <: MapOps[X, Y, Tupled[Iterable]#Ap, CC0[X, Y]], K0, V0]: IsMap[CC0[K0, V0]] { type K = K0; type V = V0; type C = CC0[K, V] } =
     new IsMap[CC0[K0, V0]] {
       type K = K0
@@ -71,6 +77,12 @@ object IsMap {
     }
 
   // MapView
+  /** Provides an `IsMap` instance for any `MapView` collection type.
+   *
+   *  @tparam CC0 the collection type constructor, which must be a subtype of `MapView[X, Y]`
+   *  @tparam K0 the type of keys in the map view
+   *  @tparam V0 the type of values in the map view
+   */
   implicit def mapViewIsMap[CC0[X, Y] <: MapView[X, Y], K0, V0]: IsMap[CC0[K0, V0]] { type K = K0; type V = V0; type C = View[(K0, V0)] } =
     new IsMap[CC0[K0, V0]] {
       type K = K0
@@ -80,6 +92,11 @@ object IsMap {
     }
 
   // AnyRefMap has stricter bounds than the ones used by the mapOpsIsMap definition
+  /** Provides an `IsMap` instance for `mutable.AnyRefMap` collections.
+   *
+   *  @tparam K0 the type of keys in the map, which must be a subtype of `AnyRef`
+   *  @tparam V0 the type of values in the map
+   */
   @deprecated("AnyRefMap is deprecated", "2.13.16")
   implicit def anyRefMapIsMap[K0 <: AnyRef, V0]: IsMap[mutable.AnyRefMap[K0, V0]] { type K = K0; type V = V0; type C = mutable.AnyRefMap[K0, V0] } =
     new IsMap[mutable.AnyRefMap[K0, V0]] {
@@ -90,6 +107,10 @@ object IsMap {
     }
 
   // IntMap takes one type parameter only whereas mapOpsIsMap uses a parameter CC0 with two type parameters
+  /** Provides an `IsMap` instance for `IntMap` collections.
+   *
+   *  @tparam V0 the type of values in the map (keys are `Int`)
+   */
   implicit def intMapIsMap[V0]: IsMap[IntMap[V0]] { type K = Int; type V = V0; type C = IntMap[V0] } =
     new IsMap[IntMap[V0]] {
       type K = Int
@@ -99,6 +120,10 @@ object IsMap {
     }
 
   // LongMap is in a similar situation as IntMap
+  /** Provides an `IsMap` instance for `LongMap` collections.
+   *
+   *  @tparam V0 the type of values in the map (keys are `Long`)
+   */
   implicit def longMapIsMap[V0]: IsMap[LongMap[V0]] { type K = Long; type V = V0; type C = LongMap[V0] } =
     new IsMap[LongMap[V0]] {
       type K = Long
@@ -108,6 +133,10 @@ object IsMap {
     }
 
   // mutable.LongMap is in a similar situation as LongMap and IntMap
+  /** Provides an `IsMap` instance for `mutable.LongMap` collections.
+   *
+   *  @tparam V0 the type of values in the map (keys are `Long`)
+   */
   implicit def mutableLongMapIsMap[V0]: IsMap[mutable.LongMap[V0]] { type K = Long; type V = V0; type C = mutable.LongMap[V0] } =
     new IsMap[mutable.LongMap[V0]] {
       type K = Long
