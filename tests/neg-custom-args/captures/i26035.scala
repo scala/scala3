@@ -5,9 +5,9 @@ class File() {
 }
 def usingFile[A](f: File^ => A): A = ???
 
-case class Foo(f: [A] => () => Unit) // error
+case class Foo(f: [A] => () => Unit)
 def leak = {
-  usingFile(f =>
+  usingFile(f =>    // error
     Foo([A] => () => f.write(""))
   ).f[Nothing]()
 }

@@ -201,6 +201,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case fn: MethodType => CCState.inNewExistentialScope(fn)(argText(res))
           case _ => argText(res)
 
+  private def isPrintableFunctionType(tp: RefinedType): Boolean =
+    defn.isFunctionType(tp) && !printDebug
+      && tp.refinedInfo.match
+            case rinfo: MethodOrPoly => !rinfo.resType.isInstanceOf[MethodOrPoly]
+            case _ => false // old two parameter section representation of PolyFunctions
+                            // should be printed as RefiendType now.
+
   protected def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
     def recur(tp: Type, enclInfo: MethodType | Null): Text = tp match
       case tp: MethodType =>
@@ -624,7 +631,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case SingletonTypeTree(ref) =>
         toTextLocal(ref) ~ "." ~ keywordStr("type")
       case RefinedTypeTree(tpt, refines) =>
-        if defn.isFunctionSymbol(tpt.symbol) && tree.hasType && !printDebug
+        if (defn.isFunctionSymbol(tpt.symbol) || tpt.symbol == defn.PolyFunctionClass)
+           && tree.hasType && !printDebug
         then changePrec(GlobalPrec) { toText(tree.typeOpt) }
         else toTextLocal(tpt) ~ blockText(refines)
       case AppliedTypeTree(tpt, args) =>
@@ -865,7 +873,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override protected def toTextCapturing(tp: Type, refs: GeneralCaptureSet, boxText: Text): Text = tp match
     case tp: AppliedType if defn.isFunctionSymbol(tp.typeSymbol) && !printDebug =>
       boxText ~ toTextFunction(tp, refs)
-    case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
+    case tp: RefinedType if isPrintableFunctionType(tp) =>
       boxText ~ toTextMethodAsFunction(tp.refinedInfo, isPure = !tp.typeSymbol.name.isImpureFunction, refs)
     case _ =>
       super.toTextCapturing(tp, refs, boxText)

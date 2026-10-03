@@ -969,31 +969,6 @@ object Checking {
 
   end checkAndAdaptExperimentalImports
 
-  /** Checks that PolyFunction only have valid refinements.
-   *
-   *  It only supports `apply` methods with one parameter list and optional type arguments.
-   */
-  def checkPolyFunctionType(tree: Tree)(using Context): Unit = new TreeTraverser {
-    def traverse(tree: Tree)(using Context): Unit = tree match
-      case tree: RefinedTypeTree if tree.tpe.derivesFrom(defn.PolyFunctionClass) =>
-        if tree.refinements.isEmpty then
-          reportNoRefinements(tree.srcPos)
-        tree.refinements.foreach {
-          case refinement: DefDef if refinement.name != nme.apply =>
-            report.error("PolyFunction only supports apply method refinements", refinement.srcPos)
-          case refinement: DefDef if !defn.PolyFunctionOf.isValidPolyFunctionInfo(refinement.tpe.widen) =>
-            report.error("Implementation restriction: PolyFunction apply must have exactly one parameter list and optionally type arguments. No by-name nor varags are allowed.", refinement.srcPos)
-          case _ =>
-        }
-      case _: RefTree if tree.symbol == defn.PolyFunctionClass =>
-        reportNoRefinements(tree.srcPos)
-      case _ =>
-        traverseChildren(tree)
-
-    def reportNoRefinements(pos: SrcPos) =
-      report.error("PolyFunction subtypes must refine the apply method", pos)
-  }.traverse(tree)
-
   /** Check that users do not extend the `PolyFunction` trait.
    *  We only allow compiler generated `PolyFunction`s.
    */

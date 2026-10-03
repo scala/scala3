@@ -440,6 +440,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case tpd.Apply(ta @ tpd.TypeApply(sel @ tpd.Select(expr: Apply, nme), tpts), args) =>
               val tree1 = cpy.Apply(tree)(cpy.TypeApply(ta)(cpy.Select(sel)(transform(expr), nme), tpts), args)
               dotc.transform.BetaReduce(tree1).withSpan(tree.span)
+            case tpd.TypeApply(sel @ tpd.Select(expr, nme), tpts) =>
+              val tree1 = cpy.TypeApply(tree)(cpy.Select(sel)(transform(expr), nme), tpts)
+              dotc.transform.BetaReduce(tree1).withSpan(tree.span)
             case _ =>
               dotc.transform.BetaReduce(tree).withSpan(tree.span)
           }
@@ -1961,13 +1964,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           dotc.core.Symbols.defn.isContextFunctionType(self)
         def isErasedFunctionType: Boolean =
           self match
-            case dotc.core.Symbols.defn.PolyFunctionOf(mt) =>
-              mt match
-                case mt: MethodType => mt.hasErasedParams
-                case PolyType(_, _, mt1) => mt1.hasErasedParams
+            case dotc.core.Symbols.defn.PolyFunctionOf(mt: MethodType) => mt.hasErasedParams
             case _ => false
         def isDependentFunctionType: Boolean =
-          val tpNoRefinement = self.dropDependentRefinement
+          val tpNoRefinement = self.dropFunctionRefinement
           tpNoRefinement != self
           && dotc.core.Symbols.defn.isNonRefinedFunction(tpNoRefinement)
         def isTupleN: Boolean =

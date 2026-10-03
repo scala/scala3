@@ -1902,7 +1902,7 @@ trait Applications extends Compatibility {
      *    }.unapply
      *  ```
      *  For a record with no components the result type is `Boolean` and the body is `true`.
-     * 
+     *
      *  For a vararg record - Rec(T_1, ..., T_n, T*) - generate unapplySeq.
      *  The vararg component is exposed through `Array.UnapplySeqWrapper`. The result type is:
      *  - Array.UnapplySeqWrapper[T]                  when n = 0
