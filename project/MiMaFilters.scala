@@ -18,6 +18,12 @@ object MiMaFilters {
         // new experimental language feature: method block end markers (SIP-77)
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$methodBlockEndMarkers$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$methodBlockEndMarkers$"),
+        // new experimental language feature: error handling (SIP-84)
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$errorHandling$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.None.toMaybe"),
+
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.compiletime.package"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.compiletime.package$"),
       ),
 
       // Additions since last LTS
@@ -190,6 +196,8 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$magic$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$specializedTraits$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$specializedTraits$"),
+
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$errorHandling$"),
 
         // scala/scala3#26100: lock-free initialization extracted to a shared base class
         ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyList"),

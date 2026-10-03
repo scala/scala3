@@ -1,0 +1,35 @@
+CaseClassImplementation
+underlying rep: Z
+test1 OK
+test2 OK
+
+underlying rep: S(S(S(Z)))
+test3 OK
+Succ(S(S(Z))) = 3
+test4 OK
+Succ(S(S(Z))) = 3
+
+IntImplementation
+underlying rep: 0
+test1 OK
+test2 OK
+
+underlying rep: 3
+test3 OK
+Succ(2) = 3
+test4 OK
+Succ(2) = 3
+
+UnboundedIntImplementation
+underlying rep: 0
+test1 OK
+test2 OK
+
+underlying rep: 3
+test3 OK
+Succ(2) = 3
+test4 OK
+Succ(2) = 3
+
+test OK
+Succ(1267650600228229401496703205374) = 1267650600228229401496703205376
