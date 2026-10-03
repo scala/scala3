@@ -9,4 +9,6 @@
   |                                                              ^
   |No given instance of type Vectoric[Array[V => Double]] was found for parameter v of method map in trait VectoricOps
   |
-  |Note: `v` is not a leading implicit of `map`; it is not used to construct the extension.
+  |Note: `v` does not affect whether extension `map` is chosen.
+  |
+  | longer explanation available when compiling with `-explain`
