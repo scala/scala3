@@ -1,0 +1,16 @@
+-- [E172] Type Error: tests/neg/i26018.scala:19:44 ---------------------------------------------------------------------
+19 |  val h: Hammer[D, D] = summon[Hammer[D, D]] // error
+   |                                            ^
+   |No given instance of type Hammer[D, given_HasT.T] was found.
+   |I found:
+   |
+   |    Lib.derived[D, B](given_HasT)
+   |
+   |But given instance derived in object Lib produces a diverging implicit search when trying to match type Hammer[D, given_HasT.T].
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from i26018.scala:9
+ 9 |    val _ = summonInline[Hammer[I, h.T]]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    --------------------------------------------------------------------------------------------------------------------
