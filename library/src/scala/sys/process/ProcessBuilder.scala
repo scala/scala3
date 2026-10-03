@@ -502,6 +502,7 @@ object ProcessBuilder extends ProcessBuilderImpl {
    *  [[scala.sys.process.ProcessBuilder]].
    */
   trait Source {
+    /** Returns a [[scala.sys.process.ProcessBuilder]] that produces the data of this `Source` as its output. */
     protected def toSource: ProcessBuilder
 
     /** Writes the output stream of this process to the given file.
@@ -543,6 +544,7 @@ object ProcessBuilder extends ProcessBuilderImpl {
    *  [[scala.sys.process.ProcessBuilder]].
    */
   trait Sink {
+    /** Returns a [[scala.sys.process.ProcessBuilder]] that writes its input to this `Sink`. */
     protected def toSink: ProcessBuilder
 
     /** Reads the given file into the input stream of this process.

@@ -81,10 +81,26 @@ class FileProcessLogger(file: File) extends ProcessLogger with Closeable with Fl
       )
     )
   )
+  /** Appends the given line of process output, followed by a line separator, to the file.
+   *
+   *  @param s a lazily-evaluated line from the process standard output
+   */
   def out(s: => String): Unit = writer.println(s)
+  /** Appends the given line of process error output, followed by a line separator, to the file.
+   *
+   *  @param s a lazily-evaluated line from the process standard error
+   */
   def err(s: => String): Unit = writer.println(s)
+  /** Evaluates `f` without setting up any additional buffering.
+   *
+   *  @tparam T the return type of `f`
+   *  @param f the code to execute, evaluated by name
+   *  @return the result produced by evaluating `f`
+   */
   def buffer[T](f: => T): T = f
+  /** Closes the file, first writing out any output not yet written. */
   def close(): Unit = writer.close()
+  /** Writes out to the file any output not yet written. */
   def flush(): Unit = writer.flush()
 }
 
