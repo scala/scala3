@@ -50,5 +50,13 @@ import scala.language.`2.13`
  */
 @deprecated("DelayedInit semantics can be surprising. Support for `App` will continue. See the release notes for more details: https://github.com/scala/scala/releases/tag/v2.11.0", "2.11.0")
 trait DelayedInit {
+  /** Receives the rewritten initialization code of an inheriting class or object.
+   *
+   *  Implementations decide whether, when, and how often to evaluate `x`, and may
+   *  run other code before or after it.
+   *
+   *  @param x the initialization code, passed by name so it is not evaluated until
+   *           the implementation forces it
+   */
   def delayedInit(x: => Unit): Unit
 }
