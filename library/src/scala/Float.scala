@@ -402,7 +402,7 @@ object Float extends AnyValCompanion {
   implicit def float2double(x: Float): Double = x.toDouble
 
   extension (self: Float) {
-    /** Returns `'''true'''` if this number is finite and has no decimal component. */
+    /** Returns `true` if this number is finite and has no decimal component. */
     def isWhole: Boolean = {
       val i = self.toInt
       i.toFloat == self || i == Int.MaxValue && self < Float.PositiveInfinity || i == Int.MinValue && self > Float.NegativeInfinity

@@ -27,13 +27,13 @@ import scala.annotation.compileTimeOnly
  *  ```
  *
  *  The language features are:
- *   - [[dynamics            `dynamics`]]            enables defining calls rewriting using the [[scala.Dynamic `Dynamic`]] trait
- *   - [[existentials        `existentials`]]        enables writing existential types
- *   - [[higherKinds         `higherKinds`]]         enables writing higher-kinded types
- *   - [[implicitConversions `implicitConversions`]] enables defining implicit methods and members
- *   - [[postfixOps          `postfixOps`]]          enables postfix operators (not recommended)
- *   - [[reflectiveCalls     `reflectiveCalls`]]     enables using structural types
- *   - [[experimental        `experimental`]]        contains newer features that have not yet been tested in production
+ *   - [[dynamics]]            enables defining calls rewriting using the [[scala.Dynamic Dynamic]] trait
+ *   - [[existentials]]        enables writing existential types
+ *   - [[higherKinds]]         enables writing higher-kinded types
+ *   - [[implicitConversions]] enables defining implicit methods and members
+ *   - [[postfixOps]]          enables postfix operators (not recommended)
+ *   - [[reflectiveCalls]]     enables using structural types
+ *   - [[experimental]]        contains newer features that have not yet been tested in production
  *
  *  @groupname production   Language Features
  *  @groupname experimental Experimental Language Features

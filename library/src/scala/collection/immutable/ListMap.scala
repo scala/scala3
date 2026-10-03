@@ -118,7 +118,7 @@ sealed class ListMap[K, +V]
 /** $factoryInfo
  *
  *  Note that each element insertion takes O(n) time, which means that creating a list map with
- *  n elements will take O(n^2^) time. This makes the builder suitable only for a small number of
+ *  n elements will take O(n<sup>2</sup>) time. This makes the builder suitable only for a small number of
  *  elements.
  *
  *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-immutable-collection-classes.html#list-maps)
