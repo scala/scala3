@@ -1,5 +1,17 @@
--- Error: tests/neg-custom-args/captures/i26035.scala:8:22 -------------------------------------------------------------
-8 |case class Foo(f: [A] => () => Unit) // error
-  |                      ^
-  |Implementation restriction: polymorphic function types cannot wrap impure function types if capture checking is enabled.
-  |Workaround: introduce an empty term-parameter list right after the type binder, e.g. `[A] => () -> B => C`.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i26035.scala:10:12 ---------------------------------------
+10 |  usingFile(f =>    // error
+   |            ^
+   |Capability `f` outlives its scope: it leaks into outer capture set 's1 which is owned by method leak.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (f: File^) ->'s2 Foo{val f²: [A] => () ->{f} Unit}^{f}
+   |Required: File^ => Foo{val f²: [A] => () ->'s3 Unit}^'s1
+   |
+   |where:    => refers to a root capability created in method leak when checking argument to parameter f of method usingFile
+   |          ^  refers to the root capability caps.any
+   |          f  is a reference to a value parameter
+   |          f² is a value in class Foo
+   |
+11 |    Foo([A] => () => f.write(""))
+   |
+   | longer explanation available when compiling with `-explain`
