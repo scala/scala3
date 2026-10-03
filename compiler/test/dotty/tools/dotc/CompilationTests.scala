@@ -209,6 +209,16 @@ class CompilationTests {
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
+  @Test def runSpecial(): Unit = {
+    special(
+      defaultOptions,
+      "tests/run-special/typecheck-boom",
+      expectError = false,
+      o => compileFile("tests/run-special/typecheck-boom/Macro_1.scala", o),
+      ("Macro_1/typecheck-boom/Macro_1/", o => compileFile("tests/run-special/typecheck-boom/Use_2.scala", o))
+    )
+  }
+
   // Generic java signatures tests ---------------------------------------------
 
   @Category(Array(classOf[CoverageCompilationTests])) @Test def genericJavaSignatures: Unit = {
