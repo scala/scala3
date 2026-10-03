@@ -213,8 +213,7 @@ trait TypesSupport:
         def parsePolyFunction(info: TypeRepr): SSignature = info match {
           case t: PolyType =>
             val paramBounds = getParamBounds(t)
-            val method = t.resType.asInstanceOf[MethodType]
-            val rest = parseDependentFunctionType(method)
+            val rest = inner(t.resType, skipThisTypePrefix)
             plain("[").l ++ paramBounds ++ plain("]").l ++ keyword(" => ").l ++ rest
           case other => noSupported(s"Not supported type in refinement $info")
         }

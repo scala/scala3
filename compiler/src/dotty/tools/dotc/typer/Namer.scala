@@ -1952,10 +1952,9 @@ class Namer { typer: Typer =>
 
       // We cannot rely on `typedInLambdaTypeTree` since the computed type might not be fully-defined.
       case InLambdaTypeTree(/*isResult =*/ true, tpFun) =>
-        // A lambda has at most one type parameter list followed by exactly one term parameter list.
-        val tpe = (paramss: @unchecked) match
-          case TypeSymbols(tparams) :: TermSymbols(vparams) :: Nil => tpFun(tparams, vparams)
+        val tpe = paramss.runtimeChecked match
           case TermSymbols(vparams) :: Nil => tpFun(Nil, vparams)
+          case TypeSymbols(tparams) :: Nil => tpFun(tparams, Nil)
         val rhsCtx = prepareRhsCtx(ctx.fresh, paramss)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
         else typedAheadExpr(mdef.rhs, tpe)(using rhsCtx).tpe
