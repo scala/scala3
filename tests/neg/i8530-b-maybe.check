@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/i8530-b-maybe.scala:10:25 -----------------------------------------------------
+10 |        case Some(xs) => xs // error
+   |                         ^^
+   |                         Found:    (xs : List[String | Null])
+   |                         Required: List[String]?
+   |
+   | longer explanation available when compiling with `-explain`

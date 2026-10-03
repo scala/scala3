@@ -700,14 +700,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      *        issue an ambiguity error
      *      - otherwise again return `ownType`
      *    - if the prototype is not an application, return the shadowed type
+     *  We ignore shadowed types if they are in the empty package or if they are experimental
+     *  but the access is not from an experimentl context.
      */
     def checkNotShadowed(ownType: Type): Type =
+      def ignore(shadowed: Symbol) =
+        shadowed.maybeOwner.isEmptyPackage
+        || shadowed.isExperimental && !Feature.isExperimentalEnabled
       ownType match
         case ownType: TermRef
           if ownType.symbol.is(PhantomSymbol)
             && !(ctx.mode.is(Mode.InCaptureSet) && ownType.symbol.isDummyCaptureParam) =>
           findRef(name, pt, EmptyFlags, PhantomSymbol, tree.srcPos) match
-            case shadowed: TermRef if !shadowed.symbol.maybeOwner.isEmptyPackage =>
+            case shadowed: TermRef if !ignore(shadowed.symbol) =>
               pt match
                 case pt: FunOrPolyProto =>
                   def err(shadowedIsApply: Boolean) =
@@ -1668,8 +1673,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
   }
 
-  def typedIf(tree: untpd.If, pt: Type)(using Context): Tree =
-    if tree.isInline then checkInInlineContext("inline if", tree.srcPos)
+  def typedIf(tree: untpd.If, pt: Type)(using Context): Tree = {
     val cond1 = typed(tree.cond, defn.BooleanType)
 
     def isIncomplete(tree: untpd.If): Boolean = tree.elsep match
@@ -1690,6 +1694,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     val branchPt = if isIncomplete(tree) then defn.UnitType else pt.dropIfProto
 
+    if tree.isInline then checkInInlineContext("inline if", tree.srcPos)
+
     val result =
       if tree.elsep.isEmpty then
         val thenp0 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
@@ -1708,27 +1714,28 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           then tpd.Block(thenp0 :: Nil, tpd.unitLiteral.withSpan(tree.span.endPos))
           else thenp0
         cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
-      else
-        val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
-          val thenp0 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
-          val elsep0 = typed(tree.elsep, branchPt)(using cond1.nullableContextIf(false))
-          thenp0 :: elsep0 :: Nil
-        }: @unchecked
+      else {
+        val thenp1 :: elsep1 :: Nil =
+          harmonic(harmonize, pt) {
+            val thenp0 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
+            val elsep0 = typed(tree.elsep, branchPt)(using cond1.nullableContextIf(false))
+            thenp0 :: elsep0 :: Nil
+          }.runtimeChecked
 
         val resType = thenp1.tpe | elsep1.tpe
         val thenp2 :: elsep2 :: Nil =
-          (thenp1 :: elsep1 :: Nil) map { t =>
+          (thenp1 :: elsep1 :: Nil).map { t =>
             // Adapt each branch to ensure that their types conforms to the
             //   type assigned to the if tree by inserting GADT casts.
             gadtAdaptBranch(t, resType)
-          }: @unchecked
+          }.runtimeChecked
 
         cpy.If(tree)(cond1, thenp2, elsep2).withType(resType)
-
+      }
     def thenPathInfo = cond1.notNullInfoIf(true).seq(result.thenp.notNullInfo)
     def elsePathInfo = cond1.notNullInfoIf(false).seq(result.elsep.notNullInfo)
     result.withNotNullInfo(thenPathInfo.alt(elsePathInfo))
-  end typedIf
+  }
 
   /** Decompose function prototype into a list of parameter prototypes and a result
    *  prototype tree, using WildcardTypes where a type is not known.
@@ -3817,9 +3824,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val result =
       if (ctx.mode.is(Mode.Type))
         typedAppliedTypeTree(
-          if op.name == tpnme.throws && Feature.enabled(Feature.saferExceptions)
-          then desugar.throws(l, op, r)
-          else cpy.AppliedTypeTree(tree)(op, l :: r :: Nil))
+          if op.name == tpnme.throws && Feature.enabled(Feature.saferExceptions) then
+            desugar.throws(l, op, r)
+          else if op.name == tpnme.? && Feature.errorHandlingEnabled then
+            cpy.AppliedTypeTree(tree)(untpd.ref(defn.MaybeClass.typeRef), l :: r :: Nil)
+          else
+            cpy.AppliedTypeTree(tree)(op, l :: r :: Nil))
       else if (ctx.mode.is(Mode.Pattern))
         typedUnApply(cpy.Apply(tree)(op, l :: r :: Nil), pt)
       else {

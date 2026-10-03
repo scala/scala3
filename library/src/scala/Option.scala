@@ -15,6 +15,9 @@ package scala
 import scala.language.`2.13`
 import scala.annotation.publicInBinary
 
+import annotation.experimental
+import scala.compiletime.Maybe
+
 object Option {
 
   import scala.language.implicitConversions
@@ -685,6 +688,10 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    */
   @inline final def toLeft[X](right: => X): Either[A, X] =
     if (isEmpty) Right(right) else Left(this.get)
+
+  @experimental
+  final def toMaybe: Maybe[A, Unit] =
+    if this.isEmpty then null.asInstanceOf[Maybe[A, Unit]] else Ok(this.get)
 }
 
 /** Class `Some[A]` represents existing values of type
