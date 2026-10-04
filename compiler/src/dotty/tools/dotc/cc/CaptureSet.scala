@@ -1047,7 +1047,7 @@ object CaptureSet:
   end Var
 
   /** Variables created in types of inferred type trees */
-  class VarInTypeTree(override val owner: Symbol, initialElems: Refs = emptyRefs, val nestedOK: Boolean = true, isRefining: Boolean)(using /*@constructorOnly*/ ictx: Context)
+  class VarInTypeTree(override val owner: Symbol, initialElems: Refs = emptyRefs, val nestedOK: Boolean = true, val isRefining: Boolean)(using /*@constructorOnly*/ ictx: Context)
   extends Var(owner, initialElems, nestedOK) {
 
     /** Make sure that capset variables in types of vals and result types of
