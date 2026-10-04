@@ -146,8 +146,18 @@ trait Control extends SharedCapability, Classifier
 
 // .only[Classifier] restricted capabilities
 trait ClassifierExamples:
+  val a: AnyRef^
+  val b: AnyRef^
   def restricted(f: () ->{any.only[Control]} Unit): Unit //expected: def restricted(f: () ->{any.only[Control]} Unit): Unit
   def sharedOnly: AnyRef^{any.only[Control]} //expected: def sharedOnly: AnyRef^{any.only[Control]}
+  def onlyReadOnly: AnyRef^{a.only[Control].rd}
+  def onlyTop: AnyRef^{a.only[Any]}
+  def onlyBuiltin: AnyRef^{any.only[caps.Unscoped]} //expected: def onlyBuiltin: AnyRef^{any.only[Unscoped]}
+  def onlyThis: AnyRef^{this.only[Control]}
+  def onlyByName[T](body: => T): AnyRef^{body.only[Control]}
+  def onlyByNameArrow(x: ->{any.only[Control]} Int): Int
+  def onlyCapSetBound[C^ <: {any.only[Control]}](x: AnyRef^{C}): Unit
+  def onlyAndExcept: AnyRef^{a.only[Control], b.except[Control]}
 
 // .except[Classifier] excluded capabilities
 trait ExceptExamples:
@@ -156,6 +166,23 @@ trait ExceptExamples:
   def sharedExcept: AnyRef^{any.except[Control]} //expected: def sharedExcept: AnyRef^{any.except[Control]}
   def pathExcept: AnyRef^{a.except[Control]} //expected: def pathExcept: AnyRef^{a.except[Control]}
   def onlyThenExcept: AnyRef^{a.only[Control].except[Control]} //expected: def onlyThenExcept: AnyRef^{a.only[Control].except[Control]}
+  def exceptReadOnly: AnyRef^{a.except[Control].rd}
+  def exceptChained: AnyRef^{a.except[Control].except[Unscoped]}
+  def exceptTop: AnyRef^{a.except[Any]}
+  def exceptBuiltin: AnyRef^{any.except[SharedCapability]}
+  def exceptContextArrow(f: Int ?->{any.except[Control]} Int): Int
+
+// --- Uses clauses ---
+
+trait UsesExamples:
+  val io: MyIO
+  val a: AnyRef^
+  // References to members of the enclosing trait are shown with their `this` prefix
+  class UsesShort uses io //expected: class UsesShort uses UsesExamples.this.io
+  class UsesPlain uses UsesExamples.this.io
+  class UsesInitially() uses UsesExamples.this.io initially
+  class UsesBoth() uses UsesExamples.this.io initially, UsesExamples.this.io
+  class UsesClassified uses UsesExamples.this.a.only[Control]
 
 // --- Capture set variables and capability members ---
 
