@@ -114,6 +114,15 @@ extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and
   def isAnyFunctionType: Boolean =
     tpe.isAnyFunction || tpe.isAnyContextFunction || tpe.isAnyImpureFunction || tpe.isAnyImpureContextFunction
 
+  /** Like `dealiasKeepOpaques`, but keeps annotations. Under capture checking, an alias
+   *  such as `type F[A] = A => B` expands to `ImpureFunction1[A, B]` and further to
+   *  `Function1[A, B]^`, so dropping annotations would make the function type pure.
+   */
+  def dealiasKeepAnnotsAndOpaques: qctx.reflect.TypeRepr =
+    import dotty.tools.dotc.core.{Contexts, Types}
+    given Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    tpe.asInstanceOf[Types.Type].dealiasKeepAnnotsAndOpaques.asInstanceOf[qctx.reflect.TypeRepr]
+
   def isCapSet: Boolean = tpe.typeSymbol == CaptureDefs.Caps_CapSet
 
   def isCapSetPure: Boolean =

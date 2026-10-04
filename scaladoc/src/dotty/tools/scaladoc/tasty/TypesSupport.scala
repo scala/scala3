@@ -303,9 +303,8 @@ trait TypesSupport:
         lazy val dealiased = t.dealiasKeepOpaques
         if tpe.isAnyFunctionType || t == dealiased then
           functionType(tpe, args, skipThisTypePrefix)
-        else // i23456
-          val AppliedType(tpe, args) = dealiased.asInstanceOf[AppliedType]
-          functionType(tpe, args, skipThisTypePrefix)
+        else // i23456: expand the alias, keeping the capture set of an impure function type
+          inner(t.dealiasKeepAnnotsAndOpaques, skipThisTypePrefix)
 
       case t @ AppliedType(tpe, typeList) =>
         inner(tpe, skipThisTypePrefix) ++ plain("[").l ++ commas(typeList.map { t => t match
