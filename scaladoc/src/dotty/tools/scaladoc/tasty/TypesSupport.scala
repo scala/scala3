@@ -120,7 +120,7 @@ trait TypesSupport:
         inParens(inner(left, skipThisTypePrefix), shouldWrapInParens(left, tp, true))
         ++ keyword(" & ").l
         ++ inParens(inner(right, skipThisTypePrefix), shouldWrapInParens(right, tp, false))
-      case ByNameType(CapturingType(tpe, refs)) =>
+      case ByNameType(ByNameCapturingType(tpe, refs)) =>
         emitByNameArrow(using qctx)(Some(refs), skipThisTypePrefix) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))
       case ByNameType(tpe) =>
         emitByNameArrow(using qctx)(None, skipThisTypePrefix) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))

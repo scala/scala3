@@ -246,3 +246,18 @@ object CapturingType:
             None
       case _ => None
 end CapturingType
+
+/** Matches the result type of a by-name type with a capture set on its arrow,
+ *  `->{refs} T` or `=> T`, which is encoded as `T @retainsByName[refs]`. Unlike
+ *  `CapturingType`, it does not match a by-name result type that captures, `-> T^{refs}`.
+ */
+object ByNameCapturingType:
+  def unapply(using qctx: Quotes)(typ: qctx.reflect.TypeRepr): Option[(qctx.reflect.TypeRepr, List[qctx.reflect.TypeRepr])] =
+    import qctx.reflect._
+    typ match
+      case AnnotatedType(base, annot) if annot.tpe.typeSymbol == CaptureDefs.retainsByName =>
+        annot.tpe match
+          case AppliedType(_, List(CaptureSetType(refs))) => Some((base, refs))
+          case _ => None
+      case _ => None
+end ByNameCapturingType
