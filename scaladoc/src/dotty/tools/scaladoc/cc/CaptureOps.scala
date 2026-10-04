@@ -137,10 +137,11 @@ extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and
 
   def isPureClass(from: qctx.reflect.ClassDef): Boolean =
     import qctx.reflect._
+    // A capture-checked class is pure if its explicit self type does not capture.
     def check(sym: Tree): Boolean = sym match
-      case ClassDef(name, _, _, Some(ValDef(_, tt, _)), _) => tt.tpe match
+      case cdef @ ClassDef(name, _, _, Some(ValDef(_, tt, _)), _) if cdef.symbol.isCaptureChecked => tt.tpe match
         case CapturingType(_, refs) => refs.isEmpty
-        case _ => true
+        case selfType => !selfType.derivesFrom(CaptureDefs.Caps_Capability) // `C` means `C^` for a capability class `C`
       case _ => false
 
     // Horrible hack to basically grab tpe1.asSeenFrom(from)

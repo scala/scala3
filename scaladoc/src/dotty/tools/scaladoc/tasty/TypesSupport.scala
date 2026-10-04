@@ -142,7 +142,7 @@ trait TypesSupport:
             inner(base, skipThisTypePrefix)(using indent = indent, skipTypeSuffix = skipTypeSuffix, inCC = Some(refs))
           case t if t.isCapSet => emitCaptureSet(refs, skipThisTypePrefix, omitCap = false)
           case t if t.isPureClass(elideThis) => inner(base, skipThisTypePrefix)
-          case t => inner(base, skipThisTypePrefix) ++ emitCapturing(refs, skipThisTypePrefix)
+          case t => inner(base, skipThisTypePrefix) ++ emitCapturing(base, refs, skipThisTypePrefix)
       case AnnotatedType(tpe, _) =>
         inner(tpe, skipThisTypePrefix)
       case FlexibleType(tpe) =>
@@ -593,13 +593,20 @@ trait TypesSupport:
       case ReadOnlyCapability(c)  => isCapturedInContext(c)
       case OnlyCapability(c, _)   => isCapturedInContext(c)
       case ExceptCapability(c, _) => isCapturedInContext(c)
-      case ThisType(tr)           => !elideThis.symbol.typeRef.isPureClass(elideThis)
+      case ThisType(tr)           =>
+        // In members of the documented class, including inherited ones, `this` is an instance
+        // of the documented class; otherwise it refers to an enclosing class, as in `Outer.this`.
+        val thisClass = if elideThis.symbol.typeRef.derivesFrom(tr.typeSymbol) then elideThis.symbol.typeRef else tr
+        !thisClass.isPureClass(elideThis)
       case t                      => !t.isPureClass(elideThis)
 
-  private def emitCapturing(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
+  private def emitCapturing(using Quotes)(base: reflect.TypeRepr, refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._
     val refs0 = refs.filter(isCapturedInContext)
-    if refs0.isEmpty then Nil else Keyword("^") :: emitCaptureSet(refs0, skipThisTypePrefix)
+    if refs0.nonEmpty then Keyword("^") :: emitCaptureSet(refs0, skipThisTypePrefix)
+    // `C` means `C^` for a capability class `C`, so an empty capture set has to be shown
+    else if base.derivesFrom(CaptureDefs.Caps_Capability) then Keyword("^") :: emitCaptureSet(Nil, skipThisTypePrefix)
+    else Nil
 
   private def emitFunctionArrow(using Quotes)(funTy: reflect.TypeRepr, captures: Option[List[reflect.TypeRepr]], skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._
