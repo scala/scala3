@@ -77,11 +77,26 @@ trait Arrows:
   def polyContextImpure2[A](f: A ?->{a,b,c} Int): Int //expected: def polyContextImpure2[A](f: A ?->{a, b, c} Int): Int
   def polyContextImpure3[A](f: A ?->{a,b,c} Int => Int): Int //expected: def polyContextImpure3[A](f: A ?->{a, b, c} Int => Int): Int
 
-  val polyPureV: [A] => A -> Int
-  // Disallowed by implementation restriction: polymorphic function types cannot wrap impure function types.
-  // val polyPureV2: [A] => Int => A ->{a,b,c} Int //expected: val polyPureV2: [A] => Int => A ->{a, b, c} Int
-  // val polyImpureV: [A] -> A => Int //expected: val polyImpureV: [A] => A => Int
-  // val polyImpureV2: [A] -> A => Int //expected: val polyImpureV2: [A] => A => Int
+  // The arrow after the type parameters is pure, no matter how it is written
+  val polyPureV: [A] => A -> Int //expected: val polyPureV: [A] -> A -> Int
+  val polyImpureV: [A] => A => Int //expected: val polyImpureV: [A] -> A => Int
+  val polyPureV2: [A] -> Int => A ->{a,b,c} Int //expected: val polyPureV2: [A] -> Int => A ->{a, b, c} Int
+  val polyImpureV2: [A] -> A => Int
+  val polyCapturing: [A] -> A ->{a,b,c} Int //expected: val polyCapturing: [A] -> A ->{a, b, c} Int
+  val polyContextImpureV: [A] -> A ?=> Int
+  val polyContextCapturing: [A] -> A ?->{a} Int
+  val polyDepCapturing: [A] -> (x: AnyRef^) ->{a} AnyRef^{x}
+  val polyThunk: [A] -> () ->{a} A
+  val polyNoParams: [A] -> List[A]
+  val polyNoParamsCapturing: [A] -> AnyRef^{a}
+  val polyNoParamsRef: [A] -> Ref[A]^{a,b} //expected: val polyNoParamsRef: [A] -> Ref[A]^{a, b}
+  val polyNested: [A] -> A -> [B] -> B ->{a} (A, B)
+  val polyDirectNested: [A] -> [B] -> (A, B) ->{a} Int
+  val polyByName: [A] -> (=> A) -> A
+  val polyByNamePure: [A] -> (-> A) -> A
+  val polyByNameCapturing: [A] -> (->{a} A) -> A
+  val polyCapSet: [C^] -> () ->{C} Unit
+  val polyCapSetNoParams: [C^] -> AnyRef^{C}
 
 trait SelfTypeCaptures[+A]:
   self: SelfTypeCaptures[A]^ =>
@@ -246,4 +261,4 @@ trait FreshExamples:
   def byNameFresh(f: ->{fresh} Ref[Int]): Ref[Int]^
 
   // Polymorphic function with fresh
-  val freshPoly: [A] => (x: A) -> Ref[A]^{fresh}
+  val freshPoly: [A] -> (x: A) -> Ref[A]^{fresh}

@@ -140,6 +140,11 @@ trait TypesSupport:
             functionType(base, args, skipThisTypePrefix)(using inCC = Some(refs))
           case t : Refinement if t.isFunctionType =>
             inner(base, skipThisTypePrefix)(using indent = indent, skipTypeSuffix = skipTypeSuffix, inCC = Some(refs))
+          case t: Refinement if isPolyOrEreased(t) =>
+            // The capture set applies to the whole function, not to its result type
+            emitCapturing(base, refs, skipThisTypePrefix) match
+              case Nil => inner(base, skipThisTypePrefix)
+              case capturing => inParens(inner(base, skipThisTypePrefix)) ++ capturing
           case t if t.isCapSet => emitCaptureSet(refs, skipThisTypePrefix, omitCap = false)
           case t if t.isPureClass(elideThis) => inner(base, skipThisTypePrefix)
           case t => inner(base, skipThisTypePrefix) ++ emitCapturing(base, refs, skipThisTypePrefix)
@@ -214,7 +219,9 @@ trait TypesSupport:
           case t: PolyType =>
             val paramBounds = getParamBounds(t)
             val rest = inner(t.resType, skipThisTypePrefix)
-            plain("[").l ++ paramBounds ++ plain("]").l ++ keyword(" => ").l ++ rest
+            // Type application is pure, the capture sets belong to the function in `rest`
+            val arrow = if ccEnabled then " -> " else " => "
+            plain("[").l ++ paramBounds ++ plain("]").l ++ keyword(arrow).l ++ rest
           case other => noSupported(s"Not supported type in refinement $info")
         }
 
