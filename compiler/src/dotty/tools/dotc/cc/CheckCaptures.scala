@@ -403,7 +403,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               traverseChildren(t)
 
     /** If `tpt` is an inferred type, interpolate capture set variables appearing contra-
-     *  variantly in it. Als, drop skolem refinements and anchor LocalCap instances.
+     *  variantly in it. Also, drop skolem refinements and anchor LocalCap instances.
      *  Note: module vals don't have inferred types but still hold capture set variables.
      *  These capture set variables are interpolated after the associated module class
      *  has been rechecked.
