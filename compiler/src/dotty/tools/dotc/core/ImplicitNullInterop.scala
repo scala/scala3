@@ -81,12 +81,13 @@ object ImplicitNullInterop:
     assert(ctx.explicitNulls)
 
     // Skip `TYPE`, enum values, modules, and special methods like `toString` and `getClass`.
+    // Their nullness annotations are also dropped here.
     if isEnumValueDef
       || sym.name == nme.TYPE_
       || sym.name == nme.getClass_
       || sym.name == nme.toString_
       || sym.is(Flags.ModuleVal) then
-      return tp
+      return dropNullnessAnnots(tp)
 
     // In a null-marked scope, unannotated types are non-null: only an explicit nullness
     // annotation makes them nullable.
@@ -168,6 +169,14 @@ object ImplicitNullInterop:
   /** Is `annot` a nullness annotation, which is interpreted on types by `nullifyMember`? */
   def isNullnessAnnot(annot: Annotation)(using Context): Boolean =
     isNullableAnnot(annot) || isNotNullAnnot(annot)
+
+  /** `tp` without nullness annotations deeply. */
+  private def dropNullnessAnnots(tp: Type)(using Context): Type =
+    new TypeMap:
+      def apply(tp: Type): Type = tp match
+        case tp: AnnotatedType if isNullnessAnnot(tp.annot) => this(tp.parent)
+        case _ => mapOver(tp)
+    .apply(tp)
 
   case class NullMapState(
     resultTypeMode: NullMode,

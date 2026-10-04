@@ -1073,8 +1073,9 @@ final class ClassfileParser(
           | tpnme.RuntimeInvisibleAnnotationATTR =>
           parseAnnotations(attrLen)
 
+        // Java annotations on types, only needed to interpret nullness annotations right now
         case tpnme.RuntimeVisibleTypeAnnotationATTR
-          | tpnme.RuntimeInvisibleTypeAnnotationATTR =>
+          | tpnme.RuntimeInvisibleTypeAnnotationATTR if ctx.explicitNulls =>
           parseTypeAnnotations(attrLen)
 
         // TODO 1: parse runtime visible annotations on parameters

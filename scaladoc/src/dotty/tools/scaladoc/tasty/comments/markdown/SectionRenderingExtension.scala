@@ -37,7 +37,9 @@ object SectionRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
        */
       val id = idGenerator.synchronized {
         idGenerator.getId(header.getText)
-      }
+      } match
+        case null => "" // flexmark generates no id for a header with an empty text
+        case id: String => id
 
       val anchor = AnchorLink(s"#$id")
       val headerClass: String = header.getLevel match
