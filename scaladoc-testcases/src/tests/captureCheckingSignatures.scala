@@ -64,6 +64,10 @@ trait Arrows:
   val contextUncurried2: (x: AnyRef^{a}, y: AnyRef^{b}) ?-> AnyRef ?-> Int ?->{x,y} Int //expected: val contextUncurried2: (x: AnyRef^{a}, y: AnyRef^{b}) ?-> AnyRef ?-> Int ?->{x, y} Int
   val contextUncurried3: (x: AnyRef^{a}, y: AnyRef^{b}) ?=> AnyRef //expected: val contextUncurried3: (AnyRef^{a}, AnyRef^{b}) ?=> AnyRef
   val contextUncurried4: (x: AnyRef^{a}, y: AnyRef^{b}) ?->{a,b} AnyRef^ ?=> Int ?->{x,y} Int //expected: val contextUncurried4: (x: AnyRef^{a}, y: AnyRef^{b}) ?->{a, b} AnyRef^ ?=> Int ?->{x, y} Int
+  // Parameter names that are not needed are dropped, without making the function impure
+  val namedPure: (x: Int) -> Int //expected: val namedPure: Int -> Int
+  val namedPureContext: (x: Int) ?-> Int //expected: val namedPureContext: Int ?-> Int
+  val curriedPure: (x: AnyRef^) -> (y: AnyRef^{x}) -> Int //expected: val curriedPure: (x: AnyRef^) -> AnyRef^{x} -> Int
 
   def polyPure[A](f: A -> Int): Int
   def polyPure2[A](f: A ->{} Int): Int //expected: def polyPure2[A](f: A -> Int): Int

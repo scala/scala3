@@ -260,14 +260,7 @@ trait TypesSupport:
               paramList ++ (plain(" ") :: arrow) ++ (plain(" ") :: resType)
             else
               val sym = defn.FunctionClass(m.paramTypes.length, isCtx)
-              val inCC = inCC0 match
-                case None if ccEnabled =>
-                  // For CC, we assume an impure function and hence force the capture set to `^`.
-                  // Otherwise, the function will be rendered as pure. We hit this case here when
-                  // dealing with polymorphic function types, e.g., the A => Int part of [A] => A => Int.
-                  Some(List(CaptureDefs.captureRoot.termRef))
-                case other => other
-              inner(sym.typeRef.appliedTo(m.paramTypes :+ m.resType), skipThisTypePrefix)(using indent = indent, skipTypeSuffix = skipTypeSuffix, inCC = inCC)
+              inner(sym.typeRef.appliedTo(m.paramTypes :+ m.resType), skipThisTypePrefix)(using indent = indent, skipTypeSuffix = skipTypeSuffix, inCC = inCC0)
           case other => noSupported("Dependent function type without MethodType refinement")
         }
 
