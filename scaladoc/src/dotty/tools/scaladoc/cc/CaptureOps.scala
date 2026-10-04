@@ -37,9 +37,6 @@ object CaptureDefs:
   def ExceptCapabilityAnnot(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.annotation.internal.exceptCapability")
 
-  def LanguageExperimental(using qctx: Quotes) =
-    qctx.reflect.Symbol.requiredPackage("scala.language.experimental")
-
   def ImpureFunction1(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.ImpureFunction1")
 
@@ -53,7 +50,6 @@ object CaptureDefs:
     qctx.reflect.Symbol.requiredClass("scala.ContextFunction1")
 
   val consumeAnnotFullName: String = "scala.caps.consume.<init>"
-  val ccImportSelector = "captureChecking"
   val captureRootName = "any"
   val freshCapName = "fresh"
 end CaptureDefs
@@ -157,19 +153,17 @@ extension (using qctx: Quotes)(typedef: qctx.reflect.TypeDef)
       case _ => false
 end extension
 
-/** Matches `import scala.language.experimental.captureChecking` */
-object CCImport:
-  def unapply(using qctx: Quotes)(tree: qctx.reflect.Tree): Boolean =
-    import qctx.reflect._
-    tree match
-      case imprt: Import if imprt.expr.tpe.termSymbol == CaptureDefs.LanguageExperimental =>
-        imprt.selectors.exists {
-          case SimpleSelector(s) if s == CaptureDefs.ccImportSelector => true
-          case _ => false
-        }
-      case _ => false
-  end unapply
-end CCImport
+extension (using qctx: Quotes)(sym: qctx.reflect.Symbol)
+  /** Was the class enclosing this symbol compiled with capture checking? Unpickling
+   *  sets the `CaptureChecked` flag on the classes of capture-checked TASTy files, so
+   *  this holds per defining class, no matter how capture checking was enabled.
+   */
+  def isCaptureChecked: Boolean =
+    import dotty.tools.dotc.core.{Contexts, Flags, Symbols}
+    given Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    val dsym = sym.asInstanceOf[Symbols.Symbol]
+    dsym.exists && dsym.enclosingClass.is(Flags.CaptureChecked)
+end extension
 
 object ReadOnlyCapability:
   def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[qctx.reflect.TypeRepr] =
