@@ -57,7 +57,7 @@ trait Arrows:
 
   val uncurried: (x: AnyRef^, y: AnyRef^) -> AnyRef^{x,y} => Int ->{x,y} Int //expected: val uncurried: (x: AnyRef^, y: AnyRef^) -> AnyRef^{x, y} => Int ->{x, y} Int
   val uncurried2: (x: AnyRef^, y: AnyRef^) -> AnyRef => Int ->{x,y} Int //expected: val uncurried2: (x: AnyRef^, y: AnyRef^) -> AnyRef => Int ->{x, y} Int
-  val uncurried3: (x: AnyRef^, y: AnyRef^) => AnyRef
+  val uncurried3: (x: AnyRef^, y: AnyRef^) => AnyRef //expected: val uncurried3: (AnyRef^, AnyRef^) => AnyRef
   val uncurried4: (x: AnyRef^, y: AnyRef^) ->{a,b} AnyRef^ => Int ->{x,y} Int //expected: val uncurried4: (x: AnyRef^, y: AnyRef^) ->{a, b} AnyRef^ => Int ->{x, y} Int
 
   val contextUncurried: (x: AnyRef^{a}, y: AnyRef^{b}) ?-> AnyRef^{x,y} ?-> Int ?->{x,y} Int //expected: val contextUncurried: (x: AnyRef^{a}, y: AnyRef^{b}) ?-> AnyRef^{x, y} ?-> Int ?->{x, y} Int
@@ -68,6 +68,9 @@ trait Arrows:
   val namedPure: (x: Int) -> Int //expected: val namedPure: Int -> Int
   val namedPureContext: (x: Int) ?-> Int //expected: val namedPureContext: Int ?-> Int
   val curriedPure: (x: AnyRef^) -> (y: AnyRef^{x}) -> Int //expected: val curriedPure: (x: AnyRef^) -> AnyRef^{x} -> Int
+  val namedPureTwo: (x: Int, y: String) -> Int //expected: val namedPureTwo: (Int, String) -> Int
+  // A parameter that is mentioned only in the capture set of a nested arrow is needed
+  val dependentViaArrow: (x: AnyRef^) -> Int ->{x} Int
 
   def polyPure[A](f: A -> Int): Int
   def polyPure2[A](f: A ->{} Int): Int //expected: def polyPure2[A](f: A -> Int): Int

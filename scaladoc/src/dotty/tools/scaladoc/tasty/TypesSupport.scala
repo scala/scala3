@@ -528,9 +528,11 @@ trait TypesSupport:
   private def isContextualMethod(using Quotes)(mt: reflect.MethodType) =
     mt.asInstanceOf[dotty.tools.dotc.core.Types.MethodType].isContextualMethod
 
-  private def isDependentMethod(using Quotes)(mt: reflect.MethodType) =
+  private def isDependentMethod(using qctx: Quotes)(mt: reflect.MethodType) =
     val method = mt.asInstanceOf[dotty.tools.dotc.core.Types.MethodType]
-    try method.isParamDependent || method.isResultDependent
+    // Use the context of the quotes, whose run created the symbols of the inspected TASTy
+    val mctx = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    try method.isParamDependent(using mctx) || method.isResultDependent(using mctx)
     catch case NonFatal(_) => true
 
   private def stripAnnotated(using Quotes)(tr: reflect.TypeRepr): reflect.TypeRepr =
