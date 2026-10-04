@@ -301,7 +301,7 @@ trait TypesSupport:
 
       case t @ AppliedType(tpe, args) if t.isFunctionType =>
         lazy val dealiased = t.dealiasKeepOpaques
-        if tpe.isAnyFunctionType || t == dealiased then
+        if CaptureDefs.isFunctionClass(tpe.typeSymbol) || t == dealiased then
           functionType(tpe, args, skipThisTypePrefix)
         else // i23456: expand the alias, keeping the capture set of an impure function type
           inner(t.dealiasKeepAnnotsAndOpaques, skipThisTypePrefix)
@@ -531,8 +531,7 @@ trait TypesSupport:
   private def isDependentMethod(using qctx: Quotes)(mt: reflect.MethodType) =
     val method = mt.asInstanceOf[dotty.tools.dotc.core.Types.MethodType]
     // Use the context of the quotes, whose run created the symbols of the inspected TASTy
-    val mctx = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-    try method.isParamDependent(using mctx) || method.isResultDependent(using mctx)
+    try inCompiler(method.isParamDependent || method.isResultDependent)
     catch case NonFatal(_) => true
 
   private def stripAnnotated(using Quotes)(tr: reflect.TypeRepr): reflect.TypeRepr =
@@ -612,13 +611,14 @@ trait TypesSupport:
 
   private def emitFunctionArrow(using Quotes)(funTy: reflect.TypeRepr, captures: Option[List[reflect.TypeRepr]], skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._
-    val isContextFun = funTy.isAnyContextFunction || funTy.isAnyImpureContextFunction
+    val funSym = funTy.typeSymbol
+    val isContextFun = CaptureDefs.isContextFunctionClass(funSym)
     val prefix = if isContextFun then "?" else ""
     if !ccEnabled then
       List(Keyword(prefix + "=>"))
     else
-      val isPureFun = funTy.isAnyFunction || funTy.isAnyContextFunction
-      val isImpureFun = funTy.isAnyImpureFunction || funTy.isAnyImpureContextFunction
+      val isImpureFun = CaptureDefs.isImpureFunctionClass(funSym)
+      val isPureFun = CaptureDefs.isFunctionClass(funSym) && !isImpureFun
       captures match
         case None => // means an explicit retains* annotation is missing
           if isPureFun then
@@ -636,4 +636,4 @@ trait TypesSupport:
             case refs => Keyword(prefix + "->") :: emitCaptureSet(refs, skipThisTypePrefix)
 
   private def emitByNameArrow(using Quotes)(captures: Option[List[reflect.TypeRepr]], skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
-    emitFunctionArrow(CaptureDefs.Function1.typeRef, captures, skipThisTypePrefix)
+    emitFunctionArrow(reflect.defn.FunctionClass(1).typeRef, captures, skipThisTypePrefix)
