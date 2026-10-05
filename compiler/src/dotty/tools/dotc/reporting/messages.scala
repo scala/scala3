@@ -13,7 +13,7 @@ import Flags.*
 import Phases.*
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
-import NameKinds.{ContextFunctionParamName, WildcardParamName}
+import NameKinds.{ContextFunctionParamName, WildcardParamName, SimpleNameKind}
 import parsing.Scanners.Token
 import parsing.Tokens
 import Tokens.showToken
@@ -3137,6 +3137,31 @@ class MissingImplicitArgument(
     filter(userDefinedImplicitNotFoundParamMessage)
       .orElse(filter(userDefinedImplicitNotFoundTypeMessage))
 
+  def noteTrailingContextOfExtension(explain: Boolean)(using Context): Option[String] =
+    paramSymWithMethodCallTree.flatMap: (sym, applTree) =>
+      def hasLeadingImplicit(tpe: Type): Boolean =
+        val resTypes = Iterator.iterate(tpe.resultType)(_.resultType)
+        val (prefix, suffix) = resTypes.span(_.isContextualMethod)
+        val tps = prefix ++ suffix.drop(1).takeWhile(_.isContextualMethod)
+        tps.exists:
+          case mt: MethodType => mt.paramNames.contains(sym.name)
+          case pt: PolyType => false
+      if applTree.symbol.is(Extension)
+         && sym.info.typeSymbol != defn.SameTypeClass
+         && sym.info.typeSymbol != defn.SubTypeClass
+         && !hasLeadingImplicit(applTree.symbol.info) then
+        val name = if sym.name.is(SimpleNameKind) then i"`${sym.name}`" else "The missing arg"
+        val ext = applTree.symbol.name
+        Some:
+          if explain then
+            i"""|${name} is not a leading implicit of `${ext}`; it is not used to construct the extension.
+                |Write an explicit `using` clause at the beginning of the extension method to keep it from
+                |being considered for this method application. Context bounds, when desugared, are appended
+                |to the end of the signature even though they are written at the beginning."""
+          else
+            i"\n\nNote: ${name} does not affect whether extension `${ext}` is chosen."
+      else None
+
   object AmbiguousImplicitMsg {
     def unapply(search: SearchSuccess): Option[String] =
       userDefinedMsg(search.ref.symbol, defn.ImplicitAmbiguousAnnot)
@@ -3240,7 +3265,7 @@ class MissingImplicitArgument(
       case _: AmbiguousImplicits =>
         ""  // show no disambiguation
       case _: TooUnspecific =>
-        super.msgPostscript // show just disambigutation and match type trace
+        super.msgPostscript // show just disambiguation and match type trace
       case _ =>
         // show all available additional info
         def hiddenImplicitNote(s: SearchSuccess) =
@@ -3262,12 +3287,14 @@ class MissingImplicitArgument(
             case _ =>
               ctx.typer.importSuggestionAddendum(pt)
         super.msgPostscript
+        + noteTrailingContextOfExtension(explain = false).getOrElse("")
         + ignoredInstanceNormalImport.map(hiddenImplicitNote)
             .orElse(noChainConversionsNote(ignoredConvertibleImplicits))
             .getOrElse(importSuggestionAddendum)
 
   def explain(using Context) = userDefinedImplicitNotFoundMessage(explain = true)
     .getOrElse("")
+    + noteTrailingContextOfExtension(explain = true).getOrElse("")
 end MissingImplicitArgument
 
 class CannotBeAccessed(tpe: NamedType, superAccess: Boolean)(using Context)
