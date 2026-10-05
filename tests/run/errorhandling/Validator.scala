@@ -1,10 +1,6 @@
 //> using options -language:experimental.captureChecking,experimental.separationChecking
-package scala.util
-
-import language.experimental.{captureChecking, separationChecking}
-
+package test.util
 import scala.util.boundary, boundary.{break, Label}
-
 import collection.mutable
 import caps.Control
 import caps.fresh
