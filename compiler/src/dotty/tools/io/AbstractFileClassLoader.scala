@@ -25,10 +25,6 @@ class AbstractFileClassLoader(entries: Seq[AbstractFile], parent: ClassLoader) e
   def add(entry: AbstractFile): Unit =
     searchLocations = searchLocations :+ open(entry)
 
-  // used by the REPL
-  def root: AbstractFile =
-    searchLocations.last
-
   // Mimic URLClassLoader's logic of "if it ends in / it's a dir, otherwise it's a JAR"
   private def open(entry: AbstractFile): AbstractFile =
     if !entry.exists || entry.isDirectory then entry

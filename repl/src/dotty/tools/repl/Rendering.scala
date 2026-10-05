@@ -34,6 +34,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   import Rendering.*
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
+  // Used to notice when the output directory is changed within a REPL session
+  var myClassLoaderRoot: AbstractFile = uninitialized
 
   private var myClasspathClassLoader: io.AbstractFileClassLoader = uninitialized
 
@@ -221,7 +223,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
-    if (myClassLoader != null && myClassLoader.root == ctx.settings.outputDir.value) myClassLoader
+    if (myClassLoader != null && myClassLoaderRoot == ctx.settings.outputDir.value) myClassLoader
     else {
       val parent = Option(myClassLoader).getOrElse {
         myClasspathClassLoader = parentClassLoader match
@@ -239,8 +241,9 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         myClasspathClassLoader
       }
 
+      myClassLoaderRoot = ctx.settings.outputDir.value
       myClassLoader = new AbstractFileClassLoader(
-        ctx.settings.outputDir.value,
+        myClassLoaderRoot,
         parent,
         AbstractFileClassLoader.InterruptInstrumentation.fromString(ctx.settings.XreplInterruptInstrumentation.value)
       )
