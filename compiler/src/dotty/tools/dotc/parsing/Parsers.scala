@@ -1778,13 +1778,6 @@ object Parsers {
     def toplevelTyp(inContextBound: Boolean = false): Tree =
       rejectWildcardType(typ(inContextBound))
 
-    private def getFunction(tree: Tree): Option[Function] = tree match {
-      case Parens(tree1) => getFunction(tree1)
-      case Block(Nil, tree1) => getFunction(tree1)
-      case t: Function => Some(t)
-      case _ => None
-    }
-
     /** CaptureRef    ::=  { SimpleRef `.` } SimpleRef [`*`] [OnlyFilter] {ExceptFilter} [`.` `rd`] -- under captureChecking
      *  OnlyFilter    ::=  `.` `only` `[` QualId `]`
      *  ExceptFilter  ::=  `.` `except` `[` QualId `]`
@@ -2626,9 +2619,10 @@ object Parsers {
           val start = in.offset
           val tparams = typeParamClause(ParamOwner.Type)
           val arrowOffset = accept(ARROW)
-          val body = expr(location)
-          if getFunction(body).isEmpty then
-            syntaxError(em"Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
+          val body =
+            if location == Location.InBlock then block()
+            else if location == Location.InColonArg && in.token == INDENT then blockExpr()
+            else expr(location)
           atSpan(start, arrowOffset):
             PolyFunction(tparams, body)
         case CASE if Feature.isPreviewEnabled || in.featureEnabled(Feature.relaxedLambdaSyntax) =>
