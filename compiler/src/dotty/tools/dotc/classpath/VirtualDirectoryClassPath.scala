@@ -29,6 +29,6 @@ class VirtualDirectoryClassPath(protected override val dir: AbstractFile) extend
     f.exists && (f.ext.isTasty || f.ext.isBetasty || (f.ext.isClass && !f.hasSiblingTasty))
   }
 
-  override def searchDirectories: Iterable[AbstractFile] =
+  override def searchLocations: Iterable[AbstractFile] =
     Iterable(dir)
 }

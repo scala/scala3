@@ -746,7 +746,7 @@ class ReplDriver(settings: Array[String],
             ctx.platform.addToClassPath(jarClassPath)
             SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
 
-            rendering.addToClasspath(jarClassPath.searchDirectories)
+            rendering.addToClasspath(jarClassPath.searchLocations)
 
             out.println(s"Added '$path' to classpath.")
         } catch {

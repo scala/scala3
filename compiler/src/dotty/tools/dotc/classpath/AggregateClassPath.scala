@@ -52,8 +52,8 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
 
   override def hasPackage(pkg: String): Boolean = aggregates.exists(_.hasPackage(pkg))
 
-  override def searchDirectories: Iterable[AbstractFile] =
-    aggregates.flatMap(_.searchDirectories)
+  override def searchLocations: Iterable[AbstractFile] =
+    aggregates.flatMap(_.searchLocations)
 
   private inline def getDistinctEntries[EntryType <: ClassRepresentation](inline getEntries: ClassPath => Iterable[EntryType]): Iterable[EntryType] =
     val seenNames = mutable.HashSet[String]()

@@ -1,6 +1,3 @@
-/*
- * Copyright (c) 2014 Contributor. All rights reserved.
- */
 package dotty.tools.dotc.classpath
 
 import dotty.tools.dotc
@@ -20,8 +17,8 @@ trait ClassPath {
   def classes(inPackage: String): Iterable[BinaryFileEntry] = Seq.empty
   def sources(inPackage: String): Iterable[SourceFileEntry] = Seq.empty
 
-  /** Which directories are searched by this classpath. Used to create a class loader from it. */
-  def searchDirectories: Iterable[AbstractFile]
+  /** Which locations are searched by this classpath. Used to create a class loader from it. */
+  def searchLocations: Iterable[AbstractFile]
 
   /**
    * Returns *only* the classfile for an external name, e.g., "java.lang.String". This method does not

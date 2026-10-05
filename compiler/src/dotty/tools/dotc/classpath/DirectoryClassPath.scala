@@ -97,7 +97,7 @@ trait JFileDirectoryLookup[FileEntryType] extends DirectoryLookup[FileEntryType]
   protected def toAbstractFile(f: JFile): AbstractFile = f.toPath.toPlainFile
   protected def isPackage(f: JFile): Boolean = f.isPackage
 
-  override def searchDirectories: Iterable[AbstractFile] =
+  override def searchLocations: Iterable[AbstractFile] =
     Iterable(AbstractFile.getDirectory(dir.toPath, "").nn)
 }
 
@@ -194,7 +194,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
     // this will in practice be cached
     classesByName(pkg).get(cls + ".class").map(_.file)
 
-  override def searchDirectories: Iterable[AbstractFile] =
+  override def searchLocations: Iterable[AbstractFile] =
     Iterable.empty // not necessary to include JRT in there
 }
 
@@ -252,7 +252,7 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
     }
   }
 
-  override def searchDirectories: Iterable[AbstractFile] =
+  override def searchLocations: Iterable[AbstractFile] =
     Iterable.empty // not necessary to include CT in there
 }
 

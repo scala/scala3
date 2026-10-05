@@ -37,7 +37,7 @@ class LogicalSourcePath(val sourcepath: String, rootPackage: LogicalPackage)
     val pre = if (prefix.isEmpty) prefix else s"$prefix."
     pkg.packages.map(p => pre + p.name)
 
-  override def searchDirectories: Iterable[AbstractFile] =
+  override def searchLocations: Iterable[AbstractFile] =
     sourcepath.split(File.pathSeparator).map(s => java.nio.file.Path.of(s).toPlainFile)
 
   /** Return the package for the given fullName, if any */

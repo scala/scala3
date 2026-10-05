@@ -36,7 +36,7 @@ object MacroClassLoader {
 
       if ctx.mode.is(Mode.Interactive) then
         try
-          ctx.platform.classPath.searchDirectories.toList
+          ctx.platform.classPath.searchLocations.toList
         catch
           case _: IllegalStateException =>
             settingsUrls

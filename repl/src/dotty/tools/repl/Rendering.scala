@@ -227,7 +227,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         myClasspathClassLoader = parentClassLoader match
           case Some(given_) => io.AbstractFileClassLoader(Seq.empty, given_)
           case None =>
-            val compilerClasspath = ctx.platform.classPath(using ctx).searchDirectories.toSeq
+            val compilerClasspath = ctx.platform.classPath(using ctx).searchLocations.toSeq
             // We can't use the system classloader as a parent because it would
             // pollute the user classpath with everything passed to the JVM
             // `-classpath`. We can't use `null` as a parent either because on Java

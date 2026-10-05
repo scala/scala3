@@ -49,6 +49,6 @@ trait ZipArchiveFileLookup[FileEntryType] extends ClassPath {
   protected def createFileEntry(file: AbstractFile): FileEntryType
   protected def isRequiredFileType(file: AbstractFile): Boolean
 
-  override def searchDirectories: Iterable[AbstractFile] =
+  override def searchLocations: Iterable[AbstractFile] =
     Iterable(AbstractFile.getFile(zipFile.toPath).nn)
 }
