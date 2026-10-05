@@ -73,35 +73,34 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
 
     if interruptInstrumentation.isOneOf(InterruptInstrumentation.Disabled, InterruptInstrumentation.Local) then
       if interruptInstrumentation == InterruptInstrumentation.Local && name == stopReplName then
-        return ownStopRepl(name)
-      try return super.loadClass(name)
-      catch case _: ClassNotFoundException => ()
+        ownStopRepl(name)
+      else
+        try findClass(name)
+        catch case _: ClassNotFoundException => super.loadClass(name)
+    else
+      name match {
+        // Don't instrument JDK classes. These are often restricted to load from a single classloader
+        // due to the JDK module system, and so instrumenting them and loading the modified copy of the class
+        // results in runtime exceptions
+        case s"java.$_" => super.loadClass(name)
+        case s"javax.$_" => super.loadClass(name)
+        case s"sun.$_" => super.loadClass(name)
+        case s"jdk.$_" => super.loadClass(name)
+        case s"org.xml.sax.$_" => super.loadClass(name) // XML SAX API (part of java.xml module)
+        case s"org.w3c.dom.$_" => super.loadClass(name) // W3C DOM API (part of java.xml module)
+        case s"com.sun.org.apache.$_" => super.loadClass(name) // Internal Xerces implementation
+        // Don't instrument StopRepl, which would otherwise cause infinite recursion
+        case `stopReplName` => ownStopRepl(name)
 
-    name match {
-      // Don't instrument JDK classes. These are often restricted to load from a single classloader
-      // due to the JDK module system, and so instrumenting them and loading the modified copy of the class
-      // results in runtime exceptions
-      case s"java.$_" => super.loadClass(name)
-      case s"javax.$_" => super.loadClass(name)
-      case s"sun.$_" => super.loadClass(name)
-      case s"jdk.$_" => super.loadClass(name)
-      case s"org.xml.sax.$_" => super.loadClass(name) // XML SAX API (part of java.xml module)
-      case s"org.w3c.dom.$_" => super.loadClass(name) // W3C DOM API (part of java.xml module)
-      case s"com.sun.org.apache.$_" => super.loadClass(name) // Internal Xerces implementation
-      // Don't instrument StopRepl, which would otherwise cause infinite recursion
-      case `stopReplName` => ownStopRepl(name)
-
-      case _ =>
-        try super.loadClass(name)
-        catch case _: ClassNotFoundException =>
+        case _ =>
           // Not in REPL output, try to load from parent and instrument it
           val resourceName = name.replace('.', '/') + ".class"
           getParent.getResourceAsStream(resourceName) match {
-            case null => throw new ClassNotFoundException(name)
+            case null => super.loadClass(name)//throw new ClassNotFoundException(name)
             case is =>
               try defineClassInstrumented(name, is.readAllBytes())
               finally is.close()
           }
-    }
+      }
 
 end AbstractFileClassLoader
