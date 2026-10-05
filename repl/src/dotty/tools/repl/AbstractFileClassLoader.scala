@@ -78,7 +78,7 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
         try findClass(name)
         catch case _: ClassNotFoundException => super.loadClass(name)
     else
-      name match {
+      name match
         // Don't instrument JDK classes. These are often restricted to load from a single classloader
         // due to the JDK module system, and so instrumenting them and loading the modified copy of the class
         // results in runtime exceptions
@@ -91,7 +91,6 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
         case s"com.sun.org.apache.$_" => super.loadClass(name) // Internal Xerces implementation
         // Don't instrument StopRepl, which would otherwise cause infinite recursion
         case `stopReplName` => ownStopRepl(name)
-
         case _ =>
           // Not in REPL output, try to load from parent and instrument it
           val resourceName = name.replace('.', '/') + ".class"
@@ -101,6 +100,5 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
               try defineClassInstrumented(name, is.readAllBytes())
               finally is.close()
           }
-      }
 
 end AbstractFileClassLoader
