@@ -28,11 +28,8 @@ object MacroClassLoader {
   private def makeMacroClassLoader(using Context): ClassLoader = trace("new macro class loader") {
     val dirs: List[AbstractFile] =
       def settingsUrls: List[AbstractFile] =
-        val cp = ctx.settings.classpath.value
-        val entries = ClassPath.expandPath(cp, expandStar=true)
-        entries.map(cp =>
-          dotty.tools.io.PlainFile(dotty.tools.io.Path(cp)) // may not exist, that's OK
-        )
+        val entries = ClassPath.expandPath(ctx.settings.classpath.value, expandStar=true)
+        entries.map(cp => dotty.tools.io.PlainFile(dotty.tools.io.Path(cp))) // may not exist, that's OK
 
       if ctx.mode.is(Mode.Interactive) then
         try
