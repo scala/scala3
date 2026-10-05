@@ -3641,6 +3641,9 @@ object TypeComparer {
   def dropTransparentTraits(tp: Type, bound: Type)(using Context): Type =
     comparing(_.dropTransparentTraits(tp, bound))
 
+  def hardenUnions(tp: Type)(using Context): Type =
+    comparing(_.hardenUnions(tp))
+
   def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false)(using Context): Boolean =
     comparing(_.constrainPatternType(pat, scrut, forceInvariantRefinement))
 

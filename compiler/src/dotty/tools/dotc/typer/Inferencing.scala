@@ -343,7 +343,10 @@ object Inferencing {
             constraint.entry(param) match {
               case TypeBounds(lo, hi)
               if (hi frozen_<:< lo) =>
-                val inst = TypeComparer.approximation(param, fromBelow = true)
+                val approx = TypeComparer.approximation(param, fromBelow = true)
+                val inst = constraint.typeVarOfParam(param) match
+                  case tvar: TypeVar if constraint.isHard(tvar) => TypeComparer.hardenUnions(approx)
+                  case _ => approx
                 typr.println(i"replace singleton $param := $inst")
                 accCtx.typerState.constraint = constraint.replace(param, inst)
               case _ =>
