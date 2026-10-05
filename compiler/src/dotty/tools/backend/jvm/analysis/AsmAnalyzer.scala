@@ -22,7 +22,7 @@ import dotty.tools.backend.jvm.BCodeUtils.AnalyzerExtensions
 /**
  * A wrapper to make ASM's Analyzer a bit easier to use.
  */
-abstract class AsmAnalyzer[V <: Value](methodNode: MethodNode, classInternalName: String, val analyzer: Analyzer[V]) {
+abstract class AsmAnalyzer[V <: Value](methodNode: MethodNode, classInternalName: String, analyzer: Analyzer[V]) {
   // Analysis is expensive. We sometimes don't actually need to perform it.
   // (This is much easier to than remembering to always pass analyzers by name)
   private var loaded: Boolean = false
