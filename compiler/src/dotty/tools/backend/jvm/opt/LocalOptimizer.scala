@@ -383,7 +383,7 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
    */
   private def nullnessOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
     Limits.sizeOKForNullness(method) && {
-      lazy val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, ts.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
+      val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, ts.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
 
       // When running nullness optimizations the method may still have unreachable code. Analyzer
       // frames of unreachable instructions are `null`.
@@ -572,8 +572,8 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
       aType.flatMap(a => bType.map(b => impl(a, b))).getOrElse(false)
     }
 
-    lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(method, owner)
-    lazy val nullnessAnalyzer = new NullnessAnalyzer(method, owner, ts.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
+    val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(method, owner)
+    val nullnessAnalyzer = new NullnessAnalyzer(method, owner, ts.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
 
     // cannot remove instructions while iterating, it gets the analysis out of synch (indexed by instructions)
     val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
