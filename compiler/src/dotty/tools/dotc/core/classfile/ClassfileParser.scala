@@ -951,7 +951,11 @@ final class ClassfileParser(
         sym.addAnnotation(ThrowsAnnotation(cls.asClass))
       }
 
-      permittedSubclasses.foreach { child =>
+      // The children of a Java enum are its enum constants, registered in `MemberCompleter`.
+      // javac lists the anonymous classes of constants with bodies as permitted subclasses
+      // of the (implicitly sealed) enum class; they must not be registered as children,
+      // otherwise a match on the constants would be reported as non-exhaustive.
+      if !sym.flagsUNSAFE.is(Flags.Enum) then permittedSubclasses.foreach { child =>
         sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)({
           // It's important to fetch this symbol in the deferred tree function,
           // since otherwise it may create cycles, e.g.,
