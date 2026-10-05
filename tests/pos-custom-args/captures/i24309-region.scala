@@ -29,13 +29,9 @@ object Regions:
   object Region:
     // The inner function captures the region capability `R` bound by the
     // polymorphic function type.
-    def apply[T](f: [R^] => Region[R] ->{R} T): T =
+    def apply[T](f: [R^] => Region[R] ->{R, any} T): T =
       val r = new Region[{}] {}
       f(r)
-
-    def apply2[T](f: [R^] => () ->{R} Region[R] ->{R} T): T =
-      val r = new Region[{}] {}
-      f()(r)
 
   @main def main() =
     import Region.*

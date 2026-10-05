@@ -4,8 +4,8 @@
   |          Capability `any` outlives its scope: it leaks into outer capture set 's1 which is owned by method magic.
   |          The leakage occurred when trying to match the following types:
   |
-  |          Found:    [R] => (x: IO^'s2, op: IO^'s3 ->'s4 R^'s5) ->'s6 R^'s7
-  |          Required: [R] => (x: IO^{any}, op: IO^'s1 ->{any} R) -> R
+  |          Found:    [R] -> (x: IO^'s2, op: IO^'s3 ->'s4 R^'s5) ->'s6 R^'s7
+  |          Required: [R] -> (x: IO^{any}, op: IO^'s1 ->{any} R) -> R
   |
   |          where:    any is the root capability caps.any
   |
@@ -16,8 +16,8 @@
   |         Capability `any` outlives its scope: it leaks into outer capture set 's8 which is owned by method magic2.
   |         The leakage occurred when trying to match the following types:
   |
-  |         Found:    [R] => (x: IO^'s9, op: IO^'s10 ->'s11 R^'s12) ->'s13 R^'s14
-  |         Required: [R] => (x: IO^{any}, op: IO^'s8 ->{any} R) -> R
+  |         Found:    [R] -> (x: IO^'s9, op: IO^'s10 ->'s11 R^'s12) ->'s13 R^'s14
+  |         Required: [R] -> (x: IO^{any}, op: IO^'s8 ->{any} R) -> R
   |
   |         where:    any is the root capability caps.any
   |

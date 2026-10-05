@@ -228,10 +228,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             ~ " "
             ~ recur(tp.resultType, tp)
       case tp: PolyType =>
+        val arrow = if Feature.ccEnabled then "->" else "=>"
         changePrec(GlobalPrec) {
           "["
           ~ paramsText(tp)
-          ~ "] => "
+          ~ s"] $arrow "
           ~ recur(tp.resultType, enclInfo)
         }
       case _ =>

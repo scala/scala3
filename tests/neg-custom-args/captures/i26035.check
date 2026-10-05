@@ -4,8 +4,8 @@
    |Capability `f` outlives its scope: it leaks into outer capture set 's1 which is owned by method leak.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (f: File^) ->'s2 Foo{val f²: [A] => () ->{f} Unit}^{f}
-   |Required: File^ => Foo{val f²: [A] => () ->'s3 Unit}^'s1
+   |Found:    (f: File^) ->'s2 Foo{val f²: [A] -> () ->{f} Unit}^{f}
+   |Required: File^ => Foo{val f²: [A] -> () ->'s3 Unit}^'s1
    |
    |where:    => refers to a root capability created in method leak when checking argument to parameter f of method usingFile
    |          ^  refers to the root capability caps.any

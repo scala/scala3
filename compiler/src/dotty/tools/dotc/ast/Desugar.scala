@@ -1990,7 +1990,7 @@ object desugar {
     }
   }
 
-  /** Make closure corresponding to function.
+  /** Make closure corresponding to a function or polymorphic function literal.
    *  ```
    *      params => body
    *  ==>
