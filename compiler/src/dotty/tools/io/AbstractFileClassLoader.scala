@@ -20,10 +20,14 @@ import java.util.{Collections, Enumeration}
 class AbstractFileClassLoader(entries: Seq[AbstractFile], parent: ClassLoader) extends ClassLoader(parent):
   def this(dir: AbstractFile, parent: ClassLoader) = this(Seq(dir), parent)
 
-  private var searchLocations = entries.map(open)
+  private var _searchLocations = entries.map(open)
+
+  // Needs to be publicly exposed to be consumed by the eldritch horror that is ClasspathFromClassloader
+  def searchLocations: Seq[AbstractFile] =
+    _searchLocations
 
   def add(entry: AbstractFile): Unit =
-    searchLocations = searchLocations :+ open(entry)
+    _searchLocations = _searchLocations :+ open(entry)
 
   // Mimic URLClassLoader's logic of "if it ends in / it's a dir, otherwise it's a JAR"
   private def open(entry: AbstractFile): AbstractFile =
