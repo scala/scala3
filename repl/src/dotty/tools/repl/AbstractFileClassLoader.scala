@@ -74,7 +74,7 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
     if interruptInstrumentation.isOneOf(InterruptInstrumentation.Disabled, InterruptInstrumentation.Local) then
       if interruptInstrumentation == InterruptInstrumentation.Local && name == stopReplName then
         return ownStopRepl(name)
-      try return findClass(name)
+      try return super.loadClass(name)
       catch case _: ClassNotFoundException => ()
 
     name match {
@@ -92,7 +92,7 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
       case `stopReplName` => ownStopRepl(name)
 
       case _ =>
-        try findClass(name)
+        try super.loadClass(name)
         catch case _: ClassNotFoundException =>
           // Not in REPL output, try to load from parent and instrument it
           val resourceName = name.replace('.', '/') + ".class"
