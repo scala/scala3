@@ -410,7 +410,7 @@ class TreeUnpickler(reader: TastyReader,
               var name: Name = readName()
               val parent = readType()
               if nextUnsharedTag == TYPEBOUNDS then name = name.toTypeName
-              RefinedType(parent, name, readType())
+              RefinedType(parent, name, readType().curryPolyFunction(parent.typeSymbol))
                 // Note that the lambda "rt => ..." is not equivalent to a wildcard closure!
                 // Eta expansion of the latter puts readType() out of the expression.
             case APPLIEDtype =>
@@ -1185,11 +1185,11 @@ class TreeUnpickler(reader: TastyReader,
       })
       NamerOps.addConstructorProxies(cls)
       NamerOps.addContextBoundCompanions(cls)
-      
+
       // Because opaque types can appear in inline traits and these are only allowed to be completed once (otherwise cyclic reference error)
       // we need to force the body stats now if we have an inline trait so that we don't complete them twice, once in the LazyBodyAnnot and once
       // in the main code.
-      val strictOrLazyStats = 
+      val strictOrLazyStats =
         if cls.isInlineTrait then
           val strictStats = lazyStats.complete
           cls.addAnnotation(LazyBodyAnnotation { (ctx0: Context) ?=>

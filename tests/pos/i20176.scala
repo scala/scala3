@@ -3,8 +3,7 @@ type Accumulator[A]
 object Accumulator {
 
   val usage =
-    use[Int]:
-      "asd"
+    use[Int][Int]("asd")
 
   inline def use[A](using DummyImplicit): [B] => Any => Any = ???
 

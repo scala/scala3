@@ -1187,7 +1187,12 @@ class CheckCaptures extends Recheck, SymTransformer:
             matchParamsAndResult(paramss, parent)
           case defn.PolyFunctionOf(poly: PolyType) =>
             assert(params.hasSameLengthAs(poly.paramInfos))
-            matchParamsAndResult(paramss1, poly.instantiate(params.map(_.symbol.typeRef)))
+            val resType = poly.instantiate(params.map(_.symbol.typeRef))
+            if paramss1.isEmpty then
+              // Polymorphic function without term parameters: `[T] => R`
+              if resType.isValueType && !hasCapsetVars(resType) then updateResult(resType)
+            else
+              matchParamsAndResult(paramss1, resType)
           case FunctionOrMethod(argTypes, resType) =>
             assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
             inContext(ctx.withOwner(anonfun)) {
