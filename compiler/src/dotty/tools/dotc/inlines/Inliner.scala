@@ -368,6 +368,16 @@ class Inliner(val call: tpd.Tree)(using Context):
     binding
   }
 
+  /** Can `singleton` reconstruct a tree from this type alone?
+   *  A TermRef such as `C#field` does not retain its receiver, even if the
+   *  original argument is an idempotent path or the field has a singleton type.
+   */
+  private def isReconstructible(tp: Type): Boolean = tp.dealias match
+    case tp: TermRef => prefixIsElidable(tp) || isReconstructible(tp.prefix)
+    case _: ThisType | _: ConstantType => true
+    case SuperType(qual, _) => isReconstructible(qual)
+    case _ => false
+
   /** Populate `paramBinding` and `buf` by matching parameters with
    *  corresponding arguments. `bindingbuf` will be further extended later by
    *  proxies to this-references. Issue an error if some arguments are missing.
@@ -394,7 +404,7 @@ class Inliner(val call: tpd.Tree)(using Context):
             (name, formal, arg, skolem) =>
             paramSpan(name) = arg.span
             paramBinding(name) = arg.tpe.dealias match
-              case _: SingletonType if isIdempotentPath(arg) =>
+              case tp: SingletonType if isIdempotentPath(arg) && isReconstructible(tp) =>
                 arg.tpe
               case _ =>
                 paramBindingDef(name, formal, arg, buf, skolem).symbol.termRef
