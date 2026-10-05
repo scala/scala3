@@ -245,6 +245,34 @@ sealed abstract class CaptureSet extends Showable:
     cs.addDependent(this)(using ctx, VarState.Unrecorded)
     this
 
+  /** Classifier splitting: the projections of `x`'s base in this set may cover `x` where
+   *  `subsumes` cannot show it, typically several of them together. A projection under
+   *  `.rd` or `?` takes part only if `x` has that wrapper too. Subtract the projections
+   *  from `x` in turn. `x` is covered if nothing remains, or if what remains lies outside
+   *  the classifiers of the base. A root base is not asked for its classifiers, since a
+   *  local root that is not yet classified would cache an answer that can still change.
+   */
+  private def coveredByProjections(x: Capability)(using Context): Boolean =
+    val base = x.core
+    def isReadOnly(c: Capability) = c.stripMaybe.isInstanceOf[ReadOnly]
+    def peer(elem: Capability): Classified | Null = elem.stripMaybe.stripReadOnly match
+      case p: Classified
+      if (p.underlying eq base) && p.only != defn.NothingClass
+          && (x.isMaybe || !elem.isMaybe)
+          && (isReadOnly(x) || !isReadOnly(elem)) => p
+      case _ => null
+    def emptyUnderBase(rest: List[Capability]) =
+      !x.isTerminalCapability && (base.transClassifiers match
+        case ClassifiedAs(cs) => rest.forall(r => cs.forall(r.isProjectionDisjointFrom(_)))
+        case _ => false)
+    elems.exists(peer(_) != null) && {
+      val rest = elems.toList.foldLeft(x :: Nil): (rest, elem) =>
+        peer(elem) match
+          case p: Classified => rest.flatMap(_.remainderAfter(p))
+          case null => rest
+      rest.isEmpty || emptyUnderBase(rest)
+    }
+
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
    */
@@ -257,6 +285,7 @@ sealed abstract class CaptureSet extends Showable:
     def test(using Context) = reporting.trace(debugInfo):
       TypeComparer.noNotes: // Any failures in accountsFor should not lead to error notes
         elems.exists(_.subsumes(x))
+        || coveredByProjections(x)
         || // Even though subsumes already follows captureSetOfInfo, this is not enough.
            // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
           !x.isTerminalCapability
@@ -285,6 +314,7 @@ sealed abstract class CaptureSet extends Showable:
         // LazyListIterable.scala.
         TypeComparer.noNotes:
           elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
+      || coveredByProjections(x)
       || !x.isTerminalCapability
         && ifNotTried(x):
           val xelems = x.captureSetOfInfo.elems
