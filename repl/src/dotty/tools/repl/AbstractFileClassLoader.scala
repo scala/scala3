@@ -95,7 +95,7 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
           // Not in REPL output, try to load from parent and instrument it
           val resourceName = name.replace('.', '/') + ".class"
           getParent.getResourceAsStream(resourceName) match {
-            case null => super.loadClass(name)//throw new ClassNotFoundException(name)
+            case null => super.loadClass(name)
             case is =>
               try defineClassInstrumented(name, is.readAllBytes())
               finally is.close()
