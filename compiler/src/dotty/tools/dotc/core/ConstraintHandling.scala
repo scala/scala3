@@ -711,7 +711,7 @@ trait ConstraintHandling {
   end widenInferred
 
   /** Convert all toplevel union types in `tp` to hard unions */
-  extension (tp: Type) private def hardenUnions(using Context): Type = tp.widen match
+  extension (tp: Type) private def hardenUnions(using Context): Type = tp match
     case tp: AndType =>
       tp.derivedAndType(tp.tp1.hardenUnions, tp.tp2.hardenUnions)
     case tp: RefinedType =>
