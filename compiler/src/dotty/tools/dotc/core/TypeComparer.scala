@@ -249,9 +249,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       bounds != null && op(bounds)
 
   private inline def comparingTypeLambdas(tl1: TypeLambda, tl2: TypeLambda)(op: => Boolean): Boolean =
+    comparingTypeLambda(tl1)(comparingTypeLambda(tl2)(op))
+
+  private inline def comparingTypeLambda(tl: TypeLambda)(op: => Boolean): Boolean =
     val saved = comparedTypeLambdas
-    comparedTypeLambdas += tl1
-    comparedTypeLambdas += tl2
+    comparedTypeLambdas += tl
     try op finally comparedTypeLambdas = saved
 
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
@@ -1094,7 +1096,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             recur(tycon1, tp2)
           case _ => tp2 match {
             case tp2: HKTypeLambda => false // this case was covered in thirdTry
-            case _ => tp2.typeParams.hasSameLengthAs(tp1.paramRefs) && isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
+            case _ =>
+              tp2.typeParams.hasSameLengthAs(tp1.paramRefs)
+              && comparingTypeLambda(tp1) {
+                isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
+              }
           }
         }
         compareHKLambda
