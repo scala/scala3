@@ -678,7 +678,7 @@ object CheckUnused:
         case Some(w) =>
           if !sym.isAnnotated then warnAt(pos)(w)
         case None =>
-          if sym.isAnnotated && ctx.settings.WunusedHas.unused then warnAt(pos)(UnusedSymbol.uselessSuppression(sym))
+          if sym.isAnnotated && ctx.settings.WunusedHas.unused then warnAt(pos)(UnusedSymbol.incorrectUnused(sym))
 
     def checkParam(sym: Symbol, pos: SrcPos) =
       var target: Symbol = sym // if warning, the symbol which may be annotated; alias member for class parameter
@@ -755,7 +755,7 @@ object CheckUnused:
               warnAt(pos)(w)
           case None =>
             if target.isAnnotated && ctx.settings.WunusedHas.unused then
-              warnAt(pos)(UnusedSymbol.uselessSuppression(sym))
+              warnAt(pos)(UnusedSymbol.incorrectUnused(sym))
     end checkParam
 
     // does the param have an alias in a default arg method that is used?
@@ -812,7 +812,7 @@ object CheckUnused:
             warnAt(pos)(w)
         case _ =>
           if target.isAnnotated && ctx.settings.WunusedHas.unused && !isAnonGivenDef then
-            warnAt(pos)(UnusedSymbol.uselessSuppression(sym))
+            warnAt(pos)(UnusedSymbol.incorrectUnused(sym))
 
     def checkLocal(sym: Symbol, pos: SrcPos) =
       var w: Option[UnusedSymbol] = None
@@ -833,7 +833,7 @@ object CheckUnused:
         case Some(w) =>
           if !sym.isAnnotated then warnAt(pos)(w)
         case None =>
-          if sym.isAnnotated && ctx.settings.WunusedHas.unused then warnAt(pos)(UnusedSymbol.uselessSuppression(sym))
+          if sym.isAnnotated && ctx.settings.WunusedHas.unused then warnAt(pos)(UnusedSymbol.incorrectUnused(sym))
 
     def checkPatvars() =
       // patvars in for comprehensions share the pos of where the name was introduced

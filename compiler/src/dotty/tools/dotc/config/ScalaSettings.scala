@@ -184,7 +184,7 @@ private sealed trait WarningSettings:
       ChoiceWithHelp("implicits", "Warn if an implicit parameter is unused"),
       ChoiceWithHelp("params", "Enable -Wunused:explicits,implicits"),
       ChoiceWithHelp("patvars", "Warn if a variable bound in a pattern is unused"),
-      ChoiceWithHelp("unused", "Warn about spurious `@unused` annotation"),
+      ChoiceWithHelp("unused", "Warn if an `@unused` parameter is used"),
       //ChoiceWithHelp("inlined", "Apply -Wunused to inlined expansions"), // TODO
       ChoiceWithHelp("linted", "Enable -Wunused:imports,privates,locals,implicits"),
     ),
