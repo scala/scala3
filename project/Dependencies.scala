@@ -14,7 +14,7 @@ object Dependencies {
   /** Version of Coursier to use + download for initializing the local maven repo of Scala command */
   val coursierJarVersion = "2.1.26"
   val coursier = "io.get-coursier" %% "coursier" % coursierJarVersion
-  val coursierInterface = "io.get-coursier" % "interface" % "1.0.29-M4"
+  val coursierInterface = "io.get-coursier" % "interface" % "1.0.30"
 
   private val flexmarkVersion = "0.64.8"
   val flexmarkDeps = Seq(
