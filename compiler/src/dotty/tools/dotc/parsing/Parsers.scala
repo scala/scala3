@@ -1852,8 +1852,8 @@ object Parsers {
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
      *                   |  (‘->’ | ‘?->’ ) [CaptureSet] Type           -- under pureFunctions and captureChecking
-     *  PolyFunType    ::=  TypTypeParamClause '=>' Type
-     *                   |  TypTypeParamClause ‘->’ [CaptureSet] Type   -- under pureFunctions and captureChecking
+     *  PolyFunType    ::=  TypTypeParamClause ‘=>’ Type
+     *                   |  TypTypeParamClause ‘->’ Type                -- under pureFunctions and captureChecking
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ TypedFunParam {',' TypedFunParam } ')'
