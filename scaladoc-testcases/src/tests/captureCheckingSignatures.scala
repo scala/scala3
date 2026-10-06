@@ -57,13 +57,20 @@ trait Arrows:
 
   val uncurried: (x: AnyRef^, y: AnyRef^) -> AnyRef^{x,y} => Int ->{x,y} Int //expected: val uncurried: (x: AnyRef^, y: AnyRef^) -> AnyRef^{x, y} => Int ->{x, y} Int
   val uncurried2: (x: AnyRef^, y: AnyRef^) -> AnyRef => Int ->{x,y} Int //expected: val uncurried2: (x: AnyRef^, y: AnyRef^) -> AnyRef => Int ->{x, y} Int
-  val uncurried3: (x: AnyRef^, y: AnyRef^) => AnyRef
+  val uncurried3: (x: AnyRef^, y: AnyRef^) => AnyRef //expected: val uncurried3: (AnyRef^, AnyRef^) => AnyRef
   val uncurried4: (x: AnyRef^, y: AnyRef^) ->{a,b} AnyRef^ => Int ->{x,y} Int //expected: val uncurried4: (x: AnyRef^, y: AnyRef^) ->{a, b} AnyRef^ => Int ->{x, y} Int
 
   val contextUncurried: (x: AnyRef^{a}, y: AnyRef^{b}) ?-> AnyRef^{x,y} ?-> Int ?->{x,y} Int //expected: val contextUncurried: (x: AnyRef^{a}, y: AnyRef^{b}) ?-> AnyRef^{x, y} ?-> Int ?->{x, y} Int
   val contextUncurried2: (x: AnyRef^{a}, y: AnyRef^{b}) ?-> AnyRef ?-> Int ?->{x,y} Int //expected: val contextUncurried2: (x: AnyRef^{a}, y: AnyRef^{b}) ?-> AnyRef ?-> Int ?->{x, y} Int
   val contextUncurried3: (x: AnyRef^{a}, y: AnyRef^{b}) ?=> AnyRef //expected: val contextUncurried3: (AnyRef^{a}, AnyRef^{b}) ?=> AnyRef
   val contextUncurried4: (x: AnyRef^{a}, y: AnyRef^{b}) ?->{a,b} AnyRef^ ?=> Int ?->{x,y} Int //expected: val contextUncurried4: (x: AnyRef^{a}, y: AnyRef^{b}) ?->{a, b} AnyRef^ ?=> Int ?->{x, y} Int
+  // Parameter names that are not needed are dropped, without making the function impure
+  val namedPure: (x: Int) -> Int //expected: val namedPure: Int -> Int
+  val namedPureContext: (x: Int) ?-> Int //expected: val namedPureContext: Int ?-> Int
+  val curriedPure: (x: AnyRef^) -> (y: AnyRef^{x}) -> Int //expected: val curriedPure: (x: AnyRef^) -> AnyRef^{x} -> Int
+  val namedPureTwo: (x: Int, y: String) -> Int //expected: val namedPureTwo: (Int, String) -> Int
+  // A parameter that is mentioned only in the capture set of a nested arrow is needed
+  val dependentViaArrow: (x: AnyRef^) -> Int ->{x} Int
 
   def polyPure[A](f: A -> Int): Int
   def polyPure2[A](f: A ->{} Int): Int //expected: def polyPure2[A](f: A -> Int): Int
@@ -77,11 +84,26 @@ trait Arrows:
   def polyContextImpure2[A](f: A ?->{a,b,c} Int): Int //expected: def polyContextImpure2[A](f: A ?->{a, b, c} Int): Int
   def polyContextImpure3[A](f: A ?->{a,b,c} Int => Int): Int //expected: def polyContextImpure3[A](f: A ?->{a, b, c} Int => Int): Int
 
-  val polyPureV: [A] => A -> Int
-  // Disallowed by implementation restriction: polymorphic function types cannot wrap impure function types.
-  // val polyPureV2: [A] => Int => A ->{a,b,c} Int //expected: val polyPureV2: [A] => Int => A ->{a, b, c} Int
-  // val polyImpureV: [A] -> A => Int //expected: val polyImpureV: [A] => A => Int
-  // val polyImpureV2: [A] -> A => Int //expected: val polyImpureV2: [A] => A => Int
+  // The arrow after the type parameters is pure, no matter how it is written
+  val polyPureV: [A] => A -> Int //expected: val polyPureV: [A] -> A -> Int
+  val polyImpureV: [A] => A => Int //expected: val polyImpureV: [A] -> A => Int
+  val polyPureV2: [A] -> Int => A ->{a,b,c} Int //expected: val polyPureV2: [A] -> Int => A ->{a, b, c} Int
+  val polyImpureV2: [A] -> A => Int
+  val polyCapturing: [A] -> A ->{a,b,c} Int //expected: val polyCapturing: [A] -> A ->{a, b, c} Int
+  val polyContextImpureV: [A] -> A ?=> Int
+  val polyContextCapturing: [A] -> A ?->{a} Int
+  val polyDepCapturing: [A] -> (x: AnyRef^) ->{a} AnyRef^{x}
+  val polyThunk: [A] -> () ->{a} A
+  val polyNoParams: [A] -> List[A]
+  val polyNoParamsCapturing: [A] -> AnyRef^{a}
+  val polyNoParamsRef: [A] -> Ref[A]^{a,b} //expected: val polyNoParamsRef: [A] -> Ref[A]^{a, b}
+  val polyNested: [A] -> A -> [B] -> B ->{a} (A, B)
+  val polyDirectNested: [A] -> [B] -> (A, B) ->{a} Int
+  val polyByName: [A] -> (=> A) -> A
+  val polyByNamePure: [A] -> (-> A) -> A
+  val polyByNameCapturing: [A] -> (->{a} A) -> A
+  val polyCapSet: [C^] -> () ->{C} Unit
+  val polyCapSetNoParams: [C^] -> AnyRef^{C}
 
 trait SelfTypeCaptures[+A]:
   self: SelfTypeCaptures[A]^ =>
@@ -131,8 +153,18 @@ trait Control extends SharedCapability, Classifier
 
 // .only[Classifier] restricted capabilities
 trait ClassifierExamples:
+  val a: AnyRef^
+  val b: AnyRef^
   def restricted(f: () ->{any.only[Control]} Unit): Unit //expected: def restricted(f: () ->{any.only[Control]} Unit): Unit
   def sharedOnly: AnyRef^{any.only[Control]} //expected: def sharedOnly: AnyRef^{any.only[Control]}
+  def onlyReadOnly: AnyRef^{a.only[Control].rd}
+  def onlyTop: AnyRef^{a.only[Any]}
+  def onlyBuiltin: AnyRef^{any.only[caps.Unscoped]} //expected: def onlyBuiltin: AnyRef^{any.only[Unscoped]}
+  def onlyThis: AnyRef^{this.only[Control]}
+  def onlyByName[T](body: => T): AnyRef^{body.only[Control]}
+  def onlyByNameArrow(x: ->{any.only[Control]} Int): Int
+  def onlyCapSetBound[C^ <: {any.only[Control]}](x: AnyRef^{C}): Unit
+  def onlyAndExcept: AnyRef^{a.only[Control], b.except[Control]}
 
 // .except[Classifier] excluded capabilities
 trait ExceptExamples:
@@ -141,6 +173,23 @@ trait ExceptExamples:
   def sharedExcept: AnyRef^{any.except[Control]} //expected: def sharedExcept: AnyRef^{any.except[Control]}
   def pathExcept: AnyRef^{a.except[Control]} //expected: def pathExcept: AnyRef^{a.except[Control]}
   def onlyThenExcept: AnyRef^{a.only[Control].except[Control]} //expected: def onlyThenExcept: AnyRef^{a.only[Control].except[Control]}
+  def exceptReadOnly: AnyRef^{a.except[Control].rd}
+  def exceptChained: AnyRef^{a.except[Control].except[Unscoped]}
+  def exceptTop: AnyRef^{a.except[Any]}
+  def exceptBuiltin: AnyRef^{any.except[SharedCapability]}
+  def exceptContextArrow(f: Int ?->{any.except[Control]} Int): Int
+
+// --- Uses clauses ---
+
+trait UsesExamples:
+  val io: MyIO
+  val a: AnyRef^
+  // References to members of the enclosing trait are shown with their `this` prefix
+  class UsesShort uses io //expected: class UsesShort uses UsesExamples.this.io
+  class UsesPlain uses UsesExamples.this.io
+  class UsesInitially() uses UsesExamples.this.io initially
+  class UsesBoth() uses UsesExamples.this.io initially, UsesExamples.this.io
+  class UsesClassified uses UsesExamples.this.a.only[Control]
 
 // --- Capture set variables and capability members ---
 
@@ -246,4 +295,4 @@ trait FreshExamples:
   def byNameFresh(f: ->{fresh} Ref[Int]): Ref[Int]^
 
   // Polymorphic function with fresh
-  val freshPoly: [A] => (x: A) -> Ref[A]^{fresh}
+  val freshPoly: [A] -> (x: A) -> Ref[A]^{fresh}

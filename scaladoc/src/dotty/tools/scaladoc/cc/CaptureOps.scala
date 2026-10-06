@@ -37,9 +37,6 @@ object CaptureDefs:
   def ExceptCapabilityAnnot(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.annotation.internal.exceptCapability")
 
-  def LanguageExperimental(using qctx: Quotes) =
-    qctx.reflect.Symbol.requiredPackage("scala.language.experimental")
-
   def ImpureFunction1(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.ImpureFunction1")
 
@@ -53,7 +50,6 @@ object CaptureDefs:
     qctx.reflect.Symbol.requiredClass("scala.ContextFunction1")
 
   val consumeAnnotFullName: String = "scala.caps.consume.<init>"
-  val ccImportSelector = "captureChecking"
   val captureRootName = "any"
   val freshCapName = "fresh"
 end CaptureDefs
@@ -118,6 +114,15 @@ extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and
   def isAnyFunctionType: Boolean =
     tpe.isAnyFunction || tpe.isAnyContextFunction || tpe.isAnyImpureFunction || tpe.isAnyImpureContextFunction
 
+  /** Like `dealiasKeepOpaques`, but keeps annotations. Under capture checking, an alias
+   *  such as `type F[A] = A => B` expands to `ImpureFunction1[A, B]` and further to
+   *  `Function1[A, B]^`, so dropping annotations would make the function type pure.
+   */
+  def dealiasKeepAnnotsAndOpaques: qctx.reflect.TypeRepr =
+    import dotty.tools.dotc.core.{Contexts, Types}
+    given Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    tpe.asInstanceOf[Types.Type].dealiasKeepAnnotsAndOpaques.asInstanceOf[qctx.reflect.TypeRepr]
+
   def isCapSet: Boolean = tpe.typeSymbol == CaptureDefs.Caps_CapSet
 
   def isCapSetPure: Boolean =
@@ -132,10 +137,11 @@ extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and
 
   def isPureClass(from: qctx.reflect.ClassDef): Boolean =
     import qctx.reflect._
+    // A capture-checked class is pure if its explicit self type does not capture.
     def check(sym: Tree): Boolean = sym match
-      case ClassDef(name, _, _, Some(ValDef(_, tt, _)), _) => tt.tpe match
+      case cdef @ ClassDef(name, _, _, Some(ValDef(_, tt, _)), _) if cdef.symbol.isCaptureChecked => tt.tpe match
         case CapturingType(_, refs) => refs.isEmpty
-        case _ => true
+        case selfType => !selfType.derivesFrom(CaptureDefs.Caps_Capability) // `C` means `C^` for a capability class `C`
       case _ => false
 
     // Horrible hack to basically grab tpe1.asSeenFrom(from)
@@ -157,19 +163,17 @@ extension (using qctx: Quotes)(typedef: qctx.reflect.TypeDef)
       case _ => false
 end extension
 
-/** Matches `import scala.language.experimental.captureChecking` */
-object CCImport:
-  def unapply(using qctx: Quotes)(tree: qctx.reflect.Tree): Boolean =
-    import qctx.reflect._
-    tree match
-      case imprt: Import if imprt.expr.tpe.termSymbol == CaptureDefs.LanguageExperimental =>
-        imprt.selectors.exists {
-          case SimpleSelector(s) if s == CaptureDefs.ccImportSelector => true
-          case _ => false
-        }
-      case _ => false
-  end unapply
-end CCImport
+extension (using qctx: Quotes)(sym: qctx.reflect.Symbol)
+  /** Was the class enclosing this symbol compiled with capture checking? Unpickling
+   *  sets the `CaptureChecked` flag on the classes of capture-checked TASTy files, so
+   *  this holds per defining class, no matter how capture checking was enabled.
+   */
+  def isCaptureChecked: Boolean =
+    import dotty.tools.dotc.core.{Contexts, Flags, Symbols}
+    given Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    val dsym = sym.asInstanceOf[Symbols.Symbol]
+    dsym.exists && dsym.enclosingClass.is(Flags.CaptureChecked)
+end extension
 
 object ReadOnlyCapability:
   def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[qctx.reflect.TypeRepr] =
@@ -252,3 +256,18 @@ object CapturingType:
             None
       case _ => None
 end CapturingType
+
+/** Matches the result type of a by-name type with a capture set on its arrow,
+ *  `->{refs} T` or `=> T`, which is encoded as `T @retainsByName[refs]`. Unlike
+ *  `CapturingType`, it does not match a by-name result type that captures, `-> T^{refs}`.
+ */
+object ByNameCapturingType:
+  def unapply(using qctx: Quotes)(typ: qctx.reflect.TypeRepr): Option[(qctx.reflect.TypeRepr, List[qctx.reflect.TypeRepr])] =
+    import qctx.reflect._
+    typ match
+      case AnnotatedType(base, annot) if annot.tpe.typeSymbol == CaptureDefs.retainsByName =>
+        annot.tpe match
+          case AppliedType(_, List(CaptureSetType(refs))) => Some((base, refs))
+          case _ => None
+      case _ => None
+end ByNameCapturingType
