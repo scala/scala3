@@ -27,6 +27,7 @@ object ClasspathFromClassloader {
             classpathBuff ++=
               cl.getURLs.iterator.map(url => Paths.get(url.toURI).toAbsolutePath.toString)
           case af: AbstractFileClassLoader =>
+            collectClassLoaderPaths(cl.getParent)
             classpathBuff ++= af.searchLocations.filter(!_.isVirtual).map(_.path)
           case _ =>
             if cl.getClass.getName == classOf[AbstractFileClassLoader].getName then

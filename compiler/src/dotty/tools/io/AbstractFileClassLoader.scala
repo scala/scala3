@@ -15,45 +15,44 @@ package io
 
 import java.io.InputStream
 import java.net.{URL, URLConnection}
-import java.util.{Collections, Enumeration}
 
-class AbstractFileClassLoader(entries: Seq[AbstractFile], parent: ClassLoader) extends ClassLoader(parent):
-  def this(dir: AbstractFile, parent: ClassLoader) = this(Seq(dir), parent)
+import scala.jdk.CollectionConverters.IteratorHasAsJava
 
-  private var _searchLocations = entries.map(open)
+class AbstractFileClassLoader(entries: Seq[AbstractFile], jarVersion: String, parent: ClassLoader) extends ClassLoader(parent):
+  def this(dir: AbstractFile, jarVersion: String, parent: ClassLoader) = this(Seq(dir), jarVersion, parent)
+
+  private var _searchLocations = entries.flatMap(open)
 
   // Needs to be publicly exposed to be consumed by the eldritch horror that is ClasspathFromClassloader
   def searchLocations: Seq[AbstractFile] =
     _searchLocations
 
   def add(entry: AbstractFile): Unit =
-    _searchLocations = _searchLocations :+ open(entry)
+    _searchLocations = _searchLocations ++ open(entry).toSeq
 
   // Mimic URLClassLoader's logic of "if it ends in / it's a dir, otherwise it's a JAR"
-  private def open(entry: AbstractFile): AbstractFile =
-    if !entry.exists || entry.isDirectory then entry
-    else JarArchive.open(Path(entry.path))
+  private def open(entry: AbstractFile): Option[AbstractFile] =
+    if !entry.exists then Some(entry)
+    else Option(AbstractFile.getDirectory(entry.path, jarVersion))
 
   override protected def findClass(name: String): Class[?] =
     searchLocations.iterator.flatMap(_.lookupPath(name, '.', lastSuffix = ".class", directory = false)).nextOption().map(file =>
       defineClass(name, file.toByteArray)
     ).getOrElse(throw new ClassNotFoundException(name))
 
+  override protected def findResource(name: String): URL | Null =
+    val all = findResources(name)
+    if all.hasMoreElements then all.nextElement() else null
+
   // on JDK 20 the URL constructor we're using is deprecated,
   // but the recommended replacement, URL.of, doesn't exist on JDK 17
   @annotation.nowarn("cat=deprecation")
-  override protected def findResource(name: String): URL | Null =
-    searchLocations.iterator.flatMap(_.lookupPath(name, '/', directory = false)).nextOption() match
-      case None => null
-      case Some(file) => new URL(null, s"memory:${file.path}", url => new URLConnection(url) {
+  override protected def findResources(name: String): java.util.Enumeration[URL] =
+    searchLocations.iterator.flatMap(_.lookupPath(name, '/', directory = false)).map(file =>
+      new URL(null, s"memory:${file.path}", url => new URLConnection(url) {
         override def connect(): Unit = ()
         override def getInputStream: InputStream = file.input
-      })
-
-  override protected def findResources(name: String): Enumeration[URL] =
-    findResource(name) match
-      case null => Collections.emptyEnumeration()
-      case url => Collections.enumeration(Collections.singleton(url))
+    })).asJavaEnumeration
 
   // overrideable for the REPL
   protected def defineClass(name: String, bytes: Array[Byte]): Class[?] =

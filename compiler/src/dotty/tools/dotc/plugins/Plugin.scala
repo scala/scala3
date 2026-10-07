@@ -91,7 +91,8 @@ object Plugin {
   private def loaderFor(locations: Seq[Path]): ClassLoader = {
     val compilerLoader = classOf[Plugin].getClassLoader
 
-    new AbstractFileClassLoader(locations.map(PlainFile(_)), compilerLoader)
+    // we assume plugins don't use multi-release JARs
+    new AbstractFileClassLoader(locations.map(PlainFile(_)), "", compilerLoader)
   }
 
   type AnyClass = Class[?]

@@ -16,11 +16,12 @@ object Util:
 
   def detectMainClassAndMethod(
     outDir: Path,
+    jarVersion: String,
     classpathEntries: Seq[Path],
     srcFile: String
   ): Either[Throwable, (String, Method)] =
     val classpathDirs = (classpathEntries :+ outDir).map { _.toPlainFile }
-    val cl = AbstractFileClassLoader(classpathDirs, ClassLoader.getSystemClassLoader)
+    val cl = AbstractFileClassLoader(classpathDirs, jarVersion, ClassLoader.getSystemClassLoader)
 
     def collectMainMethods(target: File, path: String): List[(String, Method)] =
       val nameWithoutExtension = target.getName.takeWhile(_ != '.')

@@ -40,6 +40,6 @@ object MacroClassLoader {
       else
         settingsUrls
     val out = ctx.settings.outputDir.value // to find classes in case of suspended compilation
-    new AbstractFileClassLoader(dirs ++ Seq(out), getClass.getClassLoader)
+    new AbstractFileClassLoader(dirs ++ Seq(out), ctx.settings.javaOutputVersion.value, getClass.getClassLoader)
   }
 }

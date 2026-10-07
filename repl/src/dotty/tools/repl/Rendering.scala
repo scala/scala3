@@ -227,7 +227,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     else {
       val parent = Option(myClassLoader).getOrElse {
         myClasspathClassLoader = parentClassLoader match
-          case Some(given_) => io.AbstractFileClassLoader(Seq.empty, given_)
+          case Some(given_) => io.AbstractFileClassLoader(Seq.empty, ctx.settings.javaOutputVersion.value, given_)
           case None =>
             val compilerClasspath = ctx.platform.classPath(using ctx).searchLocations.toSeq
             // We can't use the system classloader as a parent because it would
@@ -237,13 +237,14 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
             // like `java.sql`, so we use the parent of the system classloader,
             // which should correspond to the platform classloader on Java 9+.
             val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
-            io.AbstractFileClassLoader(compilerClasspath, baseClassLoader)
+            io.AbstractFileClassLoader(compilerClasspath, ctx.settings.javaOutputVersion.value, baseClassLoader)
         myClasspathClassLoader
       }
 
       myClassLoaderRoot = ctx.settings.outputDir.value
       myClassLoader = new AbstractFileClassLoader(
         myClassLoaderRoot,
+        ctx.settings.javaOutputVersion.value,
         parent,
         AbstractFileClassLoader.InterruptInstrumentation.fromString(ctx.settings.XreplInterruptInstrumentation.value)
       )
