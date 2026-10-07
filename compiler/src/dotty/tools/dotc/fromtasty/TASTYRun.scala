@@ -31,6 +31,7 @@ class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
           TastyFileUtil.getClassName(file, withBestEffortTasty = true)
         case _ =>
           report.error(em"File extension given to TASTY compiler is not `tasty` or `jar`: ${file.path}")
+          new AssertionError("here").printStackTrace()
           Nil
     }
     classNames.map(new TASTYCompilationUnit(_))
