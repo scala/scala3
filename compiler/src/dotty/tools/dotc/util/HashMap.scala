@@ -1,5 +1,5 @@
-package dotty.tools.dotc.util
-
+//package dotty.tools.dotc.util
+/*
 /** A specialized implementation of GenericHashMap with standard hashCode and equals
  *  as comparison
  */
@@ -97,3 +97,4 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
         if key != null then addOld(key, oldTable(idx + 1).asInstanceOf[Value])
         idx += 2
 end HashMap
+*/
