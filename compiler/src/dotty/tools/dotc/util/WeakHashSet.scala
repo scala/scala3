@@ -3,11 +3,23 @@
 package dotty.tools.dotc.util
 
 import java.lang.ref.{ReferenceQueue, WeakReference}
-
-import scala.annotation.{ constructorOnly, tailrec }
-
+import scala.annotation.{constructorOnly, tailrec}
 import dotty.tools.*
 
+import java.util
+
+final class WeakHashSet[A <: AnyRef](initialCapacity: Int, loadFactor: Double = scala.collection.mutable.HashSet.defaultLoadFactor) {
+  private val map = util.WeakHashMap[A, WeakReference[A]](initialCapacity, loadFactor.asInstanceOf[Float])
+
+  def put(item: A): A =
+    val existing = map.putIfAbsent(item, new WeakReference(item))
+    if existing == null then item else existing.get()
+
+  def clear(): Unit =
+    map.clear()
+}
+
+/*
 /**
  * A HashSet where the elements are stored weakly. Elements in this set are eligible for GC if no other
  * hard references are associated with them. Its primary use case is as a canonical reference
@@ -342,3 +354,4 @@ object WeakHashSet {
   class Entry[A](@constructorOnly element: A, val hash:Int, var tail: Entry[A] | Null, @constructorOnly queue: ReferenceQueue[A]) extends WeakReference[A](element, queue)
 
 }
+*/

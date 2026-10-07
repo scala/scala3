@@ -1,15 +1,45 @@
 package dotty.tools.dotc
 package core
 
-import Types.*, Contexts.*, util.Stats.*, Hashable.*, Names.*
+import Types.*, Contexts.*, util.Stats.*, Hashable.*
 import config.Config
-import Symbols.Symbol
-import Decorators.*
-import util.{WeakHashSet, Stats}
-import WeakHashSet.Entry
-import scala.annotation.tailrec
+import util.WeakHashSet
 
-class Uniques extends WeakHashSet[Type](Config.initialUniquesCapacity):
+type Uniques = WeakHashSet[Type]
+object Uniques extends Hashable:
+  def apply() = new Uniques(Config.initialUniquesCapacity)
+
+  type NamedTypeUniques = Uniques
+  def NamedTypeUniques() = new Uniques(Config.initialUniquesCapacity * 4)
+
+  type AppliedUniques = Uniques
+  def AppliedUniques() = new Uniques(Config.initialUniquesCapacity * 2)
+
+  private inline def recordCaching(tp: Type): Unit = recordCaching(tp.hashCode, tp.getClass)
+  private inline def recordCaching(h: Int, clazz: Class[?]): Unit =
+    if monitored then
+      if h == NotCached then
+        record("uncached-types")
+        record(s"uncached: $clazz")
+      else
+        record("cached-types")
+        record(s"cached: $clazz")
+
+  def unique[T <: Type](tp: T)(using Context): T =
+    recordCaching(tp)
+    if tp.hashCode == NotCached then tp
+    else ctx.uniques.put(tp).asInstanceOf[T]
+
+  def uniqueNamedType[T <: Type](tp: T)(using Context): T =
+    recordCaching(tp)
+    if tp.hashCode == NotCached then tp
+    else ctx.uniqueNamedTypes.put(tp).asInstanceOf[T]
+
+  def uniqueAppliedType[T <: Type](tp: T)(using Context): T =
+    recordCaching(tp)
+    if tp.hashCode == NotCached then tp
+    else ctx.base.uniqueAppliedTypes.put(tp).asInstanceOf[T]
+/*class Uniques extends WeakHashSet[Type](Config.initialUniquesCapacity):
   override def hash(x: Type): Int = x.hash
   override def isEqual(x: Type, y: Type) = x.equals(y)
 
@@ -105,3 +135,4 @@ object Uniques:
       end if
   end AppliedUniques
 end Uniques
+*/

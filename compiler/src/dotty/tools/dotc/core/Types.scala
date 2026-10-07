@@ -2338,8 +2338,6 @@ object Types extends TypeUtils {
     def _1: Type
     def _2: Designator
 
-    if !NamedType.validPrefix(prefix) then throw InvalidPrefix()
-
     private var myName: Name | Null = null
     private var lastDenotation: Denotation | Null = null
     private var lastSymbol: Symbol | Null = null
@@ -3043,14 +3041,12 @@ object Types extends TypeUtils {
 
   }
 
-  final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
+  final class CachedTermRef(prefix: Type, designator: Designator) extends TermRef(prefix, designator) {
     assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol])
-    myHash = hc
   }
 
-  final class CachedTypeRef(prefix: Type, designator: Designator, hc: Int) extends TypeRef(prefix, designator) {
+  final class CachedTypeRef(prefix: Type, designator: Designator) extends TypeRef(prefix, designator) {
     assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol])
-    myHash = hc
   }
 
   /** Assert current phase does not have erasure semantics */
@@ -3091,13 +3087,20 @@ object Types extends TypeUtils {
     def unapply(tp: NamedType): NamedType = tp
 
     def validPrefix(prefix: Type): Boolean = prefix.isValueType || (prefix eq NoPrefix)
+    def badPrefix(prefix: Type, desig: Designator)(using Context): Nothing =
+      def name = desig match
+        case desig: Name => desig
+        case desig: Symbol => desig.name
+      throw TypeError(em"invalid prefix $prefix when trying to form $prefix . $name")
   }
 
   object TermRef {
 
     /** Create a term ref with given designator */
-    def apply(prefix: Type, desig: Designator)(using Context): TermRef =
-      ctx.uniqueNamedTypes.enterIfNew(prefix, desig, isTerm = true).asInstanceOf[TermRef]
+    def apply(prefix: Type, desig: Designator)(using Context): TermRef = {
+      if NamedType.validPrefix(prefix) then Uniques.uniqueNamedType(new CachedTermRef(prefix, desig))
+      else NamedType.badPrefix(prefix, desig)
+    }
 
     /** Create a term ref with given initial denotation. The name of the reference is taken
      *  from the denotation's symbol if the latter exists, or else it is the given name.
@@ -3110,7 +3113,8 @@ object Types extends TypeUtils {
 
     /** Create a type ref with given prefix and name */
     def apply(prefix: Type, desig: Designator)(using Context): TypeRef =
-      ctx.uniqueNamedTypes.enterIfNew(prefix, desig, isTerm = false).asInstanceOf[TypeRef]
+      if NamedType.validPrefix(prefix) then Uniques.uniqueNamedType(new CachedTypeRef(prefix, desig))
+      else NamedType.badPrefix(prefix, desig)
 
     /** Create a type ref with given initial denotation. The name of the reference is taken
      *  from the denotation's symbol if the latter exists, or else it is the given name.
@@ -3118,8 +3122,6 @@ object Types extends TypeUtils {
     def apply(prefix: Type, name: TypeName, denot: Denotation)(using Context): TypeRef =
       apply(prefix, designatorFor(prefix, name, denot)).withDenot(denot)
   }
-
-  class InvalidPrefix extends Exception
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
 
@@ -4793,14 +4795,12 @@ object Types extends TypeUtils {
     }
   }
 
-  final class CachedAppliedType(tycon: Type, args: List[Type], hc: Int) extends AppliedType(tycon, args) {
-    myHash = hc
-  }
+  final class CachedAppliedType(tycon: Type, args: List[Type]) extends AppliedType(tycon, args)
 
   object AppliedType {
     def apply(tycon: Type, args: List[Type])(using Context): AppliedType = {
       assertUnerased()
-      ctx.base.uniqueAppliedTypes.enterIfNew(tycon, args)
+      Uniques.uniqueAppliedType(new CachedAppliedType(tycon, args))
     }
   }
 
