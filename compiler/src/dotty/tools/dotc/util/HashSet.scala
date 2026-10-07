@@ -8,6 +8,16 @@ package object util {
 
   def HashSet_from[T](xs: IterableOnce[T]) =
     scala.collection.mutable.HashSet.from(xs)
+
+  type HashMap[K, V] = scala.collection.mutable.HashMap[K, V]
+  def HashMap[K, V]() = scala.collection.mutable.HashMap[K, V]()
+  def HashMap[K, V](initialCapacity: Int = scala.collection.mutable.HashSet.defaultInitialCapacity, loadFactor: Double = scala.collection.mutable.HashSet.defaultLoadFactor) =
+    new scala.collection.mutable.HashMap[K, V](initialCapacity, loadFactor)
+
+  extension[K, V](hm: HashMap[K, V]) {
+    def lookup(k: K): V | Null =
+      hm.get(k).orNull
+  }
 }
 
 /*object HashSet:
