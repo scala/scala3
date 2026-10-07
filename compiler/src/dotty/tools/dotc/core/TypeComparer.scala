@@ -63,13 +63,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     frozenConstraint = false
     if Config.checkTypeComparerReset then checkReset()
 
-  private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
+  private var pendingSubTypes: util.HashSet[(Type, Type)] | Null = null
   /** Tracks the `(tycon, args, other, fromBelow, constraint)` tuples currently
    *  being compared by [[compareAppliedTypeParamRef]] to guard against infinite recursion.
    *  See https://github.com/scala/scala3/issues/24537.
    */
   private var pendingAppliedTypeParamRefs:
-    util.MutableSet[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)] | Null = null
+    util.HashSet[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)] | Null = null
   private var appliedRecCount = 0
   private var appliedMonitored = false
 
