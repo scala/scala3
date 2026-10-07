@@ -32,7 +32,7 @@ class AbstractFileClassLoader(entries: Seq[AbstractFile], jarVersion: String, pa
 
   // Mimic URLClassLoader's logic of "if it ends in / it's a dir, otherwise it's a JAR"
   private def open(entry: AbstractFile): Option[AbstractFile] =
-    if !entry.exists then Some(entry)
+    if !entry.exists || entry.isDirectory then Some(entry) // may not exist yet but we should still look at it later
     else Option(AbstractFile.getDirectory(entry.path, jarVersion))
 
   override protected def findClass(name: String): Class[?] =
