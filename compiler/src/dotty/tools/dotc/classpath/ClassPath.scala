@@ -77,7 +77,10 @@ object ClassPath {
   private[dotty] def mergeClassesAndSources(
       classes: Iterable[BinaryFileEntry],
       sources: Iterable[SourceFileEntry],
-  ): Seq[ClassRepresentation] =
+  ): Iterable[ClassRepresentation] =
+    if sources.isEmpty then return classes
+    if classes.isEmpty then return sources
+
     val indices = dotc.util.HashMap[String, Int]()
     val merged = new ArrayBuffer[ClassRepresentation](classes.size + sources.size)
     var count = 0
