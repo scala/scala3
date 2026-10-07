@@ -314,19 +314,19 @@ object Applications {
         case _ =>
           args
       val varArgs = alignedArgs.filter(untpd.isWildcardStarArg)
-      val isProductSeqMatch = argTypes.length > 1 && argTypes.last.derivesFrom(defn.SeqClass)
-      val hasInvalidSeqWildcard =
-        if varArgs.nonEmpty && unapplyName != nme.unapplySeq && !isProductSeqMatch then
-          report.error(em"Sequence wildcard pattern is not allowed for ${unapplyName}, only unapplySeq is allowed", varArgs.head.srcPos)
-          true
-        else if varArgs.nonEmpty && unapplyName == nme.unapplySeq then
-          val sym = unapplyFn.symbol
-          // if the extractor also defines unapply
-          if sym.exists && sym.owner.info.member(nme.unapply).exists then
-            report.error(em"Sequence wildcard pattern is not allowed when the extractor also defines unapply, only unapplySeq is allowed", varArgs.head.srcPos)
-            true
-          else false
-        else false
+      val hasInvalidSeqWildcard = varArgs.nonEmpty && unapplyName == nme.unapply && {
+        val sym = unapplyFn.symbol
+        def hasExtractorMethod(name: Name): Boolean =
+          unapplyFn match
+          case Select(qual, _) if qual.tpe.exists => qual.tpe.member(name).exists
+          case _ => sym.exists && sym.owner.info.member(name).exists
+        val thing =
+          if sym.exists && sym.is(Synthetic) && sym.owner.companionClass.is(CaseClass) then "case class "
+          else ""
+        val instead = if hasExtractorMethod(nme.unapplySeq) then "only" else "instead"
+        report.error(em"Sequence wildcard pattern is not allowed for $thing`$unapplyName`; it requires `unapplySeq` $instead", varArgs.head.srcPos)
+        true
+      }
 
       val alignedArgTypes =
         if argTypes.length == alignedArgs.length then
@@ -337,7 +337,6 @@ object Applications {
           report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), pos)
           argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
-
 
       if varArgs.length >= 2 then
         report.error(em"Only one spread pattern allowed in sequence", varArgs(1).srcPos)

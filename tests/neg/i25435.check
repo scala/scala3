@@ -1,0 +1,34 @@
+-- Error: tests/neg/i25435.scala:24:25 ---------------------------------------------------------------------------------
+24 |    case Foo(name, x, y, ns*) => ">= two children." // error
+   |                         ^^^
+   |             Sequence wildcard pattern is not allowed for case class `unapply`; it requires `unapplySeq` instead
+-- Error: tests/neg/i25435.scala:25:19 ---------------------------------------------------------------------------------
+25 |    case Foo(name, ns*)       => "< two children." // error
+   |                   ^^^
+   |                   Sequence wildcard pattern is not allowed for `unapply`; it requires `unapplySeq` instead
+-- Error: tests/neg/i25435.scala:31:14 ---------------------------------------------------------------------------------
+31 |    case Test(x*) => println(x) // error // error
+   |              ^^
+   |              Sequence wildcard pattern is not allowed for case class `unapply`; it requires `unapplySeq` only
+-- [E006] Not Found Error: tests/neg/i25435.scala:31:29 ----------------------------------------------------------------
+31 |    case Test(x*) => println(x) // error // error
+   |                             ^
+   |                             Not found: x
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/i25435.scala:33:14 ---------------------------------------------------------------------------------
+33 |    case Test(_*) => () // error
+   |              ^^
+   |              Sequence wildcard pattern is not allowed for case class `unapply`; it requires `unapplySeq` only
+-- Error: tests/neg/i25435.scala:35:11 ---------------------------------------------------------------------------------
+35 |    case X(x*) => // error
+   |           ^^
+   |           Sequence wildcard pattern is not allowed for `unapply`; it requires `unapplySeq` only
+-- Error: tests/neg/i25435.scala:37:11 ---------------------------------------------------------------------------------
+37 |    case K(k*) => // error
+   |           ^^
+   |           Sequence wildcard pattern is not allowed for case class `unapply`; it requires `unapplySeq` instead
+-- Error: tests/neg/i25435.scala:41:11 ---------------------------------------------------------------------------------
+41 |    case M(m*) => // error
+   |           ^^
+   |           Sequence wildcard pattern is not allowed for case class `unapply`; it requires `unapplySeq` only
