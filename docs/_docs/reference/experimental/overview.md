@@ -11,6 +11,7 @@ All experimental language features can be found under the `scala.language.experi
 They are enabled by importing the feature or using the `-language` compiler flag.
 
 * [`erasedDefinitions`](./erased-defs.md): Enable support for `erased` modifier.
+* [`methodBlockEndMarkers`](./method-block-end-markers.md): Enable support for end markers for method blocks.
 * `fewerBraces`: Enable support for using indentation for arguments.
 * [`genericNumberLiterals`](./numeric-literals.md): Enable support for generic number literals.
 * [`namedTypeArguments`](./named-typeargs.md): Enable support for named type arguments

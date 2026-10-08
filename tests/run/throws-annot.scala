@@ -28,6 +28,19 @@ object TestThrows {
     def readNoEx(): Int
   }
 
+  class ThrowsCtor @throws(classOf[IOException]) () {
+    def value: Int = 0
+  }
+
+  def checkConstructor(cls: Class[_]): Unit = {
+    val name = cls.getSimpleName
+    val ctor = cls.getConstructor()
+    println(name + " throws: " + ctor.getExceptionTypes.mkString("", ", ", ""))
+    val annots = ctor.getDeclaredAnnotations.map(_.annotationType)
+    val annotStr = annots.mkString("", ", ", "")
+    println(name + " annotations:" + (if annotStr.isEmpty then "" else " " + annotStr))
+  }
+
   def checkMethod(cls: Class[_], name: String): Unit = {
     val method = cls.getMethod(name)
     println(name + " throws: " + method.getExceptionTypes.mkString("", ", ", ""))
@@ -68,18 +81,10 @@ object TL {
   def readNoEx(): Int = 0
 }
 
-// @throws on class/object/field must be ignored/compiler shouldn't crash.
-@throws(classOf[IOException])
-class ThrowsOnClass
-
-@throws(classOf[IOException])
-object ThrowsOnObject:
-  @throws(classOf[IOException])
-  val field: Int = 0
-
 object Test {
   def main(args: Array[String]): Unit = {
     TestThrows.run(classOf[TestThrows.Foo])
+    TestThrows.checkConstructor(classOf[TestThrows.ThrowsCtor])
     println("Testing mirror class")
     TestThrows.run(Class.forName("TL"))
   }

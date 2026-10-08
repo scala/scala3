@@ -94,14 +94,14 @@ trait SpecStrings { this: Typer =>
 
   /** The interval defining the first code in `...` or ```...``` */
   def firstQuoteSpan(str: String, startFrom: Int): Option[QuoteSpan] =
-    val opening = str.indexOf('`', from = startFrom)
+    val opening = str.indexOf('`', /*fromIndex =*/ startFrom)
     if opening >= 0 then
       var start = opening + 1
       while start < str.length && str(start) == '`' do start += 1
       val nquotes = start - opening
 
       def findClosing(start: Int): Option[QuoteSpan] =
-        val closing = str.indexOf('`', from = start)
+        val closing = str.indexOf('`', /*fromIndex =*/ start)
         if closing < 0 then None
         else if str.startsWith("`" * nquotes, closing) then Some((opening, closing, nquotes))
         else findClosing(closing + 1)

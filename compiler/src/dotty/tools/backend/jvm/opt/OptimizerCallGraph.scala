@@ -137,7 +137,7 @@ class OptimizerCallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfil
 
   private def addMethod(methodNode: MethodNode, definingClass: ClassBType): Unit = {
     if (!BCodeUtils.isAbstractMethod(methodNode) && !BCodeUtils.isNativeMethod(methodNode) && Limits.sizeOKForBasicValue(methodNode)) {
-      lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(methodNode, definingClass.internalName)
+      val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(methodNode, definingClass.internalName)
 
       var methodCallsites = Map.empty[MethodInsnNode, Callsite]
       var methodClosureInstantiations = Map.empty[InvokeDynamicInsnNode, ClosureInstantiation]

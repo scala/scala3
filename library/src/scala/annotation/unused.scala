@@ -24,7 +24,7 @@ import scala.language.`2.13`
  *
  *  @param message a description of why the element is unused
  */
-@meta.getter @meta.setter
+@meta.getter @meta.setter @meta.param
 class unused(message: String) extends StaticAnnotation {
   /** Creates an `unused` annotation with no explanatory message. */
   def this() = this("")
