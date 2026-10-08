@@ -61,7 +61,7 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
 
   /** Set to `true` if there are inline traits (with or without Specialized context bounds)
    *  This is used by:
-   *  DesugarSpecializedTraits, SpecializeInlineTraits, PruneInlinedMethods, PruneInlineTraits
+   *  DesugarSpecializedTraits, SpecializeInlineTraits, PruneInlineTraits
    */
   var hasSpecializations: Boolean = false
 
