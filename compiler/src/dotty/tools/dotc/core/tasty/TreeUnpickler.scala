@@ -738,10 +738,8 @@ class TreeUnpickler(reader: TastyReader,
           case PROTECTED => addFlag(Protected)
           case ABSTRACT =>
             readByte()
-            nextByte match {
-              case OVERRIDE => addFlag(AbsOverride)
-              case _ => flags |= Abstract
-            }
+            if currentAddr.index != end.index && nextByte == OVERRIDE then addFlag(AbsOverride)
+            else flags |= Abstract
           case FINAL => addFlag(Final)
           case SEALED => addFlag(Sealed)
           case CASE => addFlag(Case)
