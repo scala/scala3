@@ -524,7 +524,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@95e5b1029b6b86e7bac033ee44a0697d8a527d2d # v8.1.1
-      - uses: VirtusLab/scala-cli-setup@c33dfbf1a5f16ee60efff453b7f9a987d2b6955b # v1.17.1
+      - uses: VirtusLab/scala-cli-setup@3f5bf11a33bb88343238780c18257c8fa43789e1 # v1.18.0
       - name: Check formatting
         run: |
           if ! scala-cli format --check; then
