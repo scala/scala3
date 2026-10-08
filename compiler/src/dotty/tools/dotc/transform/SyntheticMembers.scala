@@ -529,6 +529,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *
    *  However, if the last parameter is annotated `@unroll` then we generate:
    *
+   *  ```
    *  def fromProduct(x$0: Product): MirroredMonoType =
    *    val arity = x$0.productArity
    *    val a$1 = x$0.productElement(0).asInstanceOf[U]
@@ -540,6 +541,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *        <default getter for the third parameter of C>
    *    ).asInstanceOf[Seq[String]]
    *    new C[U](a$1, b$1, c$1*)
+   *  ```
    */
   def fromProductBody(caseClass: Symbol, productParam: Tree, optInfo: Option[MirrorImpl.OfProduct])(using Context): Tree =
     val classRef = optInfo match
@@ -550,9 +552,14 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val symss = caseClass.primaryConstructor.paramSymss
       (constr.info: @unchecked) match
         case tl: PolyType =>
-          val tvars = constrained(tl)
-          val targs = for tvar <- tvars yield
-            tvar.instantiate(fromBelow = false)
+          val targs = for
+            tvars = constrained(tl)
+            (tvar, pref) <- tvars.lazyZip(tl.paramRefs)
+            fBounded = tvar.origin.occursIn(ctx.typerState.constraint.nonParamBounds(tvar.origin).hi)
+          yield
+            if fBounded
+            then tvar.instantiateWith(tl.paramInfos(pref.paramNum).hi.substParams(tl, List.fill(tl.paramNames.size)(defn.NothingType)))
+            else tvar.instantiate(fromBelow = false)
           (AppliedType(classRef, targs), tl.instantiate(targs).asInstanceOf[MethodType], symss(1))
         case mt: MethodType =>
           (classRef, mt, symss.head)

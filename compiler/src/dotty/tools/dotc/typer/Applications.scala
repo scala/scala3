@@ -711,7 +711,7 @@ trait Applications extends Compatibility {
 
       extension (dna: Annotation)
         def deprecatedName: Name =
-          dna.argumentConstantString(0).map(_.toTermName).getOrElse(nme.NO_NAME)
+          dna.argumentConstantStringOrSymbol(0).map(_.toTermName).getOrElse(nme.NO_NAME)
         def since: String =
           val version = dna.argumentConstantString(1).filter(!_.isEmpty)
           version.map(v => s" (since $v)").getOrElse("")
@@ -1013,9 +1013,9 @@ trait Applications extends Compatibility {
         // However, for overload resolution, we want to check applicability:
         // "could this work with some type instantiation?" (yes, if ? = String)
         def wildcardArgOK =
-          argtpe match
+          argtpe.stripNull() match
             case at @ AppliedType(tycon1, args1) if at.hasWildcardArg =>
-              formal match
+              formal.stripNull() match
                 case AppliedType(tycon2, args2)
                 if tycon1 =:= tycon2 && args1.length == args2.length =>
                   // We need to handle all 4 cases, in addition to
@@ -1902,7 +1902,7 @@ trait Applications extends Compatibility {
      *    }.unapply
      *  ```
      *  For a record with no components the result type is `Boolean` and the body is `true`.
-     * 
+     *
      *  For a vararg record - Rec(T_1, ..., T_n, T*) - generate unapplySeq.
      *  The vararg component is exposed through `Array.UnapplySeqWrapper`. The result type is:
      *  - Array.UnapplySeqWrapper[T]                  when n = 0
@@ -2607,7 +2607,12 @@ trait Applications extends Compatibility {
       case _ => false
     }
 
-    /** Replace each alternative by its apply members where necessary */
+    /** Replace each alternative by its apply members where necessary.
+     *  If an apply member is itself a polymorphic function `[T] => F` where `F` is
+     *  a function type, as is the case for the `apply` of a polymorphic function value,
+     *  expand it further to the apply members of `F`, mirroring the repeated apply
+     *  insertion done in `Typer.tryInsertApplyOrImplicit`.
+     */
     def applyMembers(alt: TermRef): List[TermRef] =
       if (tryApply(alt)) {
         val qual = alt.widen match {
@@ -2616,14 +2621,25 @@ trait Applications extends Compatibility {
           case _ =>
             alt
         }
-        qual.member(nme.apply).alternatives.map(TermRef(alt, nme.apply, _))
+        qual.member(nme.apply).alternatives
+          .map(TermRef(alt, nme.apply, _))
+          .flatMap: applyAlt =>
+            applyAlt.widen match
+              case pt: PolyType if defn.isFunctionType(pt.resultType) => applyMembers(applyAlt)
+              case _ => applyAlt :: Nil
       }
       else alt :: Nil
 
-    /** Fall back from an apply method to its original alternative */
+    /** Fall back from an apply method, or a chain of apply methods,
+     *  to its original alternative
+     */
     def retract(alt: TermRef): TermRef =
       if (alt.name == nme.apply && !alts.contains(alt))
-        alts.find(_.symbol == alt.prefix.termSymbol).getOrElse(alt)
+        alts.find(_.symbol == alt.prefix.termSymbol) match
+          case Some(orig) => orig
+          case None => alt.prefix match
+            case pre: TermRef if pre.name == nme.apply => retract(pre)
+            case _ => alt
       else alt
 
     if (alts.exists(tryApply)) {
@@ -3138,23 +3154,20 @@ trait Applications extends Compatibility {
     val methodRefTree = ref(methodRef, needLoad = false)
     val truncatedSym = methodRef.symbol.asTerm.copy(info = truncateExtension(methodRef.info))
     val truncatedRefTree = untpd.TypedSplice(ref(truncatedSym)).withSpan(receiver.span)
-    val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
+    val newCtx = ctx.fresh.setNewScope
 
-    try
-      val appliedTree = inContext(newCtx) {
-        // Introducing an auxiliary symbol in a temporary scope.
-        // Entering the symbol indirectly by `newCtx.enter`
-        // could instead add the symbol to the enclosing class
-        // which could break the REPL.
-        newCtx.scope.openForMutations.enter(truncatedSym)
-        newCtx.typer.extMethodApply(truncatedRefTree, receiver, WildcardType)
-      }
-      if appliedTree.tpe.exists && !appliedTree.tpe.isError then
-        Some(replaceCallee(appliedTree, methodRefTree))
-      else
-        None
-    catch
-      case ex: UnhandledError => None
+    val appliedTree = inContext(newCtx) {
+      // Introducing an auxiliary symbol in a temporary scope.
+      // Entering the symbol indirectly by `newCtx.enter`
+      // could instead add the symbol to the enclosing class
+      // which could break the REPL.
+      newCtx.scope.openForMutations.enter(truncatedSym)
+      newCtx.typer.extMethodApply(truncatedRefTree, receiver, WildcardType)
+    }
+    if appliedTree.tpe.exists && !appliedTree.tpe.isError then
+      Some(replaceCallee(appliedTree, methodRefTree))
+    else
+      None
 
   def isApplicableExtensionMethod(methodRef: TermRef, receiverType: Type)(using Context): Boolean =
     methodRef.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&

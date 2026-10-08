@@ -1142,6 +1142,11 @@ object SourceCode {
       case tpe @ Refinement(_, _, _) =>
         printRefinement(tpe)
 
+      case FlexibleType(tp) =>
+        this += "("
+        printType(tp)
+        this += ")?"
+
       case AppliedType(tp, args) =>
         tp match {
           case tp: TypeLambda =>
@@ -1259,11 +1264,6 @@ object SourceCode {
         printType(pat)
         this += " => "
         printType(rhs)
-
-      case FlexibleType(tp) =>
-        this += "("
-        printType(tp)
-        this += ")?"
 
       case _ =>
         cannotBeShownAsSource(tpe.show(using Printer.TypeReprStructure))

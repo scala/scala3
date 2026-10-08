@@ -37,13 +37,14 @@ class Compiler {
          CheckUnused.PostTyper(),   // Check for unused
          CheckShadowing()) ::       // Check for shadowed elements
     List(new YCheckPositions) ::    // YCheck positions
-    List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
+    List(new sbt.ExtractDependencies) :: // Collects information on classes' dependencies for sbt
     List(new semanticdb.ExtractSemanticInfo) :: // Extract info into .semanticdb files
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new UnrollDefinitions) ::  // Unroll annotated methods if detected in PostTyper
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
-    List(new DesugarSpecializedTraits,  // Process Specialized traits
+    List(new CheckInlineTraits,         // Check for inline traits
+         new DesugarSpecializedTraits,  // Process Specialized traits
          new SpecializeInlineTraits) :: // Inline the code of inline traits into their children
     Nil
 
@@ -171,8 +172,10 @@ class Compiler {
     if (run != null) run.reset()
   }
 
+  private var firstRun = true
   def newRun(using Context): Run = {
-    reset()
+    if !firstRun then reset()
+    firstRun = false
     val rctx =
       if ctx.settings.Xsemanticdb.value then
         ctx.addMode(Mode.ReadPositions)

@@ -196,9 +196,9 @@ object NameOps {
       }
     }
 
-    /** Do two target names match? An empty target name matchws any other name. */
+    /** Do two target names match? An empty target name matches any other name. */
     def matchesTargetName(other: Name) =
-      name == other || name.isEmpty || other.isEmpty
+      name.isEmpty || other.isEmpty || name == other
 
     private def functionSuffixStart: Int =
       val first = name.firstPart
@@ -208,14 +208,7 @@ object NameOps {
           idx = idx - 1
           idx >= 8 && first(idx).isDigit
         do ()
-        if    first(idx - 7) == 'F'
-           && first(idx - 6) == 'u'
-           && first(idx - 5) == 'n'
-           && first(idx - 4) == 'c'
-           && first(idx - 3) == 't'
-           && first(idx - 2) == 'i'
-           && first(idx - 1) == 'o'
-           && first(idx)     == 'n'
+        if first.startsWith("Function", idx - 7)
         then idx - 7
         else -1
       else -1

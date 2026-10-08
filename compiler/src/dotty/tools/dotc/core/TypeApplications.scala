@@ -589,8 +589,8 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Existential types in arguments are returned as TypeBounds instances.
    */
   final def argInfos(using Context): List[Type] = self.stripped match
+    case FlexibleType(hi) => hi.argInfos
     case AppliedType(tycon, args) => args
-    case tp: FlexibleType => tp.underlying.argInfos
     case _ => Nil
 
   /** If this is an encoding of a function type, return its arguments, otherwise return Nil.
@@ -598,7 +598,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def functionArgInfos(using Context): List[Type] = self.dealias match
     case defn.PolyFunctionOf(mt: MethodType) => (mt.paramInfos :+ mt.resultType)
-    case _ => self.dropDependentRefinement.dealias.argInfos
+    case _ => self.dropFunctionRefinement.dealias.argInfos
 
   /** Argument types where existential types in arguments are disallowed */
   def argTypes(using Context): List[Type] = argInfos mapConserve noBounds

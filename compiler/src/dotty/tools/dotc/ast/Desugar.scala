@@ -213,12 +213,13 @@ object desugar {
       && (!mods.is(Private) || ctx.owner.is(Trait) || ctx.owner.isPackageObject)
   }
 
-  /**   var x: Int = expr
+  /** Normalize the member name and generate a setter where needed.
+   *  ```
+   *    var x: Int = expr
    *  ==>
    *    def x: Int = expr
    *    def x_=($1: <TypeTree()>): Unit = ()
-   *
-   *  Generate setter where needed
+   *  ```
    */
   def valDef(vdef0: ValDef)(using Context): Tree =
     val vdef @ ValDef(_, tpt, rhs) = vdef0
@@ -366,18 +367,10 @@ object desugar {
               ),
               evidenceParamBuf.toList
             )
-      case meth @ PolyFunction(tparams, fun) =>
-        val PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun) = meth: @unchecked
-        val Function(vparams: List[untpd.ValDef] @unchecked, rhs) = fun: @unchecked
-        val newParamss = paramssNoContextBounds(tparams :: vparams :: Nil)
-        val params = evidenceParamBuf.toList
-        if params.isEmpty then
-          meth
-        else
-          val boundNames = getBoundNames(params, newParamss)
-          val recur = fitEvidenceParams(params, nme.apply, boundNames)
-          val (paramsFst, paramsSnd) = recur(newParamss)
-          functionsOf((paramsFst ++ paramsSnd).filter(_.nonEmpty), rhs)
+      case meth @ PolyFunction(tparams, body) =>
+        val PolyFunction(tparams: List[untpd.TypeDef] @unchecked, body) = meth: @unchecked
+        val TypeDefs(tparams1) :: Nil = paramssNoContextBounds(tparams :: Nil): @unchecked
+        cpy.PolyFunction(meth)(tparams1, insertEvidenceParams(tparams1, body, evidenceParamBuf.toList))
   end elimContextBounds
 
   def addDefaultGetters(meth: DefDef)(using Context): Tree =
@@ -513,27 +506,21 @@ object desugar {
 
   /** Fit evidence `params` into the `mparamss` parameter lists, making sure
    * that all parameters referencing `params` are after them.
-   * - for methods the final parameter lists are := result._1 ++ result._2
-   * - for poly functions, each element of the pair contains at most one term
-   *   parameter list
    *
    * @param params the evidence parameters list that should fit into `mparamss`
    * @param methName the name of the method that `mparamss` belongs to
    * @param boundNames the names of the evidence parameters
    * @param mparamss the original parameter lists of the method
-   * @return a pair of parameter lists containing all parameter lists in a
-   * reference-correct order; make sure that `params` is always at the
-   * intersection of the pair elements; this is relevant, for poly functions
-   * where `mparamss` is guaranteed to have exectly one term parameter list,
-   * then each pair element will have at most one term parameter list
+   * @return the parameter lists containing all parameter lists in a
+   * reference-correct order
    */
   private def fitEvidenceParams(
     params: List[ValDef],
     methName: Name,
     boundNames: Set[TermName]
-  )(mparamss: List[ParamClause])(using Context): (List[ParamClause], List[ParamClause]) = mparamss match
+  )(mparamss: List[ParamClause])(using Context): List[ParamClause] = mparamss match
     case ValDefs(mparams) :: _ if mparams.exists(referencesName(_, boundNames)) =>
-      (params :: Nil) -> mparamss
+      params :: mparamss
     case ValDefs(mparams @ (mparam :: _)) :: Nil if mparam.mods.isOneOf(GivenOrImplicit) =>
       val normParams =
         if params.head.mods.flags.is(Given) != mparam.mods.flags.is(Given) then
@@ -542,12 +529,11 @@ object desugar {
             param.withMods(param.mods.withFlags(normFlags))
               .showing(i"adapted param $result ${result.mods.flags} for ${methName}", Printers.desugar)
         else params
-      ((normParams ++ mparams) :: Nil) -> Nil
+      (normParams ++ mparams) :: Nil
     case mparams :: mparamss1 =>
-      val (fst, snd) = fitEvidenceParams(params, methName, boundNames)(mparamss1)
-      (mparams :: fst) -> snd
+      mparams :: fitEvidenceParams(params, methName, boundNames)(mparamss1)
     case Nil =>
-      Nil -> (params :: Nil)
+      params :: Nil
 
   /** Create a chain of possibly contextual functions from the parameter lists */
   private def functionsOf(paramss: List[ParamClause], rhs: Tree)(using Context): Tree = paramss match
@@ -564,6 +550,52 @@ object desugar {
       assert(false, i"unexpected paramss $paramss")
       EmptyTree
 
+  /** The parameters of a function type or literal `fn` as a value parameter clause.
+   *  Parameters given as types are turned into synthetic parameters, and the
+   *  parameters of a contextual function are marked as `Given`.
+   */
+  private def paramsOf(fn: Function)(using Context): List[ValDef] =
+    val vparams = fn.args match
+      case (_: ValDef) :: _ => fn.args.asInstanceOf[List[ValDef]]
+      case args => args.zipWithIndex.map((arg, n) => makeSyntheticParameter(n + 1, arg))
+    fn match
+      case fn: FunctionWithMods if fn.mods.is(Given) => vparams.map(_.withAddedFlags(Given))
+      case _ => vparams
+
+  /** Insert evidence parameters `params` as a context function into the body
+   *  of a polymorphic function type or literal with type parameters `tparams`.
+   *  If `body` is a function `(args) => res`, its parameters are treated like
+   *  the value parameter clause of a method `def apply[tparams](args): res`, and
+   *  the evidence parameters are fitted around them with `fitEvidenceParams`,
+   *  where a using clause corresponds to a context function:
+   *
+   *   - `(params) ?=> (args) => res` if `args` refers to an evidence parameter
+   *     or one of its context bound proxies,
+   *   - `(params, args) ?=> res` if the function is contextual,
+   *   - `(args) => (params) ?=> res` otherwise.
+   *
+   *  If `body` is not a function, the result is `(params) ?=> body`.
+   */
+  private def insertEvidenceParams(tparams: List[TypeDef], body: Tree, params: List[ValDef])(using Context): Tree =
+    if params.isEmpty then body
+    else
+      val boundNames = getBoundNames(params, tparams :: Nil)
+      body match
+        case fn @ Function(args, res) =>
+          fitEvidenceParams(params, nme.apply, boundNames)(paramsOf(fn) :: Nil).runtimeChecked match
+            case merged :: Nil => cpy.Function(fn)(merged, res)          // (params, args) ?=> res
+            case params1 :: params2 :: Nil =>
+              if params eq params1 then
+                functionsOf(params :: Nil, body)                         // (params) ?=> (args) => res
+              else if params eq params2 then
+                cpy.Function(fn)(args, functionsOf(params :: Nil, res))  // (args) => (params) ?=> res
+              else assert(false, "unexpected fitted parameers")
+        case _ =>
+          functionsOf(params :: Nil, body)
+
+  /** The names of all `params`, plus a witness term name `T` for any type parameter `T`
+   *  in `paramss` that is annotated with a WitnessName annotation.
+   */
   private def getBoundNames(params: List[ValDef], paramss: List[ParamClause])(using Context): Set[TermName] =
     var boundNames = params.map(_.name).toSet // all evidence parameter + context bound proxy names
     for mparams <- paramss; mparam <- mparams do
@@ -586,24 +618,15 @@ object desugar {
    */
   private def addEvidenceParams(meth: DefDef, params: List[ValDef])(using Context): DefDef =
     if params.isEmpty then return meth
-
-    val boundNames = getBoundNames(params, meth.paramss)
-
-    val fitParams = fitEvidenceParams(params, meth.name, boundNames)
-
     if meth.removeAttachment(PolyFunctionApply).isDefined then
-      // for PolyFunctions we are limited to a single term param list, so we
-      // reuse the fitEvidenceParams logic to compute the new parameter lists
-      // and then we add the other parameter lists as function types to the
-      // return type
-      val (paramsFst, paramsSnd) = fitParams(meth.paramss)
+      val tparams = meth.leadingTypeParams
       if ctx.mode.is(Mode.Type) then
-        cpy.DefDef(meth)(paramss = paramsFst, tpt = functionsOf(paramsSnd, meth.tpt))
+        cpy.DefDef(meth)(tpt = insertEvidenceParams(tparams, meth.tpt, params))
       else
-        cpy.DefDef(meth)(paramss = paramsFst, rhs = functionsOf(paramsSnd, meth.rhs))
+        cpy.DefDef(meth)(rhs = insertEvidenceParams(tparams, meth.rhs, params))
     else
-      val (paramsFst, paramsSnd) = fitParams(meth.paramss)
-      cpy.DefDef(meth)(paramss = paramsFst ++ paramsSnd)
+      val boundNames = getBoundNames(params, meth.paramss)
+      cpy.DefDef(meth)(paramss = fitEvidenceParams(params, meth.name, boundNames)(meth.paramss))
   end addEvidenceParams
 
   /** The parameters generated from the contextual bounds of `meth`, as generated by `desugar.defDef` */
@@ -1274,14 +1297,13 @@ object desugar {
       case mdef: DefDef => defDef(extMethod(mdef, ext.paramss))
       case _ => EmptyTree // we ignore all the other trees. Error was reported during parsing.
   }
-  /** Transforms
-   *
+  /** Type pattern variables get an annotation `@patternType`.
+   *  ```
    *    <mods> type t >: Low <: Hi
-   *  to
-   *
-   *    @patternType <mods> type $T >: Low <: Hi
-   *
-   *  if the type has a pattern variable name
+   *  ==>
+   *    @patternType <mods> type t >: Low <: Hi
+   *  ```
+   *  if the type `t` has a pattern variable name.
    */
   def quotedPatternTypeDef(tree: TypeDef)(using Context): TypeDef = {
     assert(ctx.mode.isQuotedPattern)
@@ -1350,25 +1372,20 @@ object desugar {
       case _ => body
     cpy.PolyFunction(tree)(tree.targs, stripped(tree.body)).asInstanceOf[PolyFunction]
 
-  /** Desugar [T_1, ..., T_M] => (P_1, ..., P_N) => R
-   *  Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
+  /** Desugar a `PolyFunction` to a type with the corresponding `apply` member.
+   *  ```
+   *    [T_1, ..., T_M] => R
+   *  ==>
+   *    scala.PolyFunction { def apply[T_1, ..., T_M]: R }
+   *  ```
    */
   def makePolyFunctionType(tree: PolyFunction)(using Context): RefinedTypeTree = (tree: @unchecked) match
-    case PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(formals, res)) =>
-      var vparams = formals match
-        case (p: ValDef) :: _ => formals.asInstanceOf[List[ValDef]]
-        case _ => formals.zipWithIndex.map: (p, n) =>
-          makeSyntheticParameter(n + 1, p)
-      fun match
-        case fun: FunctionWithMods if fun.mods.is(Given) =>
-          vparams = vparams.map(_.withAddedFlags(Given))
-        case _ =>
+    case PolyFunction(tparams: List[untpd.TypeDef] @unchecked, res) =>
       RefinedTypeTree(ref(defn.PolyFunctionType), List(
-        DefDef(nme.apply, tparams :: vparams :: Nil, res, EmptyTree)
+        DefDef(nme.apply, tparams :: Nil, res, EmptyTree)
           .withFlags(Synthetic)
           .withAttachment(PolyFunctionApply, ())
       )).withSpan(tree.span)
-  end makePolyFunctionType
 
   /** Invent a name for an anonymous given of type or template `impl`. */
   def inventGivenName(impl: Tree)(using Context): SimpleName =
@@ -1789,8 +1806,12 @@ object desugar {
     return apply
   }
 
-  /** Translate throws type `A throws E1 | ... | En` to
-   *  $throws[... $throws[A, E1] ... , En].
+  /** Translate throws type to `runtime.$throws`.
+   *  ```
+   *    A throws E1 | ... | En
+   *  ==>
+   *    $throws[... $throws[A, E1] ... , En].
+   *  ```
    */
   def throws(tpt: Tree, op: Ident, excepts: Tree)(using Context): AppliedTypeTree = excepts match
     case Parens(excepts1) =>
@@ -1969,31 +1990,34 @@ object desugar {
     }
   }
 
-  /** Make closure corresponding to function.
-   *      [tparams] => params => body
+  /** Make closure corresponding to a function or polymorphic function literal.
+   *  ```
+   *      params => body
    *  ==>
-   *      def $anonfun[tparams](params) = body
+   *      def $anonfun(params) = body
    *      Closure($anonfun)
+   *  ```
    */
-  def makeClosure(tparams: List[TypeDef], vparams: List[ValDef], body: Tree, tpt: Tree | Null = null, span: Span)(using Context): Block =
-    val paramss: List[ParamClause] =
-      if tparams.isEmpty then vparams :: Nil
-      else tparams :: vparams :: Nil
+  def makeClosure(params: ParamClause, body: Tree, tpt: Tree | Null = null, span: Span)(using Context): Block =
     Block(
-      DefDef(nme.ANON_FUN, paramss, if (tpt == null) TypeTree() else tpt, body)
+      DefDef(nme.ANON_FUN, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
         .withSpan(span)
         .withMods(synthetic | Artifact),
       Closure(Nil, Ident(nme.ANON_FUN), EmptyTree).withSpan(span))
 
-  /** If `nparams` == 1, expand partial function
+  /** Expand a pattern matching anonymous function to a function with match body.
    *
+   *  If `nparams` == 1, expand partial function
+   *  ```
    *       { cases }
    *  ==>
    *       x$1 => (x$1 @unchecked?) match { cases }
+   *  ```
    *
    *  If `nparams` != 1, expand instead to
-   *
+   *  ```
    *       (x$1, ..., x$n) => (x$0, ..., x${n-1} @unchecked?) match { cases }
+   *  ```
    */
   def makeCaseLambda(cases: List[CaseDef], checkMode: MatchCheck, nparams: Int = 1)(using Context): Function = {
     val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
@@ -2001,23 +2025,29 @@ object desugar {
     Function(params, Match(makeSelector(selector, checkMode), cases))
   }
 
-  /** Map n-ary function `(x1: T1, ..., xn: Tn) => body` where n != 1 to unary function as follows:
+  /** Map an n-ary function to a unary function.
    *
+   *  Map n-ary function `(x1: T1, ..., xn: Tn) => body` where n != 1 to unary function as follows:
+   *
+   *  ```
    *    (x$1: (T1, ..., Tn)) => {
    *      val x1: T1 = x$1._1
    *      ...
    *      val xn: Tn = x$1._n
    *      body
    *    }
+   *  ```
    *
    *  or if `isGenericTuple`
    *
-   *    (x$1: (T1, ... Tn) => {
+   *  ```
+   *    (x$1: (T1, ... Tn)) => {
    *      val x1: T1 = x$1.apply(0)
    *      ...
    *      val xn: Tn = x$1.apply(n-1)
    *      body
    *    }
+   *  ```
    *
    *  If some of the Ti's are absent, omit the : (T1, ..., Tn) type ascription
    *  in the selector.
@@ -2102,49 +2132,66 @@ object desugar {
      *
      *  1. if betterFors is enabled:
      *
+     *  ```
      *    for () do E  ==>  E
+     *  ```
      *      or
+     *  ```
      *    for () yield E  ==>  E
+     *  ```
      *
      *    (Where empty for-comprehensions are excluded by the parser)
      *
      *  2.
      *
+     *  ```
      *    for (P <- G) do E   ==>   G.foreach (P => E)
+     *  ```
      *
      *    Here and in the following (P => E) is interpreted as the function (P => E)
      *    if P is a variable pattern and as the partial function { case P => E } otherwise.
      *
      *  3.
      *
+     *  ```
      *    for (P <- G) yield E  ==>  G.map (P => E)
+     *  ```
      *
      *  4.
      *
+     *  ```
      *    for (P_1 <- G_1; P_2 <- G_2; ...) ...
      *      ==>
      *    G_1.flatMap (P_1 => for (P_2 <- G_2; ...) ...)
+     *  ```
      *
      *  5.
      *
+     *  ```
      *    for (P <- G; if E; ...) ...
      *      ==>
      *    for (P <- G.withFilter (P => E); ...) ...
+     *  ```
      *
      *  6. For any N, if betterFors is enabled:
      *
+     *  ```
      *    for (P <- G; P_1 = E_1; ... P_N = E_N; P1 <- G1; ...) ...
      *      ==>
      *    G.flatMap (P => for (P_1 = E_1; ... P_N = E_N; ...))
+     *  ```
      *
      *  7. For any N, if betterFors is enabled:
      *
+     *  ```
      *    for (P <- G; P_1 = E_1; ... P_N = E_N) ...
      *      ==>
      *    G.map (P => for (P_1 = E_1; ... P_N = E_N) ...)
+     *  ```
      *
      *  8. For any N:
      *
+     *  ```
      *    for (P <- G; P_1 = E_1; ... P_N = E_N; ...)
      *      ==>
      *    for (TupleN(P, P_1, ... P_N) <-
@@ -2154,18 +2201,21 @@ object desugar {
      *        val x_N @ P_N = E_N
      *        TupleN(x, x_1, ..., x_N)
      *      }; if E; ...)
+     *  ```
      *
      *    If any of the P_i are variable patterns, the corresponding `x_i @ P_i` is not generated
      *    and the variable constituting P_i is used instead of x_i
      *
      *  9. For any N, if betterFors is enabled:
      *
+     *  ```
      *    for (P_1 = E_1; ... P_N = E_N; ...)
      *      ==>
      *    {
      *      val x_N @ P_N = E_N
      *      for (...)
      *    }
+     *  ```
      *
      *  @param mapName      The name to be used for maps (either map or foreach)
      *  @param flatMapName  The name to be used for flatMaps (either flatMap or foreach)
@@ -2231,30 +2281,40 @@ object desugar {
           (Bind(name, pat), Ident(name))
 
       /** Make a pattern filter:
+       *  ```
        *    rhs.withFilter { case pat => true case _ => false }
+       *  ```
        *
        *  On handling irrefutable patterns:
        *  The idea is to wait until the pattern matcher sees a call
        *
+       *  ```
        *      xs withFilter { cases }
+       *  ```
        *
        *  where cases can be proven to be refutable i.e. cases would be
        *  equivalent to  { case _ => true }
        *
        *  In that case, compile to
        *
+       *  ```
        *      xs withFilter alwaysTrue
+       *  ```
        *
        *  where `alwaysTrue` is a predefined function value:
        *
+       *  ```
        *      val alwaysTrue: Any => Boolean = true
+       *  ```
        *
        *  In the libraries operations can take advantage of alwaysTrue to shortcircuit the
        *  withFilter call.
        *
+       *  ```
        *  def withFilter(f: Elem => Boolean) =
        *    if (f eq alwaysTrue) this // or rather identity filter monadic applied to this
        *    else real withFilter
+       *  ```
        */
       def makePatFilter(rhs: Tree, pat: Tree): Tree = {
         val cases = List(
@@ -2265,7 +2325,7 @@ object desugar {
 
       /** Is pattern `pat` irrefutable when matched against `rhs`?
        *  We only can do a simple syntactic check here; a more refined check
-       *  is done later in the pattern matcher (see discussion in @makePatFilter).
+       *  is done later in the pattern matcher (see discussion in [makePatFilter]).
        */
       def isIrrefutable(pat: Tree, rhs: Tree): Boolean = {
         def matchesTuple(pats: List[Tree], rhs: Tree): Boolean = rhs match {
@@ -2446,15 +2506,20 @@ object desugar {
   }
 
   /** Turn a function value `handlerFun` into a catch case for a try.
+   *
    *  If `handlerFun` is a partial function, translate to
    *
+   *  ```
    *    case ex =>
    *      val ev$1 = handlerFun
    *      if ev$1.isDefinedAt(ex) then ev$1.apply(ex) else throw ex
+   *  ```
    *
    *  Otherwise translate to
    *
+   *  ```
    *     case ex => handlerFun.apply(ex)
+   *  ```
    */
   def makeTryCase(handlerFun: tpd.Tree)(using Context): CaseDef =
     val handler = TypedSplice(handlerFun)
@@ -2476,25 +2541,33 @@ object desugar {
   /** Create a class definition with the same info as the refined type given by `parent`
    *  and `refinements`.
    *
+   *  ```
    *      parent { refinements }
    *  ==>
    *      trait <refinement> extends core { this: self => refinements }
+   *  ```
    *
    *  Here, `core` is the (possibly parameterized) class part of `parent`.
    *  If `parent` is the same as `core`, self is empty. Otherwise `self` is `parent`.
    *
    *  Example: Given
    *
+   *  ```
    *      class C
    *      type T1 = C { type T <: A }
+   *  ```
    *
    *  the refined type
    *
+   *  ```
    *      T1 { type T <: B }
+   *  ```
    *
    *  is expanded to
    *
+   *  ```
    *      trait <refinement> extends C { this: T1 => type T <: A }
+   *  ```
    *
    *  The result of this method is used for validity checking, is thrown away afterwards.
    *  @param parent  The type of `parent`
@@ -2533,9 +2606,13 @@ object desugar {
 
   /** Ensure the given function tree use only ValDefs for parameters.
    *  For example,
+   *  ```
    *      FunctionWithMods(List(TypeTree(A), TypeTree(B)), body, mods, erasedParams)
+   *  ```
    *  gets converted to
+   *  ```
    *      FunctionWithMods(List(ValDef(x$1, A), ValDef(x$2, B)), body, mods, erasedParams)
+   *  ```
    */
   def makeFunctionWithValDefs(tree: Function)(using Context): Function = {
     val Function(args, result) = tree

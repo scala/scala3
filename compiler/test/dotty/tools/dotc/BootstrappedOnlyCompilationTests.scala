@@ -21,7 +21,7 @@ class BootstrappedOnlyCompilationTests {
   // Positive tests ------------------------------------------------------------
 
   @Test def posMacros: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compilePosMacros")
+    implicit val testGroup: TestGroup = TestGroup("posMacros")
     aggregateTests(
       compileFilesInDir("tests/bench", defaultOptions.without("-Yno-deep-subtypes")),
       compileFilesInDir("tests/pos-macros", defaultOptions.and("-Xcheck-macros")),
@@ -29,7 +29,7 @@ class BootstrappedOnlyCompilationTests {
   }
 
   @Test def posWithCompiler: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compilePosWithCompiler")
+    implicit val testGroup: TestGroup = TestGroup("posWithCompiler")
     aggregateTests(
       compileFilesInDir("tests/pos-with-compiler", withCompilerOptions),
       compileFilesInDir("tests/pos-staging", withStagingOptions),
@@ -98,7 +98,7 @@ class BootstrappedOnlyCompilationTests {
   }
 
   @Test def negWithCompiler: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
+    implicit val testGroup: TestGroup = TestGroup("negWithCompiler")
     aggregateTests(
       compileFilesInDir("tests/neg-with-compiler", withCompilerOptions),
       compileFilesInDir("tests/neg-staging", withStagingOptions),
@@ -152,7 +152,7 @@ class BootstrappedOnlyCompilationTests {
   // lower level of concurrency as to not kill their running VMs
 
   @Test def picklingWithCompiler: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("testPicklingWithCompiler")
+    implicit val testGroup: TestGroup = TestGroup("picklingWithCompiler")
     aggregateTests(
       compileDir("compiler/src/dotty/tools", picklingWithCompilerOptions, recursive = false),
       compileDir("compiler/src/dotty/tools/dotc", picklingWithCompilerOptions, recursive = false),

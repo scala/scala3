@@ -3,9 +3,8 @@ package dotc
 package config
 
 import WrappedProperties.AccessControl
-import io.{ClassPath, Directory, Path}
-import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath}
-import ClassPath.split
+import io.{Directory, Path}
+import classpath.{AggregateClassPath, ClassPath, ClassPathFactory, JrtClassPath}
 import PartialFunction.condOpt
 import core.Contexts.*
 import Settings.*
@@ -20,7 +19,7 @@ object PathResolver {
 
   /** pretty print class path
    */
-  def ppcp(s: String): String = split(s) match {
+  def ppcp(s: String): String = ClassPath.split(s) match {
     case Nil      => ""
     case Seq(x)   => x
     case xs       => xs.map("\n" + _).mkString

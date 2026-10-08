@@ -1,3 +1,6 @@
+// scalajs: --skip
+// @static was never stabilized; it sometimes work by accident on Scala.js, but not here.
+
 import scala.annotation.{ static, targetName }
 
 class Foo

@@ -27,8 +27,10 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
 
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
+  private val myIsJava: Boolean = source.ext.isJava // `source` and `ext` are immutable, so cache the answer
+
   /** Is this the compilation unit of a Java file */
-  def isJava: Boolean = source.ext.isJava
+  def isJava: Boolean = myIsJava
 
   /** Is this the compilation unit of a Java file, or TASTy derived from a Java file */
   def typedAsJava: Boolean =
@@ -56,6 +58,12 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
    *  The information is used in phase `Inlining` in order to avoid traversing trees that need no transformations.
    */
   var needsInlining: Boolean = false
+
+  /** Set to `true` if there are inline traits (with or without Specialized context bounds)
+   *  This is used by:
+   *  DesugarSpecializedTraits, SpecializeInlineTraits, PruneInlinedMethods, PruneInlineTraits
+   */
+  var hasSpecializations: Boolean = false
 
   var hasMacroAnnotations: Boolean = false
 

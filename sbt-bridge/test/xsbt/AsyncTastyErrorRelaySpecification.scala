@@ -62,7 +62,7 @@ class AsyncTastyErrorRelaySpecification:
       "error from apiPhaseCompleted should be reported",
       reporter.problems().exists(p =>
         p.severity == Severity.Error
-          && p.message.contains("signaling API and Dependencies phases completion")
+          && p.message.contains("signaling API phase completion")
       )
     )
 

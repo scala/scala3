@@ -114,7 +114,7 @@ object CompletionValue:
       if snippetAffix.addLabelSnippet
       then
         val printedParams = symbol.info.typeParams.map(p =>
-          p.paramName.decoded ++ printer.tpe(p.paramInfo)
+          p.paramName.decoded + printer.tpe(p.paramInfo)
         )
         s"${label}${printedParams.mkString("[", ",", "]")}"
       else label
@@ -123,7 +123,7 @@ object CompletionValue:
       def info = denotation.info.widenTermRefExpr
       val isVal = !(symbol.is(Module) || symbol.is(Method) || symbol.isType || info.typeSymbol.is(Module))
       val prefix = if isVal then ": " else ""
-      prefix ++ printer.completionSymbol(denotation)
+      prefix + printer.completionSymbol(denotation)
 
   end Symbolic
 

@@ -3,7 +3,7 @@ package dotc
 package config
 
 import io.*
-import classpath.AggregateClassPath
+import classpath.{AggregateClassPath, ClassPath}
 import core.*
 import Symbols.*, Types.*, Contexts.*, StdNames.*
 import Flags.*

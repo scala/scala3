@@ -26,6 +26,8 @@ import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
 import cc.RetainingAnnotation
 
+import scala.annotation.nowarn
+
 /** Run by -Ycheck option after a given phase, this class retypes all syntax trees
  *  and verifies that the type of each tree node so obtained conforms to the type found in the tree node.
  *  It also performs the following checks:
@@ -129,7 +131,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     val checkingCtx = ctx
         .fresh
-        .setReporter(new ThrowingReporter(ctx.reporter))
+        .setReporter(ctx.reporter)
 
     val checker = inContext(ctx) {
       new Checker(previousPhases(phasesToRun.toList))
@@ -498,7 +500,16 @@ object TreeChecker {
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       assert(tree.isType || ctx.mode.is(Mode.Pattern) && untpd.isWildcardArg(tree) || !needsSelect(tree.typeOpt), i"bad type ${tree.tpe} for $tree # ${tree.uniqueId}")
-      assertDefined(tree)
+      if ctx.erasedTypes || enclosingInlineds.exists(_.symbol.is(Macro)) then
+        // relax the check for macro generated references to primaryConstructor parameters in the class's LocalDummy
+        // - they are moved to primaryConstructor in the Constructors phase anyway and there were issues here with
+        // the sourcecode community-build project and i25159-b based on it.
+        val isPrimaryConsParam = tree.symbol.is(Param) && tree.symbol.maybeOwner.isPrimaryConstructor
+        val isInLocalDummyOfThatClass = ctx.owner.ownersIterator.exists(sym =>
+          sym.isLocalDummy && tree.symbol.maybeOwner.maybeOwner == sym.enclosingClass
+        )
+        if !(isPrimaryConsParam && isInLocalDummyOfThatClass) then assertDefined(tree)
+      else assertDefined(tree)
 
       checkNotRepeated(super.typedIdent(tree, pt))
     }
@@ -872,6 +883,7 @@ object TreeChecker {
       if nowDefinedSyms.contains(tree.symbol.maybeOwner) then
         super.assertDefined(tree)
 
+  @nowarn("msg=Catching AssertionError can lead to unexpected behavior") // backwards compat
   def checkMacroGeneratedTree(original: tpd.Tree, expansion: tpd.Tree)(using Context): Unit =
     if ctx.settings.XcheckMacros.value then
       // We want to make sure that transparent inline macros are checked in the same way that
@@ -884,16 +896,16 @@ object TreeChecker {
       // See issue: #17009
       val checkingCtx = ctx
         .fresh
-        .setReporter(new ThrowingReporter(ctx.reporter))
+        .setReporter(ctx.reporter)
         .setPhase(ctx.base.inliningPhase)
 
       val phases = ctx.base.allPhases.toList
       val treeChecker = new LocalChecker(previousPhases(phases))
 
-      def reportMalformedMacroTree(msg: String | Null, err: Throwable) =
+      def reportMalformedMacroTree(msg: String | Null, err: Throwable | Null) =
         val stack =
           if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
-          else if err.getStackTrace == null then "  no stacktrace"
+          else if err == null || err.getStackTrace == null then "  no stacktrace"
           else err.getStackTrace.mkString("  ", "  \n", "")
         report.error(
           em"""Malformed tree was found while expanding macro with -Xcheck-macros.
@@ -912,12 +924,14 @@ object TreeChecker {
           original
         )
 
-      try treeChecker.typed(expansion)(using checkingCtx)
+      val previousErrorCount = checkingCtx.reporter.errorCount
+      try
+        treeChecker.typed(expansion)(using checkingCtx)
+        for error <- checkingCtx.reporter.allErrors.drop(previousErrorCount)
+          do reportMalformedMacroTree(error.message, null)
       catch
-        case err: java.lang.AssertionError =>
-          reportMalformedMacroTree(err.getMessage(), err)
-        case err: UnhandledError =>
-          reportMalformedMacroTree(err.diagnostic.message, err)
+        case err: AssertionError =>
+          reportMalformedMacroTree(err.getMessage, err)
 
   private[TreeChecker] def previousPhases(phases: List[Phase])(using Context): List[Phase] = phases match {
     case (phase: MegaPhase) :: phases1 =>

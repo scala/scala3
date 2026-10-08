@@ -273,7 +273,15 @@ object Erasure {
     final def box(tree: Tree, target: => String = "")(using Context): Tree = trace(i"boxing ${tree.showSummary()}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
         case ErasedValueType(tycon, _) =>
-          New(tycon, cast(tree, underlyingOfValueClass(tycon.symbol.asClass)) :: Nil) // todo: use adaptToType?
+          val cls = tycon.symbol.asClass
+          val underlying = underlyingOfValueClass(cls)
+          val ctor = cls.primaryConstructor
+          val arg = cast(tree, underlying)
+          transformInfo(ctor, ctor.info) match
+            case mt: MethodType if mt.paramInfos.nonEmpty =>
+              New(tycon, adaptToType(arg, mt.paramInfos.head) :: Nil)
+            case _ =>
+              New(tycon, arg :: Nil)
         case tp =>
           val cls = tp.classSymbol
           if (cls eq defn.UnitClass) constant(tree, ref(defn.BoxedUnit_UNIT))
@@ -409,17 +417,23 @@ object Erasure {
 
     /** The following code:
      *
+     *  ```
      *      val f: Function1[Int, Any] = x => ...
+     *  ```
      *
      *  results in the creation of a closure and an implementation method in the typer:
      *
-     *      def $anonfun(x: Int): Any = ...
-     *      val f: Function1[Int, Any] = closure($anonfun)
+     *  ```
+     *      def \$anonfun(x: Int): Any = ...
+     *      val f: Function1[Int, Any] = closure(\$anonfun)
+     *  ```
      *
-     *  Notice that `$anonfun` takes a primitive as argument, but the SAM (Single Abstract Method)
+     *  Notice that `\$anonfun` takes a primitive as argument, but the SAM (Single Abstract Method)
      *  of `Function1` after erasure is:
      *
+     *  ```
      *      def apply(x: Object): Object
+     *  ```
      *
      *  which takes a reference as argument. Hence, some form of adaptation is
      *  required. The most reliable way to do this adaptation is to replace the
@@ -427,8 +441,10 @@ object Erasure {
      *  original method with appropriate boxing/unboxing. For our example above,
      *  this would be:
      *
-     *      def $anonfun$adapted(x: Object): Object = $anonfun(BoxesRunTime.unboxToInt(x))
-     *      val f: Function1 = closure($anonfun$adapted)
+     *  ```
+     *      def \$anonfun$adapted(x: Object): Object = \$anonfun(BoxesRunTime.unboxToInt(x))
+     *      val f: Function1 = closure(\$anonfun\$adapted)
+     *  ```
      *
      *  But in some situations we can avoid generating this bridge, either
      *  because the runtime can perform auto-adaptation, or because we can
@@ -640,6 +656,7 @@ object Erasure {
         return typed(tree.qualifier, pt)
 
       var qual1 = typed(tree.qualifier, AnySelectionProto)
+      def qual1Type = qual1.tpe.widenDealias
 
       def mapOwner(sym: Symbol): Symbol =
         if !sym.exists && tree.name == nme.apply then
@@ -651,7 +668,7 @@ object Erasure {
           inContext(preErasureCtx) {
             val qualTp = tree.qualifier.typeOpt.widen
             if qualTp.derivesFrom(defn.PolyFunctionClass) then
-              eraseRefinedFunctionApply(qualTp.select(nme.apply).widen).classSymbol
+              erasePolyFunction(qualTp.select(nme.apply).widen).classSymbol
             else
               NoSymbol
           }
@@ -667,7 +684,7 @@ object Erasure {
 
       val origSym = tree.symbol
 
-      if !origSym.exists && qual1.tpe.widen.isInstanceOf[JavaArrayType] then
+      if !origSym.exists && qual1Type.isInstanceOf[JavaArrayType] then
         return tree.asInstanceOf[Tree] // we are re-typing a primitive array op
 
       val owner = mapOwner(origSym)
@@ -730,11 +747,11 @@ object Erasure {
           erasure(
             inContext(preErasureCtx):
               tree.qualifier.typeOpt.widen.finalResultType)
-              
+
         def hasImmediateInlineParent: Boolean = {
-          owner.isInlineTrait && 
-            (qual1.tpe.widenDealias.classSymbol ne sym.owner) &&
-            qual1.tpe.widenDealias.classSymbol.info.parents.exists(_.classSymbol eq sym.owner)
+          owner.isInlineTrait &&
+            (qual1Type.classSymbol ne sym.owner) &&
+            qual1Type.classSymbol.info.parents.exists(_.classSymbol eq sym.owner)
         }
 
         if qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType then
@@ -749,15 +766,18 @@ object Erasure {
               select(qual1, sym)
             case qual1 if hasImmediateInlineParent =>
               // If A is an inline trait and A.foo was inlined into B, references to b.foo (val b = B()) will still
-              // point to A.foo until now. We want them to point to B.foo so we get the benefit of specialization. 
+              // point to A.foo until now. We want them to point to B.foo so we get the benefit of specialization.
               // We fix that here rather than in a separate phase because
               // it needs to happen coordinated with erasure of Specialized traits, so that:
               //    a) we see the erased A$sp$Int traits and can point at their members
               //    b) we make the replacement before boxing in case A.foo is typed with T and B.foo specializes this to e.g. Int
-              //       Otherwise we will end up with Int.unbox(B.foo) instead of directly B.foo which won't typecheck.  
-              val specializedInterfaceSym = qual1.tpe.widenDealias.classSymbol.asClass
+              //       Otherwise we will end up with Int.unbox(B.foo) instead of directly B.foo which won't typecheck.
+              val specializedInterfaceSym = qual1Type.classSymbol.asClass
               val newSym = inContext(preErasureCtx) { sym.overridingSymbol(specializedInterfaceSym) }
               qual1.select(newSym)
+            case qual1 if sym.owner.isJavaStaticsClass && qual1.tpe.typeSymbol.isJavaStaticsClass =>
+              // a Java static, possibly inherited by the qualifier, needs no receiver
+              select(qual1, sym)
             case qual1 if !isJvmAccessible(qual1.tpe.typeSymbol)
                 || !qual1.tpe.derivesFrom(sym.owner) =>
               val castTarget = // Avoid inaccessible cast targets, see i8661
@@ -768,7 +788,7 @@ object Erasure {
                   // but be careful to not go in an infinite loop in case that doesn't
                   // work either.
                   val tp = originalQual
-                  if tp =:= qual1.tpe.widen then
+                  if tp =:= qual1Type then
                     return errorTree(qual1,
                       em"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
                   tp
@@ -795,6 +815,16 @@ object Erasure {
       }.withSpan(tree.span)
 
       ntree match {
+        case TypeApply(fun: Select, _)
+        if !fun.symbol.exists
+          && inContext(preErasureCtx)(fun.qualifier.tpe.widen.derivesFrom(defn.PolyFunctionClass)) =>
+          // A type application `f[T_1, ..., T_M]` of a polymorphic function with a function
+          // result erases to `f` itself. This is OK since any actual implementation of `f`
+          // will have to immediately follow the type parameters with a value parameter list
+          // (because of the restriction in Parsers that polymorphic function literals must
+          // have value parameters). So no side effects are possible between type and value
+          // parameters and we can simply wait until the first value parameter is passed.
+          typed(fun.qualifier, pt)
         case TypeApply(fun, args) =>
           val fun1 = typedExpr(fun, AnyFunctionProto)
           fun1.tpe.widen match {
@@ -807,8 +837,10 @@ object Erasure {
       }
     }
 
-    /* Erase anonymous instances of specialized traits to $impl$ classes */
-    override def typedBlock(tree: untpd.Block, pt: Type)(using Context): Tree = tree.asInstanceOf[Block] match 
+    /** Erase anonymous instances of specialized traits to $impl$ classes.
+     *  Erase polymorphic closure literals to the erasure of their bodies.
+     */
+    override def typedBlock(tree: untpd.Block, pt: Type)(using Context): Tree = tree.asInstanceOf[Block] match
       case AnonymousClassInstance(anon) =>
         inContext(preErasureCtx) {
           Specialization.unapply(anon.typeTree.tpe, anon.typeTree.span).flatMap(spec => {
@@ -833,8 +865,12 @@ object Erasure {
           case Some(erased) => typedTyped(erased, anon.typeTree.tpe)
           case None         => super.typedBlock(tree, pt)
         }
-      case _ => super.typedBlock(tree, pt)
-
+      case Block((mdef: DefDef) :: Nil, closure: Closure)
+      if inContext(preErasureCtx)(mdef.symbol.info.isInstanceOf[PolyType]) =>
+        val rhs @ closureDef(_) = mdef.rhs.runtimeChecked
+        super.typed(rhs, pt).changeOwnerAfter(mdef.symbol, ctx.owner, erasurePhase)
+      case _ =>
+        super.typedBlock(tree, pt)
 
     override def typedBind(tree: untpd.Bind, pt: Type)(using Context): Bind =
       atPhase(erasurePhase):
@@ -1068,17 +1104,17 @@ object Erasure {
 
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree =
       EmptyTree
-      
+
     def typedSpecializedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): TypeDef = {
       // drop Foo[Int] leading to duplicate Foo$sp$Int
       val TypeDef(_, implInit: Template) = cdef: @unchecked
-      
+
       // Match corresponding class info erasure in TypeErasure::apply ClassInfo case
       val oldParents = implInit.asInstanceOf[Template].parents
       val superCtxNoSpec = disallowSpecializedCtx(using ctx.superCallContext)
       val newParents =
-        // {source: Bar, Foo both specialized traits} inline trait Bar$sp$Int extends Object, Bar, Foo$sp$Int 
-        if cls.isSpecializedTraitInterface then 
+        // {source: Bar, Foo both specialized traits} inline trait Bar$sp$Int extends Object, Bar, Foo$sp$Int
+        if cls.isSpecializedTraitInterface then
           val (obj :: originalTrait :: inheritedParents) = oldParents : @unchecked
           obj :: typedType(originalTrait)(using superCtxNoSpec) :: inheritedParents
          // {source: Bar, Foo both specialized traits} class Bar$impl$Int extends Object, Bar$sp$Int, Bar(10)
@@ -1089,13 +1125,13 @@ object Erasure {
             case _ => typedType(originalTraitSpecializedParent)(using superCtxNoSpec)
           }
           objectParent :: traitSpParent :: newParent :: Nil
-        else 
+        else
           inContext(preErasureCtx) {
             val extraSpTraits = oldParents
               .filter(p => p.symbol.isPrimaryConstructor && p.symbol.owner.isSpecializedTrait)
               .map(p => p.tpe.resultType)
-            
-            def isPrimaryConsOfSpecTrait(tree: tpd.Tree): Boolean = 
+
+            def isPrimaryConsOfSpecTrait(tree: tpd.Tree): Boolean =
               tree.symbol.isPrimaryConstructor && tree.symbol.owner.isSpecializedTrait
 
             // {source: class Bar extends Foo[Int](10) with Baz[Int](10)}
@@ -1109,7 +1145,8 @@ object Erasure {
     }
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
-      val cdef1 = typedSpecializedClassDef(cdef, cls)
+      val cdef1 = if ctx.compilationUnit.hasSpecializations then typedSpecializedClassDef(cdef, cls) else cdef
+
       val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef1, cls): @unchecked
       // In the case where a trait extends a class, we need to strip any non trait class from the signature
       // and accept the first one (see tests/run/mixins.scala)
@@ -1156,6 +1193,16 @@ object Erasure {
       }
 
     override def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type = tree
+
+    /* debug help
+    override def typed(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
+      trace(i"erasing $tree, pt = $pt", show = true):
+        try
+          super.typed(tree, pt, locked)
+        catch case ex: AssertionError =>
+          println(i"failure while erasing $tree with $pt")
+          throw ex
+    */
   }
 
   private def takesBridges(sym: Symbol)(using Context): Boolean =
