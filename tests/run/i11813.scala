@@ -31,3 +31,11 @@ def useCB(f: [A: Ord] => String): String = f[Int]
   println(f5[String](2))
   println(useCB([A: Ord] => summon[Ord[A]].name))
   println(useCB([A] => summon[Ord[A]].name))
+
+  // multiple type parameter clauses
+  val m1: [A] => Ord[A] ?=> [B] => B => String = [A] => [B] => (b: B) => summon[Ord[A]].name + b
+  val m2 = [A: Ord] => [B] => (b: B) => summon[Ord[A]].name + b
+  val m3: [A] => Ord[A] ?=> [B] => Ord[B] ?=> String = [A] => [B] => summon[Ord[A]].name + summon[Ord[B]].name
+  println(m1[Int][Int](1))
+  println(m2[String][Int](2))
+  println(m3[Int][String])
