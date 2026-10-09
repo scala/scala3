@@ -66,8 +66,8 @@ class DottyUnpickler(
     unpickler.unpickle(new AttributesSectionUnpickler)
       .map(_.attributes).getOrElse(Attributes.empty)
   val compilationUnitInfo: CompilationUnitInfo =
-    import unpickler.header.{majorVersion, minorVersion, experimentalVersion}
-    val tastyVersion = TastyVersion(majorVersion, minorVersion, experimentalVersion)
+    val header = unpickler.header
+    val tastyVersion = TastyVersion(header.majorVersion, header.minorVersion, header.experimentalVersion)
     val tastyInfo = TastyInfo(tastyVersion, tastyAttributes)
     CompilationUnitInfo(tastyFile, () => Some(tastyInfo))
 
@@ -93,11 +93,10 @@ class DottyUnpickler(
   private var ids: Array[String] | Null = null
 
   override def mightContain(id: String)(using Context): Boolean = {
-    if (ids == null)
-      ids =
-        unpickler.nameAtRef.contents.toArray.collect {
+    initialize(ids, ids = _,
+        unpickler.nameAtRef.toArray.collect {
           case name: SimpleName => name.toString
         }.sorted
-    ids.nn.binarySearch(id) >= 0
+    ).binarySearch(id) >= 0
   }
 }

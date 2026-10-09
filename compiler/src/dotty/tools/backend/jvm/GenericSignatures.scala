@@ -35,11 +35,11 @@ object GenericSignatures {
    *  @return The signature if it could be generated, `null` otherwise.
    */
   def javaSig(sym0: Symbol, info: Type, onClassRef: ClassSymbol => Unit)(using Context): StringBuilder | Null =
-    if mayNeedSignature(sym0, info) then
-      ctx.handleRecursive("generating the generic signature of", sym0, sym0):
-        atPhase(erasurePhase):
+    ctx.handleRecursive("generating the generic signature of", sym0, sym0):
+      atPhase(erasurePhase):
+        if mayNeedSignature(sym0, info) then
           javaSig0(sym0, info, onClassRef)
-    else null
+        else null
 
   private def mayNeedSignature(sym0: Symbol, info: Type)(using Context) = {
     def mayNeedSignature(t: Type): Boolean = t match
@@ -321,16 +321,16 @@ object GenericSignatures {
           arraySig(elemtp)
 
         case RefOrAppliedType(sym, pre, args) =>
-          if isTypeParameterInSig(sym, sym0) then
+          if (sym == defn.PairClass && tupleArity(tp) > Definitions.MaxTupleArity)
+            jsig(defn.TupleXXLClass.typeRef)
+          else if isTypeParameterInSig(sym, sym0) then
             assert(!sym.isAliasType || sym.info.isLambdaSub, s"Unexpected alias type: $sym")
             typeParamSig(sym.targetName.lastPart)
           else defn.specialErasure.get(sym) match
             case Some(special) =>
               jsig(special.typeRef)
             case None =>
-              if (sym == defn.PairClass && tupleArity(tp) > Definitions.MaxTupleArity)
-                jsig(defn.TupleXXLClass.typeRef)
-              else if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
+              if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
                 jsig(defn.BoxedUnitClass.typeRef)
               else if (sym == defn.NothingClass)
                 builder.append("Lscala/runtime/Nothing$;")
@@ -363,11 +363,11 @@ object GenericSignatures {
                 case _ => jsig(erasure(tp), toplevel = toplevel, vcBoxing = vcBoxing)
 
         case ExprType(restpe) =>
-          if toplevel then
+          // Exported modules have a method-like type since what is actually exported is an accessor method,
+          // but they are not methods, so they must not have a method signature. Thus we must check whether it's really a method.
+          if toplevel && sym0.is(Method) then
             builder.append("()")
-            methodResultSig(restpe)
-          else
-            jsig(defn.FunctionType(0).appliedTo(restpe))
+          methodResultSig(restpe)
 
         case mtd: MethodOrPoly =>
           val collectTParams = toplevel && !sym0.isConstructor

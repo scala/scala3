@@ -21,7 +21,7 @@ class CompilationTests {
   // Positive tests ------------------------------------------------------------
 
   @Category(Array(classOf[CoverageCompilationTests])) @Test def pos: Unit = {
-    given TestGroup = TestGroup("compilePos")
+    given TestGroup = TestGroup("pos")
     val tests = List(
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
@@ -90,6 +90,7 @@ class CompilationTests {
       compileFile("tests/rewrites/i24103b.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
       compileFile("tests/rewrites/i24213.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
       compileFile("tests/rewrites/i18234.scala", defaultOptions.and("-rewrite", "-source:3.8-migration")),
+      compileFile("tests/rewrites/i27041.scala", defaultOptions.and("-rewrite", "-source:3.9-migration")),
       compileFile("tests/rewrites/unary-minus.scala", defaultOptions.and("-rewrite")),
     )).checkRewrites()
   }
@@ -148,7 +149,7 @@ class CompilationTests {
   // Warning tests ------------------------------------------------------------
 
   @Category(Array(classOf[CoverageCompilationTests])) @Test def warn: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileWarn")
+    implicit val testGroup: TestGroup = TestGroup("warn")
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/warn", defaultOptions),
     ))
@@ -158,11 +159,11 @@ class CompilationTests {
   // Negative tests ------------------------------------------------------------
 
   @Test def negAll: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileNeg")
+    implicit val testGroup: TestGroup = TestGroup("neg")
     aggregateTests(
       compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.negScala2LibraryTastyExcludelisted)),
       compileFilesInDir("tests/neg-deep-subtype", allowDeepSubtypes),
-      compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
+      compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking")),
       compileFile("tests/neg-custom-args/sourcepath/outer/nested/Test1.scala", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath")),
       compileDir("tests/neg-custom-args/sourcepath2/hi", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath2", "-Werror")),
       compileList("duplicate source", List(
@@ -180,7 +181,7 @@ class CompilationTests {
   }
 
   @Test def fuzzyAll: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileFuzzy")
+    implicit val testGroup: TestGroup = TestGroup("fuzzy")
     compileFilesInDir("tests/fuzzy", defaultOptions).checkNoCrash()
   }
 
@@ -197,15 +198,34 @@ class CompilationTests {
   // Run tests -----------------------------------------------------------------
 
   @Category(Array(classOf[CoverageCompilationTests])) @Test def runAll: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("runAll")
+    implicit val testGroup: TestGroup = TestGroup("run")
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
-      compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
+      compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking", "-language:experimental.separationChecking")),
       // Run tests for legacy lazy vals.
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
     ))
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
+  }
+
+  @Test def runSpecial(): Unit = {
+    // TODO: this test should be much simpler if we used source roots correctly in Vulpix and in Context.getSource,
+    // because then we could switch the source root instead of moving the file
+    val firstFilePath = "tests/run-special/typecheck-boom/Macro_1.scala"
+    val tmpPath = java.nio.file.Files.createTempFile("typecheck-boom", ".scala")
+    val firstPath = TestSources.rootPath().resolve(firstFilePath)
+    try special(
+      defaultOptions,
+      "tests/run-special/typecheck-boom",
+      expectError = false,
+      o => compileFile(firstFilePath, o),
+      ("Macro_1/typecheck-boom/Macro_1/", o => {
+        java.nio.file.Files.move(firstPath, tmpPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        compileFile("tests/run-special/typecheck-boom/Use_2.scala", o)
+      })
+    )
+    finally java.nio.file.Files.move(tmpPath, firstPath)
   }
 
   // Generic java signatures tests ---------------------------------------------
@@ -219,7 +239,7 @@ class CompilationTests {
   // Pickling Tests ------------------------------------------------------------
 
   @Test def pickling: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("testPickling")
+    implicit val testGroup: TestGroup = TestGroup("pickling")
     aggregateTests(
       compileFilesInDir("tests/pos", picklingOptions, FileFilter.exclude(TestSources.posTestPicklingExcludelisted)),
       compileFilesInDir("tests/run", picklingOptions, FileFilter.exclude(TestSources.runTestPicklingExcludelisted))
@@ -413,36 +433,42 @@ class CompilationTests {
     }
   }
 
-  // parallel backend tests
   @Test def parallelBackend: Unit = {
-    given TestGroup = TestGroup("parallelBackend")
     val parallelism = Runtime.getRuntime().availableProcessors().min(16)
     assumeTrue("Not enough available processors to run parallel tests", parallelism > 1)
 
     val options = defaultOptions.and(s"-Ybackend-parallelism:${parallelism}")
-    def parCompileDir(directory: String) = compileDir(directory, options)
+    def parCompileDir(directory: String)(using TestGroup) = compileDir(directory, options)
 
     // Compilation units containing more than 1 source file
-    aggregateTests(
-      parCompileDir("tests/pos/i10477"),
-      parCompileDir("tests/pos/i4758"),
-      parCompileDir("tests/pos/scala2traits"),
-      parCompileDir("tests/pos/class-gadt"),
-      parCompileDir("tests/pos/tailcall"),
-      parCompileDir("tests/pos/reference"),
-      parCompileDir("tests/pos/pos_valueclasses")
-    ).checkCompile()
+    {
+      given TestGroup = TestGroup("parallelBackend pos")
+      aggregateTests(
+        parCompileDir("tests/pos/i10477"),
+        parCompileDir("tests/pos/i4758"),
+        parCompileDir("tests/pos/scala2traits"),
+        parCompileDir("tests/pos/class-gadt"),
+        parCompileDir("tests/pos/tailcall"),
+        parCompileDir("tests/pos/reference"),
+        parCompileDir("tests/pos/pos_valueclasses")
+      ).checkCompile()
+    }
 
-    aggregateTests(
-      parCompileDir("tests/neg/package-implicit"),
-      parCompileDir("tests/neg/package-export")
-    ).checkExpectedErrors()
+    {
+      given TestGroup = TestGroup("parallelBackend neg")
+      aggregateTests(
+        parCompileDir("tests/neg/package-implicit"),
+        parCompileDir("tests/neg/package-export")
+      ).checkExpectedErrors()
+    }
 
-    aggregateTests(
-      parCompileDir("tests/run/decorators"),
-      parCompileDir("tests/run/generic")
-    ).checkRuns()
-
+    {
+      given TestGroup = TestGroup("parallelBackend run")
+      aggregateTests(
+        parCompileDir("tests/run/decorators"),
+        parCompileDir("tests/run/generic")
+      ).checkRuns()
+    }
   }
 
   /**

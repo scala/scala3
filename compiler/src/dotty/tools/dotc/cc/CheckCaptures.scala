@@ -34,6 +34,7 @@ import Capabilities.*
 import Mutability.*
 import util.common.alwaysTrue
 import scala.annotation.constructorOnly
+import dotty.tools.dotc.cc.CaptureSet.VarInTypeTree
 
 /** The capture checker */
 object CheckCaptures:
@@ -402,7 +403,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               traverseChildren(t)
 
     /** If `tpt` is an inferred type, interpolate capture set variables appearing contra-
-     *  variantly in it. Also anchor LocalCap instances with anchorCaps.
+     *  variantly in it. Also, drop skolem refinements and anchor LocalCap instances.
      *  Note: module vals don't have inferred types but still hold capture set variables.
      *  These capture set variables are interpolated after the associated module class
      *  has been rechecked.
@@ -411,10 +412,49 @@ class CheckCaptures extends Recheck, SymTransformer:
       if tpt.isInstanceOf[InferredTypeTree] then
         interpolate(tpt.nuType, sym)
           .showing(i"solved vars for $sym in ${tpt.nuType}", capt)
+        val stripped = dropSkolemRefinements(tpt.nuType)
+        if stripped ne tpt.nuType then
+          capt.println(i"dropped skolem refinements for $sym: ${tpt.nuType} --> $stripped")
+          tpt.updNuType(stripped)
         anchorCaps(sym).traverse(tpt.nuType)
         for msg <- ccState.approxWarnings do
           report.warning(msg, tpt.srcPos)
         ccState.approxWarnings.clear()
+
+    /** Drop all capture refinements (added by addCaptureRefinements) of `tp` whose
+     *  refined info contains a capability with a skolem prefix unless the skolem's
+     *  owner properly contains the current symbol's definition.
+     *  Such refinements arise when a capture set variable in an inferred
+     *  capture refinement is instantiated through a member selection on a non-path
+     *  prefix. For instance, in
+     *
+     *      val a = classOf[A]
+     *
+     *  the inferred type `Class[A]` is expanded to `Class[A{val x: Object^'s}]`, and
+     *  checking `classOf[A]: Class[A]` against it maps the `A.this`-prefixed root
+     *  capability of `A.x` to `<skolem>.any`, which then becomes the solution of `'s`.
+     *  The skolem is only meaningful inside the comparison that created it and cannot
+     *  be related to anything outside. The refinement adds no information over the
+     *  parent, so we drop it. See issue #26780.
+     */
+    private def dropSkolemRefinements(using Context) = new TypeMap:
+      private def hasSkolemPrefix(tp: Type): Boolean = tp match
+        case tp: TermRef =>
+          tp.symbol.isSkolem && !ctx.owner.isProperlyContainedIn(tp.symbol.owner)
+          || hasSkolemPrefix(tp.prefix)
+        case _ => false
+      def isSkolemRooted(c: Capability): Boolean = c.core match
+        case c: LocalCap => hasSkolemPrefix(c.prefix)
+        case c: TermRef => hasSkolemPrefix(c)
+        case _ => false
+      def apply(t: Type): Type = t match
+        case t @ RefinedType(parent, _, CapturingType(_, refs: VarInTypeTree))
+        if refs.isRefining && refs.elems.exists(isSkolemRooted) =>
+          apply(parent)
+        case t @ CapturingType(parent, refs) =>
+          derivedCapturingType(t, apply(parent), refs)
+        case _ =>
+          mapOver(t)
 
     /** Assert subcapturing `cs1 <: cs2` (available for debugging, otherwise unused) */
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
@@ -1147,7 +1187,12 @@ class CheckCaptures extends Recheck, SymTransformer:
             matchParamsAndResult(paramss, parent)
           case defn.PolyFunctionOf(poly: PolyType) =>
             assert(params.hasSameLengthAs(poly.paramInfos))
-            matchParamsAndResult(paramss1, poly.instantiate(params.map(_.symbol.typeRef)))
+            val resType = poly.instantiate(params.map(_.symbol.typeRef))
+            if paramss1.isEmpty then
+              // Polymorphic function without term parameters: `[T] => R`
+              if resType.isValueType && !hasCapsetVars(resType) then updateResult(resType)
+            else
+              matchParamsAndResult(paramss1, resType)
           case FunctionOrMethod(argTypes, resType) =>
             assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
             inContext(ctx.withOwner(anonfun)) {
@@ -1662,16 +1707,14 @@ class CheckCaptures extends Recheck, SymTransformer:
             CaptureSet.Var(curEnv.owner), curEnv)
         case _ =>
       val res =
-        try
-          if capt eq noPrinter then
-            super.recheck(tree, pt)
-          else
-            trace.force(i"rechecking $tree with pt = $pt", recheckr, show = true):
+        printOnAssertionError(i"error while rechecking $tree against $pt"):
+          try
+            if capt eq noPrinter then
               super.recheck(tree, pt)
-        catch case ex: AssertionError =>
-          println(i"error while rechecking $tree against $pt")
-          throw ex
-        finally curEnv = saved
+            else
+              trace.force(i"rechecking $tree with pt = $pt", recheckr, show = true):
+                super.recheck(tree, pt)
+          finally curEnv = saved
       if tree.isTerm && !pt.isBoxed && pt != LhsProto then
         markFree(res.boxedCaptureSet, tree)
       res
@@ -1722,16 +1765,14 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: List[Note])(using Context): Type =
       val saved = ccState.ignoreClassifiers
-      try
-        tree match
-          case tree: TypeApply if tree.symbol == defn.Any_typeCast => ccState.ignoreClassifiers = true
-          case _ =>
-        testAdapted(actual, expected, tree, notes)(err.typeMismatch)
-      catch case ex: AssertionError =>
-        println(i"error while checking $tree: $actual against $expected")
-        throw ex
-      finally
-        ccState.ignoreClassifiers = saved
+      printOnAssertionError(i"error while checking $tree: $actual against $expected"):
+        try
+          tree match
+            case tree: TypeApply if tree.symbol == defn.Any_typeCast => ccState.ignoreClassifiers = true
+            case _ =>
+          testAdapted(actual, expected, tree, notes)(err.typeMismatch)
+        finally
+          ccState.ignoreClassifiers = saved
 
     @annotation.tailrec
     private def findImpureUpperBound(tp: Type)(using Context): Type = tp match
@@ -1995,8 +2036,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
 
         actual match
-          case actual: FlexibleType =>
-            return actual.derivedFlexibleType(recur(actual.hi, expected, covariant))
+          case actual @ FlexibleType(hi) =>
+            return actual.derivedFlexibleType(recur(hi, expected, covariant))
           case _ =>
 
         // Decompose the actual type into the inner shape type, the capture set and the box status

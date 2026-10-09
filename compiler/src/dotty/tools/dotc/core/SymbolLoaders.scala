@@ -11,13 +11,10 @@ import dotty.tools.io.AbstractFile
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
 import NameOps.*
 import StdNames.*
-import classfile.{ClassfileParser, ClassfileTastyUUIDParser}
+import classfile.ClassfileParser
 import Decorators.*
-
-import util.Stats
-import reporting.{Message, trace}
-import reporting.Diagnostic.LoadingFailure
-
+import util.{NoSourcePosition, Stats}
+import reporting.{Diagnostic, Message, trace}
 import ast.desugar
 
 import parsing.JavaParsers.OutlineJavaParser
@@ -296,7 +293,10 @@ object SymbolLoaders {
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
       if (!root.isRoot) {
-        val classReps = classPath.classes(packageName) ++ classPath.sources(packageName)
+        val classReps = ClassPath.mergeClassesAndSources(
+          classPath.classes(packageName),
+          classPath.sources(packageName),
+        )
 
         for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
@@ -375,7 +375,7 @@ object SymbolLoaders {
     // e.g. scala-parallel-collections adds both classes to scala.collection
     // and the new scala.collection.parallel sub-package.
     for p <- jarClasspath.packages(fullPackageName) do
-      val subPackageName = PackageNameUtils.separatePkgAndClassNames(p)._2.toTermName
+      val subPackageName = PackageNameUtils.separateClassName(p).toTermName
       val subPackage = packageClass.info.decl(subPackageName).orElse:
         // package does not exist in symbol table, create a new symbol
         enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))
@@ -421,7 +421,7 @@ abstract class SymbolLoader extends LazyType { self =>
       else em"""error while loading ${root.name},
                |$msg"""
     }
-    var failure: Option[LoadingFailure] = None
+    var failure: Option[Diagnostic.LoadingFailure] = None
     try {
       val start = System.currentTimeMillis
       trace.onDebug("loading") {
@@ -435,7 +435,7 @@ abstract class SymbolLoader extends LazyType { self =>
       case ex: IOException =>
         val message = loadingMessage(ex)
         if ctx.retainedSymbolLoadingFailures != null then
-          val loadFailure = LoadingFailure(message)
+          val loadFailure = Diagnostic.LoadingFailure(message)
           failure = Some(loadFailure)
           report.loadingError(loadFailure)
         else report.error(message)
@@ -528,16 +528,13 @@ class TastyLoader(tastyFile: AbstractFile) extends SymbolLoader {
           classRoot.classSymbol.rootTreeOrProvider = unpickler
           moduleRoot.classSymbol.rootTreeOrProvider = unpickler
         if isBestEffortTasty then
-          checkBeTastyUUID(tastyFile)
           ctx.setUsedBestEffortTasty()
-        else
-          checkTastyUUID()
       else
         report.error(em"Cannot read Best Effort TASTy $tastyFile without the ${ctx.settings.YwithBestEffortTasty.name} option")
 
   private def handleUnpicklingExceptions[T](thunk: =>T): T =
     try thunk
-    catch case e: RuntimeException =>
+    catch case e: RuntimeException if false =>
       val tastyType = if (isBestEffortTasty) "Best Effort TASTy" else "TASTy"
       val message = e match
         case e: UnpickleException =>
@@ -547,21 +544,6 @@ class TastyLoader(tastyFile: AbstractFile) extends SymbolLoader {
           s"""$tastyFile file ${tastyFile.path} is broken, reading aborted with ${e.getClass}
             |  ${Option(e.getMessage).getOrElse("")}""".stripMargin
       throw IOException(message, e)
-
-
-  private def checkTastyUUID()(using Context): Unit =
-    val classfile =
-      val className = tastyFile.name.stripSuffix(".tasty")
-      tastyFile.resolveSibling(className + ".class")
-    if classfile != null then
-      val tastyUUID = unpickler.unpickler.header.uuid
-      new ClassfileTastyUUIDParser(classfile)(ctx).checkTastyUUID(tastyUUID)
-    else
-      // This will be the case when a tasty file compiled by `-Xearly-tasty-output-write` comes from an early output jar.
-      report.inform(s"No classfiles found for $tastyFile when checking TASTy UUID")
-
-  private def checkBeTastyUUID(tastyFile: AbstractFile)(using Context): Unit =
-    new BestEffortTastyHeaderUnpickler(tastyFile.toByteArray).readHeader()
 
   private def mayLoadTreesFromTasty(using Context): Boolean =
     ctx.settings.YretainTrees.value || ctx.settings.fromTasty.value

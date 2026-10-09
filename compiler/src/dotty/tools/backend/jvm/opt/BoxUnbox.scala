@@ -186,7 +186,7 @@ final class BoxUnbox(callGraph: CallGraph, ts: OptimizerKnownBTypes) {
 
       val knownHandled = mutable.Set.empty[AbstractInsnNode]
 
-      lazy val prodCons = new ProdConsAnalyzer(method, owner)
+      val prodCons = new ProdConsAnalyzer(method, owner)
 
       var nextLocal = MethodMax.maxLocals(method)
       def getLocal(size: Int) = {

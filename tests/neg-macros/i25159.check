@@ -1,0 +1,13 @@
+-- Error: tests/neg-macros/i25159/Test_2.scala:6:27 --------------------------------------------------------------------
+ 6 |    println(Static.callInfo()) // error
+   |            ^^^^^^^^^^^^^^^^^
+   |While expanding a macro, a reference to primary constructor parameter parameter x of class LetItCrash was used outside of the primary constructor.
+   |
+   |Hint: Instead of using `Symbol.primaryConstructor.paramSymss` directly, get the analogous field members with `Symbol.fieldMembers`.
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macro_1.scala:15
+15 |        '{ $symbolRef + $symbolVal.toString }
+   |                         ^^^^^^^^^
+    --------------------------------------------------------------------------------------------------------------------
