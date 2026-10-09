@@ -275,6 +275,8 @@ class DeterminismTest {
       "C3" -> "int C3 = 'a' + 'b'",
       "C4" -> "int C4 = -'a'",
       "F1" -> "float F1 = 1.0f / 3",
+      "F2" -> "float F2 = 1.00000017881393432617187499f",
+      "F3" -> "float F3 = -1.00000017881393432617187499f * 1",
       "D1" -> "double D1 = 1 / 2",
       "D2" -> "double D2 = 1.0 / 0",
       "D3" -> "double D3 = 5.5 % 2",

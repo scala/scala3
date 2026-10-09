@@ -663,7 +663,10 @@ object JavaScanners {
       val limit: Double =
         if (token == DOUBLELIT) Double.MaxValue else Float.MaxValue
       try {
-        val value: Double = java.lang.Double.valueOf(strVal.toString).doubleValue()
+        // a float literal is rounded to float directly, not via double (JLS 3.10.2)
+        val value: Double =
+          if (token == FLOATLIT) java.lang.Float.parseFloat(strVal.toString).toDouble
+          else java.lang.Double.parseDouble(strVal.toString)
         if (value > limit)
           error(em"floating point number too large")
         if (negated) -value else value
