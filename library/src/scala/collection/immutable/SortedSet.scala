@@ -27,8 +27,10 @@ trait SortedSet[A]
      with SortedSetOps[A, SortedSet, SortedSet[A]]
      with SortedSetFactoryDefaults[A, SortedSet, Set] {
 
+  /** Returns this set itself, with its static type widened to its unsorted counterpart `Set` */
   override def unsorted: Set[A] = this
 
+  /** Returns the [[SortedSet$ `SortedSet`]] object, the default factory for immutable sorted sets, which creates `TreeSet`s */
   override def sortedIterableFactory: SortedIterableFactory[SortedSet] = SortedSet
 }
 
@@ -44,6 +46,7 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
   extends SetOps[A, Set, C]
      with collection.SortedSetOps[A, CC, C] {
 
+  /** Widens the type of this set to its unsorted counterpart. */
   def unsorted: Set[A]
 }
 
@@ -59,6 +62,14 @@ transparent trait StrictOptimizedSortedSetOps[A, +CC[X] <: SortedSet[X], +C <: S
  */
 @SerialVersionUID(3L)
 object SortedSet extends SortedIterableFactory.Delegate[SortedSet](TreeSet) {
+  /** Returns an immutable sorted set containing the elements of `it`, ordered by the given `Ordering`.
+   *
+   *  If `it` is already a sorted set whose ordering is equal to the requested one it is returned
+   *  unchanged; otherwise its elements are copied into a new [[TreeSet]].
+   *
+   *  @tparam E the element type
+   *  @param it the collection whose elements are to be contained
+   */
   override def from[E: Ordering](it: IterableOnce[E]^): SortedSet[E] = (it: @unchecked) match {
     case ss: SortedSet[E] if Ordering[E] == ss.ordering => ss
     case _ => super.from(it)
