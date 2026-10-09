@@ -20,6 +20,7 @@ import transform.ValueClasses
 import ErrorReporting.*
 import reporting.*
 import inlines.Inlines
+import PartialAssignment.*
 
 object Dynamic {
   private def isDynamicMethod(name: Name): Boolean =
@@ -143,6 +144,33 @@ trait Dynamic {
         errorTree(tree, ReassignmentToVal(name, pt))
     }
   }
+
+  /** Returns the partial application of a dynamic assignment translating selection that does not
+    * typecheck according to the normal rules into a `updateDynamic`.
+    *
+    * For example: `foo.bar = baz ~~> foo.updateDynamic(bar)(baz)`
+    *
+    * @param lhs The target of the assignment.
+    */
+  def genPartialDynamicAssignment(
+      lhs: untpd.Tree
+  )(using Context): PartialAssignment[SimpleLValue] =
+    lhs match
+      case s @ Select(q, n) if !isDynamicMethod(n) =>
+        genPartialDynamicAssignment(q, n, s.span, Nil)
+      case TypeApply(s @ Select(q, n), targs) if !isDynamicMethod(n) =>
+        genPartialDynamicAssignment(q, n, s.span, Nil)
+      case _ =>
+        val e = errorTree(lhs, ReassignmentToVal(lhs.symbol.name, NoType))
+        PartialAssignment(SimpleLValue(e)) { (l, _, _) => l.expression }
+
+  def genPartialDynamicAssignment(
+      q: untpd.Tree, n: Name, s: Span, targs: List[untpd.Tree]
+  )(using Context): PartialAssignment[SimpleLValue] =
+    val v = typed(coreDynamic(q, nme.updateDynamic, n, s, targs))
+    PartialAssignment(SimpleLValue(v)) { (l, r, _) =>
+      untpd.Apply(untpd.TypedSplice(l.expression), List(r))
+    }
 
   private def coreDynamic(qual: untpd.Tree, dynName: Name, name: Name, selSpan: Span, targs: List[untpd.Tree])(using Context): untpd.Apply = {
     val select = untpd.Select(qual, dynName).withSpan(selSpan)

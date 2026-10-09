@@ -8,7 +8,7 @@
   |                                  _$1 => State.this.text = _$1
   |                                Expected type for the whole anonymous function:
   |                                  String
--- [E052] Type Error: tests/neg/i11561.scala:3:30 ----------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i11561.scala:3:25 ----------------------------------------------------------------------
 3 |  val updateText2 = copy(text = (_: String)) // error
   |                         ^^^^^^^^^^^^^^^^^^
   |                         Reassignment to val text

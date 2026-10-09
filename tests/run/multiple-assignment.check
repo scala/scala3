@@ -1,0 +1,12 @@
+after swap: (2, 4)
+after swap: (2, 4)
+after swap: (2, 4)
+load 1
+load 2
+load 2
+load 4 from 2
+load 1
+load 2 from 1
+store 4 to 1
+store 2 to 2
+after swap: (4, 2)

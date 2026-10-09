@@ -9,43 +9,43 @@
 45 |  x() += "42" // error
    |  ^^^^^^
    |  value += is not a member of Int - did you mean Int.!=? or perhaps Int.<=?
--- [E052] Type Error: tests/neg/i22671.scala:49:6 ----------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i22671.scala:49:4 ----------------------------------------------------------------------
 49 |    c = 42 // error
    |    ^^^^^^
    |    Reassignment to val c
    |
    | longer explanation available when compiling with `-explain`
--- [E052] Type Error: tests/neg/i22671.scala:9:6 -----------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i22671.scala:9:4 -----------------------------------------------------------------------
 9 |  X.w = 27 // error
   |  ^^^^^^^^
   |  Reassignment to val w
   |
   | longer explanation available when compiling with `-explain`
--- [E052] Type Error: tests/neg/i22671.scala:12:6 ----------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i22671.scala:12:4 ----------------------------------------------------------------------
 12 |  X.x = 27 // error
    |  ^^^^^^^^
    |  Reassignment to val x
    |
    | longer explanation available when compiling with `-explain`
--- [E052] Type Error: tests/neg/i22671.scala:16:4 ----------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i22671.scala:16:2 ----------------------------------------------------------------------
 16 |  x = 27 // error
    |  ^^^^^^
    |  Reassignment to val x
    |
    | longer explanation available when compiling with `-explain`
--- [E052] Type Error: tests/neg/i22671.scala:20:4 ----------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i22671.scala:20:2 ----------------------------------------------------------------------
 20 |  y = 27 // error
    |  ^^^^^^
    |  Reassignment to val y
    |
    | longer explanation available when compiling with `-explain`
--- [E052] Type Error: tests/neg/i22671.scala:24:4 ----------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i22671.scala:24:2 ----------------------------------------------------------------------
 24 |  y = 27 // error
    |  ^^^^^^
    |  Reassignment to val y
    |
    | longer explanation available when compiling with `-explain`
--- [E052] Type Error: tests/neg/i22671.scala:28:4 ----------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i22671.scala:28:2 ----------------------------------------------------------------------
 28 |  x = 27 // error
    |  ^^^^^^
    |  Reassignment to val x

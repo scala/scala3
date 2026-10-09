@@ -10,7 +10,7 @@ import core.Contexts.*
   * are suppressed, unless they are of increasing severity. */
 trait UniqueMessagePositions extends Reporter {
 
-  private val positions = new mutable.HashMap[(SourceFile, Integer), Diagnostic]
+  private val positions = new mutable.HashMap[(SourceFile, Int), Diagnostic]
 
   extension (dia1: Diagnostic)
     private def hides(dia2: Diagnostic)(using Context): Boolean =
