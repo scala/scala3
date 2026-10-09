@@ -206,6 +206,7 @@ object StdNames {
     final val NotNull: N             = "NotNull"
     final val Null: N                = "Null"
     final val Object: N              = "Object"
+    final val FlexibleType : N       = "<FlexibleType>"
     final val FromJavaObject: N      = "<FromJavaObject>"
     final val Record: N              = "Record"
     final val Product: N             = "Product"

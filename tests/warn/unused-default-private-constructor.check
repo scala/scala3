@@ -1,0 +1,4 @@
+-- [E198] Unused Symbol Warning: tests/warn/unused-default-private-constructor.scala:3:46 ------------------------------
+3 |case class Foo private (s: String, int: Int = 42) { // warn
+  |                                              ^
+  |                                              unused private member

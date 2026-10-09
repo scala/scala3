@@ -324,14 +324,14 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
           // this way, there is no allocation in the common case where there's no race.
           // if multiple threads attempt to initialize a LazyList, an `InRace` instance is created to coordinate.
           if (_tailUpdater.compareAndSet(this, fun, Thread.currentThread)) {
-            var ex: Throwable | Null = null
+            var ex: Exception | Null = null
             // `fun` returns a LazyList that represents the state (head/tail) of `this`. We call `evaluated` to ensure
             // the result is initialized, to prevent races when reading `rawTail` / `rawHead` below.
             // Often, lazy lists are created with `newLL(eagerCons(...))` so `l` is already initialized, but `newLL`
             // also accepts non-evaluated lazy lists.
             val l = try fun().asInstanceOf[LazyList[A]].evaluated catch {
-              case t: Throwable =>
-                ex = t
+              case e: Exception =>
+                ex = e
                 null
             }
             // update `_tail` before `_head`, because `_head` is used to test `isEvaluated`

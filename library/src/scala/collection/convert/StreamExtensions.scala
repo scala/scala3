@@ -756,13 +756,15 @@ object StreamExtensions {
 
     /** The `AccumulatorFactoryInfo` for collecting boxed `java.lang.Integer` elements into an [[scala.jdk.IntAccumulator]], reusing `intAccumulatorFactoryInfo`. */
     implicit val jIntegerAccumulatorFactoryInfo: AccumulatorFactoryInfo[jl.Integer, IntAccumulator] = intAccumulatorFactoryInfo.asInstanceOf[AccumulatorFactoryInfo[jl.Integer, IntAccumulator]]
+
     /** The `AccumulatorFactoryInfo` for streams of boxed `java.lang.Long` elements, reusing
      *  `longAccumulatorFactoryInfo`.
      */
-    implicit val jLongAccumulatorFactoryInfo: AccumulatorFactoryInfo[jl.Long, IntAccumulator] = longAccumulatorFactoryInfo.asInstanceOf[AccumulatorFactoryInfo[jl.Long, IntAccumulator]]
+    implicit val jLongAccumulatorFactoryInfo: AccumulatorFactoryInfo[jl.Long, LongAccumulator] = longAccumulatorFactoryInfo.asInstanceOf[AccumulatorFactoryInfo[jl.Long, LongAccumulator]]
+
     /** The `AccumulatorFactoryInfo` for streams of boxed `java.lang.Double` elements, reusing
      *  `doubleAccumulatorFactoryInfo`.
      */
-    implicit val jDoubleAccumulatorFactoryInfo: AccumulatorFactoryInfo[jl.Double, IntAccumulator] = doubleAccumulatorFactoryInfo.asInstanceOf[AccumulatorFactoryInfo[jl.Double, IntAccumulator]]
+    implicit val jDoubleAccumulatorFactoryInfo: AccumulatorFactoryInfo[jl.Double, DoubleAccumulator] = doubleAccumulatorFactoryInfo.asInstanceOf[AccumulatorFactoryInfo[jl.Double, DoubleAccumulator]]
   }
 }

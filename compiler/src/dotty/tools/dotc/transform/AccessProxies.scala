@@ -43,8 +43,11 @@ abstract class AccessProxies {
         }
         val (targs, argss) = splitArgs(prefss)
         val (accessRef, forwardedTpts, forwardedArgss) =
-          if (passReceiverAsArg(accessor.name))
-            (argss.head.head.select(accessed), targs.takeRight(numTypeParams), argss.tail)
+          if passReceiverAsArg(accessor.name) then
+            if accessed.owner.is(Package) || accessed.owner.isPackageObject then
+              (ref(accessed), targs.takeRight(numTypeParams), argss.tail)
+            else
+              (argss.head.head.select(accessed), targs.takeRight(numTypeParams), argss.tail)
           else
             (if (accessed.isStatic) ref(accessed) else ref(TermRef(accessor.owner.thisType, accessed)),
              targs, argss)
@@ -169,7 +172,7 @@ object AccessProxies {
   def hostForAccessorOf(accessed: Symbol)(using Context): Symbol = {
     def recur(cls: Symbol): Symbol =
       if (!cls.exists) NoSymbol
-      else if ((cls.derivesFrom(accessed.owner) && !(accessed.is(Private) && (cls ne accessed.owner)))
+      else if ((cls.derivesFrom(accessed.protectedOwner) && !(accessed.is(Private) && (cls ne accessed.owner)))
               || cls.companionModule.moduleClass == accessed.owner)
       then cls
       else recur(cls.owner)

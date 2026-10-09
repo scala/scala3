@@ -53,8 +53,8 @@ object BoxesRunTime {
    *  @param b the primitive value to box
    *  @return `b` in boxed form
    */
-  def boxToByte(b: Byte): java.lang.Boolean =
-    b.asInstanceOf[java.lang.Boolean]
+  def boxToByte(b: Byte): java.lang.Byte =
+    b.asInstanceOf[java.lang.Byte]
 
   /** Boxes a primitive `Short` into a `java.lang.Short`.
    *

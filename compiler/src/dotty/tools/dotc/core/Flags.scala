@@ -597,7 +597,6 @@ object Flags {
   val InlineByNameProxy: FlagSet             = InlineProxy | Method
   val JavaEnum: FlagSet                      = JavaDefined | Enum                             // A Java enum trait
   val JavaEnumValue: FlagSet                 = JavaDefined | EnumValue                        // A Java enum value
-  val StaticProtected: FlagSet               = JavaDefined | JavaStatic | Protected           // Java symbol which is `protected` and `static`
   val JavaModule: FlagSet                    = JavaDefined | Module                           // A Java companion object
   val JavaInterface: FlagSet                 = JavaDefined | NoInits | Trait
   val JavaProtected: FlagSet                 = JavaDefined | Protected

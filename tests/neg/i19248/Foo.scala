@@ -1,4 +1,4 @@
-trait Foo { // error
+trait Foo {
   class Bar
 
   type T = Foo.this.Bar

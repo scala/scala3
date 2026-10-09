@@ -1,0 +1,46 @@
+-- [E050] Type Error: tests/neg/i23272b.scala:11:55 --------------------------------------------------------------------
+11 |    def toArray: Array[Double] = v.components.map(c => c(lhs)) // error // error
+   |                                                       ^
+   |                                                       parameter c does not take parameters
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | You have specified more parameter lists than defined in the method definition(s).
+    --------------------------------------------------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i23272b.scala:11:62 --------------------------------------------------------------------
+11 |    def toArray: Array[Double] = v.components.map(c => c(lhs)) // error // error
+   |                                                              ^
+   |No given instance of type Vectoric[Array[V => Double]] was found for parameter v of method map in trait VectoricOps
+   |
+   |Note: `v` does not affect whether extension `map` is chosen.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | `v` is not a leading implicit of `map`; it is not used to construct the extension.
+   | Write an explicit `using` clause at the beginning of the extension method to keep it from
+   | being considered for this method application. Context bounds, when desugared, are appended
+   | to the end of the signature even though they are written at the beginning.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E050] Type Error: tests/neg/i23272b.scala:18:73 --------------------------------------------------------------------
+18 |    def toArray: Array[Double] = summon[Vectoric[V]].components.map(c => c(lhs)) // error // error
+   |                                                                         ^
+   |                                                                         parameter c does not take parameters
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | You have specified more parameter lists than defined in the method definition(s).
+    --------------------------------------------------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i23272b.scala:18:80 --------------------------------------------------------------------
+18 |    def toArray: Array[Double] = summon[Vectoric[V]].components.map(c => c(lhs)) // error // error
+   |                                                                                ^
+   |No given instance of type Vectoric[Array[V => Double]] was found for a context parameter of method map in trait AltVectoricOps
+   |
+   |Note: The missing arg does not affect whether extension `map` is chosen.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | The missing arg is not a leading implicit of `map`; it is not used to construct the extension.
+   | Write an explicit `using` clause at the beginning of the extension method to keep it from
+   | being considered for this method application. Context bounds, when desugared, are appended
+   | to the end of the signature even though they are written at the beginning.
+    --------------------------------------------------------------------------------------------------------------------
