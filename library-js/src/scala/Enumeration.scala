@@ -91,10 +91,16 @@ import scala.util.matching.Regex
 abstract class Enumeration (initial: Int) extends Serializable {
   thisenum =>
 
+  /** Creates an enumeration whose value ids are counted from `0`. */
   def this() = this(0)
 
   /* Note that `readResolve` cannot be private, since otherwise
      the JVM does not invoke it when deserializing subclasses. */
+  /** Serialization hook that on the JVM resolves a deserialized enumeration to
+   *  its singleton module instance; not implemented on Scala.js.
+   *
+   *  @throws NotImplementedError always
+   */
   protected def readResolve(): AnyRef = ???
 
   /** The name of this enumeration. */
@@ -217,14 +223,26 @@ abstract class Enumeration (initial: Int) extends Serializable {
     /** A marker so we can tell whose values belong to whom come reflective-naming time. */
     private[Enumeration] val outerEnum = thisenum
 
+    /** Compares this value with another value of this enumeration by id.
+     *
+     *  @param that the value to compare with
+     *  @return `-1`, `0`, or `1` as this value's id is less than, equal to, or
+     *          greater than the id of `that`
+     */
     override def compare(that: Value): Int =
       if (this.id < that.id) -1
       else if (this.id == that.id) 0
       else 1
+    /** Returns `true` if `other` is a value of the same enumeration instance
+     *  with the same id as this value.
+     *
+     *  @param other the object to compare with
+     */
     override def equals(other: Any) = other match {
       case that: Enumeration#Value  => (outerEnum eq that.outerEnum) && (id == that.id)
       case _                        => false
     }
+    /** Returns the hash code of this value, computed from its id. */
     override def hashCode: Int = id.##
 
     /** Creates a ValueSet which contains this value and another one.
@@ -240,8 +258,22 @@ abstract class Enumeration (initial: Int) extends Serializable {
    */
   @SerialVersionUID(0 - 3501153230598116017L)
   protected class Val(i: Int, name: String | Null) extends Value with Serializable {
+    /** Creates a fresh value identified by `i`, named by the next name in
+     *  `nextName` if defined, or unnamed otherwise.
+     *
+     *  @param i the integer that identifies the value at run-time; must be
+     *           unique amongst all values of the enumeration
+     */
     def this(i: Int)       = this(i, nextNameOrNull)
+    /** Creates a fresh value identified by `nextId`, called `name`.
+     *
+     *  @param name a human-readable name for the value, or `null` for an
+     *              unnamed value
+     */
     def this(name: String | Null) = this(nextId, name)
+    /** Creates a fresh value identified by `nextId`, named by the next name in
+     *  `nextName` if defined, or unnamed otherwise.
+     */
     def this()             = this(nextId)
 
     assert(!vmap.isDefinedAt(i), "Duplicate id: " + i)
@@ -250,12 +282,23 @@ abstract class Enumeration (initial: Int) extends Serializable {
     nextId = i + 1
     if (nextId > topId) topId = nextId
     if (i < bottomId) bottomId = i
+    /** The integer that identifies this value within its enumeration. */
     def id = i
+    /** Returns the name of this value if one was provided or drawn from
+     *  `nextName`, otherwise a placeholder of the form
+     *  `<Unknown name for enum field #$i of class $cls>` (on Scala.js, names of
+     *  unnamed values cannot be recovered by reflection).
+     */
     override def toString() =
       if (name != null) name
       // Scala.js specific
       else s"<Unknown name for enum field #$i of class ${getClass}>"
 
+    /** During deserialization, replaces this value with the equivalent value
+     *  registered in the owning enumeration, as resolved by
+     *  `Enumeration.readResolve` (which is unimplemented on Scala.js and throws
+     *  `NotImplementedError` unless overridden).
+     */
     protected def readResolve(): AnyRef = {
       val enumeration = thisenum.readResolve().asInstanceOf[Enumeration]
       if (enumeration.vmap == null) this
@@ -265,6 +308,13 @@ abstract class Enumeration (initial: Int) extends Serializable {
 
   /** An ordering by id for values of this set. */
   implicit object ValueOrdering extends Ordering[Value] {
+    /** Compares two values of this enumeration by id.
+     *
+     *  @param x the first value to compare
+     *  @param y the second value to compare
+     *  @return `-1`, `0`, or `1` as the id of `x` is less than, equal to, or
+     *          greater than the id of `y`
+     */
     def compare(x: Value, y: Value): Int = x compare y
   }
 
@@ -282,37 +332,121 @@ abstract class Enumeration (initial: Int) extends Serializable {
       with StrictOptimizedIterableOps[Value, immutable.Set, ValueSet]
       with Serializable {
 
+    /** Returns [[ValueOrdering]], the ordering of values by their ids. */
     implicit def ordering: Ordering[Value] = ValueOrdering
+    /** Returns the values of this set whose ids lie within given bounds.
+     *
+     *  @param from the value whose id is the inclusive lower bound, or `None`
+     *              for no lower bound
+     *  @param until the value whose id is the exclusive upper bound, or `None`
+     *               for no upper bound
+     *  @return a `ValueSet` containing the values of this set within the bounds
+     */
     def rangeImpl(from: Option[Value], until: Option[Value]): ValueSet =
       new ValueSet(nnIds.rangeImpl(from.map(_.id - bottomId), until.map(_.id - bottomId)))
 
+    /** Returns the empty set of values of this enumeration. */
     override def empty = ValueSet.empty
+    /** Returns the number of values in this set; always known, since the
+     *  underlying bit set is finite.
+     */
     override def knownSize: Int = nnIds.size
+    /** Returns `true` if this set contains no values. */
     override def isEmpty: Boolean = nnIds.isEmpty
+    /** Tests whether this set contains a given value.
+     *
+     *  @param v the value to test for membership
+     */
     def contains(v: Value) = nnIds contains (v.id - bottomId)
+    /** Returns a new `ValueSet` containing the values of this set and the given value.
+     *
+     *  @param value the value to add
+     */
     def incl (value: Value) = new ValueSet(nnIds + (value.id - bottomId))
+    /** Returns a new `ValueSet` containing the values of this set except the given value.
+     *
+     *  @param value the value to remove
+     */
     def excl (value: Value) = new ValueSet(nnIds - (value.id - bottomId))
+    /** Returns an iterator over the values in this set, in increasing order of their ids. */
     def iterator = nnIds.iterator map (id => thisenum.apply(bottomId + id))
+    /** Returns an iterator over the values in this set whose ids are greater
+     *  than or equal to that of `start`, in increasing order of their ids.
+     *
+     *  @param start the inclusive lower bound for the values to return
+     */
     override def iteratorFrom(start: Value) = nnIds iteratorFrom start.id  map (id => thisenum.apply(bottomId + id))
+    /** Returns the name used to prefix the string representation of this set:
+     *  the enumeration's name followed by `.ValueSet`.
+     */
     override def className = s"$thisenum.ValueSet"
     /** Creates a bit mask for the zero-adjusted ids in this set as a
      *  new array of longs 
      */
     def toBitMask: Array[Long] = nnIds.toBitMask
 
+    /** Builds a `ValueSet` containing the values of the given collection.
+     *
+     *  @param coll the source of values for the new set
+     */
     override protected def fromSpecific(coll: IterableOnce[Value]) = ValueSet.fromSpecific(coll)
+    /** Returns a new builder that accumulates values into a `ValueSet`. */
     override protected def newSpecificBuilder = ValueSet.newBuilder
 
+    /** Builds a new `ValueSet` by applying a function to each value of this set.
+     *
+     *  @param f the function to apply to each value
+     *  @return a `ValueSet` of the results, ordered by their ids
+     */
     def map(f: Value => Value): ValueSet = fromSpecific(new View.Map(this, f))
+    /** Builds a new `ValueSet` by applying a function to each value of this set
+     *  and collecting all values in the results.
+     *
+     *  @param f the function to apply to each value
+     *  @return a `ValueSet` of all values produced by `f`, ordered by their ids
+     */
     def flatMap(f: Value => IterableOnce[Value]): ValueSet = fromSpecific(new View.FlatMap(this, f))
 
     // necessary for disambiguation:
+    /** Builds a new sorted set by applying a function to each value of this set.
+     *
+     *  @tparam B the element type of the returned set
+     *  @param f the function to apply to each value
+     *  @param ev the ordering for the elements of the returned set
+     *  @return a sorted set of the results of applying `f` to each value
+     */
     override def map[B](f: Value => B)(implicit @implicitNotFound(ValueSet.ordMsg) ev: Ordering[B]): immutable.SortedSet[B] =
       super[SortedSet].map[B](f)
+    /** Builds a new sorted set by applying a function to each value of this set
+     *  and collecting all elements in the results.
+     *
+     *  @tparam B the element type of the returned set
+     *  @param f the function to apply to each value
+     *  @param ev the ordering for the elements of the returned set
+     *  @return a sorted set of all elements produced by `f`
+     */
     override def flatMap[B](f: Value => IterableOnce[B])(implicit @implicitNotFound(ValueSet.ordMsg) ev: Ordering[B]): immutable.SortedSet[B] =
       super[SortedSet].flatMap[B](f)
+    /** Builds a new sorted set of pairs formed from the values of this set and
+     *  the corresponding elements of another collection, dropping whatever
+     *  remains of the longer of the two.
+     *
+     *  @tparam B the type of the second element of each pair
+     *  @param that the collection providing the second element of each pair
+     *  @param ev the ordering for the pairs in the returned set
+     *  @return a sorted set of corresponding pairs
+     */
     override def zip[B](that: IterableOnce[B])(implicit @implicitNotFound(ValueSet.zipOrdMsg) ev: Ordering[(Value, B)]): immutable.SortedSet[(Value, B)] =
       super[SortedSet].zip[B](that)
+    /** Builds a new sorted set by applying a partial function to each value of
+     *  this set on which it is defined.
+     *
+     *  @tparam B the element type of the returned set
+     *  @param pf the partial function to apply to each value
+     *  @param ev the ordering for the elements of the returned set
+     *  @return a sorted set of the results of applying `pf` to each value on
+     *          which it is defined
+     */
     override def collect[B](pf: PartialFunction[Value, B])(implicit @implicitNotFound(ValueSet.ordMsg) ev: Ordering[B]): immutable.SortedSet[B] =
       super[SortedSet].collect[B](pf)
   }
@@ -338,6 +472,11 @@ abstract class Enumeration (initial: Int) extends Serializable {
       def clear() = b.clear()
       def result() = new ValueSet(b.toImmutable)
     }
+    /** Builds a `ValueSet` containing the values of the given collection.
+     *
+     *  @param it the source of values for the new set
+     *  @return a `ValueSet` containing the values of `it`
+     */
     def fromSpecific(it: IterableOnce[Value]): ValueSet =
       newBuilder.addAll(it).result()
   }
