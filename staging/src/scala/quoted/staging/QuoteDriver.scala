@@ -62,7 +62,8 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
       case Left(classname) =>
         assert(!ctx.reporter.hasErrors)
 
-        val classLoader = new AbstractFileClassLoader(outDir, appClassloader)
+        // TODO propagate the right Java version here
+        val classLoader = new AbstractFileClassLoader(outDir, "", appClassloader)
 
         val clazz = classLoader.loadClass(classname)
         val method = clazz.getMethod("apply")

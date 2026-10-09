@@ -3,8 +3,6 @@ package dotty.tools.dotc.classpath
 import dotty.tools.io.{AbstractFile, FileExtension}
 import FileUtils.*
 
-import java.net.{URI, URL}
-
 class VirtualDirectoryClassPath(protected override val dir: AbstractFile) extends ClassPath with DirectoryLookup[BinaryFileEntry] {
   type F = AbstractFile
 
@@ -19,8 +17,6 @@ class VirtualDirectoryClassPath(protected override val dir: AbstractFile) extend
   def toAbstractFile(f: AbstractFile): AbstractFile = f
   def isPackage(f: AbstractFile): Boolean = f.isPackage
 
-  override def asURLs: Seq[URL] = dir.toURL.toSeq
-
   override def findClassFile(className: String): Option[AbstractFile] = {
     dir.lookupPath(className, '.', lastSuffix = FileExtension.Class.withDot, directory = false)
   }
@@ -32,4 +28,7 @@ class VirtualDirectoryClassPath(protected override val dir: AbstractFile) extend
   protected def isMatchingFile(f: AbstractFile): Boolean = {
     f.exists && (f.ext.isTasty || f.ext.isBetasty || (f.ext.isClass && !f.hasSiblingTasty))
   }
+
+  override def searchLocations: Iterable[AbstractFile] =
+    Iterable(dir)
 }

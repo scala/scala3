@@ -4,7 +4,6 @@
 package dotty.tools
 package dotc.classpath
 
-import java.net.URL
 import scala.collection.mutable
 
 import dotty.tools.io.AbstractFile
@@ -35,8 +34,6 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
     packageIndex.getOrElseUpdate(pkg, aggregates.filter(_.hasPackage(pkg)))
   }
 
-  override def asURLs: Iterable[URL] = aggregates.flatMap(_.asURLs)
-
   override def packages(inPackage: String): Iterable[String] = {
     val result = mutable.HashSet[String]()
     for
@@ -54,6 +51,9 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
     getDistinctEntries(_.sources(inPackage))
 
   override def hasPackage(pkg: String): Boolean = aggregates.exists(_.hasPackage(pkg))
+
+  override def searchLocations: Iterable[AbstractFile] =
+    aggregates.flatMap(_.searchLocations)
 
   private inline def getDistinctEntries[EntryType <: ClassRepresentation](inline getEntries: ClassPath => Iterable[EntryType]): Iterable[EntryType] =
     val seenNames = mutable.HashSet[String]()

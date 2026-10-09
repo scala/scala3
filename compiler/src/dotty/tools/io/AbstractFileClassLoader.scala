@@ -13,38 +13,47 @@
 package dotty.tools
 package io
 
-import dotty.tools.io.AbstractFile
+import java.io.InputStream
+import java.net.{URL, URLConnection}
 
-import java.net.{URL, URLConnection, URLStreamHandler}
-import java.util.Collections
+import scala.jdk.CollectionConverters.IteratorHasAsJava
 
-class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader) extends ClassLoader(parent):
+class AbstractFileClassLoader(entries: Seq[AbstractFile], jarVersion: String, parent: ClassLoader) extends ClassLoader(parent):
+  def this(dir: AbstractFile, jarVersion: String, parent: ClassLoader) = this(Seq(dir), jarVersion, parent)
+
+  private var _searchLocations = entries.flatMap(open)
+
+  // Needs to be publicly exposed to be consumed by the eldritch horror that is ClasspathFromClassloader
+  def searchLocations: Seq[AbstractFile] =
+    _searchLocations
+
+  def add(entry: AbstractFile): Unit =
+    _searchLocations = _searchLocations ++ open(entry).toSeq
+
+  // Mimic URLClassLoader's logic of "if it ends in / it's a dir, otherwise it's a JAR"
+  private def open(entry: AbstractFile): Option[AbstractFile] =
+    if !entry.exists || entry.isDirectory then Some(entry) // may not exist yet but we should still look at it later
+    else Option(AbstractFile.getDirectory(entry.path, jarVersion))
+
+  override protected def findClass(name: String): Class[?] =
+    searchLocations.iterator.flatMap(_.lookupPath(name, '.', lastSuffix = ".class", directory = false)).nextOption().map(file =>
+      defineClass(name, file.toByteArray)
+    ).getOrElse(throw new ClassNotFoundException(name))
+
+  override protected def findResource(name: String): URL | Null =
+    val all = findResources(name)
+    if all.hasMoreElements then all.nextElement() else null
+
   // on JDK 20 the URL constructor we're using is deprecated,
   // but the recommended replacement, URL.of, doesn't exist on JDK 17
   @annotation.nowarn("cat=deprecation")
-  override protected def findResource(name: String): URL | Null =
-    root.lookupPath(name, '/', directory = false) match
-      case None => null
-      case Some(file) => new URL(null, s"memory:${file.path}", new URLStreamHandler {
-        override def openConnection(url: URL): URLConnection = new URLConnection(url) {
-          override def connect() = ()
-          override def getInputStream = file.input
-        }
-      })
   override protected def findResources(name: String): java.util.Enumeration[URL] =
-    findResource(name) match
-      case null => Collections.enumeration(Collections.emptyList[URL])
-      case url  => Collections.enumeration(Collections.singleton(url))
-
-  override def findClass(name: String): Class[?] = {
-    root.lookupPath(name, '.', lastSuffix = ".class", directory = false) match
-      case None => throw new ClassNotFoundException(name)
-      case Some(file) => defineClass(name, file.toByteArray)
-  }
+    searchLocations.iterator.flatMap(_.lookupPath(name, '/', directory = false)).map(file =>
+      new URL(null, s"memory:${file.path}", url => new URLConnection(url) {
+        override def connect(): Unit = ()
+        override def getInputStream: InputStream = file.input
+    })).asJavaEnumeration
 
   // overrideable for the REPL
   protected def defineClass(name: String, bytes: Array[Byte]): Class[?] =
     defineClass(name, bytes, 0, bytes.length)
-
-  override def loadClass(name: String): Class[?] = try findClass(name) catch case _: ClassNotFoundException => super.loadClass(name)
-end AbstractFileClassLoader

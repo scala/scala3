@@ -2,7 +2,8 @@ package dotty.tools.scripting
 
 import java.nio.file.Path
 import java.io.File
-import java.net.URLClassLoader
+import dotty.tools.io.AbstractFileClassLoader
+import dotty.tools.io.PlainFile.toPlainFile
 import java.lang.reflect.{ Modifier, Method }
 
 object Util:
@@ -15,11 +16,12 @@ object Util:
 
   def detectMainClassAndMethod(
     outDir: Path,
+    jarVersion: String,
     classpathEntries: Seq[Path],
     srcFile: String
   ): Either[Throwable, (String, Method)] =
-    val classpathUrls = (classpathEntries :+ outDir).map { _.toUri.toURL }
-    val cl = URLClassLoader(classpathUrls.toArray)
+    val classpathDirs = (classpathEntries :+ outDir).map { _.toPlainFile }
+    val cl = AbstractFileClassLoader(classpathDirs, jarVersion, ClassLoader.getSystemClassLoader)
 
     def collectMainMethods(target: File, path: String): List[(String, Method)] =
       val nameWithoutExtension = target.getName.takeWhile(_ != '.')

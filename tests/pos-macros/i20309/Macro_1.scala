@@ -17,7 +17,6 @@ object Macros {
     import quotes.reflect.*
     val tree = asTerm(cexpr)
     val traverse = new TreeMap() {}
-    println(tree.show)
     traverse.transformTree(tree)(tree.symbol)
     '{ _ => ??? }
   }

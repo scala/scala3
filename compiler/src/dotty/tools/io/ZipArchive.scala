@@ -6,7 +6,6 @@
 package dotty.tools.io
 
 import java.io.{FilterInputStream, IOException, InputStream, OutputStream}
-import java.net.URL
 import java.nio.file.Files
 import java.util.zip.{ZipEntry, ZipFile}
 import java.util.jar.JarFile
@@ -47,7 +46,6 @@ private[io] abstract class ZipArchive(override val jpath: JPath) extends Abstrac
 
   override def isDirectory: Boolean = true
   override def output: OutputStream    = unsupported()
-  override def toURL: Option[URL] = Some(jpath.toUri.toURL)
 
   /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
   sealed abstract class Entry(path: String, parent: Entry | Null) extends VirtualFile(path, Array.emptyByteArray) {

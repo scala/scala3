@@ -4,7 +4,7 @@
 package dotty.tools.dotc.classpath
 
 import java.io.File as JFile
-import java.net.{URI, URL}
+import java.net.URI
 import java.nio.file.{FileSystems, Files}
 import dotty.tools.dotc.classpath.PackageNameUtils.{packageContains, separatePkgAndClassNames}
 import dotty.tools.io.{AbstractFile, PlainFile}
@@ -97,7 +97,8 @@ trait JFileDirectoryLookup[FileEntryType] extends DirectoryLookup[FileEntryType]
   protected def toAbstractFile(f: JFile): AbstractFile = f.toPath.toPlainFile
   protected def isPackage(f: JFile): Boolean = f.isPackage
 
-  override def asURLs: Seq[URL] = Seq(dir.toURI.toURL)
+  override def searchLocations: Iterable[AbstractFile] =
+    Iterable(AbstractFile.getDirectory(dir.toPath, "").nn)
 }
 
 object JrtClassPath {
@@ -187,13 +188,14 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
   override def classes(inPackage: String): Iterable[BinaryFileEntry] =
     classesByName(inPackage).values
 
-  override def asURLs: Seq[URL] = Seq(new URI("jrt:/").toURL)
-
   override def findClassFile(className: String): Option[AbstractFile] =
     val (pkg, cls) = separatePkgAndClassNames(className)
     // Because the compiler asks about `classes` first and then requests classfiles,
     // this will in practice be cached
     classesByName(pkg).get(cls + ".class").map(_.file)
+
+  override def searchLocations: Iterable[AbstractFile] =
+    Iterable.empty // not necessary to include JRT in there
 }
 
 /**
@@ -249,6 +251,9 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
       }.take(1).toList.headOption
     }
   }
+
+  override def searchLocations: Iterable[AbstractFile] =
+    Iterable.empty // not necessary to include CT in there
 }
 
 class DirectoryClassPath(protected override val dir: JFile) extends JFileDirectoryLookup[BinaryFileEntry] {
