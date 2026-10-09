@@ -2,21 +2,21 @@ package dotty.tools.dotc
 
 package object util {
   type HashSet[T] = scala.collection.mutable.HashSet[T]
-  def HashSet[T]() = scala.collection.mutable.HashSet[T]()
-  def HashSet[T](initialCapacity: Int = scala.collection.mutable.HashSet.defaultInitialCapacity, loadFactor: Double = scala.collection.mutable.HashSet.defaultLoadFactor) =
+  inline def HashSet[T]() = scala.collection.mutable.HashSet[T]()
+  inline def HashSet[T](initialCapacity: Int = scala.collection.mutable.HashSet.defaultInitialCapacity, loadFactor: Double = scala.collection.mutable.HashSet.defaultLoadFactor) =
     new scala.collection.mutable.HashSet[T](initialCapacity, loadFactor)
 
-  def HashSet_from[T](xs: IterableOnce[T]) =
+  inline def HashSet_from[T](xs: IterableOnce[T]) =
     scala.collection.mutable.HashSet.from(xs)
 
   type HashMap[K, V] = scala.collection.mutable.HashMap[K, V]
-  def HashMap[K, V]() = scala.collection.mutable.HashMap[K, V]()
-  def HashMap[K, V](initialCapacity: Int = scala.collection.mutable.HashSet.defaultInitialCapacity, loadFactor: Double = scala.collection.mutable.HashSet.defaultLoadFactor) =
+  inline def HashMap[K, V]() = scala.collection.mutable.HashMap[K, V]()
+  inline def HashMap[K, V](initialCapacity: Int = scala.collection.mutable.HashSet.defaultInitialCapacity, loadFactor: Double = scala.collection.mutable.HashSet.defaultLoadFactor) =
     new scala.collection.mutable.HashMap[K, V](initialCapacity, loadFactor)
 
   extension[K, V](hm: HashMap[K, V]) {
-    def lookup(k: K): V | Null =
-      hm.get(k).orNull
+    inline def lookup(k: K): V | Null =
+      hm.getOrElse(k, null)
   }
 }
 
