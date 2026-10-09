@@ -265,7 +265,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Is the given symbol a JS class (that is not a trait nor an object)? */
   private def isJSClass(sym: Symbol)(using Context): Boolean = {
-    sym.doNothing()
+    val _ = sym.denot
     sym.isClass &&
     !sym.isOneOf(Trait | Module) &&
     sym.hasAnnotation(jsdefn.JSTypeAnnot)
