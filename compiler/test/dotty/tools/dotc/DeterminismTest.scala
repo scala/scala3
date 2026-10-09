@@ -292,6 +292,7 @@ class DeterminismTest {
       "S1S" -> "String S1S = \"a\" + 1 + 'c' + 1.5f + 2.5 + true + 10L + I1 + 1e10 + Float.MIN_VALUE",
       "S2S" -> "String S2S = \"x\" + (char) 65 + (1 + 2) + (String) \"y\" + (java.lang.String) \"z\"",
       "S3S" -> "String S3S = \"\" + (\"a\" == \"a\") + TERNC",
+      "S4S" -> "java.lang.String S4S = \"a\"",
       "NEG" -> "int NEG = ~I1",
       "PLUS" -> "int PLUS = +C1",
       "INTMAX" -> "int INTMAX = Integer.MAX_VALUE + 1",

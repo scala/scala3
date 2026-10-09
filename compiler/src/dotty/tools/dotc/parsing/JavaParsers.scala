@@ -806,7 +806,17 @@ object JavaParsers {
       var constantInitializer: Option[Tree] = None
       if (in.token == EQUALS && !mods.is(Flags.Param)) {
         in.nextToken()
-        if (mods.is(Flags.Final)) // a constant variable, if initialized with a constant expression (JLS 4.12.4)
+        // a constant variable, if initialized with a constant expression (JLS 4.12.4)
+        def mayBeConstantTyped(tpt: Tree): Boolean = tpt match {
+          // a `basicType()`. Compare types, not symbols: computing the denotation of `scala.Int` while
+          // parsing, before the compilation units are entered, could bind it to a stale symbol, e.g.
+          // one loaded from the `-sourcepath` when compiling the standard library.
+          case TypedSplice(tpt) => tpt.tpe == defn.BooleanType || defn.ScalaNumericValueTypeList.contains(tpt.tpe)
+          case Ident(tpnme.String) | Select(_, tpnme.String) => true // resolved by the namer
+          case Annotated(tpt, _) => mayBeConstantTyped(tpt)
+          case _ => false
+        }
+        if (mods.is(Flags.Final) && mayBeConstantTyped(tpt1))
           constantInitializer = constantExprOpt()
         else
           skipTo(COMMA, SEMI)
