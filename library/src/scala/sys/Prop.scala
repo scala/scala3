@@ -103,5 +103,11 @@ object Prop {
   implicit object IntProp extends CreatorImpl[Int](_.toInt)
   implicit object DoubleProp extends CreatorImpl[Double](_.toDouble)
 
+  /** Creates a `Prop[T]` for the given key using the implicit `Creator[T]`.
+   *
+   *  @tparam T the type of the property value after conversion from string
+   *  @param key the property name used for lookup
+   *  @return the `Prop[T]` produced by the implicit `Creator[T]` for `key`
+   */
   def apply[T: Creator](key: String): Prop[T] = implicitly[Creator[T]] apply key
 }

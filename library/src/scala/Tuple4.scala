@@ -21,14 +21,15 @@ import scala.language.`2.13`
  *  @tparam T2 the type of the 2nd element
  *  @tparam T3 the type of the 3rd element
  *  @tparam T4 the type of the 4th element
- *  @param  _1   element 1 of this Tuple4
- *  @param  _2   element 2 of this Tuple4
- *  @param  _3   element 3 of this Tuple4
- *  @param  _4   element 4 of this Tuple4
+ *  @param  _1   the 1st element of this Tuple4
+ *  @param  _2   the 2nd element of this Tuple4
+ *  @param  _3   the 3rd element of this Tuple4
+ *  @param  _4   the 4th element of this Tuple4
  */
 final case class Tuple4[+T1, +T2, +T3, +T4](_1: T1, _2: T2, _3: T3, _4: T4)
   extends Product4[T1, T2, T3, T4]
 {
+  /** Returns a string representation of this tuple, with the four elements separated by commas and enclosed in parentheses, as in `(1,two,3.0,four)`. */
   override def toString(): String = "(" + _1 + "," + _2 + "," + _3 + "," + _4 + ")"
   
 }
