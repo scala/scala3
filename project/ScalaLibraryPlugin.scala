@@ -17,8 +17,6 @@ import ch.epfl.scala.sbtmissinglink.MissingLinkPlugin.autoImport.missinglinkChec
 import com.spotify.missinglink.Conflict
 import xsbti.FileConverter
 
-import dotty.tools.tasty.TastyHeaderUnpickler
-
 object ScalaLibraryPlugin extends AutoPlugin {
 
   override def trigger = noTrigger
@@ -117,7 +115,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
           .getOrElse(sys.error("MissingLinkPlugin.loadArtifactsAndCheckConflicts not found"))
         method.setAccessible(true)
         method.invoke(MissingLinkPlugin, cp, classDir, java.lang.Boolean.FALSE, (_ => true):ModuleFilter, log, converter)
-          .asInstanceOf[(Seq[Conflict], Map[_, ModuleID])]
+          .asInstanceOf[(Seq[Conflict], Map[?, ModuleID])]
       }
 
       val filteredConflicts = conflicts.filterNot { conflict =>
@@ -154,7 +152,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
     (FileFunction.cached(cache / "fetch-scala-library-classes", FilesInfo.lastModified, FilesInfo.exists) { _ =>
       stream.log.info(s"Unpacking scala-library binaries to persistent directory: ${target.getAbsolutePath}")
       IO.unzip(jar, target)
-      (target ** "*.class").get.toSet ++ (target ** "*.sjsir").get.toSet
+      (target ** "*.class").get().toSet ++ (target ** "*.sjsir").get().toSet
     } (Set(jar)), target)
   }
 

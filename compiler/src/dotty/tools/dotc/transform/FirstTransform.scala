@@ -71,13 +71,19 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
         val qualTpe = qual.tpe
         assert(
           qualTpe.widenDealias.isErasedValueType || qualTpe.derivesFrom(tree.symbol.owner) ||
-            tree.symbol.is(JavaStatic) && qualTpe.derivesFrom(tree.symbol.enclosingClass),
+            tree.symbol.is(JavaStatic) && qualTpe.derivesFrom(tree.symbol.enclosingClass) ||
+            isInheritedJavaStatic(tree.symbol, qualTpe),
           i"non member selection of ${tree.symbol.showLocated} from ${qualTpe} in $tree")
       case _: TypeTree =>
       case _: Export | _: NamedArg | _: TypTree =>
         assert(false, i"illegal tree: $tree")
       case _ =>
     }
+
+  private def isInheritedJavaStatic(sym: Symbol, qualTpe: Type)(using Context): Boolean =
+    val qualCls = qualTpe.typeSymbol
+    sym.owner.isJavaStaticsClass && qualCls.isJavaStaticsClass
+    && qualCls.companionClass.derivesFrom(sym.owner.companionClass)
 
   /** Reorder statements so that module classes always come after their companion classes */
   private def reorderAndComplete(stats: List[Tree])(using Context): List[Tree] = {
