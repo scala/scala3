@@ -780,12 +780,11 @@ class MethodSpecialization(val methodSymbol: Symbol, val typeArgss: List[List[Tr
           case SpecializedEvidence(typeVar) => typeVar 
         } 
       } 
-  private val paramToArgList = 
+  private val paramToArgList =
     methodSymbol.paramSymss
       .filter(l => l.nonEmpty && l.head.is(Flags.TypeParam))
       .zip(typeArgss)
-      .map((params, args) => params.map(_.typeRef.asInstanceOf[Type]).zip(args))
-      .flatten
+      .flatMap((params, args) => params.map(_.typeRef.asInstanceOf[Type]).zip(args))
 
   val specializedTypeArgs: List[Tree] = 
     paramToArgList

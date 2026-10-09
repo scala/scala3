@@ -90,11 +90,8 @@ class SpecializeInlineTraits extends MiniPhase {
       }
     }.transform(tree)
 
-  override def checkPostCondition(tree: Tree)(using Context): Unit =
-    tree match {
-      // TODO: check that things are inlined properly
-      case _ =>
-    }
+  // TODO: check that things are inlined properly
+  //override def checkPostCondition(tree: Tree)(using Context): Unit = ???
 
   private object ConcreteParentStripper extends TreeAccumulator[Tree] {
     def apply(tree: Tree)(using Context): Tree = apply(tree, tree)

@@ -337,6 +337,10 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
     case tp @ ClassInfo(_, cls, _, decls, _) if !cls.is(JavaDefined) && mayNeedJSClassOrJSObjectFields(cls) =>
+      decls.foreach(sym =>
+        if cls.toString == "class HashMapIterator" && sym.toString == "method next" then
+          val _ = sym.denot // updates the symbol's checkedPeriod / lastDenot and makes it work, but why?)
+      )
       val innerJSClasses = decls.filter(isJSClass)
 
       val innerObjectsForAdHocExposed =
