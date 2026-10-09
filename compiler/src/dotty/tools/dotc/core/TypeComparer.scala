@@ -249,9 +249,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       bounds != null && op(bounds)
 
   private inline def comparingTypeLambdas(tl1: TypeLambda, tl2: TypeLambda)(op: => Boolean): Boolean =
+    comparingTypeLambda(tl1)(comparingTypeLambda(tl2)(op))
+
+  private inline def comparingTypeLambda(tl: TypeLambda)(op: => Boolean): Boolean =
     val saved = comparedTypeLambdas
-    comparedTypeLambdas += tl1
-    comparedTypeLambdas += tl2
+    comparedTypeLambdas += tl
     try op finally comparedTypeLambdas = saved
 
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
@@ -1094,7 +1096,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             recur(tycon1, tp2)
           case _ => tp2 match {
             case tp2: HKTypeLambda => false // this case was covered in thirdTry
-            case _ => tp2.typeParams.hasSameLengthAs(tp1.paramRefs) && isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
+            case _ =>
+              tp2.typeParams.hasSameLengthAs(tp1.paramRefs)
+              && comparingTypeLambda(tp1) {
+                isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
+              }
           }
         }
         compareHKLambda
@@ -1959,7 +1965,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                    && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
-                if v < 0 then 
+                if v < 0 then
                   val isValidSubtype = isSubType(arg2, arg1)
                   // Specialized traits have special variance rules because they have special erasure
                   if tp1.classSymbol.isSpecializedTrait
@@ -1971,7 +1977,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     false
                   else // Normal contravariance case
                     isValidSubtype
-                else if v > 0 then 
+                else if v > 0 then
                   val isValidSubtype = isSubType(arg1, arg2)
                   // Specialized traits have special variance rules because they have special erasure
                   if tp1.classSymbol.isSpecializedTrait
@@ -3705,10 +3711,15 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
 
   override def matchReducer = this
 
-  def matchCases(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = ctx.handleRecursive("match cases for", scrut) {
+  def matchCases(scrut0: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = ctx.handleRecursive("match cases for", scrut0) {
     // a reference for the type parameters poisoned during matching
     // for use during the reduction step
     var poisoned: Set[TypeParamRef] = Set.empty
+
+    // If we are under capture checking, we generally want to ignore capturing annotations (#27145).
+    // These can also appear when using non-capture-checked libraries from CC code itself,
+    // where <fluid> capture sets can be inserted during the setupCC phase.
+    val scrut: Type = if isCaptureCheckingOrSetup then scrut0.stripCapturing else scrut0
 
     def paramInstances(canApprox: Boolean) = new TypeAccumulator[Array[Type]]:
       def apply(insts: Array[Type], t: Type) = t match

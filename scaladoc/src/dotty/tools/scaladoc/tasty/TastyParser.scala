@@ -14,6 +14,7 @@ import dotty.tools.dotc
 import dotty.tools.scaladoc.tasty.comments.MemberLookup
 import dotty.tools.scaladoc.tasty.comments.QueryParser
 import dotty.tools.scaladoc.tasty.comments.Comment
+import dotty.tools.scaladoc.cc.isCaptureChecked
 
 import java.nio.file.Paths
 import java.nio.file.Files
@@ -194,8 +195,18 @@ case class TastyParser(
 
   private given qctx.type = qctx
 
-  protected var ccFlag: Boolean = false
+  private var ccFlag: Boolean = false
   def ccEnabled: Boolean = !ctx.args.suppressCC && ccFlag
+
+  /** Runs `op` with capture-checked rendering iff the class enclosing `sym` was compiled
+   *  with capture checking. Whether a type without capture annotations is pure depends on
+   *  that, so signatures are rendered according to where they were defined: inherited
+   *  members keep the rendering of their defining class.
+   */
+  def withCaptureCheckingOf[T](sym: Symbol)(op: => T): T =
+    val saved = ccFlag
+    ccFlag = sym.isCaptureChecked
+    try op finally ccFlag = saved
 
   val intrinsicClassDefs = Set(
     defn.AnyClass,
