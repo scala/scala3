@@ -265,7 +265,8 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Is the given symbol a JS class (that is not a trait nor an object)? */
   private def isJSClass(sym: Symbol)(using Context): Boolean = {
-    val _ = sym.denot
+    if sym.toString == "method next" then
+      val _ = sym.denot // updates the symbol's checkedPeriod / lastDenot and makes it work, but why?
     sym.isClass &&
     !sym.isOneOf(Trait | Module) &&
     sym.hasAnnotation(jsdefn.JSTypeAnnot)
