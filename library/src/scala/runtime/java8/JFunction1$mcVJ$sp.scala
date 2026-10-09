@@ -14,8 +14,23 @@ package scala.runtime.java8
 
 import scala.language.`2.13`
 
+/** A `@FunctionalInterface` specialization of [[scala.Function1]] for a
+ *  function from an unboxed `Long` to `Unit`, allowing a Java lambda or
+ *  method reference (and the compiler's `invokedynamic` lambda encoding) to
+ *  implement `Function1[Long, Unit]` without boxing.
+ */
 @FunctionalInterface trait JFunction1$mcVJ$sp extends Function1[Any, Any] with Serializable {
+  /** Applies this function to the given argument for its side effects.
+   *
+   *  @param v1 the argument, as an unboxed `Long`
+   */
   def apply$mcVJ$sp(v1: Long): Unit
+  /** Applies this function to the given argument by delegating to
+   *  `apply$mcVJ$sp`, unboxing the argument.
+   *
+   *  @param t the argument, unboxed to a `Long`
+   *  @return the boxed unit value, `BoxedUnit.UNIT`
+   */
   override def apply(t: Any): Any = {
     apply$mcVJ$sp(scala.runtime.BoxesRunTime.unboxToLong(t))
     scala.runtime.BoxedUnit.UNIT

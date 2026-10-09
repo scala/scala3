@@ -14,7 +14,16 @@ package scala.runtime.java8
 
 import scala.language.`2.13`
 
+/** A `@FunctionalInterface` specialization of [[scala.Function0]] returning an
+ *  unboxed `Char`, allowing a Java lambda or method reference (and the
+ *  compiler's `invokedynamic` lambda encoding) to implement `Function0[Char]`
+ *  without boxing.
+ */
 @FunctionalInterface trait JFunction0$mcC$sp extends Function0[Any] with Serializable {
+  /** Applies this function, returning the result as an unboxed `Char`. */
   def apply$mcC$sp(): Char
+  /** Applies this function by delegating to `apply$mcC$sp`, boxing the
+   *  `Char` result.
+   */
   override def apply(): Any = scala.runtime.BoxesRunTime.boxToCharacter(apply$mcC$sp())
 }
