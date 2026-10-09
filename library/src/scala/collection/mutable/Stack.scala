@@ -44,11 +44,19 @@ class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
     with Cloneable[Stack[A]]
     with DefaultSerializable {
 
+  /** Creates an empty stack whose backing array can hold at least `initialSize` elements.
+   *
+   *  @param initialSize the initial capacity hint, 16 by default
+   *  @throws IllegalArgumentException if `initialSize` is negative or too large to
+   *          allocate, since `ArrayDeque.alloc` rejects it
+   */
   def this(initialSize: Int = ArrayDeque.DefaultInitialSize) =
     this(ArrayDeque.alloc(initialSize), start = 0, end = 0)
 
+  /** The factory used to build stacks, the [[Stack$ `Stack`]] companion object. */
   override def iterableFactory: SeqFactory[Stack] = Stack
 
+  /** The prefix used in the string representation of this stack, `"Stack"`. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "Stack"
 
@@ -114,12 +122,21 @@ class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
    */
   @`inline` final def top: A = head
 
+  /** Returns a copy of this stack, containing the same elements in the same
+   *  order. Called by `clone()`.
+   */
   override protected def klone(): Stack[A] = {
     val bf = newSpecificBuilder
     bf ++= this
     bf.result()
   }
 
+  /** Wraps an array in a new stack, without copying.
+   *
+   *  @param array the backing array, used as given; its length must be a power of 2
+   *  @param end the number of elements: `array` holds them at indices `0` until `end`
+   *  @return a new stack backed by `array`
+   */
   override protected def ofArray(array: Array[AnyRef | Null], end: Int): Stack[A] =
     new Stack(array, start = 0, end)
 
@@ -132,10 +149,32 @@ class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
 @SerialVersionUID(3L)
 object Stack extends StrictOptimizedSeqFactory[Stack] {
 
+  /** Creates a new stack containing the elements of the given collection, in
+   *  its iteration order.
+   *
+   *  The first element of `source` ends up on top of the stack, unlike what
+   *  building a stack by pushing the elements one at a time would produce.
+   *
+   *  @tparam A the element type of the stack
+   *  @param source the collection of elements
+   *  @return a new stack containing the elements of `source`
+   */
   def from[A](source: IterableOnce[A]^): Stack[A] = empty ++= source
 
+  /** Creates a new empty stack.
+   *
+   *  @tparam A the element type of the stack
+   *  @return a new empty `Stack[A]`
+   */
   def empty[A]: Stack[A] = new Stack
 
+  /** Returns a new builder that accumulates elements into a stack.
+   *
+   *  The first element added to the builder becomes the top of the resulting stack.
+   *
+   *  @tparam A the element type of the stack
+   *  @return a builder for a `Stack[A]`
+   */
   def newBuilder[A]: Builder[A, Stack[A]] = new GrowableBuilder[A, Stack[A]](empty)
 
 }

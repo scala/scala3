@@ -27,8 +27,10 @@ trait SortedSet[A]
     with SortedSetOps[A, SortedSet, SortedSet[A]]
     with SortedSetFactoryDefaults[A, SortedSet, Set] {
 
+  /** Returns this set itself, with its static type widened to its unsorted counterpart `Set` */
   override def unsorted: Set[A] = this
 
+  /** Returns the [[SortedSet]] object, the default factory for mutable sorted sets, which creates `TreeSet`s */
   override def sortedIterableFactory: SortedIterableFactory[SortedSet] = SortedSet
 }
 
@@ -44,6 +46,7 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
   extends SetOps[A, Set, C]
     with collection.SortedSetOps[A, CC, C] {
 
+  /** Widens the type of this set to its unsorted counterpart. */
   def unsorted: Set[A]
 }
 

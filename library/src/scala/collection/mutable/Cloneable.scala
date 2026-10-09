@@ -20,5 +20,9 @@ import language.experimental.captureChecking
   *  @tparam C    Type of the collection, covariant and with reference types as upperbound.
   */
 trait Cloneable[+C <: AnyRef] extends scala.Cloneable {
+  /** Returns a shallow copy of this collection, made with `java.lang.Object.clone`
+   *  and cast to the collection type `C`. This override also widens access from
+   *  protected to public.
+   */
   override def clone(): C = super.clone().asInstanceOf[C]
 }

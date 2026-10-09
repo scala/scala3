@@ -40,6 +40,7 @@ class LinkedHashSet[A]
     with IterableFactoryDefaults[A, LinkedHashSet]
     with DefaultSerializable {
 
+  /** The factory used to build linked hash sets, the [[LinkedHashSet$ `LinkedHashSet`]] companion object. */
   override def iterableFactory: IterableFactory[LinkedHashSet] = LinkedHashSet
 
   // stepper is not overridden to use XTableStepper because that stepper would not return the
@@ -47,9 +48,15 @@ class LinkedHashSet[A]
 
   /*private*/ type Entry = LinkedHashSet.Entry[A]
 
+  /** The first entry in insertion order, the head of the doubly-linked entry
+   *  list, or `null` if this set is empty.
+   */
   @annotation.stableNull
   protected var firstEntry: Entry | Null = null
 
+  /** The last entry in insertion order, the tail of the doubly-linked entry
+   *  list, or `null` if this set is empty.
+   */
   @annotation.stableNull
   protected var lastEntry: Entry | Null = null
 
@@ -64,49 +71,107 @@ class LinkedHashSet[A]
 
   private var contentSize = 0
 
+  /** Returns the most recently inserted element of this set.
+   *
+   *  @return the last element in insertion order
+   *  @throws NoSuchElementException if this set is empty
+   */
   override def last: A =
     if (size > 0) lastEntry.nn.key
     else throw new NoSuchElementException("Cannot call .last on empty LinkedHashSet")
 
+  /** Returns the most recently inserted element of this set wrapped in `Some`,
+   *  or `None` if this set is empty.
+   */
   override def lastOption: Option[A] =
     if (size > 0) Some(lastEntry.nn.key)
     else None
 
+  /** Returns the first inserted element of this set.
+   *
+   *  @return the first element in insertion order
+   *  @throws NoSuchElementException if this set is empty
+   */
   override def head: A =
     if (size > 0) firstEntry.nn.key
     else throw new NoSuchElementException("Cannot call .head on empty LinkedHashSet")
 
+  /** Returns the first inserted element of this set wrapped in `Some`, or
+   *  `None` if this set is empty.
+   */
   override def headOption: Option[A] =
     if (size > 0) Some(firstEntry.nn.key)
     else None
 
+  /** The number of elements in this set. */
   override def size: Int = contentSize
+  /** The number of elements in this set; always known, never `-1`. */
   override def knownSize: Int = size
+  /** Tests whether this set contains no elements. */
   override def isEmpty: Boolean = size == 0
 
+  /** Tests whether an element is in this set.
+   *
+   *  @param elem the element to look for
+   *  @return `true` if this set contains `elem`
+   */
   def contains(elem: A): Boolean = findEntry(elem) ne null
 
+  /** Grows the hash table, if needed, so that this set can hold `size` elements
+   *  without further resizing.
+   *
+   *  The table never shrinks: a hint smaller than the current capacity does nothing.
+   *
+   *  @param size the expected number of elements
+   */
   override def sizeHint(size: Int): Unit = {
     val target = tableSizeFor(((size + 1).toDouble / LinkedHashSet.defaultLoadFactor).toInt)
     if (target > table.length) growTable(target)
   }
 
+  /** Adds an element to this set, if it is not already present.
+   *
+   *  A new element is appended at the end of the iteration order. If `elem`
+   *  is already in this set, nothing changes: in particular, the element
+   *  keeps its original position in the iteration order.
+   *
+   *  @param elem the element to add
+   *  @return `true` if `elem` was added, `false` if it was already present
+   */
   override def add(elem: A): Boolean = {
     if (contentSize + 1 >= threshold) growTable(table.length * 2)
     val hash = computeHash(elem)
     put0(elem, hash, index(hash))
   }
 
+  /** Adds an element to this set, if it is not already present.
+   *
+   *  As with [[add]], a new element is appended at the end of the iteration
+   *  order and an existing element keeps its position.
+   *
+   *  @param elem the element to add
+   *  @return this set
+   */
   def addOne(elem: A): this.type = {
     add(elem)
     this
   }
 
+  /** Removes an element from this set, if present.
+   *
+   *  @param elem the element to remove
+   *  @return this set
+   */
   def subtractOne(elem: A): this.type = {
     remove(elem)
     this
   }
 
+  /** Removes an element from this set, if present.
+   *
+   *  @param elem the element to remove
+   *  @return `true` if `elem` was present and has been removed, `false` otherwise
+   */
   override def remove(elem: A): Boolean = remove0(elem, computeHash(elem))
 
   private abstract class LinkedHashSetIterator[T] extends AbstractIterator[T] {
@@ -118,6 +183,7 @@ class LinkedHashSet[A]
       else Iterator.empty.next()
   }
 
+  /** Returns an iterator over the elements of this set, in insertion order. */
   def iterator: Iterator[A] = new LinkedHashSetIterator[A] {
     override def extract(nd: Entry): A = nd.key
   }
@@ -126,6 +192,11 @@ class LinkedHashSet[A]
     override def extract(nd: Entry): Entry = nd
   }
 
+  /** Applies a function to each element of this set, in insertion order.
+   *
+   *  @tparam U the result type of `f`; the results are discarded
+   *  @param f the function applied to each element
+   */
   override def foreach[U](f: A => U): Unit = {
     var cur: Entry | Null = firstEntry
     while (cur ne null) {
@@ -134,6 +205,7 @@ class LinkedHashSet[A]
     }
   }
 
+  /** Removes all elements from this set. The hash table keeps its current capacity. */
   override def clear(): Unit = {
     java.util.Arrays.fill(table.asInstanceOf[Array[AnyRef]], null)
     contentSize = 0
@@ -298,6 +370,10 @@ class LinkedHashSet[A]
     }
   }
 
+  /** Returns a hash code for this set, combining the hashes of its elements
+   *  without regard to order, so it is consistent with `equals` across set
+   *  implementations.
+   */
   override def hashCode(): Int = {
     val setHashIterator =
       if (isEmpty) this.iterator
@@ -314,6 +390,7 @@ class LinkedHashSet[A]
     MurmurHash3.unorderedHash(setHashIterator, MurmurHash3.setSeed)
   }
 
+  /** The prefix used in the string representation of this set, `"LinkedHashSet"`. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix: String = "LinkedHashSet"
 }
@@ -325,8 +402,22 @@ class LinkedHashSet[A]
 @SerialVersionUID(3L)
 object LinkedHashSet extends IterableFactory[LinkedHashSet] {
 
+  /** Creates a new empty linked hash set.
+   *
+   *  @tparam A the element type of the set
+   *  @return a new empty `LinkedHashSet[A]`
+   */
   override def empty[A]: LinkedHashSet[A] = new LinkedHashSet[A]
 
+  /** Creates a new linked hash set containing the elements of the given
+   *  collection, in its iteration order.
+   *
+   *  If `it` contains an element more than once, the element keeps the
+   *  position of its first occurrence.
+   *
+   *  @tparam E the element type of the set
+   *  @param it the collection of elements
+   */
   def from[E](it: collection.IterableOnce[E]^) = {
     val newlhs = empty[E]
     newlhs.sizeHint(it, delta = 0)
@@ -334,6 +425,11 @@ object LinkedHashSet extends IterableFactory[LinkedHashSet] {
     newlhs
   }
 
+  /** Returns a new builder that accumulates elements into a linked hash set.
+   *
+   *  @tparam A the element type of the set
+   *  @return a builder for a `LinkedHashSet[A]`
+   */
   def newBuilder[A]: GrowableBuilder[A, LinkedHashSet[A]] = new GrowableBuilder(empty[A])
 
   /** Class for the linked hash set entry, used internally.
