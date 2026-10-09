@@ -410,6 +410,10 @@ object TypeErasure:
   /** Is `tp` of the form `Array^N[T]` where T is generic? */
   def isGenericArrayArg(tp: Type)(using Context): Boolean = tp.dealias match
     case defn.ArrayOf(elem) => isGenericArrayArg(elem)
+    case tp: AppliedType if tp.tycon.typeSymbol.isOpaqueAlias =>
+      isGenericArrayArg(tp.translucentSuperType)
+    case tp: TypeBounds =>
+      isGenericArrayArg(tp.hi)
     case _ => isGeneric(tp)
   end isGenericArrayArg
 
