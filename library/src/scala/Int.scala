@@ -646,8 +646,8 @@ object Int extends AnyValCompanion {
   implicit def int2double(x: Int): Double = x.toDouble
 
   extension (self: Int) {
-    /** Returns `'''true'''` if this number has no decimal component.
-      * Always `'''true'''` for `Int`.
+    /** Returns `true` if this number has no decimal component.
+      * Always `true` for `Int`.
       */
     @deprecated("isWhole on Int is always true", "2.12.15")
     def isWhole: Boolean = true

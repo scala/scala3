@@ -28,7 +28,7 @@ import scala.language.implicitConversions
  *  stream pipeline into a Scala collection. The
  *  [[scala.collection.convert.StreamExtensions.StreamHasToScala.toScala]] extension method on Java
  *  streams (available by importing
- *  [[scala.jdk.StreamConverters `scala.jdk.StreamConverters._`]]) is specialized for
+ *  [[scala.jdk.StreamConverters scala.jdk.StreamConverters._]]) is specialized for
  *  Accumulators: they are built in parallel, the parts are merged efficiently.
  *
  *  Building specialized Accumulators is handled transparently. As a user, using the

@@ -36,7 +36,7 @@ trait StreamExtensions {
   implicit class IterableHasSeqStream[A](cc: IterableOnce[A]) {
     /** Creates a sequential [[java.util.stream.Stream Java Stream]] for this collection. If the
      *  collection contains primitive values, a corresponding specialized Stream is returned (e.g.,
-     *  [[java.util.stream.IntStream `IntStream`]]).
+     *  [[java.util.stream.IntStream IntStream]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the element type `A` via the implicit `StreamShape`
      *  @tparam St the type of `Stepper` used to traverse the collection's elements
@@ -56,7 +56,7 @@ trait StreamExtensions {
 
     /** Creates a parallel [[java.util.stream.Stream Java Stream]] for this collection. If the
      *  collection contains primitive values, a corresponding specialized Stream is returned (e.g.,
-     *  [[java.util.stream.IntStream `IntStream`]]).
+     *  [[java.util.stream.IntStream IntStream]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the element type `A`
      *  @tparam St the type of `Stepper` used to traverse the collection's elements, required to support efficient splitting
@@ -74,7 +74,7 @@ trait StreamExtensions {
   implicit class MapHasSeqKeyValueStream[K, V, CC[X, Y] <: collection.MapOps[X, Y, collection.Map, ?]](cc: CC[K, V]) {
     /** Creates a sequential [[java.util.stream.Stream Java Stream]] for the keys of this map. If
      *  the keys are primitive values, a corresponding specialized Stream is returned (e.g.,
-     *  [[java.util.stream.IntStream `IntStream`]]).
+     *  [[java.util.stream.IntStream IntStream]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the key type `K`
      *  @tparam St the type of `Stepper` used to traverse the map's keys
@@ -87,7 +87,7 @@ trait StreamExtensions {
 
     /** Creates a sequential [[java.util.stream.Stream Java Stream]] for the values of this map. If
      *  the values are primitives, a corresponding specialized Stream is returned (e.g.,
-     *  [[java.util.stream.IntStream `IntStream`]]).
+     *  [[java.util.stream.IntStream IntStream]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the value type `V`
      *  @tparam St the type of `Stepper` used to traverse the map's values
@@ -120,7 +120,7 @@ trait StreamExtensions {
 
     /** Creates a parallel [[java.util.stream.Stream Java Stream]] for the keys of this map. If
      *  the keys are primitive values, a corresponding specialized Stream is returned (e.g.,
-     *  [[java.util.stream.IntStream `IntStream`]]).
+     *  [[java.util.stream.IntStream IntStream]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the key type `K`
      *  @tparam St the type of `Stepper` used to traverse the map's keys, required to support efficient splitting
@@ -134,7 +134,7 @@ trait StreamExtensions {
 
     /** Creates a parallel [[java.util.stream.Stream Java Stream]] for the values of this map. If
      *  the values are primitives, a corresponding specialized Stream is returned (e.g.,
-     *  [[java.util.stream.IntStream `IntStream`]]).
+     *  [[java.util.stream.IntStream IntStream]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the value type `V`
      *  @tparam St the type of `Stepper` used to traverse the map's values, required to support efficient splitting
@@ -166,7 +166,7 @@ trait StreamExtensions {
   implicit class StepperHasSeqStream[A](stepper: Stepper[A]) {
     /** Creates a sequential [[java.util.stream.Stream Java Stream]] for this stepper. If the
      *  stepper yields primitive values, a corresponding specialized Stream is returned (e.g.,
-     *  [[java.util.stream.IntStream `IntStream`]]).
+     *  [[java.util.stream.IntStream IntStream]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the element type `A`
      *  @tparam St the type of `Stepper` used to traverse the elements
@@ -186,7 +186,7 @@ trait StreamExtensions {
   implicit class StepperHasParStream[A](stepper: Stepper[A] & EfficientSplit) {
     /** Creates a parallel [[java.util.stream.Stream Java Stream]] for this stepper. If the
      *  stepper yields primitive values, a corresponding specialized Stream is returned (e.g.,
-     *  [[java.util.stream.IntStream `IntStream`]]).
+     *  [[java.util.stream.IntStream IntStream]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the element type `A`
      *  @tparam St the type of `Stepper` used to traverse the elements

@@ -30,8 +30,8 @@ import caps.unsafe.untrackedCaptures
  *  to iterate through the elements of a collection, it can also be used without
  *  being backed by any collection (see constructors on the companion object).
  *
- *  It is of particular importance to note that, unless stated otherwise, ''one should never
- *  use an iterator after calling a method on it''. The two most important exceptions
+ *  It is of particular importance to note that, unless stated otherwise, *one should never
+ *  use an iterator after calling a method on it*. The two most important exceptions
  *  are also the sole abstract methods: `next` and `hasNext`.
  *
  *  Both these methods can be called any number of times without having to discard the
