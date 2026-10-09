@@ -316,17 +316,24 @@ object Applications {
       val varArgs = alignedArgs.filter(untpd.isWildcardStarArg)
       val isProductSeqMatch = argTypes.length > 1 && argTypes.last.derivesFrom(defn.SeqClass)
       val hasInvalidSeqWildcard =
-        if varArgs.nonEmpty && unapplyName != nme.unapplySeq && !isProductSeqMatch then
-          report.error(em"Sequence wildcard pattern is not allowed for ${unapplyName}, only unapplySeq is allowed", varArgs.head.srcPos)
-          true
-        else if varArgs.nonEmpty && unapplyName == nme.unapplySeq then
+        def checkUnapplySeq =
           val sym = unapplyFn.symbol
           // if the extractor also defines unapply
           if sym.exists && sym.owner.info.member(nme.unapply).exists then
-            report.error(em"Sequence wildcard pattern is not allowed when the extractor also defines unapply, only unapplySeq is allowed", varArgs.head.srcPos)
+            val thing = if sym.owner.companionClass.is(CaseClass) then "case class companion" else "extractor"
+            report.error(em"Sequence wildcard pattern is not allowed when the $thing also defines unapply, only unapplySeq is allowed", varArgs.head.srcPos)
             true
           else false
-        else false
+        varArgs.nonEmpty && {
+          if unapplyName != nme.unapplySeq && !isProductSeqMatch then
+            checkUnapplySeq || {
+              report.error(em"Sequence wildcard pattern is not allowed for ${unapplyName}, only unapplySeq is allowed", varArgs.head.srcPos)
+              true
+            }
+          else if unapplyName == nme.unapplySeq then
+            checkUnapplySeq
+          else false
+        }
 
       val alignedArgTypes =
         if argTypes.length == alignedArgs.length then
