@@ -2033,12 +2033,13 @@ class Namer { typer: Typer =>
         try
           explore {
             val typed = ctx.typer.typedExpr(ref)
-            if ctx.reporter.hasErrors then null
+            if ctx.reporter.hasUnreportedErrors then null
             else typed.tpe.widenTermRefExpr match
               case ConstantType(c) => c
               case _               => null
           }
-        catch case _: TypeError => null // e.g. a cyclic reference, only in invalid Java code
+        // a cyclic reference: fields whose initializers refer to each other, which javac does not treat as constants either
+        catch case _: TypeError => null
       JavaConstantFolder(expr, resolve) match
         case null => declared
         case const: Constant =>
