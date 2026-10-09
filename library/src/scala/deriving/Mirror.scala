@@ -36,11 +36,16 @@ object Mirror {
     def fromProduct(p: scala.Product): MirroredMonoType
   }
 
+  /** The `Mirror` for a singleton type, which has no product elements. */
   trait Singleton extends Product {
     type MirroredMonoType = this.type
     type MirroredType = this.type
     type MirroredElemTypes = EmptyTuple
     type MirroredElemLabels = EmptyTuple
+    /** Returns the singleton instance itself.
+     *
+     *  @param p ignored, since a singleton has no elements
+     */
     def fromProduct(p: scala.Product): MirroredMonoType = this
   }
 
@@ -53,6 +58,10 @@ object Mirror {
     type MirroredType = value.type
     type MirroredElemTypes = EmptyTuple
     type MirroredElemLabels = EmptyTuple
+    /** Returns the proxied Scala 2 singleton instance.
+     *
+     *  @param p ignored, since a singleton has no elements
+     */
     def fromProduct(p: scala.Product): MirroredMonoType = value
   }
 
@@ -66,7 +75,6 @@ object Mirror {
      *  @tparam A the product type whose elements are used as input
      *  @tparam Elems the tuple type representing `A`'s elements, constrained to be a subtype of `T`'s `MirroredElemTypes`
      *  @param a the product instance whose elements are copied into the new `T`
-
      */
     def fromProductTyped[A <: scala.Product, Elems <: p.MirroredElemTypes](a: A)(using ProductOf[A] { type MirroredElemTypes = Elems }): T =
       p.fromProduct(a)
