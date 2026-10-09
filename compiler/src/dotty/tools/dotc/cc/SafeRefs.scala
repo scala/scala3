@@ -7,7 +7,7 @@ import Symbols.*
 import Annotations.*
 import util.Spans.NoSpan
 import util.{Property, SrcPos}
-import Contexts.{Context, ctx}
+import Contexts.{Context, ctx, inContext}
 import Constants.Constant
 import Decorators.*
 import ast.tpd.*
@@ -29,13 +29,15 @@ object SafeRefs {
 
   private def rejectSafe(sym: Symbol)(using Context): Unit =
     if !sym.infoOrCompleter.isInstanceOf[StubInfo] then
-      sym.addAnnotation(Annotation(defn.RejectSafeAnnot, List(Literal(Constant(""))), NoSpan))
+      inContext(ctx.withSource(sym.source)):
+        sym.addAnnotation(Annotation(defn.RejectSafeAnnot, List(Literal(Constant(""))), NoSpan))
       if sym.is(ModuleVal) then rejectSafe(sym.moduleClass)
 
   private def assumeSafe(sym: Symbol, except: List[String])(using Context): Unit =
     if !sym.infoOrCompleter.isInstanceOf[StubInfo] then
       val cls = if sym.is(ModuleVal) then sym.moduleClass else sym
-      cls.addAnnotation(Annotation(defn.AssumeSafeAnnot, NoSpan))
+      inContext(ctx.withSource(cls.source)):
+        cls.addAnnotation(Annotation(defn.AssumeSafeAnnot, NoSpan))
       for exc <- except
           name <- List(exc.toTermName, exc.toTypeName)
           mbr <- cls.info.member(name).alternatives

@@ -1,5 +1,7 @@
 package scala.annotation
 
+import language.experimental.captureChecking
+
 /** An annotation that can be used to mark a mutable field as trackable for nullability.
  *  With explicit nulls, a normal mutable field cannot be tracked for nullability by flow typing,
  *  since it can be updated to a null value at the same time.

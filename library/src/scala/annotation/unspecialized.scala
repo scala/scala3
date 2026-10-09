@@ -12,6 +12,7 @@
 
 package scala.annotation
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A method annotation which suppresses the creation of

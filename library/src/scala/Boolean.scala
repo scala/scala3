@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** `Boolean` (equivalent to Java's `boolean` primitive type) is a

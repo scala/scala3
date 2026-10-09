@@ -12,6 +12,7 @@
 
 package scala.ref
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 class SoftReference[+T <: AnyRef](value : T, queue : ReferenceQueue[T] | Null) extends ReferenceWrapper[T] {
