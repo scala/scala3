@@ -297,6 +297,12 @@ class DeterminismTest {
       "S4S" -> "java.lang.String S4S = \"a\"",
       "NEG" -> "int NEG = ~I1",
       "PLUS" -> "int PLUS = +C1",
+      "CYC1" -> "int CYC1 = K.CYC2 + 0, CYC2 = K.CYC1 + 0",
+      "CYC2" -> "",
+      "CYC4" -> "int CYC4 = K.CYC3 + 0, CYC3 = K.CYC4 + 0",
+      "CYC3" -> "",
+      "BYTES" -> "int SIZE = 4, BYTES = SIZE * 2, BYTES2 = K.SIZE * 2", // `SIZE()` is a method, too
+      "BYTES2" -> "",
       "INTMAX" -> "int INTMAX = Integer.MAX_VALUE + 1",
       "PAREN" -> "int PAREN = (I1) - 1",
       "CAST" -> "int CAST = (int) 3.9 + (int) -3.9",
@@ -315,6 +321,7 @@ class DeterminismTest {
       source("K.java",
         s"""public class K implements I {
            |${javaFields.mkString("\n")}
+           |  public static int SIZE() { return 0; }
            |  public final int INSTANCE = 1 + 1;
            |  public static int NONFINAL = 1 + 1;
            |  static final int K1 = IC + K.I1;
