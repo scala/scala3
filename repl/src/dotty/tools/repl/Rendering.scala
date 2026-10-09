@@ -246,7 +246,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       myClassLoader
     }
 
-  private[repl] def addToClasspath(urls: Seq[URL])(using Context): Unit =
+  private[repl] def addToClasspath(urls: Iterable[URL])(using Context): Unit =
     classLoader()
     urls.foreach(myClasspathClassLoader.add)
 

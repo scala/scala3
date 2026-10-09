@@ -79,7 +79,7 @@ end SourceLanguage
  */
 object TypeErasure:
 
-  private val DisallowSpecialized = Property.Key[Unit] 
+  private val DisallowSpecialized = Property.Key[Unit]
 
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
     sym == defn.ArrayClass || sym == defn.PairClass || sym.isDerivedValueClass || sym.isSpecializedTrait
@@ -214,7 +214,7 @@ object TypeErasure:
   /** The current context but with `Foo[Int]` erasing to `Foo` instead of
    *  `Foo$sp$Int` when `Foo` is a specialized trait. */
   def disallowSpecializedCtx(using Context) = ctx.fresh.setProperty(DisallowSpecialized, ())
-  
+
   /** The current context but with `Foo[Int]` erasing to `Foo$sp$Int` instead of
    *  `Foo` when `Foo` is a specialized trait. */
   def allowSpecializedCtx(using Context) = ctx.fresh.dropProperty(DisallowSpecialized)
@@ -595,16 +595,17 @@ object TypeErasure:
     case _ => false
   }
 
-  /** The erasure of `PolyFunction { def apply: $applyInfo }` */
-  def eraseRefinedFunctionApply(applyInfo: Type)(using Context): Type =
-    def functionType(info: Type): Type = info match {
-      case info: PolyType =>
-        functionType(info.resultType)
-      case info: MethodType =>
-        assert(!info.resultType.isInstanceOf[MethodicType])
-        defn.FunctionType(n = info.nonErasedParamCount)
-    }
-    erasure(functionType(applyInfo))
+  /** The erasure of `PolyFunction { def apply ... }, given the type of the
+   *  `apply` method `applyInfo`.
+   *   - `PolyFunction { def apply(x_1: P_1, ..., x_N: P_N): R }` erases to FunctionN
+   *     with erased parameters dropped.
+   *   - `PolyFunction { def apply[T_1, T_N]: R }` erases to |R|
+   */
+  def erasePolyFunction(applyInfo: Type)(using Context): Type = applyInfo match
+    case info: PolyType =>
+      erasure(info.resultType)
+    case info: MethodType =>
+      erasure(defn.FunctionType(info.nonErasedParamCount))
 
   /** Check if LambdaMetaFactory can handle signature adaptation between two method types.
    *
@@ -754,7 +755,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
    *      - otherwise, if T is a type parameter coming from Java, []Object
    *      - otherwise, Object
    *   - For a term ref p.x, the type <noprefix> # x.
-   *   - For a refined type scala.PolyFunction { def apply[...](x_1, ..., x_N): R }, scala.FunctionN
+   *   - For a refined type scala.PolyFunction { def apply[...]: R }, |R|
+   *   - For a refined type scala.PolyFunction { def apply(...): R }, FunctionN where N is # non-erased params in (...)
    *   - For a typeref scala.Any, scala.AnyVal, scala.Singleton, scala.Tuple, or scala.*: : |java.lang.Object|
    *   - For a typeref scala.Unit, |scala.runtime.BoxedUnit|.
    *   - For a typeref scala.FunctionN, where N > MaxImplementedFunctionArity, scala.FunctionXXL
@@ -788,14 +790,15 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         if !sym.isClass then this(checkedSuperType(tp))
         else if semiEraseVCs && sym.isDerivedValueClass then eraseDerivedValueClass(tp)
         else if defn.isSyntheticFunctionClass(sym) then defn.functionTypeErasure(sym)
+        else if sym == defn.PolyFunctionClass then defn.ObjectType
         else eraseNormalClassRef(tp)
-      // At the beginning the $sp$ trait symbols are not present so up until 
+      // At the beginning the $sp$ trait symbols are not present so up until
       // erasure need to consider the signature of def foo(x: Foo[Int]): Int as
       // foo(Foo):Int. Only at erasure do the symbols swap. This ensures
       // the signatures don't change before erasure which is required (meta-ordering
       // constraint in Compiler.scala)
-      case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) && 
-        spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty) => 
+      case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) &&
+        spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty) =>
           val specName = spec.newSpecializedTraitName
           val interfaceSymbol = spec.symbol.owner.enclosingPackageClass.info.decls.lookup(specName)
           assert(interfaceSymbol.exists && interfaceSymbol.isClass)
@@ -819,7 +822,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       case ExprType(rt) =>
         defn.FunctionType(0)
       case defn.PolyFunctionOf(mt) =>
-        eraseRefinedFunctionApply(mt)
+        erasePolyFunction(mt)
       case tp: TypeVar if !tp.isInstantiated =>
         assert(inSigName, i"Cannot erase uninstantiated type variable $tp")
         WildcardType
@@ -898,7 +901,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
             if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
             else
               // Match corresponding tree erasure in Erasure::typedClassDef
-              val parents1 = 
+              val parents1 =
                 if cls.isSpecializedTraitInterface then // {source: inline trait Bar[T: Specialized] extends Foo[T] both specialized traits} inline trait Bar$sp$Int extends Object, Bar, Foo$sp$Int
                   val (obj :: originalTrait :: inheritedParents) = parents : @unchecked
                   eraseParent(obj) :: apply(originalTrait)(using disallowSpecializedCtx) :: inheritedParents.mapConserve(eraseParent(_)(using allowSpecializedCtx))
@@ -910,7 +913,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
 
                 // {source: class Bar extends Foo[Int](10) with Baz[Int](10)}
                 // class Bar extends Object, Foo(10), Baz(10), Foo$sp$Int, Baz$sp$Int
-                  parents.mapConserve(p => if p.typeSymbol.isSpecializedTrait then 
+                  parents.mapConserve(p => if p.typeSymbol.isSpecializedTrait then
                                              apply(p)(using disallowSpecializedCtx)
                                            else eraseParent(p)) ::: originalSpecializedTraits
               parents1 match {
@@ -1010,7 +1013,10 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           MethodType(Nil, Nil,
             eraseResult(rt.translateFromRepeated(toArray = sourceLanguage.isJava)))
       case tp1: PolyType =>
-        eraseResult(tp1.resultType) match
+        if sym.isAnonymousFunction then
+          val defn.FunctionTypeOfMethod(mt) = tp1.resType.dealias.runtimeChecked
+          this(mt)
+        else eraseResult(tp1.resType) match
           case rt: MethodType => rt
           case rt => MethodType(Nil, Nil, rt)
       case tp1 =>

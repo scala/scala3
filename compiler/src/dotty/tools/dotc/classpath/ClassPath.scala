@@ -16,7 +16,7 @@ import scala.collection.mutable.ArrayBuffer
  * A representation of the compiler's class- or sourcepath.
  */
 trait ClassPath {
-  def asURLs: Seq[URL] = Seq.empty
+  def asURLs: Iterable[URL] = Seq.empty
   def hasPackage(pkg: String): Boolean = false
   def packages(inPackage: String): Iterable[String] = Seq.empty
   def classes(inPackage: String): Iterable[BinaryFileEntry] = Seq.empty
@@ -77,7 +77,10 @@ object ClassPath {
   private[dotty] def mergeClassesAndSources(
       classes: Iterable[BinaryFileEntry],
       sources: Iterable[SourceFileEntry],
-  ): Seq[ClassRepresentation] =
+  ): Iterable[ClassRepresentation] =
+    if sources.isEmpty then return classes
+    if classes.isEmpty then return sources
+
     val indices = dotc.util.HashMap[String, Int]()
     val merged = new ArrayBuffer[ClassRepresentation](classes.size + sources.size)
     var count = 0

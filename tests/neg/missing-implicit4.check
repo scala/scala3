@@ -21,7 +21,11 @@
    |                                          ^
    |    No given instance of type Zip[Option] was found for a context parameter of method traverse in trait Traverse
    |
+   |    Note: The missing arg does not affect whether extension `traverse` is chosen.
+   |
    |    The following import might fix the problem:
    |
    |      import instances.zipOption
    |
+   |
+   | longer explanation available when compiling with `-explain`

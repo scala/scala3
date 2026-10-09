@@ -385,7 +385,8 @@ object Trees {
     def nameSpan(using Context): Span =
       if (span.exists) {
         val point = span.point
-        if (rawMods.is(Synthetic) || span.isSynthetic || name.toTermName == nme.ERROR) Span(point)
+        if (rawMods.is(Synthetic) || span.isSynthetic || name.toTermName == nme.ERROR || srcName.is(NameKinds.DefaultGetterName))
+          Span(point)
         else {
           val realName = srcName.stripModuleClassSuffix.lastPart
           Span(point, point + realName.length, point)

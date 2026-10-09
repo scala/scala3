@@ -16,7 +16,6 @@ import core.Names.*
 import core.NameKinds
 import core.Types.*
 import core.Symbols.isLocalToBlock
-import interactive.Interactive
 import util.Spans.Span
 import reporting.*
 
@@ -140,9 +139,16 @@ object Signatures {
           case defdef: tpd.DefDef if defdef.rhs.span.contains(span) => defdef
 
         val enclosingTree = enclosingFunction.getOrElse(expr)
-        findEnclosingApply(Interactive.pathTo(enclosingTree, span), span)
+        findEnclosingApply(pathTo(enclosingTree, span), span)
 
       case direct :: _ => direct
+
+  private def pathTo(tree: tpd.Tree, span: Span)(using Context): List[tpd.Tree] =
+    if tree.span.contains(span) then
+      NavigateAST.pathTo(span, List(tree), skipZeroExtent = true)
+        .collect { case t: untpd.Tree => t }
+        .dropWhile(!_.hasType).asInstanceOf[List[tpd.Tree]]
+    else Nil
 
 
   private def isClosingSymbol(ch: Char) = ch == ')' || ch == ']'
