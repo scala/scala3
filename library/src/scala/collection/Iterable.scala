@@ -33,13 +33,26 @@ trait Iterable[+A] extends IterableOnce[A]
   with IterableFactoryDefaults[A, Iterable] {
 
   // The collection itself
+  /** Returns this $coll itself.
+   *
+   *  Unlike `toList` or `toSeq`, no elements are copied: for a mutable collection the
+   *  result reflects later mutations of this $coll.
+   */
   @deprecated("toIterable is internal and will be made protected; its name is similar to `toList` or `toSeq`, but it doesn't copy non-immutable collections", "2.13.7")
   final def toIterable: this.type = this
 
+  /** Returns this $coll itself, fulfilling the `coll` contract of `IterableOps`. */
   final protected def coll: this.type = this
 
+  /** The companion factory object of this $coll, the [[Iterable$ Iterable]] object by
+   *  default; overridden in subclasses to return their own companion.
+   */
   def iterableFactory: IterableFactory[Iterable] = Iterable
 
+  /** Returns this $coll itself. Historically this method converted a parallel collection
+   *  to a sequential one; there are no parallel collections in the standard library
+   *  anymore, so there is nothing to convert.
+   */
   @deprecated("Iterable.seq always returns the iterable itself", "2.13.0")
   def seq: this.type = this
 
@@ -71,6 +84,10 @@ trait Iterable[+A] extends IterableOnce[A]
    */
   private[scala] final def collectionClassName: String = className
 
+  /** The prefix of this $coll's `toString` representation, `"Iterable"` by default.
+   *
+   *  The default implementation of `className` returns this value.
+   */
   @deprecatedOverriding("Override className instead", "2.13.0")
   protected def stringPrefix: String = "Iterable"
 
@@ -152,6 +169,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
   @deprecated("toTraversable is internal and will be made protected; its name is similar to `toList` or `toSeq`, but it doesn't copy non-immutable collections", "2.13.0")
   final def toTraversable: Traversable[A]^{this} = toIterable
 
+  /** Returns `true`: this $coll can be traversed repeatedly. */
   override def isTraversableAgain: Boolean = true
 
   /**
@@ -159,6 +177,9 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    */
   protected def coll: C^{this}
 
+  /** Returns the collection this operates on, as a `C`. Alias for [[coll]], which for an
+   *  adapter such as `IsSeq[String]` is the represented collection rather than the adapter.
+   */
   @deprecated("Use coll instead of repr in a collection implementation, use the collection value itself from the outside", "2.13.0")
   final def repr: C^{this} = coll
 
@@ -180,7 +201,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *       implementations of operations where we use a `View[A]`), it is safe.
    *
    *  @param coll the source collection to convert
-   *  @return a new collection of type `C` containing the elements of `coll`
+   *  @return a collection of type `C` containing the elements of `coll`
    */
   protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): C^{coll}
 
@@ -412,8 +433,20 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     iterableFactory.from(bs.map(_.result()))
   }
 
+  /** Selects all elements of this $coll which satisfy a predicate.
+   *
+   *  @param pred the predicate used to test elements
+   *  @return a new $coll consisting of all elements of this $coll that satisfy the given
+   *          predicate `pred`. The order of the elements is preserved.
+   */
   def filter(pred: A => Boolean): C^{this, pred} = fromSpecific(new View.Filter(this, pred, isFlipped = false))
 
+  /** Selects all elements of this $coll which do not satisfy a predicate.
+   *
+   *  @param pred the predicate used to test elements
+   *  @return a new $coll consisting of all elements of this $coll that do not satisfy the
+   *          given predicate `pred`. Their order may not be preserved.
+   */
   def filterNot(pred: A => Boolean): C^{this, pred} = fromSpecific(new View.Filter(this, pred, isFlipped = true))
 
   /** Creates a non-strict filter of this $coll.
@@ -450,8 +483,24 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     (fromSpecific(first), fromSpecific(second))
   }
 
+  /** Splits this $coll into a prefix/suffix pair at a given position.
+   *
+   *  Note: `c splitAt n` is equivalent to `(c take n, c drop n)`.
+   *  $orderDependent
+   *
+   *  @param n the position at which to split
+   *  @return a pair of ${coll}s consisting of the first `n` elements of this $coll,
+   *          and the other elements
+   */
   override def splitAt(n: Int): (C^{this}, C^{this}) = (take(n), drop(n))
 
+  /** Selects the first `n` elements.
+   *  $orderDependent
+   *  @param n the number of elements to take from this $coll
+   *  @return a $coll consisting only of the first `n` elements of this $coll,
+   *          or else the whole $coll, if it has less than `n` elements.
+   *          If `n` is negative, returns an empty $coll.
+   */
   def take(n: Int): C^{this} = fromSpecific(new View.Take(this, n))
 
   /** Selects the last *n* elements.
@@ -471,8 +520,25 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    */
   def takeWhile(p: A => Boolean): C^{this, p} = fromSpecific(new View.TakeWhile(this, p))
 
+  /** Splits this $coll into a prefix/suffix pair according to a predicate.
+   *
+   *  Note: the default implementation is `(takeWhile(p), dropWhile(p))`, which traverses
+   *  this $coll twice and applies the predicate `p` to each element traversed.
+   *  $orderDependent
+   *
+   *  @param p the test predicate
+   *  @return a pair consisting of the longest prefix of this $coll whose
+   *          elements all satisfy `p`, and the rest of this $coll
+   */
   def span(p: A => Boolean): (C^{this, p}, C^{this, p}) = (takeWhile(p), dropWhile(p))
 
+  /** Selects all elements except the first `n` ones.
+   *  $orderDependent
+   *  @param n the number of elements to drop from this $coll
+   *  @return a $coll consisting of all elements of this $coll except the first `n` ones,
+   *          or else the empty $coll, if this $coll has less than `n` elements.
+   *          If `n` is negative, don't drop any elements.
+   */
   def drop(n: Int): C^{this} = fromSpecific(new View.Drop(this, n))
 
   /** Selects all elements except last *n* ones.
@@ -484,6 +550,17 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    */
   def dropRight(n: Int): C^{this} = fromSpecific(new View.DropRight(this, n))
 
+  /** Selects all elements except the longest prefix that satisfies a predicate.
+   *
+   *  The matching prefix starts with the first element of this $coll, and the element
+   *  following the prefix, if any, is the first element that does not satisfy the predicate. The
+   *  matching prefix may be empty, so that this method returns the entire $coll.
+   *  $orderDependent
+   *
+   *  @param p the predicate used to test elements
+   *  @return the longest suffix of this $coll whose first element does not satisfy the
+   *          predicate `p`
+   */
   def dropWhile(p: A => Boolean): C^{this, p} = fromSpecific(new View.DropWhile(this, p))
 
   /** Partitions elements in fixed size ${coll}s.
@@ -553,6 +630,15 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     dropRight(1)
   }
 
+  /** Selects an interval of elements.
+   *  $orderDependent
+   *
+   *  @param from the lowest index to include from this $coll
+   *  @param until the lowest index to EXCLUDE from this $coll
+   *  @return a $coll containing the elements greater than or equal to index `from`
+   *          extending up to (but not including) index `until` of this $coll; a negative
+   *          `from` is treated as `0`, and a non-positive `until` gives an empty result
+   */
   def slice(from: Int, until: Int): C^{this} =
     fromSpecific(new View.Drop(new View.Take(this, until), from))
 
@@ -615,7 +701,13 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
       bldr += f(elem)
     }
     class Result extends runtime.AbstractFunction1[(K, Builder[B, CC[B]]), Unit] {
+      /** The result map accumulated so far. */
       var built = immutable.Map.empty[K, CC[B]]
+      /** Adds to `built` a binding from the key in `kv` to the collection produced by its
+       *  group's builder.
+       *
+       *  @param kv a key paired with the builder collecting that key's group
+       */
       def apply(kv: (K, Builder[B, CC[B]])) =
         built = built.updated(kv._1, kv._2.result())
     }
@@ -670,6 +762,17 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    */
   def scan[B >: A](z: B)(op: (B, B) => B): CC[B]^{this, op} = scanLeft(z)(op)
 
+  /** Produces a $ccoll containing cumulative results of applying the operator going left
+   *  to right, including the initial value.
+   *
+   *  $willNotTerminateInf
+   *  $orderDependent
+   *
+   *  @tparam B the type of the elements in the resulting collection
+   *  @param z the initial value
+   *  @param op the binary operator applied to the intermediate result and the element
+   *  @return collection with intermediate results
+   */
   def scanLeft[B](z: B)(op: (B, A) => B): CC[B]^{this, op} = iterableFactory.from(new View.ScanLeft(this, z, op))
 
   /** Produces a collection containing cumulative results of applying the operator going right to left.
@@ -690,8 +793,15 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    */
   def scanRight[B](z: B)(op: (A, B) => B): CC[B]^{this, op} = {
     class Scanner extends runtime.AbstractFunction1[A, Unit] {
+      /** The cumulative result so far, initially the value `z`. */
       var acc = z
+      /** The intermediate results produced so far, most recent first; initially just `z`. */
       var scanned = acc :: immutable.Nil
+      /** Combines the element `x` into the cumulative result and prepends the new result
+       *  to `scanned`.
+       *
+       *  @param x the element to combine
+       */
       def apply(x: A) = {
         acc = op(x, acc)
         scanned ::= acc
@@ -702,12 +812,45 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     iterableFactory.from(scanner.scanned)
   }
 
+  /** Builds a new $ccoll by applying a function to all elements of this $coll.
+   *
+   *  @tparam B the element type of the returned $ccoll
+   *  @param f the function to apply to each element
+   *  @return a new $ccoll resulting from applying the given function `f` to each element
+   *          of this $coll and collecting the results
+   */
   def map[B](f: A => B): CC[B]^{this, f} = iterableFactory.from(new View.Map(this, f))
 
+  /** Builds a new $ccoll by applying a function to all elements of this $coll and using
+   *  the elements of the resulting collections.
+   *
+   *  @tparam B the element type of the returned collection
+   *  @param f the function to apply to each element
+   *  @return a new $ccoll resulting from applying the given collection-valued function `f`
+   *          to each element of this $coll and concatenating the results
+   */
   def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f} = iterableFactory.from(new View.FlatMap(this, f))
 
+  /** Given that the elements of this collection are themselves iterable collections,
+   *  converts this $coll into a $ccoll comprising the elements of these iterable
+   *  collections.
+   *
+   *  @tparam B the type of the elements of each iterable collection
+   *  @param asIterable an implicit conversion which asserts that the element type of this
+   *         $coll is an `IterableOnce`
+   *  @return a new $ccoll resulting from concatenating all element collections
+   */
   def flatten[B](implicit asIterable: A -> IterableOnce[B]): CC[B]^{this} = flatMap(asIterable)
 
+  /** Builds a new $ccoll by applying a partial function to all elements of this $coll on
+   *  which the function is defined.
+   *
+   *  @tparam B the element type of the returned $ccoll
+   *  @param pf the partial function which filters and maps the $coll
+   *  @return a new $ccoll resulting from applying the given partial function `pf` to each
+   *          element on which it is defined and collecting the results.
+   *          The order of the elements is preserved.
+   */
   def collect[B](pf: PartialFunction[A, B]^): CC[B]^{this, pf} =
     iterableFactory.from(new View.Collect(this, pf))
 
@@ -775,6 +918,11 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     case _ => iterator.zip(that)
   })
 
+  /** Zips this $coll with its indices.
+   *
+   *  @return a new $ccoll containing pairs consisting of all elements of this $coll paired
+   *          with their index. Indices start at `0`.
+   */
   def zipWithIndex: CC[(A @uncheckedVariance, Int)]^{this} = iterableFactory.from(new View.ZipWithIndex(this))
 
   /** Returns a $coll formed from this $coll and another iterable collection
@@ -868,6 +1016,15 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    */
   def inits: Iterator[C^{this}]^{this} = iterateUntilEmpty(_.init)
 
+  /** Applies a side-effecting function to each element in this collection.
+   *  Strict collections will apply `f` to their elements immediately, while lazy
+   *  collections like Views and LazyLists will only apply `f` on each element if and when
+   *  that element is evaluated, and each time that element is evaluated.
+   *
+   *  @tparam U the return type of `f`; the value is discarded
+   *  @param f a function to apply to each element in this $coll
+   *  @return the same logical collection as this
+   */
   override def tapEach[U](f: A => U): C^{this, f} = fromSpecific(new View.Map(this, { (a: A) => f(a); a }))
 
   // A helper for tails and inits.
@@ -879,6 +1036,14 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     (it ++ Iterator.single(Iterable.empty: Iterable[A]^{this})).map(fromSpecific)
   }
 
+  /** Returns a new $ccoll containing the elements of `that` followed by the elements of
+   *  this $coll.
+   *
+   *  @tparam B the element type of the returned collection, a supertype of `A`
+   *  @param that the collection to prepend
+   *  @return a new $ccoll which contains all elements of `that` followed by all elements
+   *          of this $coll
+   */
   @deprecated("Use ++ instead of ++: for collections of type Iterable", "2.13.0")
   def ++:[B >: A](that: IterableOnce[B]^): CC[B]^{this, that} = iterableFactory.from(that match {
     case xs: Iterable[B @unchecked] => new View.Concat(xs, this)
@@ -935,17 +1100,47 @@ object IterableOps {
     p: A => Boolean
   ) extends collection.WithFilter[A, CC] with Serializable {
 
+    /** A non-strict view of the elements of `self` that satisfy the predicate `p`. */
     protected def filtered: Iterable[A]^{this} =
       new View.Filter(self, p, isFlipped = false)
 
+    /** Builds a new $coll by applying a function to all elements of the filtered
+     *  collection.
+     *
+     *  @tparam B the element type of the returned collection
+     *  @param f the function to apply to each element
+     *  @return a collection resulting from applying `f` to each element of `self` that
+     *          satisfies the predicate `p` and collecting the results
+     */
     def map[B](f: A => B): CC[B]^{this, f} =
       self.iterableFactory.from(new View.Map(filtered, f))
 
+    /** Builds a new $coll by applying a collection-valued function to all elements of the
+     *  filtered collection and using the elements of the resulting collections.
+     *
+     *  @tparam B the element type of the returned collection
+     *  @param f the function to apply to each element
+     *  @return a collection resulting from applying `f` to each element of `self` that
+     *          satisfies the predicate `p` and concatenating the results
+     */
     def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f} =
       self.iterableFactory.from(new View.FlatMap(filtered, f))
 
+    /** Applies the function `f`, for its side effects, to each element of `self` that
+     *  satisfies the predicate `p`.
+     *
+     *  @tparam U the return type of `f`; the value is discarded
+     *  @param f the function to apply to each element
+     */
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
 
+    /** Further restricts the domain of subsequent `map`, `flatMap`, `foreach`, and
+     *  `withFilter` operations to elements that also satisfy the predicate `q`.
+     *
+     *  @param q the additional predicate used to test elements
+     *  @return a new `WithFilter` whose domain is the elements of `self` that satisfy both
+     *          `p` and `q`
+     */
     def withFilter(q: A => Boolean): WithFilter[A, CC]^{this, q} =
       new WithFilter(self, (a: A) => p(a) && q(a))
 
@@ -956,6 +1151,15 @@ object IterableOps {
 @SerialVersionUID(3L)
 object Iterable extends IterableFactory.Delegate[Iterable](immutable.Iterable) {
 
+  /** Returns an `Iterable` whose sole element is `a`.
+   *
+   *  Element access and slicing operations such as `head`, `last`, `take`, and `drop` are
+   *  overridden to constant-time implementations.
+   *
+   *  @tparam A the element type
+   *  @param a the single element of the collection
+   *  @return a collection containing `a` as its only element
+   */
   def single[A](a: A): Iterable[A] = new AbstractIterable[A] {
     override def iterator = Iterator.single(a)
     override def knownSize = 1
@@ -990,10 +1194,18 @@ abstract class AbstractIterable[+A] extends Iterable[A]
  *  @tparam CC the type constructor of the collection
  */
 trait IterableFactoryDefaults[+A, +CC[x] <: IterableOps[x, CC, CC[x]]] extends IterableOps[A, CC, CC[A @uncheckedVariance]] {
+  /** Builds a collection of type `CC[A]` containing the elements of the given source
+   *  collection, by delegating to [[iterableFactory]].
+   *
+   *  @param coll the source collection to convert
+   *  @return a collection of type `CC[A]` containing the elements of `coll`
+   */
   protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): CC[A @uncheckedVariance]^{coll} = iterableFactory.from(coll)
+  /** Returns a new builder for `CC[A]`, obtained from [[iterableFactory]]. */
   protected def newSpecificBuilder: Builder[A @uncheckedVariance, CC[A @uncheckedVariance]] = iterableFactory.newBuilder[A]
 
   // overridden for efficiency, since we know CC[A] =:= C
+  /** The empty collection, obtained from [[iterableFactory]]. */
   override def empty: CC[A @uncheckedVariance] = iterableFactory.empty
 }
 
@@ -1009,10 +1221,27 @@ trait IterableFactoryDefaults[+A, +CC[x] <: IterableOps[x, CC, CC[x]]] extends I
  *  @tparam CC the type constructor of the collection
  */
 trait EvidenceIterableFactoryDefaults[+A, +CC[x] <: IterableOps[x, CC, CC[x]], Ev[_]] extends IterableOps[A, CC, CC[A @uncheckedVariance]] {
+  /** The factory used to build collections of type `CC`, which requires an evidence value
+   *  of type `Ev` for the element type.
+   */
   protected def evidenceIterableFactory: EvidenceIterableFactory[CC, Ev]
+  /** The evidence value for the element type `A`, required by [[evidenceIterableFactory]]. */
   implicit protected def iterableEvidence: Ev[A @uncheckedVariance]
+  /** Builds a collection of type `CC[A]` containing the elements of the given source
+   *  collection, by delegating to [[evidenceIterableFactory]] with the implicit
+   *  [[iterableEvidence]].
+   *
+   *  @param coll the source collection to convert
+   *  @return a collection of type `CC[A]` containing the elements of `coll`
+   */
   override protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): CC[A @uncheckedVariance]^{coll} = evidenceIterableFactory.from(coll)
+  /** Returns a new builder for `CC[A]`, obtained from [[evidenceIterableFactory]] with the
+   *  implicit [[iterableEvidence]].
+   */
   override protected def newSpecificBuilder: Builder[A @uncheckedVariance, CC[A @uncheckedVariance]] = evidenceIterableFactory.newBuilder[A]
+  /** The empty collection, obtained from [[evidenceIterableFactory]] with the implicit
+   *  [[iterableEvidence]].
+   */
   override def empty: CC[A @uncheckedVariance] = evidenceIterableFactory.empty
 }
 
@@ -1036,10 +1265,24 @@ trait SortedSetFactoryDefaults[+A,
     +WithFilterCC[x] <: IterableOps[x, WithFilterCC, WithFilterCC[x]] & Set[x]] extends SortedSetOps[A @uncheckedVariance, CC, CC[A @uncheckedVariance]] {
   self: IterableOps[A, WithFilterCC, CC[A @uncheckedVariance]] =>
 
+  /** Builds a sorted set of type `CC[A]` containing the elements of the given source
+   *  collection, by delegating to `sortedIterableFactory` with this set's `ordering`.
+   *
+   *  @param coll the source collection to convert
+   *  @return a sorted set of type `CC[A]` containing the elements of `coll`
+   */
   override protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): CC[A @uncheckedVariance]    = sortedIterableFactory.from(coll)(using ordering)
+  /** Returns a new builder for `CC[A]`, obtained from `sortedIterableFactory` with this set's `ordering`. */
   override protected def newSpecificBuilder: mutable.Builder[A @uncheckedVariance, CC[A @uncheckedVariance]] = sortedIterableFactory.newBuilder[A](using ordering)
+  /** The empty sorted set, obtained from `sortedIterableFactory` with this set's `ordering`. */
   override def empty: CC[A @uncheckedVariance] = sortedIterableFactory.empty(using ordering)
 
+  /** Creates a non-strict filter of this sorted set.
+   *
+   *  @param p the predicate used to test elements
+   *  @return an object whose `map`, `flatMap`, `foreach`, and `withFilter` operations
+   *          apply to those elements of this sorted set that satisfy the predicate `p`
+   */
   override def withFilter(p: A => Boolean): SortedSetOps.WithFilter[A, WithFilterCC, CC]^{p} =
     new SortedSetOps.WithFilter[A, WithFilterCC, CC](this, p)
 }
@@ -1065,14 +1308,30 @@ trait MapFactoryDefaults[K, +V,
     +CC[x, y] <: IterableOps[(x, y), Iterable, Iterable[(x, y)]],
     +WithFilterCC[x] <: IterableOps[x, WithFilterCC, WithFilterCC[x]] & Iterable[x]] extends MapOps[K, V, CC, CC[K, V @uncheckedVariance]] with IterableOps[(K, V), WithFilterCC, CC[K, V @uncheckedVariance]] {
   this: MapFactoryDefaults[K, V, CC, WithFilterCC] =>
+  /** Builds a map of type `CC[K, V]` containing the key-value pairs of the given source
+   *  collection, by delegating to `mapFactory`.
+   *
+   *  @param coll the source collection of key-value pairs to convert
+   *  @return a map of type `CC[K, V]` containing the key-value pairs of `coll`
+   */
   override protected def fromSpecific(coll: IterableOnce[(K, V @uncheckedVariance)]^): CC[K, V @uncheckedVariance]^{coll} = mapFactory.from(coll)
+  /** Returns a new builder for `CC[K, V]`, obtained from `mapFactory`. */
   override protected def newSpecificBuilder: mutable.Builder[(K, V @uncheckedVariance), CC[K, V @uncheckedVariance]] = mapFactory.newBuilder[K, V]
+  /** The empty map, obtained from `mapFactory`; for an [[scala.collection.immutable.TreeSeqMap]]
+   *  the empty map additionally keeps the receiver's ordering mode.
+   */
   override def empty: CC[K, V @uncheckedVariance] = (this: AnyRef) match {
     // Implemented here instead of in TreeSeqMap since overriding empty in TreeSeqMap is not forwards compatible (should be moved)
     case self: immutable.TreeSeqMap[?, ?] => immutable.TreeSeqMap.empty(self.orderedBy).asInstanceOf[CC[K, V]]
     case _ => mapFactory.empty
   }
 
+  /** Creates a non-strict filter of this map.
+   *
+   *  @param p the predicate used to test key-value pairs
+   *  @return an object whose `map`, `flatMap`, `foreach`, and `withFilter` operations
+   *          apply to those key-value pairs of this map that satisfy the predicate `p`
+   */
   override def withFilter(p: ((K, V)) => Boolean): MapOps.WithFilter[K, V, WithFilterCC, CC]^{p} =
     new MapOps.WithFilter[K, V, WithFilterCC, CC](this, p)
 }
@@ -1099,10 +1358,24 @@ trait SortedMapFactoryDefaults[K, +V,
     +UnsortedCC[x, y] <: Map[x, y]] extends SortedMapOps[K, V, CC, CC[K, V @uncheckedVariance]] with MapOps[K, V, UnsortedCC, CC[K, V @uncheckedVariance]] with caps.Pure {
   self: IterableOps[(K, V), WithFilterCC, CC[K, V @uncheckedVariance]] =>
 
+  /** The empty sorted map, obtained from `sortedMapFactory` with this map's `ordering`. */
   override def empty: CC[K, V @uncheckedVariance] = sortedMapFactory.empty(using ordering)
+  /** Builds a sorted map of type `CC[K, V]` containing the key-value pairs of the given
+   *  source collection, by delegating to `sortedMapFactory` with this map's `ordering`.
+   *
+   *  @param coll the source collection of key-value pairs to convert
+   *  @return a sorted map of type `CC[K, V]` containing the key-value pairs of `coll`
+   */
   override protected def fromSpecific(coll: IterableOnce[(K, V @uncheckedVariance)]^): CC[K, V @uncheckedVariance] = sortedMapFactory.from(coll)(using ordering)
+  /** Returns a new builder for `CC[K, V]`, obtained from `sortedMapFactory` with this map's `ordering`. */
   override protected def newSpecificBuilder: mutable.Builder[(K, V @uncheckedVariance), CC[K, V @uncheckedVariance]] = sortedMapFactory.newBuilder[K, V](using ordering)
 
+  /** Creates a non-strict filter of this sorted map.
+   *
+   *  @param p the predicate used to test key-value pairs
+   *  @return an object whose `map`, `flatMap`, `foreach`, and `withFilter` operations
+   *          apply to those key-value pairs of this sorted map that satisfy the predicate `p`
+   */
   override def withFilter(p: ((K, V)) => Boolean): collection.SortedMapOps.WithFilter[K, V, WithFilterCC, UnsortedCC, CC]^{p} =
     new collection.SortedMapOps.WithFilter[K, V, WithFilterCC, UnsortedCC, CC](this, p)
 }
