@@ -30,6 +30,7 @@ object JavaParsers {
 
 
   val nonName = termName("non")
+
   val fakeFlags = Flags.JavaDefined | Flags.PrivateLocal | Flags.Invisible
 
   class JavaParser(source: SourceFile)(using Context) extends ParserCommon(source) {
@@ -587,11 +588,48 @@ object JavaParsers {
       }
     }
 
-    def optThrows(): Unit =
-      if (in.token == THROWS) {
+    /** Type parameters of the enclosing classes, innermost first. */
+    private var classTypeParams: List[List[TypeDef]] = Nil
+
+    def inClassTypeParamScope[T](tparams: List[TypeDef])(body: => T): T =
+      val saved = classTypeParams
+      classTypeParams = tparams :: classTypeParams
+      try body finally classTypeParams = saved
+
+    /** Parses an optional `throws` clause, returning `@throws[T]()` annotations for the thrown types.
+     *
+     *  A thrown type variable is replaced by its erasure, which is what `ClassfileParser` sees in the
+     *  `Exceptions` attribute. This way, the annotations, and hence the `Exceptions` attributes of
+     *  forwarders to this method, are the same whether the method is compiled from source or from a
+     *  classfile. It also avoids referring to method type parameters, which are not in scope when
+     *  the annotation is typed.
+     *
+     *  The annotations are returned in reverse order to compensate for the namer, which prepends the
+     *  annotations of a member to its symbol one by one. The symbol then has the `@throws` annotations
+     *  in source order, before the other annotations, as `ClassfileParser` gives them from the
+     *  `Exceptions` attribute.
+     */
+    def optThrows(methodTypeParams: List[TypeDef]): List[Tree] =
+      val scope = (methodTypeParams :: classTypeParams).flatten
+      def firstBound(bound: Tree): Tree = bound match
+        case AppliedTypeTree(TypedSplice(and), left :: _ :: Nil) if and.symbol == defn.andType =>
+          firstBound(left) // `T extends A & B`, see `bound`
+        case _ => bound
+      def erased(tp: Tree, seen: Set[Name]): Tree = tp match
+        case Ident(name) if !seen(name) =>
+          scope.find(_.name == name) match
+            case Some(TypeDef(_, TypeBoundsTree(_, hi, _))) if !hi.isEmpty =>
+              erased(firstBound(hi), seen + name)
+            case _ => tp
+        case _ => tp
+      if in.token == THROWS then
         in.nextToken()
-        repsep(() => typ(), COMMA)
-      }
+        repsep(() => typ(), COMMA).map { tp =>
+          atSpan(tp.span) {
+            New(AppliedTypeTree(scalaDot(tpnme.throws), List(erased(tp, Set.empty))), ListOfNil)
+          }
+        }.reverse
+      else Nil
 
     def methodBody(): Tree = atSpan(in.offset) {
       skipAhead()
@@ -628,11 +666,11 @@ object JavaParsers {
       if (in.token == LPAREN && rtptName != nme.EMPTY && !inInterface) {
         // constructor declaration
         val vparams = formalParams()
-        optThrows()
+        val throwsAnnots = optThrows(tparams)
         List {
           atSpan(start) {
             DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(vparams)),
-                   TypeTree(), methodBody()).withMods(mods)
+                   TypeTree(), methodBody()).withMods(mods.withAnnotations(mods.annotations ++ throwsAnnots))
           }
         }
       } else if (in.token == LBRACE && rtptName != nme.EMPTY && parentToken == RECORD) {
@@ -655,7 +693,7 @@ object JavaParsers {
           // method declaration
           val vparams = formalParams()
           if (!isVoid) rtpt = optArrayBrackets(rtpt)
-          optThrows()
+          mods1 = mods1.withAnnotations(mods1.annotations ++ optThrows(tparams))
           val bodyOk = !inInterface || mods.isOneOf(Flags.DefaultMethod | Flags.JavaStatic | Flags.Private)
           val body =
             if (bodyOk && in.token == LBRACE)
@@ -870,7 +908,7 @@ object JavaParsers {
           ObjectTpt()
       val interfaces = interfacesOpt()
       val permittedSubclasses = permittedSubclassesOpt(mods.is(Flags.Sealed))
-      val (statics, body) = typeBody(CLASS, name)
+      val (statics, body) = inClassTypeParamScope(tparams)(typeBody(CLASS, name))
       val cls = atSpan(start, nameOffset) {
         TypeDef(name, makeTemplate(superclass :: interfaces, body, tparams, needsDummyConstr = true)).withMods(mods)
       }
@@ -885,7 +923,7 @@ object JavaParsers {
       val header = formalParams()
       val superclass = javaLangRecord() // records always extend java.lang.Record
       val interfaces = interfacesOpt() // records may implement interfaces
-      val (statics, body) = typeBody(RECORD, name)
+      val (statics, body) = inClassTypeParamScope(tparams)(typeBody(RECORD, name))
 
       // We need to generate accessors for every param, if no method with the same name is already defined
 
@@ -949,7 +987,7 @@ object JavaParsers {
         else
           List(ObjectTpt())
       val permittedSubclasses = permittedSubclassesOpt(mods.is(Flags.Sealed))
-      val (statics, body) = typeBody(INTERFACE, name)
+      val (statics, body) = inClassTypeParamScope(tparams)(typeBody(INTERFACE, name))
       val iface = atSpan(start, nameOffset) {
         TypeDef(
           name,
