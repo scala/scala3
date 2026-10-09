@@ -61,122 +61,20 @@ object JavaConstantFolder:
   private def unaryPromoted(c: Constant): Constant = convert(numeric(c), math.max(IntTag, c.tag))
   private def promotedTag(x: Constant, y: Constant): Int = math.max(IntTag, math.max(numeric(x).tag, numeric(y).tag))
 
-  private def unop(op: Name, x: Constant): Constant = op match
-    case nme.UNARY_! => Constant(!boolean(x))
-    case nme.UNARY_+ => unaryPromoted(x)
-    case nme.UNARY_- =>
-      val p = unaryPromoted(x)
-      p.tag match
-        case IntTag    => Constant(-p.intValue)
-        case LongTag   => Constant(-p.longValue)
-        case FloatTag  => Constant(-p.floatValue)
-        case DoubleTag => Constant(-p.doubleValue)
-    case nme.UNARY_~ =>
-      val p = unaryPromoted(x)
-      p.tag match
-        case IntTag  => Constant(~p.intValue)
-        case LongTag => Constant(~p.longValue)
-        case _       => notConstant()
-    case _ => notConstant()
+  private def nonNull(c: Constant | Null): Constant = if c != null then c else notConstant()
+
+  private def unop(op: Name, x: Constant): Constant =
+    nonNull(ConstFold.foldUnop(op, if op == nme.UNARY_! then x else unaryPromoted(x)))
 
   private def binop(op: Name, x: Constant, y: Constant): Constant =
-    import nme.{ADD, SUB, MUL, DIV, MOD, AND, OR, XOR, ZAND, ZOR, EQ, NE, LT, GT, LE, GE, LSL, ASR, LSR}
-    if op == ADD && (x.tag == StringTag || y.tag == StringTag) then
+    if op == nme.ADD && (x.tag == StringTag || y.tag == StringTag) then
       Constant(x.stringValue + y.stringValue) // JLS 5.1.11, which `Constant.stringValue` agrees with for primitives
     else if x.tag == StringTag && y.tag == StringTag then op match
       // string constants are interned, so reference equality is value equality
-      case EQ => Constant(x.stringValue == y.stringValue)
-      case NE => Constant(x.stringValue != y.stringValue)
-      case _  => notConstant()
-    else if x.tag == BooleanTag || y.tag == BooleanTag then
-      val a = boolean(x)
-      val b = boolean(y)
-      op match
-        case ZAND | AND => Constant(a & b)
-        case ZOR | OR   => Constant(a | b)
-        case XOR | NE   => Constant(a ^ b)
-        case EQ         => Constant(a == b)
-        case _          => notConstant()
-    else if op == LSL || op == ASR || op == LSR then
-      // the type is that of the promoted left operand; only the low bits of the shift distance are used
-      val a = unaryPromoted(x)
-      val n = unaryPromoted(y).intValue
-      a.tag match
-        case IntTag =>
-          val v = a.intValue
-          Constant(if op == LSL then v << n else if op == ASR then v >> n else v >>> n)
-        case LongTag =>
-          val v = a.longValue
-          Constant(if op == LSL then v << n else if op == ASR then v >> n else v >>> n)
-        case _ => notConstant()
-    else promotedTag(x, y) match
-      case IntTag =>
-        val a = x.intValue; val b = y.intValue
-        op match
-          case ADD => Constant(a + b)
-          case SUB => Constant(a - b)
-          case MUL => Constant(a * b)
-          case DIV => Constant(a / b)
-          case MOD => Constant(a % b)
-          case AND => Constant(a & b)
-          case OR  => Constant(a | b)
-          case XOR => Constant(a ^ b)
-          case LT  => Constant(a < b)
-          case GT  => Constant(a > b)
-          case LE  => Constant(a <= b)
-          case GE  => Constant(a >= b)
-          case EQ  => Constant(a == b)
-          case NE  => Constant(a != b)
-          case _   => notConstant()
-      case LongTag =>
-        val a = x.longValue; val b = y.longValue
-        op match
-          case ADD => Constant(a + b)
-          case SUB => Constant(a - b)
-          case MUL => Constant(a * b)
-          case DIV => Constant(a / b)
-          case MOD => Constant(a % b)
-          case AND => Constant(a & b)
-          case OR  => Constant(a | b)
-          case XOR => Constant(a ^ b)
-          case LT  => Constant(a < b)
-          case GT  => Constant(a > b)
-          case LE  => Constant(a <= b)
-          case GE  => Constant(a >= b)
-          case EQ  => Constant(a == b)
-          case NE  => Constant(a != b)
-          case _   => notConstant()
-      case FloatTag =>
-        val a = x.floatValue; val b = y.floatValue
-        op match
-          case ADD => Constant(a + b)
-          case SUB => Constant(a - b)
-          case MUL => Constant(a * b)
-          case DIV => Constant(a / b)
-          case MOD => Constant(a % b)
-          case LT  => Constant(a < b)
-          case GT  => Constant(a > b)
-          case LE  => Constant(a <= b)
-          case GE  => Constant(a >= b)
-          case EQ  => Constant(a == b)
-          case NE  => Constant(a != b)
-          case _   => notConstant()
-      case DoubleTag =>
-        val a = x.doubleValue; val b = y.doubleValue
-        op match
-          case ADD => Constant(a + b)
-          case SUB => Constant(a - b)
-          case MUL => Constant(a * b)
-          case DIV => Constant(a / b)
-          case MOD => Constant(a % b)
-          case LT  => Constant(a < b)
-          case GT  => Constant(a > b)
-          case LE  => Constant(a <= b)
-          case GE  => Constant(a >= b)
-          case EQ  => Constant(a == b)
-          case NE  => Constant(a != b)
-          case _   => notConstant()
-  end binop
+      case nme.EQ => Constant(x.stringValue == y.stringValue)
+      case nme.NE => Constant(x.stringValue != y.stringValue)
+      case _      => notConstant()
+    else nonNull(ConstFold.foldBinop(op, x, y)) // numeric promotion, shifts and overflow agree with Java
 
   // JLS 15.25
   private def conditional(c: Constant, x: Constant, y: Constant): Constant =

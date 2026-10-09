@@ -304,6 +304,13 @@ class DeterminismTest {
       "BYTES" -> "int SIZE = 4, BYTES = SIZE * 2, BYTES2 = K.SIZE * 2", // `SIZE()` is a method, too
       "BYTES2" -> "",
       "INTMAX" -> "int INTMAX = Integer.MAX_VALUE + 1",
+      "OVF" -> "int OVF = Integer.MIN_VALUE / -1, OVF2 = Integer.MAX_VALUE * 2, DIVZ = 1 / 0",
+      "OVF2" -> "",
+      "DIVZ" -> "",
+      "LOVF" -> "long LOVF = Long.MAX_VALUE * 2, LSHL = 1L << 65, BSHL = (byte) 1 << 33L",
+      "LSHL" -> "",
+      "BSHL" -> "",
+      "SNEG" -> "short SNEG = -(short) 1",
       "PAREN" -> "int PAREN = (I1) - 1",
       "CAST" -> "int CAST = (int) 3.9 + (int) -3.9",
       "FCAST" -> "float FCAST = (float) 1e40",

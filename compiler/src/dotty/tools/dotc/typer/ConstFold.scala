@@ -76,7 +76,7 @@ object ConstFold:
     private def withFoldedType(c: Constant | Null): T =
       if c == null then tree else tree.withType(ConstantType(c)).asInstanceOf[T]
 
-  private def foldUnop(op: Name, x: Constant): Constant | Null = (op, x.tag) match {
+  private[typer] def foldUnop(op: Name, x: Constant): Constant | Null = (op, x.tag) match {
     case (nme.UNARY_!, BooleanTag) => Constant(!x.booleanValue)
 
     case (nme.UNARY_~ , IntTag    ) => Constant(~x.intValue)
@@ -196,7 +196,7 @@ object ConstFold:
       case nme.NE => Constant(x.tag != y.tag)
       case _ => null
 
-  private def foldBinop(op: Name, x: Constant, y: Constant): Constant | Null =
+  private[typer] def foldBinop(op: Name, x: Constant, y: Constant): Constant | Null =
     val optag =
       if (x.tag == y.tag) x.tag
       else if (x.isNumeric && y.isNumeric) math.max(x.tag, y.tag)
