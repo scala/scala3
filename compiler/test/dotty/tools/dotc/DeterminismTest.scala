@@ -234,6 +234,26 @@ class DeterminismTest {
     test(List(javaAnnots) :: code :: Nil)
   }
 
+  /** `throws` clauses of Java methods are retained when parsing Java sources, as `ClassfileParser`
+   *  does from the `Exceptions` attribute, so forwarders to them get the same `Exceptions` attribute.
+   */
+  @Test def testJavaThrows(): Unit = {
+    def code = List(
+      source("J.java",
+        """public interface J<E extends Exception> {
+          |  default String f() throws java.io.IOException, InterruptedException { return ""; }
+          |  default <T extends java.io.IOException & Runnable, U extends T> void g() throws U {}
+          |  default void h() throws E {}
+          |}
+          |""".stripMargin),
+      source("S.scala",
+        """object S extends J[java.sql.SQLException]
+          |class C extends J[RuntimeException]
+          |""".stripMargin)
+    )
+    test(List(code))
+  }
+
   @Test def testPackedType(): Unit = {
     def code = List(
       source("a.scala",
