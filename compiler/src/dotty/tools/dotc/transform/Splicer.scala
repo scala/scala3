@@ -114,9 +114,10 @@ object Splicer {
               |Hint: Instead of using `Symbol.primaryConstructor.paramSymss` directly, get the analogous field members with `Symbol.fieldMembers`.
               |"""
             report.error(msg, tree.srcPos)
-          case tree: DefDef =>
-            val last = locals
+          case tree @ DefDef(_, params, _, _) =>
             markDef(tree)
+            val last = locals
+            params.flatten.foreach(markDef)
             traverseOver(last)
           case Block(stats, _) =>
             val last = locals
