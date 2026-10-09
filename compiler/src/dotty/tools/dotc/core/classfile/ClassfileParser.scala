@@ -1303,15 +1303,29 @@ final class ClassfileParser(
       CompilationUnitInfo(classfile),
     )
 
-  private object innerClasses extends util.HashMap[String, InnerClassEntry] {
+  private object innerClasses {
+    private val map = util.HashMap[String, InnerClassEntry]()
+
+    def get(str: String): Option[InnerClassEntry] =
+      map.get(str)
+
+    def apply(str: String): InnerClassEntry =
+      map(str)
+
+    def update(str: String, entry: InnerClassEntry): Unit =
+      map(str) = entry
+
+    def valuesIterator: Iterator[InnerClassEntry] =
+      map.valuesIterator
+
     /** Return the Symbol of the top level class enclosing `name`,
      *  or 'name's symbol if no entry found for `name`.
      */
     def topLevelClass(name: String)(using Context): Symbol = {
-      val tlName = if (contains(name)) {
-        var entry = this(name)
-        while (contains(entry.outerName))
-          entry = this(entry.outerName)
+      val tlName = if (map.contains(name)) {
+        var entry = map(name)
+        while (map.contains(entry.outerName))
+          entry = map(entry.outerName)
         entry.outerName
       }
       else

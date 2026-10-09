@@ -592,8 +592,8 @@ class Namer { typer: Typer =>
   def index(stats: List[Tree])(using Context): Context = {
 
     // module name -> (stat, moduleCls | moduleVal)
-    val moduleClsDef = mutable.Map[TypeName, (Tree, TypeDef)]()
-    val moduleValDef = mutable.Map[TermName, (Tree, ValDef)]()
+    val moduleClsDef = new mutable.HashMap[TypeName, (Tree, TypeDef)]()
+    val moduleValDef = new mutable.HashMap[TermName, (Tree, ValDef)]()
 
     /** Remove the subtree `tree` from the expanded tree of `mdef` */
     def removeInExpanded(mdef: Tree, tree: Tree): Unit = {
@@ -699,8 +699,8 @@ class Namer { typer: Typer =>
         }
     }
 
-    val classDef  = mutable.Map[TypeName, TypeDef]()
-    val moduleDef = mutable.Map[TypeName, TypeDef]()
+    val classDef  = new mutable.HashMap[TypeName, TypeDef]()
+    val moduleDef = new mutable.HashMap[TypeName, TypeDef]()
 
     /** Create links between companion object and companion class.
      *  Populate `moduleDef` and `classDef` as a side effect.

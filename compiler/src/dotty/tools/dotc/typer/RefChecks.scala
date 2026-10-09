@@ -898,8 +898,8 @@ object RefChecks {
         //    (this is done for efficiency)
         //  - members in a prefix of inherited parents that all come from Java or Scala2
         //    (this is done to avoid false positives since Scala2's rules for checking are different)
-        val membersToCheck = new util.HashSet[Name](4096)
-        val seenClasses = new util.HashSet[Symbol](256)
+        val membersToCheck = util.HashSet[Name](4096)
+        val seenClasses = util.HashSet[Symbol](256)
         def addDecls(cls: Symbol): Unit =
           if (!seenClasses.contains(cls)) {
             seenClasses += cls

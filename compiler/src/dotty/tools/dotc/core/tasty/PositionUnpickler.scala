@@ -61,12 +61,12 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: Int => TermName) {
     }
   }
 
-  private[tasty] def spans: util.ReadOnlyMap[Addr, Span] = {
+  private[tasty] def spans: util.HashMap[Addr, Span] = {
     ensureDefined()
     mySpans
   }
 
-  private[tasty] def sourceNameRefs: util.ReadOnlyMap[Addr, NameRef] = {
+  private[tasty] def sourceNameRefs: util.HashMap[Addr, NameRef] = {
     ensureDefined()
     mySourceNameRefs
   }

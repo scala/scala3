@@ -38,7 +38,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   override def asURLs: Iterable[URL] = aggregates.flatMap(_.asURLs)
 
   override def packages(inPackage: String): Iterable[String] = {
-    val result = mutable.HashSet[String]()
+    val result = new mutable.HashSet[String]()
     for
       classpath <- aggregates
       pkg <- classpath.packages(inPackage)
@@ -56,8 +56,8 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   override def hasPackage(pkg: String): Boolean = aggregates.exists(_.hasPackage(pkg))
 
   private inline def getDistinctEntries[EntryType <: ClassRepresentation](inline getEntries: ClassPath => Iterable[EntryType]): Iterable[EntryType] =
-    val seenNames = mutable.HashSet[String]()
-    val result = mutable.ArrayBuffer[EntryType]()
+    val seenNames = new mutable.HashSet[String]()
+    val result = new mutable.ArrayBuffer[EntryType]()
     val iterator = aggregates.iterator
     while iterator.hasNext do
       val entries = getEntries(iterator.next()).iterator

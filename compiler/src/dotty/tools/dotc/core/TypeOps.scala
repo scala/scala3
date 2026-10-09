@@ -20,6 +20,7 @@ import typer.IfBottom
 import Annotations.Annotation
 import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed}
 import CaptureSet.{IdentityCaptRefMap, VarState}
+import util.*
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
