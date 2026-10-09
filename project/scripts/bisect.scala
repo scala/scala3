@@ -334,7 +334,8 @@ object CommitBisectScripts:
       Seq(
         "clean",
         """set every doc := new File("unused")""",
-        s"set scaladoc/Compile/resourceGenerators := (`$scala3`/Compile/resourceGenerators).value",
+        // `LocalProject`, because `set` cannot refer to the root project by its `build.sbt` name
+        s"""set scaladoc/Compile/resourceGenerators := (LocalProject("$scala3")/Compile/resourceGenerators).value""",
         s"$scala3/publishLocal",
       ).mkString("; ")
 
