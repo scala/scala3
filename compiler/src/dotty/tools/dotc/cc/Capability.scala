@@ -416,6 +416,34 @@ object Capabilities:
       case Classified(ref1, only, except) => mkClassified(ref1, only, except :+ cls)
       case self: (CoreCapability | RootCapability) => mkClassified(self, defn.AnyClass, cls :: Nil)
 
+    /** The parts of this capability that are not covered by `that`, a projection
+     *  `b.only[O].except[E1, ..., En]` of the same underlying capability `b`. Since
+     *
+     *      A \ (O \ (E1 | ... | En))  =  (A \ O) | (A & E1) | ... | (A & En)
+     *
+     *  these are `this.except[O]` and each `this.only[Ei]`, minus the empty ones.
+     *  Classifiers form a tree, so the pieces are disjoint.
+     */
+    final def remainderAfter(that: Classified)(using Context): List[Capability] =
+      (exclude(that.only) :: that.except.map(restrict(_))).filterNot(_.isEmptyProjection)
+
+    /** Is this a projection that normalized to empty, possibly under `.rd` or `?`? */
+    final def isEmptyProjection(using Context): Boolean = stripMaybe.stripReadOnly match
+      case Classified(_, only, _) => only == defn.NothingClass
+      case _ => false
+
+    /** Does the projection of this capability, possibly under `.rd` or `?`, by itself
+     *  remove every part classified as `cls`? The same as `restrict(cls).isEmptyProjection`,
+     *  without building the restricted capability. Like `isEmptyProjection`, this does not
+     *  look at the classifiers of the underlying capability.
+     */
+    final def isProjectionDisjointFrom(cls: ClassSymbol)(using Context): Boolean =
+      stripMaybe.stripReadOnly match
+        case Classified(_, only, except) =>
+          val least = leastClassifier(only, cls)
+          least == defn.NothingClass || except.exists(e => least.isSubClass(e))
+        case _ => cls == defn.NothingClass
+
     /** Is this a maybe reference of the form `x?`? */
     final def isMaybe(using Context): Boolean = this ne stripMaybe
 
@@ -703,6 +731,10 @@ object Capabilities:
             ref1.transClassifiers
           case self: CoreCapability =>
             if self.derivesFromCapability then toClassifiers(self.inheritedClassifier)
+            else if myCaptureSet.asInstanceOf[AnyRef] eq CaptureSet.Pending then
+              // We are inside the computation of `captureSetOfInfo`, which reports the
+              // empty set in that case. That must not be taken as having no parts.
+              UnknownClassifier
             else captureSetOfInfo.transClassifiers
         if myClassifiers != UnknownClassifier then
           classifiersValid = currentId
@@ -735,8 +767,8 @@ object Capabilities:
           else captureSetOfInfo.tryClassifyAs(cls)
 
     /** Is every part of this capability provably classified as `cls` or a subclass? */
-    // Ignores exclusions: sound but loose.
-    // TODO: when attempting classifier-splitting, tighten for the remainder algorithm.
+    // Ignores exclusions: sound but loose. `CaptureSet.accountsFor` takes exclusions
+    // into account when it splits a capability across several projections.
     def isKnownClassifiedAs(cls: ClassSymbol)(using Context): Boolean =
       transClassifiers match
         case ClassifiedAs(cs) => cs.forall(_.isSubClass(cls))
@@ -754,10 +786,8 @@ object Capabilities:
           else self.hiddenSet.isKnownDisjointFrom(cls)
         case self: RootCapability =>
           false
-        case Classified(ref1, only, except) =>
-          leastClassifier(only, cls) == defn.NothingClass
-          || except.exists(e => cls.isSubClass(e))
-          || ref1.isKnownDisjointFrom(cls)
+        case Classified(ref1, _, _) =>
+          isProjectionDisjointFrom(cls) || ref1.isKnownDisjointFrom(cls)
         case ReadOnly(ref1) =>
           ref1.isKnownDisjointFrom(cls)
         case Maybe(ref1) =>
@@ -768,18 +798,13 @@ object Capabilities:
 
     /** Is this capability provably the empty capture set? */
     def isKnownEmpty(using Context): Boolean = this match
-      case Classified(ref1, only, except) =>
-        // empty if the `only` restriction removes everything ...
-        val emptyByOnly =
-          only == defn.NothingClass
-          || !only.isTopClassifier && (ref1.transClassifiers match
-              case ClassifiedAs(cs) => cs.forall(c => leastClassifier(c, only) == defn.NothingClass)
+      case Classified(ref1, only, _) =>
+        // empty if the projection removes every classifier of the underlying capability
+        only == defn.NothingClass
+        || (ref1.transClassifiers match
+              case ClassifiedAs(cs) => cs.forall(isProjectionDisjointFrom(_))
               case _ => false)
-        // ... or if every classifier of the restricted underlying is covered by some exclusion.
-        val emptyByExcept = transClassifiers match
-          case ClassifiedAs(cs) => cs.forall(c => except.exists(e => c.isSubClass(e)))
-          case _ => false
-        emptyByOnly || emptyByExcept || ref1.isKnownEmpty
+        || ref1.isKnownEmpty
       case ReadOnly(ref1) => ref1.isKnownEmpty
       case Maybe(ref1) => ref1.isKnownEmpty
       case _: RootCapability => false
