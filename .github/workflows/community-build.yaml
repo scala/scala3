@@ -26,7 +26,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@82da71df4e122282484a99a8d70096bc2369dbd8 # v1.5.9
+      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
       - name: Run Community Build A
         run: |
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestA"
@@ -45,7 +45,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@82da71df4e122282484a99a8d70096bc2369dbd8 # v1.5.9
+      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
       - name: Run Community Build B
         run: |
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestB"
@@ -64,7 +64,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@82da71df4e122282484a99a8d70096bc2369dbd8 # v1.5.9
+      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
       - name: Run Community Build C
         run: |
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestC"

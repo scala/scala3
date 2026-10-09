@@ -22,14 +22,18 @@ import dotty.tools.backend.jvm.BCodeUtils.AnalyzerExtensions
 /**
  * A wrapper to make ASM's Analyzer a bit easier to use.
  */
-abstract class AsmAnalyzer[V <: Value](methodNode: MethodNode, classInternalName: String, val analyzer: Analyzer[V]) {
-  try {
-    analyzer.analyze(classInternalName, methodNode)
-  } catch {
-    case ae: AnalyzerException =>
-      throw new AnalyzerException(null, "While processing " + classInternalName + "." + methodNode.name, ae)
+abstract class AsmAnalyzer[V <: Value](methodNode: MethodNode, classInternalName: String, analyzer: Analyzer[V]) {
+  // Analysis is expensive. We sometimes don't actually need to perform it.
+  // (This is much easier to than remembering to always pass analyzers by name)
+  private var loaded: Boolean = false
+
+  def frameAt(instruction: AbstractInsnNode): Frame[V] = {
+    if !loaded then
+      try analyzer.analyze(classInternalName, methodNode)
+      catch case ae: AnalyzerException => throw new AnalyzerException(null, "While processing " + classInternalName + "." + methodNode.name, ae)
+      loaded = true
+    analyzer.frameAt(instruction, methodNode)
   }
-  def frameAt(instruction: AbstractInsnNode): Frame[V] = analyzer.frameAt(instruction, methodNode)
 }
 
 class BasicAnalyzer(methodNode: MethodNode, classInternalName: String) extends AsmAnalyzer[BasicValue](methodNode, classInternalName, new Analyzer(new BasicInterpreter))

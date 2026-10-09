@@ -1,0 +1,26 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27614.scala:10:2 ----------------------------------------
+10 |  Try(f.await) // error
+   |  ^^^^^^^^^^^^
+   |Capability `contextual$1.only[Control]` outlives its scope: it leaks into outer capture set 's1 which is owned by value r2.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (contextual$1: Async^) ?->'s2 scala.util.Try[Unit]^{contextual$1.only[Control]}
+   |Required: (Async^) ?=> scala.util.Try[Unit]^'s1
+   |
+   |where:    ?=> refers to a root capability created in value r2 when checking argument to parameter t of method async
+   |          ^   refers to the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27614.scala:13:2 ----------------------------------------
+13 |  Try(f.await) // error
+   |  ^^^^^^^^^^^^
+   |Capability `contextual$2.only[Control]` outlives its scope: it leaks into outer capture set 's3 which is owned by value r3.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (contextual$2: Async^) ?->'s4 scala.util.Try[Unit]^{contextual$2.only[Control]}
+   |Required: (Async^) ?=> scala.util.Try[Unit]^'s3
+   |
+   |where:    ?=> refers to a root capability created in value r3 when checking argument to parameter t of method async
+   |          ^   refers to the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`

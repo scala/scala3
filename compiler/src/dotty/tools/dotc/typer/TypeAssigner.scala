@@ -45,12 +45,15 @@ trait TypeAssigner {
   }
 
   def avoidingType(expr: Tree, bindings: List[Tree])(using Context): Type =
+    avoidingType(expr.tpe, bindings)
+
+  def avoidingType(tpe: Type, bindings: List[Tree])(using Context): Type =
     val syms = localSyms(bindings).filterConserve(_.isTerm)
     val replacements = bindings.flatMap { b =>
       b.getAttachment(InlineProxySkolem).map(b.symbol -> _)
     }
-    if replacements.isEmpty then TypeOps.avoid(expr.tpe, syms)
-    else TypeOps.avoid(expr.tpe, syms, replacements.toMap)
+    if replacements.isEmpty then TypeOps.avoid(tpe, syms)
+    else TypeOps.avoid(tpe, syms, replacements.toMap)
 
   def avoidPrivateLeaks(sym: Symbol)(using Context): Type =
     if sym.owner.isClass && !sym.isOneOf(JavaOrPrivateOrSynthetic)
@@ -526,7 +529,7 @@ trait TypeAssigner {
       val rinfo = if (rsym.is(Accessor)) rsym.info.resultType else rsym.info
       if (rinfo.isError) rinfo
       else if (!rinfo.exists) parent // can happen after failure in self type definition
-      else RefinedType(parent, rsym.name, rinfo)
+      else RefinedType(parent, rsym.name, rinfo.curryPolyFunction(parent.typeSymbol))
     }
     val refined = refinements.foldLeft(parent.tpe)(addRefinement)
     tree.withType(RecType.closeOver(rt => refined.substThis(refineCls, rt.recThis)))
