@@ -3,10 +3,11 @@ package scala.util
 import org.junit.Test
 import org.junit.Assert.*
 
-import scala.annotation.unused
+import scala.annotation.{nowarn, unused}
 import scala.reflect.ClassTag
 import scala.util.control.ControlThrowable
 
+@nowarn("msg=unexpected behavior") // catching Throwables; but Using must, because of backwards compat
 @deprecated("ThreadDeath is deprecated on JDK 20", "")
 class UsingTest {
   import UsingTest.*
@@ -722,6 +723,7 @@ class UsingTest {
   }
 }
 
+@nowarn("msg=unexpected behavior") // catching Throwables; but Using must, because of backwards compat
 @deprecated("ThreadDeath is deprecated on JDK 20", "")
 object UsingTest {
   final class ClosingVMError(message: String) extends VirtualMachineError(message)

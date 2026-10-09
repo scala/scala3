@@ -20,7 +20,7 @@ import scala.annotation.tailrec
 import org.objectweb.asm
 import org.objectweb.asm.tree.ClassNode
 
-final class BTypeLoader(primitives: ScalaPrimitives, cache: ClassBType.Cache, inlineInfoLoader: Option[InlineInfoLoader]) {
+final class BTypeLoader(primitives: ScalaPrimitives, val cache: ClassBType.Cache, inlineInfoLoader: Option[InlineInfoLoader]) {
 
   // Cache only for `classBTypeFromSymbol`, since it is heavily called.
   // Its values are all also values of the main cache.
@@ -34,21 +34,21 @@ final class BTypeLoader(primitives: ScalaPrimitives, cache: ClassBType.Cache, in
   private var specialBTypes: Map[Symbol, BType] | Null = null
 
   def bTypeFromSymbol(sym: Symbol)(using Context): BType = {
-    if specialBTypes eq null then
-      specialBTypes = Map(
-        defn.UnitClass -> UNIT,
-        defn.BooleanClass -> BOOL,
-        defn.CharClass -> CHAR,
-        defn.ByteClass -> BYTE,
-        defn.ShortClass -> SHORT,
-        defn.IntClass -> INT,
-        defn.LongClass -> LONG,
-        defn.FloatClass -> FLOAT,
-        defn.DoubleClass -> DOUBLE,
-        defn.NothingClass -> classBTypeFromSymbol(defn.RuntimeNothingClass),
-        defn.NullClass -> classBTypeFromSymbol(defn.RuntimeNullClass)
-      )
-    specialBTypes.nn.getOrElse(sym, classBTypeFromSymbol(sym))
+    initialize(specialBTypes, specialBTypes = _, Map(
+      defn.UnitClass -> UNIT,
+      defn.BooleanClass -> BOOL,
+      defn.CharClass -> CHAR,
+      defn.ByteClass -> BYTE,
+      defn.ShortClass -> SHORT,
+      defn.IntClass -> INT,
+      defn.LongClass -> LONG,
+      defn.FloatClass -> FLOAT,
+      defn.DoubleClass -> DOUBLE,
+      defn.NothingClass -> classBTypeFromSymbol(defn.RuntimeNothingClass),
+      defn.NullClass -> classBTypeFromSymbol(defn.RuntimeNullClass)
+    )).get(sym) match
+      case Some(s) => s
+      case None => classBTypeFromSymbol(sym)
   }
 
   /**

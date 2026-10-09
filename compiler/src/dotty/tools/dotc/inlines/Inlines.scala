@@ -473,11 +473,15 @@ object Inlines:
   /** For a retained inline method, another method that keeps track of
    *  the body that is kept at runtime. For instance, an inline method
    *
+   *  ```
    *      inline override def f(x: T) = b
+   *  ```
    *
    *  is complemented by the body retainer method
    *
+   *  ```
    *      private def f$retainedBody(x: T) = f(x)
+   *  ```
    *
    *  where the call `f(x)` is inline-expanded. This body is then transferred
    *  back to `f` at erasure, using method addRetainedInlineBodies.
@@ -685,7 +689,7 @@ object Inlines:
 
       constructor.appliedTo(
         lit(error.message),
-        lit(error.pos.lineContent.reverse.dropWhile("\n ".contains).reverse),
+        lit(if error.pos.source.textContent().length > 0 then error.pos.lineContent.reverse.dropWhile("\n ".contains).reverse else "<no source available>"),
         lit(error.pos.column),
         if kind == ErrorKind.Parser then parserErrorKind else typerErrorKind)
 
@@ -1106,6 +1110,9 @@ object Inlines:
             ctx.inlineTraitState.registerInlineOrigin(newSym, child, parentSym)
 
             tpd.ClassDefWithParents(newSym.asClass, ctor, tmpl1.parents, tmpl1.body)
+          case tree @ Return(expr, from) 
+            if ctx.owner.is(Method) && ctx.owner.overriddenSymbol(from.symbol.enclosingClass.asClass) == from.symbol =>
+              cpy.Return(tree)(expr = expr, from = Ident(ctx.owner.termRef))
           case tree => tree
         })
 

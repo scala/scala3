@@ -139,24 +139,6 @@ def testScalaSet =
     iter += 1
   count
 
-def testLinearSet =
-  var set = dotty.tools.dotc.util.LinearSet.empty[Elem]
-  var count = 0
-  var iter = 0
-  while iter < ItersPerRun do
-    var i = 0
-    while i < elems.length do
-      val e = elems(i)
-      if i % MissFactor == 0 then
-        set += e
-      i += 1
-    while i > 0 do
-      i -= 1
-      if set.contains(elems(i)) then
-        count += 1
-    iter += 1
-  count
-
 val expected = (elems.size / MissFactor) * ItersPerRun
 
 def profile(name: String, op: => Int) =
@@ -171,7 +153,6 @@ def profile(name: String, op: => Int) =
 
 @main def Test =
 
-  profile("dotty.tools.dotc.LinearSet", testLinearSet)
   profile("dotty.tools.dotc.HashSet  ", testDottySet)
   profile("dotty.tools.dotc.HashMap  ", testDottyMap)
   profile("scala.collection.HashSet  ", testScalaSet)
@@ -187,6 +168,5 @@ def profile(name: String, op: => Int) =
   profile("scala.collection.HashSet  ", testScalaSet)
   profile("dotty.tools.dotc.HashMap  ", testDottyMap)
   profile("dotty.tools.dotc.HashSet  ", testDottySet)
-  profile("dotty.tools.dotc.LinearSet", testLinearSet)
 
 

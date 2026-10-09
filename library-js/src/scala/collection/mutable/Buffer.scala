@@ -16,6 +16,8 @@ package mutable
 import scala.language.`2.13`
 
 import scala.scalajs.js
+import scala.scalajs.LinkingInfo
+import scala.scalajs.LinkingInfo.linkTimeIf
 
 /** A `Buffer` is a growable and shrinkable `Seq`.
  *
@@ -231,10 +233,22 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
 }
 
 @SerialVersionUID(3L)
-object Buffer extends SeqFactory.Delegate[Buffer](js.WrappedArray)
+object Buffer extends SeqFactory.Delegate[Buffer](
+  linkTimeIf[SeqFactory[Buffer]](LinkingInfo.isWebAssembly) {
+    ArrayBuffer
+  } {
+    js.WrappedArray
+  }
+)
 
 @SerialVersionUID(3L)
-object IndexedBuffer extends SeqFactory.Delegate[IndexedBuffer](js.WrappedArray)
+object IndexedBuffer extends SeqFactory.Delegate[IndexedBuffer](
+  linkTimeIf[SeqFactory[IndexedBuffer]](LinkingInfo.isWebAssembly) {
+    ArrayBuffer
+  } {
+    js.WrappedArray
+  }
+)
 
 /** Explicit instantiation of the `Buffer` trait to reduce class file size in subclasses. */
 @SerialVersionUID(3L)

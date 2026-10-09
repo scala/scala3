@@ -265,7 +265,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       tree match
         case tree: ValOrDefDef if !sym.is(Synthetic) =>
           checkInferredWellFormed(tree.tpt)
-          if sym.owner.isInlineTrait then checkInlTraitPrivateMemberIsLocal(tree)
           if sym.is(Method) then
             if sym.isSetter then
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))
@@ -278,11 +277,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           else
             if sym.is(Param) then
               registerIfUnrolledParam(sym)
-              // @unused is getter/setter but we want it on ordinary method params
-              // @param should be consulted only for fields
-              val unusing = sym.getAnnotation(defn.UnusedAnnot)
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
-              unusing.foreach(sym.addAnnotation)
             else if sym.is(ParamAccessor) then
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot),
                 andAlso = defn.NonBeanParamAccessorAnnots)
@@ -311,10 +306,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           // for inferred types if explicit types are already ill-formed
         => Checking.checkAppliedTypesIn(tree)
       case _ =>
-
-    private def checkInlTraitPrivateMemberIsLocal(tree: Tree)(using Context): Unit =
-      if tree.symbol.owner.isInlineTrait && tree.symbol.isAllOf(Private, butNot = Local) then
-        report.error(em"implementation restriction: inline traits cannot have non-local private members. This also means no retained inline methods.", tree.srcPos)
 
     private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree = {
       val qual = tree.qualifier
@@ -565,8 +556,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         .appliedToNone
     end flattenSpreads
 
-    override def transform(tree: Tree)(using Context): Tree =
-      try tree match {
+    override def transform(tree: Tree)(using Context): Tree = printOnAssertionError(i"error while transforming $tree"):
+      tree match {
         // TODO move CaseDef case lower: keep most probable trees first for performance
         case CaseDef(pat, _, _) =>
           val gadtCtx =
@@ -579,8 +570,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           if tree.isType then
             checkNotPackage(tree)
           else
-            if tree.symbol == defn.SpecializedModule && (ctx.owner ne defn.SpecializedModule.moduleClass) then
-              report.error(IllegalUseOfSpecialized(), tree.srcPos)
             registerNeedsInlining(tree)
             val tree1 = checkUsableAsValue(tree)
             tree1.tpe match {
@@ -655,7 +644,17 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree @ Inlined(call, bindings, expansion) if !tree.inlinedFromOuterScope =>
           val pos = call.sourcePos
           CrossVersionChecks.checkRef(call.symbol, pos)
-          withMode(Mode.NoInline)(transform(call))
+          // Transform the (otherwise discarded) `call` for its checking side effects
+          // only (e.g. `Checking.checkBounds` on type arguments, see i17168). The result
+          // is thrown away — the next line rebuilds the node with a minimal `callTrace`.
+          // We skip this when already transforming a discarded `call` (Mode.NoInline):
+          // chained transparent inline operations nest each `Inlined` node's full
+          // expansion inside the next node's `call`, so re-transforming nested calls
+          // makes the work grow exponentially with the chain length (see i25728). The
+          // type arguments of nested calls are still checked when those nodes are reached
+          // through the kept `expansion` below.
+          if !ctx.mode.is(Mode.NoInline) then
+            withMode(Mode.NoInline)(transform(call))
           val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
         case templ: Template =>
@@ -671,23 +670,17 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree: ValDef =>
           annotateExperimentalCompanion(tree.symbol)
           registerIfHasMacroAnnotations(tree)
-          Checking.checkPolyFunctionType(tree.tpt)
           val tree1 = cpy.ValDef(tree)(tpt = explicifyTpt(tree))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
           registerIfHasMacroAnnotations(tree)
-          Checking.checkPolyFunctionType(tree.tpt)
           annotateContextResults(tree)
           val tree1 = cpy.DefDef(tree)(tpt = explicifyTpt(tree))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
           val sym = tree.symbol
-          if sym.isInlineTrait then
-            ctx.compilationUnit.needsInlining = true  // Check and transform inline traits
-          if tree.rhs.tpe.existsPart(t => t.typeSymbol == defn.SpecializedClass.asType) && (sym ne defn.SpecializedClass) then
-            report.error(IllegalUseOfSpecialized(), tree.srcPos)
           registerIfHasMacroAnnotations(tree)
           if (sym.isClass)
             VarianceChecker.check(tree)
@@ -698,8 +691,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             tree.rhs match
               case impl: Template =>
                 for parent <- impl.parents do
-                  if Inlines.symbolFromParent(parent).isInlineTrait then
-                    ctx.compilationUnit.needsInlining = true
                   Checking.checkTraitInheritance(parent.tpe.classSymbol, sym.asClass, parent.srcPos)
                   // Constructor parameters are in scope when typing a parent.
                   // While they can safely appear in a parent tree, to preserve
@@ -753,8 +744,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           else if (sym == defn.orType)
             () // nothing to do
           else
-            if sym == defn.SpecializedClass && !(ctx.owner.name.is(ContextBoundParamName) || ctx.owner.ownersIterator.contains(defn.SpecializedModule_apply)) then
-              report.error(IllegalUseOfSpecialized(), tree.srcPos)
             Checking.checkAppliedType(tree)
           super.transform(tree)
         case SingletonTypeTree(ref) =>
@@ -791,9 +780,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           )
         case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
           superAcc.withInvalidCurrentClass(super.transform(tree))
-        case tree: RefinedTypeTree =>
-          Checking.checkPolyFunctionType(tree)
-          super.transform(tree)
         case tree: SeqLiteral if tree.hasAttachment(HasSpreads) =>
           flattenSpreads(tree)
         case _: Quote | _: QuotePattern =>
@@ -801,11 +787,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           super.transform(tree)
         case tree =>
           super.transform(tree)
-      }
-      catch {
-        case ex : AssertionError =>
-          println(i"error while transforming $tree")
-          throw ex
       }
 
     override def transformStats[T](trees: List[Tree], exprOwner: Symbol, wrapResult: List[Tree] => Context ?=> T)(using Context): T =

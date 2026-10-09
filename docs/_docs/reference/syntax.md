@@ -182,7 +182,7 @@ Type              ::=  FunType
                     |  MatchType
                     |  InfixType
 FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
-                    |  TypTypeParamClause '=>' Type
+                    |  TypTypeParamClause ‘=>’ Type
 FunTypeArgs       ::=  InfixType
                     |  ‘(’ [ FunArgTypes ] ‘)’
                     |  FunParamClause
@@ -355,7 +355,7 @@ DefTypeParamClause ::=  [nl] ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
 DefTypeParam       ::=  {Annotation} id [HkTypeParamClause] TypeAndCtxBounds
 
 TypTypeParamClause ::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
-TypTypeParam       ::=  {Annotation} (id | ‘_’) [HkTypeParamClause] TypeBounds
+TypTypeParam       ::=  {Annotation} (id | ‘_’) [HkTypeParamClause] TypeAndCtxBounds
 
 HkTypeParamClause  ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
 HkTypeParam        ::=  {Annotation} [‘+’ | ‘-’] (id  | ‘_’) [HkTypeParamClause] TypeBounds

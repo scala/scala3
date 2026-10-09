@@ -32,7 +32,7 @@ import dotty.tools.dotc.util.SrcPos
  *  @version 1.0
  *
  */
-trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes) extends BCodeSkelBuilder {
+trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder {
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
@@ -267,18 +267,16 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       end if
     }
 
-    def genPrimitiveOp(tree: Apply, expectedType: BType)(using Context): BType = (tree: @unchecked) match {
+    def genPrimitiveOp(tree: Apply, expectedType: BType, code: Int)(using Context): BType = (tree: @unchecked) match {
       case Apply(fun @ DesugaredSelect(receiver, _), _) =>
       val sym = tree.symbol
 
-      val code = primitives.getPrimitive(tree, receiver.tpe)
-
       import ScalaPrimitivesOps.*
 
-      if (isArithmeticOp(code))                genArithmeticOp(tree, code)
-      else if (code == CONCAT) genStringConcat(tree)
-      else if (code == HASH)   genScalaHash(receiver)
-      else if (isArrayOp(code))                genArrayOp(tree, code, expectedType)
+      if (isArithmeticOp(code))  genArithmeticOp(tree, code)
+      else if (code == CONCAT)   genStringConcat(tree)
+      else if (code == HASH)     genScalaHash(receiver)
+      else if (isArrayOp(code))  genArrayOp(tree, code, expectedType)
       else if (isLogicalOp(code) || isComparisonOp(code)) {
         val success, failure, after = new asm.Label
         genCond(tree, success, failure, targetIfNoJump = success)
@@ -840,7 +838,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         case Apply(fun, List(expr)) if Erasure.Boxing.isBox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
-          val returnType = bTypes.boxedClassOfPrimitive(nativeKind)
+          val returnType = bTypes.boxedClassOfPrimitive(nativeKind.asPrimitiveBType)
           val methodName = "boxTo" + returnType.simpleName
           bc.invokestatic(ClassBType.scalaRuntimeBoxesRunTimeInternalName, methodName, BTypes.methodDescriptor(nativeKind, returnType), itf = false, app)
           generatedType = returnType
@@ -849,65 +847,76 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           genLoad(expr)
           val boxType = bTypeLoader.bTypeFromType(app.tpe)
           generatedType = boxType
-          val methodName = "unboxTo" + boxType.asInstanceOf[PrimitiveBType].name
+          val methodName = "unboxTo" + boxType.asPrimitiveBType.name
           bc.invokestatic(ClassBType.scalaRuntimeBoxesRunTimeInternalName, methodName, BTypes.methodDescriptor(bTypes.ObjectRef, boxType), itf = false, app)
 
         case app @ Apply(fun, args) =>
           val sym = fun.symbol
 
-          if (isPrimitive(fun)) { // primitive method call
-            generatedType = genPrimitiveOp(app, expectedType)
-          } else { // normal method call
-            val invokeStyle =
-              if (sym.isStaticMember) InvokeStyle.Static
-              else if (sym.is(Private) || sym.isClassConstructor) InvokeStyle.Special
-              else if (app.hasAttachment(BCodeHelpers.UseInvokeSpecial)) InvokeStyle.Special
-              else InvokeStyle.Virtual
+          primitives.getPrimitive(fun) match
+            case Some(prim) =>
+              generatedType = genPrimitiveOp(app, expectedType, prim)
+            case None =>
+              val invokeStyle =
+                if (sym.isStaticMember) InvokeStyle.Static
+                else if (sym.is(Private) || sym.isClassConstructor) InvokeStyle.Special
+                else if (app.hasAttachment(BCodeHelpers.UseInvokeSpecial)) InvokeStyle.Special
+                else InvokeStyle.Virtual
 
-            val savedStackSize = stack.recordSize()
-            if invokeStyle.hasInstance then
-              stack.push(genLoadQualifier(fun))
-            genLoadArguments(args, paramTKs(app))
-            stack.restoreSize(savedStackSize)
+              val savedStackSize = stack.recordSize()
+              if invokeStyle.hasInstance then
+                stack.push(genLoadQualifier(fun))
+              genLoadArguments(args, paramTKs(app))
+              stack.restoreSize(savedStackSize)
 
-            val DesugaredSelect(qual, name) = fun: @unchecked // fun is a Select, also checked in genLoadQualifier
-            val isArrayClone = name == nme.clone_ && qual.tpe.widen.isInstanceOf[JavaArrayType]
-            if (isArrayClone) {
-              // Special-case Array.clone, introduced in 36ef60e. The goal is to generate this call
-              // as "[I.clone" instead of "java/lang/Object.clone". This is consistent with javac.
-              // Arrays have a public method `clone` (jls 10.7).
-              //
-              // The JVMS is not explicit about this, but that receiver type can be an array type
-              // descriptor (instead of a class internal name):
-              //   invokevirtual  #2; //Method "[I".clone:()Ljava/lang/Object
-              //
-              // Note that using `Object.clone()` would work as well, but only because the JVM
-              // relaxes protected access specifically if the receiver is an array:
-              //   http://hg.openjdk.java.net/jdk8/jdk8/hotspot/file/87ee5ee27509/src/share/vm/interpreter/linkResolver.cpp#l439
-              // Example: `class C { override def clone(): Object = "hi" }`
-              // Emitting `def f(c: C) = c.clone()` as `Object.clone()` gives a VerifyError.
-              val target: String = tpeTK(qual).asRefBType.classOrArrayType
-              val methodBType = bTypeLoader.methodBTypeFromSymbol(sym)
-              bc.invokevirtual(target, sym.javaSimpleName, methodBType.descriptor, app)
-              generatedType = methodBType.returnType
-            } else {
-              val receiverClass = if (!invokeStyle.isVirtual) null else {
-                // receiverClass is used in the bytecode to as the method receiver. using sym.owner
-                // may lead to IllegalAccessErrors, see 9954eaf / aladdin bug 455.
-                val qualSym = qual.tpe.typeSymbol
-                if (qualSym == defn.ArrayClass) {
-                  // For invocations like `Array(1).hashCode` or `.wait()`, use Object as receiver
-                  // in the bytecode. Using the array descriptor (like we do for clone above) seems
-                  // to work as well, but it seems safer not to change this. Javac also uses Object.
-                  // Note that array apply/update/length are handled by isPrimitive (above).
-                  assert(sym.owner == defn.ObjectClass, s"unexpected array call: $app")
-                  defn.ObjectClass
-                } else qualSym
+              val DesugaredSelect(qual, name) = fun: @unchecked // fun is a Select, also checked in genLoadQualifier
+              val isArrayClone = name == nme.clone_ && qual.tpe.widen.isInstanceOf[JavaArrayType]
+              if (isArrayClone) {
+                // Special-case Array.clone, introduced in 36ef60e. The goal is to generate this call
+                // as "[I.clone" instead of "java/lang/Object.clone". This is consistent with javac.
+                // Arrays have a public method `clone` (jls 10.7).
+                //
+                // The JVMS is not explicit about this, but that receiver type can be an array type
+                // descriptor (instead of a class internal name):
+                //   invokevirtual  #2; //Method "[I".clone:()Ljava/lang/Object
+                //
+                // Note that using `Object.clone()` would work as well, but only because the JVM
+                // relaxes protected access specifically if the receiver is an array:
+                //   http://hg.openjdk.java.net/jdk8/jdk8/hotspot/file/87ee5ee27509/src/share/vm/interpreter/linkResolver.cpp#l439
+                // Example: `class C { override def clone(): Object = "hi" }`
+                // Emitting `def f(c: C) = c.clone()` as `Object.clone()` gives a VerifyError.
+                val target: String = tpeTK(qual).asRefBType.classOrArrayType
+                val methodBType = bTypeLoader.methodBTypeFromSymbol(sym)
+                bc.invokevirtual(target, sym.javaSimpleName, methodBType.descriptor, app)
+                generatedType = methodBType.returnType
+              } else {
+                val receiverClass = if (!invokeStyle.isVirtual) {
+                  // use the qualifier as owner like javac (JLS 13.1), the method may be inherited
+                  val qualSym = qual.tpe.typeSymbol
+                  if invokeStyle == InvokeStyle.Static && sym.is(JavaDefined) && qualSym.isJavaStaticsClass then
+                    assert(qualSym == sym.owner || !sym.owner.companionClass.is(Trait),
+                      s"static interface method ${sym.showFullName} called through ${qualSym.showFullName}")
+                    qualSym
+                  else null
+                } else {
+                  // receiverClass is used in the bytecode to as the method receiver. using sym.owner
+                  // may lead to IllegalAccessErrors, see 9954eaf / aladdin bug 455.
+                  val qualSym = qual.tpe.typeSymbol
+                  if qualSym == defn.ArrayClass then
+                    // For invocations like `Array(1).hashCode` or `.wait()`, use Object as receiver
+                    // in the bytecode. Using the array descriptor (like we do for clone above) seems
+                    // to work as well, but it seems safer not to change this. Javac also uses Object.
+                    // Note that array apply/update/length are handled by isPrimitive (above).
+                    assert(sym.owner == defn.ObjectClass, s"unexpected array call: $app")
+                    defn.ObjectClass
+                  else if qualSym == defn.NullClass || qualSym == defn.NothingClass then
+                    null // when explicitly calling, e.g., `null.hashCode`, or `???.getClass`
+                  else
+                    qualSym
+                }
+                generatedType = genCallMethod(sym, invokeStyle, app, receiverClass)
               }
-              generatedType = genCallMethod(sym, invokeStyle, app, receiverClass)
-            }
           }
-      }
 
       generatedType
     } // end of genApply()
@@ -1267,7 +1276,13 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           case arg :: args1 =>
             btpes match
               case btpe :: btpes1 =>
-                genLoad(arg, btpe)
+                arg match
+                  case Ident(nme.WILDCARD) =>
+                    // It's possible to do this via a macro, but it's not something reasonable.
+                    report.error("Cannot use a Java annotation as a value.", arg.srcPos)
+                    bc.nullconst()
+                  case _ =>
+                    genLoad(arg, btpe)
                 stack.push(btpe)
                 loop(args1, btpes1)
               case _ =>
@@ -1317,11 +1332,6 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
     def genCast(to: RefBType, cast: Boolean): Unit = {
       if cast then bc.checkCast(to)
       else bc.isInstance(to)
-    }
-
-    /* Is the given symbol a primitive operation? */
-    def isPrimitive(fun: Tree)(using Context): Boolean = {
-      primitives.isPrimitive(fun)
     }
 
     /* Generate coercion denoted by "code" */
@@ -1454,42 +1464,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
      * prevent IllegalAccessError in some virtual and super calls (aladdin bug 455, i22628).
      */
     private def genCallMethod(method: Symbol, style: InvokeStyle, pos: Positioned | Null = null, specificReceiver: Symbol | Null = null)(using Context): BType = {
-      val methodOwner = method.owner
-
-      // the class used in the invocation's method descriptor in the classfile
-      val receiverClass = {
-        if (specificReceiver != null)
-          assert(style.isVirtual || style.isSuper || specificReceiver == methodOwner, s"specificReceiver can only be specified for virtual and super calls. $method - $specificReceiver")
-
-        val useSpecificReceiver = specificReceiver != null && !defn.isBottomClass(specificReceiver) && !method.isScalaStatic
-        val receiver: Symbol = if (useSpecificReceiver) specificReceiver.nn else methodOwner
-
-        // TODO this JVM bug was resolved a very long time ago, workaround could be removed?
-        // workaround for a JVM bug: https://bugs.openjdk.java.net/browse/JDK-8154587
-        // when an interface method overrides a member of Object (note that all interfaces implicitly
-        // have superclass Object), the receiver needs to be the interface declaring the override (and
-        // not a sub-interface that inherits it). example:
-        //   trait T { override def clone(): Object = "" }
-        //   trait U extends T
-        //   class C extends U
-        //   class D { def f(u: U) = u.clone() }
-        // The invocation `u.clone()` needs `T` as a receiver:
-        //   - using Object is illegal, as Object.clone is protected
-        //   - using U results in a `NoSuchMethodError: U.clone. This is the JVM bug.
-        // Note that a mixin forwarder is generated, so the correct method is executed in the end:
-        //   class C { override def clone(): Object = super[T].clone() }
-        val isTraitMethodOverridingObjectMember = {
-          receiver != methodOwner && // fast path - the boolean is used to pick either of these two, if they are the same it does not matter
-            style.isVirtual &&
-            isEmittedInterface(receiver) &&
-            defn.ObjectType.decl(method.name).symbol.exists && { // fast path - compute overrideChain on the next line only if necessary
-              val syms = method.allOverriddenSymbols.toList
-              !syms.isEmpty && syms.last.owner == defn.ObjectClass
-            }
-        }
-        if (isTraitMethodOverridingObjectMember) methodOwner else receiver
-      }
-
+      val receiverClass = if specificReceiver == null then method.owner else specificReceiver
       receiverClass.info // ensure types the type is up to date; erasure may add lateINTERFACE to traits
       val receiverName = bTypeLoader.classBTypeFromSymbol(receiverClass).internalName
 
@@ -1536,9 +1511,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
      * It turns a chained call like "a".+("b").+("c") into a list of arguments.
      */
     def liftStringConcat(tree: Tree)(using Context): List[Tree] = tree match {
-      case tree @ Apply(fun @ DesugaredSelect(larg, method), rarg) =>
-        if (isPrimitive(fun) &&
-            primitives.getPrimitive(tree, larg.tpe) == ScalaPrimitivesOps.CONCAT)
+      case tree @ Apply(DesugaredSelect(larg, _), rarg) =>
+        if primitives.getPrimitive(tree).contains(ScalaPrimitivesOps.CONCAT) then
           liftStringConcat(larg) ::: rarg
         else
           tree :: Nil
@@ -1644,7 +1618,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       lineNumber(tree)
       tree match {
 
-        case tree @ Apply(fun, args) if primitives.isPrimitive(fun.symbol) =>
+        case tree @ Apply(fun, args) =>
           import ScalaPrimitivesOps.{ ZNOT, ZAND, ZOR, EQ }
 
           // lhs and rhs of test
@@ -1662,19 +1636,18 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
             genCond(rhs, success, failure, targetIfNoJump)
           }
 
-          primitives.getPrimitive(fun.symbol) match {
-            case ZNOT   => genCond(lhs, failure, success, targetIfNoJump)
-            case ZAND   => genZandOrZor(and = true)
-            case ZOR    => genZandOrZor(and = false)
-            case code   =>
-              if (ScalaPrimitivesOps.isUniversalEqualityOp(code) && tpeTK(lhs).isClass) {
-                // rewrite `==` to null tests and `equals`. not needed for arrays (`equals` is reference equality).
-                if (code == EQ) genEqEqPrimitive(lhs, rhs, success, failure, targetIfNoJump)
-                else            genEqEqPrimitive(lhs, rhs, failure, success, targetIfNoJump)
-              } else if (ScalaPrimitivesOps.isComparisonOp(code)) {
-                genComparisonOp(lhs, rhs, code)
-              } else
-                loadAndTestBoolean()
+          primitives.getPrimitive(fun) match {
+            case Some(ZNOT)   => genCond(lhs, failure, success, targetIfNoJump)
+            case Some(ZAND)   => genZandOrZor(and = true)
+            case Some(ZOR)    => genZandOrZor(and = false)
+            case Some(code) if ScalaPrimitivesOps.isUniversalEqualityOp(code) && tpeTK(lhs).isClass =>
+              // rewrite `==` to null tests and `equals`. not needed for arrays (`equals` is reference equality).
+              if (code == EQ) genEqEqPrimitive(lhs, rhs, success, failure, targetIfNoJump)
+              else            genEqEqPrimitive(lhs, rhs, failure, success, targetIfNoJump)
+            case Some(code) if ScalaPrimitivesOps.isComparisonOp(code) =>
+              genComparisonOp(lhs, rhs, code)
+            case _ =>
+              loadAndTestBoolean()
           }
 
         case Block(stats, expr) =>
@@ -1873,13 +1846,14 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
 
       val bsmArgs = bsmArgs0 ++ bsmArgs1 ++ bsmArgs2
 
-      val metafactory =
-        if (flags != 0)
-          bTypes.jliLambdaMetaFactoryAltMetafactoryHandle // altMetafactory required to be able to pass the flags and additional arguments if needed
-        else
-          bTypes.jliLambdaMetaFactoryMetafactoryHandle
-
-      bc.invokedynamic(methodName, desc, metafactory, bsmArgs)
+      if flags == 0 then
+        bc.invokedynamic(methodName, desc, bTypes.jliLambdaMetaFactoryMetafactoryHandle, bsmArgs)
+      else
+        // altMetafactory required to be able to pass the flags and additional arguments if needed
+        bc.invokedynamic(methodName, desc, bTypes.jliLambdaMetaFactoryAltMetafactoryHandle, bsmArgs)
+        // collect serializable lambdas
+        if isSerializable then
+          serializableLambdas ::= targetHandle
 
       generatedType
     }
