@@ -2159,6 +2159,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  ```
    *  The result type `R` is inferred from the expected type if that is a polymorphic
    *  function type `[T_1, ..., T_M] => R` with the same number of type parameters.
+   *
+   *  The typed `body` must be a closure. It can be given explicitly as a function literal,
+   *  or it can be synthesized from a context function result type `R`, as in
+   *  `[A] => summon[Ord[A]]` against expected type `[A] => Ord[A] ?=> Ord[A]`.
    */
   def typedPolyFunctionValue(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val untpd.PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun) = tree: @unchecked
@@ -2172,7 +2176,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           poly.resultType.substParams(poly, tsyms.map(_.typeRef)))
       case _ =>
         untpd.TypeTree()
-    typed(desugar.makeClosure(tparams, fun, resultTpt, tree.span), pt)
+    val closure = typed(desugar.makeClosure(tparams, fun, resultTpt, tree.span), pt)
+    closure match
+      case closureDef(mdef) if !mdef.rhs.tpe.isError && closureDef.unapply(mdef.rhs).isEmpty =>
+        // Erasure relies on the type parameters being immediately followed by a value parameter closure.
+        report.error(em"Implementation restriction: polymorphic function literals must have a value parameter", tree.srcPos)
+      case _ =>
+    closure
 
   def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree = {
     val env1 = tree.env.mapconserve(typed(_))
