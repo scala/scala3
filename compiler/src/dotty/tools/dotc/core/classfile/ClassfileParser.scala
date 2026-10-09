@@ -926,6 +926,7 @@ final class ClassfileParser(
     var annotations: List[Annotation] = Nil
     var namedParams: Map[Int, TermName] = Map.empty
     var permittedSubclasses: List[NameOrString] = Nil
+    var typeAnnotations: List[TypeAnnotation] = Nil
     def complete(tp: Type, isVarargs: Boolean = false)(using Context): Type = {
       val updatedType =
         val sig = this.sig
@@ -973,8 +974,59 @@ final class ClassfileParser(
           pt.derivedLambdaType(pt.paramNames, pt.paramInfos, fillInParamNames(pt.resultType))
         case _ => t
 
-      cook.apply(fillInParamNames(newType))
+      typeAnnotations.foldLeft(cook.apply(fillInParamNames(newType)))((tp, annot) => annot.addTo(tp))
     }
+  }
+
+  /** A type annotation on (a part of) the type of a field or method (JVMS 4.7.20)
+   *
+   *  @param target      the annotated type: `TA_FIELD` for the type of a field, `TA_METHOD_RETURN` for the
+   *                     result type of a method, or `TA_METHOD_FORMAL_PARAMETER` for one of its parameter types
+   *  @param paramIndex  the index of the parameter, if `target` is `TA_METHOD_FORMAL_PARAMETER`
+   *  @param path        the steps to the annotated part of the type, as pairs of kind and type argument index
+   */
+  class TypeAnnotation(target: Int, paramIndex: Int, path: List[(Int, Int)], annot: Annotation) {
+
+    /** Add this annotation to `tp`, the type of the annotated member. Only nullness annotations
+     *  are kept, to be interpreted by `ImplicitNullInterop`. The annotation is also dropped if its
+     *  path does not match the shape of the type.
+     */
+    def addTo(tp: Type)(using Context): Type =
+      if ImplicitNullInterop.isNullnessAnnot(annot) then addToMember(tp) else tp
+
+    private def addToMember(tp: Type)(using Context): Type = tp match
+      case tp @ TempPolyType(_, tpe) =>
+        tp.copy(tpe = addToMember(tpe))
+      case tp: MethodType =>
+        if target == TA_METHOD_RETURN then
+          tp.derivedLambdaType(resType = annotate(tp.resType, path))
+        else if target == TA_METHOD_FORMAL_PARAMETER && paramIndex < tp.paramInfos.length then
+          tp.derivedLambdaType(paramInfos = tp.paramInfos.updated(paramIndex, annotate(tp.paramInfos(paramIndex), path)))
+        else tp
+      case _: ConstantType =>
+        tp
+      case _ =>
+        if target == TA_FIELD then annotate(tp, path) else tp
+
+    private def annotate(tp: Type, path: List[(Int, Int)])(using Context): Type = path match
+      case Nil =>
+        AnnotatedType(tp, annot)
+      case (kind, argIndex) :: path1 =>
+        tp match
+          case tp @ AppliedType(tycon, elem :: Nil)
+          if kind == TYPE_PATH_ARRAY && (tp.isRef(defn.ArrayClass) || tp.isRepeatedParam) =>
+            tp.derivedAppliedType(tycon, annotate(elem, path1) :: Nil)
+          case tp @ AppliedType(tycon, args) if kind == TYPE_PATH_TYPE_ARGUMENT && argIndex < args.length =>
+            tp.derivedAppliedType(tycon, args.updated(argIndex, annotate(args(argIndex), path1)))
+          case tp: TypeBounds if kind == TYPE_PATH_WILDCARD_BOUND =>
+            if tp.lo.isExactlyNothing then tp.derivedTypeBounds(tp.lo, annotate(tp.hi, path1))
+            else tp.derivedTypeBounds(annotate(tp.lo, path1), tp.hi)
+          case _ if kind == TYPE_PATH_NESTED =>
+            // The path goes from an outer class to an inner class, but we don't
+            // distinguish them: we conservatively annotate the inner class.
+            annotate(tp, path1)
+          case _ =>
+            tp
   }
 
   def parseAttributes(sym: Symbol)(using ctx: Context, in: DataReader): AttributeCompleter = {
@@ -1024,6 +1076,11 @@ final class ClassfileParser(
         case tpnme.RuntimeVisibleAnnotationATTR
           | tpnme.RuntimeInvisibleAnnotationATTR =>
           parseAnnotations(attrLen)
+
+        // Java annotations on types, only needed to interpret nullness annotations right now
+        case tpnme.RuntimeVisibleTypeAnnotationATTR
+          | tpnme.RuntimeInvisibleTypeAnnotationATTR if ctx.explicitNulls =>
+          parseTypeAnnotations(attrLen)
 
         // TODO 1: parse runtime visible annotations on parameters
         // case tpnme.RuntimeParamAnnotationATTR
@@ -1085,6 +1142,37 @@ final class ClassfileParser(
       }
     }
 
+
+    /** Parse the type annotations on the type of a field or method. They are only needed to
+     *  interpret nullness annotations, so the ones on other types (e.g. type parameter bounds) are skipped.
+     */
+    def parseTypeAnnotations(len: Int): Unit = {
+      val end = in.bp + len
+      val nAnnots = in.nextChar
+      var i = 0
+      while i < nAnnots do
+        val target = in.nextByte & 0xFF
+        // Of the target info, we only need the index of an annotated parameter
+        val paramIndex = (target: @switch) match
+          case TA_FIELD | TA_METHOD_RETURN | TA_METHOD_RECEIVER => 0
+          case TA_METHOD_FORMAL_PARAMETER => in.nextByte & 0xFF
+          case TA_CLASS_TYPE_PARAMETER | TA_METHOD_TYPE_PARAMETER => in.skip(1); 0
+          case TA_CLASS_EXTENDS | TA_CLASS_TYPE_PARAMETER_BOUND | TA_METHOD_TYPE_PARAMETER_BOUND | TA_THROWS => in.skip(2); 0
+          case _ => -1 // other targets are only found in the attributes of method bodies
+        if paramIndex < 0 then
+          in.bp = end
+          i = nAnnots
+        else
+          val path = List.fill(in.nextByte & 0xFF):
+            val kind = in.nextByte & 0xFF
+            val argIndex = in.nextByte & 0xFF
+            (kind, argIndex)
+          val onMemberType = target == TA_FIELD || target == TA_METHOD_RETURN || target == TA_METHOD_FORMAL_PARAMETER
+          parseAnnotation(in.nextChar, skip = !onMemberType) match
+            case Some(annot) => res.typeAnnotations ::= TypeAnnotation(target, paramIndex, path, annot)
+            case None =>
+          i += 1
+    }
 
     /** Parse a sequence of annotations and attaches them to the
      *  current symbol sym, except for the ScalaSignature annotation that it returns, if it is available. */

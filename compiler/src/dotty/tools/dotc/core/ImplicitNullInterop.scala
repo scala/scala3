@@ -4,7 +4,7 @@ package core
 import Annotations.Annotation
 import Contexts.*
 import Flags.*
-import StdNames.nme
+import StdNames.{nme, tpnme}
 import Symbols.*
 import Types.*
 import Decorators.i
@@ -56,6 +56,13 @@ import reporting.*
  *  positions or leave the type unchanged.
  *
  *  Additionally, some kinds of symbols like constructors and enum instances get special treatment.
+ *
+ *  Null-marked scopes
+ *  -------------------------------------------------
+ *  Java code in a JSpecify null-marked scope (see `isNullMarked`) declares nullability explicitly:
+ *  a reference type is nullable only if it is annotated as such (e.g. `@Nullable String`). In such a
+ *  scope, we leave unannotated types unchanged instead of applying `n`. Since references to type
+ *  variables are not nullified either, `T` is as nullable as the type argument it is instantiated with.
  */
 object ImplicitNullInterop:
 
@@ -74,18 +81,23 @@ object ImplicitNullInterop:
     assert(ctx.explicitNulls)
 
     // Skip `TYPE`, enum values, modules, and special methods like `toString` and `getClass`.
+    // Their nullness annotations are also dropped here.
     if isEnumValueDef
       || sym.name == nme.TYPE_
       || sym.name == nme.getClass_
       || sym.name == nme.toString_
       || sym.is(Flags.ModuleVal) then
-      return tp
+      return dropNullnessAnnots(tp)
+
+    // In a null-marked scope, unannotated types are non-null: only an explicit nullness
+    // annotation makes them nullable.
+    val defaultMode = if isNullMarked(sym) then NullMode.Skip else NullMode.Default
 
     val currentTypeMode =
       // Don't nullify Given/implicit parameters
       if sym.isOneOf(GivenOrImplicitVal) || hasNotNullAnnot(sym) then NullMode.Skip
       else if hasNullableAnnot(sym) then NullMode.Explicit
-      else NullMode.Default
+      else defaultMode
 
     val resultTypeMode =
       // Don't nullify result type of constructors
@@ -94,8 +106,53 @@ object ImplicitNullInterop:
 
     ImplicitNullMap(
       javaDefined = sym.is(JavaDefined),
+      defaultMode = defaultMode,
       state = NullMapState(resultTypeMode, currentTypeMode)
     )(tp)
+
+  /** Is the Java-defined member `sym` in a JSpecify null-marked scope?
+   *
+   *  As specified in https://jspecify.dev/docs/spec/#null-marked-scope, we walk the declarations
+   *  enclosing `sym`, starting with `sym` itself. The innermost declaration annotated with
+   *  `@NullMarked` or `@NullUnmarked` decides; one annotated with both behaves as if it had neither.
+   *  A top-level class compiled by Kotlin is not null-marked unless it says so itself.
+   *  The walk stops at the enclosing package, whose annotations are those of `package-info.java`:
+   *  packages are not enclosed by their parent packages.
+   *
+   *  Modules are not supported, since we don't keep track of the module of a Java class.
+   */
+  private def isNullMarked(sym: Symbol)(using Context): Boolean =
+    def loop(owner: Symbol): Boolean =
+      if owner.is(PackageClass) then
+        nullMarking(owner.info.decl(tpnme.PACKAGE_INFO).symbol).getOrElse(false)
+      else
+        // Java static members are entered in the companion module class,
+        // but the annotations are on the class.
+        val decl = if owner.is(ModuleClass) then owner.companionClass else owner
+        nullMarking(decl) match
+          case Some(marked) => marked
+          case None =>
+            val isKotlinClass =
+              decl.isClass && decl.owner.is(PackageClass) && hasAnnot(decl, defn.KotlinMetadataAnnot)
+            !isKotlinClass && loop(owner.owner)
+    defn.NullMarkedAnnot.exists && sym.is(JavaDefined) && loop(sym)
+
+  /** `Some(true)` if `decl` is annotated with `@NullMarked`, `Some(false)` if it is annotated with
+   *  `@NullUnmarked`, and `None` if it has neither or both annotations.
+   */
+  private def nullMarking(decl: Symbol)(using Context): Option[Boolean] =
+    if !decl.exists then None
+    else
+      val marked = hasAnnot(decl, defn.NullMarkedAnnot)
+      if marked == hasAnnot(decl, defn.NullUnmarkedAnnot) then None
+      else Some(marked)
+
+  /** Does `decl` have an annotation of class `cls`? Unlike for the member being nullified, it is
+   *  safe to force the enclosing declarations, unless they are being completed.
+   */
+  private def hasAnnot(decl: Symbol, cls: Symbol)(using Context): Boolean =
+    if decl.isCompleting then decl.unforcedAnnotation(cls).isDefined
+    else decl.hasAnnotation(cls)
 
   private def hasNotNullAnnot(sym: Symbol)(using Context): Boolean =
     defn.NotNullAnnots.exists(sym.unforcedAnnotation(_).isDefined)
@@ -109,16 +166,28 @@ object ImplicitNullInterop:
   private def isNullableAnnot(annot: Annotation)(using Context): Boolean =
     defn.NullableAnnots.exists(annot.hasSymbol)
 
+  /** Is `annot` a nullness annotation, which is interpreted on types by `nullifyMember`? */
+  def isNullnessAnnot(annot: Annotation)(using Context): Boolean =
+    isNullableAnnot(annot) || isNotNullAnnot(annot)
+
+  /** `tp` without nullness annotations deeply. */
+  private def dropNullnessAnnots(tp: Type)(using Context): Type =
+    new TypeMap:
+      def apply(tp: Type): Type = tp match
+        case tp: AnnotatedType if isNullnessAnnot(tp.annot) => this(tp.parent)
+        case _ => mapOver(tp)
+    .apply(tp)
+
   case class NullMapState(
     resultTypeMode: NullMode,
     currentTypeMode: NullMode
   )
 
   object NullMapState:
-    def skipCurrentIf(cond: Boolean)(using Context): NullMapState =
+    def skipCurrentIf(cond: Boolean, defaultMode: NullMode): NullMapState =
       NullMapState(
-        resultTypeMode = NullMode.Default,
-        currentTypeMode = if cond then NullMode.Skip else NullMode.Default
+        resultTypeMode = defaultMode,
+        currentTypeMode = if cond then NullMode.Skip else defaultMode
       )
 
   /** A type map that implements the nullification function on types. Given a Java-sourced type or a type
@@ -126,11 +195,14 @@ object ImplicitNullInterop:
    *  right places to make nullability explicit in a conservative way (without forcing incomplete symbols).
    *
    *  @param javaDefined  whether the type is from Java source; we always nullify type param refs from Java
+   *  @param defaultMode  the mode for positions without nullness annotations: `Skip` in a JSpecify
+   *                      null-marked scope, `NullMode.Default` otherwise
    *  @param state        mutable nullification state tracking the current mode for the result type
    *                      (`resultTypeMode`) and the current nesting level (`currentTypeMode`).
    */
   private class ImplicitNullMap(
       val javaDefined: Boolean,
+      val defaultMode: NullMode,
       var state: NullMapState
     )(using Context) extends TypeMap:
 
@@ -161,10 +233,12 @@ object ImplicitNullInterop:
           // Example: if `setNames` is a Java method with signature `void setNames(String... names)`,
           // then its Scala signature will be `def setNames(names: (String|Null)*): Unit`.
           // This is because `setNames(null)` passes as argument a single-element array containing the value `null`,
-          // and not a `null` array.
+          // and not a `null` array. Only a flexible type can wrap a repeated parameter type, even if
+          // the array is annotated as nullable.
           tp.tycon match
             case tycon: TypeRef =>
-              !(!ctx.flexibleTypes && tycon.isRef(defn.RepeatedParamClass) || defn.isTupleClass(tycon.symbol))
+              val isRepeatedParam = tycon.isRef(defn.RepeatedParamClass)
+              !(isRepeatedParam && state.currentTypeMode != NullMode.Flexible || defn.isTupleClass(tycon.symbol))
             case _ => true
         case _ => false
 
@@ -207,7 +281,7 @@ object ImplicitNullInterop:
       case appTp @ AppliedType(tycon, targs) =>
         val savedState = state
         // If Java-defined tycon, don't nullify outer level of type args (Java classes are fully nullified)
-        state = NullMapState.skipCurrentIf(tp.classSymbol.is(JavaDefined))
+        state = NullMapState.skipCurrentIf(tp.classSymbol.is(JavaDefined), defaultMode)
         val targs2 = targs.map(this)
         state = savedState
 
@@ -219,11 +293,11 @@ object ImplicitNullInterop:
         val savedState = state
 
         // Don't nullify param types for implicit/using sections
-        state = NullMapState.skipCurrentIf(mtp.isImplicitMethod)
+        state = NullMapState.skipCurrentIf(mtp.isImplicitMethod, defaultMode)
         val paramInfos2 = mtp.paramInfos.map(this)
 
         state = NullMapState(
-          resultTypeMode = NullMode.Default,
+          resultTypeMode = defaultMode,
           currentTypeMode = savedState.resultTypeMode
         )
         val resType2 = this(mtp.resType)
