@@ -611,7 +611,7 @@ class Definitions {
 
   @tu lazy val MaybeCapabilityAnnot: ClassSymbol =
     completeClass(enterCompleteClassSymbol(
-      ScalaPackageClass, tpnme.maybeCapability, Final, List(StaticAnnotationClass.typeRef)))
+      ScalaPackageClass, tpnme.maybeCapability, Final, List(ObjectType, StaticAnnotationClass.typeRef)))
 
   @tu lazy val CollectionSeqType: TypeRef  = requiredClassRef("scala.collection.Seq")
   @tu lazy val SeqType: TypeRef            = requiredClassRef("scala.collection.immutable.Seq")
@@ -1305,7 +1305,7 @@ class Definitions {
     def unapply(ft: Type)(using Context): Option[MethodOrPoly] = {
       ft match
         case RefinedType(parent, nme.apply, mt: MethodOrPoly)
-        if parent.derivesFrom(defn.PolyFunctionClass) || (mt.isInstanceOf[MethodType] && isFunctionNType(parent)) =>
+        if parent.derivesFrom(PolyFunctionClass) || (mt.isInstanceOf[MethodType] && isFunctionNType(parent)) =>
           Some(mt)
         case AppliedType(parent, targs) if isFunctionNType(ft) =>
           val isContextual = ft.typeSymbol.name.isContextFunction
@@ -1379,17 +1379,6 @@ class Definitions {
         if tpe.refinedName == nme.apply && tpe.parent.derivesFrom(defn.PolyFunctionClass) =>
           Some(mt)
         case _ => None
-
-    def isValidPolyFunctionInfo(info: Type)(using Context): Boolean =
-      def isValidMethodType(info: Type) = info match
-        case info: MethodType =>
-          !info.resType.isInstanceOf[MethodOrPoly] && // Has only one parameter list
-          !info.isVarArgsMethod &&
-          !info.isMethodWithByNameArgs // No by-name parameters
-        case _ => false
-      info match
-        case info: PolyType => isValidMethodType(info.resType)
-        case _ => isValidMethodType(info)
   }
 
   object PartialFunctionOf {
@@ -1783,7 +1772,7 @@ class Definitions {
   private val PredefImportFns: RootRef =
     RootRef(() => ScalaPredefModule.termRef)
 
-  // The new Specialized lives in scala.specialize. 
+  // The new Specialized lives in scala.specialize.
   // This is to avoid conflict with the Scala2 specialized annotation.
   // It is not imported by default with the scala package, so we additionally import it here.
   private val SpecializeImportFns: RootRef =
@@ -1913,14 +1902,14 @@ class Definitions {
   /** Is a dependent function type represented as a RefinedType?
    */
   def isRefinedFunction(tp: Type)(using Context): Boolean =
-    tp.dropDependentRefinement ne tp
+    tp.dropFunctionRefinement ne tp
 
   /** Returns whether `tp` is an instance or a refined instance of:
    *  - scala.FunctionN
    *  - scala.ContextFunctionN
    */
   def isFunctionNType(tp: Type)(using Context): Boolean =
-    isNonRefinedFunction(tp.dropDependentRefinement)
+    isNonRefinedFunction(tp.dropFunctionRefinement)
 
   /** Returns whether `tp` is an instance or a refined instance of:
    *  - scala.FunctionN

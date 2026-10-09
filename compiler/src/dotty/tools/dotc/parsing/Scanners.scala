@@ -280,9 +280,7 @@ object Scanners {
             patch(source, Span(offset + identifier.length), "`")
           IDENTIFIER
         else keyword
-      val idx = identifier.start
-      if (idx >= 0 && idx <= lastKeywordStart) handleMigration(kwArray(idx))
-      else IDENTIFIER
+      kwMap.get(identifier).map(handleMigration).getOrElse(IDENTIFIER)
 
     def newTokenData: TokenData = new TokenData {}
 
@@ -1827,5 +1825,5 @@ object Scanners {
 
   // ------------- keyword configuration -----------------------------------
 
-  private val (lastKeywordStart, kwArray) = buildKeywordArray(keywords)
+  private val kwMap = buildKeywordMap(keywords)
 }

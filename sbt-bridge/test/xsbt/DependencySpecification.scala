@@ -199,6 +199,28 @@ class DependencySpecification {
     assertEquals(Seq("Api$.class"), dependencyClassFiles.toSeq)
   }
 
+  // issue 25520: an anonymous class copied by inlining belongs to the call site, not the library
+  @Test
+  def inlinedAnonymousClassIsNotABinaryDependency = {
+    val upstream =
+      """|package example
+         |object Api {
+         |  inline def task: Runnable = new Runnable { def run(): Unit = () }
+         |}""".stripMargin
+    val downstream =
+      """|package example
+         |object Usage {
+         |  val task = Api.task
+         |}""".stripMargin
+
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val output = compilerForTesting.compileSrcs(List(List(upstream), List(downstream)))
+    val binaryDependencies = output.analysis.binaryDependencies.map(_._2)
+
+    assertTrue(binaryDependencies.contains("example.Api$"))
+    assertEquals(Seq.empty, binaryDependencies.filter(_.contains("$anon")).toSeq)
+  }
+
   private def extractClassDependenciesPublic: ExtractedClassDependencies = {
     val srcA = "class A"
     val srcB = "class B extends D[A]"

@@ -537,28 +537,6 @@ object Parsers {
         tree
     }
 
-    def makePolyFunction(tparams: List[Tree], body: Tree,
-        kind: String, errorTree: => Tree,
-        start: Offset, arrowOffset: Offset): Tree =
-      atSpan(start, arrowOffset):
-        getFunction(body) match
-          case None =>
-            syntaxError(em"Implementation restriction: polymorphic function ${kind}s must have a value parameter", arrowOffset)
-            errorTree
-          case Some(Function(_, _: CapturesAndResult)) =>
-            // A function tree like this will be desugared
-            // into a capturing type in the typer.
-            syntaxError(em"Implementation restriction: polymorphic function types cannot wrap function types that have capture sets", arrowOffset)
-            errorTree
-          case Some(f: FunctionWithMods) if f.mods.is(Impure) && Feature.ccEnabled =>
-            syntaxError(
-              em"""Implementation restriction: polymorphic function types cannot wrap impure function types if capture checking is enabled.
-                  |Workaround: introduce an empty term-parameter list right after the type binder, e.g. `[A] => () -> B => C`.""",
-              arrowOffset)
-            errorTree
-          case _ =>
-            PolyFunction(tparams, body)
-
 /* --------------- PLACEHOLDERS ------------------------------------------- */
 
     /** The implicit parameters introduced by `_` in the current expression.
@@ -1874,8 +1852,8 @@ object Parsers {
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
      *                   |  (‘->’ | ‘?->’ ) [CaptureSet] Type           -- under pureFunctions and captureChecking
-     *  PolyFunType    ::=  TypTypeParamClause '=>' Type
-     *                   |  TypTypeParamClause ‘->’ [CaptureSet] Type   -- under pureFunctions and captureChecking
+     *  PolyFunType    ::=  TypTypeParamClause ‘=>’ Type
+     *                   |  TypTypeParamClause ‘->’ Type                -- under pureFunctions and captureChecking
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ TypedFunParam {',' TypedFunParam } ')'
@@ -2002,7 +1980,8 @@ object Parsers {
         else if in.token == ARROW || isPureArrow(nme.PUREARROW) then
           val arrowOffset = in.skipToken()
           val body = toplevelTyp()
-          makePolyFunction(tparams, body, "type", Ident(nme.ERROR.toTypeName), start, arrowOffset)
+          atSpan(start, arrowOffset):
+            PolyFunction(tparams, body)
         else
           accept(TLARROW)
           typ()
@@ -2648,7 +2627,10 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.Type)
           val arrowOffset = accept(ARROW)
           val body = expr(location)
-          makePolyFunction(tparams, body, "literal", errorTermTree(arrowOffset), start, arrowOffset)
+          if getFunction(body).isEmpty then
+            syntaxError(em"Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
+          atSpan(start, arrowOffset):
+            PolyFunction(tparams, body)
         case CASE if Feature.isPreviewEnabled || in.featureEnabled(Feature.relaxedLambdaSyntax) =>
           singleCaseMatch()
         case _ =>
@@ -4456,7 +4438,7 @@ object Parsers {
             accept(EQUALS, help)
             EmptyTree
           else
-            if (!isExprIntro) syntaxError(MissingReturnType(), in.lastOffset)
+            if (!isExprIntro) syntaxErrorOrIncomplete(MissingReturnType(), in.lastOffset)
             accept(EQUALS)
             expr()
 

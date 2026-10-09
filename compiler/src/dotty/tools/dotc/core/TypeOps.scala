@@ -546,8 +546,6 @@ object TypeOps:
    *  We need to approximate with ranges:
    *
    *    term references to symbols in `symsToAvoid`,
-   *    term references that have a widened type of which some part refers
-   *    to a symbol in `symsToAvoid`,
    *    type references to symbols in `symsToAvoid`,
    *
    *  Type variables that would be interpolated to a type that
@@ -991,6 +989,8 @@ object TypeOps:
         AnnotatedType(arg, Annotation(defn.SilentIntoAnnot, util.Spans.NoSpan))
       case _: MatchType | _: LazyRef =>
         t
+      case _: AnnotatedType =>
+        mapOver(t)
       case _ =>
         mapFollowingAliases(t)
 
@@ -1003,6 +1003,8 @@ object TypeOps:
           t1 :: Nil)
       case _: MatchType | _: LazyRef =>
         t
+      case _: AnnotatedType =>
+        mapOver(t)
       case _ =>
         mapFollowingAliases(t)
 
