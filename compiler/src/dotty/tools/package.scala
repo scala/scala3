@@ -1,5 +1,7 @@
 package dotty
 
+import scala.annotation.nowarn
+
 package object tools {
 
   /** Cached single-element list of Nil. (Whether this helps performance has not been tested) */
@@ -24,6 +26,18 @@ package object tools {
       val res = value
       setter(res)
       res
+
+  /**
+   * Prints the given text if the given operation throws an AssertionError, then rethrows.
+   */
+  @nowarn("msg=Catching AssertionError can lead to unexpected behavior") // we immediately rethrow
+  inline def printOnAssertionError[T](text: => String)(inline op: => T): T =
+    try
+      op
+    catch
+      case ex: AssertionError =>
+        println(text)
+        throw ex
 
   /**
    * Infrastructure to shorten method calls by not requiring a lambda.

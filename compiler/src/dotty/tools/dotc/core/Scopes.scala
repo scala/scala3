@@ -209,7 +209,6 @@ object Scopes {
     private var _size = initSize
 
     override final def size: Int = _size
-    private def size_= (x: Int) = _size = x
 
     /** the hash table
      */
@@ -252,16 +251,17 @@ object Scopes {
       e.prev = lastEntry
       lastEntry = e
       if (hashTable != null) enterInHash(e)
-      size += 1
+      _size += 1
       elemsCache = null
       e
     }
 
     private def enterInHash(e: ScopeEntry)(using Context): Unit = {
-      val idx = e.name.hashCode & (hashTable.nn.length - 1)
-      e.tail = hashTable.nn(idx)
+      val ht = hashTable.nn // cannot be null here
+      val idx = e.name.hashCode & (ht.length - 1)
+      e.tail = ht(idx)
       assert(e.tail != e)
-      hashTable.nn(idx) = e
+      ht(idx) = e
     }
 
     /** enter a symbol in this scope. */
@@ -319,18 +319,19 @@ object Scopes {
         while (e1.prev != e) e1 = e1.prev.nn
         e1.prev = e.prev
       }
-      if (hashTable != null) {
-        val index = e.name.hashCode & (hashTable.nn.length - 1)
-        var e1 = hashTable.nn(index)
+      val ht = hashTable
+      if (ht != null) {
+        val index = e.name.hashCode & (ht.length - 1)
+        var e1 = ht(index)
         if (e1 == e)
-          hashTable.nn(index) = e.tail
+          ht(index) = e.tail
         else {
           while (e1.nn.tail != e) e1 = e1.nn.tail
           e1.nn.tail = e.tail
         }
       }
       elemsCache = null
-      size -= 1
+      _size -= 1
     }
 
     /** remove symbol from this scope if it is present */
@@ -363,8 +364,9 @@ object Scopes {
      */
     override def lookupEntry(name: Name)(using Context): ScopeEntry | Null = {
       var e: ScopeEntry | Null = null
-      if (hashTable != null) {
-        e = hashTable.nn(name.hashCode & (hashTable.nn.length - 1))
+      val ht = hashTable
+      if (ht != null) {
+        e = ht(name.hashCode & (ht.length - 1))
         while ((e != null) && e.name != name)
           e = e.tail
       }

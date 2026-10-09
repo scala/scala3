@@ -118,7 +118,7 @@ trait BCodeIdiomatic(callGraph: CallGraph) {
       argTypes: Seq[asm.Type],
       constants: Seq[String],
       bTypes: KnownBTypes
-    ): Unit = {
+    )(using Context): Unit = {
       jmethod.visitInvokeDynamicInsn(
         "makeConcatWithConstants",
         asm.Type.getMethodDescriptor(bTypes.StringRef.toASMType, argTypes*),

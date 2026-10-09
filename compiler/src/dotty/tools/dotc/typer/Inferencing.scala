@@ -225,7 +225,7 @@ object Inferencing {
     private var toMaximize: List[TypeVar] = Nil
 
     def apply(x: Boolean, tp: Type): Boolean = trace(i"isFullyDefined($tp, $force)", typr) {
-      ctx.handleRecursive("check fully defined", () => tp.showSummary(20)):
+      ctx.handleRecursive("check fully defined", tp):
         val tpd = tp.dealias
         if tpd ne tp then apply(x, tpd)
         else tp match
@@ -260,7 +260,7 @@ object Inferencing {
       && (
         toMaximize.isEmpty
         || { maximize(toMaximize)
-             toMaximize = Nil       // Do another round since the maximixing instances
+             toMaximize = Nil       // Do another round since the maximizing instances
              process(tp)            // might have type uninstantiated variables themselves.
            }
       )
@@ -619,13 +619,13 @@ object Inferencing {
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
     case tp: LazyRef => captureWildcards(tp.ref)
     case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
-    case tp: FlexibleType => tp.derivedFlexibleType(captureWildcards(tp.hi))
+    case tp @ FlexibleType(hi) => tp.derivedFlexibleType(captureWildcards(hi))
     case _ => tp
   }
 
   def hasCaptureConversionArg(tp: Type)(using Context): Boolean = tp match
+    case FlexibleType(hi) => hasCaptureConversionArg(hi)
     case tp: AppliedType => tp.args.exists(_.typeSymbol == defn.TypeBox_CAP)
-    case tp: FlexibleType => hasCaptureConversionArg(tp.hi)
     case _ => false
 }
 

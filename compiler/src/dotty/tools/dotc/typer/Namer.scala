@@ -194,8 +194,23 @@ class Namer { typer: Typer =>
             simple.length == 2 && simple.endsWith(str.EXPAND_SEPARATOR)
           }
       }
+    // Desugaring of objects / enum cases can drop the Backquoted attachment, so also
+    // treat names that are already enclosed in backticks in the source as exempt.
+    // After atNameSpan, span.point is either on the opening backtick (e.g. comma enum
+    // cases) or just after it (most other defs).
+    def alreadyBackquotedInSource: Boolean =
+      val span = tree.span
+      if !span.exists || span.isSynthetic then false
+      else
+        val content = tree.source.textContent()
+        val point = span.point
+        content.length > point && (
+          content(point) == '`'
+          || point > 0 && content(point - 1) == '`'
+        )
     def exempt =
          isBackquoted(tree)
+      || alreadyBackquotedInSource
       || tree.span.isSynthetic
       || flags.isOneOf(Synthetic | Accessor | CaseAccessor) // check the case param not the accessor
       || flags.is(Param) && ctx.owner.is(Synthetic)
@@ -1246,8 +1261,11 @@ class Namer { typer: Typer =>
           val path = typedAhead(expr, _.withType(pathMethod.termRef))
           (path, pathMethod.info.finalResultType)
         else
-          val path = typedAheadExpr(expr, AnySelectionProto)
-          checkLegalExportPath(path, selectors)
+          // Local owner avoids clashes, which improves error reporting (#21976)
+          val path = typedAheadExpr(expr, AnySelectionProto)(using ctx.withOwner(newLocalDummy(cls, exp.span)))
+          // Nothing to forward from an illegal path, forwarders would only add errors (#21976)
+          if !checkLegalExportPath(path, selectors) then
+            return Nil
           (path, path.tpe)
       lazy val wildcardBound = importBound(selectors, isGiven = false)
       lazy val givenBound = importBound(selectors, isGiven = true)
@@ -1396,6 +1414,7 @@ class Namer { typer: Typer =>
                   (EmptyFlags, mbrInfo)
               var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
               if sym.is(Erased) then mbrFlags |= Inline
+              if sym.is(Module) then mbrFlags |= Accessor
               if pathMethod.exists then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
@@ -1933,10 +1952,9 @@ class Namer { typer: Typer =>
 
       // We cannot rely on `typedInLambdaTypeTree` since the computed type might not be fully-defined.
       case InLambdaTypeTree(/*isResult =*/ true, tpFun) =>
-        // A lambda has at most one type parameter list followed by exactly one term parameter list.
-        val tpe = (paramss: @unchecked) match
-          case TypeSymbols(tparams) :: TermSymbols(vparams) :: Nil => tpFun(tparams, vparams)
+        val tpe = paramss.runtimeChecked match
           case TermSymbols(vparams) :: Nil => tpFun(Nil, vparams)
+          case TypeSymbols(tparams) :: Nil => tpFun(tparams, Nil)
         val rhsCtx = prepareRhsCtx(ctx.fresh, paramss)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
         else typedAheadExpr(mdef.rhs, tpe)(using rhsCtx).tpe
