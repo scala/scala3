@@ -254,6 +254,82 @@ class DeterminismTest {
     test(List(code))
   }
 
+  /** Java fields initialized with constant expressions have a constant type when parsed from source,
+   *  as `ClassfileParser` gives them from the `ConstantValue` attribute, so references to them are
+   *  inlined either way (scala/bug#10410).
+   */
+  @Test def testJavaConstantExpressions(): Unit = {
+    val fields = List(
+      "I1" -> "int I1 = 4 * 1024",
+      "I2" -> "int I2 = I1 + 1",
+      "I3" -> "int I3 = K.I1 << 2",
+      "L1" -> "long L1 = 1L << 40",
+      "L2" -> "long L2 = -I1",
+      "MIN" -> "int MIN = -2147483648",
+      "LMIN" -> "long LMIN = -9223372036854775808L",
+      "B1" -> "byte B1 = 10 + 20",
+      "B2" -> "byte B2 = (byte) 300",
+      "S1" -> "short S1 = (short) -70000",
+      "C1" -> "char C1 = 'a' + 1",
+      "C2" -> "char C2 = (char) (C1 + 1)",
+      "C3" -> "int C3 = 'a' + 'b'",
+      "C4" -> "int C4 = -'a'",
+      "F1" -> "float F1 = 1.0f / 3",
+      "D1" -> "double D1 = 1 / 2",
+      "D2" -> "double D2 = 1.0 / 0",
+      "D3" -> "double D3 = 5.5 % 2",
+      "MOD" -> "int MOD = -7 % 3",
+      "SHR" -> "int SHR = -16 >> 2",
+      "USHR" -> "int USHR = -16 >>> 28",
+      "SHL" -> "int SHL = 1 << 33L",
+      "LUSHR" -> "long LUSHR = -1L >>> 63",
+      "Z1" -> "boolean Z1 = I1 > 100 && !false || I2 == 3",
+      "Z2" -> "boolean Z2 = true ^ true",
+      "Z3" -> "boolean Z3 = 1.0 == 1.0f",
+      "Z4" -> "boolean Z4 = Double.NaN != Double.NaN",
+      "TERN" -> "int TERN = I1 > 0 ? 1 : 2",
+      "TERNC" -> "char TERNC = true ? 'x' : 0",
+      "S1S" -> "String S1S = \"a\" + 1 + 'c' + 1.5f + 2.5 + true + 10L + I1 + 1e10 + Float.MIN_VALUE",
+      "S2S" -> "String S2S = \"x\" + (char) 65 + (1 + 2) + (String) \"y\" + (java.lang.String) \"z\"",
+      "S3S" -> "String S3S = \"\" + (\"a\" == \"a\") + TERNC",
+      "NEG" -> "int NEG = ~I1",
+      "PLUS" -> "int PLUS = +C1",
+      "INTMAX" -> "int INTMAX = Integer.MAX_VALUE + 1",
+      "PAREN" -> "int PAREN = (I1) - 1",
+      "CAST" -> "int CAST = (int) 3.9 + (int) -3.9",
+      "FCAST" -> "float FCAST = (float) 1e40",
+      "LONGCHAR" -> "long LONGCHAR = 'a' * 1000000000L",
+      "NOTCONST" -> "int NOTCONST = Integer.parseInt(\"1\")",
+      "NOTCONST2" -> "int NOTCONST2 = new int[]{1, 2}.length, AFTER = (3 + 4)",
+      "AFTER" -> "",
+      "NOTCONST3" -> "int NOTCONST3 = (Integer.valueOf(1)) + 1, AFTER2 = 5",
+      "AFTER2" -> "",
+      "BOXED" -> "Integer BOXED = 1 + 1",
+      "OBJ" -> "Object OBJ = \"a\" + \"b\"",
+    )
+    val javaFields = fields.collect { case (_, decl) if decl.nonEmpty => s"  public static final $decl;" }
+    def code = List(
+      source("K.java",
+        s"""public class K implements I {
+           |${javaFields.mkString("\n")}
+           |  public final int INSTANCE = 1 + 1;
+           |  public static int NONFINAL = 1 + 1;
+           |  static final int K1 = IC + K.I1;
+           |  static final String K2 = IS + K1;
+           |}
+           |interface I { int IC = 7 * 6; String IS = "i" + IC; }
+           |""".stripMargin),
+      source("C.scala",
+        s"""class C {
+           |  def f = new Array[Byte](K.I1)
+           |  def all: List[Any] = List(${fields.map("K." + _._1).mkString(", ")})
+           |  def others: List[Any] = List(new K().INSTANCE, K.NONFINAL, K.K1, K.K2, I.IC, I.IS)
+           |}
+           |""".stripMargin)
+    )
+    test(List(code))
+  }
+
   @Test def testPackedType(): Unit = {
     def code = List(
       source("a.scala",
