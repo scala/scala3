@@ -552,9 +552,14 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val symss = caseClass.primaryConstructor.paramSymss
       (constr.info: @unchecked) match
         case tl: PolyType =>
-          val tvars = constrained(tl)
-          val targs = for tvar <- tvars yield
-            tvar.instantiate(fromBelow = false)
+          val targs = for
+            tvars = constrained(tl)
+            (tvar, pref) <- tvars.lazyZip(tl.paramRefs)
+            fBounded = tvar.origin.occursIn(ctx.typerState.constraint.nonParamBounds(tvar.origin).hi)
+          yield
+            if fBounded
+            then tvar.instantiateWith(tl.paramInfos(pref.paramNum).hi.substParams(tl, List.fill(tl.paramNames.size)(defn.NothingType)))
+            else tvar.instantiate(fromBelow = false)
           (AppliedType(classRef, targs), tl.instantiate(targs).asInstanceOf[MethodType], symss(1))
         case mt: MethodType =>
           (classRef, mt, symss.head)

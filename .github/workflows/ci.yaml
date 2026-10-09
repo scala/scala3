@@ -120,13 +120,13 @@ jobs:
       ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
       ##############################################################################################
       - name: Set up JDK 17
-        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
+      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
 
       # Extract the release tag
       - name: Extract the release tag
@@ -257,7 +257,6 @@ jobs:
               scala3-compiler-bootstrapped/publishSigned \
               scala3-directives-parser-bootstrapped/publishSigned \
               scala3-interfaces/publishSigned \
-              scala3-language-server/publishSigned \
               scala3-library-bootstrapped/publishSigned \
               scala3-library-sjs/publishSigned \
               scala3-presentation-compiler/publishSigned \
@@ -298,8 +297,88 @@ jobs:
           name: sona-staging-org-scala-js
           path: target/sona-staging/
 
+  # Generates the SBOM of the release, published twice: as a plain SPDX 3
+  # document attached to the release, and as a signed attestation that the
+  # provenance job adds to the release's attestation bundle.
+  #
+  # The dependency data comes from sbt itself: sbt-dependency-submission's
+  # githubGenerateSnapshot resolves the build at the release commit and writes
+  # the GitHub dependency snapshot of it (the same data GitHub's dependency
+  # graph is made of, which only covers the default branch). unpack reads the
+  # snapshot into an SBOM whose root is the repository at the release tag and
+  # commit, with the modules of the build and their dependencies under it.
+  # Test and tool dependencies are left out.
+  sbom:
+    permissions:
+      contents: write  # to attach the SBOM to the draft release
+      id-token: write  # to sign the SBOM attestation with the job's workload identity
+
+    runs-on: ubuntu-latest
+    needs: [publish_release]
+    if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
+
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+      RELEASEBUILD: yes  # resolve the build with the release versions, as publish_release does
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+
+      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+
+      # The dependency submission action would also submit the snapshot to
+      # GitHub, the plugin is loaded directly to only generate it. The plugin
+      # writes the snapshot path to the step outputs as snapshot-json-path.
+      - name: Generate the dependency snapshot
+        id: snapshot
+        shell: bash
+        run: |
+          echo 'addSbtPlugin("ch.epfl.scala" % "sbt-github-dependency-submission" % "3.2.3")' \
+            > project/github-dependency-submission.sbt
+          ./project/scripts/sbt 'githubGenerateSnapshot {"ignoredModules":[],"ignoredConfigs":[],"onResolveFailure":"error","correlator":"release-sbom"}'
+
+      - name: Install unpack
+        uses: carabiner-dev/actions/install/unpack@d41fe10fe88deaf493ce026007da73738b9f570c # v1.3.0
+        with:
+          version: v0.3.3  # first release with the sbt decomposer
+
+      # The SBOM is generated once, signed into an attestation. The plain SBOM
+      # is read back out of it, so both copies carry the same document.
+      - name: Generate the SBOM
+        shell: bash
+        env:
+          SNAPSHOT: ${{ steps.snapshot.outputs.snapshot-json-path }}
+        run: |
+          unpack extract --sbt-snapshot "${SNAPSHOT}" --sign --format spdx3 sbt:. > sbom.bundle.json
+          jq -r '.dsseEnvelope.payload' sbom.bundle.json | base64 -d | jq '.predicate' \
+            > "scala3-${RELEASE_TAG}.spdx3.json"
+
+      - name: Attach the SBOM to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "${RELEASE_TAG}" "scala3-${RELEASE_TAG}.spdx3.json" --clobber
+
+      - name: Upload the SBOM attestation
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom-attestation
+          path: sbom.bundle.json
+
   # Attests the artifacts published by publish_release with a signed SLSA
-  # provenance attestation.
+  # provenance attestation and publishes it, along with the SBOM attestation,
+  # in the release's attestation bundle (attestations.intoto.jsonl).
   #
   # carabiner-dev/actions/slsa/generate uses Kubernetes' Tejolote attester
   # observe this workflow run through the Actions API and builds the SLSA
@@ -314,7 +393,7 @@ jobs:
       actions: read    # for tejolote to read the run and job metadata
 
     runs-on: ubuntu-latest
-    needs: [publish_release]
+    needs: [publish_release, sbom]
     if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
 
     env:
@@ -339,21 +418,35 @@ jobs:
 
       - name: Generate the provenance attestation
         id: provenance
-        uses: carabiner-dev/actions/slsa/generate@32587e82f960d49b36101e8c45d1956e511965d3 # v1.2.9
+        uses: carabiner-dev/actions/slsa/generate@d41fe10fe88deaf493ce026007da73738b9f570c # v1.3.0
         with:
           # publish_release has finished by the time this job starts, naming it
           # keeps tejolote from waiting on the unrelated jobs of the run
           watch-jobs: publish_release
           artifacts: file://${{ github.workspace }}/release-artifacts
-          output: provenance.intoto.json
+          output: attestations.intoto.jsonl
 
-      - name: Attach the provenance to the release
+      - name: Download the SBOM attestation
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sbom-attestation
+          path: sbom-attestation
+
+      # The bundle holds one signed attestation per line. tejolote and unpack
+      # both write their bundle as a single line of JSON, so the SBOM
+      # attestation is appended to the provenance as its own line.
+      - name: Attach the attestations to the release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           ATTESTATION: ${{ steps.provenance.outputs.attestation }}
-        run: gh release upload "${RELEASE_TAG}" "${ATTESTATION}" --clobber
+        run: |
+          # End the provenance line, unless it already is
+          [ -z "$(tail -c1 "${ATTESTATION}")" ] || echo >> "${ATTESTATION}"
+          cat sbom-attestation/sbom.bundle.json >> "${ATTESTATION}"
+          echo >> "${ATTESTATION}"
+          gh release upload "${RELEASE_TAG}" "${ATTESTATION}" --clobber
 
   build-msi-package:
    uses: ./.github/workflows/build-msi.yml
@@ -431,7 +524,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@95e5b1029b6b86e7bac033ee44a0697d8a527d2d # v8.1.1
-      - uses: VirtusLab/scala-cli-setup@8db5313925605c20e292348c1749e80dac7eed0f # v1.16.0
+      - uses: VirtusLab/scala-cli-setup@c33dfbf1a5f16ee60efff453b7f9a987d2b6955b # v1.17.1
       - name: Check formatting
         run: |
           if ! scala-cli format --check; then

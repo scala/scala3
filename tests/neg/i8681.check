@@ -1,0 +1,21 @@
+-- [E030] Match case Unreachable Warning: tests/neg/i8681.scala:10:7 ---------------------------------------------------
+10 |  case B(_) => "NOT OK" // error: this case is unreachable since class A and class B are unrelated
+   |       ^^^^
+   |       Unreachable case
+-- [E030] Match case Unreachable Warning: tests/neg/i8681.scala:16:7 ---------------------------------------------------
+16 |  case C(_) => "NOT OK" // error
+   |       ^^^^
+   |       Unreachable case
+-- [E030] Match case Unreachable Error: tests/neg/i8681.scala:10:7 -----------------------------------------------------
+10 |  case B(_) => "NOT OK" // error: this case is unreachable since class A and class B are unrelated
+   |       ^
+   |       Unreachable case
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E030] Match case Unreachable Error: tests/neg/i8681.scala:16:7 -----------------------------------------------------
+16 |  case C(_) => "NOT OK" // error
+   |       ^
+   |       Unreachable case
+   |
+   | longer explanation available when compiling with `-explain`
+No warnings can be incurred under -Werror

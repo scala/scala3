@@ -514,12 +514,12 @@ object Predef extends LowPriorityImplicits {
    */
   def print(x: Any): Unit = Console.print(x)
 
-  /** Prints a newline character on the default output.
+  /** Prints a line separator on the default output.
    *  @group console-output
    */
   def println(): Unit = Console.println()
 
-  /** Prints out an object to the default output, followed by a newline character.
+  /** Prints out an object to the default output, followed by a line separator.
    *
    *  @param x the object to print.
    *  @group console-output
@@ -761,7 +761,7 @@ object Predef extends LowPriorityImplicits {
   extension [A](inline self: A)
     /**
      *  @tparam A the type of the left-hand side of the arrow association
-     *  @tparam B the type of the left-hand side of the arrow association
+     *  @tparam B the type of the right-hand side of the arrow association
      *  @param self the value to use as the first element of the resulting tuple
      *  @param that the value to use as the second element of the resulting tuple
      */

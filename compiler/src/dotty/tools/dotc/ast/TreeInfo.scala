@@ -409,8 +409,11 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
           }
           fun.symbol != NoSymbol && loop(fun.symbol.info)
       }
-    case _ =>
-      tree.tpe.isInstanceOf[ThisType]
+    case fun =>
+      tree.tpe match
+        case tref: TermRef if fun.symbol.is(ExtensionMethod) =>          // ext(b)(x): b.type
+          termArgss(tree).exists(_.exists(tref.symbol == _.symbol))
+        case tpe => tpe.isInstanceOf[ThisType]
   }
 
   /** Under x.modularity: Extractor for `annotation.internal.WitnessNames(name_1, ..., name_n)`
@@ -742,7 +745,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     else if tree.tpe.isInstanceOf[ConstantType] then PurePath
     else if (!sym.isStableMember) Impure
     else if (sym.is(Module))
-      if (sym.moduleClass.isNoInitsRealClass) PurePath else IdempotentPath
+      if sym.moduleClass.isNoInitsRealClass || sym.is(Package) || sym.moduleClass.isJavaStaticsClass then PurePath
+      else IdempotentPath
     else if (sym.is(Lazy)) IdempotentPath
     else if sym.isAllOf(InlineParam) then Impure
     else PurePath

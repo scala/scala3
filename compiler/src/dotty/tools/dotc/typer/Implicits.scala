@@ -4,16 +4,16 @@ package typer
 
 import backend.sjs.JSDefinitions
 import core.*
-import ast.{TreeTypeMap, untpd, tpd}
+import ast.{TreeTypeMap, tpd, untpd}
 import util.Spans.*
-import util.Stats.{record, monitored}
-import printing.{Showable, Printer}
+import util.Stats.{monitored, record}
+import printing.{Printer, Showable}
 import printing.Texts.*
 import Contexts.*
 import Types.*
 import Flags.*
 import Mode.ImplicitsEnabled
-import NameKinds.{LazyImplicitName, ContextBoundParamName}
+import NameKinds.{ContextBoundParamName, LazyImplicitName}
 import Symbols.*
 import Types.*
 import Decorators.*
@@ -23,7 +23,8 @@ import ProtoTypes.*
 import ErrorReporting.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import Scopes.newScope
-import Typer.BindingPrec, BindingPrec.*
+import Typer.BindingPrec
+import BindingPrec.*
 import Hashable.*
 import util.{EqHashMap, Stats}
 import config.{Config, Feature, SourceVersion}
@@ -37,7 +38,7 @@ import annotation.tailrec
 import NullOpsDecorator.stripNull
 
 import scala.annotation.internal.sharable
-import scala.annotation.threadUnsafe
+import scala.annotation.{nowarn, threadUnsafe}
 import scala.compiletime.uninitialized
 
 /** Implicit resolution */
@@ -893,6 +894,7 @@ trait Implicits:
   /** Find an implicit conversion to apply to given tree `from` so that the
    *  result is compatible with type `to`.
    */
+  @nowarn("msg=Catching AssertionError can lead to unexpected behavior") // we immediately rethrow
   def inferView(from: Tree, to: Type)(using Context): SearchResult = {
     record("inferView")
     if !ctx.mode.is(Mode.ImplicitsEnabled) || from.isInstanceOf[Super] then
@@ -1047,6 +1049,13 @@ trait Implicits:
     // This is done to check whether such types might plausibly be comparable to each other.
     val lift = new TypeMap {
       def apply(t: Type): Type = t match {
+        case t @ FlexibleType(hi) =>
+          // Keep the flexible wrapper (it admits null), but lift the underlying
+          // type to its upper bound like any other abstract type. Mapping the
+          // flexible type with `mapOver` instead would lift its tycon to the
+          // tycon's upper bound and collapse the flexible type entirely, losing
+          // the nullability information.
+          t.derivedFlexibleType(apply(hi))
         case t: TypeRef =>
           t.info match {
             case TypeBounds(lo, hi) if lo.ne(hi) && !t.symbol.is(Opaque) => apply(hi)

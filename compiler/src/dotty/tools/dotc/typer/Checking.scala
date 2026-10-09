@@ -969,31 +969,6 @@ object Checking {
 
   end checkAndAdaptExperimentalImports
 
-  /** Checks that PolyFunction only have valid refinements.
-   *
-   *  It only supports `apply` methods with one parameter list and optional type arguments.
-   */
-  def checkPolyFunctionType(tree: Tree)(using Context): Unit = new TreeTraverser {
-    def traverse(tree: Tree)(using Context): Unit = tree match
-      case tree: RefinedTypeTree if tree.tpe.derivesFrom(defn.PolyFunctionClass) =>
-        if tree.refinements.isEmpty then
-          reportNoRefinements(tree.srcPos)
-        tree.refinements.foreach {
-          case refinement: DefDef if refinement.name != nme.apply =>
-            report.error("PolyFunction only supports apply method refinements", refinement.srcPos)
-          case refinement: DefDef if !defn.PolyFunctionOf.isValidPolyFunctionInfo(refinement.tpe.widen) =>
-            report.error("Implementation restriction: PolyFunction apply must have exactly one parameter list and optionally type arguments. No by-name nor varags are allowed.", refinement.srcPos)
-          case _ =>
-        }
-      case _: RefTree if tree.symbol == defn.PolyFunctionClass =>
-        reportNoRefinements(tree.srcPos)
-      case _ =>
-        traverseChildren(tree)
-
-    def reportNoRefinements(pos: SrcPos) =
-      report.error("PolyFunction subtypes must refine the apply method", pos)
-  }.traverse(tree)
-
   /** Check that users do not extend the `PolyFunction` trait.
    *  We only allow compiler generated `PolyFunction`s.
    */
@@ -1206,9 +1181,11 @@ trait Checking {
         then
           report.error(em"no aliases can be used to refer to a language import", path.srcPos)
 
-  /** Check that `path` is a legal prefix for an export clause */
-  def checkLegalExportPath(path: Tree, selectors: List[untpd.ImportSelector])(using Context): Unit =
-    checkLegalImportOrExportPath(path, "export prefix")
+  /** Check that `path` is a legal prefix for an export clause.
+   *  @return whether the path itself is legal
+   */
+  def checkLegalExportPath(path: Tree, selectors: List[untpd.ImportSelector])(using Context): Boolean =
+    val isLegalPath = !ctx.reporter.reportsErrorsFor(checkLegalImportOrExportPath(path, "export prefix"))
     if
       selectors.exists(_.isWildcard)
       && path.tpe.classSymbol.is(PackageClass)
@@ -1218,6 +1195,7 @@ trait Checking {
       report.error(
         em"Implementation restriction: ${path.tpe.classSymbol} is not a valid prefix for a wildcard export, as it is a package",
         path.srcPos)
+    isLegalPath
 
   /** Check that the definition name isn't root. */
   def checkNonRootName(name: Name, nameSpan: Span)(using Context): Unit =
@@ -1725,6 +1703,8 @@ trait Checking {
         if (!sym.owner.is(Module) || !sym.owner.isStatic)
           report.error(em"$sym cannot be a main method since it cannot be accessed statically", pos)
       }
+      else if (annotCls == defn.ThrowsAnnot && !sym.is(Method) && !sym.isConstructor)
+        report.error(em"`@throws` only allowed for methods and constructors", pos)
       // TODO: Add more checks here
     }
 

@@ -23,8 +23,8 @@ object BoxesRunTime {
   def boxToCharacter(c: Char): java.lang.Character =
     c.asInstanceOf[java.lang.Character]
 
-  def boxToByte(b: Byte): java.lang.Boolean =
-    b.asInstanceOf[java.lang.Boolean]
+  def boxToByte(b: Byte): java.lang.Byte =
+    b.asInstanceOf[java.lang.Byte]
 
   def boxToShort(s: Short): java.lang.Short =
     s.asInstanceOf[java.lang.Short]

@@ -1,7 +1,6 @@
 import sbt.*
 import dotty.tools.sbtplugin.Versions
 
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 /**
@@ -13,9 +12,9 @@ object Dependencies {
   val asmCommons = "org.ow2.asm" % "asm-commons" % "9.10.1"
 
   /** Version of Coursier to use + download for initializing the local maven repo of Scala command */
-  val coursierJarVersion = "2.1.25-M26"
+  val coursierJarVersion = "2.1.26"
   val coursier = "io.get-coursier" %% "coursier" % coursierJarVersion
-  val coursierInterface = "io.get-coursier" % "interface" % "1.0.29-M4"
+  val coursierInterface = "io.get-coursier" % "interface" % "1.0.30"
 
   private val flexmarkVersion = "0.64.8"
   val flexmarkDeps = Seq(
@@ -34,13 +33,11 @@ object Dependencies {
     "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
   )
 
-  val guava = "com.google.guava" % "guava" % "33.7.1-jre"
+  val guava = "com.google.guava" % "guava" % "33.7.2-jre"
 
-  private val jacksonVersion = "3.2.2"
-  val jacksonDatabind = "tools.jackson.core" % "jackson-databind" % jacksonVersion
-  val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
+  val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % "3.2.3"
 
-  private val jlineVersion = "4.4.2"
+  private val jlineVersion = "4.4.6"
   val jlineReader = "org.jline" % "jline-reader" % jlineVersion
   val jlineTerminal = "org.jline" % "jline-terminal" % jlineVersion
   val jlineTerminalJni = "org.jline" % "jline-terminal-jni" % jlineVersion
@@ -51,16 +48,14 @@ object Dependencies {
   // otherwise the jackson versions are ancient, with known vulnerabilities
   val liqpDependencyOverrides = Seq(
     "com.fasterxml.jackson.core" % "jackson-annotations" % "2.22",
-    "com.fasterxml.jackson.core" % "jackson-core" % "2.22.2",
-    "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.2",
-    "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % "2.22.2"
+    "com.fasterxml.jackson.core" % "jackson-core" % "2.22.3",
+    "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.3",
+    "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % "2.22.3"
   )
 
-  val lsp4j = "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "1.0.0"
+  val lz4 = "at.yawk.lz4" % "lz4-java" % "1.12.0"
 
-  val lz4 = "at.yawk.lz4" % "lz4-java" % "1.11.2"
-
-  private val mtagsVersion = "1.6.8"
+  private val mtagsVersion = "1.6.9"
   val mtagsInterfaces = "org.scalameta" % "mtags-interfaces" % mtagsVersion
   val mtagsShared = "org.scalameta" % s"mtags-shared_${Versions.scala2Version}" % mtagsVersion
 
@@ -71,7 +66,7 @@ object Dependencies {
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.20.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.16.0"
+  val scalaCliLauncherVersion = "1.17.1"
 
   val scalaJsDomVersion = "2.8.1" // needs %%% which isn't usable within a val here
   val scalaJsEnvNodeJs = "org.scala-js" %% "scalajs-env-nodejs" % "1.6.0"
@@ -80,4 +75,7 @@ object Dependencies {
   val scalaJsJunitTestRuntime = "org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion
   val scalaJsLibrary = "org.scala-js" %% "scalajs-library" % scalaJSVersion
   val scalaJsLinker = "org.scala-js" %% "scalajs-linker" % scalaJSVersion
+
+  /** Needed on the classpath of the users of `coursier`, which depends on it only as `provided` */
+  val scalaReflect = "org.scala-lang" % "scala-reflect" % Versions.scala2Version
 }

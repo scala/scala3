@@ -18,6 +18,7 @@ import NameKinds.{WildcardParamName, QualifiedName}
 import NameOps.*
 import ast.{Positioned, Trees}
 import ast.Trees.*
+import ast.untpd
 import StdNames.*
 import util.Spans.*
 import util.chaining.*
@@ -536,28 +537,6 @@ object Parsers {
         tree
     }
 
-    def makePolyFunction(tparams: List[Tree], body: Tree,
-        kind: String, errorTree: => Tree,
-        start: Offset, arrowOffset: Offset): Tree =
-      atSpan(start, arrowOffset):
-        getFunction(body) match
-          case None =>
-            syntaxError(em"Implementation restriction: polymorphic function ${kind}s must have a value parameter", arrowOffset)
-            errorTree
-          case Some(Function(_, _: CapturesAndResult)) =>
-            // A function tree like this will be desugared
-            // into a capturing type in the typer.
-            syntaxError(em"Implementation restriction: polymorphic function types cannot wrap function types that have capture sets", arrowOffset)
-            errorTree
-          case Some(f: FunctionWithMods) if f.mods.is(Impure) && Feature.ccEnabled =>
-            syntaxError(
-              em"""Implementation restriction: polymorphic function types cannot wrap impure function types if capture checking is enabled.
-                  |Workaround: introduce an empty term-parameter list right after the type binder, e.g. `[A] => () -> B => C`.""",
-              arrowOffset)
-            errorTree
-          case _ =>
-            PolyFunction(tparams, body)
-
 /* --------------- PLACEHOLDERS ------------------------------------------- */
 
     /** The implicit parameters introduced by `_` in the current expression.
@@ -749,12 +728,12 @@ object Parsers {
     var possibleColonOffset: Int = -1
 
     def testChar(idx: Int, p: Char => Boolean): Boolean = {
-      val txt = source.content
+      val txt = source.textContent()
       idx >= 0 && idx < txt.length && p(txt(idx))
     }
 
     def testChar(idx: Int, c: Char): Boolean = {
-      val txt = source.content
+      val txt = source.textContent()
       idx >= 0 && idx < txt.length && txt(idx) == c
     }
 
@@ -823,9 +802,9 @@ object Parsers {
         patch(source, Span(startOpening, endOpening), " {")
         val next = in.next
         def closedByEndMarker =
-          next.token == END && (next.offset - next.lineOffset) == indentWidth.toPrefix.size
+          next.token == END && (next.offset - next.lineOffset) == indentWidth.toPrefixSize
         if closedByEndMarker then patch(source, Span(next.offset), "} // ")
-        else patch(source, Span(closingOffset(source.nextLine(in.lastOffset))), indentWidth.toPrefix ++ "}\n")
+        else patch(source, Span(closingOffset(source.nextLine(in.lastOffset))), indentWidth.toPrefix + "}\n")
       t
     end indentedToBraces
 
@@ -1433,10 +1412,17 @@ object Parsers {
           if isNegated && start < in.offset - 1 then
             warning(IllegalLiteral(), start)
             patch(Span(start, in.offset + in.strVal.nn.length), "-" + in.strVal.nn.trim)
+          def num(kind: NumberKind): Tree =
+            val d = digits
+            if d.isEmpty then
+              syntaxError(IllegalLiteral(), start)
+              Literal(Constant.fromValue(null))
+            else
+              Number(d, kind)
           token match {
-            case INTLIT  => return Number(digits, NumberKind.Whole(in.base))
-            case DECILIT => return Number(digits, NumberKind.Decimal)
-            case EXPOLIT => return Number(digits, NumberKind.Floating)
+            case INTLIT  => return num(NumberKind.Whole(in.base))
+            case DECILIT => return num(NumberKind.Decimal)
+            case EXPOLIT => return num(NumberKind.Floating)
             case _ =>
           }
         import scala.util.FromDigits.*
@@ -1556,7 +1542,7 @@ object Parsers {
       if in.token == STRINGLIT then
         val dedentWidth =
           if in.delimChar == '\''
-          then trim.lastIndent(in.strVal.nn.toCharArray)
+          then trim.lastIndent(in.strVal.nn)
           else null
         segmentBuf += literal(in.offset + offsetCorrection, inPattern = inPattern, inStringInterpolation = true)
         if dedentWidth != null then
@@ -1573,30 +1559,28 @@ object Parsers {
     /** Trimming '''-enclosed strings */
     object trim {
 
-      private case class Cut(val offset: Int, val length: Int)
+      private case class Cut(offset: Int, length: Int)
 
-      private def shorten(cs: Array[Char], cuts: List[Cut]): String =
+      private def shorten(cs: String, cuts: List[Cut]): String =
         val totalCutSize = cuts.map(_.length).sum
         if totalCutSize > cs.length then
           "" // happens for empty '''-enclosed literals since the \n is counted twice
         else
-          val target = new Array[Char](cs.length - totalCutSize)
+          val target = new java.lang.StringBuilder(cs.length - totalCutSize)
           def recur(cuts: List[Cut], fromIdx: Int, toIdx: Int): Unit = cuts match
             case Nil =>
-              val len = cs.length - fromIdx
-              assert(len == target.length - toIdx, i"len = $len, remaining = ${target.length - toIdx}")
-              Array.copy(cs, fromIdx, target, toIdx, len)
+              target.append(cs, fromIdx, cs.length)
             case Cut(offset, length) :: cuts1 =>
               val len = offset - fromIdx
-              Array.copy(cs, fromIdx, target, toIdx, len)
+              target.append(cs, fromIdx, offset)
               recur(cuts1, offset + length, toIdx + len)
           recur(cuts, 0, 0)
-          new String(target)
+          target.toString
 
       /** Trim the start of a '''-literal, up to and including the first \n.
        *  This must be all whitespace.
        */
-      private def trimStart(cs: Array[Char], strOffset: Int): List[Cut] =
+      private def trimStart(cs: String, strOffset: Int): List[Cut] =
         var i = 0
         while i < cs.length && isWhitespace(cs(i)) do i += 1
         if i < cs.length && cs(i) == Chars.LF then
@@ -1608,7 +1592,7 @@ object Parsers {
       /** Trim the end of a '''-literal, up to and including the last \n.
        *  This must be all whitespace.
        */
-      private def trimEnd(cs: Array[Char], strOffset: Int): List[Cut] =
+      private def trimEnd(cs: String, strOffset: Int): List[Cut] =
         var i = cs.length - 1
         while i >= 0 && isWhitespace(cs(i)) do i -= 1
         if i >= 0 && cs(i) == Chars.LF then
@@ -1622,7 +1606,7 @@ object Parsers {
       /** Trim the IndentWidth prefix from all starts of lines.
        *  Error if a line does not start with at least IndentWidth.
        */
-      private def trimLeft(cs: Array[Char], width: IndentWidth, strOffset: Int): List[Cut] =
+      private def trimLeft(cs: String, width: IndentWidth, strOffset: Int): List[Cut] =
         def checkCut(cut: Cut): Boolean =
           if cut.length < 0 then
             var i = cut.offset
@@ -1642,10 +1626,10 @@ object Parsers {
 
       /** The indentation width of the last line in `cs` (i.e. what comes before the closing `'''`).
        */
-      def lastIndent(cs: Array[Char]): IndentWidth =
+      def lastIndent(cs: String): IndentWidth =
         in.indentWidth(cs.length, cs)
 
-      private def trimAll(cs: Array[Char], width: IndentWidth, strOffset: Int,
+      private def trimAll(cs: String, width: IndentWidth, strOffset: Int,
                           isFirst: Boolean, isLast: Boolean): String =
         val startCuts = if isFirst then trimStart(cs, strOffset) else Nil
         var leftCuts = trimLeft(cs, width, strOffset)
@@ -1658,8 +1642,7 @@ object Parsers {
        *  The string without leading quotes starts at `strOffset`.
        */
       def apply(str: String, strOffset: Int): String =
-        val cs = str.toCharArray()
-        trimAll(cs, lastIndent(cs), strOffset, isFirst = true, isLast = true)
+        trimAll(str, lastIndent(str), strOffset, isFirst = true, isLast = true)
 
       /** Trim part of '''-enclosed interpolated string literal */
       def apply(tree: Tree, width: IndentWidth, isFirst: Boolean, isLast: Boolean, isSpec: Boolean): Tree = tree match
@@ -1673,7 +1656,7 @@ object Parsers {
                 str.patch(0, "    ", 4)
               else str
             else
-              trimAll(str.toCharArray, width, tree.span.start, isFirst, isLast)
+              trimAll(str, width, tree.span.start, isFirst, isLast)
           cpy.Literal(tree)(Constant(trimmed))
     }
 
@@ -1766,6 +1749,9 @@ object Parsers {
         case _: Match => in.token == MATCH
         case _: New => in.token == NEW
         case _: (ForYield | ForDo) => in.token == FOR
+        case apply: Apply if in.featureEnabled(Feature.methodBlockEndMarkers) =>
+          val name = apply.srcName
+          !name.isEmpty && in.isIdent && in.name.nn == name.toTermName
         case _ => false
 
       def endName = if in.token == IDENTIFIER then in.name.toString else tokenString(in.token)
@@ -1866,8 +1852,8 @@ object Parsers {
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
      *                   |  (‘->’ | ‘?->’ ) [CaptureSet] Type           -- under pureFunctions and captureChecking
-     *  PolyFunType    ::=  TypTypeParamClause '=>' Type
-     *                   |  TypTypeParamClause ‘->’ [CaptureSet] Type   -- under pureFunctions and captureChecking
+     *  PolyFunType    ::=  TypTypeParamClause ‘=>’ Type
+     *                   |  TypTypeParamClause ‘->’ Type                -- under pureFunctions and captureChecking
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ TypedFunParam {',' TypedFunParam } ')'
@@ -1994,7 +1980,8 @@ object Parsers {
         else if in.token == ARROW || isPureArrow(nme.PUREARROW) then
           val arrowOffset = in.skipToken()
           val body = toplevelTyp()
-          makePolyFunction(tparams, body, "type", Ident(nme.ERROR.toTypeName), start, arrowOffset)
+          atSpan(start, arrowOffset):
+            PolyFunction(tparams, body)
         else
           accept(TLARROW)
           typ()
@@ -2640,7 +2627,10 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.Type)
           val arrowOffset = accept(ARROW)
           val body = expr(location)
-          makePolyFunction(tparams, body, "literal", errorTermTree(arrowOffset), start, arrowOffset)
+          if getFunction(body).isEmpty then
+            syntaxError(em"Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
+          atSpan(start, arrowOffset):
+            PolyFunction(tparams, body)
         case CASE if Feature.isPreviewEnabled || in.featureEnabled(Feature.relaxedLambdaSyntax) =>
           singleCaseMatch()
         case _ =>
@@ -3070,7 +3060,7 @@ object Parsers {
             case Number(n, _) if n(0) == '-' =>
               val start = t.span.start
               val span = Span(start, in.lastOffset)
-              warning(IllegalLiteral(), start)
+              warning(IllegalLiteral(ambiguous = true), start)
               unpatch(ctx.compilationUnit.source, span)
               patch(span, s"($n)")
             case Literal(const)
@@ -3080,9 +3070,9 @@ object Parsers {
                     || const.tag == DoubleTag) =>
               val start = t.span.start
               val span = Span(start, in.lastOffset)
-              warning(IllegalLiteral(), start)
+              warning(IllegalLiteral(ambiguous = true), start)
               unpatch(ctx.compilationUnit.source, span)
-              val text = new String(source.content, start, span.end - start)
+              val text = source.textContent().substring(start, span.end)
               patch(span, s"($text)")
             case _ =>
           in.nextToken()
@@ -3193,6 +3183,15 @@ object Parsers {
     def mkApply(fn: Tree, args: (List[Tree], Boolean)): Tree =
       val res = Apply(fn, args._1)
       if args._2 then res.setApplyKind(ApplyKind.Using)
+      // `Apply.srcName` already reads the name off a `Select`/`Ident` callee, so an
+      // attachment is only needed for a nested `Apply` (e.g. `test("arg"):`), whose
+      // own name would otherwise be out of reach.
+      if in.featureEnabled(Feature.methodBlockEndMarkers) then
+        fn match
+          case fn: Apply =>
+            val name = fn.srcName
+            if !name.isEmpty then res.putAttachment(untpd.MethodName, name)
+          case _ =>
       res
 
     val argumentExpr: () => Tree = () => expr(Location.InArgs) match
@@ -4439,7 +4438,7 @@ object Parsers {
             accept(EQUALS, help)
             EmptyTree
           else
-            if (!isExprIntro) syntaxError(MissingReturnType(), in.lastOffset)
+            if (!isExprIntro) syntaxErrorOrIncomplete(MissingReturnType(), in.lastOffset)
             accept(EQUALS)
             expr()
 

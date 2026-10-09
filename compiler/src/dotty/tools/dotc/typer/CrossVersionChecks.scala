@@ -34,8 +34,13 @@ class CrossVersionChecks extends MiniPhase:
 
   private def checkExperimentalAndDeprecatedAnnots(sym: Symbol)(using Context): Unit =
     if sym.exists then
-      for annot <- sym.annotations if annot.symbol.isDeprecated do
-        checkDeprecatedRef(annot.symbol, annot.tree.srcPos)
+      for annot <- sym.annotations do
+        // Check whether the annotation itself is deprecated,
+        if annot.symbol.isDeprecated then
+          checkDeprecatedRef(annot.symbol, annot.tree.srcPos)
+        // and whether the annotation constructor is.
+        if annot.tree.symbol.isDeprecated then
+          checkDeprecatedRef(annot.tree.symbol, annot.tree.srcPos)
       if !sym.isInExperimentalScope then
         for annot <- sym.annotations if annot.symbol.isExperimental do
           Feature.checkExperimentalDef(annot.symbol, annot.tree)

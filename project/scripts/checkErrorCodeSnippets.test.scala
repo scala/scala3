@@ -125,6 +125,39 @@ class ErrorCodeSnippetsTest extends munit.FunSuite:
       fail(s"Found documentation for non-existent error codes: $invalid")
   }
 
+  test("forceWerror keeps other options in the same sc-opts entry") {
+    assertEquals(
+      forceWerror(List("sc:compile", "sc-opts:-Werror,-language:unsafeNulls")),
+      List("sc:compile", "sc-opts:-language:unsafeNulls", "sc-opts:-Werror")
+    )
+  }
+
+  test("forceWerror drops an sc-opts entry that only held -Werror") {
+    assertEquals(
+      forceWerror(List("sc:compile", "sc-opts:-Werror")),
+      List("sc:compile", "sc-opts:-Werror")
+    )
+  }
+
+  test("forceWerror adds -Werror when the snippet has no options") {
+    assertEquals(forceWerror(Nil), List("sc-opts:-Werror"))
+    assertEquals(forceWerror(List("sc:compile")), List("sc:compile", "sc-opts:-Werror"))
+  }
+
+  test("forceWerror leaves non sc-opts entries alone") {
+    assertEquals(
+      forceWerror(List("sc:compile", "sc-name:ctx", "sc-opts:-explain")),
+      List("sc:compile", "sc-name:ctx", "sc-opts:-explain", "sc-opts:-Werror")
+    )
+  }
+
+  test("forceWerror result is understood by extractScalacOptions") {
+    assertEquals(
+      extractScalacOptions(forceWerror(List("sc:compile", "sc-opts:-Werror,-language:unsafeNulls"))),
+      List("-language:unsafeNulls", "-Werror")
+    )
+  }
+
   test("All documented error codes must be listed in sidebar.yml") {
     val sidebarPath = os.pwd / "docs" / "sidebar.yml"
     assert(os.exists(sidebarPath), s"sidebar.yml not found at $sidebarPath")
@@ -269,9 +302,7 @@ class ErrorCodeSnippetsTest extends munit.FunSuite:
         assert(parsed.solutionSnippets.nonEmpty, s"No solution snippets found in $mdFile")
 
         parsed.solutionSnippets.zipWithIndex.foreach { case (snippet, idx) =>
-          val snippetWithWerror = snippet.copy(
-            options = snippet.options.filterNot(_.contains("-Werror")) :+ "sc-opts:-Werror"
-          )
+          val snippetWithWerror = snippet.copy(options = forceWerror(snippet.options))
           val result = compileSnippet(snippetWithWerror)
           assert(
             !result.hasErrors && !result.hasWarnings,

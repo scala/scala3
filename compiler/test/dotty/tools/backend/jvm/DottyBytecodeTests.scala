@@ -1188,19 +1188,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         VarOp(ILOAD, 5),
         Op(IRETURN),
         Label(19),
-        Field(GETSTATIC, "scala/package$", "MODULE$", "Lscala/package$;"),
-        Invoke(INVOKEVIRTUAL, "scala/package$", "Nil", "()Lscala/collection/immutable/Nil$;", false),
-        VarOp(ALOAD, 2),
-        Invoke(INVOKESTATIC, "java/util/Objects", "equals", "(Ljava/lang/Object;Ljava/lang/Object;)Z", false),
-        Jump(IFEQ, Label(28)),
         IntOp(BIPUSH, 20),
-        Op(IRETURN),
-        Label(28),
-        TypeOp(NEW, "scala/MatchError"),
-        Op(DUP),
-        VarOp(ALOAD, 2),
-        Invoke(INVOKESPECIAL, "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false),
-        Op(ATHROW),
+        Op(IRETURN)
       ))
 
       // ---------------
@@ -1506,10 +1495,10 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val c2 = loadClassNode(lookupClass(dir, "C2.class"))
       assertSameCode(getMethod(c1, "clone"), List(VarOp(ALOAD, 0), Invoke(INVOKESTATIC, "T", "clone$", "(LT;)Ljava/lang/Object;", true), Op(ARETURN)))
       assertInvoke(getMethod(c1, "f1"), "T", "clone")
-      assertInvoke(getMethod(c1, "f2"), "T", "clone")
+      assertInvoke(getMethod(c1, "f2"), "U", "clone")
       assertInvoke(getMethod(c1, "f3"), "C1", "clone")
       assertInvoke(getMethod(c2, "f1"), "T", "clone")
-      assertInvoke(getMethod(c2, "f2"), "T", "clone")
+      assertInvoke(getMethod(c2, "f2"), "U", "clone")
       assertInvoke(getMethod(c2, "f3"), "C1", "clone")
     }
     checkBCode(List(invocationReceiversTestCode.definitions("String"))) { dir =>
@@ -2189,6 +2178,38 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assert(instrs.contains(Op(MONITOREXIT)))
     }
   }
+
+  @Test def arrayGetSetLength = {
+    val source =
+      """class Foo {
+         |  def get(a: Array[Int]) = a(1)
+         |  def set(a: Array[Double]) = a(2) = 0.0
+         |  def length(a: Array[Boolean]) = a.length
+         |}
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val fooClass = loadClassNode(lookupClass(dir, "Foo.class"))
+      assertSameCode(getMethod(fooClass, "get"), List(
+        VarOp(ALOAD, 1),
+        Op(ICONST_1),
+        Op(IALOAD),
+        Op(IRETURN)
+      ))
+      assertSameCode(getMethod(fooClass, "set"), List(
+        VarOp(ALOAD, 1),
+        Op(ICONST_2),
+        Op(DCONST_0),
+        Op(DASTORE),
+        Op(RETURN)
+      ))
+      assertSameCode(getMethod(fooClass, "length"), List(
+        VarOp(ALOAD, 1),
+        Op(ARRAYLENGTH),
+        Op(IRETURN)
+      ))
+    }
+  }
 }
 
 object invocationReceiversTestCode {
@@ -2205,9 +2226,7 @@ object invocationReceiversTestCode {
         |  // invokeinterface T.clone
         |  def f1 = (this: T).clone()
         |
-        |  // cannot invokeinterface U.clone (NoSuchMethodError). Object.clone would work here, but
-        |  // not in the example in C2 (illegal access to protected). T.clone works in all cases and
-        |  // resolves correctly.
+        |  // invokeinterface U.clone
         |  def f2 = (this: U).clone()
         |
         |  // invokevirtual C1.clone()
@@ -2216,7 +2235,7 @@ object invocationReceiversTestCode {
         |
         |class C2 {
         |  def f1(t: T) = t.clone()  // invokeinterface T.clone
-        |  def f2(t: U) = t.clone()  // invokeinterface T.clone -- Object.clone would be illegal (protected, explained in C1)
+        |  def f2(t: U) = t.clone()  // invokeinterface U.clone -- Object.clone would be illegal (protected, explained in C1)
         |  def f3(t: C1) = t.clone() // invokevirtual C1.clone -- Object.clone would be illegal
         |}
     """.stripMargin

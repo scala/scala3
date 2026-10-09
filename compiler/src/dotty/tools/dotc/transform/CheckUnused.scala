@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import ast.*, desugar.{ForArtifact, PatternVar}, tpd.*, untpd.ImportSelector
+import ast.*, desugar.{ForArtifact, PatternVar, UntupledParam}, tpd.*, untpd.ImportSelector
 import core.*, Contexts.*, Decorators.*, Flags.*
 import Names.{Name, SimpleName, DerivedName, TermName, termName}
 import NameKinds.{BodyRetainerName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
@@ -571,6 +571,7 @@ object CheckUnused:
     val asss = mutable.Set.empty[Symbol]              // targets of assignment
     val skip = mutable.Set.empty[Symbol]              // methods to skip (don't warn about their params)
     val nowarn = mutable.Set.empty[Symbol]            // marked @nowarn
+    val untupled = mutable.Set.empty[Symbol]          // locals that were untupled params
     val calls = new IdentityHashMap[Tree, Unit]          // inlined call already seen
     val imps = new IdentityHashMap[Import, Unit]         // imports
     val sels = new IdentityHashMap[ImportSelector, Unit] // matched selectors
@@ -600,9 +601,15 @@ object CheckUnused:
           && !tree.name.isWildcard
           && !tree.symbol.is(ModuleVal) // track only the ModuleClass using the object symbol, with correct namePos
         then
+          if tree.hasAttachment(UntupledParam) then
+            untupled.addOne(tree.symbol)
           if tree.hasAttachment(NoWarn) then
             nowarn.addOne(tree.symbol)
-          defs.addOne(tree.symbol.userSymbol -> tree.namePos)
+          val pos =
+            if tree.name.startsWith("given_") then
+              tree.sourcePos.focus
+            else tree.namePos
+          defs.addOne(tree.symbol.userSymbol -> pos)
       case _ =>
         if tree.symbol ne NoSymbol then
           defs.addOne(tree.symbol -> tree.srcPos) // TODO is this a code path
@@ -651,19 +658,8 @@ object CheckUnused:
          infos.asss(sym)
       || infos.refs(sym.owner.info.member(sym.name.asTermName.setterName).symbol)
 
-    def checkUnassigned(sym: Symbol, pos: SrcPos) =
-      if sym.isLocalToBlock then
-        if ctx.settings.WunusedHas.locals && sym.is(Mutable) && !infos.asss(sym) then
-          warnAt(pos)(UnusedSymbol.unsetLocals)
-      else if ctx.settings.WunusedHas.privates
-        && sym.is(Mutable)
-        && (sym.is(Private) || sym.isEffectivelyPrivate)
-        && !sym.isSetter // tracks sym.underlyingSymbol sibling getter, check setter below
-        && !isMutated(sym)
-      then
-        warnAt(pos)(UnusedSymbol.unsetPrivates)
-
     def checkPrivate(sym: Symbol, pos: SrcPos) =
+      var w: Option[UnusedSymbol] = None
       if ctx.settings.WunusedHas.privates
         && !sym.isPrimaryConstructor
         && !sym.isOneOf(SelfName | Synthetic | CaseAccessor)
@@ -675,23 +671,35 @@ object CheckUnused:
         )
         && !infos.nowarn(sym)
       then
-        if sym.is(Mutable) && isMutated(sym) then
-          warnAt(pos)(UnusedSymbol.privateVars)
-        else
-          warnAt(pos)(UnusedSymbol.privateMembers)
+        if sym.is(Mutable) then
+          if isMutated(sym) then
+            if !infos.hasRef(sym) then
+              w = Some(UnusedSymbol.privateVars)
+          else if !infos.hasRef(sym) then
+            w = Some(UnusedSymbol.privateMembers)
+          else
+            w = Some(UnusedSymbol.unsetPrivates)
+        else if !infos.hasRef(sym) then
+          w = Some(UnusedSymbol.privateMembers)
+      w match
+        case Some(w) =>
+          if !sym.isAnnotated then warnAt(pos)(w)
+        case None =>
+          if sym.isAnnotated && ctx.settings.WunusedHas.unused then warnAt(pos)(UnusedSymbol.incorrectUnused(sym))
 
     def checkParam(sym: Symbol, pos: SrcPos) =
+      var target: Symbol = sym // if warning, the symbol which may be annotated; alias member for class parameter
       val m = sym.owner
       def allowed =
         val dd = defn
            m.isDeprecated
         || m.is(Synthetic) && !m.isAnonymousFunction
-        || m.hasAnnotation(defn.UnusedAnnot) // param of unused method
+        || m.isAnnotated // param of unused method
         || sym.name.startsWith("_") // convenient syntax to avoid needing @unused
         || sym.info.isSingleton
         || m.isConstructor && m.owner.thisType.baseClasses.contains(defn.AnnotationClass)
         || sym.isErased // erased param may be unused by design
-      def checkExplicit(): Unit =
+      def checkExplicit(): Option[UnusedSymbol] =
         // A class param is unused if its param accessor is unused.
         // (The class param is not assigned to a field until constructors.)
         // A local param accessor warns as a param; a private accessor as a private member.
@@ -700,17 +708,36 @@ object CheckUnused:
           val alias = m.owner.info.member(sym.name)
           if alias.exists then
             val aliasSym = alias.symbol
-            if aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
-              && !infos.refs(alias.symbol)
-              && !usedByDefaultGetter(sym, m)
-            then
-              if aliasSym.is(Local) then
-                if ctx.settings.WunusedHas.explicits then
-                  warnAt(pos)(UnusedSymbol.explicitParams(aliasSym))
+            val warnable =
+              if aliasSym.is(Mutable) then aliasSym.isAllOf(PrivateParamAccessor)
+              else aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
+            if warnable then
+              target = aliasSym
+              if aliasSym.is(Mutable) then
+                if isMutated(aliasSym) then
+                  if !infos.hasRef(aliasSym) then
+                    return Some(UnusedSymbol.privateVars)
+                else if !infos.hasRef(aliasSym) then
+                  if ctx.settings.WunusedHas.explicits then
+                    return Some(UnusedSymbol.explicitParams(aliasSym))
+                  else if ctx.settings.WunusedHas.privates then
+                    return Some(UnusedSymbol.privateMembers)
+                else
+                  return Some(UnusedSymbol.unsetPrivates)
+              else if aliasSym.is(Local) then
+                if ctx.settings.WunusedHas.explicits
+                  && !infos.hasRef(aliasSym)
+                  && !usedByDefaultGetter(sym, m)
+                then
+                  return Some(UnusedSymbol.explicitParams(aliasSym))
               else
-                if ctx.settings.WunusedHas.privates then
-                  warnAt(pos)(UnusedSymbol.privateMembers)
+                if ctx.settings.WunusedHas.privates
+                  && !infos.hasRef(aliasSym)
+                  && !usedByDefaultGetter(sym, m)
+                then
+                  return Some(UnusedSymbol.privateMembers)
         else if ctx.settings.WunusedHas.explicits
+          && !infos.hasRef(sym)
           && !sym.is(Synthetic) // param to setter is unused bc there is no field yet
           && !(sym.owner.is(ExtensionMethod) &&
             m.paramSymss.dropWhile(_.exists(_.isTypeParam)).match
@@ -721,14 +748,21 @@ object CheckUnused:
           && !ctx.platform.isMainMethod(m)
           && !usedByDefaultGetter(sym, m)
         then
-          warnAt(pos)(UnusedSymbol.explicitParams(sym))
+          return Some(UnusedSymbol.explicitParams(sym))
+        None
       end checkExplicit
       // begin
       if !infos.skip(m)
         && !m.isEffectivelyOverride
         && !allowed
       then
-        checkExplicit()
+        checkExplicit() match
+          case Some(w) =>
+            if !target.isAnnotated then
+              warnAt(pos)(w)
+          case None =>
+            if target.isAnnotated && ctx.settings.WunusedHas.unused then
+              warnAt(pos)(UnusedSymbol.incorrectUnused(sym))
     end checkParam
 
     // does the param have an alias in a default arg method that is used?
@@ -742,12 +776,14 @@ object CheckUnused:
         case _ => false
 
     def checkImplicit(sym: Symbol, pos: SrcPos) =
+      var target: Symbol = sym // if warning, the symbol which may be annotated; alias member for class parameter
       val m = sym.owner
+      def isAnonGivenDef: Boolean = m.isAllOf(Given | Method) && m.isSynthetic
       def allowed =
         val dd = defn
            m.isDeprecated
         || m.is(Synthetic)
-        || m.hasAnnotation(dd.UnusedAnnot)          // param of unused method
+        || m.isAnnotated // param of unused method
         || sym.name.is(ContextFunctionParamName)    // a ubiquitous parameter
         || sym.info.dealias.typeSymbol.match        // more ubiquity
            case dd.DummyImplicitClass | dd.SubTypeClass | dd.SameTypeClass => true
@@ -758,10 +794,11 @@ object CheckUnused:
         || sym.info.isSingleton // DSL friendly
         || sym.info.dealias.isInstanceOf[RefinedType] // can't be expressed as a context bound
         || sym.isErased // erased param is unused by design
+      var w: Option[UnusedSymbol] = None
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
         && !m.isEffectivelyOverride
-        && !allowed
+        && !isAnonGivenDef
       then
         if m.isPrimaryConstructor then
           val alias = m.owner.info.member(sym.name)
@@ -770,22 +807,40 @@ object CheckUnused:
             val checking =
                  aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
               || aliasSym.isAllOf(Protected | ParamAccessor, butNot = CaseAccessor) && m.owner.is(Given)
-            if checking
-              && !infos.refs(alias.symbol)
-              && !usedByDefaultGetter(sym, m)
-            then
-              warnAt(pos)(UnusedSymbol.implicitParams(aliasSym))
-        else if !usedByDefaultGetter(sym, m) then
-          warnAt(pos)(UnusedSymbol.implicitParams(sym))
+            if checking then
+              target = aliasSym
+              if !infos.hasRef(alias.symbol) && !usedByDefaultGetter(sym, m) && !allowed then
+                w = Some(UnusedSymbol.implicitParams(aliasSym))
+        else if !infos.hasRef(sym) && !usedByDefaultGetter(sym, m) && !allowed then
+          w = Some(UnusedSymbol.implicitParams(sym))
+      w match
+        case Some(w) =>
+          if !target.isAnnotated then
+            warnAt(pos)(w)
+        case _ =>
+          if target.isAnnotated && ctx.settings.WunusedHas.unused && !isAnonGivenDef then
+            warnAt(pos)(UnusedSymbol.incorrectUnused(sym))
 
     def checkLocal(sym: Symbol, pos: SrcPos) =
+      var w: Option[UnusedSymbol] = None
       if ctx.settings.WunusedHas.locals
         && !sym.isOneOf(InlineProxy | Synthetic)
       then
-        if sym.is(Mutable) && infos.asss(sym) then
-          warnAt(pos)(UnusedSymbol.localVars)
-        else
-          warnAt(pos)(UnusedSymbol.localDefs)
+        if sym.is(Mutable) then
+          if infos.asss(sym) then
+            if !infos.hasRef(sym) then
+              w = Some(UnusedSymbol.localVars)
+          else if !infos.hasRef(sym) then
+            w = Some(UnusedSymbol.localDefs)
+          else
+            w = Some(UnusedSymbol.unsetLocals)
+        else if !infos.hasRef(sym) then
+          w = Some(UnusedSymbol.localDefs)
+      w match
+        case Some(w) =>
+          if !sym.isAnnotated then warnAt(pos)(w)
+        case None =>
+          if sym.isAnnotated && ctx.settings.WunusedHas.unused then warnAt(pos)(UnusedSymbol.incorrectUnused(sym))
 
     def checkPatvars() =
       // patvars in for comprehensions share the pos of where the name was introduced
@@ -825,7 +880,7 @@ object CheckUnused:
         def editPosAt(srcPos: SrcPos, forDeletion: Boolean): SrcPos =
           val start = srcPos.span.start
           val end = srcPos.span.end
-          val content = srcPos.sourcePos.source.content()
+          val content = srcPos.sourcePos.source.textContent()
           val prev = content.lastIndexWhere(c => !isWhitespace(c), end = start - 1)
           val emptyLeft = prev < 0 || isLineBreakChar(content(prev))
           val next = content.indexWhere(c => !isWhitespace(c), from = end)
@@ -857,8 +912,8 @@ object CheckUnused:
         def deletion(editPos: SrcPos): List[CodeAction] = actionsOf(editPos -> "")
         def textFor(impsel: ImpSel): String =
           val (imp, sel) = impsel
-          val content = imp.srcPos.sourcePos.source.content()
-          def textAt(pos: SrcPos) = String(content.slice(pos.span.start, pos.span.end))
+          val content = imp.srcPos.sourcePos.source.textContent()
+          def textAt(pos: SrcPos) = content.substring(pos.span.start, pos.span.end)
           val qual = textAt(imp.expr.srcPos) // keep original
           val selector = textAt(sel.srcPos)  // keep original
           s"$qual.$selector"                 // don't succumb to vagaries of show
@@ -897,9 +952,9 @@ object CheckUnused:
               for imp <- lostClauses do
                 val actions =
                   if imp == existing.last then
-                    val content = imp.srcPos.sourcePos.source.content()
+                    val content = imp.srcPos.sourcePos.source.textContent()
                     val prev = existing.lastIndexWhere(i0 => keeping.exists((i, _) => i == i0))
-                    val comma = content.indexOf(',', from = existing(prev).srcPos.span.end)
+                    val comma = content.indexOf(',', /*fromIndex =*/ existing(prev).srcPos.span.end)
                     val commaPos = imp.srcPos.sourcePos.withSpan:
                       Span(start = comma, end = existing(prev + 1).srcPos.span.start)
                     val srcPos = imp.srcPos
@@ -929,9 +984,9 @@ object CheckUnused:
                 else if !lostClauses.contains(imp) then
                   val actions =
                     if sel == imp.selectors.last then
-                      val content = sel.srcPos.sourcePos.source.content()
+                      val content = sel.srcPos.sourcePos.source.textContent()
                       val prev = imp.selectors.lastIndexWhere(s0 => keeping.exists((_, s) => s == s0))
-                      val comma = content.indexOf(',', from = imp.selectors(prev).srcPos.span.end)
+                      val comma = content.indexOf(',', /*fromIndex =*/ imp.selectors(prev).srcPos.span.end)
                       val commaPos = sel.srcPos.sourcePos.withSpan:
                         Span(start = comma, end = imp.selectors(prev + 1).srcPos.span.start)
                       val editPos = sel.srcPos
@@ -947,17 +1002,18 @@ object CheckUnused:
         end while
 
     // begin
-    for (sym, pos) <- infos.defs.iterator if !sym.hasAnnotation(defn.UnusedAnnot) do
-      if infos.refs(sym) then
-        checkUnassigned(sym, pos)
-      else if sym.isEffectivelyPrivate then
+    for (sym, pos) <- infos.defs.iterator do
+      if sym.isEffectivelyPrivate then
         checkPrivate(sym, pos)
       else if sym.is(Param, butNot = Given | Implicit) then
         checkParam(sym, pos)
       else if sym.is(Param) then // Given | Implicit
         checkImplicit(sym, pos)
       else if sym.isLocalToBlock then
-        checkLocal(sym, pos)
+        if infos.untupled(sym) then
+          checkParam(sym, pos)
+        else
+          checkLocal(sym, pos)
 
     if ctx.settings.WunusedHas.patvars then
       checkPatvars()
@@ -1107,6 +1163,7 @@ object CheckUnused:
           else
             sym.overriddenSymbol(inClass = bc, siteClass = owner).exists
       }
+    def isAnnotated: Boolean = sym.hasAnnotation(defn.UnusedAnnot)
     // pick the symbol the user wrote for purposes of tracking
     inline def userSymbol: Symbol=
       if sym.denot.is(ModuleClass) then sym.denot.companionModule else sym
