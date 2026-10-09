@@ -85,6 +85,12 @@ object Deadline {
 
   /** The natural ordering for deadline is determined by the natural order of the underlying (finite) duration. */
   implicit object DeadlineIsOrdered extends Ordering[Deadline] {
+    /** Compares two deadlines according to the natural ordering of their underlying finite durations.
+     *
+     *  @param a the first deadline to compare
+     *  @param b the second deadline to compare
+     *  @return a negative value if `a` is earlier than `b`, zero if they are equal, or a positive value if `a` is later
+     */
     def compare(a: Deadline, b: Deadline): Int = a compare b
   }
 

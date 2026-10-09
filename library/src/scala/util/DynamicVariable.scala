@@ -72,5 +72,6 @@ class DynamicVariable[T](init: T) {
    */
   def value_=(newval: T) = tl.set(newval)
 
+  /** Returns a string representation of the form `DynamicVariable(value)`, where `value` is the current value. */
   override def toString(): String = "DynamicVariable(" + value + ")"
 }
