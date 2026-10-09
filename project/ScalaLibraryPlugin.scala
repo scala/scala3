@@ -4,10 +4,8 @@ import sbt.*
 import sbt.Keys.*
 import sbt.io.Using
 import sbt.librarymanagement.ModuleFilter
-import scala.collection.mutable
 import java.io.File
 import java.nio.file.Files
-import java.nio.ByteBuffer
 import xsbti.VirtualFileRef
 import sbt.internal.inc.Stamper
 import scala.jdk.CollectionConverters.*
@@ -33,15 +31,15 @@ object ScalaLibraryPlugin extends AutoPlugin {
 
   override def projectSettings = Seq(
     // Settings to validate that JARs don't contain Scala 2 pickle annotations and have valid TASTY attributes
-    Compile / packageBin := (Compile / packageBin)
-      .map{ jar =>
-        validateNoScala2Pickles(jar)
-        validateTastyAttributes(jar)
-        validateScalaAttributes(jar)
-        jar
-      }
-      .value,
-    (Compile / manipulateBytecode) := {
+    Compile / packageBin := Def.uncached {
+      given FileConverter = fileConverter.value
+      val jar = (Compile / packageBin).value
+      validateNoScala2Pickles(jar.toFile)
+      validateTastyAttributes(jar.toFile)
+      validateScalaAttributes(jar.toFile)
+      jar
+    },
+    (Compile / manipulateBytecode) := Def.uncached {
       val stream = streams.value
       val log = stream.log
       val classDir = (Compile / classDirectory).value
@@ -103,7 +101,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
     },
     // The default sbt plugin has no way to filter out problems by class
     // We need to redefine it which requires reflective access
-    Compile / missinglinkCheck := {
+    Compile / missinglinkCheck := Def.uncached {
       val log = streams.value.log
       val converter: FileConverter = fileConverter.value
       val cp = (Compile / fullClasspath).value
