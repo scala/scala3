@@ -2009,7 +2009,7 @@ class Namer { typer: Typer =>
         case _ =>
 
     val mbrTpe0 = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
-    val mbrTpe = mdef.getAttachment(JavaConstantInitializer) match
+    val mbrTpe = mdef.removeAttachment(JavaConstantInitializer) match
       case Some(expr) => javaConstantType(expr, mbrTpe0)
       case None       => mbrTpe0
     // Add an erased to the using clause generated from a `: Singleton` context bound

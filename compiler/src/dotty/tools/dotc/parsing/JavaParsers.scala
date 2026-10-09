@@ -37,6 +37,27 @@ object JavaParsers {
    *  `ClassfileParser` does for a field with a `ConstantValue` attribute.
    */
   val JavaConstantInitializer: Property.Key[Tree] = Property.Key()
+  /** Tables for `JavaParser.constantExprOpt` */
+  private object ConstantExprOps {
+    object Unsupported extends scala.util.control.ControlThrowable
+
+    // binary operators, by increasing precedence
+    val binaryOps: Array[Map[Int, TermName]] = Array(
+      Map(BARBAR -> nme.ZOR),
+      Map(AMPAMP -> nme.ZAND),
+      Map(BAR -> nme.OR),
+      Map(HAT -> nme.XOR),
+      Map(AMP -> nme.AND),
+      Map(EQEQ -> nme.EQ, BANGEQ -> nme.NE),
+      Map(LT -> nme.LT, GT -> nme.GT, LTEQ -> nme.LE, GTEQ -> nme.GE),
+      Map(LTLT -> nme.LSL, GTGT -> nme.ASR, GTGTGT -> nme.LSR),
+      Map(PLUS -> nme.ADD, MINUS -> nme.SUB),
+      Map(ASTERISK -> nme.MUL, SLASH -> nme.DIV, PERCENT -> nme.MOD),
+    )
+    val unaryOps: Map[Int, TermName] =
+      Map(PLUS -> nme.UNARY_+, MINUS -> nme.UNARY_-, TILDE -> nme.UNARY_~, BANG -> nme.UNARY_!)
+  }
+
   val fakeFlags = Flags.JavaDefined | Flags.PrivateLocal | Flags.Invisible
 
   class JavaParser(source: SourceFile)(using Context) extends ParserCommon(source) {
@@ -807,25 +828,9 @@ object JavaParsers {
      *  Returns `None` if the initializer contains anything else, skipping to the next `,` or `;`.
      */
     def constantExprOpt(): Option[Tree] = {
-      object Unsupported extends scala.util.control.ControlThrowable
+      import ConstantExprOps.*
       def unsupported(): Nothing = throw Unsupported
       var depth = 0 // number of open parentheses
-
-      // binary operators, by increasing precedence
-      val binaryOps: Array[Map[Int, TermName]] = Array(
-        Map(BARBAR -> nme.ZOR),
-        Map(AMPAMP -> nme.ZAND),
-        Map(BAR -> nme.OR),
-        Map(HAT -> nme.XOR),
-        Map(AMP -> nme.AND),
-        Map(EQEQ -> nme.EQ, BANGEQ -> nme.NE),
-        Map(LT -> nme.LT, GT -> nme.GT, LTEQ -> nme.LE, GTEQ -> nme.GE),
-        Map(LTLT -> nme.LSL, GTGT -> nme.ASR, GTGTGT -> nme.LSR),
-        Map(PLUS -> nme.ADD, MINUS -> nme.SUB),
-        Map(ASTERISK -> nme.MUL, SLASH -> nme.DIV, PERCENT -> nme.MOD),
-      )
-      val unaryOps: Map[Int, TermName] =
-        Map(PLUS -> nme.UNARY_+, MINUS -> nme.UNARY_-, TILDE -> nme.UNARY_~, BANG -> nme.UNARY_!)
 
       def expr(): Tree = {
         val cond = binary(0)
