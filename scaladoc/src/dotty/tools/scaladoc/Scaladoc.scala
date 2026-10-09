@@ -97,42 +97,37 @@ object Scaladoc:
   }
 
   def extract(args: Array[String], rootCtx: CompilerContext): (Option[Scaladoc.Args], CompilerContext) =
-    val newContext = rootCtx.fresh
-    given CompilerContext = newContext
-    val ss = ScaladocSettings()
-    import ss._
-    val summary = ScaladocCommand.distill(args, ss)()
-    val argumentFilesOrNone = ScaladocCommand.checkUsage(summary, true)(using ss)(using summary.sstate)
+    val ictx = rootCtx.fresh
+    // Unfortunately, `Context` is only meant to work with `ScalaSettings`, but we want to use `ScaladocSettings`...
+    val ss = new ScaladocSettings()
+    val summary = ScaladocCommand.distill(args, ss)(ss.defaultState)
+    ictx.setSettings(summary.sstate)
 
-    extension[T](arg: Setting[T])
-      def get = arg.valueIn(summary.sstate)
-      def withDefault(default: => T) =
-        if arg.get == arg.default then default else arg.get
-      def nonDefault =
-        if arg.get == arg.default then None else Some(arg.get)
+    given CompilerContext = ictx
+    val argumentFilesOrNone = ScaladocCommand.checkUsage(summary, true)(using ss)(using ictx.settingsState)
 
     def setInGlobal[T](s: Setting[T]) =
-      s.nonDefault.foreach { newValue =>
-        newContext.settings.allSettings.find(_ == s).fold(
+      s.valueSetByUser.foreach { newValue =>
+        ss.allSettings.find(_ == s).fold(
           report.warning(s"Unable to set ${s.name} in global context")
-        )(s => newContext.setSetting(s.asInstanceOf[Setting[T]], newValue))
+        )(s => ictx.setSetting(s.asInstanceOf[Setting[T]], newValue))
       }
 
     val commonScalaSettings = (new SettingGroup with CommonScalaSettings).allSettings
     val allScalaSettings = (new SettingGroup with AllScalaSettings).allSettings
 
-    val (shared, other) = allSettings
+    val (shared, other) = ss.allSettings
       .filter(s => !s.isDefaultIn(summary.sstate))
       .filter(allScalaSettings.contains)
       .partition(commonScalaSettings.contains)
     shared.foreach(setInGlobal)
 
-    if warnOnUnusedOptions.get && other.nonEmpty then report.warning(s"Skipping unused scalacOptions: ${other.map(_.name).mkString(", ")}")
+    if ss.warnOnUnusedOptions.value && other.nonEmpty then report.warning(s"Skipping unused scalacOptions: ${other.map(_.name).mkString(", ")}")
 
     def parseTastyRoots(roots: String) =
       roots.split(File.pathSeparatorChar).toList.map(new File(_))
 
-    argumentFilesOrNone.fold((None, newContext)) { argumentFiles =>
+    argumentFilesOrNone.fold((None, ictx)) { argumentFiles =>
       val (existing, nonExisting) = argumentFiles.map(File(_)).partition(_.exists)
 
       if nonExisting.nonEmpty then report.warning(
@@ -152,10 +147,10 @@ object Scaladoc:
         report.warning("Destination is not provided, please provide '-d' parameter pointing to directory where docs should be created")
         File("output")
 
-      val legacySourceLinkList = if legacySourceLink.get.nonEmpty then List(legacySourceLink.get) else Nil
+      val legacySourceLinkList = if ss.legacySourceLink.value.nonEmpty then List(ss.legacySourceLink.value) else Nil
 
       val externalMappings =
-        externalDocumentationMappings.get.flatMap( s =>
+        ss.externalDocumentationMappings.value.flatMap( s =>
             ExternalDocLink.parse(s).fold(left => {
               report.warning(left)
               None
@@ -164,7 +159,7 @@ object Scaladoc:
         )
 
       val legacyExternalMappings =
-        legacyExternalDocumentationMappings.get.flatMap { s =>
+        ss.legacyExternalDocumentationMappings.value.flatMap { s =>
           ExternalDocLink.parseLegacy(s).fold(left => {
               report.warning(left)
               None
@@ -173,7 +168,7 @@ object Scaladoc:
         }
 
       val socialLinksParsed =
-        socialLinks.get.flatMap { s =>
+        ss.socialLinks.value.flatMap { s =>
           SocialLinks.parse(s).fold(left => {
             report.warning(left)
             None
@@ -181,7 +176,7 @@ object Scaladoc:
         }
 
       val quickLinksParsed =
-        quickLinks.get.flatMap { s =>
+        ss.quickLinks.value.flatMap { s =>
           QuickLink.parse(s) match
             case Left(err) =>
               report.warning(err)
@@ -189,55 +184,55 @@ object Scaladoc:
             case Right(value) => Some(value)
         }
 
-      unsupportedSettings.filter(s => s.get != s.default).foreach { s =>
+      ss.unsupportedSettings.filter(s => !s.isDefault).foreach { s =>
         report.warning(s"Setting ${s.name} is currently not supported.")
       }
-      val destFile = outputDir.nonDefault.fold(defaultDest())(_.file)
-      val printableProjectName = projectName.nonDefault.fold("")("for " + _ )
+      val destFile = ss.outputDir.valueSetByUser.fold(defaultDest())(_.file)
+      val printableProjectName = ss.projectName.valueSetByUser.fold("")("for " + _ )
       report.inform(
         s"Generating documentation $printableProjectName in $destFile")
 
-      if deprecatedSkipPackages.get.nonEmpty then report.warning(deprecatedSkipPackages.description)
+      if ss.deprecatedSkipPackages.value.nonEmpty then report.warning(ss.deprecatedSkipPackages.description(short = false))
 
       val docArgs = Args(
-        projectName.withDefault("root"),
+        ss.projectName.valueSetByUser.getOrElse("root"),
         dirs,
         validFiles,
-        classpath.get,
-        bootclasspath.get,
+        ss.classpath.value,
+        ss.bootclasspath.value,
         destFile,
-        Option(siteRoot.withDefault(siteRoot.default)),
-        projectVersion.nonDefault,
-        projectLogo.nonDefault,
-        projectFooter.nonDefault,
-        syntax.get,
-        sourceLinks.get ++ legacySourceLinkList,
-        revision.nonDefault,
+        Option(ss.siteRoot.value),
+        ss.projectVersion.valueSetByUser,
+        ss.projectLogo.valueSetByUser,
+        ss.projectFooter.valueSetByUser,
+        ss.syntax.value,
+        ss.sourceLinks.value ++ legacySourceLinkList,
+        ss.revision.valueSetByUser,
         externalMappings ++ legacyExternalMappings,
         socialLinksParsed,
-        skipById.get ++ deprecatedSkipPackages.get,
-        skipByRegex.get,
-        docRootContent.nonDefault,
-        author.get,
-        groups.get,
-        visibilityPrivate.get,
-        docCanonicalBaseUrl.get,
-        YdocumentSyntheticTypes.get,
-        snippetCompiler.get,
-        noLinkWarnings.get,
-        noLinkAssetWarnings.get,
-        versionsDictionaryUrl.nonDefault,
-        generateInkuire.get,
-        apiSubdirectory.get,
-        scastieConfiguration.get,
-        defaultTemplate.nonDefault,
+        ss.skipById.value ++ ss.deprecatedSkipPackages.value,
+        ss.skipByRegex.value,
+        ss.docRootContent.valueSetByUser,
+        ss.author.value,
+        ss.groups.value,
+        ss.visibilityPrivate.value,
+        ss.docCanonicalBaseUrl.value,
+        ss.YdocumentSyntheticTypes.value,
+        ss.snippetCompiler.value,
+        ss.noLinkWarnings.value,
+        ss.noLinkAssetWarnings.value,
+        ss.versionsDictionaryUrl.valueSetByUser,
+        ss.generateInkuire.value,
+        ss.apiSubdirectory.value,
+        ss.scastieConfiguration.value,
+        ss.defaultTemplate.valueSetByUser,
         quickLinksParsed,
-        dynamicSideMenu.get,
-        suppressCC.get,
-        noSnippetNamesFor.get,
-        generateApi.get,
+        ss.dynamicSideMenu.value,
+        ss.suppressCC.value,
+        ss.noSnippetNamesFor.value,
+        ss.generateApi.value,
       )
-      (Some(docArgs), newContext)
+      (Some(docArgs), ictx)
     }
 
   private [scaladoc] def run(args: Args)(using ctx: CompilerContext): DocContext =

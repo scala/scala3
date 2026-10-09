@@ -44,8 +44,6 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
   extends io.AbstractFileClassLoader(root, parent):
   private val stopReplName = classOf[StopRepl].getName
 
-  def this(root: AbstractFile, parent: ClassLoader) = this(root, parent, InterruptInstrumentation.fromString(ScalaSettings.XreplInterruptInstrumentation.default))
-
   override protected def defineClass(name: String, bytes: Array[Byte]): Class[?] =
     if interruptInstrumentation.isOneOf(InterruptInstrumentation.Enabled, InterruptInstrumentation.Local) then defineClassInstrumented(name, bytes)
     else super.defineClass(name, bytes)

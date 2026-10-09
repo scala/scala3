@@ -12,7 +12,7 @@ class Scala3CompilerWrapper(driver: CachingDriver)
 
   override def resetReporter(): Unit =
     val ctx = driver.currentCtx
-    ctx.reporter.removeBufferedMessages(using ctx)
+    ctx.reporter.removeBufferedMessages
 
   override def reporterAccess: ReporterAccess[StoreReporter] =
     new ReporterAccess[StoreReporter]:
