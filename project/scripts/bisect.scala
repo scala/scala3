@@ -328,14 +328,32 @@ object CommitBisectScripts:
   /** `git bisect run` aborts on statuses of 128 and above instead of recording a verdict. */
   val abortExitCode = 128
 
-  def sbtPublishRecipe(bootstrapped: Boolean): String =
-    val scala3Project = if bootstrapped then "scala3-bootstrapped" else "scala3"
-    Seq(
-      "clean",
-      """set every doc := new File("unused")""",
-      s"set scaladoc/Compile/resourceGenerators := (`$scala3Project`/Compile/resourceGenerators).value",
-      s"$scala3Project/publishLocal",
-    ).mkString("; ")
+  /** The sbt projects to publish and to read the compiler version from. */
+  case class SbtProjects(scala3: String, scala3Compiler: String):
+    def publishRecipe: String =
+      Seq(
+        "clean",
+        """set every doc := new File("unused")""",
+        s"set scaladoc/Compile/resourceGenerators := (`$scala3`/Compile/resourceGenerators).value",
+        s"$scala3/publishLocal",
+      ).mkString("; ")
+
+  val bootstrappedProjects = SbtProjects("scala3-bootstrapped", "scala3-compiler-bootstrapped")
+  val nonBootstrappedProjects = SbtProjects("scala3-nonbootstrapped", "scala3-compiler-nonbootstrapped")
+  /** The nonbootstrapped projects before they were renamed in 3.8.0 (still used on e.g. the 3.3 LTS line). */
+  val legacyNonBootstrappedProjects = SbtProjects("scala3", "scala3-compiler")
+
+  /** Shell code setting `scala3CompilerProject` and `publishRecipe` for the checked out commit. */
+  private def selectSbtProjectsScript(bootstrapped: Boolean): String =
+    def assignments(projects: SbtProjects): String =
+      s"""scala3CompilerProject='${projects.scala3Compiler}'; publishRecipe='${projects.publishRecipe}'"""
+    if bootstrapped then assignments(bootstrappedProjects)
+    else
+      s"""|if grep -q '^ *lazy val scala3 = project' project/Build.scala; then
+          |  ${assignments(legacyNonBootstrappedProjects)}
+          |else
+          |  ${assignments(nonBootstrappedProjects)}
+          |fi""".stripMargin
 
   /** A script that publishes the compiler built from the currently checked out commit
    *  and validates it, exiting with a status that `git bisect run` understands.
@@ -346,23 +364,24 @@ object CommitBisectScripts:
       bootstrapped: Boolean,
       onBuildFailure: BuildFailureAction
   ): String =
-    val scala3CompilerProject = if bootstrapped then "scala3-compiler-bootstrapped" else "scala3-compiler"
     val validationCommandStatusModifier = if shouldFail then "! " else "" // invert the process status if failure was expected
-    val publishRecipe = sbtPublishRecipe(bootstrapped)
     raw"""
       |commit=$$(git rev-parse --short HEAD)
       |echo "Testing commit $$commit"
-      |scalaVersion=$$(sbt "print ${scala3CompilerProject}/version" | tr -d '\r' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+' | tail -n1)
+      |${selectSbtProjectsScript(bootstrapped)}
+      |sbt_version_log=$$(sbt "print $$scala3CompilerProject/version" 2>&1)
+      |scalaVersion=$$(echo "$$sbt_version_log" | tr -d '\r' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+' | tail -n1)
       |if [ -z "$$scalaVersion" ]; then
-      |  echo "Could not read the ${scala3CompilerProject} version at $$commit, aborting the bisection"
+      |  echo "$$sbt_version_log"
+      |  echo "Could not read the $$scala3CompilerProject version at $$commit, aborting the bisection"
       |  exit ${abortExitCode}
       |fi
       |echo "Compiler version at $$commit: $$scalaVersion"
       |rm -rf out
       |export JAVA_HOME=${sys.props("java.home")}
       |sbt_build_log=$$(mktemp)
-      |echo 'Running sbt publish recipe: sbt "$publishRecipe"'
-      |if sbt '$publishRecipe' >"$$sbt_build_log" 2>&1; then
+      |echo "Running sbt publish recipe: sbt '$$publishRecipe'"
+      |if sbt "$$publishRecipe" >"$$sbt_build_log" 2>&1; then
       |  rm -f "$$sbt_build_log"
       |  ${validationCommandStatusModifier}${validationScriptPath} "$$scalaVersion"
       |else
