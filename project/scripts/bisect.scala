@@ -363,7 +363,7 @@ object CommitBisectScripts:
   val legacyNonBootstrappedProjects = SbtProjects("scala3", "scala3-compiler")
 
   /** Shell code setting `scala3CompilerProject` and `publishRecipe` for the checked out commit. */
-  private def selectSbtProjectsScript(bootstrapped: Boolean): String =
+  def selectSbtProjectsScript(bootstrapped: Boolean): String =
     def assignments(projects: SbtProjects): String =
       s"""scala3CompilerProject='${projects.scala3Compiler}'; publishRecipe='${projects.publishRecipe}'"""
     if bootstrapped then assignments(bootstrappedProjects)
