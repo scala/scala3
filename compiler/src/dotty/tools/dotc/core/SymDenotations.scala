@@ -404,8 +404,6 @@ object SymDenotations {
      */
     final def ensureCompleted()(using Context): Unit = info
 
-    final def doNothing() = ()
-
     /** The symbols defined in this class or object.
      *  Careful! This does not force the type, so is compilation order dependent.
      *  This method should be used only in the following circumstances:
