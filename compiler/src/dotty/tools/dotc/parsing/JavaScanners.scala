@@ -90,6 +90,10 @@ object JavaScanners {
                 nextChar()
                 base = 16
               }
+              else if (ch == 'b' || ch == 'B') {
+                nextChar()
+                base = 2
+              }
               else
                 base = 8
               getNumber()
@@ -589,10 +593,8 @@ object JavaScanners {
       */
     protected def getFraction(): Unit = {
       token = DOUBLELIT
-      while ('0' <= ch && ch <= '9') {
-        putChar(ch)
-        nextChar()
-      }
+      base = 10 // also for a literal like `09.5`, or one starting with `.`
+      getDigits(10)
       if (ch == 'e' || ch == 'E') {
         val lookahead = lookaheadReader()
         lookahead.nextChar()
@@ -605,13 +607,34 @@ object JavaScanners {
             putChar(ch)
             nextChar()
           }
-          while ('0' <= ch && ch <= '9') {
-            putChar(ch)
-            nextChar()
-          }
+          getDigits(10)
         }
         token = DOUBLELIT
       }
+      getFloatSuffix()
+    }
+
+    /** read the fraction and binary exponent of a hexadecimal floating point number */
+    protected def getHexFraction(): Unit = {
+      token = DOUBLELIT
+      if (ch == '.') {
+        putChar(ch)
+        nextChar()
+        getDigits(16)
+      }
+      if (ch == 'p' || ch == 'P') {
+        putChar(ch)
+        nextChar()
+        if (ch == '+' || ch == '-') {
+          putChar(ch)
+          nextChar()
+        }
+        getDigits(10)
+      }
+      getFloatSuffix()
+    }
+
+    private def getFloatSuffix(): Unit = {
       if (ch == 'd' || ch == 'D') {
         putChar(ch)
         nextChar()
@@ -663,10 +686,11 @@ object JavaScanners {
       val limit: Double =
         if (token == DOUBLELIT) Double.MaxValue else Float.MaxValue
       try {
+        val literal = if (base == 16) "0x" + strVal else strVal.toString
         // a float literal is rounded to float directly, not via double (JLS 3.10.2)
         val value: Double =
-          if (token == FLOATLIT) java.lang.Float.parseFloat(strVal.toString).toDouble
-          else java.lang.Double.parseDouble(strVal.toString)
+          if (token == FLOATLIT) java.lang.Float.parseFloat(literal).toDouble
+          else java.lang.Double.parseDouble(literal)
         if (value > limit)
           error(em"floating point number too large")
         if (negated) -value else value
@@ -677,14 +701,20 @@ object JavaScanners {
       }
     }
 
+    /** read digits, skipping the underscores that may separate them */
+    private def getDigits(base: Int): Unit =
+      while (digit2int(ch, base) >= 0 || ch == '_') {
+        if (ch != '_') putChar(ch)
+        nextChar()
+      }
+
     /** read a number into name and set base
       */
     protected def getNumber(): Unit = {
-      while (digit2int(ch, if (base < 10) 10 else base) >= 0) {
-        putChar(ch)
-        nextChar()
-      }
+      getDigits(if (base < 10) 10 else base)
       token = INTLIT
+      if (base == 16 && (ch == '.' || ch == 'p' || ch == 'P'))
+        return getHexFraction()
       if (base <= 10 && ch == '.') {
         val lookahead = lookaheadReader()
         lookahead.nextChar()
