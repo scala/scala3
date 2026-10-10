@@ -412,7 +412,9 @@ class CompletionValueGenerator(
 
   def labelForCaseMember(sym: Symbol, name: String)(using Context): Option[String] =
     val isModuleLike =
-      sym.is(Flags.Module) || sym.isOneOf(JavaEnum) || sym.isOneOf(JavaEnumValue) || sym.isAllOf(EnumCase)
+      // Java enum constants read from classfiles lack StableRealizable, so test JavaEnum
+      // rather than JavaEnumValue (scala/scala3#27273).
+      sym.is(Flags.Module) || sym.isAllOf(JavaEnum) && sym.isTerm || sym.isAllOf(EnumCase)
     if isModuleLike && hasBind then None
     else
       val pattern =
