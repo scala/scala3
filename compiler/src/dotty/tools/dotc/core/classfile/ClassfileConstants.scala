@@ -376,7 +376,11 @@ object ClassfileConstants {
     override def isClass = true
   }
   val fieldTranslation: FlagTranslation = new FlagTranslation {
-    override def baseFlags(jflags: Int) = if ((jflags & JAVA_ACC_FINAL) == 0) Mutable else EmptyFlags
+    override def baseFlags(jflags: Int) =
+      if ((jflags & JAVA_ACC_FINAL) == 0) Mutable
+      // Java enum constants are stable, as in JavaParsers (JavaEnumValue) and TreeUnpickler
+      else if ((jflags & JAVA_ACC_ENUM) != 0) StableRealizable
+      else EmptyFlags
   }
   val methodTranslation: FlagTranslation = new FlagTranslation {
     override def baseFlags(jflags: Int) = if ((jflags & JAVA_ACC_BRIDGE) != 0) Bridge else EmptyFlags
