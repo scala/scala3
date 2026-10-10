@@ -572,4 +572,23 @@ class MixinBytecodeTestsWithForwarders extends DottyBytecodeTest {
       assertInvoke(getInstructions(c, "m"), "A", "m$")
     }
   }
+
+  @Test
+  def javaThrowsOrder(): Unit = {
+    // forwarders to a Java method list the exceptions of its `throws` clause in source order
+    val jCode =
+      """public interface J {
+        |  default String f() throws java.io.IOException, InterruptedException, java.sql.SQLException { return ""; }
+        |}
+      """.stripMargin
+    val code =
+      """class C extends J
+        |object O extends J
+      """.stripMargin
+    checkBCode(scalaSources = List(code), javaSources = List(jCode)) { dir =>
+      val expected = List("java/io/IOException", "java/lang/InterruptedException", "java/sql/SQLException")
+      for cls <- List("C", "O$", "O") do
+        assertEquals(cls, expected, getMethod(loadClassNode(lookupClass(dir, cls + ".class")), "f").exceptions.asScala.toList)
+    }
+  }
 }
