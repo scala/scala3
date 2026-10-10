@@ -816,7 +816,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
         p match
           case ref: RefTree @unchecked =>
             val sym = ref.symbol
-            if sym.is(Inline, butNot = Param | Trait) && !seenInlineCache.contains(sym) then
+            if sym.is(Inline, butNot = Param) && !sym.is(Trait) && !seenInlineCache.contains(sym) then
               // An inline method that calls another inline method will eventually inline the call
               // at a non-inline callsite, in this case if the implementation of the nested call
               // changes, then the callsite will have a different API, we should hash the definition
