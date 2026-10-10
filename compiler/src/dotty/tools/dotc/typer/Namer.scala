@@ -2043,8 +2043,13 @@ class Namer { typer: Typer =>
       JavaConstantFolder(expr, resolve) match
         case null => declared
         case const: Constant =>
-          // assignment conversion, e.g. an `int` constant to a `byte` field if it is in range
-          val converted = const.convertTo(declared)
+          // assignment conversion (JLS 5.2), e.g. an `int` constant to a `byte` field if it is in range.
+          // Unlike Scala, Java allows widening an `int` or `long` to `float` or `double` with loss of precision.
+          val cls = declared.classSymbol
+          val converted =
+            if cls == defn.FloatClass && const.isNumeric && const.tag <= Constants.FloatTag then Constant(const.floatValue)
+            else if cls == defn.DoubleClass && const.isNumeric then Constant(const.doubleValue)
+            else const.convertTo(declared)
           if converted == null then declared else ConstantType(converted)
 
   // Decides whether we want to run tracked inference on all code, not just
