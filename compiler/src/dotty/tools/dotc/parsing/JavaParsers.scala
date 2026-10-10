@@ -1046,7 +1046,7 @@ object JavaParsers {
           unimplementedExpr).withMods(Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method)),
         DefDef(
           nme.valueOf,
-          List(List(makeParam("x".toTermName, TypeTree(StringType)))),
+          List(List(makeParam("name".toTermName, TypeTree(StringType)))), // as named by javac (JLS 8.9.3)
           enumType,
           unimplementedExpr).withMods(Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method)))
       accept(RBRACE)
