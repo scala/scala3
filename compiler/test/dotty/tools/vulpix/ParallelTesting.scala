@@ -8,7 +8,7 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Paths}
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.{HashMap, Timer, TimerTask}
-import java.util.concurrent.{TimeUnit, TimeoutException, Executors as JExecutors}
+import java.util.concurrent.{ExecutionException, TimeUnit, TimeoutException, Executors as JExecutors}
 import scala.collection.mutable
 import mutable.ArrayBuffer
 import mutable.ListBuffer
@@ -298,6 +298,10 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         val reportersOrCrash = compileTestSource(testSource)
         onComplete(testSource, reportersOrCrash, self)
         registerCompletion()
+        // Pool threads are reused, so a leftover interrupt would fail an unrelated test later,
+        // e.g. with a `ClosedByInterruptException` when reading its sources.
+        if Thread.interrupted() then
+          realStderr.println(s"Warning: ${Thread.currentThread.getName} was left interrupted after compiling ${testSource.title}; clearing the interrupt")
       }
     }
 
@@ -766,9 +770,19 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         val eventualResults = for target <- filteredSources yield
           pool.submit(encapsulatedCompilation(target))
 
+        // Only shut the pool down once all tasks are done: on JDK 19-21, a shut-down `ForkJoinPool`
+        // may interrupt workers whose task is blocked in `managedBlock` (e.g. waiting for javac in
+        // `Process.waitFor`), see https://bugs.openjdk.org/browse/JDK-8336883
+        val deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(20)
+        val allDone = eventualResults.forall { fut =>
+          try { fut.get(deadline - System.nanoTime(), TimeUnit.NANOSECONDS); true }
+          catch
+            case _: TimeoutException => false
+            case _: ExecutionException => true // reported below
+        }
         pool.shutdown()
 
-        if !pool.awaitTermination(20, TimeUnit.MINUTES) then
+        if !allDone then
           val remaining = ListBuffer.empty[TestSource]
           for (src, res) <- filteredSources.lazyZip(eventualResults) do
             if !res.isDone then
