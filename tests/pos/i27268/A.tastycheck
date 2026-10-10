@@ -1,0 +1,132 @@
+Header:
+  version: <elided>
+  tooling: <elided>
+     UUID: <elided>
+
+Names (186 bytes, starting from <elided base index>):
+     0: ASTs
+     1: <empty>
+     2: A
+     3: <init>
+     4: java
+     5: lang
+     6: java[Qualified . lang]
+     7: Object
+     8: java[Qualified . lang][Qualified . Object]
+     9: <init>[Signed Signature(List(),java.lang.Object) @<init>]
+    10: Unit
+    11: scala
+    12: b
+    13: Byte
+    14: s
+    15: Short
+    16: c
+    17: i
+    18: ih
+    19: l
+    20: MinValue
+    21: Long
+    22: f
+    23: d
+    24: Positions
+    25: <elided source file name>
+    26: Comments
+    27: Attributes
+
+Trees (151 bytes, starting from <elided base index>):
+     0: PACKAGE(148)
+     3:   TERMREFpkg 1 [<empty>]
+     5:   TYPEDEF(143) 2 [A]
+     9:     TEMPLATE(139)
+    12:       APPLY(10)
+    14:         SELECTin(8) 9 [<init>[Signed Signature(List(),java.lang.Object) @<init>]]
+    17:           NEW
+    18:             TYPEREF 7 [Object]
+    20:               TERMREFpkg 6 [java[Qualified . lang]]
+    22:           SHAREDtype 18
+    24:       DEFDEF(6) 3 [<init>]
+    27:         EMPTYCLAUSE
+    28:         TYPEREF 10 [Unit]
+    30:           TERMREFpkg 11 [scala]
+    32:       VALDEF(10) 12 [b]
+    35:         IDENTtpt 13 [Byte]
+    37:           TYPEREF 13 [Byte]
+    39:             TERMREFpkg 11 [scala]
+    41:         BYTEconst -1
+    43:         FINAL
+    44:       VALDEF(10) 14 [s]
+    47:         IDENTtpt 15 [Short]
+    49:           TYPEREF 15 [Short]
+    51:             SHAREDtype 39
+    53:         SHORTconst -1
+    55:         FINAL
+    56:       VALDEF(6) 16 [c]
+    59:         CHARconst 120
+    61:         CHARconst 120
+    63:         FINAL
+    64:       VALDEF(6) 17 [i]
+    67:         INTconst -1
+    69:         INTconst -1
+    71:         FINAL
+    72:       VALDEF(14) 18 [ih]
+    75:         INTconst -889275714
+    81:         INTconst -889275714
+    87:         FINAL
+    88:       VALDEF(19) 19 [l]
+    91:         LONGconst -9223372036854775808
+   102:         SELECT 20 [MinValue]
+   104:           TERMREF 21 [Long]
+   106:             SHAREDtype 39
+   108:         FINAL
+   109:       VALDEF(14) 22 [f]
+   112:         FLOATconst -1082130432
+   118:         FLOATconst -1082130432
+   124:         FINAL
+   125:       VALDEF(24) 23 [d]
+   128:         DOUBLEconst -4616189618054758400
+   139:         DOUBLEconst -4616189618054758400
+   150:         FINAL
+   151:
+
+Positions (130 bytes, starting from <elided base index>):
+  lines: 13
+  line sizes:
+     38, 0, 75, 8, 24, 25, 19, 18, 27, 29, 21, 20, 0
+  positions:
+     0: 116 .. 315
+     5: 116 .. 315
+     9: 127 .. 315
+    18: 122 .. 122
+    24: 127 .. 127
+    28: 127 .. 127
+    32: 127 .. 149
+    35: 140 .. 144
+    41: 147 .. 149
+    44: 152 .. 175
+    47: 165 .. 170
+    53: 173 .. 175
+    56: 178 .. 195
+    59: 189 .. 189
+    61: 192 .. 195
+    64: 198 .. 214
+    67: 209 .. 209
+    69: 212 .. 214
+    72: 217 .. 242
+    75: 229 .. 229
+    81: 232 .. 242
+    88: 245 .. 272
+    91: 256 .. 256
+   102: 259 .. 272
+   104: 259 .. 263
+   109: 275 .. 294
+   112: 286 .. 286
+   118: 289 .. 294
+   125: 297 .. 315
+   128: 308 .. 308
+   139: 311 .. 315
+
+  source paths:
+     0: 25 [<elided source file name>]
+
+Attributes (2 bytes, starting from <elided base index>):
+  SOURCEFILEattr 25 [<elided source file name>]
