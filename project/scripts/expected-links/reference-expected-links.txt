@@ -297,6 +297,9 @@
 ./error-codes/E229.html
 ./error-codes/E230.html
 ./error-codes/E231.html
+./error-codes/E232.html
+./error-codes/E233.html
+./error-codes/E234.html
 ./error-codes/index.html
 ./experimental/better-fors.html
 ./experimental/canthrow.html
@@ -314,12 +317,14 @@
 ./experimental/capture-checking/safe.html
 ./experimental/capture-checking/scoped-capabilities.html
 ./experimental/capture-checking/separation-checking.html
+./experimental/dedented-string-literals.html
 ./experimental/erased-defs-spec.html
 ./experimental/erased-defs.html
 ./experimental/explicit-nulls.html
 ./experimental/fewer-braces.html
 ./experimental/generalized-method-syntax.html
 ./experimental/index.html
+./experimental/inline-traits.html
 ./experimental/into.html
 ./experimental/main-annotation.html
 ./experimental/modularity.html
@@ -333,6 +338,8 @@
 ./experimental/quoted-patterns-with-polymorphic-functions.html
 ./experimental/relaxed-lambdas.html
 ./experimental/runtimeChecked.html
+./experimental/spec-strings.html
+./experimental/specialized-traits.html
 ./experimental/sub-cases.html
 ./experimental/tupled-function.html
 ./experimental/typeclasses.html
@@ -395,6 +402,7 @@
 ./overview.html
 ./preview/better-fors.html
 ./preview/index.html
+./preview/into.html
 ./preview/named-tuples.html
 ./preview/overview.html
 ./preview/package-object-values.html
