@@ -42,3 +42,42 @@ class AnalysisBudgetExhaustedTests extends AnalysisBudgetBytecodeTest {
   // The producer/consumer analysis gives up, so box-unbox elimination is skipped; the method is still valid.
   @Test def boxKeptWhenBudgetExhausted(): Unit = assertTrue(boxes)
 }
+
+class AnalysisBudgetInvariantTests {
+  import org.objectweb.asm.Opcodes.*
+  import org.objectweb.asm.tree.{InsnNode, MethodNode}
+  import dotty.tools.backend.jvm.analysis.AnalysisBudget
+
+  def method(): MethodNode = {
+    val m = new MethodNode(ACC_PUBLIC | ACC_STATIC, "f", "()V", null, null)
+    m.instructions.add(new InsnNode(RETURN))
+    m
+  }
+
+  @Test def rewriteAfterAnalysisIsAllowed(): Unit = {
+    val m = method()
+    val budget = AnalysisBudget(Int.MaxValue)
+    budget.run(m, ()) {
+      budget.prodConsAnalyzer(m, "C").frameAt(m.instructions.getFirst)
+      m.instructions.insert(new InsnNode(NOP))
+    }
+  }
+
+  @Test def nestedRunFailsLoudly(): Unit = {
+    val m = method()
+    val budget = AnalysisBudget(Int.MaxValue)
+    val e = assertThrows(classOf[AssertionError], () => budget.run(m, ())(budget.run(m, ())(())))
+    assertTrue(e.getMessage, e.getMessage.contains("not reentrant"))
+    budget.run(m, ())(()) // the failed nested run did not leave the budget stuck in a run
+  }
+
+  @Test def rewriteBeforeAnalysisFailsLoudly(): Unit = {
+    val m = method()
+    val budget = AnalysisBudget(Int.MaxValue)
+    val e = assertThrows(classOf[AssertionError], () => budget.run(m, ()) {
+      m.instructions.insert(new InsnNode(NOP))
+      budget.prodConsAnalyzer(m, "C").frameAt(m.instructions.getFirst)
+    })
+    assertTrue(e.getMessage, e.getMessage.contains("C.f()V was changed by an optimization before its analysis started"))
+  }
+}

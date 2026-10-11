@@ -17,7 +17,7 @@ import org.objectweb.asm.tree.MethodNode
  * When the budget is exhausted, [[charge]] throws [[AnalysisBudget.Exhausted]], and [[run]] abandons the
  * optimization. That is only safe if the optimization has not changed the method yet. The analysis runs to
  * completion on its first query, so it suffices that optimizations complete their analyses before
- * rewriting.
+ * rewriting; [[analysisStarting]] checks this, whether or not the budget is exhausted.
  */
 final class AnalysisBudget(limit: Long) {
   // Merge work charged so far, summed over every analysis of the method in every round. It keeps counting
@@ -41,13 +41,28 @@ final class AnalysisBudget(limit: Long) {
   /** A producer/consumer analyzer of `method` that charges this budget. */
   def prodConsAnalyzer(method: MethodNode, owner: String): ProdConsAnalyzer = new ProdConsAnalyzer(method, owner, this)
 
+  // Fingerprint of the method when the current `run` started, i.e. the state that abandoning the
+  // optimization leaves behind; `NoFingerprint` outside of `run`. Analyses started outside of `run` are not
+  // checked by `analysisStarting`: they cannot be abandoned, as nothing catches `Exhausted`. `run` is not
+  // reentrant; optimizations do not nest.
+  private var runStart = MethodFingerprint.NoFingerprint
+
   /** Runs an optimization of `method` that uses budgeted analyses, returning `noChange` if the budget is exhausted. */
   def run[T](method: MethodNode, noChange: T)(optimization: => T): T =
     if (exhausted) noChange
     else {
+      assert(runStart == MethodFingerprint.NoFingerprint, "AnalysisBudget.run is not reentrant")
+      runStart = MethodFingerprint(method)
       try optimization
       catch { case AnalysisBudget.Exhausted => noChange }
+      finally runStart = MethodFingerprint.NoFingerprint
     }
+
+  /** Called when an analysis charging this budget starts. */
+  def analysisStarting(method: MethodNode, owner: String): Unit =
+    assert(runStart == MethodFingerprint.NoFingerprint || MethodFingerprint(method) == runStart,
+      s"$owner.${method.name}${method.desc} was changed by an optimization before its analysis started; " +
+      "an exhausted analysis budget would abandon it half-rewritten")
 }
 
 object AnalysisBudget {

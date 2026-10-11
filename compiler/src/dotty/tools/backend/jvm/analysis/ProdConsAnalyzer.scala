@@ -57,6 +57,8 @@ class ProdConsAnalyzer private[analysis] (methodNode: MethodNode, classInternalN
   /** An analyzer without a budget; see [[AnalysisBudget.prodConsAnalyzer]] for a budgeted one. */
   def this(methodNode: MethodNode, classInternalName: String) = this(methodNode, classInternalName, AnalysisBudget.unlimited)
 
+  override protected def analysisStarting(): Unit = budget.analysisStarting(methodNode, classInternalName)
+
   /**
    * Returns the potential producer instructions of a (local or stack) value in the frame of `insn`.
    * This method simply returns the producer information computed by the SourceValue analysis.
