@@ -31,4 +31,5 @@ class OptimizerSettings(using @constructorOnly ctx: Context):
   val optWarningEmitAnyInlineFailed: Boolean = ctx.settings.optWarningEmitAnyInlineFailed
   val optLogInline: Option[String] = ctx.settings.YoptLogInline.valueSetByUser
   val optTrace: Option[String] = ctx.settings.YoptTrace.valueSetByUser
+  val optAnalysisBudget: Int = ctx.settings.YoptAnalysisBudget.value
 

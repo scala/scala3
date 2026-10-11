@@ -22,7 +22,7 @@ import org.objectweb.asm.Opcodes.*
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
+import dotty.tools.backend.jvm.analysis.{AnalysisBudget, AsmAnalyzer, ProdConsAnalyzer}
 import dotty.tools.backend.jvm.BCodeUtils.*
 import dotty.tools.dotc.core.StdNames.nme
 import OptimizerUtils.*
@@ -178,7 +178,7 @@ final class BoxUnbox(callGraph: CallGraph, ts: OptimizerKnownBTypes) {
    * Note: these tasks are not urgent because the call graph is not currently used during / after
    * method-local optimizations, only before to perform inlining and closure rewriting.
    */
-  def boxUnboxElimination(method: MethodNode, owner: InternalName): Boolean = {
+  def boxUnboxElimination(method: MethodNode, owner: InternalName, budget: AnalysisBudget): Boolean = {
     Limits.sizeOKForSourceValue(method) && {
       val toInsertBefore = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
       val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
@@ -186,7 +186,7 @@ final class BoxUnbox(callGraph: CallGraph, ts: OptimizerKnownBTypes) {
 
       val knownHandled = mutable.Set.empty[AbstractInsnNode]
 
-      val prodCons = new ProdConsAnalyzer(method, owner)
+      val prodCons = budget.prodConsAnalyzer(method, owner)
 
       var nextLocal = MethodMax.maxLocals(method)
       def getLocal(size: Int) = {

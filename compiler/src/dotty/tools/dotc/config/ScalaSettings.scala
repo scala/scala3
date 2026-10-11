@@ -417,6 +417,9 @@ private sealed trait OptimizerSettings:
   def optWarningNoInlineMissingScalaInlineInfoAttr(using Context): Boolean = optWarningsEnabled("no-inline-missing-attribute")
 
   val YoptLogInline: Setting[String] = StringSetting(ForkSetting, "Yopt-log-inline", "package/Class.method", "Print a summary of inliner activity; `_` to print all, prefix match to select.", "")
+  val YoptAnalysisBudget: Setting[Int] = IntSetting(ForkSetting, "Yopt-analysis-budget",
+    "Per-method limit on the work of the producer/consumer analysis used by the box-unbox and copy-propagation optimizations (see -Yopt-specific), counted in merged producer-set elements. Methods that exceed it keep the other optimizations but skip these. The default affects only a few dozen of the largest methods of the standard library; raise it to optimize more methods at the cost of compile time.",
+    10_000_000)
   val YoptTrace = StringSetting(ForkSetting, "Yopt-trace", "package/Class.method", "Trace the optimizer progress for methods; `_` to print all, prefix match to select.", "")
 
 
