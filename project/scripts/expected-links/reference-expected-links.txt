@@ -397,6 +397,9 @@
 ./preview/index.html
 ./preview/named-tuples.html
 ./preview/overview.html
+./preview/package-object-values.html
+./preview/relaxed-lambdas.html
 ./preview/runtimeChecked.html
+./preview/unrolled-defs.html
 ./soft-modifier.html
 ./syntax.html
