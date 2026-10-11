@@ -1,4 +1,3 @@
-import caps.use
 class U
 object u extends U
 

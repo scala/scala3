@@ -7,8 +7,8 @@ trait TypeSub {
     type c[+y] = f[y] => f[l]
     castSub[c]{ (fl : f[l]) => fl }(fu)
   }
-  def castValue[t](lt : l with t) : u with t = {
-    type c[+y] = y with t
+  def castValue[t](lt : l & t) : u & t = {
+    type c[+y] = y & t
     castSub[c](lt)
   }
 }

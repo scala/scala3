@@ -191,18 +191,31 @@ object ClassManifestFactory {
    *       it's called from ScalaRunTime.boxArray itself. If we
    *       pass varargs as arrays into this, we get an infinitely recursive call
    *       to boxArray. (Besides, having a separate case is more efficient)
+   *
+   *  @tparam T the type represented by the manifest
+   *  @param clazz the runtime `Class` object for the type `T`
    */
   def classType[T](clazz: jClass[?]): ClassManifest[T] =
     new ClassTypeManifest[T](None, clazz, Nil)
 
   /** ClassManifest for the class type `clazz[args]`, where `clazz` is
    *  a top-level or static class and `args` are its type arguments 
+   *
+   *  @tparam T the type represented by the manifest
+   *  @param clazz the runtime `Class` object for the type `T`
+   *  @param arg1 the manifest for the first type argument of `clazz`, ensuring at least one type argument is provided
+   *  @param args the manifests for the remaining type arguments of `clazz`
    */
   def classType[T](clazz: jClass[?], arg1: OptManifest[?], args: OptManifest[?]*): ClassManifest[T] =
     new ClassTypeManifest[T](None, clazz, arg1 :: args.toList)
 
   /** ClassManifest for the class type `clazz[args]`, where `clazz` is
    *  a class with non-package prefix type `prefix` and type arguments `args`.
+   *
+   *  @tparam T the type represented by the manifest
+   *  @param prefix the manifest for the non-package prefix type of `clazz`
+   *  @param clazz the runtime `Class` object for the type `T`
+   *  @param args the manifests for the type arguments of `clazz`
    */
   def classType[T](prefix: OptManifest[?], clazz: jClass[?], args: OptManifest[?]*): ClassManifest[T] =
     new ClassTypeManifest[T](Some(prefix), clazz, args.toList)
@@ -222,6 +235,12 @@ object ClassManifestFactory {
   /** ClassManifest for the abstract type `prefix # name`. `upperBound` is not
    *  strictly necessary as it could be obtained by reflection. It was
    *  added so that erasure can be calculated without reflection. 
+   *
+   *  @tparam T the type represented by the manifest
+   *  @param prefix the manifest for the prefix type of the abstract type
+   *  @param name the name of the abstract type
+   *  @param clazz the runtime `Class` for the upper bound of the abstract type, used for erasure
+   *  @param args the manifests for the type arguments of the abstract type (note: currently unused in the implementation)
    */
   def abstractType[T](prefix: OptManifest[?], name: String, clazz: jClass[?], args: OptManifest[?]*): ClassManifest[T] =
     new AbstractTypeClassManifest(prefix, name, clazz)
@@ -230,6 +249,12 @@ object ClassManifestFactory {
    *  strictly necessary as it could be obtained by reflection. It was
    *  added so that erasure can be calculated without reflection.
    *  todo: remove after next bootstrap
+   *
+   *  @tparam T the type represented by the manifest
+   *  @param prefix the manifest for the prefix type of the abstract type
+   *  @param name the name of the abstract type
+   *  @param upperbound the `ClassManifest` for the upper bound, whose `runtimeClass` is used for erasure
+   *  @param args the manifests for the type arguments of the abstract type (note: currently unused in the implementation)
    */
   def abstractType[T](prefix: OptManifest[?], name: String, upperbound: ClassManifest[?], args: OptManifest[?]*): ClassManifest[T] =
     new AbstractTypeClassManifest(prefix, name, upperbound.runtimeClass)

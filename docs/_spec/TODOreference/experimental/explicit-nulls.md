@@ -35,9 +35,10 @@ Originally, `Null` is a subtype of all reference types.
 
 !["Original Type Hierarchy"](images/explicit-nulls/scalaHierarchyWithMatchable.png)
 
-When explicit nulls is enabled, the type hierarchy changes so that `Null` is only
-a subtype of `Any` and `Matchable`, as opposed to every reference type,
+When explicit nulls is enabled, the type hierarchy changes so that `Null` is not
+a subtype of every reference type anymore,
 which means `null` is no longer a value of `AnyRef` and its subtypes.
+Instead, it is a regular class that extends `AnyVal`.
 
 This is the new type hierarchy:
 
@@ -85,7 +86,7 @@ val c = new C()
 // c.f == "field is null"
 ```
 
-The unsoundness above can be caught by the compiler with the option `-Ysafe-init`.
+The unsoundness above can be caught by the compiler with the option `-Wsafe-init`.
 More details can be found in [safe initialization](../other-new-features/safe-initialization.md).
 
 ## Equality

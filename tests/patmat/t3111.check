@@ -1,2 +1,12 @@
-4: Pattern Match Exhaustivity: false
-11: Match case Unreachable
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t3111.scala:4:2 -----
+4 |  bool match {
+  |  ^^^^
+  |  match may not be exhaustive.
+  |
+  |  It would fail on pattern case: false
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E030] Match case Unreachable Warning: tests/patmat/t3111.scala:11:9 --------
+11 |    case _ => "cats and dogs living together... mass hysteria!"
+   |         ^
+   |         Unreachable case

@@ -382,8 +382,12 @@ abstract class Recheck extends Phase, SymTransformer:
       funtpe.widen match
         case fntpe: PolyType =>
           assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
-          val argTypes = tree.args.map(recheck(_))
+          val argTypes = tree.args.lazyZip(fntpe.paramInfos).map:
+            recheckTypeArg(_, _, fntpe)
           constFold(tree, fntpe.instantiate(argTypes))
+
+    def recheckTypeArg(arg: Tree, formal: Type, binder: PolyType)(using Context): Type =
+      recheck(arg)
 
     def recheckTyped(tree: Typed)(using Context): Type =
       val tptType = recheck(tree.tpt)

@@ -1,8 +1,6 @@
 package dotty
 package tools
 
-import scala.language.unsafeNulls
-
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
@@ -167,7 +165,7 @@ def toolArgsParse(lines: List[String], content: String, filename: Option[String]
   lines.flatMap {
     case toolArg("scalac", _) => sys.error(s"`// scalac: args` not supported. Please use `//> using options args`${filename.fold("")(f => s" in file $f")}")
     case toolArg("javac", _) => sys.error(s"`// javac: args` not supported. Please use `//> using javacOpt args`${filename.fold("")(f => s" in file $f")}")
-    case toolArg(name, args) => List((name, args))
+    case toolArg(name, args) => List((name.nn, args.nn))
     case _ => Nil
   } ++ directiveToolArgs(content, filename)
 

@@ -1,5 +1,5 @@
 import scala.util.continuations._
 
 class Baz {
-  def foo = shiftUnit[Foo with BarA, Unit, Unit](null)
+  def foo = shiftUnit[Foo & BarA, Unit, Unit](null)
 }

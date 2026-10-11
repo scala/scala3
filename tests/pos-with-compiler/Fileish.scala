@@ -4,14 +4,13 @@ package dotty.tools
 package io
 
 import java.io.InputStream
-import java.util.jar.JarEntry
 import language.postfixOps
 
 /** A common interface for File-based things and Stream-based things.
- *  (In particular, io.File and JarEntry.)
  */
-class Fileish(val path: Path, val input: () => InputStream) extends Streamable.Chars {
+class Fileish(val path: Path, val input: () => InputStream) {
   def inputStream() = input()
+  def lines(): Iterable[String] = ???
 
   def parent       = path.parent
   def name         = path.name
@@ -22,8 +21,9 @@ class Fileish(val path: Path, val input: () => InputStream) extends Streamable.C
 
   override def toString = path.path
 }
-class Fileish2(val path: Path, val input: () => InputStream) extends Streamable.Chars {
+class Fileish2(val path: Path, val input: () => InputStream) {
   def inputStream() = input()
+  def lines(): Iterable[String] = ???
 
   def parent       = path.parent
   def name         = path.name
@@ -35,8 +35,9 @@ class Fileish2(val path: Path, val input: () => InputStream) extends Streamable.
   override def toString = path.path
 }
 
-class Fileish3(val path: Path, val input: () => InputStream) extends Streamable.Chars {
+class Fileish3(val path: Path, val input: () => InputStream) {
   def inputStream() = input()
+  def lines(): Iterable[String] = ???
 
   def parent       = path.parent
   def name         = path.name

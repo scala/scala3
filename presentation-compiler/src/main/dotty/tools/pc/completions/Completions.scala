@@ -174,7 +174,7 @@ class Completions(
         val allAdvanced = advanced ++ keywords
         path match
           // should not show completions for toplevel
-          case Nil | (_: PackageDef) :: _ if !completionPos.originalCursorPosition.source.file.ext.isScalaScript =>
+          case Nil | (_: PackageDef) :: _ if !completionPos.originalCursorPosition.source.ext.isScalaScript =>
             (allAdvanced, SymbolSearch.Result.COMPLETE)
           case (sel @ Select(qual, name)) :: _ if qual.typeOpt.isErroneous =>
             val fromCompiler = withGuessApplyType(sel)
@@ -615,7 +615,7 @@ class Completions(
   ): Boolean =
     tree match
       case Import(Ident(ivy), _) =>
-        pos.source.file.name.isWorksheet &&
+        pos.source.name.isWorksheet &&
         (ivy.decoded == "$ivy" ||
           ivy.decoded == "$dep")
       case _ => false

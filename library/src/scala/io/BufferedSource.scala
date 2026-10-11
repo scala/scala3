@@ -22,7 +22,8 @@ import scala.collection.mutable.StringBuilder
  *  representation of a source file.
  *
  *  @param inputStream the underlying input stream to read characters from
- *  @param bufferSize the size of the internal buffer used for reading
+ *  @param bufferSize the size, in characters, of the internal buffer used for reading
+ *  @param codec the `Codec` used to decode bytes from the input stream into characters
  */
 class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val codec: Codec) extends Source {
   def this(inputStream: InputStream)(implicit codec: Codec) = this(inputStream, DefaultBufSize)(using codec)
@@ -96,8 +97,8 @@ class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val cod
    *  memory.
    *
    *  @param sb the string builder to append to
-   *  @param start the string to prepend before the first character
-   *  @param sep the separator string inserted between elements
+   *  @param start the string to prepend before the first element
+   *  @param sep the separator string inserted between elements; passing an empty string enables the efficient bulk-read path
    *  @param end the string to append after the last element
    *  @return the string builder `sb` with all elements appended
    */

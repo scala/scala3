@@ -49,20 +49,18 @@ object DottyUnpickler {
 
 /** A class for unpickling Tasty trees and symbols.
  *  @param tastyFile         tasty file from which we unpickle (used for CompilationUnitInfo)
- *  @param bytes             the bytearray containing the Tasty file from which we unpickle
  *  @param isBestEffortTasty specifies whether file should be unpickled as a Best Effort TASTy
  *  @param mode              the tasty file contains package (TopLevel), an expression (Term) or a type (TypeTree)
  */
 class DottyUnpickler(
   tastyFile: AbstractFile,
-  bytes: Array[Byte],
   isBestEffortTasty: Boolean,
   mode: UnpickleMode = UnpickleMode.TopLevel
 ) extends ClassfileParser.Embedded with tpd.TreeProvider {
   import tpd.*
   import DottyUnpickler.*
 
-  val unpickler: TastyUnpickler = new TastyUnpickler(bytes, isBestEffortTasty)
+  val unpickler: TastyUnpickler = new TastyUnpickler(tastyFile.toByteArray, isBestEffortTasty)
 
   val tastyAttributes: Attributes =
     unpickler.unpickle(new AttributesSectionUnpickler)
@@ -71,7 +69,7 @@ class DottyUnpickler(
     import unpickler.header.{majorVersion, minorVersion, experimentalVersion}
     val tastyVersion = TastyVersion(majorVersion, minorVersion, experimentalVersion)
     val tastyInfo = TastyInfo(tastyVersion, tastyAttributes)
-    CompilationUnitInfo(tastyFile, Some(tastyInfo))
+    CompilationUnitInfo(tastyFile, () => Some(tastyInfo))
 
   private val posUnpicklerOpt = unpickler.unpickle(new PositionsSectionUnpickler)
   private val commentUnpicklerOpt = unpickler.unpickle(new CommentsSectionUnpickler)

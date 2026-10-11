@@ -15,6 +15,7 @@ import core.StdNames.nme
 import core.Names.*
 import core.NameOps.*
 import core.NameKinds.SuperArgName
+import inlines.Inlines
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -212,6 +213,7 @@ object ExplicitOuter {
    *  the class needs an outer pointer if referenced and one of the following holds:
    *  - we might not know at all instantiation sites whether outer is referenced or not
    *  - we need to potentially pass along outer to a parent class or trait
+   *  - it is a module whose inline members reference its outer (see below)
    */
   private def needsOuterAlways(cls: ClassSymbol)(using Context): Boolean =
        needsOuterIfReferenced(cls)
@@ -219,6 +221,7 @@ object ExplicitOuter {
         || cls.mixins.exists(needsOuterIfReferenced) // needs outer for parent traits
         || cls.info.parents.exists: parent => // needs outer to potentially pass along to parent
              needsOuterIfReferenced(parent.classSymbol.asClass)
+        || referencesOuterViaInlineMembers(cls) // needs outer to be reachable from inlined references in other units
     )
 
   /** Class is only instantiated in the compilation unit where it is defined */
@@ -227,6 +230,19 @@ object ExplicitOuter {
     // in which case they will be instantiated in the classes that mix in the trait.
     if cls.is(Module) then !cls.owner.is(Trait)
     else cls.isLocalToCompilationUnit
+
+  /** Does a module `cls` have an inline member whose body references its outer this?
+   *
+   *  Inline method bodies can be expanded in downstream units.
+   *  If that body needs an access to outer, the module's outer
+   *  accessor must be reconstructed in the downstream unit as well.
+   */
+  private def referencesOuterViaInlineMembers(cls: ClassSymbol)(using Context): Boolean =
+    cls.is(Module)
+    && cls.info.decls.toList.exists: mbr =>
+         mbr.isInlineMethod
+         && Inlines.hasBodyToInline(mbr)
+         && referencesOuter(cls, Inlines.bodyToInline(mbr))
 
   /** The outer parameter accessor of cass `cls` */
   private def outerParamAccessor(cls: ClassSymbol)(using Context): TermSymbol =

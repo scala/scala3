@@ -14,24 +14,23 @@ package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BCodeUtils.*
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.opt.*
-import dotty.tools.backend.jvm.{BackendUtils, ClassNode1}
-import dotty.tools.dotc.classpath.{AggregateClassPath, CtSymClassPath, JrtClassPath}
+import dotty.tools.backend.jvm.ClassNode1
+import dotty.tools.backend.jvm.analysis.AnalysisUtils.LambdaMetaFactoryCall
+import dotty.tools.dotc.classpath.{AggregateClassPath, ClassPath, CtSymClassPath, JrtClassPath}
 import dotty.tools.io
-import dotty.tools.io.ClassPath
 
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm
-import scala.tools.asm.tree.*
-import scala.tools.asm.{Attribute, ClassReader, Type}
+import org.objectweb.asm
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.{Attribute, ClassReader, Type}
 
 /**
  * The BCodeRepository provides utilities to read the bytecode of classfiles from the compilation
  * classpath. Parsed classes are cached in the `classes` map.
  */
-class BCodeRepository(classPath: ClassPath, backendUtils: BackendUtils) {
+class BCodeRepository(classPath: ClassPath) {
 
   type ClassAndModuleNodes = (ClassNode, Option[ModuleNode])
 
@@ -263,7 +262,7 @@ class BCodeRepository(classPath: ClassPath, backendUtils: BackendUtils) {
     }
   }
 
-  private def removeLineNumbersAndAddLMFImplMethods(classNode: ClassNode): Unit = {
+  private def removeLineNumbers(classNode: ClassNode): Unit = {
     for (m <- classNode.methods.asScala) {
       val iter = m.instructions.iterator
       while (iter.hasNext) {
@@ -271,11 +270,6 @@ class BCodeRepository(classPath: ClassPath, backendUtils: BackendUtils) {
         insn.getType match {
           case AbstractInsnNode.LINE =>
             iter.remove()
-          case AbstractInsnNode.INVOKE_DYNAMIC_INSN => insn match {
-            case LambdaMetaFactoryCall(indy, _, implMethod, _, _) =>
-              backendUtils.addIndyLambdaImplMethod(classNode.name, m, indy, implMethod)
-            case _ =>
-          }
           case _ =>
         }
       }
@@ -299,8 +293,8 @@ class BCodeRepository(classPath: ClassPath, backendUtils: BackendUtils) {
   private def parseClass(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
     try
       val fullName = internalName.replace('/', '.')
-      optimizerClassPath.findClassFileAndModuleFile(fullName) match
-        case Some(classFile, moduleFile) =>
+      optimizerClassPath.findClassFile(fullName) match
+        case Some(classFile) =>
           val classNode = new ClassNode1
           val classReader = new ClassReader(classFile.toByteArray)
           // Passing the InlineInfoAttributePrototype makes the ClassReader invoke the specific `read`
@@ -316,8 +310,8 @@ class BCodeRepository(classPath: ClassPath, backendUtils: BackendUtils) {
           // attribute that contains JSR-45 data that encodes debugging info.
           //   https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.7.11
           //   https://jcp.org/aboutJava/communityprocess/final/jsr045/index.html
-          removeLineNumbersAndAddLMFImplMethods(classNode)
-          val moduleNode = moduleFile.map(f =>
+          removeLineNumbers(classNode)
+          val moduleNode = optimizerClassPath.findClassFile("module-info.class").map(f =>
             val node = new ClassNode1
             val moduleReader = new ClassReader(f.toByteArray)
             moduleReader.accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES)

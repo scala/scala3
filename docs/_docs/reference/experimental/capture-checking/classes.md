@@ -132,7 +132,7 @@ class IO extends SharedCapability
 
 val a: CapA^ = CapA()
 val b: CapB^ = CapB()
-val io: IO^ = new IO()
+val io: IO^ = IO()
 ```
 
 ```scala sc:fail sc-compile-with:classes-inheritance-context

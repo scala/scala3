@@ -62,6 +62,7 @@ trait ProcessLogger {
    *
    *  @tparam T the return type of the buffered operation
    *  @param f the code to execute with buffering, evaluated by name
+   *  @return the result produced by evaluating `f`
    */
   def buffer[T](f: => T): T
 }

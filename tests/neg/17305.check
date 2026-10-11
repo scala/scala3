@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/17305.scala:15:47 -------------------------------------------------------------
+15 |    .use((pair) => myAssert(pair)(someAssertion(2))) // error
+   |                                  ^^^^^^^^^^^^^^^^
+   |                                  Found:    Assertion[Int]
+   |                                  Required: Assertion[Long]
+   |
+   | longer explanation available when compiling with `-explain`

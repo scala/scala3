@@ -47,22 +47,9 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
 
   def this(root: AbstractFile, parent: ClassLoader) = this(root, parent, InterruptInstrumentation.fromString(ScalaSettings.XreplInterruptInstrumentation.default))
 
-  override def findClass(name: String): Class[?] = {
-    var file: AbstractFile | Null = root
-    val pathParts = name.split("[./]").toList
-    for (dirPart <- pathParts.init) {
-      file = file.lookupName(dirPart, true)
-      if (file == null) throw new ClassNotFoundException(name)
-    }
-    file = file.lookupName(pathParts.last+".class", false)
-    if (file == null) throw new ClassNotFoundException(name)
-
-    val bytes = file.toByteArray
-
-
+  override protected def defineClass(name: String, bytes: Array[Byte]): Class[?] =
     if interruptInstrumentation.is(InterruptInstrumentation.Enabled) then defineClassInstrumented(name, bytes)
-    else defineClass(name, bytes, 0, bytes.length)
-  }
+    else super.defineClass(name, bytes)
 
   private def defineClassInstrumented(name: String, originalBytes: Array[Byte]) = {
     val instrumentedBytes = ReplBytecodeInstrumentation.instrument(originalBytes)
@@ -108,7 +95,7 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
           try
             val resourceName = name.replace('.', '/') + ".class"
             getParent.getResourceAsStream(resourceName) match {
-              case null => super.loadClass(resourceName)
+              case null => super.loadClass(name)
               case is =>
                 try defineClassInstrumented(name, is.readAllBytes())
                 finally is.close()

@@ -306,7 +306,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
   override def transformSelect(tree: Select)(using Context): Tree =
     val denot = tree.denot
-    val sym = tree.symbol
+    val sym = denot.symbol
     // The Lifter updates the type of symbols using `installAfter` to give them a
     // new `SymDenotation`, but that doesn't affect non-sym denotations, so we
     // reload them manually here.

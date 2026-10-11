@@ -23,25 +23,34 @@ class StoreReporter(outer: Reporter | Null = Reporter.NoReporter, fromTyperState
 
   override def doReport(dia: Diagnostic)(using Context): Unit = {
     typr.println(s">>>> StoredError: ${dia.message}") // !!! DEBUG
-    if (infos == null) infos = new mutable.ListBuffer
-    infos.uncheckedNN += dia
+    val infos1 = initialize(infos, infos = _, new mutable.ListBuffer)
+    infos1 += dia
   }
 
   override def hasUnreportedErrors: Boolean =
-    outer != null && infos != null && infos.uncheckedNN.exists(_.isInstanceOf[Error])
+    outer != null && (infos match
+      case null => false
+      case is => is.exists(_.isInstanceOf[Error]))
 
   override def hasStickyErrors: Boolean =
-    infos != null && infos.uncheckedNN.exists(_.isInstanceOf[StickyError])
+    infos match
+      case null => false
+      case is => is.exists(_.isInstanceOf[StickyError])
 
   override def removeBufferedMessages(using Context): List[Diagnostic] =
-    if (infos != null) try infos.uncheckedNN.toList finally infos = null
-    else Nil
+    infos match
+      case null => Nil
+      case is => try is.toList finally infos = null
 
   override def mapBufferedMessages(f: Diagnostic => Diagnostic)(using Context): Unit =
-    if infos != null then infos.uncheckedNN.mapInPlace(f)
+    infos match
+      case null => ()
+      case is => is.mapInPlace(f)
 
   override def pendingMessages(using Context): List[Diagnostic] =
-    if (infos != null) infos.uncheckedNN.toList else Nil
+    infos match
+      case null => Nil
+      case is => is.toList
 
   override def errorsReported: Boolean = hasErrors || (outer != null && outer.errorsReported)
 

@@ -95,7 +95,7 @@ object Equiv extends LowPriorityEquiv {
       case that: IterableEquiv[?, ?]     => this.eqv == that.eqv
       case _                             => false
     }
-    override def hashCode(): Int = eqv.hashCode() * iterableSeed
+    override def hashCode(): Int = eqv.## * iterableSeed
   }
 
   trait ExtraImplicits {
@@ -104,12 +104,17 @@ object Equiv extends LowPriorityEquiv {
      *
      *  @tparam CC the collection type constructor, a subtype of `Seq` (e.g., `List`, `Vector`)
      *  @tparam T the element type of the collection
+     *  @param eqv the `Equiv` instance used to compare individual elements of type `T`
+     *  @return an `Equiv` for sequences of type `CC[T]` that compares them element-by-element using `eqv`
      */
     implicit def seqEquiv[CC[X] <: scala.collection.Seq[X], T](implicit eqv: Equiv[T]): Equiv[CC[T]] =
       new IterableEquiv[CC, T](eqv)
 
-    /** @tparam CC the collection type constructor, a subtype of `SortedSet`
+    /**
+     *  @tparam CC the collection type constructor, a subtype of `SortedSet`
      *  @tparam T the element type of the collection
+     *  @param eqv the `Equiv` instance used to compare individual elements of type `T`
+     *  @return an `Equiv` for sorted sets of type `CC[T]` that compares them element-by-element in iteration order using `eqv`
      */
     implicit def sortedSetEquiv[CC[X] <: scala.collection.SortedSet[X], T](implicit eqv: Equiv[T]): Equiv[CC[T]] =
       new IterableEquiv[CC, T](eqv)
@@ -270,7 +275,7 @@ object Equiv extends LowPriorityEquiv {
       case that: OptionEquiv[?]         => this.eqv == that.eqv
       case _                            => false
     }
-    override def hashCode(): Int = eqv.hashCode() * optionSeed
+    override def hashCode(): Int = eqv.## * optionSeed
   }
 
   implicit def Tuple2[T1, T2](implicit eqv1: Equiv[T1], eqv2: Equiv[T2]): Equiv[(T1, T2)] =

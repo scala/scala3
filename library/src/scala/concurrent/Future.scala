@@ -284,6 +284,7 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  @tparam S  the type of the returned `Future`
    *  @param ev evidence that `T` is itself a `Future[S]`
+   *  @return    a `Future` with the result of the inner `Future`
    *  @group Transformations
    */
   def flatten[S](implicit ev: T <:< Future[S]): Future[S] = flatMap(ev)(using parasitic)
@@ -325,6 +326,7 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  @param p the predicate to apply to the successful result of this `Future`
    *  @param executor the `ExecutionContext` on which the predicate will be executed
+   *  @return a `Future` which will hold the successful result of this `Future` if it matches the predicate, else a failure holding `NoSuchElementException`
    */
   final def withFilter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T] = filter(p)(using executor)
 
@@ -446,11 +448,12 @@ trait Future[+T] extends Awaitable[T] {
    *  @tparam R      the type of the resulting `Future`
    *  @param that    the other `Future`
    *  @param f       the function to apply to the results of `this` and `that`
+   *  @param executor the `ExecutionContext` on which `f` will be executed
    *  @return        a `Future` with the result of the application of `f` to the results of `this` and `that`
    *  @group Transformations
    */
   def zipWith[U, R](that: Future[U])(f: (T, U) => R)(implicit executor: ExecutionContext): Future[R] = {
-    // This is typically overriden by the implementation in DefaultPromise, which provides
+    // This is typically overridden by the implementation in DefaultPromise, which provides
     // symmetric fail-fast behavior regardless of which future fails first.
     //
     // TODO: remove this implementation and make Future#zipWith abstract
@@ -749,6 +752,8 @@ object Future {
    *  @tparam CC       the type of the `IterableOnce` of Futures
    *  @tparam To       the type of the resulting collection
    *  @param in        the `IterableOnce` of Futures which will be sequenced
+   *  @param bf        the `BuildFrom` used to construct the resulting collection `To` from the values of type `A`
+   *  @param executor  the `ExecutionContext` on which the sequencing will be executed
    *  @return          the `Future` of the resulting collection
    */
   final def sequence[A, CC[X] <: IterableOnce[X], To](in: CC[Future[A]])(implicit bf: BuildFrom[CC[Future[A]], A, To], executor: ExecutionContext): Future[To] =
@@ -833,6 +838,8 @@ object Future {
    *  @param futures  the `scala.collection.immutable.Iterable` of Futures to be folded
    *  @param zero     the start value of the fold
    *  @param op       the fold operation to be applied to the zero and futures
+   *
+   *  @param executor the `ExecutionContext` on which the fold operation will be executed
    *  @return         the `Future` holding the result of the fold
    */
   final def foldLeft[T, R](futures: scala.collection.immutable.Iterable[Future[T]])(zero: R)(op: (R, T) => R)(implicit executor: ExecutionContext): Future[R] =
@@ -901,6 +908,8 @@ object Future {
    *  @tparam R       the type of the value of the returned `Future`
    *  @param futures  the `scala.collection.immutable.Iterable` of Futures to be reduced
    *  @param op       the reduce operation which is applied to the results of the futures
+   *
+   *  @param executor the `ExecutionContext` on which the reduce operation will be executed
    *  @return         the `Future` holding the result of the reduce
    */
   final def reduceLeft[T, R >: T](futures: scala.collection.immutable.Iterable[Future[T]])(op: (R, T) => R)(implicit executor: ExecutionContext): Future[R] = {
@@ -925,6 +934,9 @@ object Future {
    *  @tparam M        the type of the collection of Futures
    *  @param in        the collection to be mapped over with the provided function to produce a collection of Futures that is then sequenced into a Future collection
    *  @param fn        the function to be mapped over the collection to produce a collection of Futures
+   *
+   *  @param bf        the `BuildFrom` used to construct the resulting collection `M[B]` from the values of type `B`
+   *  @param executor  the `ExecutionContext` on which `fn` and the resulting Futures will be executed
    *  @return          the `Future` of the collection of results
    */
   final def traverse[A, B, M[X] <: IterableOnce[X]](in: M[A])(fn: A => Future[B])(implicit bf: BuildFrom[M[A], B, M[B]], executor: ExecutionContext): Future[M[B]] =

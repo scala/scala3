@@ -8,6 +8,7 @@ trait FunctionXXL {
   /** Applies all parameters grouped in xs to this function.
    *
    *  @param xs the function arguments, packed into an immutable array of `Object`
+   *  @return the result of applying this function to the given arguments
    */
   def apply(xs: IArray[Object]): Object
 

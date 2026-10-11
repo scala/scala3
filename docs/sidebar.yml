@@ -144,7 +144,8 @@ subsection:
   - title: Preview Features
     directory: preview
     index: reference/preview/overview.md
-    subsection: []
+    subsection:
+      - page: reference/preview/unrolled-defs.md
   - title: Experimental Features
     directory: experimental
     index: reference/experimental/overview.md
@@ -190,11 +191,14 @@ subsection:
       - page: reference/experimental/typeclasses.md
       - page: reference/experimental/runtimeChecked.md
         hidden: true
-      - page: reference/experimental/unrolled-defs.md
       - page: reference/experimental/package-object-values.md
       - page: reference/experimental/quoted-patterns-with-polymorphic-functions.md
       - page: reference/experimental/relaxed-lambdas.md
       - page: reference/experimental/sub-cases.md
+      - page: reference/experimental/dedented-string-literals.md
+      - page: reference/experimental/spec-strings.md
+      - page: reference/experimental/inline-traits.md
+      - page: reference/experimental/specialized-traits.md
   - page: reference/syntax.md
   - title: Language Versions
     index: reference/language-versions/language-versions.md
@@ -437,3 +441,6 @@ subsection:
       - page: reference/error-codes/E229.md
       - page: reference/error-codes/E230.md
       - page: reference/error-codes/E231.md
+      - page: reference/error-codes/E232.md
+      - page: reference/error-codes/E233.md
+      - page: reference/error-codes/E234.md

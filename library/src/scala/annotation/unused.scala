@@ -21,6 +21,8 @@ import scala.language.`2.13`
  *  For example, a method parameter may be marked `@unused`
  *  because the method is designed to be overridden by
  *  an implementation that does use the parameter.
+ *
+ *  @param message a description of why the element is unused
  */
 @meta.getter @meta.setter
 class unused(message: String) extends StaticAnnotation {

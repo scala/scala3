@@ -597,7 +597,7 @@ object Tuples {
     )
   }
 
-  def map[F[_]](self: Tuple, f: [t] => t => F[t]): Tuple = self match {
+  def map[F[_]](self: Tuple, f: [t] -> t -> F[t]): Tuple = self match {
     case EmptyTuple => self
     case _ => fromIArray(self.productIterator.map(f(_).asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use toIArray
   }

@@ -38,6 +38,8 @@ import scala.language.`2.13`
  *
  *  implicitly[Int =!= Int]
  *  ```
+ *
+ *  @param msg the error message template, with `\${Xi}` placeholders for type parameters
  */
 @meta.getter
 final class implicitAmbiguous(msg: String) extends scala.annotation.ConstantAnnotation

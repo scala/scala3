@@ -43,6 +43,7 @@ trait Buffer[A]
   /** Appends the given elements to this buffer.
    *
    *  @param elem  the element to append.
+   *  @return this buffer with the element appended
    */
   @`inline` final def append(elem: A): this.type = addOne(elem)
 
@@ -50,7 +51,9 @@ trait Buffer[A]
   @`inline` final def append(elems: A*): this.type = addAll(elems)
 
   /** Appends the elements contained in a iterable object to this buffer.
+   *
    *  @param xs  the iterable object containing the elements to append.
+   *  @return this buffer with the elements appended
    */
   @`inline` final def appendAll(xs: IterableOnce[A]): this.type = addAll(xs)
 

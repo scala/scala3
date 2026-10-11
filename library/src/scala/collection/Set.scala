@@ -87,6 +87,7 @@ trait Set[A]
  *
  *  @tparam A the element type of the set
  *  @tparam CC the type constructor for the set's collection type
+ *  @tparam C the self type of this set, used as the return type for transformation operations that preserve the collection's specific type
  */
 transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
   extends IterableOps[A, CC, C]

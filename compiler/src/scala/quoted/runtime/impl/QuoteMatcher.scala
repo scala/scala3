@@ -10,8 +10,9 @@ import dotty.tools.dotc.core.Mode.GadtConstraintInference
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.util.optional
 import dotty.tools.dotc.ast.TreeTypeMap
+
+import scala.util.boundary
 
 /** Matches a quoted tree against a quoted pattern tree.
  *  A quoted pattern tree may have type and term holes in addition to normal terms.
@@ -115,6 +116,9 @@ class QuoteMatcher(debug: Boolean) {
    */
   private type MatchingExprs = Seq[MatchResult]
 
+  /** Return type that indicates that the method returns a T or aborts to the enclosing boundary with a `None` */
+  private type optional[T] = boundary.Label[None.type] ?=> T
+
   /** TODO-18271: update
    *  A map relating equivalent symbols from the scrutinee and the pattern
    *  For example in
@@ -133,10 +137,10 @@ class QuoteMatcher(debug: Boolean) {
   def treeMatch(scrutinee: Tree, pattern: Tree)(using Context): Option[Tuple] = {
     val (pat1, typeHoles, ctx1) = instrumentTypeHoles(pattern)
     inContext(ctx1) {
-      optional {
+      boundary(Some {
         given Env = new Env(Map.empty, Map.empty)
         scrutinee =?= pat1
-      }.map { matchings =>
+      }).map { matchings =>
         lazy val spliceScope = SpliceScope.getCurrent
         // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found, seal them in a quoted.Type and add them to the result
@@ -689,7 +693,7 @@ class QuoteMatcher(debug: Boolean) {
         new ExprImpl(hoasClosure, spliceScope)
 
   private inline def notMatched[T]: optional[T] =
-    optional.break()
+    boundary.break(None)
 
   private inline def matched: MatchingExprs =
     Seq.empty

@@ -23,3 +23,7 @@ mt-scrutinee-widen3.scala
 spurious-overload.scala
 tailrec.scala
 traitParams.scala
+optimizer-warnings.scala
+i10174b.scala
+i17132.min.scala
+outer-synchronized.scala

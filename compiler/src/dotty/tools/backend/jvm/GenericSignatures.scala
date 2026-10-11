@@ -35,7 +35,10 @@ object GenericSignatures {
    *  @return The signature if it could be generated, `null` otherwise.
    */
   def javaSig(sym0: Symbol, info: Type, onClassRef: ClassSymbol => Unit)(using Context): StringBuilder | Null =
-    if mayNeedSignature(sym0, info) then atPhase(erasurePhase)(javaSig0(sym0, info, onClassRef))
+    if mayNeedSignature(sym0, info) then
+      ctx.handleRecursive("generating the generic signature of", sym0, sym0):
+        atPhase(erasurePhase):
+          javaSig0(sym0, info, onClassRef)
     else null
 
   private def mayNeedSignature(sym0: Symbol, info: Type)(using Context) = {
@@ -87,8 +90,8 @@ object GenericSignatures {
 
       // a signature should always start with a class
       validParents.headOption match
-        case None => boxedSig(defn.ObjectType)
-        case Some(head) if isInterfaceOrTrait(head.typeSymbol) => boxedSig(defn.ObjectType)
+        case None => jsig(defn.ObjectType)
+        case Some(head) if isInterfaceOrTrait(head.typeSymbol) => jsig(defn.ObjectType)
         case _ => ()
       validParents.foreach(boxedSig)
     }
@@ -223,11 +226,9 @@ object GenericSignatures {
                 else
                   // For bounded arguments, we can't translate it cleanly so emit an erased type
                   boxedSig(erasure(a.tycon))
-              case res if res.isPrimitiveValueType =>
-                // value classes cannot appear as generic arguments
-                jsig(defn.boxedType(res))
               case res =>
-                jsig(res)
+                // value classes cannot appear as generic arguments
+                jsig(res, vcBoxing = ValueClassBoxing.Box)
           case _ =>
             boxedSig(tp.widenDealias.widenNullaryMethod)
               // `tp` might be a singleton type referring to a getter.
@@ -336,10 +337,7 @@ object GenericSignatures {
               else if (sym == defn.NullClass)
                 builder.append("Lscala/runtime/Null$;")
               else if (sym.isPrimitiveValueClass)
-                // TODO, but a few tests need fixing / disabling until a newer scalac is ingested,
-                // replace the next 2 lines with: if (vcBoxing == ValueClassBoxing.Box || sym == defn.UnitClass) jsig(defn.boxedClass(sym).typeRef)
-                if (vcBoxing == ValueClassBoxing.Box) jsig(defn.ObjectType)
-                else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
+                if (vcBoxing == ValueClassBoxing.Box) jsig(defn.boxedClass(sym).typeRef)
                 else if (builder.length == 0 && sym0.isField) () // field generic signatures can only be reference types (JVMS §4.7.9.1)
                 else builder.append(defn.typeTag(sym.info))
               else if defn.isSyntheticFunctionClass(sym) then
@@ -518,7 +516,7 @@ object GenericSignatures {
               // otherwise we end up in infinite loops,
               // e.g., in `X[A] <: Thing[X[A]]` or `X[A] <: X[Thing[A]]` we keep resolving `X`.
               // In that case we must completely give up on the genericity, i.e.,
-              // in `X[A] <: Y[X[Z[A]]]` it would not be correct to use `Y[A]` as a type signature!
+              // in `X[A] <: Y[X[Z[A]]]` it would not be correct to use `Y[A]` as a type signature! 
               if instantiated.existsPart(_ == a.tycon) then ResolvedAppliedType.Bail
               else ResolvedAppliedType.Resolved(instantiated)
             case _ => ResolvedAppliedType.NotResolved

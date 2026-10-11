@@ -90,6 +90,7 @@ sealed abstract class Try[+T] extends Product with Serializable { self: Try[T]^ 
    *
    *  @tparam U the type of the value in the returned `Try`, a supertype of `T`
    *  @param default the fallback `Try` to return if this is a `Failure` (evaluated lazily)
+   *  @return this `Try` if it is a `Success`, otherwise `default`; any non-fatal exception thrown while evaluating `default` is caught and returned as a `Failure`
    */
   def orElse[U >: T](default: => Try[U]^): Try[U]^{default}
 
@@ -109,6 +110,7 @@ sealed abstract class Try[+T] extends Product with Serializable { self: Try[T]^ 
    *
    *  @tparam U the type of the value in the resulting `Try`
    *  @param f the function to apply to the value if this is a `Success`
+   *  @return the `Try` returned by `f` applied to the value if this is a `Success`, or this `Failure` unchanged; any non-fatal exception thrown by `f` is caught and returned as a `Failure`
    */
   def flatMap[U](f: T => Try[U]^): Try[U]^{this, f}
 
@@ -116,6 +118,7 @@ sealed abstract class Try[+T] extends Product with Serializable { self: Try[T]^ 
    *
    *  @tparam U the type of the mapped value
    *  @param f the function to apply to the value if this is a `Success`
+   *  @return a `Success` containing the result of applying `f` to the value if this is a `Success`, or this `Failure` unchanged; any non-fatal exception thrown by `f` is caught and returned as a `Failure`
    */
   def map[U](f: T => U): Try[U]^{this, f.only[Control]}
 
@@ -123,12 +126,14 @@ sealed abstract class Try[+T] extends Product with Serializable { self: Try[T]^ 
    *
    *  @tparam U the type of the value returned by the partial function
    *  @param pf the partial function to apply to the value if this is a `Success`
+   *  @return a `Success` containing the result of `pf` applied to the value if `pf` is defined at it, a `Failure` with a `NoSuchElementException` if `pf` is not defined at the value, or this `Failure` unchanged; any non-fatal exception thrown by `pf` is caught and returned as a `Failure`
    */
   def collect[U](pf: PartialFunction[T, U]^): Try[U]^{this, pf.only[Control]}
 
   /** Converts this to a `Failure` if the predicate is not satisfied.
    *
    *  @param p the predicate to test the value against
+   *  @return this `Try` if it is a `Success` whose value satisfies `p`, a `Failure` with a `NoSuchElementException` if the value does not satisfy `p`, or this `Failure` unchanged; any non-fatal exception thrown by `p` is caught and returned as a `Failure`
    */
   def filter(p: T => Boolean): Try[T]^{this, p.only[Control]}
 
@@ -169,6 +174,7 @@ sealed abstract class Try[+T] extends Product with Serializable { self: Try[T]^ 
    *
    *  @tparam U the type of the value in the resulting `Try`, a supertype of `T`
    *  @param pf the partial function to apply if this is a `Failure`
+   *  @return the `Try` produced by applying `pf` to the exception if this is a `Failure` and `pf` is defined for it, this `Failure` unchanged if `pf` is not defined for the exception, or this `Success` unchanged; any non-fatal exception thrown by `pf` is caught and returned as a `Failure`
    */
   def recoverWith[U >: T](pf: PartialFunction[Throwable, Try[U]^]^): Try[U]^{this, pf}
 
@@ -177,6 +183,7 @@ sealed abstract class Try[+T] extends Product with Serializable { self: Try[T]^ 
    *
    *  @tparam U the type of the value in the resulting `Try`, a supertype of `T`
    *  @param pf the partial function to apply if this is a `Failure`
+   *  @return a `Success` wrapping the result of applying `pf` to the exception if this is a `Failure` and `pf` is defined for it, this `Failure` unchanged if `pf` is not defined for the exception, or this `Success` unchanged; any non-fatal exception thrown by `pf` is caught and returned as a `Failure`
    */
   def recover[U >: T](pf: PartialFunction[Throwable, U]^): Try[U]^{this, pf.only[Control]}
 
@@ -188,6 +195,7 @@ sealed abstract class Try[+T] extends Product with Serializable { self: Try[T]^ 
    *
    *  @tparam U the type of the value in the inner `Try`
    *  @param ev evidence that `T` is itself a `Try[U]`
+   *  @return the inner `Try[U]` if this is a `Success`, or this `Failure` unchanged
    */
   def flatten[U](implicit ev: T <:< Try[U]): Try[U]^{this}
 
@@ -202,6 +210,7 @@ sealed abstract class Try[+T] extends Product with Serializable { self: Try[T]^ 
    *  @tparam U the type of the value in the resulting `Try`
    *  @param s the function to apply if this is a `Success`
    *  @param f the function to apply if this is a `Failure`
+   *  @return the `Try` returned by `s` applied to the value if this is a `Success`, or the `Try` returned by `f` applied to the exception if this is a `Failure`; any non-fatal exception thrown by `s` or `f` is caught and returned as a `Failure`
    */
   def transform[U](s: T => Try[U]^, f: Throwable => Try[U]^): Try[U]^{s, f}
 

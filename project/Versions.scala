@@ -12,7 +12,7 @@ object Versions {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.8.4"
+  val referenceVersion = "3.9.0"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -23,7 +23,7 @@ object Versions {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.9.0"
+  val developedVersion = "3.10.0"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -32,7 +32,7 @@ object Versions {
    *  During release candidate cycle incremented by the release officer before publishing a subsequent RC version;
    *  During final, stable release is set exactly to `developedVersion`.
   */
-  val baseVersion = developedVersion
+  val baseVersion = s"$developedVersion"
 
   /** The version of TASTY that should be emitted, checked in runtime test
    *  For details on how TASTY version should be set see related discussions:
@@ -50,7 +50,7 @@ object Versions {
    *      - in release candidate branch is experimental if {patch == 0}
    *      - in stable release is always non-experimental
    */
-  val expectedTastyVersion = "28.9"
+  val expectedTastyVersion = "28.10"
   checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
@@ -78,7 +78,7 @@ object Versions {
   }
 
   // LTS or Next
-  val versionLine = "LTS"
+  val versionLine = "Next"
 
   /** Minor version against which we check binary compatibility.
    *
@@ -87,7 +87,7 @@ object Versions {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.8.0"
+  val mimaPreviousDottyVersion = "3.9.0"
 
   /* Tests TASTy version invariants during NIGHLY, RC or Stable releases */
   def checkReleasedTastyVersion(): Unit = {

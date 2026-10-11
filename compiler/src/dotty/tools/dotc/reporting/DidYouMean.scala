@@ -50,10 +50,8 @@ object DidYouMean:
     val ignoredRootImports = mutable.Set.empty[Symbol]
 
     def recur()(using Context): Unit =
-      if ctx eq NoContext then
-        () // done
-      else if ctx.isImportContext then
-        val imp = ctx.importInfo.nn
+      val imp = ctx.importInfoIfImportContext
+      if imp `ne` null then
         if imp.isRootImport && !rootImportOK then
           () // done
         else imp.importSym.info match
@@ -74,7 +72,7 @@ object DidYouMean:
               ignoredRootImports += imp.unimported
           case _ =>
         recur()(using nextInteresting(ctx))
-      else
+      else if ctx `ne` NoContext then
         if ctx.owner.isClass then
           for sym <- memberCandidates(ctx.owner.typeRef, isType, isApplied) do
             acc += Binding(sym.name, sym, ctx.owner.thisType)

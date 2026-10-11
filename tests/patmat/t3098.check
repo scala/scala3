@@ -1,0 +1,8 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t3098/b.scala:3:11 --
+3 |  def f = (null: T) match {
+  |           ^^^^^^^
+  |           match may not be exhaustive.
+  |
+  |           It would fail on pattern case: _: C
+  |
+  | longer explanation available when compiling with `-explain`

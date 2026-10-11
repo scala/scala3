@@ -1,7 +1,8 @@
 package dotty.tools.scaladoc
 package snippets
 
-import dotty.tools.io.{AbstractFile, VirtualDirectory}
+import dotty.tools.io
+import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Mode
@@ -14,7 +15,7 @@ import dotty.tools.dotc.util.Spans.NoSpan
 
 class SnippetCompiler(
   val snippetCompilerSettings: Seq[SnippetCompilerSetting[?]],
-  target: AbstractFile = new VirtualDirectory("(memory)")
+  target: AbstractFile = io.virtualDirectory("(memory)")
 ):
   object SnippetDriver extends Driver:
     val currentCtx =

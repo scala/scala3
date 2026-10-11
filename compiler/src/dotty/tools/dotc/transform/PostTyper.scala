@@ -27,6 +27,7 @@ import dotty.tools.dotc.transform.MacroAnnotations.hasMacroAnnotation
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import ast.TreeInfo
 import dotty.tools.dotc.cc.derivedFunctionOrMethod
+import dotty.tools.dotc.core.NameKinds.ContextBoundParamName
 
 object PostTyper {
   val name: String = "posttyper"
@@ -95,6 +96,19 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
   def newTransformer(using Context): Transformer =
     new PostTyperTransformer
+
+  override def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
+    if Feature.ccEnabledSomewhere then
+      SafeRefs.init()(using ctx.withPhase(thisPhase))
+    super.runOn(units)
+
+  override def run(using Context): Unit =
+    val unit = ctx.compilationUnit
+    if Feature.safeEnabled then
+      // Check safe refs before PostTyper's run since that way Inline calls have not
+      // yet been replaced with InlineCallTraces.
+      SafeRefs.checker.traverse(unit.tpdTree)
+    super.run
 
   /**
    * Used to check that `changesParents` is called after `initContext`.
@@ -297,7 +311,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         => Checking.checkAppliedTypesIn(tree)
       case _ =>
 
-
     private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree = {
       val qual = tree.qualifier
       qual.symbol.moduleClass.denot match {
@@ -365,12 +378,13 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     def checkUsableAsValue(tree: Tree)(using Context): Tree =
       def unusable(msg: Symbol => Message) =
         errorTree(tree, msg(tree.symbol))
-      if tree.symbol.is(PhantomSymbol) then
-        if tree.symbol.isDummyCaptureParam then
+      val sym = tree.symbol
+      if sym.is(PhantomSymbol) then
+        if sym.isDummyCaptureParam then
           unusable(DummyCaptureParamNotValue(_))
         else
           unusable(ConstructorProxyNotValue(_))
-      else if tree.symbol.isContextBoundCompanion then
+      else if sym.isContextBoundCompanion then
         unusable(ContextBoundCompanionNotValue(_))
       else
         tree
@@ -394,7 +408,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *  clean retains annotations from such types. But for an overriding symbol the
      *  retains annotations come from the explicitly declared parent types, so should
      *  be kept.
-     *  TODO: If the overriden type is an InferredType, we should probably clean retains
+     *  TODO: If the overridden type is an InferredType, we should probably clean retains
      *  from both types as well.
      */
     private def makeOverrideTypeDeclared(symbol: Symbol, tpt: Tree)(using Context): Tree =
@@ -662,8 +676,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           val tree1 = cpy.DefDef(tree)(tpt = explicifyTpt(tree))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
-          registerIfHasMacroAnnotations(tree)
           val sym = tree.symbol
+          registerIfHasMacroAnnotations(tree)
           if (sym.isClass)
             VarianceChecker.check(tree)
             annotateExperimentalCompanion(sym)
@@ -686,13 +700,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                   if illegalRefs.nonEmpty then
                     report.error(
                       em"The type of a class parent cannot refer to constructor parameters, but ${parent.tpe} refers to ${illegalRefs.map(_.name.show).mkString(",")}", parent.srcPos)
-            if sym.owner.is(Package) then
-              // Add SourceFile annotation to top-level classes
-              // TODO remove this annotation once the reference compiler uses the TASTy source file attribute.
-              if ctx.compilationUnit.source.exists && sym != defn.SourceFileAnnot then
-                val reference = ctx.settings.sourceroot.value
-                val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
-                sym.addAnnotation(Annotation(defn.SourceFileAnnot, Literal(Constants.Constant(relativePath)), tree.span))
           else
             if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
               Checking.checkGoodBounds(tree.symbol)
@@ -725,11 +732,12 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnotTree(annot))
         case tree: AppliedTypeTree =>
-          if (tree.tpt.symbol == defn.andType)
+          val sym = tree.tpt.symbol
+          if (sym == defn.andType)
             Checking.checkNonCyclicInherited(tree.tpe, tree.args.tpes, EmptyScope, tree.srcPos)
               // Ideally, this should be done by Typer, but we run into cyclic references
               // when trying to typecheck self types which are intersections.
-          else if (tree.tpt.symbol == defn.orType)
+          else if (sym == defn.orType)
             () // nothing to do
           else
             Checking.checkAppliedType(tree)

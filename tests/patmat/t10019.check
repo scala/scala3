@@ -1,2 +1,16 @@
-2: Pattern Match Exhaustivity: (List(_, _, _*), _: List), (Nil, List(_, _*)), (_: List, List(_, _, _*)), (List(_, _*), Nil)
-11: Pattern Match Exhaustivity: (Foo(None), Foo(_))
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t10019.scala:2:41 ---
+2 |  def foo[T](t1: List[T], t2: List[T]) = (t1, t2) match {
+  |                                         ^^^^^^^^
+  |match may not be exhaustive.
+  |
+  |It would fail on pattern case: (List(_, _, _*), _: List), (Nil, List(_, _*)), (_: List, List(_, _, _*)), (List(_, _*), Nil)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t10019.scala:11:38 --
+11 |  def loop(s: Foo, t: Foo): Nothing = (s,t) match {
+   |                                      ^^^^^
+   |                      match may not be exhaustive.
+   |
+   |                      It would fail on pattern case: (Foo(None), Foo(_))
+   |
+   | longer explanation available when compiling with `-explain`

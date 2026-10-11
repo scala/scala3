@@ -1,1 +1,8 @@
-9: Pattern Match Exhaustivity: Horse(_)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9573.scala:9:4 -----
+9 |    x match {
+  |    ^
+  |    match may not be exhaustive.
+  |
+  |    It would fail on pattern case: Horse(_)
+  |
+  | longer explanation available when compiling with `-explain`

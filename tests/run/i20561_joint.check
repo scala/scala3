@@ -1,0 +1,15 @@
+empty
+hello
+hahaha
+hehehe
+21
+hihihi
+hohoho
+predefined
+1 a,b
+1 a b
+p-q
+empty: MatchError
+y,z
+!!!,b / a,b
+null: MatchError

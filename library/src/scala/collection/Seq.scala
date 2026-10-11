@@ -86,6 +86,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *  not be assumed to be efficient unless you have an `IndexedSeq`.
    *
    *  @param i the index of the element to retrieve, zero-based
+   *  @return the element at index `i`
    */
   @throws[IndexOutOfBoundsException]
   def apply(i: Int): A

@@ -2,8 +2,6 @@ package dotty
 package tools
 package vulpix
 
-import scala.language.unsafeNulls
-import scala.collection.mutable
 import dotc.reporting.TestReporter
 import java.util.concurrent.ConcurrentLinkedDeque
 

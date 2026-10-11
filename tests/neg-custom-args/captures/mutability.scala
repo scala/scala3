@@ -7,17 +7,17 @@ class Ref[T](init: T) extends caps.Mutable:
   def sneakyHide(x: T) =
     val self = this
     self.set(x)  // error
-    val self2: Ref[T]^ = this // error // error separation
+    val self2: Ref[T]^ = this // error // sep error
     self2.set(x) // error
 
     val self3 = () => this
     self3().set(x)  // error
-    val self4: () => Ref[T]^ = () => this // error // error separation
+    val self4: () => Ref[T]^ = () => this // error // sep error
     self4().set(x) // error
 
-    def self5() = this
+    def self5() = this // sep error
     self5().set(x)  // error
-    def self6(): Ref[T]^ = this // error // error separation
+    def self6(): Ref[T]^ = this // error // sep error
     self6().set(x) // error
 
 class Ref2[T](init: T) extends caps.Mutable:

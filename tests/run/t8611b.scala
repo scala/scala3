@@ -2,7 +2,7 @@ sealed trait KrafsDescription
 
 abstract class NotWorkingEnum extends Enumeration {
 
-  type ExtendedValue = Value with KrafsDescription
+  type ExtendedValue = Value & KrafsDescription
 
   def Enum(inDescription: String): ExtendedValue = {
     new Val(nextId) with KrafsDescription {

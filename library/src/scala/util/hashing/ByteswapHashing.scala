@@ -36,6 +36,7 @@ object ByteswapHashing {
    *
    *  @tparam T the type of values to be hashed
    *  @param h the hashing instance whose result is passed through byteswap hashing
+   *  @return a `Hashing[T]` that applies `h` and then passes the result through the byteswap hash
    */
   def chain[T](h: Hashing[T]): Hashing[T] = new Chained(h)
 

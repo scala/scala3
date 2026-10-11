@@ -81,6 +81,8 @@ trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
    *  streams.
    *
    *  @tparam S the type of the returned `Stepper`, determined by the implicit `StepperShape`
+   *  @param shape the `StepperShape` that determines the concrete `Stepper` subtype to return
+   *  @return a `Stepper` over the elements of this $coll, using a primitive-typed `Stepper` subclass for `Int`/`Long`/`Double` (and related) element types
    */
   def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S^{this} = {
     import convert.impl._
@@ -345,6 +347,7 @@ object IterableOnce {
  *
  *  @tparam A the element type of the collection
  *  @tparam CC the type constructor for the collection's "same element type" results (e.g., `List` for `List[Int]`)
+ *  @tparam C the concrete collection type returned by operations that preserve it (e.g., `List[Int]` when `CC` is `List`)
  */
 transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
   /////////////////////////////////////////////////////////////// Abstract methods that must be implemented

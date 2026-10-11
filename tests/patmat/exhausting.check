@@ -1,6 +1,48 @@
-21: Pattern Match Exhaustivity: List(_, _, _, _*), List(_)
-27: Pattern Match Exhaustivity: Nil
-32: Pattern Match Exhaustivity: List(_, _*)
-39: Pattern Match Exhaustivity: Bar3
-44: Pattern Match Exhaustivity: (Bar2, Bar2)
-49: Pattern Match Exhaustivity: (Bar2, Bar2)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/exhausting.scala:21:30 
+21 |  def fail1[T](xs: List[T]) = xs match {
+   |                              ^^
+   |               match may not be exhaustive.
+   |
+   |               It would fail on pattern case: List(_, _, _, _*), List(_)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/exhausting.scala:27:30 
+27 |  def fail2[T](xs: List[T]) = xs match {
+   |                              ^^
+   |                              match may not be exhaustive.
+   |
+   |                              It would fail on pattern case: Nil
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/exhausting.scala:32:30 
+32 |  def fail3a(xs: List[Int]) = xs match {
+   |                              ^^
+   |                              match may not be exhaustive.
+   |
+   |                              It would fail on pattern case: List(_, _*)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/exhausting.scala:39:28 
+39 |  def fail3[T](x: Foo[T]) = x match {
+   |                            ^
+   |                            match may not be exhaustive.
+   |
+   |                            It would fail on pattern case: Bar3
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/exhausting.scala:44:49 
+44 |  def fail4[T <: AnyRef](xx: (Foo[T], Foo[T])) = xx match {
+   |                                                 ^^
+   |                             match may not be exhaustive.
+   |
+   |                             It would fail on pattern case: (Bar2, Bar2)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/exhausting.scala:49:39 
+49 |  def fail5[T](xx: (Foo[T], Foo[T])) = xx match {
+   |                                       ^^
+   |                             match may not be exhaustive.
+   |
+   |                             It would fail on pattern case: (Bar2, Bar2)
+   |
+   | longer explanation available when compiling with `-explain`

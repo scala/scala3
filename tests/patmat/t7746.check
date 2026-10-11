@@ -1,1 +1,8 @@
-2: Pattern Match Exhaustivity: None, Some(_)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t7746.scala:2:27 ----
+2 |  def f[T](x: Option[T]) = x match {
+  |                           ^
+  |                           match may not be exhaustive.
+  |
+  |                           It would fail on pattern case: Some(_), None
+  |
+  | longer explanation available when compiling with `-explain`

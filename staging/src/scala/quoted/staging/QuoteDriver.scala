@@ -5,7 +5,8 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase, FreshContext}
 import dotty.tools.dotc.quoted.QuotesCache
-import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
+import dotty.tools.io
+import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
 import dotty.tools.io.AbstractFileClassLoader
 import dotty.tools.dotc.reporting._
 import dotty.tools.dotc.config.Settings.Setting.value
@@ -32,13 +33,13 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
           dir.createDirectory()
           new PlainDirectory(Directory(out))
         case None =>
-          new VirtualDirectory("<quote compilation output>")
+          io.virtualDirectory("<quote compilation output>")
     end outDir
 
     val ctx = {
       val ctx0 = QuotesCache.init(initCtx.fresh)
       val ctx1 = setup(settings.compilerArgs.toArray :+ "dummy.scala", ctx0).get._2
-      setCompilerSettings(ctx1.fresh.setSetting(ctx1.settings.outputDir, outDir), settings)
+      ctx1.fresh.setSetting(ctx1.settings.outputDir, outDir)
     }
 
     val compiledExpr =
@@ -88,10 +89,5 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
     val ictx = contextBase.initialCtx
     ictx.settings.classpath.update(ClasspathFromClassloader(appClassloader))(using ictx)
     ictx
-
-  private def setCompilerSettings(ctx: FreshContext, settings: Compiler.Settings): ctx.type =
-    // An error in the generated code is a bug in the compiler
-    // Setting the throwing reporter however will report any exception
-    ctx.setReporter(new ThrowingReporter(ctx.reporter))
 
 end QuoteDriver

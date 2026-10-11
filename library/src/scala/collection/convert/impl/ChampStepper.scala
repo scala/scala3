@@ -24,6 +24,9 @@ import scala.collection.immutable.Node
  *
  *  @tparam A the element type produced by this stepper
  *  @tparam T the CHAMP trie node type, with recursive bound `T <: Node[T]`
+ *  @tparam Sub the public stepper supertype returned by `trySplit`
+ *  @tparam Semi the concrete self-type produced by `semiclone`, a subtype of `Sub`
+ *  @param maxSize the maximum number of remaining elements this stepper will produce
  */
 private[collection] abstract class ChampStepperBase[
   A, T <: Node[T], Sub, Semi <: Sub & ChampStepperBase[A, T, ?, ?]

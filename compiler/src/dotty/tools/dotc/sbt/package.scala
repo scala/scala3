@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.Names.termName
 
 import interfaces.IncrementalCallback
-import dotty.tools.io.FileWriters.BufferingReporter
+import dotty.tools.dotc.transform.Pickler.BufferingReporter
 import dotty.tools.dotc.core.Decorators.em
 
 inline val TermNameHash = 1987 // 300th prime

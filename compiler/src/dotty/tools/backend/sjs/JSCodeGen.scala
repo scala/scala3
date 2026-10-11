@@ -36,6 +36,7 @@ import dotty.tools.dotc.transform.sjs.JSSymUtils.*
 import JSEncoding.*
 import ScopedVar.withScopedVars
 import scala.reflect.NameTransformer
+import java.io.BufferedOutputStream
 
 /** Main codegen for Scala.js IR.
  *
@@ -59,7 +60,7 @@ class JSCodeGen()(using genCtx: Context) {
 
   val sjsPlatform = dotty.tools.dotc.config.SJSPlatform.sjsPlatform
   val jsdefn = JSDefinitions.jsdefn
-  private val primitives = new JSPrimitives(genCtx)
+  private val primitives = new JSPrimitives()(using genCtx)
 
   val positionConversions = new JSPositions()(using genCtx)
   import positionConversions.*
@@ -324,7 +325,7 @@ class JSCodeGen()(using genCtx: Context) {
 
   private def genIRFile(cunit: CompilationUnit, tree: ir.Trees.ClassDef): Unit = {
     val outfile = getFileFor(cunit, tree.name.name, ".sjsir")
-    val output = outfile.bufferedOutput
+    val output = new BufferedOutputStream(outfile.output)
     try {
       ir.Serializers.serialize(output, tree)
     } finally {
@@ -3450,7 +3451,7 @@ class JSCodeGen()(using genCtx: Context) {
             case genReceiver: js.LinkTimeIf =>
               genReceiver
             case _ =>
-              throw FatalError(s"Unexpected tree $genReceiver is generated for $innerFun at: ${tree.sourcePos}")
+              throw new FatalError(s"Unexpected tree $genReceiver is generated for $innerFun at: ${tree.sourcePos}")
           }
           js.LinkTimeIf(genReceiver1.cond, genReceiver1.thenp, genReceiver1.elsep)(toIRType(to))(using genReceiver1.pos)
         case _ =>
@@ -4123,7 +4124,7 @@ class JSCodeGen()(using genCtx: Context) {
             val newFlags = closure.flags.withTyped(false).withAsync(true)
             js.JSFunctionApply(closure.copy(flags = newFlags), Nil)
           case other =>
-            throw FatalError(
+            throw new FatalError(
                 s"Unexpected tree generated for the Function0 argument to js.async at ${tree.sourcePos}: $other")
         }
         js.Block(genStats, asyncExpr)

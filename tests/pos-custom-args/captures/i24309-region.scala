@@ -13,15 +13,25 @@ object Regions:
     region: Region[R]^ =>
       def alloc(value: Int): Ref^{R} = Ref(value)
 
-      def subregion[T](f: [R2^ >: R] => (Region[R2]) => T): T =
+      def subregion[T](f: [R2^ >: R] => (Region[R2]) -> T): T =
         val r = new Region[R] {}
         f(r)
 
+      // Workaround variant: an empty term-parameter after the type binder
+      // permits an impure inner function type.
+      def subregion2[T](f: [R2^ >: R] => () -> (Region[R2]) => T): T =
+        val r = new Region[R] {}
+        f()(r)
+
 
   object Region:
-    def apply[T](f: [R^] => Region[R] => T): T =
+    def apply[T](f: [R^] => Region[R] -> T): T =
       val r = new Region[{}] {}
       f(r)
+
+    def apply2[T](f: [R^] => () -> Region[R] => T): T =
+      val r = new Region[{}] {}
+      f()(r)
 
   @main def main() =
     import Region.*
@@ -32,4 +42,10 @@ object Regions:
         val a = r1.alloc(0)
         val b = r2.alloc(0)
         a
+      val y = r1.subregion2: [R2^ >: R] =>
+       () =>
+        r2 =>
+         val a = r1.alloc(0)
+         val b = r2.alloc(0)
+         a
       0

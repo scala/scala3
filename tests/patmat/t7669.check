@@ -1,1 +1,8 @@
-10: Pattern Match Exhaustivity: NotHandled(_)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t7669.scala:10:35 ---
+10 |  def exhausto(expr: Expr): Unit = expr match {
+   |                                   ^^^^
+   |                            match may not be exhaustive.
+   |
+   |                            It would fail on pattern case: NotHandled(_)
+   |
+   | longer explanation available when compiling with `-explain`

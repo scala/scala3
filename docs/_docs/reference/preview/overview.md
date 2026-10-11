@@ -12,7 +12,7 @@ New Scala language features or standard library APIs are initially introduced as
 Preview language features and APIs are guaranteed to be standardized in some next Scala minor release, but allow the compiler team to introduce small, possibly binary incompatible, changes based on the community feedback.
 These can be used by early adopters who can accept the possibility of binary compatibility breakage. For instance, preview features could be used in some internal tool or application. On the other hand, preview features are discouraged in publicly available libraries.
 
-More information about preview featues can be found in [preview defintions guide](../other-new-features/preview-defs.md)
+More information about preview features can be found in [preview definitions guide](../other-new-features/preview-defs.md)
 
 ### `-preview` compiler flag
 
@@ -21,4 +21,4 @@ This flag enables the use of all preview language feature in the project.
 
 ## List of available preview features
 
-No features currently under preview.
+- [Automatic Parameter Unrolling with `@unroll`](unrolled-defs.md)

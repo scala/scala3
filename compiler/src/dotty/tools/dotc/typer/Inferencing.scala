@@ -42,12 +42,8 @@ object Inferencing {
    *  Throws an error if type contains wildcards.
    */
   def fullyDefinedType(tp: Type, what: String, pos: SrcPos)(using Context): Type =
-    try
-      if isFullyDefined(tp, ForceDegree.all) then tp
-      else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos")
-    catch case ex: RecursionOverflow =>
-      report.error(ex, pos)
-      UnspecifiedErrorType
+    if isFullyDefined(tp, ForceDegree.all) then tp
+    else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos")
 
   /** Instantiate selected type variables `tvars` in type `tp` in a special mode:
    *   1. If a type variable is constrained from below (i.e. constraint bound != given lower bound)
@@ -229,29 +225,27 @@ object Inferencing {
     private var toMaximize: List[TypeVar] = Nil
 
     def apply(x: Boolean, tp: Type): Boolean = trace(i"isFullyDefined($tp, $force)", typr) {
-      try {
-      val tpd = tp.dealias
-      if tpd ne tp then apply(x, tpd)
-      else tp match
-        case _: WildcardType | _: ProtoType =>
-          false
-        case tvar: TypeVar if !tvar.isInstantiated =>
-          force.appliesTo(tvar)
-          && ctx.typerState.constraint.contains(tvar)
-          && {
-            var fail = false
-            var skip = false
-            instDecision(tvar, variance, minimizeSelected, force.ifBottom) match
-              case Decision.Min   => skip = instantiate(tvar, fromBelow = true)
-              case Decision.Max   => skip = instantiate(tvar, fromBelow = false)
-              case Decision.Skip  => // hold off instantiating unbounded unconstrained variable
-              case Decision.Fail  => fail = true
-              case Decision.ToMax => toMaximize ::= tvar
-            !fail && (skip || foldOver(x, tvar))
-          }
-        case tp => foldOver(x, tp)
-      }
-      catch case ex: Throwable => handleRecursive("check fully defined", tp.showSummary(20), ex)
+      ctx.handleRecursive("check fully defined", () => tp.showSummary(20)):
+        val tpd = tp.dealias
+        if tpd ne tp then apply(x, tpd)
+        else tp match
+          case _: WildcardType | _: ProtoType =>
+            false
+          case tvar: TypeVar if !tvar.isInstantiated =>
+            force.appliesTo(tvar)
+            && ctx.typerState.constraint.contains(tvar)
+            && {
+              var fail = false
+              var skip = false
+              instDecision(tvar, variance, minimizeSelected, force.ifBottom) match
+                case Decision.Min   => skip = instantiate(tvar, fromBelow = true)
+                case Decision.Max   => skip = instantiate(tvar, fromBelow = false)
+                case Decision.Skip  => // hold off instantiating unbounded unconstrained variable
+                case Decision.Fail  => fail = true
+                case Decision.ToMax => toMaximize ::= tvar
+              !fail && (skip || foldOver(x, tvar))
+            }
+          case tp => foldOver(x, tp)
     }
 
     def process(tp: Type): Boolean =

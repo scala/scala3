@@ -182,6 +182,7 @@ transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K,
    *  `p` returns `true`.
    *
    *  @param p  The test predicate
+   *  @return   the map itself
    */
   def filterInPlace(p: (K, V) => Boolean): this.type = {
     if (!isEmpty) this match {

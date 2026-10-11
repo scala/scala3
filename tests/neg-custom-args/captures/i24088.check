@@ -1,0 +1,17 @@
+-- Error: tests/neg-custom-args/captures/i24088.scala:4:10 -------------------------------------------------------------
+4 |  self: A[CS^]^{CS} => // error: `^` on capture-set argument; meant A[{CS}] or A[CS]
+  |          ^^
+  |          Postfix `^` is not allowed on the capture-set variable CS;
+  |          it adds the root capability `caps.any`. Write `CS` or `{CS}` to refer to its capture set.
+-- Error: tests/neg-custom-args/captures/i24088.scala:9:24 -------------------------------------------------------------
+9 |def f[C^](b: B[{C}]): B[C^] = ??? // error
+  |                        ^
+  |                        Postfix `^` is not allowed on the capture-set variable C;
+  |                        it adds the root capability `caps.any`. Write `C` or `{C}` to refer to its capture set.
+-- Error: tests/neg-custom-args/captures/i24088.scala:12:22 ------------------------------------------------------------
+12 |def h[C^](): Unit = g[C^]() // error
+   |                      ^
+   |                    Postfix `^` is not allowed on the capture-set variable C;
+   |                    it adds the root capability `caps.any`. Write `C` or `{C}` to refer to its capture set.
+   |
+   |                    where:    C is a type in method h with bounds >: scala.caps.CapSet and <: scala.caps.CapSet^

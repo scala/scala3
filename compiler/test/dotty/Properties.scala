@@ -1,8 +1,7 @@
 package dotty
 
-import scala.language.unsafeNulls
-
 import java.nio.file.*
+import java.util.regex.{Matcher, Pattern}
 
 /** Runtime properties from defines or environmnent */
 object Properties {
@@ -58,28 +57,25 @@ object Properties {
   def dottyCompilerManagedSources: Path = Paths.get(sys.props("dotty.tests.dottyCompilerManagedSources"))
 
   /** dotty-interfaces jar */
-  def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces")
+  def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces").nn
 
   /** dotty-compiler jar */
-  def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler")
-
-  /** dotty-repl jar */
-  def dottyRepl: String = sys.props("dotty.tests.classes.dottyRepl")
+  def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler").nn
 
   /** dotty-staging jar */
-  def dottyStaging: String = sys.props("dotty.tests.classes.dottyStaging")
+  def dottyStaging: String = sys.props("dotty.tests.classes.dottyStaging").nn
 
   /** dotty-tasty-inspector jar */
-  def dottyTastyInspector: String = sys.props("dotty.tests.classes.dottyTastyInspector")
+  def dottyTastyInspector: String = sys.props("dotty.tests.classes.dottyTastyInspector").nn
 
   /** tasty-core jar */
-  def tastyCore: String = sys.props("dotty.tests.classes.tastyCore")
+  def tastyCore: String = sys.props("dotty.tests.classes.tastyCore").nn
 
   /** compiler-interface jar */
-  def compilerInterface: String = sys.props("dotty.tests.classes.compilerInterface")
+  def compilerInterface: String = sys.props("dotty.tests.classes.compilerInterface").nn
 
   /** scala-library jar */
-  def scalaLibrary: String = sys.props("dotty.tests.classes.scalaLibrary")
+  def scalaLibrary: String = sys.props("dotty.tests.classes.scalaLibrary").nn
 
   // TODO: Remove this once we migrate the test suite
   def usingScalaLibraryCCTasty: Boolean = true
@@ -87,24 +83,29 @@ object Properties {
   // TODO: Remove this once we migrate the test suite
   def usingScalaLibraryTasty: Boolean = true
 
-  /** scala-asm jar */
-  def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm")
+  /** main ASM jar */
+  def asm: String = sys.props("dotty.tests.classes.asm").nn
+
+  /** all the ASM jars */
+  def asmAll: Seq[String] =
+    val sep = java.io.File.separator
+    Seq("", "-tree", "-util", "-commons", "-analysis")
+      .map(suffix =>
+        asm.replaceAll("asm", "asm" + suffix)
+          .replaceFirst(Pattern.quote(sep + "asm" + suffix + sep), Matcher.quoteReplacement(sep + "asm" + sep)))
 
   /** jline-terminal jar */
-  def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal")
+  def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal").nn
 
   /** jline-reader jar */
-  def jlineReader: String = sys.props("dotty.tests.classes.jlineReader")
-
-  /** scala-xml jar */
-  def scalaXml: String = sys.props("dotty.tests.classes.scalaXml")
+  def jlineReader: String = sys.props("dotty.tests.classes.jlineReader").nn
 
   /** scalajs-javalib jar */
-  def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib")
+  def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib").nn
 
   /** scalajs-scalalib jar */
-  def scalaJSScalalib: String = sys.props("dotty.tests.classes.scalaJSScalalib")
+  def scalaJSScalalib: String = sys.props("dotty.tests.classes.scalaJSScalalib").nn
 
   /** scalajs-library jar */
-  def scalaJSLibrary: String = sys.props("dotty.tests.classes.scalaJSLibrary")
+  def scalaJSLibrary: String = sys.props("dotty.tests.classes.scalaJSLibrary").nn
 }

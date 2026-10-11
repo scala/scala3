@@ -3,7 +3,7 @@ package dotty.tools.dotc.profile
 import scala.annotation.internal.sharable
 
 // Based on NameTransformer but dedicated for JSON encoding rules
-object JsonNameTransformer {
+private [profile] object JsonNameTransformer {
   private val nops = 128
 
   @sharable private val op2code = new Array[String](nops)

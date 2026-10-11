@@ -66,6 +66,7 @@ final class LongAccumulator
   /** Appends an element to this `LongAccumulator`.
    *
    *  @param a the `Long` value to append
+   *  @return this `LongAccumulator` with the element appended
    */
   def addOne(a: Long): this.type = {
     totalSize += 1
@@ -147,6 +148,7 @@ final class LongAccumulator
   /** Retrieves the `ix`th element.
    *
    *  @param ix the zero-based index of the element to retrieve
+   *  @return the `Long` element stored at position `ix`
    */
   def apply(ix: Long): Long = {
     if (totalSize - ix <= index || hIndex == 0) current((ix - (totalSize - index)).toInt)
@@ -159,6 +161,7 @@ final class LongAccumulator
   /** Retrieves the `ix`th element, using an `Int` index.
    *
    *  @param i the zero-based index of the element to retrieve
+   *  @return the `Long` element stored at position `i`
    */
   def apply(i: Int): Long = apply(i.toLong)
 
@@ -299,6 +302,7 @@ final class LongAccumulator
    *
    *  @tparam C1 the result type of the target collection
    *  @param factory the factory for the target collection type
+   *  @return a collection of type `C1` containing all elements of this `LongAccumulator`
    */
   override def to[C1](factory: Factory[Long, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)

@@ -25,6 +25,8 @@ import scala.language.`2.13`
  *  `AnnotationInfo`.
  *
  *  For details, see `scala.reflect.internal.AnnotationInfos.AnnotationInfo`.
+ *
+ *  @param arg the default expression for the annotation parameter, stored as a syntax tree in the classfile
  */
 @meta.param class defaultArg(arg: Any) extends StaticAnnotation {
   def this() = this(null)

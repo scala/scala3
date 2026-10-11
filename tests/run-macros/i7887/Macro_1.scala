@@ -1,4 +1,4 @@
-def myMacroImpl(a: quoted.Expr[_])(using qctx: quoted.Quotes) = {
+def myMacroImpl[S](a: quoted.Expr[S])(using qctx: quoted.Quotes): quoted.Expr[S] = {
   import scala.quoted.quotes.reflect.*
   def typed[A] = {
     implicit val t: quoted.Type[A] = a.asTerm.tpe.widen.asType.asInstanceOf[quoted.Type[A]]

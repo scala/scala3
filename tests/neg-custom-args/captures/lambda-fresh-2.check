@@ -1,0 +1,24 @@
+-- Error: tests/neg-custom-args/captures/lambda-fresh-2.scala:12:36 ----------------------------------------------------
+12 |  val a: () => File^{fresh} = () => f1  // error
+   |                                    ^
+   |Separation failure: anonymous function of type (): File^{fresh}'s inferred result type File^ hides non-local value f1
+-- Error: tests/neg-custom-args/captures/lambda-fresh-2.scala:14:11 ----------------------------------------------------
+14 |  def g(): File^ = f3  // error
+   |           ^^^^^
+   |           Separation failure: method g's result type File^ hides non-local value f3
+-- Error: tests/neg-custom-args/captures/lambda-fresh-2.scala:20:35 ----------------------------------------------------
+20 |  val a: () => Ref^{fresh} = () => f1  // error
+   |                                   ^
+   |Separation failure: anonymous function of type (): Ref^{fresh}'s inferred result type Ref^ hides non-local value f1
+-- Error: tests/neg-custom-args/captures/lambda-fresh-2.scala:22:11 ----------------------------------------------------
+22 |  def g(): Ref^ = f3  // error
+   |           ^^^^
+   |           Separation failure: method g's result type Ref^ hides non-local value f3
+-- Error: tests/neg-custom-args/captures/lambda-fresh-2.scala:28:35 ----------------------------------------------------
+28 |  val a: () => One^{fresh} = () => f1  // error
+   |                                   ^
+   |Separation failure: anonymous function of type (): One^{fresh}'s inferred result type One^ hides non-local value f1
+-- Error: tests/neg-custom-args/captures/lambda-fresh-2.scala:30:11 ----------------------------------------------------
+30 |  def g(): One^ = f3  // error
+   |           ^^^^
+   |           Separation failure: method g's result type One^ hides non-local value f3

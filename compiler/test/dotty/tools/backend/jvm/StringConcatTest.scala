@@ -4,7 +4,7 @@ import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import org.junit.Test
 
-import scala.tools.asm.Opcodes.*
+import org.objectweb.asm.Opcodes.*
 import org.junit.Assert.*
 import dotty.AsmConverters.*
 import dotty.DottyBytecodeTest
@@ -51,7 +51,7 @@ class StringConcatTest extends DottyBytecodeTest {
 
     checkBCode(code) { dir =>
       def instructions(meth: String): List[Instruction] = {
-        val clsIn = dir.lookupName("C.class", directory = false).nn.input
+        val clsIn = lookupClass(dir, "C.class")
         val clsNode = loadClassNode(clsIn)
         instructionsFromMethod(getMethod(clsNode, meth))
       }

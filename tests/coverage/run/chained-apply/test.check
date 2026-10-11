@@ -1,0 +1,13 @@
+foo
+addMode
+foo
+addMode
+bar
+foo
+addMode
+argBar
+memberAddMode
+bar
+depFoo
+depAddMode
+dep.bar

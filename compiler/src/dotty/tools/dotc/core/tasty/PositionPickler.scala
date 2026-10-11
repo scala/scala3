@@ -34,10 +34,8 @@ object PositionPickler:
       addrOfTree: TreeToAddr,
       treeAnnots: untpd.MemberDef => List[tpd.Tree],
       typeAnnots: List[tpd.Tree],
-      relativePathReference: String,
       source: SourceFile,
       roots: List[Tree],
-      warnings: mutable.ListBuffer[Message],
       buf: TastyBuffer = new TastyBuffer(5000),
       pickledIndices: mutable.BitSet = new mutable.BitSet) =
 
@@ -79,8 +77,7 @@ object PositionPickler:
 
     def pickleSource(source: SourceFile): Unit = {
       buf.writeInt(SOURCE)
-      val relativePath = SourceFile.relativePath(source, relativePathReference)
-      buf.writeInt(pickler.nameBuffer.nameIndex(relativePath.toTermName).index)
+      buf.writeInt(pickler.nameBuffer.nameIndex(source.pathRelativeToSourceRoot.toTermName).index)
     }
 
     /** True if x's position shouldn't be reconstructed automatically from its initial span

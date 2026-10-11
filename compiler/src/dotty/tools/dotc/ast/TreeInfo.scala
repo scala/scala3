@@ -431,6 +431,32 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
             case _ => None
         case _ => None
   end WitnessNamesAnnot
+
+  /** Constructor and extractor for `annotation.internal.JavaRecordFields(isVararg, name_1, ..., name_n)`
+   *  represented as an untyped or typed tree.
+   */
+  object JavaRecordFieldsAnnot:
+    def tpdTree(isVararg: Boolean, names: List[String])(using Context): tpd.Tree =
+      tpd.New(
+        defn.JavaRecordFieldsAnnot.typeRef,
+        List(
+          tpd.Literal(Constant(isVararg)),
+          tpd.SeqLiteral(names.map(n => tpd.Literal(Constant(n))), tpd.TypeTree(defn.StringType))
+        )
+      )
+
+    def apply(isVararg: Boolean, names: List[String])(using Context): untpd.Tree =
+      untpd.TypedSplice(tpdTree(isVararg, names))
+
+    def unapply(tree: Tree)(using Context): Option[(Boolean, List[TermName])] =
+      unsplice(tree) match
+        case Apply(Select(New(tpt: tpd.TypeTree), nme.CONSTRUCTOR), Literal(Constant(isVararg: Boolean)) :: SeqLiteral(elems, _) :: Nil)
+        if tpt.tpe.classSymbol == defn.JavaRecordFieldsAnnot =>
+          val names = elems.map:
+            case Literal(Constant(str: String)) => str.toTermName
+          Some((isVararg, names))
+        case _ => None
+  end JavaRecordFieldsAnnot
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
@@ -478,6 +504,21 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       isUsingClause(params)
     case _ => false
   }
+
+  def isConsumeAnnot(tree: Tree)(using Context): Boolean = unsplice(tree) match
+    case Apply(
+      Select(
+        New(
+          Select(
+            Select(
+              Select(
+                Select(
+                  Ident(nme.ROOTPKG),
+                  nme.scala),
+                nme.caps),
+              nme.internal),
+            tpnme.consume)), _), _) => true
+    case _ => false
 
   /**  The largest subset of {NoInits, PureInterface} that a
    *   trait or class enclosing this statement can have as flags.
@@ -636,6 +677,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       minOf(exprPurity(expr), bindings.map(statPurity))
     case NamedArg(_, expr) =>
       exprPurity(expr)
+    case Assign(v, rhs) =>
+      exprPurity(v) `min` exprPurity(rhs)
     case _ =>
       Impure
   }
@@ -1000,7 +1043,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     else
       val locals = new mutable.ListBuffer[Symbol]
       for stat <- stats do
-        if stat.isDef && stat.symbol.exists then locals += stat.symbol
+        if stat.isDef then
+          val sym = stat.symbol
+          if sym.exists then locals += sym
       locals.toList
 
   /** If `tree` is a DefTree, the symbol defined by it, otherwise NoSymbol */

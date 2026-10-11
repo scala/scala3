@@ -395,7 +395,6 @@
 ./overview.html
 ./preview/better-fors.html
 ./preview/index.html
-./preview/into.html
 ./preview/named-tuples.html
 ./preview/overview.html
 ./preview/runtimeChecked.html

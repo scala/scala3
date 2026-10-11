@@ -85,6 +85,7 @@ abstract class AccessProxies {
       val sym = newSymbol(owner, name, Synthetic | Method, info, coord = accessed.span).entered
       if accessed.is(Private) then sym.setFlag(Final)
       else if sym.allOverriddenSymbols.exists(!_.is(Deferred)) then sym.setFlag(Override)
+      if accessed.is(Erased) then sym.setFlag(Erased)
       ExperimentalAnnotation.copy(accessed).foreach(sym.addAnnotation)
       sym
     }
@@ -140,13 +141,8 @@ abstract class AccessProxies {
         if accessorClass.is(Package) then
           accessorClass = ctx.owner.topLevelClass
         val accessorName = accessorNameOf(accessed.name, accessorClass)
-        val mappedInfo = accessed.info match
-          // TypeRef pointing to module class seems to not be stable, so we remap that to a TermRef
-          // see test i22593.scala (and issue #i22593)
-          case tref @ TypeRef(prefix, _) if tref.symbol.is(Module) => TermRef(prefix, tref.symbol.companionModule)
-          case other => other
         val accessorInfo =
-          mappedInfo.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
+          accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
         val accessor = accessorSymbol(accessorClass, accessorName, accessorInfo, accessed)
         rewire(reference, accessor)
       }
@@ -173,8 +169,8 @@ object AccessProxies {
   def hostForAccessorOf(accessed: Symbol)(using Context): Symbol = {
     def recur(cls: Symbol): Symbol =
       if (!cls.exists) NoSymbol
-      else if cls.derivesFrom(accessed.owner)
-              || cls.companionModule.moduleClass == accessed.owner
+      else if ((cls.derivesFrom(accessed.owner) && !(accessed.is(Private) && (cls ne accessed.owner)))
+              || cls.companionModule.moduleClass == accessed.owner)
       then cls
       else recur(cls.owner)
     recur(ctx.owner)

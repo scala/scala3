@@ -36,6 +36,7 @@ trait BuildFrom[-From, -A, +C] extends Any { self: BuildFrom[From, A, C] =>
    *  Building collections with `fromSpecific` is preferred because it can be lazy for lazy collections.
    *
    *  @param from the source collection providing the factory for creating the builder
+   *  @return a new `Builder` that accepts elements of type `A` and produces a collection of type `C`
    */
   def newBuilder(from: From): Builder[A, C]
 
@@ -45,6 +46,7 @@ trait BuildFrom[-From, -A, +C] extends Any { self: BuildFrom[From, A, C] =>
   /** Partially apply a BuildFrom to a Factory.
    *
    *  @param from the source collection to partially apply, producing a `Factory` bound to it
+   *  @return a `Factory` that builds collections of type `C` from elements of type `A`, using `from` as the source collection
    */
   def toFactory(from: From): Factory[A, C] = new Factory[A, C] {
     def fromSpecific(it: IterableOnce[A]^): C^{it} = self.fromSpecific(from)(it)
@@ -57,6 +59,11 @@ object BuildFrom extends BuildFromLowPriority1 {
   /** Builds the source collection type from a MapOps.
    *
    *  @tparam CC the higher-kinded type constructor of the map collection (e.g. `HashMap`)
+   *  @tparam K0 the key type of the source map
+   *  @tparam V0 the value type of the source map
+   *  @tparam K the key type of the resulting map
+   *  @tparam V the value type of the resulting map
+   *  @return a `BuildFrom` instance that builds a `CC[K, V]` from `(K, V)` pairs, using the `mapFactory` of the source `CC[K0, V0]`
    */
   implicit def buildFromMapOps[CC[X, Y] <: Map[X, Y] & MapOps[X, Y, CC, ?], K0, V0, K, V]: BuildFrom[CC[K0, V0] & Map[K0, V0], (K, V), CC[K, V] & Map[K, V]] = new BuildFrom[CC[K0, V0], (K, V), CC[K, V]] {
     //TODO: Reuse a prototype instance
@@ -67,6 +74,11 @@ object BuildFrom extends BuildFromLowPriority1 {
   /** Builds the source collection type from a SortedMapOps.
    *
    *  @tparam CC the higher-kinded type constructor of the sorted map collection (e.g. `TreeMap`)
+   *  @tparam K0 the key type of the source sorted map
+   *  @tparam V0 the value type of the source sorted map
+   *  @tparam K the key type of the resulting sorted map, which must have an `Ordering`
+   *  @tparam V the value type of the resulting sorted map
+   *  @return a `BuildFrom` instance that builds a `CC[K, V]` from `(K, V)` pairs, using the `sortedMapFactory` of the source `CC[K0, V0]`
    */
   implicit def buildFromSortedMapOps[CC[X, Y] <: SortedMap[X, Y] & SortedMapOps[X, Y, CC, ?], K0, V0, K : Ordering, V]: BuildFrom[CC[K0, V0] & SortedMap[K0, V0], (K, V), CC[K, V] & SortedMap[K, V]] = new BuildFrom[CC[K0, V0], (K, V), CC[K, V]] {
     def newBuilder(from: CC[K0, V0]): Builder[(K, V), CC[K, V]] = (from: SortedMapOps[K0, V0, CC, ?]).sortedMapFactory.newBuilder[K, V]
@@ -99,6 +111,12 @@ object BuildFrom extends BuildFromLowPriority1 {
       def newBuilder(from: Array[?]): Builder[A, Array[A]] = Factory.arrayFactory[A].newBuilder
     }
 
+  given buildFromIArray[A : ClassTag]: BuildFrom[IArray[Any], A, IArray[A]] =
+    // IArray is covariant, so IArray[Any] should accept any IArray.
+    new BuildFrom[IArray[Any], A, IArray[A]]:
+      def fromSpecific(from: IArray[Any])(it: IterableOnce[A]^): IArray[A] = IArray.from(it)
+      def newBuilder(from: IArray[Any]): Builder[A, IArray[A]] = IArray.newBuilder[A]
+
   implicit def buildFromView[A, B]: BuildFrom[View[A], B, View[B]] =
     new BuildFrom[View[A], B, View[B]] {
       def fromSpecific(from: View[A])(it: IterableOnce[B]^): View[B]^{it} = View.from(it)
@@ -112,6 +130,9 @@ trait BuildFromLowPriority1 extends BuildFromLowPriority2 {
   /** Builds the source collection type from an Iterable with SortedOps.
    *
    *  @tparam CC the higher-kinded type constructor of the sorted set collection (e.g. `TreeSet`)
+   *  @tparam A0 the element type of the source sorted set
+   *  @tparam A the element type of the resulting sorted set, which must have an `Ordering`
+   *  @return a `BuildFrom` instance that builds a sorted `CC[A]` (requiring an `Ordering[A]`) from elements of type `A`, using the `sortedIterableFactory` of the source `CC[A0]`
    */
   // Restating the upper bound of CC in the result type seems redundant, but it serves to prune the
   // implicit search space for faster compilation and reduced change of divergence. See the compilation
@@ -132,6 +153,9 @@ trait BuildFromLowPriority2 {
   /** Builds the source collection type from an IterableOps.
    *
    *  @tparam CC the higher-kinded type constructor of the iterable collection (e.g. `List`, `Vector`)
+   *  @tparam A0 the element type of the source iterable
+   *  @tparam A the element type of the resulting iterable
+   *  @return a `BuildFrom` instance that builds a `CC[A]` from elements of type `A`, using the `iterableFactory` of the source `CC[A0]`
    */
   implicit def buildFromIterableOps[CC[X] <: Iterable[X] & IterableOps[X, CC, ?], A0, A]: BuildFrom[CC[A0], A, CC[A]] = new BuildFrom[CC[A0], A, CC[A]] {
     //TODO: Reuse a prototype instance

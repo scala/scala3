@@ -147,6 +147,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the iterator
    *  @param i the Scala `Iterator` to be converted
+   *  @return an adapter exposing an `asJava` method that returns the corresponding Java `Iterator`
    */
   implicit def asJavaIteratorConverter[A](i : Iterator[A]): AsJava[ju.Iterator[A]] =
     new AsJava(asJavaIterator(i))
@@ -156,6 +157,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the iterator
    *  @param i the Scala `Iterator` to be converted
+   *  @return an adapter exposing an `asJavaEnumeration` method that returns the corresponding Java `Enumeration`
    */
   implicit def asJavaEnumerationConverter[A](i : Iterator[A]): AsJavaEnumeration[A] =
     new AsJavaEnumeration(i)
@@ -165,6 +167,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the iterable
    *  @param i the Scala `Iterable` to be converted
+   *  @return an adapter exposing an `asJava` method that returns the corresponding Java `Iterable`
    */
   implicit def asJavaIterableConverter[A](i : Iterable[A]): AsJava[jl.Iterable[A]] =
     new AsJava(asJavaIterable(i))
@@ -174,6 +177,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the iterable
    *  @param i the Scala `Iterable` to be converted
+   *  @return an adapter exposing an `asJavaCollection` method that returns the corresponding immutable Java `Collection`
    */
   implicit def asJavaCollectionConverter[A](i : Iterable[A]): AsJavaCollection[A] =
     new AsJavaCollection(i)
@@ -183,6 +187,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the buffer
    *  @param b the Scala mutable `Buffer` to be converted
+   *  @return an adapter exposing an `asJava` method that returns the corresponding Java `List`
    */
   implicit def bufferAsJavaListConverter[A](b : mutable.Buffer[A]): AsJava[ju.List[A]] =
     new AsJava(bufferAsJavaList(b))
@@ -192,6 +197,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the sequence
    *  @param b the Scala mutable `Seq` to be converted
+   *  @return an adapter exposing an `asJava` method that returns the corresponding Java `List`
    */
   implicit def mutableSeqAsJavaListConverter[A](b : mutable.Seq[A]): AsJava[ju.List[A]] =
     new AsJava(mutableSeqAsJavaList(b))
@@ -201,6 +207,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the sequence
    *  @param b the Scala `Seq` to be converted
+   *  @return an adapter exposing an `asJava` method that returns the corresponding Java `List`
    */
   implicit def seqAsJavaListConverter[A](b : Seq[A]): AsJava[ju.List[A]] =
     new AsJava(seqAsJavaList(b))
@@ -210,6 +217,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the set
    *  @param s the Scala mutable `Set` to be converted
+   *  @return an adapter exposing an `asJava` method that returns the corresponding Java `Set`
    */
   implicit def mutableSetAsJavaSetConverter[A](s : mutable.Set[A]): AsJava[ju.Set[A]] =
     new AsJava(mutableSetAsJavaSet(s))
@@ -219,6 +227,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the set
    *  @param s the Scala `Set` to be converted
+   *  @return an adapter exposing an `asJava` method that returns the corresponding Java `Set`
    */
   implicit def setAsJavaSetConverter[A](s : Set[A]): AsJava[ju.Set[A]] =
     new AsJava(setAsJavaSet(s))
@@ -229,6 +238,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *  @tparam K the type of the map keys
    *  @tparam V the type of the map values
    *  @param m the Scala mutable `Map` to be converted
+   *  @return an adapter exposing an `asJava` method that returns the corresponding Java `Map`
    */
   implicit def mutableMapAsJavaMapConverter[K, V](m : mutable.Map[K, V]): AsJava[ju.Map[K, V]] =
     new AsJava(mutableMapAsJavaMap(m))
@@ -239,6 +249,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *  @tparam K the type of the map keys
    *  @tparam V the type of the map values
    *  @param m the Scala mutable `Map` to be converted
+   *  @return an adapter exposing an `asJavaDictionary` method that returns the corresponding Java `Dictionary`
    */
   implicit def asJavaDictionaryConverter[K, V](m : mutable.Map[K, V]): AsJavaDictionary[K, V] =
     new AsJavaDictionary(m)
@@ -249,6 +260,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *  @tparam K the type of the map keys
    *  @tparam V the type of the map values
    *  @param m the Scala `Map` to be converted
+   *  @return an adapter exposing an `asJava` method that returns the corresponding Java `Map`
    */
   implicit def mapAsJavaMapConverter[K, V](m : Map[K, V]): AsJava[ju.Map[K, V]] =
     new AsJava(mapAsJavaMap(m))
@@ -259,6 +271,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *  @tparam K the type of the map keys
    *  @tparam V the type of the map values
    *  @param m the Scala `concurrent.Map` to be converted
+   *  @return an adapter exposing an `asJava` method that returns the corresponding Java `ConcurrentMap`
    */
   implicit def mapAsJavaConcurrentMapConverter[K, V](m: concurrent.Map[K, V]): AsJava[juc.ConcurrentMap[K, V]] =
     new AsJava(mapAsJavaConcurrentMap(m))
@@ -269,6 +282,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the iterator
    *  @param i the Java `Iterator` to be converted
+   *  @return an adapter exposing an `asScala` method that returns the corresponding Scala `Iterator`
    */
   implicit def asScalaIteratorConverter[A](i : ju.Iterator[A]): AsScala[Iterator[A]] =
     new AsScala(asScalaIterator(i))
@@ -278,6 +292,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the enumeration
    *  @param i the Java `Enumeration` to be converted
+   *  @return an adapter exposing an `asScala` method that returns the corresponding Scala `Iterator`
    */
   implicit def enumerationAsScalaIteratorConverter[A](i : ju.Enumeration[A]): AsScala[Iterator[A]] =
     new AsScala(enumerationAsScalaIterator(i))
@@ -287,6 +302,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the iterable
    *  @param i the Java `Iterable` to be converted
+   *  @return an adapter exposing an `asScala` method that returns the corresponding Scala `Iterable`
    */
   implicit def iterableAsScalaIterableConverter[A](i : jl.Iterable[A]): AsScala[Iterable[A]] =
     new AsScala(iterableAsScalaIterable(i))
@@ -296,6 +312,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the collection
    *  @param i the Java `Collection` to be converted
+   *  @return an adapter exposing an `asScala` method that returns the corresponding Scala `Iterable`
    */
   implicit def collectionAsScalaIterableConverter[A](i : ju.Collection[A]): AsScala[Iterable[A]] =
     new AsScala(collectionAsScalaIterable(i))
@@ -305,6 +322,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the list
    *  @param l the Java `List` to be converted
+   *  @return an adapter exposing an `asScala` method that returns the corresponding Scala mutable `Buffer`
    */
   implicit def asScalaBufferConverter[A](l : ju.List[A]): AsScala[mutable.Buffer[A]] =
     new AsScala(asScalaBuffer(l))
@@ -314,6 +332,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *
    *  @tparam A the element type of the set
    *  @param s the Java `Set` to be converted
+   *  @return an adapter exposing an `asScala` method that returns the corresponding Scala mutable `Set`
    */
   implicit def asScalaSetConverter[A](s : ju.Set[A]): AsScala[mutable.Set[A]] =
     new AsScala(asScalaSet(s))
@@ -324,6 +343,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *  @tparam K the type of the map keys
    *  @tparam V the type of the map values
    *  @param m the Java `Map` to be converted
+   *  @return an adapter exposing an `asScala` method that returns the corresponding Scala mutable `Map`
    */
   implicit def mapAsScalaMapConverter[K, V](m : ju.Map[K, V]): AsScala[mutable.Map[K, V]] =
     new AsScala(mapAsScalaMap(m))
@@ -334,6 +354,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *  @tparam K the type of the map keys
    *  @tparam V the type of the map values
    *  @param m the Java `ConcurrentMap` to be converted
+   *  @return an adapter exposing an `asScala` method that returns the corresponding Scala mutable `concurrent.Map`
    */
   implicit def mapAsScalaConcurrentMapConverter[K, V](m: juc.ConcurrentMap[K, V]): AsScala[concurrent.Map[K, V]] =
     new AsScala(mapAsScalaConcurrentMap(m))
@@ -344,6 +365,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *  @tparam K the type of the dictionary keys
    *  @tparam V the type of the dictionary values
    *  @param p the Java `Dictionary` to be converted
+   *  @return an adapter exposing an `asScala` method that returns the corresponding Scala mutable `Map`
    */
   implicit def dictionaryAsScalaMapConverter[K, V](p: ju.Dictionary[K, V]): AsScala[mutable.Map[K, V]] =
     new AsScala(dictionaryAsScalaMap(p))
@@ -352,6 +374,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *  @see [[propertiesAsScalaMap]]
    *
    *  @param p the Java `Properties` to be converted
+   *  @return an adapter exposing an `asScala` method that returns the corresponding Scala mutable `Map[String, String]`
    */
   implicit def propertiesAsScalaMapConverter(p: ju.Properties): AsScala[mutable.Map[String, String]] =
     new AsScala(propertiesAsScalaMap(p))

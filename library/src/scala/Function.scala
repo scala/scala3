@@ -21,6 +21,7 @@ object Function {
    *
    *  @tparam T the common input and output type of the functions in the chain
    *  @param fs the given sequence of functions
+   *  @return the composed function that applies each function in `fs` left-to-right, or the identity function if `fs` is empty
    */
   def chain[T](fs: scala.collection.Seq[T => T]): T => T = { x => fs.foldLeft(x)((x, f) => f(x)) }
 
@@ -30,6 +31,7 @@ object Function {
    *  @tparam U the type of the argument to ignore
    *  @param x the constant value to return
    *  @param y the argument that is ignored
+   *  @return `x` regardless of the value of `y`
    */
   def const[T, U](x: T)(y: U): T = x
 
@@ -57,6 +59,7 @@ object Function {
    *  @tparam T2 the type of the 2nd argument
    *  @tparam R the result type
    *  @param f the curried function to uncurry
+   *  @return an equivalent function of arity 2 that takes all arguments at once
    */
   def uncurried[T1, T2, R](f: T1 => T2 => R): (T1, T2) => R = {
     (x1, x2) => f(x1)(x2)
@@ -69,6 +72,7 @@ object Function {
    *  @tparam T3 the type of the 3rd argument
    *  @tparam R the result type
    *  @param f the curried function to uncurry
+   *  @return an equivalent function of arity 3 that takes all arguments at once
    */
   def uncurried[T1, T2, T3, R](f: T1 => T2 => T3 => R): (T1, T2, T3) => R = {
     (x1, x2, x3) => f(x1)(x2)(x3)
@@ -82,6 +86,7 @@ object Function {
    *  @tparam T4 the type of the 4th argument
    *  @tparam R the result type
    *  @param f the curried function to uncurry
+   *  @return an equivalent function of arity 4 that takes all arguments at once
    */
   def uncurried[T1, T2, T3, T4, R](f: T1 => T2 => T3 => T4 => R): (T1, T2, T3, T4) => R = {
     (x1, x2, x3, x4) => f(x1)(x2)(x3)(x4)
@@ -96,6 +101,7 @@ object Function {
    *  @tparam T5 the type of the 5th argument
    *  @tparam R the result type
    *  @param f the curried function to uncurry
+   *  @return an equivalent function of arity 5 that takes all arguments at once
    */
   def uncurried[T1, T2, T3, T4, T5, R](f: T1 => T2 => T3 => T4 => T5 => R): (T1, T2, T3, T4, T5) => R  =  {
     (x1, x2, x3, x4, x5) => f(x1)(x2)(x3)(x4)(x5)
@@ -143,6 +149,7 @@ object Function {
    *  @tparam T2 the type of the 2nd argument
    *  @tparam R the result type
    *  @param f the tupled function to untuple
+   *  @return an equivalent function of arity 2 that takes each argument separately
    */
   def untupled[T1, T2, R](f: ((T1, T2)) => R): (T1, T2) => R = {
     (x1, x2) => f((x1, x2))
@@ -156,6 +163,7 @@ object Function {
    *  @tparam T3 the type of the 3rd argument
    *  @tparam R the result type
    *  @param f the tupled function to untuple
+   *  @return an equivalent function of arity 3 that takes each argument separately
    */
   def untupled[T1, T2, T3, R](f: ((T1, T2, T3)) => R): (T1, T2, T3) => R = {
     (x1, x2, x3) => f((x1, x2, x3))
@@ -170,6 +178,7 @@ object Function {
    *  @tparam T4 the type of the 4th argument
    *  @tparam R the result type
    *  @param f the tupled function to untuple
+   *  @return an equivalent function of arity 4 that takes each argument separately
    */
   def untupled[T1, T2, T3, T4, R](f: ((T1, T2, T3, T4)) => R): (T1, T2, T3, T4) => R = {
     (x1, x2, x3, x4) => f((x1, x2, x3, x4))
@@ -185,6 +194,7 @@ object Function {
    *  @tparam T5 the type of the 5th argument
    *  @tparam R the result type
    *  @param f the tupled function to untuple
+   *  @return an equivalent function of arity 5 that takes each argument separately
    */
   def untupled[T1, T2, T3, T4, T5, R](f: ((T1, T2, T3, T4, T5)) => R): (T1, T2, T3, T4, T5) => R = {
     (x1, x2, x3, x4, x5) => f((x1, x2, x3, x4, x5))

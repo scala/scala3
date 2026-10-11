@@ -1,2 +1,12 @@
-13: Pattern Match Exhaustivity: NodeA(_), NodeB(_), NodeC(_)
-15: Match case Unreachable
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmat-extractor.scala:13:30 
+13 |  def foo(x: Node): Boolean = x match { // unexhaustive
+   |                              ^
+   |             match may not be exhaustive.
+   |
+   |             It would fail on pattern case: NodeA(_), NodeB(_), NodeC(_)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E030] Match case Unreachable Warning: tests/patmat/patmat-extractor.scala:15:13 
+15 |    case Node(NodeA(4), NodeB(false)) => true // unreachable code
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         Unreachable case

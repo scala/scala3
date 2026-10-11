@@ -1,5 +1,40 @@
-7: Pattern Match Exhaustivity: Good(Bad(_)), Bad(Good(_))
-19: Pattern Match Exhaustivity: Some(_)
-24: Pattern Match Exhaustivity: (_, Some(_))
-29: Pattern Match Exhaustivity: (Some(_), Some(_)), (None, None)
-50: Pattern Match Exhaustivity: LetL(IntLit), LetL(BooleanLit)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmat-adt.scala:7:22 
+7 |  def foo1a(x: Odd) = x match { // warning: Good(_: Bad), Bad(_: Good)
+  |                      ^
+  |                 match may not be exhaustive.
+  |
+  |                 It would fail on pattern case: Good(Bad(_)), Bad(Good(_))
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmat-adt.scala:19:29 
+19 |  def foo2(x: Option[Int]) = x match { // warning: Some(_: Int)
+   |                             ^
+   |                             match may not be exhaustive.
+   |
+   |                             It would fail on pattern case: Some(_)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmat-adt.scala:24:31 
+24 |  def foo3a[T](x: Option[T]) = (x, x) match { // warning: (Some(_), Some(_)), (None, Some(_))
+   |                               ^^^^^^
+   |                             match may not be exhaustive.
+   |
+   |                             It would fail on pattern case: (_, Some(_))
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmat-adt.scala:29:31 
+29 |  def foo3b[T](x: Option[T]) = (x, x) match { // warning: (Some(_), Some(_)), (None, None)
+   |                               ^^^^^^
+   |         match may not be exhaustive.
+   |
+   |         It would fail on pattern case: (Some(_), Some(_)), (None, None)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmat-adt.scala:50:31 
+50 |  def foo5(tree: Tree) : Any = tree match {
+   |                               ^^^^
+   |           match may not be exhaustive.
+   |
+   |           It would fail on pattern case: LetL(IntLit), LetL(BooleanLit)
+   |
+   | longer explanation available when compiling with `-explain`

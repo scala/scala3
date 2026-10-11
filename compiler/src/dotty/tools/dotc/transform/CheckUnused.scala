@@ -57,6 +57,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     tree
 
   override def transformIdent(tree: Ident)(using Context): tree.type =
+    val name = tree.removeAttachment(OriginalName).getOrElse(tree.name)
     if tree.symbol.exists then
       // if in an inline expansion, resolve at summonInline (synthetic pos) or in an enclosing call site
       val resolvingImports =
@@ -69,9 +70,9 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
             loopOverPrefixes(prefix.normalizedPrefix, depth + 1)
         if tree.srcPos.isZeroExtentSynthetic then
           loopOverPrefixes(tree.typeOpt.normalizedPrefix, depth = 0)
-        resolveUsage(tree.symbol, tree.name, tree.typeOpt.importPrefix.skipPackageObject, tree.srcPos, resolvingImports)
+        resolveUsage(tree.symbol, name, tree.typeOpt.importPrefix.skipPackageObject, tree.srcPos, resolvingImports)
     else if tree.hasType then
-      resolveUsage(tree.tpe.classSymbol, tree.name, tree.tpe.importPrefix.skipPackageObject, tree.srcPos)
+      resolveUsage(tree.tpe.classSymbol, name, tree.tpe.importPrefix.skipPackageObject, tree.srcPos)
     tree
 
   // import x.y; y may be rewritten x.y, also import x.z as y
@@ -440,10 +441,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       val cur = ctxs.next()
       if cur.owner.userSymbol == sym && !sym.is(Package) then
         enclosed = true // found enclosing definition, don't record the reference
-      if cur.isImportContext then
-        val sel = matchingSelector(cur.importInfo.nn)
+      val importInfo = cur.importInfoIfImportContext
+      if importInfo `ne` null then
+        val sel = matchingSelector(importInfo)
         if sel != null then
-          if cur.importInfo.nn.isRootImport then
+          if importInfo.isRootImport then
             if precedence.weakerThan(OtherUnit) then
               precedence = OtherUnit
               candidate = cur
@@ -487,23 +489,24 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     val ctxs = ctx.outersIterator
     while !done && ctxs.hasNext do
       val cur = ctxs.next()
+      val importInfo = cur.importInfoIfImportContext
       val implicitRefs: List[ImplicitRef] =
         if (cur.isClassDefContext) cur.owner.thisType.implicitMembers
-        else if (cur.isImportContext) cur.importInfo.nn.importedImplicits
+        else if (importInfo `ne` null) importInfo.importedImplicits
         else if (cur.isNonEmptyScopeContext) cur.scope.implicitDecls
         else Nil
       implicitRefs.find(ref => ref.underlyingRef.widen <:< tp) match
       case Some(found: TermRef) =>
-        refUsage(found.denot.symbol, pos)
-        if cur.isImportContext then
-          cur.importInfo.nn.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
+        refUsage(found.symbol, pos)
+        if importInfo `ne` null then
+          importInfo.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
           case Some(sel) =>
             refInfos.sels.put(sel, ())
           case _ =>
         return
-      case Some(found: RenamedImplicitRef) if cur.isImportContext =>
-        refUsage(found.underlyingRef.denot.symbol, pos)
-        cur.importInfo.nn.selectors.find(sel => sel.rename == found.implicitName) match
+      case Some(found: RenamedImplicitRef) if importInfo `ne` null =>
+        refUsage(found.underlyingRef.symbol, pos)
+        importInfo.selectors.find(sel => sel.rename == found.implicitName) match
         case Some(sel) =>
           refInfos.sels.put(sel, ())
         case _ =>
@@ -539,6 +542,14 @@ object CheckUnused:
 
   /** Attachment holding the name of an Ident as written by the user. */
   val OriginalName = Property.StickyKey[Name]
+
+  /** Record the name as written by the user when it differs from the referenced
+   *  symbol's name, such as a renamed import or a renamed extension method, so that
+   *  CheckUnused can match the reference against the import selector that renamed it.
+   */
+  def withOriginalName(tree: Tree, written: Name)(using Context): tree.type =
+    if tree.symbol.name != written then tree.withAttachment(OriginalName, written)
+    tree
 
   /** Suppress warning in a tree, such as a patvar name allowed by special convention. */
   val NoWarn = Property.StickyKey[Unit]
@@ -680,6 +691,7 @@ object CheckUnused:
         || m.hasAnnotation(defn.UnusedAnnot) // param of unused method
         || sym.info.isSingleton
         || m.isConstructor && m.owner.thisType.baseClasses.contains(defn.AnnotationClass)
+        || sym.isErased // erased param may be unused by design
       def checkExplicit(): Unit =
         // A class param is unused if its param accessor is unused.
         // (The class param is not assigned to a field until constructors.)
@@ -746,6 +758,7 @@ object CheckUnused:
              tps.hasAnnotation(dd.LanguageFeatureMetaAnnot)
         || sym.info.isSingleton // DSL friendly
         || sym.info.dealias.isInstanceOf[RefinedType] // can't be expressed as a context bound
+        || sym.isErased // erased param is unused by design
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
         && !m.isEffectivelyOverride
