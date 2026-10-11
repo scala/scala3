@@ -105,6 +105,16 @@ trait DottyBytecodeTest {
     classNode.methods.asScala.find(_.name == name) getOrElse
       sys.error(s"Didn't find method '$name' in class '${classNode.name}'")
 
+  protected def hasInstanceOfInsideBlock(tcb: TryCatchBlockNode, exName: String) =
+    import dotty.tools.backend.jvm.BCodeUtils
+    def rec(node: AbstractInsnNode): Boolean =
+      BCodeUtils.nextExecutableInstruction(node) match
+        case Some(node: TypeInsnNode) =>
+          if(node.getOpcode == Opcodes.INSTANCEOF && node.desc == exName) true
+          else rec(node)
+        case Some(node) => rec(node)
+        case None => false
+    rec(tcb.start)
   protected def getField(classNode: ClassNode, name: String): FieldNode =
     classNode.fields.asScala.find(_.name == name) getOrElse
       sys.error(s"Didn't find field '$name' in class '${classNode.name}'")

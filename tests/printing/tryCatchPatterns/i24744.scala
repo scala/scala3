@@ -9,4 +9,4 @@ object X:
       case _: (A | B) =>
         println("A | B")
       case _ =>
-        println("noop")
+        println("default")

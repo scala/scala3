@@ -185,10 +185,10 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
 
       val caseHandlers: List[EHClause] =
         for (cdef @ CaseDef(pat, _, caseBody) <- catches) yield {
+          val maybeSimpleMultiMatchTypes = cdef
+            .getAttachment(TryCatchPatterns.SimpleMultiCatch)
           pat match {
             case Typed(Ident(nme.WILDCARD), tpt) =>
-              val maybeSimpleMultiMatchTypes = cdef
-                .getAttachment(TryCatchPatterns.SimpleMultiCatch)
               maybeSimpleMultiMatchTypes match {
                 case Some(types) =>
                   val lubType = TypeComparer.lub(types)
@@ -200,9 +200,15 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
               }
             case Ident(nme.WILDCARD)              =>
               NamelessEH(bTypes.jlThrowableRef, List(bTypes.jlThrowableRef),caseBody)
-            // case x: T =>
-            // -> case x @ _ : T => ???
-            case Bind(_, _)                       => BoundEH   (pat.symbol, caseBody)
+            case Bind(_, _)                       =>
+              maybeSimpleMultiMatchTypes match {
+                case Some(types) =>
+                  val classBTypes = types.map(it => symInfoTK(it.typeSymbol).asClassBType)
+                  BoundEH   (pat.symbol, classBTypes, caseBody)
+                case None =>
+                  val t0 = symInfoTK(pat.symbol).asClassBType
+                  BoundEH   (pat.symbol,List(t0), caseBody)
+              }
           }
         }
 
@@ -321,7 +327,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
             endHandler = currProgramPoint()
             excTypes ++= exs
 
-          case BoundEH   (patSymbol,  caseBody) =>
+          case BoundEH   (patSymbol, exs, caseBody) =>
             // test/files/run/contrib674.scala , a local-var already exists for patSymbol.
             // rather than creating on first-access, we do it right away to emit debug-info for the created local var.
             val Local(patTK, _, patIdx, _) = locals.getOrMakeLocal(patSymbol)
@@ -330,7 +336,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
             nopIfNeeded(startHandler)
             endHandler = currProgramPoint()
             emitLocalVarScope(patSymbol, startHandler, endHandler)
-            excTypes += patTK.asClassBType
+            excTypes ++= exs
         }
         unregisterCleanup(finCleanup)
         // (2.b)  mark the try-body as protected by this case clause.
@@ -483,8 +489,8 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
     }.isDefined
 
     private trait EHClause
-    private case class BoundEH    (patSymbol: Symbol, caseBody: Tree) extends EHClause
     private case class NamelessEH(typeToDrop: ClassBType, excTypes: List[ClassBType], caseBody: Tree) extends EHClause
+    private case class BoundEH    (patSymbol: Symbol,excTypes: List[ClassBType], caseBody: Tree) extends EHClause
   }
 
 }

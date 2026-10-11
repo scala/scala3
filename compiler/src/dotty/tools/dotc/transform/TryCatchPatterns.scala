@@ -64,60 +64,40 @@ class TryCatchPatterns extends MiniPhase {
   }
 
   override def transformTry(tree: Try)(using Context): Tree = {
-    val (tryCases, patternMatchCases) = tree.cases.partitionMap(isCatchCase)
+    val (tryCases, patternMatchCases) = tree.cases.span(isCatchCase)
     val fallbackCase = mkFallbackPatterMatchCase(patternMatchCases, tree.span)
-    cpy.Try(tree)(cases = tryCases ++ fallbackCase)
+    cpy.Try(tree)(cases = transformTryCases(tryCases) ++ fallbackCase)
+  }
+
+  import TryCatchPatterns.SimpleMultiCatch
+  private def transformTryCases(tryCases: List[CaseDef])(using Context) = tryCases.map {
+    case cdef @ CaseDef(Typed(_, tpt @ DisjointUnion(types)), _, _) =>
+      cdef.withAttachment(SimpleMultiCatch, types)
+    case cdef @ CaseDef(Bind(_, Typed(_, tpt @ DisjointUnion(types))), _, _) =>
+      cdef.withAttachment(SimpleMultiCatch, types)
+    case cdef => cdef
   }
 
   /** Is this pattern node a catch-all or type-test pattern? */
-  // private def isCatchCase(cdef: CaseDef)(using Context): Boolean = cdef match {
-  //   case CaseDef(Typed(Ident(nme.WILDCARD), tpt @ DisjointUnion(types)), guard, _) =>
-  //     guard == EmptyTree && types.forall(isSimpleThrowable)
-  //   case CaseDef(Typed(Ident(nme.WILDCARD), tpt), guard, _) =>
-  //     warnIfUnreasonableCatch(tpt)
-  //     guard == EmptyTree && isSimpleThrowable(tpt.tpe)
-  //   case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt @ DisjointUnion(types))), guard, _) =>
-  //     warnIfUnreasonableCatch(tpt)
-  //     guard == EmptyTree && types.forall(isSimpleThrowable)
-  //   case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt)), guard, _) =>
-  //     warnIfUnreasonableCatch(tpt)
-  //     guard == EmptyTree && isSimpleThrowable(tpt.tpe)
-  //   case _ =>
-  //     if isDefaultCase(cdef) then
-  //       warnForUnreasonableCatch(cdef)
-  //       true
-  //     else
-  //       false
-  // }
-  import TryCatchPatterns.SimpleMultiCatch
-
-  /** Is this pattern node a catch-all or type-test pattern? */
-  private def isCatchCase(cdef: CaseDef)(using Context): Either[CaseDef, CaseDef] = cdef match {
-    case CaseDef(Typed(Ident(nme.WILDCARD), tpt @ DisjointUnion(types)), guard, _) =>
-      if(guard == EmptyTree && types.forall(isSimpleThrowable))
-        Left(cdef.withAttachment(SimpleMultiCatch, types))
-      else Right(cdef)
+  private def isCatchCase(cdef: CaseDef)(using Context): Boolean = cdef match {
     case CaseDef(Typed(Ident(nme.WILDCARD), tpt), guard, _) =>
       warnIfUnreasonableCatch(tpt)
-      if(guard == EmptyTree && isSimpleThrowable(tpt.tpe))
-        Left(cdef)
-      else Right(cdef)
-    case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt @ DisjointUnion(types))), guard, _) =>
-      warnIfUnreasonableCatch(tpt)
-      if(guard == EmptyTree && types.forall(isSimpleThrowable))
-        Left(cdef.withAttachment(SimpleMultiCatch, types))
-      else Right(cdef)
+      tpt match {
+        case DisjointUnion(types) => guard == EmptyTree && types.forall(isSimpleThrowable)
+        case _ => guard == EmptyTree && isSimpleThrowable(tpt.tpe)
+      }
     case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt)), guard, _) =>
       warnIfUnreasonableCatch(tpt)
-      if(guard == EmptyTree && isSimpleThrowable(tpt.tpe))
-        Left(cdef)
-      else Right(cdef)
+      tpt match {
+        case DisjointUnion(types) => guard == EmptyTree && types.forall(isSimpleThrowable)
+        case _ => guard == EmptyTree && isSimpleThrowable(tpt.tpe)
+      }
     case _ =>
       if isDefaultCase(cdef) then
         warnForUnreasonableCatch(cdef)
-        Left(cdef)
+        true
       else
-        Right(cdef)
+        false
   }
 
   @tailrec
@@ -131,21 +111,6 @@ class TryCatchPatterns extends MiniPhase {
     case _ =>
       false
   }
-
-  private def collectAltTypes(t: Type)(using Context): List[Type] = t match {
-    case OrType(tp1,tp2) =>
-      (collectAltTypes(tp1) ::: collectAltTypes(tp2))
-    case _ => List(t)
-  }
-  private def isDisjointThrowable(tp:Type)(using Context): Boolean =
-    collectAltTypes(tp)
-     .combinations(2)
-     .flatMap(_.permutations)
-     .map {
-        case head :: next :: Nil =>
-          !(head <:< next)
-        case _ => false
-      }.forall(_ == true)
 
   private def mkFallbackPatterMatchCase(patternMatchCases: List[CaseDef], span: Span)(
       implicit ctx: Context): Option[CaseDef] =

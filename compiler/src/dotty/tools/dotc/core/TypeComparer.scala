@@ -3581,7 +3581,6 @@ object TypeComparer {
     comparing(_.lub(tp1, tp2, canConstrain = canConstrain, isSoft = isSoft))
 
   /** The least upper bound of a list of types */
-  // TODO: use this
   final def lub(tps: List[Type])(using Context): Type =
     tps.foldLeft(defn.NothingType: Type)(lub(_,_))
 
