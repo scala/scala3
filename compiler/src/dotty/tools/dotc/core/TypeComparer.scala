@@ -1959,7 +1959,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                    && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
-                if v < 0 then 
+                if v < 0 then
                   val isValidSubtype = isSubType(arg2, arg1)
                   // Specialized traits have special variance rules because they have special erasure
                   if tp1.classSymbol.isSpecializedTrait
@@ -1971,7 +1971,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     false
                   else // Normal contravariance case
                     isValidSubtype
-                else if v > 0 then 
+                else if v > 0 then
                   val isValidSubtype = isSubType(arg1, arg2)
                   // Specialized traits have special variance rules because they have special erasure
                   if tp1.classSymbol.isSpecializedTrait
@@ -3575,6 +3575,7 @@ object TypeComparer {
     comparing(_.lub(tp1, tp2, canConstrain = canConstrain, isSoft = isSoft))
 
   /** The least upper bound of a list of types */
+  // TODO: use this
   final def lub(tps: List[Type])(using Context): Type =
     tps.foldLeft(defn.NothingType: Type)(lub(_,_))
 

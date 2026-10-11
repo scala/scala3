@@ -1,0 +1,34 @@
+[[syntax trees at end of MegaPhase{protectedAccessors, extmethods, uncacheGivenAliases, checkStatic, elimByName, hoistSuperArgs, forwardDepChecks, specializeApplyMethods, tryCatchPatterns, patternMatcher, pruneInlinedMethods, pruneInlineTraits}]] // tests/printing/tryCatchPatterns/i24744.scala
+package <empty> {
+  class A() extends Exception() {}
+  class B() extends Exception() {}
+  final lazy module val X: X = new X()
+  final module class X() extends Object() {
+    private def writeReplace(): AnyRef =
+      new scala.runtime.ModuleSerializationProxy(classOf[X.type])
+    def run: Unit =
+      try throw new Exception() catch
+        {
+          case ex1 @ _ =>
+            matchResult1[Unit]:
+              {
+                case val x1: (ex1 : Throwable) = ex1
+                if x1.$isInstanceOf[A | B] then
+                  {
+                    case val x2: A | B = x1.$asInstanceOf[A | B]
+                    case val e: A | B = x2
+                    return[matchResult1]
+                      {
+                        println("A | B")
+                      }
+                  }
+                 else ()
+                return[matchResult1]
+                  {
+                    println("noop")
+                  }
+              }
+        }
+  }
+}
+
