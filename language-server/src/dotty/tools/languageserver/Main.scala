@@ -30,7 +30,7 @@ object Main {
     }
   }
 
-  def startServer(in: InputStream, out: OutputStream) = {
+  def startServer(in: InputStream, out: OutputStream): java.util.concurrent.Future[Void] = {
     val server = new DottyLanguageServer
 
     println("Starting server")

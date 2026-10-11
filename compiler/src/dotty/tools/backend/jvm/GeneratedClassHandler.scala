@@ -1,18 +1,12 @@
 package dotty.tools.backend.jvm
 
 import java.nio.channels.ClosedByInterruptException
-import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy
 import java.util.concurrent.*
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
-import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.io.AbstractFile
-import dotty.tools.dotc.profile.{Profiler, ThreadPoolFactory}
-
-import dotty.tools.dotc.core.Phases
-import dotty.tools.dotc.core.Decorators.em
-import dotty.tools.dotc.report
+import dotty.tools.dotc.profile.{ProfiledThreadPool, Profiler}
 
 import scala.compiletime.uninitialized
 
@@ -30,9 +24,9 @@ private[jvm] sealed trait GeneratedClassHandler {
 
   /**
    * If running in parallel, block until all generated classes are handled.
-   * Returns any exceptions encountered during processing, with the corresponding file.
+   * Returns any exceptions encountered during processing, with the corresponding file path.
    */
-  def complete(): List[(Throwable, AbstractFile)]
+  def complete(): List[(Throwable, String)]
 
   /**
     * Invoked at the end of the jvm phase
@@ -45,17 +39,8 @@ private[jvm] object GeneratedClassHandler {
     new SyncWritingClassHandler(postProcessor)
 
   def parallel(postProcessor: PostProcessor, maxThreads: Int, queueSize: Int, genBCode: GenBCode, profiler: Profiler): GeneratedClassHandler = {
-    // if (settings.areStatisticsEnabled)
-    //   runReporting.warning(
-    //     NoPosition,
-    //     "JVM statistics are not reliable with multi-threaded JVM class writing.\n" +
-    //     "To collect compiler statistics remove the " + settings.YaddBackendThreads.name + " setting.",
-    //     WarningCategory.Other,
-    //     site = ""
-    //   )
     val additionalThreads = maxThreads - 1
-    val threadPoolFactory = ThreadPoolFactory(genBCode, profiler)
-    val javaExecutor = threadPoolFactory.newBoundedQueueFixedThreadPool(additionalThreads, queueSize, new CallerRunsPolicy, "non-ast")
+    val javaExecutor = ProfiledThreadPool.newExecutor(genBCode, profiler, additionalThreads, queueSize, "gen-class-handler")
     new AsyncWritingClassHandler(postProcessor, javaExecutor)
   }
 
@@ -69,7 +54,7 @@ private[jvm] object GeneratedClassHandler {
 
     def process(unit: GeneratedCompilationUnit): Unit = generatedUnits += unit
 
-    def complete(): List[(Throwable, AbstractFile)] = {
+    def complete(): List[(Throwable, String)] = {
       val allGeneratedUnits = generatedUnits.result()
       generatedUnits.clear()
       postProcessor.runGlobalOptimizations(allGeneratedUnits)
@@ -100,7 +85,7 @@ private[jvm] object GeneratedClassHandler {
         tastyRef.elem.foreach(postProcessor.sendToDisk)
         tastyRef.elem = null
 
-      processingUnits += new CompilationUnitInPostProcess(unit.sourceFile, task)
+      processingUnits += new CompilationUnitInPostProcess(unit.sourcePath, task)
     }
 
     private val executionContext: ExecutionContextExecutor = ExecutionContext.fromExecutor(javaExecutor)
@@ -111,7 +96,7 @@ private[jvm] object GeneratedClassHandler {
       result
     }
 
-    final def complete(): List[(Exception, AbstractFile)] = {
+    final def complete(): List[(Exception, String)] = {
       def stealWhileWaiting(unitInPostProcess: CompilationUnitInPostProcess): Unit = {
         val task = unitInPostProcess.task
         while (!task.isCompleted)
@@ -142,7 +127,7 @@ private[jvm] object GeneratedClassHandler {
           Nil
         catch
           case _: ClosedByInterruptException => throw new InterruptedException()
-          case e: Exception => List((e, unitInPostProcess.sourceFile))
+          case e: Exception => List((e, unitInPostProcess.sourcePath))
       }
     }
   }
@@ -172,5 +157,5 @@ private[jvm] object GeneratedClassHandler {
    * State for a compilation unit being post-processed.
    * Keeps a reference to the future that runs the post-processor.
    */
-  final private class CompilationUnitInPostProcess(val sourceFile: AbstractFile, val task: Future[Unit])
+  final private class CompilationUnitInPostProcess(val sourcePath: String, val task: Future[Unit])
 }

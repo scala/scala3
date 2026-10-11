@@ -154,10 +154,10 @@ as they are seen in a method body. Here is an example:
   def ++ (elems: into[IterableOnce[A]]): List[A] =
     val buf = ListBuffer[A]()
     for elem <- elems.iterator do // no `.underlying` needed here
-      buf += elems
+      buf += elem
     buf.toList
 ```
-Inside the `++` method, the `elems` parameter is of type `IterableOnce[A]`, not `into[IterableOne[A]]`. Hence, we can simply write `elems.iterator` to get at the `iterator` method of the `IterableOnce` class.
+Inside the `++` method, the `elems` parameter is of type `IterableOnce[A]`, not `into[IterableOnce[A]]`. Hence, we can simply write `elems.iterator` to get at the `iterator` method of the `IterableOnce` class.
 
 Specifically, we erase all `into` wrappers in the local types of parameter types that appear in covariant or invariant position. Contravariant `into` wrappers are kept since these typically are on the parameters of function arguments.
 
@@ -218,7 +218,7 @@ Type parameters that are not fully instantiated do not count as valid conversion
 ```scala
   trait Token
   class Keyword(str: String)
-  given Conversion[String, Keyword] = KeyWord(_)
+  given Conversion[String, Keyword] = Keyword(_)
 
   List[into[Keyword]]("if", "then", "else")
 ```
@@ -243,8 +243,8 @@ def g(x: C) = ()
 f(1)      // ok
 g(1)      // error
 ```
-The call `f("abc")` type-checks since `f`'s parameter type `T` is `into`.
-But the call `g("abc")` does not type-check since `g`'s parameter type `C` is not `into`. It does not matter that `C` extends a trait `T` that is `into`.
+The call `f(1)` type-checks since `f`'s parameter type `T` is `into`.
+But the call `g(1)` does not type-check since `g`'s parameter type `C` is not `into`. It does not matter that `C` extends a trait `T` that is `into`.
 
 
 ## Why Two Different Schemes?
@@ -279,4 +279,4 @@ of the original `Modifier` trait has changed. In summary, upgrading Laminar to u
 LocalModifier     ::=  ...  |  ‘into’
 ```
 
-`into` is a soft modifier. It is only allowed classes, traits, and opaque type aliases.
+`into` is a soft modifier. It is only allowed on classes, traits, and opaque type aliases.

@@ -1,16 +1,13 @@
 package dotty.tools
 package dotc
 
-import reporting.StoreReporter
 import vulpix.TestConfiguration
 
-import core.Contexts.{Context, ContextBase}
 import dotty.tools.Useables.given
 import dotty.tools.dotc.config.Settings.*
 import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
 import dotty.tools.dotc.config.ScalaSettingCategories.*
 import dotty.tools.dotc.config.ScalaSettings
-import dotty.tools.vulpix.TestConfiguration.mkClasspath
 import dotty.tools.io.PlainDirectory
 import dotty.tools.io.Directory
 import dotty.tools.dotc.config.ScalaVersion
@@ -254,9 +251,8 @@ class SettingsTests:
     assertTrue(summary.warnings.forall(_.contains("updated")))
 
   @Test def `dir option also warns`: Unit =
-    val abc: PlainFile = Paths.get("a", "b", "c").toPlainFile
     object Settings extends SettingGroup:
-      val option = OutputSetting(RootSetting, "option", "out", "A file", Paths.get("a", "b", "c").toPlainFile)
+      val option = FileContainerSetting(RootSetting, "option", false, "A file", Paths.get("a", "b", "c").toPlainFile)
     Using.resource(createTempDirectory("i13887")) { dir =>
       val target = createDirectory(dir.resolve("x"))
       val mistake = createDirectory(dir.resolve("y"))
@@ -301,7 +297,7 @@ class SettingsTests:
     val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
-        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir)
+        val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir)
 
       import Settings.*
       Files.write(file, "test".getBytes())
@@ -309,7 +305,7 @@ class SettingsTests:
       val args = List(s"-testOutput:${file.toString}")
       val summary = processArguments(args, processAll = true)
 
-      assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overriden")
+      assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overridden")
 
   @Test def `Output setting respects previous setting`: Unit =
     val result = Using.resources(
@@ -317,7 +313,7 @@ class SettingsTests:
     ): (file1, file2) =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
-        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true)
+        val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir, preferPrevious = true)
 
       import Settings.*
 
@@ -340,7 +336,7 @@ class SettingsTests:
     val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
-        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
+        val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
 
       import Settings.*
 
@@ -363,7 +359,7 @@ class SettingsTests:
       val intSetting = IntSetting(RootSetting, "intSetting", "intSetting", 0)
       val intChoiceSetting = IntChoiceSetting(RootSetting, "intChoiceSetting", "intChoiceSetting", List(1,2,3), 1)
       val multiStringSetting = MultiStringSetting(RootSetting, "multiStringSetting", "multiStringSetting", Help, default = List("a", "b"))
-      val outputSetting = OutputSetting(RootSetting, "outputSetting", "outputSetting", Help, new PlainDirectory(Directory(".")))
+      val outputSetting = FileContainerSetting(RootSetting, "outputSetting", true, Help, new PlainDirectory(Directory(".")))
       val pathSetting = PathSetting(RootSetting, "pathSetting", "pathSetting", ".")
       val phasesSetting = PhasesSetting(RootSetting, "phasesSetting", "phasesSetting", "all")
       val versionSetting= VersionSetting(RootSetting, "versionSetting", "versionSetting")
@@ -477,7 +473,7 @@ class SettingsTests:
     object Settings extends SettingGroup:
       val foo = BooleanSetting(RootSetting, "foo", "foo", ignoreInvalidArgs = true, preferPrevious = true)
       val bar = BooleanSetting(RootSetting, "bar", "bar")
-      val baz = OutputSetting(RootSetting, "out", "dir", "A file", default = Paths.get("out", "baz").toPlainFile,
+      val baz = FileContainerSetting(RootSetting, "out", false, "A file", default = Paths.get("out", "baz").toPlainFile,
         ignoreInvalidArgs = true, preferPrevious = true)
     import Settings.*
     Using.resource(createTempDirectory("testDir")): dir =>

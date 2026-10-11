@@ -196,6 +196,7 @@ object Using {
      *
      *  @tparam R the type of the resource, which must have a `Releasable` instance
      *  @param resource the resource to register with this manager
+     *  @return the same `resource`, unmodified, to allow fluent use at the call site
      */
     def apply[R: Releasable](resource: R): resource.type = {
       acquire(resource)

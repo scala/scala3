@@ -364,10 +364,9 @@ object PatternMatcher {
        *
        *  `getResult` is a product, where the last element is a sequence of elements.
        */
-      def unapplyProductSeqPlan(getResult: Symbol, args: List[Tree], arity: Int): Plan = {
+      def unapplyProductSeqPlan(selectors: List[Tree], args: List[Tree]): Plan = {
+        val arity = selectors.length
         assert(arity <= args.size + 1)
-        val selectors = productSelectors(getResult.info).map(ref(getResult).select(_))
-
         val matchSeq =
           letAbstract(selectors.last) { seqResult =>
             unapplySeqPlan(seqResult, args.drop(arity - 1))
@@ -379,7 +378,7 @@ object PatternMatcher {
       def unapplyPlan(unapp: Tree, args: List[Tree]): Plan = {
         def caseClass = unapp.symbol.owner.linkedClass
         lazy val caseAccessors = caseClass.caseAccessors
-        val unappType = unapp.tpe.widen.stripNamedTuple
+        val unappType = unapp.tpe.widen.stripNamedTuple.simplified
 
         def isSyntheticScala2Unapply(sym: Symbol) =
           sym.is(Synthetic) && sym.owner.is(Scala2x)
@@ -420,8 +419,8 @@ object PatternMatcher {
             else if isUnapplySeq && unapplySeqTypeElemTp(unappType.finalResultType).exists then
               unapplySeqPlan(unappResult, args)
             else if isUnapplySeq && isProductSeqMatch(unappType, args.length, unapp.srcPos) then
-              val arity = productArity(unappType, unapp.srcPos)
-              unapplyProductSeqPlan(unappResult, args, arity)
+              val selectors = productSelectors(unappType).map(ref(unappResult).select(_))
+              unapplyProductSeqPlan(selectors, args)
             else if unappResult.info <:< defn.NonEmptyTupleTypeRef then
               val components =
                 (0 until unappResult.denot.info.tupleElementTypes.getOrElse(Nil).length)
@@ -431,12 +430,21 @@ object PatternMatcher {
               assert(isGetMatch(unappType))
               val argsPlan = {
                 val get = getOfGetMatch(ref(unappResult))
-                val arity = productArity(get.tpe.stripNamedTuple, unapp.srcPos)
                 if (isUnapplySeq)
                   letAbstract(get) { getResult =>
-                    if unapplySeqTypeElemTp(get.tpe).exists
-                    then unapplySeqPlan(getResult, args)
-                    else unapplyProductSeqPlan(getResult, args, arity)
+                    if unapplySeqTypeElemTp(get.tpe).exists then
+                      unapplySeqPlan(getResult, args)
+                    else if isGenericTuple(getResult.info) then
+                      val elemTypes = getResult.info.tupleElementTypes.getOrElse(Nil)
+                      val selectors = elemTypes.zipWithIndex.map { (tp, i) =>
+                        val tree = tupleApp(i, ref(getResult))
+                        if i == elemTypes.length - 1 then tree.cast(tp) else tree
+                      }
+                      unapplyProductSeqPlan(selectors, args)
+                    else { 
+                      val selectors = productSelectors(getResult.info).map(ref(getResult).select(_))
+                      unapplyProductSeqPlan(selectors, args)
+                    }
                   }
                 else
                   letAbstract(get) { getResult =>

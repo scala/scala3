@@ -1,0 +1,20 @@
+-- Error: tests/neg-custom-args/captures/sep-leak-problem-unboxed.scala:20:51 ------------------------------------------
+20 |  val f: Box[Async^] => Unit = (x: Box[Async^]) => useBoxedAsync(x) // error
+   |                                                   ^^^^^^^^^^^^^
+   |                         Local any in the type of parameter x leaks into capture scope of an enclosing function.
+   |                         You could try to abstract the capability in a capset variable.
+-- Error: tests/neg-custom-args/captures/sep-leak-problem-unboxed.scala:21:37 ------------------------------------------
+21 |  val f0: Box[Async^] => Unit = x => useBoxedAsync(x) // // error
+   |                                     ^^^^^^^^^^^^^
+   |Local any created in method $anonfun of parameter parameter x of method $anonfun leaks into capture scope of an enclosing function.
+   |You could try to abstract the capability in a capset variable.
+-- Error: tests/neg-custom-args/captures/sep-leak-problem-unboxed.scala:23:32 ------------------------------------------
+23 |  val f1: Box[Async^] => Unit = useBoxedAsync(_) // error
+   |                                ^^^^^^^^^^^^^
+   |Local any created in method $anonfun of parameter parameter _$1 of method $anonfun leaks into capture scope of an enclosing function.
+   |You could try to abstract the capability in a capset variable.
+-- Error: tests/neg-custom-args/captures/sep-leak-problem-unboxed.scala:24:32 ------------------------------------------
+24 |  val f2: Box[Async^] => Unit = useBoxedAsync // error
+   |                                ^^^^^^^^^^^^^
+   |Local any created in method $anonfun of parameter parameter x of method $anonfun leaks into capture scope of an enclosing function.
+   |You could try to abstract the capability in a capset variable.

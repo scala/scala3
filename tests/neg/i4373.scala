@@ -5,8 +5,8 @@ class X1[A >: _ | X1[_]] // error
 class X2[A >: _ & X2[_]] // error
 class X3[A >: X3[_] | _] // error
 class X4[A >: X4[_] & _] // error
-class X5[A >: _ with X5[_]] // error
-class X6[A >: X6[_] with _] // error
+class X5[A >: _ & X5[_]] // error
+class X6[A >: X6[_] & _] // error
 
 class A1 extends _ // error
 class A2 extends _ with _ // error
@@ -26,10 +26,10 @@ object Test {
   // expression types
   type T7 = (=> Int) | (Int => Int) // error
   type T8 = (=> Int) & (Int => Int) // error
-  type T9 = (=> Int) with (Int => Int) // error
+  type T9 = (=> Int) & (Int => Int) // error
   type T10 = (Int => Int) | (=> Int) // error
   type T11 = (Int => Int) & (=> Int) // error
-  type T12 = (Int => Int) with (=> Int) // error
+  type T12 = (Int => Int) & (=> Int) // error
 
   // annotations
   type T13 = _ @ annotation.tailrec // error
@@ -39,10 +39,10 @@ object Test {
   type T17 = Int @ (_ | annotation.tailrec) // error
   type T18 = Int @ (annotation.tailrec | _) // error
 
-  type T19 = (_ with Int) @ annotation.tailrec // error
-  type T20 = (Int with _) @ annotation.tailrec // error
-  type T21 = Int @ (_ with annotation.tailrec) // error
-  type T22 = Int @ (annotation.tailrec with _) // error
+  type T19 = (_ & Int) @ annotation.tailrec // error
+  type T20 = (Int & _) @ annotation.tailrec // error
+  type T21 = Int @ (_ & annotation.tailrec) // error
+  type T22 = Int @ (annotation.tailrec & _) // error
 
   type T23 = (_ & Int) @ annotation.tailrec // error
   type T24 = (Int & _) @ annotation.tailrec // error

@@ -3,8 +3,8 @@ package dotty.tools.backend.jvm.opt
 import dotty.tools.backend.jvm.BCodeUtils
 import dotty.tools.backend.jvm.analysis.InstructionStackEffect
 
-import scala.tools.asm.Opcodes
-import scala.tools.asm.tree.{AbstractInsnNode, IincInsnNode, JumpInsnNode, LookupSwitchInsnNode, MethodNode, TableSwitchInsnNode, VarInsnNode}
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.{AbstractInsnNode, IincInsnNode, JumpInsnNode, LookupSwitchInsnNode, MethodNode, TableSwitchInsnNode, VarInsnNode}
 
 object MethodMax {
 

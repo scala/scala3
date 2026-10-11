@@ -240,6 +240,8 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
         ex.getTargetException match {
           case ex: scala.quoted.runtime.StopMacroExpansion =>
             throw ex
+          case ex: dotty.tools.dotc.core.RecursionOverflow =>
+            throw ex
           case MissingClassValidInCurrentRun(sym, origin) =>
             suspendOnMissing(sym, origin, pos)
           case targetException =>

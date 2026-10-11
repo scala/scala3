@@ -17,7 +17,7 @@ class ScalaCliCompletions(
     )
 
     lazy val supportsUsing =
-      val filename = pos.source.file.path
+      val filename = pos.source.path
       filename.endsWith(".sc.scala") ||
       filename.endsWith(".worksheet.sc")
 

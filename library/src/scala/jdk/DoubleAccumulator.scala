@@ -65,6 +65,7 @@ final class DoubleAccumulator
   /** Appends an element to this `DoubleAccumulator`.
    *
    *  @param a the `Double` value to append
+   *  @return this `DoubleAccumulator` (to allow chaining of operations)
    */
   def addOne(a: Double): this.type = {
     totalSize += 1
@@ -146,6 +147,7 @@ final class DoubleAccumulator
   /** Retrieves the `ix`th element.
    *
    *  @param ix the zero-based index of the element to retrieve
+   *  @return the `Double` value stored at position `ix`
    */
   def apply(ix: Long): Double = {
     if (totalSize - ix <= index || hIndex == 0) current((ix - (totalSize - index)).toInt)
@@ -158,6 +160,7 @@ final class DoubleAccumulator
   /** Retrieves the `ix`th element, using an `Int` index.
    *
    *  @param i the zero-based index of the element to retrieve (converted to `Long` internally)
+   *  @return the `Double` value stored at position `i`
    */
   def apply(i: Int): Double = apply(i.toLong)
 
@@ -298,6 +301,7 @@ final class DoubleAccumulator
    *
    *  @tparam C1 the result type of the target collection (e.g., `Vector[Double]`)
    *  @param factory the factory for creating the target collection from elements
+   *  @return a new collection of type `C1` containing all elements of this `DoubleAccumulator`
    */
   override def to[C1](factory: Factory[Double, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)

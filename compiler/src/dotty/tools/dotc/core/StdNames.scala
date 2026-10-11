@@ -26,6 +26,9 @@ object StdNames {
     inline val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks
     inline val ANON_CLASS               = "$anon"
     inline val ANON_FUN                 = "$anonfun"
+    inline val SPECIALIZED_TRAIT_SUFFIX = "$$sp"
+    inline val SPECIALIZED_TRAIT_IMPL_SUFFIX = "$impl"
+    inline val SPECIALIZED_TRAIT_TYPE_SEP = "$"
 
     inline val REPL_SESSION_LINE  = "rs$line$"
     inline val REPL_ASSIGN_SUFFIX = "$assign"
@@ -135,6 +138,7 @@ object StdNames {
     val OVERLOADED: N                 = "<overloaded>"
     val PACKAGE: N                    = "package"
     val ROOT: N                       = "<root>"
+    val SPEC: N                       = "$spec"
     val SPECIALIZED_SUFFIX: N         = "$sp"
     val SUPER_PREFIX: N               = "super$"
     val WHILE_PREFIX: N               = "while$"
@@ -271,6 +275,7 @@ object StdNames {
     final val MethodParametersATTR: N             = "MethodParameters"
     final val LineNumberTableATTR: N              = "LineNumberTable"
     final val LocalVariableTableATTR: N           = "LocalVariableTable"
+    final val RecordATTR: N                       = "Record"
     final val RuntimeVisibleAnnotationATTR: N     = "RuntimeVisibleAnnotations"   // RetentionPolicy.RUNTIME
     final val RuntimeInvisibleAnnotationATTR: N   = "RuntimeInvisibleAnnotations" // RetentionPolicy.CLASS
     final val RuntimeParamAnnotationATTR: N       = "RuntimeVisibleParameterAnnotations" // RetentionPolicy.RUNTIME (annotations on parameters)
@@ -405,6 +410,7 @@ object StdNames {
     val annotation: N           = "annotation"
     val any: N                  = "any"
     val any2stringadd: N        = "any2stringadd"
+    val anyClass: N             = "anyClass"
     val anyHash: N              = "anyHash"
     val anyValClass: N          = "anyValClass"
     val append: N               = "append"
@@ -488,6 +494,8 @@ object StdNames {
     val eval: N                 = "eval"
     val eqlAny: N               = "eqlAny"
     val ex: N                   = "ex"
+    val except: N               = "except"
+    val exceptCapability: N     = "exceptCapability"
     val extension: N            = "extension"
     val experimental: N         = "experimental"
     val f: N                    = "f"
@@ -594,7 +602,6 @@ object StdNames {
     val productPrefix: N        = "productPrefix"
     val quotes : N              = "quotes"
     val raw_ : N                = "raw"
-    val reachCapability: N      = "reachCapability"
     val readOnlyCapability: N   = "readOnlyCapability"
     val rd: N                   = "rd"
     val refl: N                 = "refl"

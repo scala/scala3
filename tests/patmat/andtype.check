@@ -1,3 +1,24 @@
-9: Pattern Match Exhaustivity: _: B
-13: Pattern Match Exhaustivity: _: B
-17: Pattern Match Exhaustivity: _: B
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype.scala:9:26 --
+9 |  def m1(s: T & Marker) = s match {
+  |                          ^
+  |                          match may not be exhaustive.
+  |
+  |                          It would fail on pattern case: _: B
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype.scala:13:26 -
+13 |  def m2(s: Marker & T) = s match {
+   |                          ^
+   |                          match may not be exhaustive.
+   |
+   |                          It would fail on pattern case: _: B
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype.scala:17:32 -
+17 |  def m3(s: (A | B) & Marker) = s match {
+   |                                ^
+   |                                match may not be exhaustive.
+   |
+   |                                It would fail on pattern case: _: B
+   |
+   | longer explanation available when compiling with `-explain`

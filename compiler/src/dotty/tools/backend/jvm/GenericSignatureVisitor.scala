@@ -1,7 +1,7 @@
 package dotty.tools.backend.jvm
 
-import scala.tools.asm.{Type, Handle}
-import scala.tools.asm.tree.*
+import org.objectweb.asm.{Type, Handle}
+import org.objectweb.asm.tree.*
 
 import scala.collection.mutable
 import scala.annotation.*

@@ -17,20 +17,19 @@ package opt
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm.Opcodes.*
-import scala.tools.asm.{Opcodes, Type}
-import scala.tools.asm.tree.*
+import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.{Opcodes, Type}
+import org.objectweb.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
-import dotty.tools.backend.jvm.BackendUtils.*
 
-import scala.tools.asm
+import org.objectweb.asm
 
-class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner, ts: WellKnownBTypes, settings: OptimizerSettings) {
+class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes, settings: OptimizerSettings) {
 
-  private val modulesAllowSkipInitialization =
-    if settings.optAllowSkipCoreModuleInit then backendUtils.modulesAllowSkipInitialization else Set.empty
+  private val modulesAllowSkipInitialization: InternalName => Boolean =
+    if settings.optAllowSkipCoreModuleInit then optimizerUtils.modulesAllowSkipInitialization else Set.empty
 
   /**
    * For every `xLOAD n`, find all local variable slots that are aliases of `n` using an
@@ -208,7 +207,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
             if (receiverProds.size == 1) {
               toReplace(receiverProds.head) = List(receiverProds.head, getPop(1))
               toReplace(mi) = List(newArrayInstr)
-              toInline ++= prodCons.ultimateConsumersOfOutputsFrom(mi).collect({case i if isRuntimeArrayLoadOrUpdate(i) => i.asInstanceOf[MethodInsnNode]})
+              toInline ++= prodCons.ultimateConsumersOfOutputsFrom(mi).collect({case i if AnalysisUtils.isRuntimeArrayLoadOrUpdate(i) => i.asInstanceOf[MethodInsnNode]})
             }
           }
 
@@ -278,7 +277,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       }
 
       if (toInline.nonEmpty) {
-        val methodCallsites = callGraph.callsites.get(method).collect { case (k, v: KnownCallsite) => (k, v) }
+        val methodCallsites = callGraph.callsites(method).collect { case (k, v: KnownCallsite) => (k, v) }
         var css = toInline.flatMap(methodCallsites.get).toList.sorted(using callsiteOrdering)
         while (css.nonEmpty) {
           val cs = css.head
@@ -310,8 +309,8 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       // A queue of instructions producing a value that has to be eliminated. If possible, the
       // instruction (and its inputs) will be removed, otherwise a POP is inserted after
       val queue = mutable.Queue.empty[ProducedValue]
-      // Contains constructor invocations for values that can be eliminated if unused.
-      val sideEffectFreeConstructorCalls = mutable.ArrayBuffer.empty[MethodInsnNode]
+      // Contains the creation of values that can be eliminated if unused.
+      val sideEffectFreeCreations = mutable.ArrayBuffer.empty[MethodInsnNode]
 
       // instructions to remove (we don't change the bytecode while analyzing it. this allows
       // running the ProdConsAnalyzer only once.)
@@ -399,7 +398,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
 
             case INVOKESPECIAL =>
               val mi = insn.asInstanceOf[MethodInsnNode]
-              if (backendUtils.isSideEffectFreeConstructorCall(mi)) sideEffectFreeConstructorCalls += mi
+              if (optimizerUtils.isSideEffectFreeConstructorCall(mi)) sideEffectFreeCreations += mi
 
             case _ =>
           }
@@ -432,7 +431,6 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       def handleClosureInst(indy: InvokeDynamicInsnNode): Unit = {
         toRemove += indy
         callGraph.removeClosureInstantiation(indy, method)
-        backendUtils.removeIndyLambdaImplMethod(owner, method, indy)
         handleInputs(indy, Type.getArgumentTypes(indy.desc).length)
       }
 
@@ -476,24 +474,24 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
             handleInputs(prod, 1)
 
           case GETFIELD | GETSTATIC =>
-            if (backendUtils.isBoxedUnit(prod) || BackendUtils.isJavaLangStaticLoad(prod) || BackendUtils.isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
+            if (optimizerUtils.isBoxedUnit(prod) || AnalysisUtils.isJavaLangStaticLoad(prod) || AnalysisUtils.isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
             else popAfterProd() // keep potential class initialization (static field) or NPE (instance field)
 
           case INVOKEVIRTUAL | INVOKESPECIAL | INVOKESTATIC | INVOKEINTERFACE =>
             val methodInsn = prod.asInstanceOf[MethodInsnNode]
-            if (backendUtils.isSideEffectFreeCall(methodInsn)) {
+            if (optimizerUtils.isSideEffectFreeCall(methodInsn)) {
               toRemove += prod
               callGraph.removeCallsite(methodInsn, method)
               val receiver = if (methodInsn.getOpcode == INVOKESTATIC) 0 else 1
               handleInputs(prod, Type.getArgumentTypes(methodInsn.desc).length + receiver)
-            } else if (backendUtils.isScalaUnbox(methodInsn)) {
-              val tp = backendUtils.primitiveAsmTypeSortToBType(Type.getReturnType(methodInsn.desc).getSort)
+            } else if (optimizerUtils.isScalaUnbox(methodInsn)) {
+              val tp = optimizerUtils.primitiveAsmTypeSortToBType(Type.getReturnType(methodInsn.desc).getSort)
               val boxTp = ts.boxedClassOfPrimitive(tp)
               toInsertBefore(methodInsn) = List(new TypeInsnNode(CHECKCAST, boxTp.internalName), new InsnNode(POP))
               toRemove += prod
               callGraph.removeCallsite(methodInsn, method)
               castAdded = true
-            } else if (backendUtils.isJavaUnbox(methodInsn)) {
+            } else if (optimizerUtils.isJavaUnbox(methodInsn)) {
               val nullCheck = mutable.ListBuffer.empty[AbstractInsnNode]
               val nonNullLabel = newLabelNode
               nullCheck += new JumpInsnNode(IFNONNULL, nonNullLabel)
@@ -510,12 +508,12 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
 
           case INVOKEDYNAMIC =>
             prod match {
-              case LambdaMetaFactoryCall(indy, _, _, _, _) => handleClosureInst(indy)
+              case AnalysisUtils.LambdaMetaFactoryCall(indy, _, _, _, _) => handleClosureInst(indy)
               case _ => popAfterProd()
             }
 
           case NEW =>
-            if (backendUtils.isNewForSideEffectFreeConstructor(prod)) toRemove += prod
+            if (optimizerUtils.isNewForSideEffectFreeConstructor(prod)) toRemove += prod
             else popAfterProd()
 
           case LDC =>
@@ -546,11 +544,11 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
         def removeConstructorCall(mi: MethodInsnNode): Unit = {
           toRemove += mi
           callGraph.removeCallsite(mi, method)
-          sideEffectFreeConstructorCalls -= mi
+          sideEffectFreeCreations -= mi
           changed = true
         }
 
-        for (mi <- sideEffectFreeConstructorCalls.toList) { // toList to allow removing elements while traversing
+        for (mi <- sideEffectFreeCreations.toList) { // toList to allow removing elements while traversing
         val frame = prodCons.frameAt(mi)
           val stackTop = frame.stackTop
           val numArgs = Type.getArgumentTypes(mi.desc).length

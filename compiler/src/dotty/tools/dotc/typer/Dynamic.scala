@@ -26,7 +26,7 @@ object Dynamic {
     name == nme.applyDynamic || name == nme.selectDynamic || name == nme.updateDynamic || name == nme.applyDynamicNamed
 
   /** Is `tree` a reference over `Dynamic` that should be expanded to a
-   *  dyanmic `applyDynamic`, `selectDynamic`, `updateDynamic`, or `applyDynamicNamed` call?
+   *  dynamic `applyDynamic`, `selectDynamic`, `updateDynamic`, or `applyDynamicNamed` call?
    */
   def isDynamicExpansion(tree: untpd.RefTree)(using Context): Boolean =
     isDynamicMethod(tree.name)
@@ -267,11 +267,16 @@ trait Dynamic {
         if (isDependentMethod(tpe))
           fail(i"has a method type with inter-parameter dependencies")
         else {
+          // The erasure of an `Array[T]` parameter is a `JavaArrayType`, which is not a
+          // Scala type expressible at the source level and cannot be pickled in a
+          // class-literal constant. Rewrite it back to the Scala `Array[T]` form, which
+          // re-erases to the same JVM class at code generation time.
           def classOfs =
             if tpe.paramInfoss.nestedExists(!TypeErasure.hasStableErasure(_)) then
               fail(i"has a parameter type with an unstable erasure") :: Nil
             else
-              TypeErasure.erasure(tpe).asInstanceOf[MethodType].paramInfos.map(clsOf(_))
+              TypeErasure.erasure(tpe).asInstanceOf[MethodType].paramInfos
+                .map(p => clsOf(TypeErasure.escapeJavaArray(p)))
           structuralCall(nme.applyDynamic, classOfs).maybeBoxingCast(tpe.finalResultType)
         }
 

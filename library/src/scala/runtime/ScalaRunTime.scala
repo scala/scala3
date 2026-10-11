@@ -60,6 +60,14 @@ object ScalaRunTime {
   def anyValClass[T <: AnyVal : ClassTag](value: T): jClass[T] =
     classTag[T].runtimeClass.asInstanceOf[jClass[T]]
 
+  /** Runtime code for `(x: T).getClass()` where `T` is not a subtype of `AnyRef`.
+   *
+   *  It returns `classOf[Null]` when `x == null`.
+   */
+  def anyClass[T](x: T): Class[? <: T] =
+    if x == null then classOf[Null].asInstanceOf[Class[? <: T]]
+    else x.asInstanceOf[AnyRef & T].getClass()
+
   /** Retrieves generic array element.
    *
    *  @param xs the array to read from (typed as `AnyRef` to support both reference and primitive arrays)
@@ -247,7 +255,7 @@ object ScalaRunTime {
     def useOwnToString(x: Any) = x match {
       // Range/NumericRange have a custom toString to avoid walking a gazillion elements
       case _: Range | _: NumericRange[?] => true
-      // Sorted collections to the wrong thing (for us) on iteration - ticket #3493
+      // Sorted collections do the wrong thing (for us) on iteration - ticket #3493
       case _: SortedOps[?, ?]  => true
       // StringBuilder(a, b, c) and similar not so attractive
       case _: StringView | _: StringOps | _: StringBuilder => true

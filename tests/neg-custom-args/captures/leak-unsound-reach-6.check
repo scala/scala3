@@ -1,0 +1,5 @@
+-- Error: tests/neg-custom-args/captures/leak-unsound-reach-6.scala:7:13 -----------------------------------------------
+7 |  println(xs.head) // error
+  |          ^^^^^^^
+  |          Local any in the type of parameter xs leaks into capture scope of method f.
+  |          You could try to abstract the capability in a capset variable.

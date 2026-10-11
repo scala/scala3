@@ -50,6 +50,7 @@ object Array {
    *
    *  @tparam A the element type of the array to be created
    *  @param dummy the `Array` companion object used to trigger the implicit conversion
+   *  @return a `Factory` that builds an `Array[A]` from an `IterableOnce[A]`
    */
   implicit def toFactory[A : ClassTag](dummy: Array.type): Factory[A, Array[A]] = new ArrayFactory(dummy)
   @SerialVersionUID(3L)
@@ -62,6 +63,7 @@ object Array {
    *
    *  @tparam T the element type of the array to be built
    *  @param t the `ClassTag` providing runtime type information for `T`
+   *  @return a new `ArrayBuilder[T]` that produces an `Array[T]` when its `result()` method is called
    */
   def newBuilder[T](implicit t: ClassTag[T]): ArrayBuilder[T] = ArrayBuilder.make[T](using t)
 
@@ -232,6 +234,7 @@ object Array {
    *
    *  @param x the first element
    *  @param xs the remaining elements
+   *  @return an `Array[Boolean]` containing `x` followed by the elements of `xs`
    */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Boolean, xs: Boolean*): Array[Boolean] = {
@@ -249,6 +252,7 @@ object Array {
    *
    *  @param x the first element
    *  @param xs the remaining elements
+   *  @return an `Array[Byte]` containing `x` followed by the elements of `xs`
    */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Byte, xs: Byte*): Array[Byte] = {
@@ -266,6 +270,7 @@ object Array {
    *
    *  @param x the first element
    *  @param xs the remaining elements
+   *  @return an `Array[Short]` containing `x` followed by the elements of `xs`
    */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Short, xs: Short*): Array[Short] = {
@@ -283,6 +288,7 @@ object Array {
    *
    *  @param x the first element
    *  @param xs the remaining elements
+   *  @return an `Array[Char]` containing `x` followed by the elements of `xs`
    */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Char, xs: Char*): Array[Char] = {
@@ -300,6 +306,7 @@ object Array {
    *
    *  @param x the first element
    *  @param xs the remaining elements
+   *  @return an `Array[Int]` containing `x` followed by the elements of `xs`
    */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Int, xs: Int*): Array[Int] = {
@@ -317,6 +324,7 @@ object Array {
    *
    *  @param x the first element
    *  @param xs the remaining elements
+   *  @return an `Array[Long]` containing `x` followed by the elements of `xs`
    */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Long, xs: Long*): Array[Long] = {
@@ -334,6 +342,7 @@ object Array {
    *
    *  @param x the first element
    *  @param xs the remaining elements
+   *  @return an `Array[Float]` containing `x` followed by the elements of `xs`
    */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Float, xs: Float*): Array[Float] = {
@@ -351,6 +360,7 @@ object Array {
    *
    *  @param x the first element
    *  @param xs the remaining elements
+   *  @return an `Array[Double]` containing `x` followed by the elements of `xs`
    */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Double, xs: Double*): Array[Double] = {
@@ -368,6 +378,7 @@ object Array {
    *
    *  @param x the first element
    *  @param xs the remaining elements
+   *  @return an `Array[Unit]` containing `x` followed by the elements of `xs`
    */
   def apply(x: Unit, xs: Unit*): Array[Unit] = {
     val array = new Array[Unit](xs.length + 1)
@@ -384,6 +395,7 @@ object Array {
    *
    *  @tparam T the element type of the array
    *  @param n1 the number of elements in the 1st dimension
+   *  @return a new `Array[T]` of length `n1` with all elements set to the default value for `T`
    */
   def ofDim[T: ClassTag](n1: Int): Array[T] =
     new Array[T](n1)
@@ -392,6 +404,7 @@ object Array {
    *  @tparam T the element type of the array
    *  @param n1 the number of elements in the 1st dimension
    *  @param n2 the number of elements in the 2nd dimension
+   *  @return a new `Array[Array[T]]` of dimensions `n1 x n2` with all innermost `T` elements set to the default value for `T`
    */
   def ofDim[T: ClassTag](n1: Int, n2: Int): Array[Array[T]] = {
     val arr: Array[Array[T]] = (new Array[Array[T]](n1): Array[Array[T]])
@@ -405,6 +418,7 @@ object Array {
    *  @param n1 the number of elements in the 1st dimension
    *  @param n2 the number of elements in the 2nd dimension
    *  @param n3 the number of elements in the 3rd dimension
+   *  @return a new `Array[Array[Array[T]]]` of dimensions `n1 x n2 x n3` with all innermost `T` elements set to the default value for `T`
    */
   def ofDim[T: ClassTag](n1: Int, n2: Int, n3: Int): Array[Array[Array[T]]] =
     tabulate(n1)(_ => ofDim[T](n2, n3))
@@ -415,6 +429,7 @@ object Array {
    *  @param n2 the number of elements in the 2nd dimension
    *  @param n3 the number of elements in the 3rd dimension
    *  @param n4 the number of elements in the 4th dimension
+   *  @return a new `Array[Array[Array[Array[T]]]]` of dimensions `n1 x n2 x n3 x n4` with all innermost `T` elements set to the default value for `T`
    */
   def ofDim[T: ClassTag](n1: Int, n2: Int, n3: Int, n4: Int): Array[Array[Array[Array[T]]]] =
     tabulate(n1)(_ => ofDim[T](n2, n3, n4))
@@ -426,6 +441,7 @@ object Array {
    *  @param n3 the number of elements in the 3rd dimension
    *  @param n4 the number of elements in the 4th dimension
    *  @param n5 the number of elements in the 5th dimension
+   *  @return a new `Array[Array[Array[Array[Array[T]]]]]` of dimensions `n1 x n2 x n3 x n4 x n5` with all innermost `T` elements set to the default value for `T`
    */
   def ofDim[T: ClassTag](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int): Array[Array[Array[Array[Array[T]]]]] =
     tabulate(n1)(_ => ofDim[T](n2, n3, n4, n5))
@@ -479,6 +495,7 @@ object Array {
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   elem the element computation
+   *  @return a two-dimensional `Array` of dimensions `n1 x n2` where each element is the result of computing `elem`
    */
   def fill[T: ClassTag](n1: Int, n2: Int)(elem: => T): Array[Array[T]] =
     tabulate(n1)(_ => fill(n2)(elem))
@@ -491,6 +508,7 @@ object Array {
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
    *  @param   elem the element computation
+   *  @return a three-dimensional `Array` of dimensions `n1 x n2 x n3` where each element is the result of computing `elem`
    */
   def fill[T: ClassTag](n1: Int, n2: Int, n3: Int)(elem: => T): Array[Array[Array[T]]] =
     tabulate(n1)(_ => fill(n2, n3)(elem))
@@ -504,6 +522,7 @@ object Array {
    *  @param   n3  the number of elements in the 3rd dimension
    *  @param   n4  the number of elements in the 4th dimension
    *  @param   elem the element computation
+   *  @return a four-dimensional `Array` of dimensions `n1 x n2 x n3 x n4` where each element is the result of computing `elem`
    */
   def fill[T: ClassTag](n1: Int, n2: Int, n3: Int, n4: Int)(elem: => T): Array[Array[Array[Array[T]]]] =
     tabulate(n1)(_ => fill(n2, n3, n4)(elem))
@@ -518,6 +537,7 @@ object Array {
    *  @param   n4  the number of elements in the 4th dimension
    *  @param   n5  the number of elements in the 5th dimension
    *  @param   elem the element computation
+   *  @return a five-dimensional `Array` of dimensions `n1 x n2 x n3 x n4 x n5` where each element is the result of computing `elem`
    */
   def fill[T: ClassTag](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(elem: => T): Array[Array[Array[Array[Array[T]]]]] =
     tabulate(n1)(_ => fill(n2, n3, n4, n5)(elem))
@@ -551,6 +571,7 @@ object Array {
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   f   The function computing element values
+   *  @return a two-dimensional `Array` of dimensions `n1 x n2` whose element at `(i1, i2)` is `f(i1, i2)`
    */
   def tabulate[T: ClassTag](n1: Int, n2: Int)(f: (Int, Int) => T): Array[Array[T]] =
     tabulate(n1)(i1 => tabulate(n2)(f(i1, _)))
@@ -563,6 +584,7 @@ object Array {
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
    *  @param   f   The function computing element values
+   *  @return a three-dimensional `Array` of dimensions `n1 x n2 x n3` whose element at `(i1, i2, i3)` is `f(i1, i2, i3)`
    */
   def tabulate[T: ClassTag](n1: Int, n2: Int, n3: Int)(f: (Int, Int, Int) => T): Array[Array[Array[T]]] =
     tabulate(n1)(i1 => tabulate(n2, n3)(f(i1, _, _)))
@@ -576,6 +598,7 @@ object Array {
    *  @param   n3  the number of elements in the 3rd dimension
    *  @param   n4  the number of elements in the 4th dimension
    *  @param   f   The function computing element values
+   *  @return a four-dimensional `Array` of dimensions `n1 x n2 x n3 x n4` whose element at `(i1, i2, i3, i4)` is `f(i1, i2, i3, i4)`
    */
   def tabulate[T: ClassTag](n1: Int, n2: Int, n3: Int, n4: Int)(f: (Int, Int, Int, Int) => T): Array[Array[Array[Array[T]]]] =
     tabulate(n1)(i1 => tabulate(n2, n3, n4)(f(i1, _, _, _)))
@@ -590,6 +613,7 @@ object Array {
    *  @param   n4  the number of elements in the 4th dimension
    *  @param   n5  the number of elements in the 5th dimension
    *  @param   f   The function computing element values
+   *  @return a five-dimensional `Array` of dimensions `n1 x n2 x n3 x n4 x n5` whose element at `(i1, i2, i3, i4, i5)` is `f(i1, i2, i3, i4, i5)`
    */
   def tabulate[T: ClassTag](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(f: (Int, Int, Int, Int, Int) => T): Array[Array[Array[Array[Array[T]]]]] =
     tabulate(n1)(i1 => tabulate(n2, n3, n4, n5)(f(i1, _, _, _, _)))
@@ -760,6 +784,7 @@ object Array {
  *  @define undefinedorder
  *
  *  @tparam T the element type of the array
+ *  @param _length the size of the array to allocate; must be non-negative
  */
 final class Array[T](_length: Int) extends java.io.Serializable with java.lang.Cloneable { self: Array[T] =>
 

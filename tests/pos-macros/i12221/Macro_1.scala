@@ -72,7 +72,7 @@ object Macros {
                                     (arg, index) =>
                                         treePrint(arg, level +1)
                                         if args.size > 1 && index < args.size -1  then
-                                            // Used to seperate list of parameters
+                                            // Used to separate list of parameters
                                             sb.append(pre + ",\n")
                                     )
                         case _ =>

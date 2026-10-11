@@ -1,0 +1,8 @@
+-- Error: tests/neg-custom-args/captures/safemode-inline/B.scala:5:10 --------------------------------------------------
+5 |  val _ = f(0)  // error
+  |          ^
+  |Cannot refer to method f in object A from safe code since it is neither compiled in safe mode nor tagged with @assumedSafe
+-- Error: tests/neg-custom-args/captures/safemode-inline/B.scala:7:10 --------------------------------------------------
+7 |  val _ = f2(0) // error
+  |          ^^
+  |Cannot refer to method f2 in object A from safe code since it is neither compiled in safe mode nor tagged with @assumedSafe

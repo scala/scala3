@@ -2,12 +2,8 @@ package dotty
 package tools
 package dotc
 
-import scala.language.unsafeNulls
-
 import java.io.{File => JFile}
-import java.nio.file.{Files, Path, Paths}
 
-import org.junit.Assume.assumeTrue
 import org.junit.{AfterClass, Test}
 import org.junit.experimental.categories.Category
 

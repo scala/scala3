@@ -99,6 +99,7 @@ object ScaladocConfigs0 {
   def captureCheckingSnippetTestTargets(docsRoot: String) = List(
     s"$docsRoot/_docs/reference/experimental/capture-checking/basics.md=compile+test",
     s"$docsRoot/_docs/reference/experimental/capture-checking/checked-exceptions.md=compile+test",
+    s"$docsRoot/_docs/reference/experimental/capture-checking/classifiers.md=compile+test",
     s"$docsRoot/_docs/reference/experimental/capture-checking/scoped-capabilities.md=compile+test"
   )
   def referenceSnippetCompilerTargets(docsRoot: String) =

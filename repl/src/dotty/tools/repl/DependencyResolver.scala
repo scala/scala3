@@ -10,7 +10,6 @@ import scala.util.control.NonFatal
 import dotty.tools.repl.AbstractFileClassLoader
 
 import coursierapi.{Dependency, MavenRepository}
-import dotty.tools.directives.{DirectiveValue, UsingDirectivesParser}
 
 /** Handles dependency resolution using Coursier for the REPL */
 object DependencyResolver:
@@ -29,24 +28,6 @@ object DependencyResolver:
       case _ =>
         System.err.println("Unable to parse dependency \"" + dep + "\"")
         None
-
-  /** Extract all dependencies from using directives in source code */
-  def extractDependencies(sourceCode: String): List[String] =
-    try
-      val result = UsingDirectivesParser.parse(sourceCode)
-      result.directives.flatMap: directive =>
-        if directive.key == "dep" then
-          directive.values.flatMap:
-            case DirectiveValue.StringVal(value, _, _) => List(value)
-            case value =>
-              System.err.println("Unrecognized directive value " + value)
-              Nil
-        else
-          System.err.println("Unrecognized directive " + directive.key)
-          Nil
-      .toList
-    catch
-      case NonFatal(_) => Nil // If parsing fails, fall back to empty list
 
   /** Resolve dependencies using Coursier Interface and return the classpath as a list of File objects */
   def resolveDependencies(dependencies: List[(String, String, String)]): Either[String, List[File]] =
@@ -84,10 +65,10 @@ object DependencyResolver:
     prevClassLoader: ClassLoader,
     prevOutputDir: dotty.tools.io.AbstractFile
   )(using ctx: dotty.tools.dotc.core.Contexts.Context): AbstractFileClassLoader =
-    import dotty.tools.dotc.classpath.ClassPathFactory
+    import dotty.tools.dotc.classpath.{ClassPath, ClassPathFactory}
     import dotty.tools.dotc.core.SymbolLoaders
     import dotty.tools.dotc.core.Symbols.defn
-    import dotty.tools.io.{AbstractFile, ClassPath}
+    import dotty.tools.io.AbstractFile
     import dotty.tools.repl.ScalaClassLoader.fromURLsParallelCapable
 
     // Create a classloader with all the resolved JAR files
@@ -96,7 +77,7 @@ object DependencyResolver:
 
     // Add each JAR to the compiler's classpath
     for file <- files do
-      val jarFile = AbstractFile.getDirectory(file.getAbsolutePath)
+      val jarFile = AbstractFile.getDirectory(file.getAbsolutePath, ctx.settings.javaOutputVersion.value)
       if jarFile != null then
         val jarClassPath = ClassPathFactory.newClassPath(jarFile)
         ctx.platform.addToClassPath(jarClassPath)

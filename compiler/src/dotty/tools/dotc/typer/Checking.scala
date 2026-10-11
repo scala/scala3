@@ -142,7 +142,7 @@ object Checking {
   }
 
   /** Check all applied type trees in inferred type `tpt` for well-formedness */
-  def checkAppliedTypesIn(tpt: TypeTree)(using Context): Unit =
+  def checkAppliedTypesIn(tpt: TypeTree)(using Context): Unit = ctx.handleRecursive("checking applied types in", tpt, tpt):
     val checker = new TypeTraverser:
       def traverse(tp: Type) =
         tp.normalized match
@@ -495,7 +495,6 @@ object Checking {
 
   /** Check type members inherited from different `parents` of `joint` type for cycles,
    *  unless a type with the same name already appears in `decls`.
-   *  @return    true iff no cycles were detected
    */
   def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SrcPos)(using Context): Unit = {
     // If we don't have more than one parent, then there's nothing to check
@@ -513,17 +512,15 @@ object Checking {
           val mbr = joint.member(name)
           mbr.info match
             case bounds: TypeBounds =>
-              !checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
+              checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
             case _ =>
-              true
-        catch case _: RecursionOverflow | _: CyclicReference =>
+        catch case _: CyclicReference =>
           report.error(em"cyclic reference involving type $name", pos)
-          false
     }
   }
 
   def checkScala2Implicit(sym: Symbol)(using Context): Unit =
-    def migration(msg: Message) =
+    def migration(msg: => Message) =
       report.errorOrMigrationWarning(msg, sym.srcPos, MigrationVersion.Scala2Implicits)
     def info = sym match
       case sym: ClassSymbol => sym.primaryConstructor.info
@@ -597,8 +594,8 @@ object Checking {
   end checkScala2Implicit
 
   def checkErasedOK(sym: Symbol)(using Context): Unit =
-    if sym.is(Method, butNot = Macro)
-        || sym.isOneOf(Mutable | Lazy)
+    if sym.is(Method, butNot = Macro | Accessor)
+        || sym.isOneOf(Lazy)
         || sym.isType
     then report.error(IllegalErasedDef(sym), sym.srcPos)
 
@@ -693,7 +690,9 @@ object Checking {
     if (sym.isConstructor && !sym.isPrimaryConstructor && sym.owner.is(Trait, butNot = JavaDefined))
       val addendum = if ctx.settings.Ydebug.value then s" ${sym.owner.flagsString}" else ""
       fail(em"Traits cannot have secondary constructors$addendum")
-    checkApplicable(Inline, sym.isTerm && !sym.is(Module) && !sym.isMutableVarOrAccessor)
+    if (!Feature.inlineTraitsEnabledSomewhere && sym.isAllOf(Inline | Trait))
+      fail(em"Inline traits are experimental and must be enabled")
+    checkApplicable(Inline, sym.isTerm && !sym.is(Module) && !sym.isMutableVarOrAccessor || sym.is(Trait))
     checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
     if (sym.isType && !sym.isOneOf(Deferred | JavaDefined))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {

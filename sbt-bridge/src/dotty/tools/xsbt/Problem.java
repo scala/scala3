@@ -7,6 +7,7 @@ import java.util.function.Function;
 import static java.util.stream.Collectors.toList;
 
 import dotty.tools.dotc.reporting.CodeAction;
+import dotty.tools.dotc.reporting.Diagnostic;
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch;
 import dotty.tools.dotc.util.SourcePosition;
 import dotty.tools.dotc.util.SourceFile;
@@ -26,6 +27,11 @@ final public class Problem implements xsbti.Problem {
   private final Optional<String> _rendered;
   private final String _diagnosticCode;
   private final List<CodeAction> _actions;
+  // The diagnostic's structured related information (scalameta/metals#3214). Kept as the concrete
+  // compiler type (which carries both position and message) so we forward exactly what
+  // Diagnostic.diagnosticRelatedInformation() exposes, reuse `positionOf`, and only construct the
+  // xsbti type lazily (see diagnosticRelatedInformation()).
+  private final List<Diagnostic.RelatedInformation> _relatedInformation;
 
   // A function that can lookup the `id` of the VirtualFile
   // associated with a SourceFile. If there is not an associated virtual file,
@@ -33,6 +39,7 @@ final public class Problem implements xsbti.Problem {
   private final Function<SourceFile, String> _lookupVirtualFileId;
 
   public Problem(Position position, String message, Severity severity, String rendered, String diagnosticCode, List<CodeAction> actions,
+      List<Diagnostic.RelatedInformation> relatedInformation,
       Function<SourceFile, String> lookupVirtualFileId) {
     super();
     this._position = position;
@@ -41,6 +48,7 @@ final public class Problem implements xsbti.Problem {
     this._rendered = Optional.of(rendered);
     this._diagnosticCode = diagnosticCode;
     this._actions = actions;
+    this._relatedInformation = relatedInformation;
     this._lookupVirtualFileId = lookupVirtualFileId;
   }
 
@@ -91,6 +99,22 @@ final public class Problem implements xsbti.Problem {
       return _actions
               .stream()
               .map(action -> new Action(action.title(), OptionConverters.toJava(action.description()), toWorkspaceEdit(CollectionConverters.asJava(action.patches()), _lookupVirtualFileId)))
+              .collect(toList());
+    }
+  }
+
+  @Override
+  public List<xsbti.DiagnosticRelatedInformation> diagnosticRelatedInformation() {
+    if (_relatedInformation.isEmpty()) {
+      return java.util.Collections.emptyList();
+    } else {
+      // As with actions() and diagnosticCode(), we only construct the xsbti type lazily here so
+      // that running a newer compiler against an older zinc that lacks DiagnosticRelatedInformation
+      // doesn't blow up unless this method is actually called. Position and message both come from
+      // the compiler's RelatedInformation, so this view cannot diverge from the dotc-interface one.
+      return _relatedInformation
+              .stream()
+              .map(info -> new DiagnosticRelatedInformation(positionOf(info.pos(), _lookupVirtualFileId), info.message()))
               .collect(toList());
     }
   }

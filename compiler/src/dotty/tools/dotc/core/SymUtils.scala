@@ -84,6 +84,7 @@ class SymUtils:
       !d.isRefinementClass &&
       d.isValueClass &&
       (d.initial.symbol ne defn.AnyValClass) && // Compare the initial symbol because AnyVal does not exist after erasure
+      (d.initial.symbol ne defn.NullClass) &&
       !d.isPrimitiveValueClass
     }
 
@@ -413,6 +414,8 @@ class SymUtils:
       self.hasAnnotation(checkAnnotation)
       || isDefaultArgumentOfCheckedMethod
       || (!self.is(Package) && checkOwner(self.owner))
+
+    def isJavaRecord(using Context) = self.is(JavaDefined) && self.derivesFrom(defn.JavaRecordClass)
 
     /** The declared self type of this class, as seen from `site`, stripping
     *  all refinements for opaque types.

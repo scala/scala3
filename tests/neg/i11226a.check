@@ -7,6 +7,5 @@
    |               Note that I could not resolve reference Unsubscriber.this.bus.Subscriber.
    |               Subscriber exists as a member of the self type ActorEventBus of trait ManagedActorClassification
    |               but it cannot be called on a receiver whose type does not extend trait ManagedActorClassification
-   |                                
    |
    | longer explanation available when compiling with `-explain`

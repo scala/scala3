@@ -184,6 +184,7 @@ trait ProcessBuilder extends Source with Sink {
    *  and then throw an exception.
    *
    *  @param capacity the maximum number of lines to buffer before blocking the producer
+   *  @return a `LazyList` of the process's standard output lines that throws an exception after yielding all lines if the exit code is non-zero
    */
   def lazyLines(capacity: Integer): LazyList[String]
 
@@ -194,6 +195,7 @@ trait ProcessBuilder extends Source with Sink {
    *  to termination and then throw an exception.
    *
    *  @param log the `ProcessLogger` to receive standard error output
+   *  @return a `LazyList` of the process's standard output lines that throws an exception after yielding all lines if the exit code is non-zero
    */
   def lazyLines(log: ProcessLogger): LazyList[String]
 
@@ -208,6 +210,7 @@ trait ProcessBuilder extends Source with Sink {
    *
    *  @param log the `ProcessLogger` to receive standard error output
    *  @param capacity the maximum number of lines to buffer before blocking the producer
+   *  @return a `LazyList` of the process's standard output lines that throws an exception after yielding all lines if the exit code is non-zero
    */
   def lazyLines(log: ProcessLogger, capacity: Integer): LazyList[String]
 

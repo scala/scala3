@@ -5,10 +5,10 @@ class CanSerialize[T]
 inline given CanSerialize[String] = CanSerialize()
 inline given [T: CanSerialize] => CanSerialize[List[T]] = CanSerialize()
 
-def safeWriteObject[T <: java.io.Serializable](out: java.io.ObjectOutputStream, x: T)(using erased CanSerialize[T]) =
+def safeWriteObject[T <: java.io.Serializable](out: java.io.ObjectOutputStream, x: T)(using erased cs: CanSerialize[T]) =
   out.writeObject(x)
 
-def writeList[T](out: java.io.ObjectOutputStream, xs: List[T])(using erased CanSerialize[T]) =
+def writeList[T](out: java.io.ObjectOutputStream, xs: List[T])(using erased cs: CanSerialize[T]) =
   safeWriteObject(out, xs)
 
 @main def Test(out: java.io.ObjectOutputStream) =

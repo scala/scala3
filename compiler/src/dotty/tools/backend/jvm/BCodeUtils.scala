@@ -22,12 +22,12 @@ import dotty.tools.dotc.report
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm
-import scala.tools.asm.Opcodes.*
-import scala.tools.asm.commons.CodeSizeEvaluator
-import scala.tools.asm.tree.*
-import scala.tools.asm.tree.analysis.*
-import scala.tools.asm.{Label, Type}
+import org.objectweb.asm
+import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.commons.CodeSizeEvaluator
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.tree.analysis.*
+import org.objectweb.asm.{Label, Type}
 
 object BCodeUtils {
   val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
@@ -179,8 +179,6 @@ object BCodeUtils {
 
   def isFinalMethod(methodNode: MethodNode): Boolean = (methodNode.access & (ACC_FINAL | ACC_PRIVATE | ACC_STATIC)) != 0
 
-  def isStrictfpMethod(methodNode: MethodNode): Boolean = (methodNode.access & ACC_STRICT) != 0
-
   def isReference(t: Type): Boolean = t.getSort == Type.OBJECT || t.getSort == Type.ARRAY
 
   /** Find the nearest preceding node to `insn` which is executable (i.e., not a label / line number)
@@ -330,7 +328,7 @@ object BCodeUtils {
           index += 1
         }
       }
-
+      
       foreachWithIndex(list.asScala.toList) { case (l, i) =>
         if (l == from) list.set(i, to)
       }
@@ -504,7 +502,7 @@ object BCodeUtils {
         // Primitives are "abstract final" to prohibit instantiation
         // without having to provide any implementations, but that is an
         // illegal combination of modifiers at the bytecode level so
-        // suppress final if abstract if present.
+        // suppress final if abstract is present.
         && !sym.isOneOf(AbstractOrTrait)
         // Bridges can be final, but final bridges confuse some frameworks
         && !sym.is(Bridge), ACC_FINAL)
@@ -514,7 +512,8 @@ object BCodeUtils {
       .addFlagIf(sym.isClass && !sym.is(Trait), ACC_SUPER)
       .addFlagIf(sym.isAllOf(JavaEnum), ACC_ENUM)
       .addFlagIf(sym.is(JavaVarargs), ACC_VARARGS)
-      .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)
+      // The JVM does not support synchronized interface methods, we implement those ourselves
+      .addFlagIf(sym.is(Synchronized) && !sym.owner.is(Trait), ACC_SYNCHRONIZED)
       .addFlagIf(sym.isDeprecated, ACC_DEPRECATED)
       .addFlagIf(sym.is(Enum), ACC_ENUM)
   }

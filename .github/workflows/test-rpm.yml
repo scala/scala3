@@ -1,0 +1,95 @@
+###################################################################################################
+###                  THIS IS A REUSABLE WORKFLOW TO TEST SCALA WITH RPM RUNNER                  ###
+### HOW TO USE:                                                                                 ###
+###  `version` is the expected Scala version; the installed scala/scalac/scaladoc               ###
+###  are asserted to report it, then a program is compiled and run.                             ###
+### NOTE: Requires `scala.rpm` artifact uploaded within the same run                            ###
+###                                                                                             ###
+###################################################################################################
+
+name: Test 'scala' RPM Package
+run-name: Test 'scala' (${{ inputs.version }}) RPM Package
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - fedora:43
+          - fedora:latest
+          - almalinux:9
+          - almalinux:10
+          - opensuse/leap:16.0
+          - opensuse/tumbleweed
+    container: ${{ matrix.image }}
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - name: Download rpm artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: scala.rpm
+          path: .
+
+      - name: Install Scala Runner
+        run: |
+          if command -v dnf >/dev/null; then
+            dnf install -y ./scala.rpm
+          elif command -v zypper >/dev/null; then
+            zypper --non-interactive --gpg-auto-import-keys refresh
+            zypper --non-interactive install --allow-unsigned-rpm ./scala.rpm
+          else
+            echo "No supported package manager (dnf/zypper) found"; exit 1
+          fi
+
+      - name: Verify installation layout
+        run: |
+          set -e
+          echo "Checking /usr/bin/scala symlink..."
+          test -L /usr/bin/scala
+          test "$(readlink -f /usr/bin/scala)" = /usr/share/scala3/bin/scala
+
+          echo "Checking VERSION file..."
+          test -f /usr/share/scala3/VERSION
+          cat /usr/share/scala3/VERSION
+
+          echo "Checking scala-cli launcher..."
+          test -x /usr/share/scala3/libexec/scala-cli
+
+          echo "Checking maven2 directory..."
+          test -d /usr/share/scala3/maven2
+
+      - name: Test Scala Runner
+        run: |
+          out="$(scala --version)"; echo "$out"
+          echo "$out" | grep -qF "Scala version (default): $VERSION"
+      - name: Test the `scalac` command
+        run: |
+          out="$(scalac --version)"; echo "$out"
+          echo "$out" | grep -qF "Scala compiler version $VERSION"
+      - name: Test the `scaladoc` command
+        run: |
+          out="$(scaladoc --version)"; echo "$out"
+          echo "$out" | grep -qF "Scaladoc version $VERSION"
+
+      - name: Smoke test - compile and run
+        run: |
+          echo '@main def test() = println("Hello from Scala")' > test.scala
+          scala run --server=false test.scala
+
+      - name: Uninstall the `scala` package
+        run: |
+          if command -v dnf >/dev/null; then
+            dnf remove -y scala3
+          elif command -v zypper >/dev/null; then
+            zypper --non-interactive remove scala3
+          fi

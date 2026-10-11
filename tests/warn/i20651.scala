@@ -7,7 +7,6 @@ class C:
   def neverBad = new B(getClass.getName).x // nowarn ever
 
 def alwaysBad = new B(getClass.getName).x // warn Predef.getClass not `package`.getClass
-def alwaysGood = new B(this.getClass.getName).x // nowarn
 
 object A:
   def main(args: Array[String]): Unit =

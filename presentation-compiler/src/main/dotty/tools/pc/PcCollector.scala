@@ -25,7 +25,7 @@ trait PcCollector[T]:
 
   def allowZeroExtentImplicits: Boolean = false
 
-  def resultAllOccurences(): Set[T] =
+  def resultAllOccurrences(): Set[T] =
     def noTreeFilter = (_: Tree) => true
     def noSoughtFilter = (_: Symbol => Boolean) => true
 
@@ -293,7 +293,7 @@ object PcCollector:
     def apply(x: X, tree: Tree)(using Context) =
       traverser.traverse(x, tree, None)
 
-case class ExtensionParamOccurence(
+case class ExtensionParamOccurrence(
     name: Name,
     pos: SourcePosition,
     sym: Symbol,
@@ -347,4 +347,4 @@ abstract class SimpleCollector[T](
     params: VirtualFileParams
 ) extends WithCompilationUnit(driver, params)
     with PcCollector[T]:
-  def result(): List[T] = resultAllOccurences().toList
+  def result(): List[T] = resultAllOccurrences().toList

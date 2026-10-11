@@ -16,7 +16,8 @@ import scala.annotation.internal.sharable
 object Annotations {
 
   def annotClass(tree: Tree)(using Context) =
-    if (tree.symbol.isConstructor) tree.symbol.owner
+    val sym = tree.symbol
+    if (sym.isConstructor) sym.owner
     else tree.tpe.typeSymbol
 
   abstract class Annotation extends Showable {
@@ -78,7 +79,7 @@ object Annotations {
               if tm.isRange(x) then x
               else
                 val tp1 = tm(tree.tpe)
-                foldOver(if !tp1.exists || tp1.eql(tree.tpe) then x else tp1, tree)
+                foldOver(if !tp1.exists || tp1.equals(tree.tpe) then x else tp1, tree)
           val diff = findDiff(NoType, args)
           if tm.isRange(diff) then EmptyAnnotation
           else if diff.exists then derivedAnnotation(tm.mapOver(tree))
@@ -122,10 +123,6 @@ object Annotations {
         metaSyms.exists(symbol.hasAnnotation) || rec(tree)
       go(metaSyms) || orNoneOf.nonEmpty && !go(orNoneOf)
     }
-
-    /** Operations for hash-consing, can be overridden */
-    def hash: Int = System.identityHashCode(this)
-    def eql(that: Annotation) = this eq that
   }
 
   case class ConcreteAnnotation(t: Tree) extends Annotation:
@@ -192,9 +189,9 @@ object Annotations {
     override def refersToParamOf(tl: TermLambda)(using Context): Boolean =
       refersToLambdaParam(tpe, tl)
 
-    override def hash: Int = tpe.hash
-    override def eql(that: Annotation) = that match
-      case that: CompactAnnotation => this.tpe `eql` that.tpe
+    override def hashCode(): Int = tpe.hash
+    override def equals(that: Any): Boolean = that match
+      case that: CompactAnnotation => this.tpe.equals(that.tpe)
       case _ => false
 
   object CompactAnnotation:
@@ -351,6 +348,17 @@ object Annotations {
           Some(arg.symbol)
         }
         else None
+    }
+
+    /** Like `Child`, but yields `None` instead of throwing `StaleSymbol` when
+     *  the annotation refers to a child symbol from a previous run that is no
+     *  longer valid (e.g. after compilation was suspended and the child class
+     *  has been re-typechecked in the current run; see tests/pos/i24414).
+     */
+    object NonStaleChild {
+      def unapply(ann: Annotation)(using Context): Option[Symbol] =
+        try Child.unapply(ann)
+        catch case _: Denotations.StaleSymbol => None
     }
   }
 

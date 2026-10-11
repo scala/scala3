@@ -1,4 +1,32 @@
-4: Pattern Match Exhaustivity: One(Two(None))
-7: Pattern Match Exhaustivity: Two(None)
-10: Pattern Match Exhaustivity: None, Some(None)
-13: Pattern Match Exhaustivity: None, Some(None), Some(Some(None))
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i13003.scala:4:28 ---
+4 |def matchOneTwo(one: One) = one match
+  |                            ^^^
+  |                            match may not be exhaustive.
+  |
+  |                            It would fail on pattern case: One(Two(None))
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i13003.scala:7:25 ---
+7 |def matchTwo(two: Two) = two match
+  |                         ^^^
+  |                         match may not be exhaustive.
+  |
+  |                         It would fail on pattern case: Two(None)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i13003.scala:10:39 --
+10 |def matchOO(oo: Option[Option[Int]]) = oo match
+   |                                       ^^
+   |                         match may not be exhaustive.
+   |
+   |                         It would fail on pattern case: Some(None), None
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i13003.scala:13:49 --
+13 |def matchOOO(ooo: Option[Option[Option[Int]]]) = ooo match
+   |                                                 ^^^
+   |       match may not be exhaustive.
+   |
+   |       It would fail on pattern case: Some(Some(None)), Some(None), None
+   |
+   | longer explanation available when compiling with `-explain`

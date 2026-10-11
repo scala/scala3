@@ -42,7 +42,7 @@ import scala.runtime.ClassValueCompat
  *  [[scala.reflect.TypeTest]] and [[scala.reflect.Typeable]].
  */
 @nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifestDeprecatedApis""")
-@implicitNotFound(msg = "No ClassTag available for ${T}")
+@implicitNotFound(msg = "No reflect.ClassTag available for ${T}. You can fix this by changing [${T}] to [${T}: reflect.ClassTag].")
 trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serializable {
   // please, don't add any APIs here, like it was with `newWrappedArray` and `newArrayBuilder`
   // class tags, and all tags in general, should be as minimalistic as possible
@@ -55,7 +55,10 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
   /** Produces a `ClassTag` that knows how to instantiate an `Array[Array[T]]`. */
   def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](arrayClass(runtimeClass))
 
-  /** Produces a new array with element type `T` and length `len`. */
+  /** Produces a new array with element type `T` and length `len`.
+   *
+   *  @param len the length of the new array
+   */
   def newArray(len: Int): Array[T] =
     java.lang.reflect.Array.newInstance(runtimeClass, len).asInstanceOf[Array[T]]
 
@@ -66,6 +69,9 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
    *  Type tests necessary before calling other extractors are treated similarly.
    *  `SomeExtractor(...)` is turned into `ct(SomeExtractor(...))` if `T` in `SomeExtractor.unapply(x: T)`
    *  is uncheckable, but we have an instance of `ClassTag[T]`.
+   *
+   *  @param x the value to match against the runtime class of `T`
+   *  @return `Some(x)` if `x` is an instance of `T`, `None` otherwise
    */
   def unapply(x: Any): Option[T] =
     if (runtimeClass.isInstance(x)) Some(x.asInstanceOf[T])

@@ -2,7 +2,7 @@ import java.awt.event.WindowEvent
 import java.awt.Window as AWTWindow
 
 abstract class Window {
-  def peer: AWTWindow with InterfaceMixin
+  def peer: AWTWindow & InterfaceMixin
 
   protected trait InterfaceMixin extends javax.swing.RootPaneContainer
 

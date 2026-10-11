@@ -19,6 +19,8 @@ class ExploringReporter extends StoreReporter(null, fromTyperState = false):
   override def mapBufferedMessages(f: Diagnostic => Diagnostic)(using Context): Unit =
     infos.nn.mapInPlace(f)
 
-  def reset(): Unit = infos.nn.clear()
+  def reset(): Unit =
+    infos.nn.clear()
+    clearReportedLoadingFailures()
 
 end ExploringReporter

@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
  * the real virtual file can not be found.
  *
  * This has a very basic implementation of contentHash that is almost certainly colliding more than the implementation
- * in Zinc. It does not matter anyway as Zinc will recompile the associated source file, because it did not recieve the
+ * in Zinc. It does not matter anyway as Zinc will recompile the associated source file, because it did not receive the
  * same virtual file back.
  */
 public class FallbackVirtualFile extends xsbti.BasicVirtualFileRef implements xsbti.VirtualFile {

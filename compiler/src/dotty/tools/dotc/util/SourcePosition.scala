@@ -83,7 +83,7 @@ extends SrcPos, interfaces.SourcePosition, Showable:
   }
 
   override def toString: String =
-    s"${if (source.exists) source.file.toString else "(no source)"}:$span"
+    s"${if (source.exists) source.path else "(no source)"}:$span"
 
   /** A textual representation of this position in the format `file:line:column`.
    *  Terminals in VS Code or  IntelliJ IDEA recognize this format and turn it
@@ -120,3 +120,4 @@ trait SrcPos:
   def endPos(using ctx: Context): SourcePosition = sourcePos.endPos
   def focus(using ctx: Context): SourcePosition = sourcePos.focus
   def line(using ctx: Context): Int = sourcePos.line
+  def orElse(other: SrcPos): SrcPos = if span.exists then this else other

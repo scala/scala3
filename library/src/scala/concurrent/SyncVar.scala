@@ -38,7 +38,13 @@ class SyncVar[A] {
   /** Waits `timeout` millis. If `timeout <= 0` just returns 0.
    *  It never returns negative results.
    *
+   *  Although `System.nanoTime` is documented
+   *  as monotonic, historically it has not been on every platform, so a backward
+   *  clock jump could yield a negative elapsed time, in which case this method
+   *  returns `0` (see [[https://bugs.java.com/view_bug.do?bug_id=6458294 JDK-6458294]]).
+   *
    *  @param timeout the maximum time to wait, in milliseconds
+   *  @return the elapsed wait time in milliseconds, or `0` if `timeout <= 0` or the elapsed time was negative
    */
   private def waitMeasuringElapsed(timeout: Long): Long = if (timeout <= 0) 0 else {
     val start = System.nanoTime()

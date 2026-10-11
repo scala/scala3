@@ -10,7 +10,9 @@ import java.util
 import scala.compiletime.uninitialized
 
 import dotty.tools.dotc.Main
-import dotty.tools.dotc.reporting.{Reporter, ThrowingReporter}
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.reporting.{Diagnostic, Reporter}
+import dotty.tools.dotc.reporting.Diagnostic.Error
 import dotty.tools.io.Directory
 import dotty.tools.languageserver.DottyLanguageServer
 import dotty.tools.languageserver.util.Code.{TastyWithPositions, Project}
@@ -151,8 +153,17 @@ class TestServer(testFolder: Path, projects: List[Project]) {
           "-classpath", dependencyClasspath(project).mkString(pathSeparator),
           "-d", classDirectory(project, wipe = true).toString
         )
-    val reporter = new ThrowingReporter(Reporter.NoReporter)
+    val reporter = new ThrowingReporter()
     Main.process(compileOptions, reporter)
   }
 
+  class ThrowingReporter extends Reporter {
+    def doReport(dia: Diagnostic)(using Context): Unit = dia match {
+      case dia: Error => throw UnhandledError(dia)
+      case _ => ()
+    }
+  }
+
+  class UnhandledError(val diagnostic: Error) extends Exception:
+    override def getMessage = diagnostic.message
 }

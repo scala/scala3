@@ -88,6 +88,7 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
+   *  @return `Some` containing the result of `compare(x, y)`, since `Ordering` always defines a comparison
    */
   def tryCompare(x: T, y: T): Some[Int] = Some(compare(x, y))
 
@@ -267,6 +268,7 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *  in `scala.math.Ordering.Ops`.
    *
    *  @param lhs the value to enrich with ordering operators
+   *  @return an `OrderingOps` wrapping `lhs` and providing infix comparison operators
    */
   implicit def mkOrderingOps(lhs: T): OrderingOps = new OrderingOps(lhs)
 }
@@ -283,6 +285,7 @@ trait LowPriorityOrderingImplicits {
    *
    *  @tparam A the type to be ordered, which must be convertible to `Comparable`
    *  @param asComparable the implicit conversion from `A` to `Comparable[? >: A]`
+   *  @return an `Ordering[A]` that compares values by delegating to their `Comparable.compareTo`
    */
   implicit def ordered[A](implicit asComparable: AsComparable[A]): Ordering[A] = new Ordering[A] {
     def compare(x: A, y: A): Int = asComparable(x).compareTo(y)
@@ -368,6 +371,9 @@ object Ordering extends LowPriorityOrderingImplicits {
      *  For instance `implicitly[Ordering[Any]]` diverges in its presence.
      *
      *  @tparam CC the higher-kinded type constructor for the sequence type, bounded by `scala.collection.Seq`
+     *  @tparam T the element type of the sequences being compared
+     *  @param ord the implicit `Ordering` used to compare elements of type `T`
+     *  @return an `Ordering[CC[T]]` that compares sequences lexicographically using `ord`
      */
     implicit def seqOrdering[CC[X] <: scala.collection.Seq[X], T](implicit ord: Ordering[T]): Ordering[CC[T]] =
       new IterableOrdering[CC, T](ord)
@@ -399,6 +405,7 @@ object Ordering extends LowPriorityOrderingImplicits {
    *
    *  @tparam T the type of objects to be ordered
    *  @param cmp a function that returns `true` if the first argument is less than the second
+   *  @return an `Ordering[T]` whose comparison is derived from `cmp`
    */
   def fromLessThan[T](cmp: (T, T) => Boolean): Ordering[T] = new Ordering[T] {
     def compare(x: T, y: T) = if (cmp(x, y)) -1 else if (cmp(y, x)) 1 else 0

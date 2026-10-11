@@ -19,7 +19,6 @@ import printing.Printer
 import SymDenotations.NoDenotation
 
 import collection.mutable
-import scala.compiletime.uninitialized
 
 object Scopes {
 
@@ -31,7 +30,7 @@ object Scopes {
    *  This value must be a power of two, so that the index of an element can
    *  be computed as element.hashCode & (hashTable.length - 1)
    */
-  inline val MinHashedScopeSize = 8
+  private inline val MinHashedScopeSize = 8
 
   /** The maximal permissible number of recursions when creating
    *  a hashtable
@@ -42,7 +41,7 @@ object Scopes {
    *  the given name in the given context. Returns `NoSymbol` if the
    *  no symbol should be synthesized for the given name.
    */
-  type SymbolSynthesizer = Name => Context ?=> Symbol
+  private type SymbolSynthesizer = Name => Context ?=> Symbol
 
   class ScopeEntry private[Scopes] (val name: Name, _sym: Symbol, val owner: Scope) {
 
@@ -135,7 +134,11 @@ object Scopes {
     final def lookupAll(name: Name)(using Context): Iterator[Symbol] = new Iterator[Symbol] {
       var e = lookupEntry(name)
       def hasNext: Boolean = e != null
-      def next(): Symbol = { val r = e.nn.sym; e = lookupNextEntry(e.uncheckedNN); r }
+      def next(): Symbol = e match
+        case null => throw new NoSuchElementException()
+        case ee =>
+          e = lookupNextEntry(ee)
+          ee.sym
     }
 
     /** Does this scope contain a reference to `sym` when looking up `name`? */
@@ -179,8 +182,10 @@ object Scopes {
             result.nn.enter(newName, sym)
         else
           drop()
-      // TODO: improve flow typing to handle this case
-      if result == null then this else result.uncheckedNN
+      // TODO: `if result == null then this else result` should work here, improve flow typing to handle it
+      result match
+        case null => this
+        case r => r
 
     def implicitDecls(using Context): List[TermRef] = Nil
 
@@ -257,7 +262,7 @@ object Scopes {
 
     /** create and enter a scope entry with given name and symbol */
     protected def newScopeEntry(name: Name, sym: Symbol)(using Context): ScopeEntry = {
-      ensureCapacity(if (hashTable != null) hashTable.uncheckedNN.length else MinHashedScopeSize)
+      ensureCapacity(hashTable match { case null => MinHashedScopeSize; case ht => ht.length })
       val e = new ScopeEntry(name, sym, this)
       e.prev = lastEntry
       lastEntry = e
@@ -383,21 +388,24 @@ object Scopes {
         while ((e != null) && e.name != name)
           e = e.prev
       }
-      if ((e == null) && (synthesize != null)) {
-        val sym = synthesize.uncheckedNN(name)
-        if (sym.exists) newScopeEntry(sym.name, sym) else e
-      }
-      else e
+      if e != null then e
+      else synthesize match
+        case null => null
+        case s =>
+          val sym = s(name)
+          if (sym.exists) newScopeEntry(sym.name, sym) else e
     }
 
     /** lookup next entry with same name as this one */
     override final def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry | Null = {
-      var e: ScopeEntry | Null = entry
-      if (hashTable != null)
-        while ({ e = e.nn.tail ; (e != null) && e.uncheckedNN.name != entry.name }) ()
+      if hashTable != null then
+        var e: ScopeEntry | Null = entry.tail
+        while e != null && e.name != entry.name do e = e.tail
+        e
       else
-        while ({ e = e.nn.prev ; (e != null) && e.uncheckedNN.name != entry.name }) ()
-      e
+        var e: ScopeEntry | Null = entry.prev
+        while e != null && e.name != entry.name do e = e.prev
+        e
     }
 
     /** Returns all symbols as a list in the order they were entered in this scope.
@@ -418,7 +426,7 @@ object Scopes {
 
     override def implicitDecls(using Context): List[TermRef] = {
       ensureComplete()
-      var irefs = new mutable.ListBuffer[TermRef]
+      val irefs = new mutable.ListBuffer[TermRef]
       var e = lastEntry
       while (e != null) {
         if (e.sym.isOneOf(GivenOrImplicitVal)) {

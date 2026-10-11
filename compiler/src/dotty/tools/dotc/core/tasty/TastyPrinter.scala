@@ -18,7 +18,6 @@ import scala.collection.immutable.BitSet
 import scala.compiletime.uninitialized
 import dotty.tools.tasty.TastyBuffer.Addr
 import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.classpath.FileUtils.hasTastyExtension
 
 object TastyPrinter:
 
@@ -58,12 +57,9 @@ object TastyPrinter:
           println("File not found: " + arg)
           System.exit(1)
       else if arg.endsWith(".jar") then
-        val jar = JarArchive.open(Path(arg), create = false)
-        def tastyFiles(file: AbstractFile): Iterator[AbstractFile] =
-          if file.isDirectory then file.iterator.flatMap(tastyFiles)
-          else if file.hasTastyExtension then Iterator.single(file) else Iterator.empty
+        val jar = JarArchive.open(Path(arg))
         try
-          for file <- tastyFiles(jar) do
+          for file <- jar.deepIterator.filter(_.ext.isTasty) do
             printTasty(s"$arg ${file.path}", file.toByteArray, isBestEffortTasty = false)
         finally jar.close()
       else

@@ -1,4 +1,32 @@
-3: Pattern Match Exhaustivity: List(_, _*)
-10: Pattern Match Exhaustivity: List(_, _*)
-17: Pattern Match Exhaustivity: List(_, _*)
-24: Pattern Match Exhaustivity: List(_, _*)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t7020.scala:3:6 -----
+3 |  List(5) match {
+  |  ^^^^^^^
+  |  match may not be exhaustive.
+  |
+  |  It would fail on pattern case: List(_, _*)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t7020.scala:10:6 ----
+10 |  List(5) match {
+   |  ^^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: List(_, _*)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t7020.scala:17:6 ----
+17 |  List(5) match {
+   |  ^^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: List(_, _*)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t7020.scala:24:6 ----
+24 |  List(5) match {
+   |  ^^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: List(_, _*)
+   |
+   | longer explanation available when compiling with `-explain`

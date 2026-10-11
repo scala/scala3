@@ -11,6 +11,7 @@ import NameOps.*
 import util.Spans.NoSpan
 import util.SrcPos
 import config.Feature
+import inlines.Inlines
 import reporting.*
 import Message.Note
 import collection.mutable
@@ -203,11 +204,26 @@ object ErrorReporting {
             then i"definition of ${tree.symbol} in:  $tree"
             else i"tree:  $tree"
           Note(i"\n\nThe error occurred for a synthesized $synthText") :: Nil
+        case _ if tree.hasAttachment(Inlines.TransparentInlinedCall) =>
+          tree.getAttachment(Inlines.TransparentInlinedCall).map(transparentInlineExpansionNote).toList
         case _ =>
           Nil
 
       errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), notes ++ moreNotes))
     }
+
+    def transparentInlineExpansionNote(inlined: String)(using Context): Note =
+      Note:
+        i"""
+           |
+           |Note: `$inlined` is transparent inline, but its precise type may not be available here.
+           |This can happen when:
+           |- It is used inside another inline body.
+           |- Its result type depends on another inline expansion or on an inline parameter."""
+
+    def transparentInlineSelectAddendum(qual: Tree)(using Context): String =
+      if qual.symbol.is(Transparent) then transparentInlineExpansionNote(qual.symbol.show).render
+      else ""
 
     /** A subtype log explaining why `found` does not conform to `expected` */
     def whyNoMatchStr(found: Type, expected: Type): String =

@@ -6,6 +6,7 @@ import Contexts.*
 import Decorators.em
 import config.PathResolver
 import dotty.tools.io.*
+import dotty.tools.dotc.classpath.ClassPath
 import Phases.*
 import config.Printers.plugins.{ println => debug }
 import config.Properties
@@ -35,7 +36,7 @@ trait Plugins {
     }
     val maybes = Plugin.loadAllFrom(paths, dirs, ctx.settings.disable.value)
     val (goods, errors) = maybes partition (_.isSuccess)
-    // Explicit parameterization of recover to avoid -Xlint warning about inferred Any
+    // Explicit parameterization of recover to avoid -Wshadow warning about inferred Any
     errors foreach (_.recover[Any] {
       // legacy behavior ignores altogether, so at least warn devs
       case e: MissingPluginException => report.warning(e.getMessage)

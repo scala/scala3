@@ -1,0 +1,10 @@
+scala> try:
+-- [E018] Syntax Error: --------------------------------------------------------
+1 |try:
+  |   ^
+  |   expression expected but : found
+  |
+  | longer explanation available when compiling with `-explain`
+
+scala> 42
+val res0: Int = 42

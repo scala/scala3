@@ -10,9 +10,9 @@ import StackTraceOps.*
 
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm.*
-import scala.tools.asm.Opcodes.*
-import scala.tools.asm.tree.*
+import org.objectweb.asm.*
+import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.tree.*
 import scala.util.control.NonFatal
 import java.util.function.Predicate
 

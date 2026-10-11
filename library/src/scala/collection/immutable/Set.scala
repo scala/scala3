@@ -38,6 +38,7 @@ trait Set[A] extends Iterable[A]
  *
  *  @tparam A the element type of the set
  *  @tparam CC the type constructor for the resulting set (e.g., `Set`)
+ *  @tparam C the concrete type of this set, returned by transformation operations
  */
 transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
   extends collection.SetOps[A, CC, C] {

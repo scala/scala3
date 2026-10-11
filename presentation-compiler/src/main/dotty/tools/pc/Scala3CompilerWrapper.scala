@@ -3,13 +3,12 @@ package dotty.tools.pc
 import scala.meta.internal.pc.CompilerWrapper
 import scala.meta.internal.pc.ReporterAccess
 
-import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.reporting.StoreReporter
 
-class Scala3CompilerWrapper(driver: InteractiveDriver)
-    extends CompilerWrapper[StoreReporter, InteractiveDriver]:
+class Scala3CompilerWrapper(driver: CachingDriver)
+    extends CompilerWrapper[StoreReporter, CachingDriver]:
 
-  override def compiler(): InteractiveDriver = driver
+  override def compiler(): CachingDriver = driver
 
   override def resetReporter(): Unit =
     val ctx = driver.currentCtx

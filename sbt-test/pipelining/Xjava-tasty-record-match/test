@@ -1,0 +1,5 @@
+> a/compile
+# test pattern matching on a Java record loaded from TASTy
+> b/run
+# double check against the real java classes
+> bAlt/run

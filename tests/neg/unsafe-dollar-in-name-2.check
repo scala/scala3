@@ -1,0 +1,8 @@
+-- Error: tests/neg/unsafe-dollar-in-name-2.scala:3:7 ------------------------------------------------------------------
+3 |object Foo$ // error
+  |       ^
+  |       Identifier may not contain '$' in safe mode
+-- Error: tests/neg/unsafe-dollar-in-name-2.scala:5:6 ------------------------------------------------------------------
+5 |class `Bar$` // error
+  |      ^
+  |      Identifier may not contain '$' in safe mode

@@ -17,15 +17,11 @@ import scala.collection.BuildFrom;
 class A { };
 class B { };
 
-// This one compiles but it would be better if it didn't.
-// Checking in under pos anyway in the interests of making sure
-// we are informed if the status changes.
 class Contra {
-  // Not an Ordering<Character>.
-  static Ordering<Object> charOrd = scala.math.Ordering.Char$.MODULE$;
+  static Ordering<Character> charOrd = scala.math.Ordering.Char$.MODULE$;
 
   public boolean useCharOrd() {
-    return charOrd.compare(new Object(), new Object()) == 0;
+    return charOrd.compare('A', 'A') == 0;
   }
 
   static Numeric<?> intNum = scala.math.Numeric.IntIsIntegral$.MODULE$;

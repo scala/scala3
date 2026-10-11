@@ -106,6 +106,7 @@ trait Builder[-A, +To] extends Growable[A] { self: Builder[A, To]^ =>
    *
    *  @tparam NewTo the type of collection produced by the returned builder
    *  @param f the function to apply to this builder's result
+   *  @return a new builder that delegates element additions to this builder and applies `f` to the result
    */
   def mapResult[NewTo](f: To => NewTo): Builder[A, NewTo]^{this, f} = new Builder[A, NewTo] {
     def addOne(x: A): this.type = { self += x; this }

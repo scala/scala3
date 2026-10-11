@@ -35,9 +35,10 @@ Originally, `Null` is a subtype of all reference types.
 
 !["Original Type Hierarchy"](images/explicit-nulls/scalaHierarchyWithMatchable.png)
 
-When explicit nulls is enabled, the type hierarchy changes so that `Null` is only
-a subtype of `Any` and `Matchable`, as opposed to every reference type,
+When explicit nulls is enabled, the type hierarchy changes so that `Null` is not
+a subtype of every reference type anymore,
 which means `null` is no longer a value of `AnyRef` and its subtypes.
+Instead, it is a regular class that extends `AnyVal`.
 
 This is the new type hierarchy:
 
@@ -456,6 +457,31 @@ See [more examples](https://github.com/scala/scala3/blob/main/tests/explicit-nul
 
 Currently, we are unable to track paths with a mutable variable prefix.
 For example, `x.a` if `x` is mutable.
+
+### Tracking Mutable Fields with `@stableNull`
+
+By default, mutable class fields (`var`) are not tracked by flow typing, because a concurrent
+assignment could set the field to `null` between the null check and its subsequent use.
+To opt into flow typing for a mutable field, annotate it with
+`scala.annotation.stableNull`.
+The field will then be tracked whenever it is accessed through a stable prefix.
+
+```scala
+import scala.annotation.stableNull
+
+class A:
+  @stableNull private var s: String | Null = null
+  def getS: String =
+    if s == null then s = ""
+    s // s: String
+```
+
+**Warning:** `@stableNull` can break null safety. The compiler assumes the field stays
+non-nullable after a null check, but nothing prevents another thread, a reentrant call, or
+unrelated code reachable from the same reference from reassigning it to `null` in between.
+We recommend only using it to manage a mutable nullable state *locally* within a class.
+A typical case is a field where `null` represents an uninitialized value that is assigned
+once on first access.
 
 ### Unsupported Idioms
 

@@ -1,5 +1,4 @@
 import scala.language.strictEquality
-import scala.language.experimental.strictEqualityPatternMatching
 
 sealed trait Foo[A]
 object Foo:

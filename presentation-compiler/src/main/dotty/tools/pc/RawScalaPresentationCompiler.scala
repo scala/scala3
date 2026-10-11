@@ -17,7 +17,6 @@ import scala.meta.pc.PcSymbolInformation as IPcSymbolInformation
 import scala.meta.pc.reports.EmptyReportContext
 import scala.meta.pc.reports.ReportContext
 
-import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.pc.InferExpectedType
 import dotty.tools.pc.SymbolInformationProvider
 import dotty.tools.pc.buildinfo.BuildInfo
@@ -82,7 +81,7 @@ case class RawScalaPresentationCompiler(
       classpathFlags ++
       sourcePathFlags
 
-  lazy val driver: InteractiveDriver =
+  lazy val driver: CachingDriver =
     CachingDriver(driverSettings, sourcePath, semanticdbFileManager, config.sourcePathMode())
 
   override def codeAction[T](
@@ -154,7 +153,6 @@ case class RawScalaPresentationCompiler(
     CompletionProvider(
       search,
       driver,
-      () => InteractiveDriver(driverSettings, driver.logicalRootPackage),
       params,
       config,
       buildTargetIdentifier,
@@ -338,7 +336,7 @@ case class RawScalaPresentationCompiler(
     SignatureHelpProvider.signatureHelp(driver, params, search)
 
   override def didChange(params: VirtualFileParams): ju.List[l.Diagnostic] =
-    DiagnosticProvider(driver, params).diagnostics().asJava
+    DiagnosticProvider(driver, params).diagnostics(localOnly = true).asJava
 
   override def didClose(uri: URI): Unit =
     driver.close(uri)

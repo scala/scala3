@@ -16,6 +16,8 @@ def withFileAndRef[T](op: (f: File^, r: Ref[String]^) => T): T =
 
 def Test =
   withFile: f =>
+    Ref("")
+  withFile: f =>
     val r = Ref(f.read())
     r
   withFileAndRef: (f, r: Ref[String]^) =>
