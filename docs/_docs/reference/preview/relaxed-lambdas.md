@@ -1,18 +1,18 @@
 ---
 layout: doc-page
 title: "Relaxed Lambda Syntax"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/relaxed-lambdas.html
+redirectFrom: /experimental/relaxed-lambdas.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/preview/relaxed-lambdas.html
 ---
+
+This feature is available under `-preview` since Scala 3.10.0.
 
 # Relaxed Lambda Syntax
 
-This experimental addition combines several small improvements to write function literals in more flexible ways. These improvements are specified in
+This preview feature combines several small improvements to write function literals in more flexible ways. These improvements are specified in
 [SIP 74](https://github.com/scala/improvement-proposals/pull/113) and
-[SIP 75](https://github.com/scala/improvement-proposals/pull/118).
-They are enabled by the experimental language import
-```scala
-import language.experimental.relaxedLambdaSyntax
-```
+[SIP 75](https://docs.scala-lang.org/sips/75.html).
+They are enabled by the `-preview` compiler flag.
 
 ## Single Line Lambdas
 

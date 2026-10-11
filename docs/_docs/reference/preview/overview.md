@@ -21,4 +21,6 @@ This flag enables the use of all preview language feature in the project.
 
 ## List of available preview features
 
-- [Automatic Parameter Unrolling with `@unroll`](unrolled-defs.md)
+- [Automatic Parameter Unrolling with `@unroll`](unrolled-defs.md) ([SIP-61](https://docs.scala-lang.org/sips/61.html))
+- [Reference-able Package Objects](package-object-values.md) ([SIP-68](https://docs.scala-lang.org/sips/68.html))
+- [Relaxed Lambda Syntax](relaxed-lambdas.md) ([SIP-75](https://docs.scala-lang.org/sips/75.html))
