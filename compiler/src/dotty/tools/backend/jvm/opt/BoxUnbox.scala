@@ -696,7 +696,7 @@ final class BoxUnbox(callGraph: CallGraph, ts: OptimizerKnownBTypes) {
               yield (ModuleFactory(predefLoad, mi), kind)
           else None
 
-        case ti: TypeInsnNode if ti.getOpcode == NEW =>
+        case ti: TypeInsnNode if ti.getOpcode == NEW && ts.primitiveBoxConstructors.contains(ti.desc) =>
           for ((dupOp, initCall) <- BoxKind.checkInstanceCreation(ti, prodCons) if ts.isPrimitiveBoxConstructor(initCall); kind <- checkKind(initCall))
             yield (InstanceCreation(ti, dupOp, initCall), kind)
 
@@ -752,7 +752,7 @@ final class BoxUnbox(callGraph: CallGraph, ts: OptimizerKnownBTypes) {
           else if (ts.isRefZero(mi)) checkKind(mi).map((StaticFactory(mi, loadInitialValues = Some(loadZeroValue(mi))), _))
           else None
 
-        case ti: TypeInsnNode if ti.getOpcode == NEW =>
+        case ti: TypeInsnNode if ti.getOpcode == NEW && ts.srRefConstructors.contains(ti.desc) =>
           for ((dupOp, initCall) <- BoxKind.checkInstanceCreation(ti, prodCons) if ts.isRuntimeRefConstructor(initCall); kind <- checkKind(initCall))
             yield (InstanceCreation(ti, dupOp, initCall), kind)
 
@@ -815,7 +815,7 @@ final class BoxUnbox(callGraph: CallGraph, ts: OptimizerKnownBTypes) {
               None
           )
 
-        case ti: TypeInsnNode if ti.getOpcode == NEW =>
+        case ti: TypeInsnNode if ti.getOpcode == NEW && ts.tupleClassConstructors.contains(ti.desc) =>
           for ((dupOp, initCall) <- BoxKind.checkInstanceCreation(ti, prodCons) if ts.isTupleConstructor(initCall); kind <- checkKind(initCall))
             yield (InstanceCreation(ti, dupOp, initCall), kind)
 
