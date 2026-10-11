@@ -40,13 +40,6 @@ trait DiagnosticTestHelpers extends PcAssertions {
     else msg.getRight.getValue
   }
 
-  def diagnosticMessageAsString(d: Diagnostic): String = {
-    val msg = d.getMessage()
-    if msg == null then ""
-    else if msg.isLeft then msg.getLeft
-    else msg.getRight.getValue
-  }
-
   def check(
       text: String,
       expected: List[TestDiagnostic],

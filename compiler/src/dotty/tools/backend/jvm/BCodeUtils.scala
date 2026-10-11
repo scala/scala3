@@ -328,7 +328,7 @@ object BCodeUtils {
           index += 1
         }
       }
-
+      
       foreachWithIndex(list.asScala.toList) { case (l, i) =>
         if (l == from) list.set(i, to)
       }
