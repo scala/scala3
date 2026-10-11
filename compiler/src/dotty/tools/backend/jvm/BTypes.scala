@@ -218,7 +218,7 @@ sealed trait BType {
   def asPrimitiveBType : PrimitiveBType = this.asInstanceOf[PrimitiveBType]
 }
 
-sealed trait PrimitiveBType(val name: String) extends BType {
+sealed trait PrimitiveBType(val name: String, val boxedClass: Class[?]) extends BType {
   final def isNothing: Boolean = false
   final def isNull: Boolean = false
 
@@ -291,15 +291,15 @@ sealed trait PrimitiveBType(val name: String) extends BType {
   }
 }
 
-case object UNIT   extends PrimitiveBType("Unit")
-case object BOOL   extends PrimitiveBType("Boolean")
-case object CHAR   extends PrimitiveBType("Char")
-case object BYTE   extends PrimitiveBType("Byte")
-case object SHORT  extends PrimitiveBType("Short")
-case object INT    extends PrimitiveBType("Int")
-case object FLOAT  extends PrimitiveBType("Float")
-case object LONG   extends PrimitiveBType("Long")
-case object DOUBLE extends PrimitiveBType("Double")
+case object UNIT   extends PrimitiveBType("Unit", classOf[java.lang.Void])
+case object BOOL   extends PrimitiveBType("Boolean", classOf[java.lang.Boolean])
+case object CHAR   extends PrimitiveBType("Char", classOf[java.lang.Character])
+case object BYTE   extends PrimitiveBType("Byte", classOf[java.lang.Byte])
+case object SHORT  extends PrimitiveBType("Short", classOf[java.lang.Short])
+case object INT    extends PrimitiveBType("Int", classOf[java.lang.Integer])
+case object FLOAT  extends PrimitiveBType("Float", classOf[java.lang.Float])
+case object LONG   extends PrimitiveBType("Long", classOf[java.lang.Long])
+case object DOUBLE extends PrimitiveBType("Double", classOf[java.lang.Double])
 
 sealed trait RefBType extends BType {
 

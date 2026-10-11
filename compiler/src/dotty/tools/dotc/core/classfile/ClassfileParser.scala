@@ -32,11 +32,11 @@ object ClassfileParser {
     object Version:
       val Unknown: Version = -1L
 
-      def brokenVersionAddendum(classfileVersion: Version)(using Context): String =
+      def brokenVersionAddendum(classfileVersion: Version): String =
         if classfileVersion.exists then
           val (maj, min) = (classfileVersion.majorVersion, classfileVersion.minorVersion)
           val scalaVersion = config.Properties.versionNumberString
-          i""" (version $maj.$min),
+          s""" (version $maj.$min),
             |  please check the JDK compatibility of your Scala version ($scalaVersion)"""
         else
           ""
@@ -951,13 +951,20 @@ final class ClassfileParser(
         sym.addAnnotation(ThrowsAnnotation(cls.asClass))
       }
 
-      permittedSubclasses.foreach { child =>
-        val cls = getClassSymbol(child.name)
-        sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)(
+      // The children of a Java enum are its enum constants, registered in `MemberCompleter`.
+      // javac lists the anonymous classes of constants with bodies as permitted subclasses
+      // of the (implicitly sealed) enum class; they must not be registered as children,
+      // otherwise a match on the constants would be reported as non-exhaustive.
+      if !sym.flagsUNSAFE.is(Flags.Enum) then permittedSubclasses.foreach { child =>
+        sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)({
+          // It's important to fetch this symbol in the deferred tree function,
+          // since otherwise it may create cycles, e.g.,
+          // A extends from B which also permits C which also extends from D which permits A
+          val cls = getClassSymbol(child.name)
           New(defn.ChildAnnot.typeRef.appliedTo(cls.owner.thisType.select(cls.name, cls)), Nil)
-          .withSpan(NoSpan)
-          ))
-        }
+            .withSpan(NoSpan)
+        }))
+      }
 
       def fillInParamNames(t: Type): Type = t match
         case mt @ MethodType(oldp) if namedParams.nonEmpty =>

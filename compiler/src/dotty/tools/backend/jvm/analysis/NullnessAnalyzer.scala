@@ -253,4 +253,3 @@ class NullnessAnalyzerImpl(methodNode: MethodNode, knownNonNullInvocation: Metho
 
 class NullnessAnalyzer(methodNode: MethodNode, classInternalName: String, knownNonNullInvocation: MethodInsnNode => Boolean, modulesNonNull: Boolean)
   extends AsmAnalyzer(methodNode, classInternalName, new NullnessAnalyzerImpl(methodNode, knownNonNullInvocation, modulesNonNull))
-    with AliasingAsmAnalyzerMarker

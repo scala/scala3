@@ -49,6 +49,19 @@ class InlayHintsInlinedDependencySuite extends PcAssertions:
       List.empty[String].asJava
     )
 
+  def defaultParams(rangeParams: CompilerRangeParams) = CompilerInlayHintsParams(
+    rangeParams = rangeParams,
+    inferredTypes = true,
+    typeParameters = true,
+    implicitParameters = true,
+    hintsXRayMode = true,
+    byNameParameters = true,
+    implicitConversions = true,
+    namedParameters = true,
+    hintsInPatternMatch = true,
+    closingLabels = true
+  )
+
   @Test def `inlay-hints-over-inlined-foreign-source`: Unit =
     val code =
       """|package test
@@ -62,19 +75,24 @@ class InlayHintsInlinedDependencySuite extends PcAssertions:
 
     val rangeParams =
       CompilerRangeParams(URI.create("file:/InlayHints.scala"), code, 0, code.length())
-    val pcParams = CompilerInlayHintsParams(
-      rangeParams = rangeParams,
-      inferredTypes = true,
-      typeParameters = true,
-      implicitParameters = true,
-      hintsXRayMode = true,
-      byNameParameters = true,
-      implicitConversions = true,
-      namedParameters = true,
-      hintsInPatternMatch = true,
-      closingLabels = true
-    )
 
     // Must not throw. Pre-fix this raises ArrayIndexOutOfBoundsException from
     // XRayModeHint.isEndOfLine on the fixture's TASTy-only (empty-content) source.
-    pc.inlayHints(pcParams)
+    pc.inlayHints(defaultParams(rangeParams))
+
+  @Test def `inferred-types-over-inlined-transparent-with-locals`: Unit =
+    val code =
+      """|package test
+         |
+         |import tests.inlayHints.Lib
+         |
+         |object Main:
+         |  val x = Lib.withLocals
+         |  val y = Lib.plain
+         |  val z = Lib.noLocals
+         |""".stripMargin
+
+    val rangeParams =
+      CompilerRangeParams(URI.create("file:/InlayHints.scala"), code, 0, code.length())
+
+    pc.inlayHints(defaultParams(rangeParams))

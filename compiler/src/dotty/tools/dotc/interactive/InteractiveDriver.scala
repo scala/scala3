@@ -3,24 +3,14 @@ package dotc
 package interactive
 
 import java.net.URI
-import java.io.*
-import java.nio.file.*
-import java.nio.file.attribute.BasicFileAttributes
-import java.nio.charset.StandardCharsets
-import java.util.zip.*
-
 import scala.collection.*
-import scala.io.Codec
 
 import dotty.tools.dotc.sbt.interfaces.ProgressCallback
-import dotty.tools.io.AbstractFile
 
 import ast.{Trees, tpd}
 import config.*
 import core.*, core.Decorators.*
 import Contexts.*, Names.*, NameOps.*, Symbols.*, SymDenotations.*, Trees.*, Types.*
-import Denotations.staticRef
-import classpath.*
 import reporting.*
 import util.*
 
@@ -84,90 +74,7 @@ class InteractiveDriver(
   private val myCompilationUnits = new mutable.LinkedHashMap[URI, CompilationUnit]
   def compilationUnits: Map[URI, CompilationUnit] = myCompilationUnits
 
-  // Presence of a file with one of these suffixes indicates that the
-  // corresponding class has been pickled with TASTY.
-  private val tastySuffix = ".tasty"
-
-  // FIXME: All the code doing classpath handling is very fragile and ugly,
-  // improving this requires changing the dotty classpath APIs to handle our usecases.
-  // We also need something like sbt server-mode to be informed of changes on
-  // the classpath.
-
-  private val (zipClassPaths, dirClassPaths) = currentCtx.platform.classPath(using currentCtx) match {
-    case AggregateClassPath(cps) =>
-      // FIXME: We shouldn't assume that ClassPath doesn't have other
-      // subclasses. For now, the only other subclass is JrtClassPath on Java
-      // 9+, we can safely ignore it for now because it's only used for the
-      // standard Java library, but this will change once we start supporting
-      // adding entries to the modulepath.
-      val zipCps = cps.collect { case cp: ZipArchiveFileLookup[?] => cp }
-      val dirCps = cps.collect { case cp: JFileDirectoryLookup[?] => cp }
-      (zipCps, dirCps)
-    case _ =>
-      (Seq(), Seq())
-  }
-
-  // Like in `ZipArchiveFileLookup` we assume that zips are immutable
-  private val zipClassPathClasses: Seq[TypeName] = {
-    val names = new mutable.ListBuffer[TypeName]
-    for (cp <- zipClassPaths)
-      classesFromZip(cp.zipFile, names)
-    names
-  }
-
   initialize()
-
-  /**
-   * The trees for all the source files in this project.
-   *
-   * This includes the trees for the buffers that are presently open in the IDE, and the trees
-   * from the target directory.
-   */
-  def sourceTrees(using Context): List[SourceTree] = sourceTreesContaining("")
-
-  /**
-   * The trees for all the source files in this project that contain `id`.
-   *
-   * This includes the trees for the buffers that are presently open in the IDE, and the trees
-   * from the target directory.
-   */
-  def sourceTreesContaining(id: String)(using Context): List[SourceTree] = {
-    val fromBuffers = openedTrees.values.flatten.toList
-    val fromCompilationOutput = {
-      val classNames = new mutable.ListBuffer[TypeName]
-      val output = ctx.settings.outputDir.value
-      if (output.isDirectory)
-        classesFromDir(output.jpath.nn, classNames)
-      else
-        classesFromZip(output.file.nn, classNames)
-      classNames.flatMap { cls =>
-        treesFromClassName(cls, id)
-      }
-    }
-    (fromBuffers ++ fromCompilationOutput).distinct
-  }
-
-  /**
-   * All the trees for this project.
-   *
-   * This includes the trees of the sources of this project, along with the trees that are found
-   * on this project's classpath.
-   */
-  def allTrees(using Context): List[SourceTree] = allTreesContaining("")
-
-  /**
-   * All the trees for this project that contain `id`.
-   *
-   * This includes the trees of the sources of this project, along with the trees that are found
-   * on this project's classpath.
-   */
-  def allTreesContaining(id: String)(using Context): List[SourceTree] = {
-    val fromSource = openedTrees.values.flatten.toList
-    val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
-      treesFromClassName(cls, id)
-    }
-    (fromSource ++ fromClassPath).distinct
-  }
 
   def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, SourceFile.virtual(uri, sourceCode))
 
@@ -210,69 +117,6 @@ class InteractiveDriver(
     myOpenedTrees.remove(uri)
     myCompilationUnits.remove(uri)
   }
-
-  /**
-   * The `SourceTree`s that define the class `className` and/or module `className`.
-   *
-   * @see SourceTree.fromSymbol
-   */
-  private def treesFromClassName(className: TypeName, id: String)(using Context): List[SourceTree] = {
-    def trees(className: TypeName, id: String): List[SourceTree] = {
-      val clsd = staticRef(className)
-      clsd match {
-        case clsd: ClassDenotation =>
-          clsd.ensureCompleted()
-          SourceTree.fromSymbol(clsd.symbol.asClass, id)
-        case _ =>
-          Nil
-      }
-    }
-    trees(className, id) ::: trees(className.moduleClassName, id)
-  }
-
-  // FIXME: classfiles in directories may change at any point, so we retraverse
-  // the directories each time, if we knew when classfiles changed (sbt
-  // server-mode might help here), we could do cache invalidation instead.
-  private def dirClassPathClasses: Seq[TypeName] = {
-    val names = new mutable.ListBuffer[TypeName]
-    dirClassPaths.foreach { dirCp =>
-      val root = dirCp.dir.toPath
-      classesFromDir(root, names)
-    }
-    names
-  }
-
-  /** Adds the names of the classes that are defined in `file` to `buffer`. */
-  private def classesFromZip(file: File, buffer: mutable.ListBuffer[TypeName]): Unit = {
-    val zipFile = new ZipFile(file)
-    try {
-      val entries = zipFile.entries()
-      while (entries.hasMoreElements) {
-        val entry = entries.nextElement()
-        val name = entry.getName
-        if name.endsWith(tastySuffix) then
-          buffer += name.replace("/", ".").stripSuffix(tastySuffix).toTypeName
-      }
-    }
-    finally zipFile.close()
-  }
-
-  /** Adds the names of the classes that are defined in `dir` to `buffer`. */
-  private def classesFromDir(dir: Path, buffer: mutable.ListBuffer[TypeName]): Unit =
-    try
-      Files.walkFileTree(dir, new SimpleFileVisitor[Path] {
-        override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
-          if (!attrs.isDirectory) {
-            val name = path.getFileName.toString
-            if name.endsWith(tastySuffix) then
-              buffer += dir.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix).toTypeName
-          }
-          FileVisitResult.CONTINUE
-        }
-      })
-    catch {
-      case _: NoSuchFileException =>
-    }
 
   private def topLevelTrees(topTree: Tree, source: SourceFile): List[SourceTree] = {
     val trees = new mutable.ListBuffer[SourceTree]
@@ -333,28 +177,4 @@ class InteractiveDriver(
     myCtx = run.runContext
     run.compileUnits(Nil, myCtx)
   }
-}
-
-
-object InteractiveDriver {
-  def toUriOption(file: AbstractFile | Null): Option[URI] =
-    if (file == null || !file.exists)
-      None
-    else
-      try
-        // We don't use file.file here since it'll be null
-        // for the VirtualFiles created by SourceFile#virtual
-        // TODO: To avoid these round trip conversions, we could add an
-        // AbstractFile#toUri method and implement it by returning a constant
-        // passed as a parameter to a constructor of VirtualFile
-        Some(Paths.get(file.path).toUri)
-      catch {
-        case e: InvalidPathException =>
-          None
-      }
-  def toUriOption(source: SourceFile): Option[URI] =
-    if (!source.exists)
-      None
-    else
-      toUriOption(source.file)
 }

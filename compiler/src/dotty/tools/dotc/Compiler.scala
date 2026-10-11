@@ -37,7 +37,7 @@ class Compiler {
          CheckUnused.PostTyper(),   // Check for unused
          CheckShadowing()) ::       // Check for shadowed elements
     List(new YCheckPositions) ::    // YCheck positions
-    List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
+    List(new sbt.ExtractDependencies) :: // Collects information on classes' dependencies for sbt
     List(new semanticdb.ExtractSemanticInfo) :: // Extract info into .semanticdb files
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new UnrollDefinitions) ::  // Unroll annotated methods if detected in PostTyper

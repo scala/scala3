@@ -321,16 +321,16 @@ object GenericSignatures {
           arraySig(elemtp)
 
         case RefOrAppliedType(sym, pre, args) =>
-          if isTypeParameterInSig(sym, sym0) then
+          if (sym == defn.PairClass && tupleArity(tp) > Definitions.MaxTupleArity)
+            jsig(defn.TupleXXLClass.typeRef)
+          else if isTypeParameterInSig(sym, sym0) then
             assert(!sym.isAliasType || sym.info.isLambdaSub, s"Unexpected alias type: $sym")
             typeParamSig(sym.targetName.lastPart)
           else defn.specialErasure.get(sym) match
             case Some(special) =>
               jsig(special.typeRef)
             case None =>
-              if (sym == defn.PairClass && tupleArity(tp) > Definitions.MaxTupleArity)
-                jsig(defn.TupleXXLClass.typeRef)
-              else if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
+              if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
                 jsig(defn.BoxedUnitClass.typeRef)
               else if (sym == defn.NothingClass)
                 builder.append("Lscala/runtime/Nothing$;")

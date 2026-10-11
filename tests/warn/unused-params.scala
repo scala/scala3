@@ -31,6 +31,10 @@ trait BadAPI extends InterFace {
 
   def withUnderscores(_a: Int, _b: String, c: Double): Double = c // no warn
 
+  def i24592 =
+    val transforms: Seq[(String, Int)] = Nil
+    transforms.map((str, _int) => str) // no warn
+
   def meth(x: Int) = x
 
   override def equals(other: Any): Boolean = true  // no warn

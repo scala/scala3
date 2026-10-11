@@ -146,3 +146,6 @@ class ReplInteractiveTests:
     val preamble = ":settings -old-syntax:false\n:settings -old-syntax:true\n"
     assertFalse(ParseResult.shouldAcceptLine(preamble, hasPendingInput = true))
     assertTrue(ParseResult.shouldAcceptLine(preamble, hasPendingInput = false))
+
+  @Test def `code with incomplete opened parameter list is not accepted early`(): Unit = contextually:
+    assertFalse(ParseResult.shouldAcceptLine("def test(", hasPendingInput = false))

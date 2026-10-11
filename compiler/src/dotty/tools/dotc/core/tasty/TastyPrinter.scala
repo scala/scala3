@@ -88,7 +88,6 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
   import unpickler.{nameAtRef, unpickle}
 
   private def printHeader(sb: StringBuilder): Unit =
-    val header = unpickler.header
     sb.append("Header:\n")
     if testPickler then
       // these fields are not stable when the TASTy/compiler versions change, so not useful for testing
@@ -96,6 +95,7 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
       sb.append("  tooling: <elided>\n")
       sb.append("     UUID: <elided>\n")
     else
+      val header = unpickler.header
       sb.append(s"  version: ${header.majorVersion}.${header.minorVersion}.${header.experimentalVersion}\n")
       sb.append("  tooling: ").append(header.toolingVersion).append("\n")
       sb.append("     UUID: ").append(header.uuid).append("\n")

@@ -41,10 +41,10 @@ inline def typeParamCurriedFun2BetaReduceTest(inline f: [A] => A => [B] => B => 
 def typeParamCurriedFun2BetaReduceTestImpl(f: Expr[[A] => (a: A) => [B] => (b: B) => Unit])(using Quotes): Expr[Unit] =
   val expected =
     """|{
-       |  type Y = Bar
        |  val y: Bar = new Bar()
-       |  type X = Foo
+       |  type Y = Bar
        |  val x: Foo = new Foo()
+       |  type X = Foo
        |  typeParamFun2[Y, X](y, x)
        |}""".stripMargin
   val applied = '{$f.apply[Foo](new Foo()).apply[Bar](new Bar())}
@@ -68,12 +68,12 @@ inline def typeParamCurriedFun3BetaReduceTest(inline f: [A] => A => [B] => B => 
 def typeParamCurriedFun3BetaReduceTestImpl(f: Expr[[A] => A => [B] => B => [C] => C => Unit])(using Quotes): Expr[Unit] =
   val expected =
     """|{
-       |  type Z = Baz
        |  val z: Baz = new Baz()
-       |  type Y = Bar
+       |  type Z = Baz
        |  val y: Bar = new Bar()
-       |  type X = Foo
+       |  type Y = Bar
        |  val x: Foo = new Foo()
+       |  type X = Foo
        |  typeParamFun3[Z, Y, X](z, y, x)
        |}""".stripMargin
   val applied = '{$f.apply[Foo](new Foo()).apply[Bar](new Bar()).apply[Baz](new Baz())}

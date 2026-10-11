@@ -291,6 +291,21 @@ class TypeUtils:
       case _ =>
         false
 
+    /** If `psym` is `PolyFunction` and `self` is a method type with more
+     *  than one parameter section, convert the result type of `self` to a
+     *  FunctionType. This is needed to convert old representations of
+     *  polymorphic function types to new ones, which use the curried representation.
+     *  Old representations can come from pre 3.10 Tasty files, either as types
+     *  or as type trees.
+     */
+    def curryPolyFunction(psym: Symbol)(using Context): Type = self match
+      case self: MethodOrPoly if psym == defn.PolyFunctionClass =>
+        self.resType match
+          case res: MethodOrPoly =>
+            self.derivedLambdaType(resType = res.toFunctionType())
+          case _ => self
+      case _ => self
+
   extension (self: AppliedType)
     def derivedFlexibleType(hi: Type)(using Context): Type = self match
       case FlexibleType(hi0) if hi eq hi0 => self

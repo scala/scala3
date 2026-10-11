@@ -5,7 +5,7 @@ import FileUtils.*
 
 import java.net.{URI, URL}
 
-case class VirtualDirectoryClassPath(dir: AbstractFile) extends ClassPath with DirectoryLookup[BinaryFileEntry] {
+class VirtualDirectoryClassPath(protected override val dir: AbstractFile) extends ClassPath with DirectoryLookup[BinaryFileEntry] {
   type F = AbstractFile
 
   protected def getSubDir(packageDirName: String): Option[AbstractFile] =

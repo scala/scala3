@@ -1,0 +1,18 @@
+-- [E173] Reference Error: tests/neg/java-protected-statics-trait/Test.scala:5:35 --------------------------------------
+5 |  def viaSelect: String = foo.Task.poll() // error
+  |                          ^^^^^^^^^^^^^
+  |method poll cannot be accessed as a member of foo.Task.type from trait T.
+  |  protected[foo] method poll can only be accessed from package foo, or class Task in package foo or one of its subclasses.
+  |  The code of trait T is not in a subclass of class Task on the JVM.
+-- [E006] Not Found Error: tests/neg/java-protected-statics-trait/Test.scala:8:4 ---------------------------------------
+8 |    poll() // error
+  |    ^^^^
+  |    Not found: poll
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E173] Reference Error: tests/neg/java-protected-statics-trait/Test.scala:9:88 --------------------------------------
+9 |  def viaAnon: String = (new java.util.function.Supplier[String] { def get() = foo.Task.poll() }).get() // error
+  |                                                                               ^^^^^^^^^^^^^
+  |method poll cannot be accessed as a member of foo.Task.type from anonymous class Object with java.util.function.Supplier[String] {...}.
+  |  protected[foo] method poll can only be accessed from package foo, or class Task in package foo or one of its subclasses.
+  |  The code of trait T is not in a subclass of class Task on the JVM.

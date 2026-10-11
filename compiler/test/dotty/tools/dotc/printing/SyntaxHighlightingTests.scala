@@ -172,4 +172,9 @@ class SyntaxHighlightingTests extends DottyTest {
         |<K|end> <D|foo>""".stripMargin
     )
   }
+
+  @Test
+  def hexPeriod = {
+    test("val n = 0x.", "<K|val> <D|n> = <L|0x>.")
+  }
 }

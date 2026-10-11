@@ -24,7 +24,6 @@ object ProtectedAccessors {
   /** Is the current context's owner inside the access boundary established by `sym`? */
   def insideBoundaryOf(sym: Symbol)(using Context): Boolean =
     if (sym.is(JavaDefined))
-      sym.is(JavaStatic) ||  // Java's static protected definitions are treated as public
       ctx.owner.enclosingPackageClass == sym.enclosingPackageClass
     else {
       // For Scala-defined symbols we currently allow private and protected accesses
@@ -43,7 +42,7 @@ object ProtectedAccessors {
     !insideBoundaryOf(sym)
 
   def needsAccessorIsSubclass(sym: Symbol)(using Context): Boolean =
-    ctx.owner.enclosingClass.derivesFrom(sym.owner)
+    ctx.owner.enclosingClass.derivesFrom(sym.protectedOwner)
 
   /** Do we need a protected accessor for accessing tree.symbol from the current context's owner? */
   def needsAccessor(tree: Tree)(using Context): Boolean = tree match

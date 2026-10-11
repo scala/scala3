@@ -18,14 +18,24 @@ trait OptimizationBytecodeTest extends DottyBytecodeTest {
       ""
   }
 
-  def assertEquivalence(expectedSource: String, actualSource: String, params: List[String] = Nil, extraMemberSources: List[String] = Nil, returnType: String = "Int"): Unit = {
+  def assertEquivalence(
+      expectedSource: String,
+      actualSource: String,
+      params: List[String] = Nil,
+      genericParams: List[String] = Nil,
+      returnType: String = "Int",
+      extraMemberSources: List[String] = Nil,
+      extraSource: String = ""
+    ): Unit = {
+    val genParamsString = if genericParams.isEmpty then "" else genericParams.mkString("[", ", ", "]")
     val source =
       f"""
+         |$extraSource
          |${escapeSource(expectedSource + actualSource + extraMemberSources.mkString("\n"))}
          |final class Test {
          |  ${extraMemberSources.mkString("\n  ")}
-         |  def actual(${params.mkString(", ")}): $returnType = { $actualSource }
-         |  def expected(${params.mkString(", ")}): $returnType = { $expectedSource }
+         |  def actual$genParamsString(${params.mkString(", ")}): $returnType = { $actualSource }
+         |  def expected$genParamsString(${params.mkString(", ")}): $returnType = { $expectedSource }
          |}
          """.stripMargin
 

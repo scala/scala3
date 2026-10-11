@@ -5,7 +5,6 @@ import org.objectweb.asm.tree.*
 
 import scala.collection.mutable
 import scala.annotation.*
-import scala.jdk.CollectionConverters.*
 import BTypes.InternalName
 
 // Backported from scala/scala, commit sha: 724be0e9425b9ad07c244d25efdad695d75abbcf
@@ -172,18 +171,12 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
   val declaredInnerClasses = mutable.Set.empty[T]
   val referredInnerClasses = mutable.Set.empty[T]
 
-  def innerClasses: collection.Set[T] = declaredInnerClasses ++ referredInnerClasses
-  def clear(): Unit = {
-    declaredInnerClasses.clear()
-    referredInnerClasses.clear()
-  }
-
   def visit(classNode: ClassNode): Unit = {
     visitInternalName(classNode.name)
     declaredInnerClasses ++= declaredNestedClasses(classNode.name)
 
     visitInternalName(classNode.superName)
-    classNode.interfaces.asScala foreach visitInternalName
+    classNode.interfaces.forEach(visitInternalName)
     visitInternalName(classNode.outerClass)
 
     visitAnnotations(classNode.visibleAnnotations)
@@ -193,16 +186,16 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
 
     visitClassSignature(classNode.signature)
 
-    for (f <- classNode.fields.asScala) {
+    classNode.fields.forEach(f =>
       visitDescriptor(f.desc)
       visitAnnotations(f.visibleAnnotations)
       visitAnnotations(f.visibleTypeAnnotations)
       visitAnnotations(f.invisibleAnnotations)
       visitAnnotations(f.invisibleTypeAnnotations)
       visitFieldSignature(f.signature)
-    }
+    )
 
-    for (m <- classNode.methods.asScala) {
+    classNode.methods.forEach(m =>
       visitDescriptor(m.desc)
 
       visitAnnotations(m.visibleAnnotations)
@@ -214,11 +207,10 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
       visitAnnotations(m.visibleLocalVariableAnnotations)
       visitAnnotations(m.invisibleLocalVariableAnnotations)
 
-      m.exceptions.asScala foreach visitInternalName
-      for (tcb <- m.tryCatchBlocks.asScala) visitInternalName(tcb.`type`)
+      m.exceptions.forEach(visitInternalName)
+      m.tryCatchBlocks.forEach(tcb => visitInternalName(tcb.`type`))
 
-      val iter = m.instructions.iterator
-      while (iter.hasNext) iter.next() match {
+      m.instructions.forEach {
         case ti: TypeInsnNode           => visitInternalNameOrArrayReference(ti.desc)
         case fi: FieldInsnNode          => visitInternalNameOrArrayReference(fi.owner); visitDescriptor(fi.desc)
         case mi: MethodInsnNode         => visitInternalNameOrArrayReference(mi.owner); visitDescriptor(mi.desc)
@@ -229,7 +221,7 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
       }
 
       visitMethodSignature(m.signature)
-    }
+    )
   }
 
   private def containsChar(s: String, beginIndex: Int, endIndex: Int, char: Char): Boolean = {
@@ -287,13 +279,13 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
   // large comment in class BTypes.
   def visitAnnotation(annot: AnnotationNode): Unit = {
     visitDescriptor(annot.desc)
-    if (annot.values != null) annot.values.asScala foreach visitConstant
+    if (annot.values != null) annot.values.forEach(visitConstant)
   }
 
-  def visitAnnotations(annots: java.util.List[? <: AnnotationNode]) = if (annots != null) annots.asScala foreach visitAnnotation
-  def visitAnnotationss(annotss: Array[java.util.List[AnnotationNode]]) = if (annotss != null) annotss foreach visitAnnotations
+  private def visitAnnotations(annots: java.util.List[? <: AnnotationNode] | Null) = if (annots != null) annots.forEach(visitAnnotation)
+  private def visitAnnotationss(annotss: Array[java.util.List[AnnotationNode]] | Null) = if (annotss != null) annotss.foreach(visitAnnotations)
 
-  def visitHandle(handle: Handle): Unit = {
+  private def visitHandle(handle: Handle): Unit = {
     visitInternalNameOrArrayReference(handle.getOwner)
     visitDescriptor(handle.getDesc)
   }

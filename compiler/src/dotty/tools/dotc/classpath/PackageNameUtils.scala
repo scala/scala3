@@ -8,6 +8,18 @@ package dotty.tools.dotc.classpath
  */
 object PackageNameUtils {
 
+  /** Like the full version below, when you only need the class name. */
+  def separateClassName(fullClassName: String): String =
+    val lastDotIndex = fullClassName.lastIndexOf('.')
+    if lastDotIndex == -1 then fullClassName
+    else fullClassName.substring(lastDotIndex + 1)
+
+  /** Like the full version below, when you only need the package name. */
+  def separatePackageName(fullClassName: String): String =
+    val lastDotIndex = fullClassName.lastIndexOf('.')
+    if lastDotIndex == -1 then ClassPath.RootPackage
+    else fullClassName.substring(0, lastDotIndex)
+
   /**
    * @param fullClassName full class name with package
    * @return (package, simple class name)
@@ -17,7 +29,7 @@ object PackageNameUtils {
     if (lastDotIndex == -1)
       (ClassPath.RootPackage, fullClassName)
     else
-      (fullClassName.substring(0, lastDotIndex).nn, fullClassName.substring(lastDotIndex + 1).nn)
+      (fullClassName.substring(0, lastDotIndex), fullClassName.substring(lastDotIndex + 1))
   }
 
   def packagePrefix(inPackage: String): String = if (inPackage == ClassPath.RootPackage) "" else inPackage + "."

@@ -11,6 +11,7 @@ import scala.annotation.internal.sharable
  */
 object NameTransformer {
 
+  private val hexArray = Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F')
   private val nops = 128
   private val ncodes = 26 * 26
 
@@ -72,7 +73,13 @@ object NameTransformer {
           buf = new StringBuilder()
           buf.append(name.sliceToString(0, i))
         }
-        buf.append("$u%04X".format(c.toInt))
+        buf.append("$u")
+        // avoid `format` which would box the integer, this is hot
+        // (`toHexString` is lowercase and doesn't pad with zeroes)
+        buf.append(hexArray((c >> 12) & 0xF))
+        buf.append(hexArray((c >>  8) & 0xF))
+        buf.append(hexArray((c >>  4) & 0xF))
+        buf.append(hexArray((c >>  0) & 0xF))
       }
       else if (buf ne null) {
         buf.append(c)

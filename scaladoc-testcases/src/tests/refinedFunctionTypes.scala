@@ -17,7 +17,7 @@ infix type $throws4[+E <: Exception] = [T] => (c: CanThrow[E]) ?=> T //expected:
 
 type TA1 = (a: Int, b: (Boolean, String)) => List[(a.type, b.type)]
 
-type TA2 = (a: Int, b: (Boolean, String)) ?=> List[Boolean]
+type TA2 = (a: Int, b: (Boolean, String)) ?=> List[Boolean] //expected: type TA2 = (Int, (Boolean, String)) ?=> List[Boolean]
 
 @experimental
 type TB0 = [R, E <: Exception] =>> PolyFunction { def apply[T](c: CanThrow[E]): R; } //expected: type TB0[R, E <: Exception] = [T] => CanThrow[E] => R

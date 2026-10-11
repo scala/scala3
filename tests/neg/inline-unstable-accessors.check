@@ -297,4 +297,27 @@
    | added to package I:
    |   @publicInBinary private[I] def inline$valBinaryAPI2: Int = foo.I.valBinaryAPI2
     --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Warning: tests/neg/inline-unstable-accessors.scala:67:6 ----------------------------------------
+67 |    I.valBinaryAPI2 +
+   |    ^^^^^^^^^^^^^^^
+   |    Unstable inline accessor inline$valBinaryAPI2$i4 was generated in package J.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI2 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI2 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI2 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI2 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to package J:
+   |   @publicInBinary private[J] def inline$valBinaryAPI2$i4(): Int = foo.I.valBinaryAPI2
+    --------------------------------------------------------------------------------------------------------------------
 No warnings can be incurred under -Werror

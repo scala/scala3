@@ -24,7 +24,7 @@ import scala.collection.mutable
 trait DirectoryLookup[FileEntryType] extends ClassPath {
   type F
 
-  val dir: F
+  protected val dir: F
 
   protected def getSubDir(dirName: String): Option[F]
   protected def listChildren(dir: F, filter: Option[F => Boolean] = None): Iterable[F]
@@ -133,18 +133,19 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
   // and we have no way to query the file system for "entries without a dot in their name",
   // so might as well cache them
   private val allPackages = listFiles(dir).map(f => f.getFileName.toString)
+  private val emptyPathArray = Array.empty[Path]
 
-  private def listFiles(dir: Path, glob: String = "*"): Seq[Path] =
-    val stream = Files.newDirectoryStream(dir, glob)
-    try stream.asScala.toSeq
+  private def listFiles(dir: Path): Array[Path] =
+    val stream = Files.list(dir)
+    try stream.toArray(n => new Array[Path](n))
     finally stream.close()
 
   // e.g. "java.lang" -> Seq("/modules/java.base")
   // On a modern JDK there are 100s of packages,
   // most of which are never going to be needed because they're internal implementation details,
   // so we lazy-load modules from the ones we need
-  private val cachedPackageToModuleBases = mutable.Map.empty[String, Iterable[Path]]
-  private def packageToModuleBases(pkg: String): Iterable[Path] =
+  private val cachedPackageToModuleBases = mutable.Map.empty[String, Array[Path]]
+  private def packageToModuleBases(pkg: String): Array[Path] =
     cachedPackageToModuleBases.get(pkg) match
       case Some(ps) => ps
       case None =>
@@ -154,7 +155,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
         val moduleFiles =
           if allPackages.contains(pkg)
           then listFiles(dir.resolve(pkg)).map(_.toRealPath()) // toRealPath to follow symlinks
-          else Iterable.empty
+          else emptyPathArray
         cachedPackageToModuleBases(pkg) = moduleFiles
         moduleFiles
 
@@ -173,8 +174,11 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
     case Some(cs) => cs
     case None =>
       val cs = packageToModuleBases(inPackage)
-        .flatMap(pkg => listFiles(pkg.resolve(inPackage.replace('.', JFile.separatorChar)), "*.class"))
-        .map(x => (x.getFileName.toString, BinaryFileEntry(x.toPlainFile)))
+        .iterator
+        .flatMap(pkg => listFiles(pkg.resolve(inPackage.replace('.', JFile.separatorChar))))
+        .map(f => f.toPlainFile)
+        .filter(f => f.ext.isClass)
+        .map(f => (f.name, BinaryFileEntry(f)))
         .toMap
       cachedClasses(inPackage) = cs
       cs
@@ -247,7 +251,7 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
   }
 }
 
-case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[BinaryFileEntry] {
+class DirectoryClassPath(protected override val dir: JFile) extends JFileDirectoryLookup[BinaryFileEntry] {
 
   override def findClassFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className)
@@ -265,7 +269,7 @@ case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[BinaryFil
   override def classes(inPackage: String): Iterable[BinaryFileEntry] = files(inPackage)
 }
 
-case class DirectorySourcePath(dir: JFile) extends JFileDirectoryLookup[SourceFileEntry] {
+class DirectorySourcePath(protected override val dir: JFile) extends JFileDirectoryLookup[SourceFileEntry] {
   protected def createFileEntry(file: AbstractFile): SourceFileEntry = SourceFileEntry(file)
   protected def isMatchingFile(f: JFile): Boolean = endsSourceExtension(f.getName)
 

@@ -411,7 +411,7 @@ object Symbols extends SymUtils {
         compUnitInfo: CompilationUnitInfo | Null = null // Can be `= owner.compilationUnitInfo` once we have new default args
     ): Symbol = {
       val coord1 = if (coord == NoCoord) owner.coord else coord
-      val compilationUnitInfo1 = if (compilationUnitInfo == null) owner.compilationUnitInfo else compilationUnitInfo
+      val compilationUnitInfo1 = if (compUnitInfo == null) owner.compilationUnitInfo else compUnitInfo
 
       if isClass then
         newClassSymbol(owner, name.asTypeName, flags, _ => info, privateWithin, coord1, compilationUnitInfo1)

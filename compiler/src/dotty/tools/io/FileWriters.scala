@@ -93,7 +93,7 @@ object FileWriters {
       val basicClassWriter = new SingleClassWriter(FileWriter(output, manifest, jarCompressionLevel))
       dumpClassesPath match
         case None => basicClassWriter
-        case Some(out) => new DebugClassWriter(basicClassWriter, FileWriter(out, Seq.empty))
+        case Some(out) => new DebugClassWriter(basicClassWriter, FileWriter(out, Seq.empty, jarCompressionLevel))
     }
 
     private final class SingleClassWriter(underlying: FileWriter) extends ClassfileWriter {

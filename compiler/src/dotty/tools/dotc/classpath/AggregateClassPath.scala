@@ -5,7 +5,7 @@ package dotty.tools
 package dotc.classpath
 
 import java.net.URL
-import dotc.util
+import scala.collection.mutable
 
 import dotty.tools.io.AbstractFile
 
@@ -18,21 +18,34 @@ import dotty.tools.io.AbstractFile
  * @param aggregates classpath instances containing entries which this class processes
  */
 case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
+  // Implementation note:
+  // This class is used a lot. It's important to keep it efficient and low-allocation.
+
   override def findClassFile(className: String): Option[AbstractFile] = {
-    val (pkg, _) = PackageNameUtils.separatePkgAndClassNames(className)
-    aggregatesForPackage(pkg).iterator.map(_.findClassFile(className)).collectFirst {
-      case Some(x) => x
-    }
+    val pkg = PackageNameUtils.separatePackageName(className)
+    val iterator = aggregatesForPackage(pkg).iterator
+    while iterator.hasNext do
+      val file = iterator.next().findClassFile(className)
+      if file.nonEmpty then
+        return file
+    None
   }
   private val packageIndex: collection.mutable.Map[String, Seq[ClassPath]] = collection.mutable.Map()
-  private def aggregatesForPackage(pkg: String): Seq[ClassPath] = packageIndex.synchronized {
+  private def aggregatesForPackage(pkg: String): Seq[ClassPath] = synchronized {
     packageIndex.getOrElseUpdate(pkg, aggregates.filter(_.hasPackage(pkg)))
   }
 
-  override def asURLs: Seq[URL] = aggregates.flatMap(_.asURLs)
+  override def asURLs: Iterable[URL] = aggregates.flatMap(_.asURLs)
 
-  override def packages(inPackage: String): Iterable[String] =
-    aggregates.flatMap(_.packages(inPackage)).distinct
+  override def packages(inPackage: String): Iterable[String] = {
+    val result = mutable.HashSet[String]()
+    for
+      classpath <- aggregates
+      pkg <- classpath.packages(inPackage)
+    do
+      result.add(pkg)
+    result
+  }
 
   override def classes(inPackage: String): Iterable[BinaryFileEntry] =
     getDistinctEntries(_.classes(inPackage))
@@ -42,7 +55,15 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
 
   override def hasPackage(pkg: String): Boolean = aggregates.exists(_.hasPackage(pkg))
 
-  private def getDistinctEntries[EntryType <: ClassRepresentation](getEntries: ClassPath => Iterable[EntryType]): Iterable[EntryType] =
-    val seenNames = util.HashSet[String]()
-    aggregates.flatMap(getEntries).filter(e => seenNames.add(e.name))
+  private inline def getDistinctEntries[EntryType <: ClassRepresentation](inline getEntries: ClassPath => Iterable[EntryType]): Iterable[EntryType] =
+    val seenNames = mutable.HashSet[String]()
+    val result = mutable.ArrayBuffer[EntryType]()
+    val iterator = aggregates.iterator
+    while iterator.hasNext do
+      val entries = getEntries(iterator.next()).iterator
+      while entries.hasNext do
+        val entry = entries.next()
+        if seenNames.add(entry.name) then
+          result.addOne(entry)
+    result
 }

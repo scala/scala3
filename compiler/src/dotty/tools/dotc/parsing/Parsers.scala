@@ -18,6 +18,7 @@ import NameKinds.{WildcardParamName, QualifiedName}
 import NameOps.*
 import ast.{Positioned, Trees}
 import ast.Trees.*
+import ast.untpd
 import StdNames.*
 import util.Spans.*
 import util.chaining.*
@@ -535,28 +536,6 @@ object Parsers {
         syntaxError(IdentifierExpected(tree.show), tree.span)
         tree
     }
-
-    def makePolyFunction(tparams: List[Tree], body: Tree,
-        kind: String, errorTree: => Tree,
-        start: Offset, arrowOffset: Offset): Tree =
-      atSpan(start, arrowOffset):
-        getFunction(body) match
-          case None =>
-            syntaxError(em"Implementation restriction: polymorphic function ${kind}s must have a value parameter", arrowOffset)
-            errorTree
-          case Some(Function(_, _: CapturesAndResult)) =>
-            // A function tree like this will be desugared
-            // into a capturing type in the typer.
-            syntaxError(em"Implementation restriction: polymorphic function types cannot wrap function types that have capture sets", arrowOffset)
-            errorTree
-          case Some(f: FunctionWithMods) if f.mods.is(Impure) && Feature.ccEnabled =>
-            syntaxError(
-              em"""Implementation restriction: polymorphic function types cannot wrap impure function types if capture checking is enabled.
-                  |Workaround: introduce an empty term-parameter list right after the type binder, e.g. `[A] => () -> B => C`.""",
-              arrowOffset)
-            errorTree
-          case _ =>
-            PolyFunction(tparams, body)
 
 /* --------------- PLACEHOLDERS ------------------------------------------- */
 
@@ -1433,10 +1412,17 @@ object Parsers {
           if isNegated && start < in.offset - 1 then
             warning(IllegalLiteral(), start)
             patch(Span(start, in.offset + in.strVal.nn.length), "-" + in.strVal.nn.trim)
+          def num(kind: NumberKind): Tree =
+            val d = digits
+            if d.isEmpty then
+              syntaxError(IllegalLiteral(), start)
+              Literal(Constant.fromValue(null))
+            else
+              Number(d, kind)
           token match {
-            case INTLIT  => return Number(digits, NumberKind.Whole(in.base))
-            case DECILIT => return Number(digits, NumberKind.Decimal)
-            case EXPOLIT => return Number(digits, NumberKind.Floating)
+            case INTLIT  => return num(NumberKind.Whole(in.base))
+            case DECILIT => return num(NumberKind.Decimal)
+            case EXPOLIT => return num(NumberKind.Floating)
             case _ =>
           }
         import scala.util.FromDigits.*
@@ -1763,6 +1749,9 @@ object Parsers {
         case _: Match => in.token == MATCH
         case _: New => in.token == NEW
         case _: (ForYield | ForDo) => in.token == FOR
+        case apply: Apply if in.featureEnabled(Feature.methodBlockEndMarkers) =>
+          val name = apply.srcName
+          !name.isEmpty && in.isIdent && in.name.nn == name.toTermName
         case _ => false
 
       def endName = if in.token == IDENTIFIER then in.name.toString else tokenString(in.token)
@@ -1863,8 +1852,8 @@ object Parsers {
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
      *                   |  (‘->’ | ‘?->’ ) [CaptureSet] Type           -- under pureFunctions and captureChecking
-     *  PolyFunType    ::=  TypTypeParamClause '=>' Type
-     *                   |  TypTypeParamClause ‘->’ [CaptureSet] Type   -- under pureFunctions and captureChecking
+     *  PolyFunType    ::=  TypTypeParamClause ‘=>’ Type
+     *                   |  TypTypeParamClause ‘->’ Type                -- under pureFunctions and captureChecking
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ TypedFunParam {',' TypedFunParam } ')'
@@ -1991,7 +1980,8 @@ object Parsers {
         else if in.token == ARROW || isPureArrow(nme.PUREARROW) then
           val arrowOffset = in.skipToken()
           val body = toplevelTyp()
-          makePolyFunction(tparams, body, "type", Ident(nme.ERROR.toTypeName), start, arrowOffset)
+          atSpan(start, arrowOffset):
+            PolyFunction(tparams, body)
         else
           accept(TLARROW)
           typ()
@@ -2637,7 +2627,10 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.Type)
           val arrowOffset = accept(ARROW)
           val body = expr(location)
-          makePolyFunction(tparams, body, "literal", errorTermTree(arrowOffset), start, arrowOffset)
+          if getFunction(body).isEmpty then
+            syntaxError(em"Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
+          atSpan(start, arrowOffset):
+            PolyFunction(tparams, body)
         case CASE if Feature.isPreviewEnabled || in.featureEnabled(Feature.relaxedLambdaSyntax) =>
           singleCaseMatch()
         case _ =>
@@ -3190,6 +3183,15 @@ object Parsers {
     def mkApply(fn: Tree, args: (List[Tree], Boolean)): Tree =
       val res = Apply(fn, args._1)
       if args._2 then res.setApplyKind(ApplyKind.Using)
+      // `Apply.srcName` already reads the name off a `Select`/`Ident` callee, so an
+      // attachment is only needed for a nested `Apply` (e.g. `test("arg"):`), whose
+      // own name would otherwise be out of reach.
+      if in.featureEnabled(Feature.methodBlockEndMarkers) then
+        fn match
+          case fn: Apply =>
+            val name = fn.srcName
+            if !name.isEmpty then res.putAttachment(untpd.MethodName, name)
+          case _ =>
       res
 
     val argumentExpr: () => Tree = () => expr(Location.InArgs) match
@@ -4436,7 +4438,7 @@ object Parsers {
             accept(EQUALS, help)
             EmptyTree
           else
-            if (!isExprIntro) syntaxError(MissingReturnType(), in.lastOffset)
+            if (!isExprIntro) syntaxErrorOrIncomplete(MissingReturnType(), in.lastOffset)
             accept(EQUALS)
             expr()
 
