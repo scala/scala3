@@ -87,7 +87,7 @@ object Versions {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousVersion = "3.10.0-RC1" // TODO: update to 3.10.0 when released
+  val mimaPreviousVersion = "3.10.0"
 
   /** LTS version against which we check binary compatibility.
    *
