@@ -209,6 +209,25 @@ class CompilationTests {
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
+  @Test def runSpecial(): Unit = {
+    // TODO: this test should be much simpler if we used source roots correctly in Vulpix and in Context.getSource,
+    // because then we could switch the source root instead of moving the file
+    val firstFilePath = "tests/run-special/typecheck-boom/Macro_1.scala"
+    val tmpPath = java.nio.file.Files.createTempFile("typecheck-boom", ".scala")
+    val firstPath = TestSources.rootPath().resolve(firstFilePath)
+    try special(
+      defaultOptions,
+      "tests/run-special/typecheck-boom",
+      expectError = false,
+      o => compileFile(firstFilePath, o),
+      ("Macro_1/typecheck-boom/Macro_1/", o => {
+        java.nio.file.Files.move(firstPath, tmpPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        compileFile("tests/run-special/typecheck-boom/Use_2.scala", o)
+      })
+    )
+    finally java.nio.file.Files.move(tmpPath, firstPath)
+  }
+
   // Generic java signatures tests ---------------------------------------------
 
   @Category(Array(classOf[CoverageCompilationTests])) @Test def genericJavaSignatures: Unit = {
