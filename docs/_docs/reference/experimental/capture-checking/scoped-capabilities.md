@@ -416,7 +416,10 @@ Otherwise, allowing widening `∃fresh. () ->{fresh} File^{fresh}` to `() => Fil
 ```scala sc:fail sc-compile-with:scoped-withfile-context
 val escaped: () => File^ = withFile[() => File^]("test.txt")(f => () => f) // error
 //           ^^^^^^^^^^^ any here is in the outer scope
-By keeping result `fresh`s isolated, the capture checker ensures that an existential cannot hide `f` and
+escaped().read()  // Use-after-close!
+```
+
+By keeping result `fresh`s isolated, the capture checker ensures that an existential cannot hide `f` and smuggle it out of its scope.
 
 Beyond preventing escaping capabilities, the principle of isolating result `fresh`s is important for
 [tracking mutation and allocation effects](mutability.md) and
