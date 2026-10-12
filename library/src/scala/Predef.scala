@@ -907,6 +907,13 @@ object Predef extends LowPriorityImplicits {
      */
     def applyToContext(using v1: T1, v2: T2, v3: T3, v4: T4, v5: T5, v6: T6, v7: T7, v8: T8, v9: T9, v10: T10, v11: T11, v12: T12, v13: T13, v14: T14, v15: T15, v16: T16, v17: T17, v18: T18, v19: T19, v20: T20, v21: T21, v22: T22): R = f(v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22)
 
+  extension [F, Args <: Tuple, R](f: F)(using tf: scala.util.TupledFunction[F, Args => R])
+    /** Applies this function of any arity to the arguments taken from the context.
+     *  Functions of arity up to 22 use the non-experimental overloads above.
+     *  @return the result of the function application
+     */
+    @experimental inline def applyToContext: R = tf.tupled(f)(compiletime.summonAll[Args])
+
 }
 
 /** The `LowPriorityImplicits` class provides implicit values that
