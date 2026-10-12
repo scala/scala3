@@ -87,7 +87,7 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
 
   override def name: String =
     if file eq null then "" else file.name
-  def ext: FileExtension =
+  val ext: FileExtension =
     if file eq null then FileExtension.Empty else file.ext
   override def path: String =
     if file eq null then "" else file.path
