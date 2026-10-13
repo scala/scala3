@@ -858,12 +858,8 @@ object Denotations {
       end goForward
 
       def goBack: SingleDenotation =
-        // currentPeriod < end of valid. A version containing currentPeriod exists
-        // unless currentPeriod precedes the first one, e.g. a symbol created in a late
-        // phase (Mixin forwarders, backend) that is queried at an earlier phase.
-        // The periods of the versions in the ring are disjoint and contiguous, so if
-        // one full lap finds no version containing currentPeriod, it precedes the
-        // earliest version, which is the one we return.
+        // currentPeriod < end of valid. If a full lap finds no version containing it,
+        // currentPeriod precedes the first version, which we return.
         var cur = this
         var earliest = this
         var cnt = 0
@@ -878,7 +874,6 @@ object Denotations {
           if cur eq this then return earliest
           if cur.validFor.firstPhaseId < earliest.validFor.firstPhaseId then earliest = cur
           if cnt > MaxPossiblePhaseId then
-            // defensive: `this` should always be on its own ring
             return atPhase(coveredInterval.firstPhaseId)(current)
         cur
       end goBack
