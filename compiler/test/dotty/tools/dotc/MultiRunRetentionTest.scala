@@ -65,6 +65,12 @@ class MultiRunRetentionTest:
       Files.writeString(dir.resolve(name), content).toString
 
     object driver extends Driver:
+      var lastRun: Run | Null = null
+      override protected def newCompiler(using Context): Compiler = new Compiler:
+        override def newRun(using Context): Run =
+          val run = super.newRun
+          lastRun = run
+          run
       def compileRepeatedly(n: Int): Unit =
         val args = Array("-classpath", TestConfiguration.basicClasspath, "-d", out.toString) ++ files
         val Some((sourceFiles, rootCtx)) = setup(args, initCtx.fresh): @unchecked
@@ -73,8 +79,10 @@ class MultiRunRetentionTest:
         for _ <- 1 to n do
           val reporter = doCompile(compiler, sourceFiles)(using rootCtx)
           assertFalse(reporter.hasErrors)
-          // Compiling must not record GADT constraints in the shared root context.
+          // Compiling must not record GADT constraints in the shared root context,
+          // nor in the run context, which is shared by all compilation units.
           assertEquals(Nil, rootCtx.gadt.symbols)
+          assertEquals(Nil, lastRun.nn.runContext.gadt.symbols)
           docstringCounts += rootCtx.docCtx.get.docstrings.size
         // The docstrings of symbols replaced by a later run must be dropped.
         assertEquals(List.fill(n)(docstringCounts.head), docstringCounts.toList)
