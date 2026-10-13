@@ -3,7 +3,6 @@ package sbt
 import java.nio.file.{ FileAlreadyExistsException, Files }
 
 import sbt.Keys._
-import sbt.internal.librarymanagement.IvyXml
 import xsbti.{FileConverter, HashedVirtualFileRef}
 
 /** This local plugin provides ways of publishing just the binary jar. */
@@ -31,21 +30,6 @@ object PublishBinPlugin extends AutoPlugin {
       logging = ivyLoggingLevel.value,
       overwrite = isSnapshot.value
     )),
-    publishLocalBinConfig := Def.uncached(publishLocalBinConfig
-      .dependsOn(
-        // Copied from sbt.internal.
-        Def.taskDyn {
-            Def.task {
-              val currentProject = {
-                val proj = csrProject.value
-                val publications = csrPublications.value
-                proj.withPublications(publications)
-              }
-              IvyXml.writeFiles(currentProject, None, ivySbt.value, streams.value.log, update.value.allModules)
-            }
-        }
-      )
-      .value),
     dummyDoc := Def.uncached {
       given FileConverter = fileConverter.value
       val dummyFile = streams.value.cacheDirectory / "doc.jar"

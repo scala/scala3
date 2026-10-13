@@ -2,10 +2,7 @@ set -eux
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/../.."
 
-# stable stdout for grep (sbt --server)
-# see https://github.com/sbt/sbt/issues/9834
-SBT="$ROOT/project/scripts/sbtServer"
-# SBT="$ROOT/project/scripts/sbt" # if run on CI
+SBT="$ROOT/project/scripts/sbt" # if run on CI
 # SBT="sbt" # if run locally
 
 SOURCE="tests/pos/HelloWorld.scala"

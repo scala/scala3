@@ -892,13 +892,6 @@ object Build {
       Test    / publishArtifact := false,
       // non-bootstrapped stdlib is publishable (only locally)
       publish / skip := false,
-      // TODO: fix in sbt https://github.com/sbt/sbt/issues/9594
-      // sbt 2.0.4+ resolves the compiler bridge with `zinc-tool->default,optional(default)`,
-      // but the ivy.xml written by `publishLocal` has no `default` configuration
-      // As a result, with sbt 2.0.4+, we fail to resolve locally published bridge with
-      // "Provider dotty.tools.xsbt.CompilerBridge not found".
-      // Declaring `default` (extending `runtime`) to make the local bridge resolvable.
-      ivyConfigurations += Configurations.Default.extend(Configurations.Runtime),
       Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Raw,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-sbt-bridge-bootstrapped",
