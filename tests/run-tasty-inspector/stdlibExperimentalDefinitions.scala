@@ -90,6 +90,9 @@ val experimentalDefinitionInLibrary = Set(
   "scala.runtime.stdLibPatches.Predef$.is",
   "scala.Predef$.is",
 
+  // New feature: applyToContext for functions of any arity (uses TupledFunction)
+  "scala.Predef$.applyToContext",
+
   // New feature: functions with erased parameters.
   // Need quotedPatternsWithPolymorphicFunctions enabled.
   "scala.quoted.runtime.Patterns$.higherOrderHoleWithTypes",
