@@ -84,6 +84,8 @@ class MultiRunRetentionTest:
           assertEquals(Nil, rootCtx.gadt.symbols)
           assertEquals(Nil, lastRun.nn.runContext.gadt.symbols)
           docstringCounts += rootCtx.docCtx.get.docstrings.size
+          // Docstrings of permanent symbols, here a synthetic one, survive the pruning.
+          assertTrue(rootCtx.docCtx.get.docstring(rootCtx.definitions.orType).isDefined)
         // The docstrings of symbols replaced by a later run must be dropped.
         assertEquals(List.fill(n)(docstringCounts.head), docstringCounts.toList)
 
