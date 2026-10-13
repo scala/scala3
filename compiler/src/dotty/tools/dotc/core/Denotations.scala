@@ -858,9 +858,14 @@ object Denotations {
       end goForward
 
       def goBack: SingleDenotation =
-        // currentPeriod < end of valid; in this case a version must exist
-        // but to be defensive we check for infinite loop anyway
+        // currentPeriod < end of valid. A version containing currentPeriod exists
+        // unless currentPeriod precedes the first one, e.g. a symbol created in a late
+        // phase (Mixin forwarders, backend) that is queried at an earlier phase.
+        // The periods of the versions in the ring are disjoint and contiguous, so if
+        // one full lap finds no version containing currentPeriod, it precedes the
+        // earliest version, which is the one we return.
         var cur = this
+        var earliest = this
         var cnt = 0
         while !cur.validFor.contains(currentPeriod) do
           //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
@@ -870,7 +875,10 @@ object Denotations {
           // performance: Test setup: Compile everything in dotc and immediate subdirectories
           // 10 times. Best out of 10: 18154ms with `prev` field, 17777ms without.
           cnt += 1
+          if cur eq this then return earliest
+          if cur.validFor.firstPhaseId < earliest.validFor.firstPhaseId then earliest = cur
           if cnt > MaxPossiblePhaseId then
+            // defensive: `this` should always be on its own ring
             return atPhase(coveredInterval.firstPhaseId)(current)
         cur
       end goBack
