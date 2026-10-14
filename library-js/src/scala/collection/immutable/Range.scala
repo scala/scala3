@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -14,9 +14,11 @@ package scala
 package collection.immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.convert.impl.RangeStepper
+import scala.collection.generic.CommonErrors
 import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, Iterator, Stepper, StepperShape}
 import scala.util.hashing.MurmurHash3
 
@@ -25,7 +27,7 @@ import scala.util.hashing.MurmurHash3
  *  It's a special case of an indexed sequence.
  *  For example:
  *
- *  ```
+ *  ```scala sc:compile
  *     val r1 = 0 until 10
  *     val r2 = r1.start until r1.end by r1.step + 1
  *     println(r2.length) // = 5
@@ -51,13 +53,14 @@ import scala.util.hashing.MurmurHash3
  *  @param step        the step for the range.
  *
  *  @define coll range
+ *  @define ccoll indexed sequence
  *  @define mayNotTerminateInf
  *  @define willNotTerminateInf
  *  @define doesNotUseBuilders
  *    **Note:** this method does not use builders to construct a new range,
  *         and its complexity is O(1).
  */
-@SerialVersionUID(3L)
+@SerialVersionUID(4L)
 sealed abstract class Range(
   val start: Int,
   val end: Int,
@@ -72,7 +75,7 @@ sealed abstract class Range(
 
   final override def iterator: Iterator[Int] = new RangeIterator(start, step, lastElement, isEmpty)
 
-  override final def stepper[S <: Stepper[_]](implicit shape: StepperShape[Int, S]): S with EfficientSplit = {
+  override final def stepper[S <: Stepper[?]](implicit shape: StepperShape[Int, S]): S & EfficientSplit = {
     val st = new RangeStepper(start, step, 0, length)
     val r =
       if (shape.shape == StepperShape.IntShape) st
@@ -80,43 +83,105 @@ sealed abstract class Range(
         assert(shape.shape == StepperShape.ReferenceShape, s"unexpected StepperShape: $shape")
         AnyStepper.ofParIntStepper(st)
       }
-    r.asInstanceOf[S with EfficientSplit]
+    r.asInstanceOf[S & EfficientSplit]
   }
-
-  private[this] def gap           = end.toLong - start.toLong
-  private[this] def isExact       = gap % step == 0
-  private[this] def hasStub       = isInclusive || !isExact
-  private[this] def longLength    = gap / step + ( if (hasStub) 1 else 0 )
 
   def isInclusive: Boolean
 
   final override val isEmpty: Boolean = (
-    (start > end && step > 0)
-      || (start < end && step < 0)
-      || (start == end && !isInclusive)
-    )
+    if (isInclusive)
+      (if (step >= 0) start > end else start < end)
+    else
+      (if (step >= 0) start >= end else start <= end)
+  )
 
-  private[this] val numRangeElements: Int = {
-    if (step == 0) throw new IllegalArgumentException("step cannot be 0.")
-    else if (isEmpty) 0
-    else {
-      val len = longLength
-      if (len > scala.Int.MaxValue) -1
-      else len.toInt
-    }
+  if (step == 0) throw new IllegalArgumentException("step cannot be 0.")
+
+  /** Number of elements in this range, if it is non-empty.
+   *
+   *  If the range is empty, `numRangeElements` does not have a meaningful value.
+   *
+   *  Otherwise, `numRangeElements` is interpreted in the range [1, 2<sup>32</sup>],
+   *  respecting modular arithmetics wrt. the unsigned interpretation.
+   *  In other words, it is 0 if the mathematical value should be 2<sup>32</sup>, and the
+   *  standard unsigned int encoding of the mathematical value otherwise.
+   *
+   *  This interpretation allows to represent all values with the correct
+   *  modular arithmetics, which streamlines the usage sites.
+   */
+  private val numRangeElements: Int = {
+    val stepSign = step >> 31 // if (step >= 0) 0 else -1
+    val gap = ((end - start) ^ stepSign) - stepSign // if (step >= 0) (end - start) else -(end - start)
+    val absStep = (step ^ stepSign) - stepSign // if (step >= 0) step else -step
+
+    /* If `absStep` is a constant 1, `div` collapses to being an alias of
+     * `gap`. Then `absStep * div` also collapses to `gap` and therefore
+     * `absStep * div != gap` constant-folds to `false`.
+     *
+     * Since most ranges are exclusive, that makes `numRangeElements` an alias
+     * of `gap`. Moreover, for exclusive ranges with step 1 and start 0 (which
+     * are the common case), it makes it an alias of `end` and the entire
+     * computation goes away.
+     */
+    val div = Integer.divideUnsigned(gap, absStep)
+    if (isInclusive || (absStep * div != gap)) div + 1 else div
   }
 
-  final def length = if (numRangeElements < 0) fail() else numRangeElements
+  final def length: Int =
+    if (isEmpty) 0
+    else if (numRangeElements > 0) numRangeElements
+    else fail()
 
-  // This field has a sensible value only for non-empty ranges
-  private[this] val lastElement = step match {
-    case 1  => if (isInclusive) end else end-1
-    case -1 => if (isInclusive) end else end+1
-    case _  =>
-      val remainder = (gap % step).toInt
-      if (remainder != 0) end - remainder
-      else if (isInclusive) end
-      else end - step
+  /** Computes the element of this range after `n` steps from `start`.
+   *
+   *  `n` is interpreted as an unsigned integer.
+   *
+   *  If the mathematical result is not within this Range, the result won't
+   *  make sense, but won't error out.
+   *
+   *  @param n the number of steps from `start`, interpreted as an unsigned integer
+   *  @return the element at position `n` in this range, i.e., `start + step * n`
+   */
+  @inline
+  private def locationAfterN(n: Int): Int = {
+    /* If `step >= 0`, we interpret `step * n` as an unsigned multiplication,
+     * and the addition as a mixed `(signed, unsigned) -> signed` operation.
+     * With those interpretation, they do not overflow, assuming the
+     * mathematical result is within this Range.
+     *
+     * If `step < 0`, we should compute `start - (-step * n)`, with the
+     * multiplication also interpreted as unsigned, and the subtraction as
+     * mixed. Again, using those interpretations, they do not overflow.
+     * But then modular arithmetics allow us to cancel out the two `-` signs,
+     * so we end up with the same formula.
+     */
+    start + (step * n)
+  }
+
+  /** Last element of this non-empty range.
+   *
+   *  For empty ranges, this value is nonsensical.
+   */
+  private val lastElement: Int = {
+    /* Since we can assume the range is non-empty, `(numRangeElements - 1)`
+     * is a valid unsigned value in the full int range. The general formula is
+     * therefore `locationAfterN(numRangeElements - 1)`.
+     *
+     * We special-case 1 and -1 so that, in the happy path where `step` is a
+     * constant 1 or -1, and we only use `foreach`, `numRangeElements` is dead
+     * code.
+     *
+     * When `step` is not constant, it is probably 1 or -1 anyway, so the
+     * single branch should be predictably true.
+     *
+     * `step == 1 || step == -1`
+     *   equiv `(step + 1 == 2) || (step + 1 == 0)`
+     *   equiv `((step + 1) & ~2) == 0`
+     */
+    if (((step + 1) & ~2) == 0)
+      (if (isInclusive) end else end - step)
+    else
+      locationAfterN(numRangeElements - 1)
   }
 
   /** The last element of this range.  This method will return the correct value
@@ -170,17 +235,22 @@ sealed abstract class Range(
   // should not trigger an exception. So the calculation is delayed,
   // which means it will not fail fast for those cases where failing was
   // correct.
-  private[this] def validateMaxLength(): Unit = {
-    if (numRangeElements < 0)
+  private def validateMaxLength(): Unit = {
+    if (numRangeElements <= 0 && !isEmpty)
       fail()
   }
-  private[this] def fail() = Range.fail(start, end, step, isInclusive)
+  private def fail() = Range.fail(start, end, step, isInclusive)
 
   @throws[IndexOutOfBoundsException]
   final def apply(idx: Int): Int = {
-    validateMaxLength()
-    if (idx < 0 || idx >= numRangeElements) throw new IndexOutOfBoundsException(s"$idx is out of bounds (min 0, max ${numRangeElements-1})")
-    else start + (step * idx)
+    /* If length is not valid, numRangeElements <= 0, so the condition is always true.
+     * We push validateMaxLength() inside the then branch, out of the happy path.
+     */
+    if (idx < 0 || idx >= numRangeElements || isEmpty) {
+      validateMaxLength()
+      val max = if (isEmpty) -1 else numRangeElements - 1
+      throw CommonErrors.indexOutOfBounds(index = idx, max = max)
+    } else locationAfterN(idx)
   }
 
   /*@`inline`*/ final override def foreach[@specialized(Unit) U](f: Int => U): Unit = {
@@ -212,10 +282,10 @@ sealed abstract class Range(
       case _ => super.lastIndexOf(elem, end)
     }
 
-  private[this] def posOf(i: Int): Int =
+  private def posOf(i: Int): Int =
     if (contains(i)) (i - start) / step else -1
 
-  override def sameElements[B >: Int](that: IterableOnce[B]): Boolean = that match {
+  override def sameElements[B >: Int](that: IterableOnce[B]^): Boolean = that match {
     case other: Range =>
       (this.length : @annotation.switch) match {
         case 0 => other.isEmpty
@@ -228,6 +298,17 @@ sealed abstract class Range(
     case _ => super.sameElements(that)
   }
 
+  /** Is the non-negative value `n` greater or equal to the number of elements
+   *  in this non-empty range?
+   *
+   *  This method returns nonsensical results if `n < 0` or if `this.isEmpty`.
+   *
+   *  @param n the non-negative value to compare against the number of elements
+   *  @return `true` if `n` is greater than or equal to the number of elements in this range
+   */
+  @inline private def greaterEqualNumRangeElements(n: Int): Boolean =
+    (n ^ Int.MinValue) > ((numRangeElements - 1) ^ Int.MinValue) // unsigned comparison
+
   /** Creates a new range containing the first `n` elements of this range.
    *
    *  @param n  the number of elements to take.
@@ -235,12 +316,8 @@ sealed abstract class Range(
    */
   final override def take(n: Int): Range =
     if (n <= 0 || isEmpty) newEmptyRange(start)
-    else if (n >= numRangeElements && numRangeElements >= 0) this
-    else {
-      // May have more than Int.MaxValue elements in range (numRangeElements < 0)
-      // but the logic is the same either way: take the first n
-      new Range.Inclusive(start, locationAfterN(n - 1), step)
-    }
+    else if (greaterEqualNumRangeElements(n)) this
+    else new Range.Inclusive(start, locationAfterN(n - 1), step)
 
   /** Creates a new range containing all the elements of this range except the first `n` elements.
    *
@@ -249,52 +326,37 @@ sealed abstract class Range(
    */
   final override def drop(n: Int): Range =
     if (n <= 0 || isEmpty) this
-    else if (n >= numRangeElements && numRangeElements >= 0) newEmptyRange(end)
-    else {
-      // May have more than Int.MaxValue elements (numRangeElements < 0)
-      // but the logic is the same either way: go forwards n steps, keep the rest
-      copy(locationAfterN(n), end, step)
-    }
+    else if (greaterEqualNumRangeElements(n)) newEmptyRange(end)
+    else copy(locationAfterN(n), end, step)
 
   /** Creates a new range consisting of the last `n` elements of the range.
    *
    *  $doesNotUseBuilders
    *
-   *  @param n the number of elements to take from the end of this range
-   *  @return a new range consisting of the last `n` elements, or the entire range if `n` is greater than the range length
+   *  @param n the number of elements to take from the right
+   *  @return a new range consisting of the last `n` elements, or an empty range if `n <= 0`, or the entire range if `n` is greater than its length
    */
   final override def takeRight(n: Int): Range = {
-    if (n <= 0) newEmptyRange(start)
-    else if (numRangeElements >= 0) drop(numRangeElements - n)
-    else {
-      // Need to handle over-full range separately
-      val y = last
-      val x = y - step.toLong*(n-1)
-      if ((step > 0 && x < start) || (step < 0 && x > start)) this
-      else Range.inclusive(x.toInt, y, step)
-    }
+    if (n <= 0 || isEmpty) newEmptyRange(start)
+    else if (greaterEqualNumRangeElements(n)) this
+    else copy(locationAfterN(numRangeElements - n), end, step)
   }
 
   /** Creates a new range consisting of the initial `length - n` elements of the range.
    *
    *  $doesNotUseBuilders
    *
-   *  @param n the number of elements to drop from the end of this range
-   *  @return a new range consisting of all elements except the last `n`, or an empty range if `n` is greater than the range length
+   *  @param n the number of elements to drop from the right
+   *  @return a new range consisting of all elements except the last `n`, or this range unchanged if `n <= 0`, or an empty range if `n` is greater than its length
    */
   final override def dropRight(n: Int): Range = {
-    if (n <= 0) this
-    else if (numRangeElements >= 0) take(numRangeElements - n)
-    else {
-      // Need to handle over-full range separately
-      val y = last - step.toInt*n
-      if ((step > 0 && y < start) || (step < 0 && y > start)) newEmptyRange(start)
-      else Range.inclusive(start, y.toInt, step)
-    }
+    if (n <= 0 || isEmpty) this
+    else if (greaterEqualNumRangeElements(n)) newEmptyRange(end)
+    else Range.inclusive(start, locationAfterN(numRangeElements - 1 - n), step)
   }
 
   // Advance from the start while we meet the given test
-  private[this] def argTakeWhile(p: Int => Boolean): Long = {
+  private def argTakeWhile(p: Int => Boolean): Long = {
     if (isEmpty) start
     else {
       var current = start
@@ -344,8 +406,9 @@ sealed abstract class Range(
    *  @return   a new range consisting of a contiguous interval of values in the old range
    */
   final override def slice(from: Int, until: Int): Range =
-    if (from <= 0) take(until)
-    else if (until >= numRangeElements && numRangeElements >= 0) drop(from)
+    if (isEmpty) this
+    else if (from <= 0) take(until)
+    else if (greaterEqualNumRangeElements(until) && until >= 0) drop(from)
     else {
       val fromValue = locationAfterN(from)
       if (from >= until) newEmptyRange(fromValue)
@@ -355,15 +418,11 @@ sealed abstract class Range(
   // Overridden only to refine the return type
   final override def splitAt(n: Int): (Range, Range) = (take(n), drop(n))
 
-  // Methods like apply throw exceptions on invalid n, but methods like take/drop
-  // are forgiving: therefore the checks are with the methods.
-  private[this] def locationAfterN(n: Int) = start + (step * n)
-
   // When one drops everything.  Can't ever have unchecked operations
   // like "end + 1" or "end - 1" because ranges involving Int.{ MinValue, MaxValue }
   // will overflow.  This creates an exclusive range where start == end
   // based on the given value.
-  private[this] def newEmptyRange(value: Int) = new Range.Exclusive(value, value, step)
+  private def newEmptyRange(value: Int) = new Range.Exclusive(value, value, step)
 
   /** Returns the reverse of this range. */
   final override def reverse: Range =
@@ -375,14 +434,14 @@ sealed abstract class Range(
     if (isInclusive) this
     else new Range.Inclusive(start, end, step)
 
-  final def contains(x: Int) = {
-    if (x == end && !isInclusive) false
+  final def contains(x: Int): Boolean = {
+    if (isEmpty) false
     else if (step > 0) {
-      if (x < start || x > end) false
+      if (x < start || x > lastElement) false
       else (step == 1) || (Integer.remainderUnsigned(x - start, step) == 0)
     }
     else {
-      if (x < end || x > start) false
+      if (x > start || x < lastElement) false
       else (step == -1) || (Integer.remainderUnsigned(start - x, -step) == 0)
     }
   }
@@ -421,7 +480,7 @@ sealed abstract class Range(
     } else if (Ordering.Int isReverseOf ord) {
       if (step > 0) last
       else head
-    } else super.min(ord)
+    } else super.min(using ord)
 
   final override def max[A1 >: Int](implicit ord: Ordering[A1]): Int =
     if (ord eq Ordering.Int) {
@@ -430,11 +489,11 @@ sealed abstract class Range(
     } else if (Ordering.Int isReverseOf ord) {
       if (step > 0) head
       else last
-    } else super.max(ord)
+    } else super.max(using ord)
 
   override def tails: Iterator[Range] =
     new AbstractIterator[Range] {
-      private[this] var i = 0
+      private var i = 0
       override def hasNext = i <= Range.this.length
       override def next() = {
         if (hasNext) {
@@ -449,7 +508,7 @@ sealed abstract class Range(
 
   override def inits: Iterator[Range] =
     new AbstractIterator[Range] {
-      private[this] var i = 0
+      private var i = 0
       override def hasNext = i <= Range.this.length
       override def next() = {
         if (hasNext) {
@@ -463,7 +522,7 @@ sealed abstract class Range(
     }
   override protected final def applyPreferredMaxLength: Int = Int.MaxValue
 
-  final override def equals(other: Any) = other match {
+  final override def equals(other: Any): Boolean = other match {
     case x: Range =>
       // Note: this must succeed for overfull ranges (length > Int.MaxValue)
       if (isEmpty) x.isEmpty                  // empty sequences are equal
@@ -478,29 +537,34 @@ sealed abstract class Range(
       super.equals(other)
   }
 
-  final override def hashCode: Int =
+  final override def hashCode(): Int =
     if(length >= 2) MurmurHash3.rangeHash(start, step, lastElement)
     else super.hashCode
 
-  final override def toString: String = {
+  final override def toString(): String = {
     val preposition = if (isInclusive) "to" else "until"
     val stepped = if (step == 1) "" else s" by $step"
-    val prefix = if (isEmpty) "empty " else if (!isExact) "inexact " else ""
+
+    def isInexact =
+      if (isInclusive) lastElement != end
+      else (lastElement + step) != end
+
+    val prefix = if (isEmpty) "empty " else if (isInexact) "inexact " else ""
     s"${prefix}Range $start $preposition $end$stepped"
   }
 
-  override protected[this] def className = "Range"
+  override protected def className = "Range"
 
   override def distinct: Range = this
 
   override def grouped(size: Int): Iterator[Range] = {
-    require(size >= 1, f"size=$size%d, but size must be positive")
+    require(size >= 1, s"size=$size, but size must be positive")
     if (isEmpty) {
       Iterator.empty
     } else {
       val s = size
       new AbstractIterator[Range] {
-        private[this] var i = 0
+        private var i = 0
         override def hasNext = Range.this.length > i
         override def next() =
           if (hasNext) {
@@ -522,14 +586,11 @@ sealed abstract class Range(
         reverse
       }
     } else {
-      super.sorted(ord)
+      super.sorted(using ord)
     }
 }
 
-/** Companion object for ranges.
- *  @define Coll `Range`
- *  @define coll range
- */
+/** Companion object for ranges. */
 object Range {
 
   private def description(start: Int, end: Int, step: Int, isInclusive: Boolean) =
@@ -544,11 +605,11 @@ object Range {
    *  If the size of the range exceeds Int.MaxValue, the
    *  result will be negative.
    *
-   *  @param start the first element of the range
-   *  @param end the end boundary of the range (inclusive or exclusive depending on `isInclusive`)
-   *  @param step the increment between successive elements; must be non-zero
+   *  @param start the start value of the range
+   *  @param end the end value of the range (exclusive or inclusive depending on `isInclusive`)
+   *  @param step the step value between consecutive elements, must be non-zero
    *  @param isInclusive whether `end` is included in the range
-   *  @return the number of elements in the range, or `-1` if the count exceeds `Int.MaxValue`
+   *  @return the number of elements in the range, `0` if the range is empty, or a negative value (modular wrap) if the count exceeds `Int.MaxValue`
    */
   def count(start: Int, end: Int, step: Int, isInclusive: Boolean): Int = {
     if (step == 0)
@@ -561,16 +622,19 @@ object Range {
 
     if (isEmpty) 0
     else {
-      // Counts with Longs so we can recognize too-large ranges.
-      val gap: Long    = end.toLong - start.toLong
-      val jumps: Long  = gap / step
-      // Whether the size of this range is one larger than the
-      // number of full-sized jumps.
-      val hasStub      = isInclusive || (gap % step != 0)
-      val result: Long = jumps + ( if (hasStub) 1 else 0 )
+      val stepSign = step >> 31 // if (step >= 0) 0 else -1
+      val gap = ((end - start) ^ stepSign) - stepSign // if (step >= 0) (end - start) else -(end - start)
+      val absStep = (step ^ stepSign) - stepSign // if (step >= 0) step else -step
 
-      if (result > scala.Int.MaxValue) -1
-      else result.toInt
+      val div = Integer.divideUnsigned(gap, absStep)
+      if (isInclusive) {
+        if (div == -1) // max unsigned int
+          -1 // corner case: there are 2^32 elements, which would overflow to 0
+        else
+          div + 1
+      } else {
+        if (absStep * div != gap) div + 1 else div
+      }
     }
   }
   def count(start: Int, end: Int, step: Int): Int =
@@ -579,60 +643,58 @@ object Range {
   /** Makes a range from `start` until `end` (exclusive) with given step value.
    *  @note step != 0
    *
-   *  @param start the first element of the range
-   *  @param end the exclusive upper bound of the range
-   *  @param step the increment between successive elements; must be non-zero
-   *  @return an exclusive `Range` from `start` to `end` stepping by `step`
+   *  @param start the start value of the range
+   *  @param end the exclusive end value of the range
+   *  @param step the step value between consecutive elements, must be non-zero
+   *  @return a new exclusive `Range` from `start` (inclusive) to `end` (exclusive) with the given `step`
    */
   def apply(start: Int, end: Int, step: Int): Range.Exclusive = new Range.Exclusive(start, end, step)
 
   /** Makes a range from `start` until `end` (exclusive) with step value 1.
    *
-   *  @param start the first element of the range
-   *  @param end the exclusive upper bound of the range
-   *  @return an exclusive `Range` from `start` to `end` with step `1`
+   *  @param start the start value of the range
+   *  @param end the exclusive end value of the range
+   *  @return a new exclusive `Range` from `start` (inclusive) to `end` (exclusive) with step `1`
    */
   def apply(start: Int, end: Int): Range.Exclusive = new Range.Exclusive(start, end, 1)
 
   /** Makes an inclusive range from `start` to `end` with given step value.
    *  @note step != 0
    *
-   *  @param start the first element of the range
-   *  @param end the inclusive upper bound of the range
-   *  @param step the increment between successive elements; must be non-zero
-   *  @return an inclusive `Range` from `start` to `end` stepping by `step`
+   *  @param start the start value of the range
+   *  @param end the inclusive end value of the range
+   *  @param step the step value between consecutive elements, must be non-zero
+   *  @return a new inclusive `Range` from `start` to `end` (with `end` included only if reachable by `step` from `start`) with the given `step`
    */
   def inclusive(start: Int, end: Int, step: Int): Range.Inclusive = new Range.Inclusive(start, end, step)
 
   /** Makes an inclusive range from `start` to `end` with step value 1.
    *
-   *  @param start the first element of the range
-   *  @param end the inclusive upper bound of the range
-   *  @return an inclusive `Range` from `start` to `end` with step `1`
+   *  @param start the start value of the range
+   *  @param end the inclusive end value of the range
+   *  @return a new inclusive `Range` from `start` to `end` (both inclusive) with step `1`
    */
   def inclusive(start: Int, end: Int): Range.Inclusive = new Range.Inclusive(start, end, 1)
 
-  @SerialVersionUID(3L)
-  @inline
+  @SerialVersionUID(4L)
   final class Inclusive(start: Int, end: Int, step: Int) extends Range(start, end, step) {
-    def isInclusive = true
+    def isInclusive: Boolean = true
   }
 
-  @SerialVersionUID(3L)
-  @inline
+  @SerialVersionUID(4L)
   final class Exclusive(start: Int, end: Int, step: Int) extends Range(start, end, step) {
-    def isInclusive = false
+    def isInclusive: Boolean = false
   }
 
   // BigInt and Long are straightforward generic ranges.
   object BigInt {
-    def apply(start: BigInt, end: BigInt, step: BigInt) = NumericRange(start, end, step)
-    def inclusive(start: BigInt, end: BigInt, step: BigInt) = NumericRange.inclusive(start, end, step)
+    def apply(start: BigInt, end: BigInt, step: BigInt): NumericRange.Exclusive[BigInt] = NumericRange(start, end, step)
+    def inclusive(start: BigInt, end: BigInt, step: BigInt): NumericRange.Inclusive[BigInt] = NumericRange.inclusive(start, end, step)
   }
 
   object Long {
-    def apply(start: Long, end: Long, step: Long) = NumericRange(start, end, step)
-    def inclusive(start: Long, end: Long, step: Long) = NumericRange.inclusive(start, end, step)
+    def apply(start: Long, end: Long, step: Long): NumericRange.Exclusive[Long] = NumericRange(start, end, step)
+    def inclusive(start: Long, end: Long, step: Long): NumericRange.Inclusive[Long] = NumericRange.inclusive(start, end, step)
   }
 
   // BigDecimal uses an alternative implementation of Numeric in which
@@ -643,17 +705,17 @@ object Range {
   object BigDecimal {
     implicit val bigDecAsIntegral: Numeric.BigDecimalAsIfIntegral = Numeric.BigDecimalAsIfIntegral
 
-    def apply(start: BigDecimal, end: BigDecimal, step: BigDecimal) =
+    def apply(start: BigDecimal, end: BigDecimal, step: BigDecimal): NumericRange.Exclusive[BigDecimal] =
       NumericRange(start, end, step)
-    def inclusive(start: BigDecimal, end: BigDecimal, step: BigDecimal) =
+    def inclusive(start: BigDecimal, end: BigDecimal, step: BigDecimal): NumericRange.Inclusive[BigDecimal] =
       NumericRange.inclusive(start, end, step)
   }
 
   // As there is no appealing default step size for not-really-integral ranges,
   // we offer a partially constructed object.
-  class Partial[T, U](private val f: T => U) extends AnyVal {
+  class Partial[T, U](private val f: T => U) extends AnyVal { self: Partial[T, U]^ =>
     def by(x: T): U = f(x)
-    override def toString = "Range requires step"
+    override def toString() = "Range requires step"
   }
 
   // Illustrating genericity with Int Range, which should have the same behavior
@@ -661,8 +723,8 @@ object Range {
   // indefinitely, for performance and because the compiler seems to bootstrap
   // off it and won't do so with our parameterized version without modifications.
   object Int {
-    def apply(start: Int, end: Int, step: Int) = NumericRange(start, end, step)
-    def inclusive(start: Int, end: Int, step: Int) = NumericRange.inclusive(start, end, step)
+    def apply(start: Int, end: Int, step: Int): NumericRange.Exclusive[Int] = NumericRange(start, end, step)
+    def inclusive(start: Int, end: Int, step: Int): NumericRange.Inclusive[Int] = NumericRange.inclusive(start, end, step)
   }
 
   private def emptyRangeError(what: String): Throwable =
@@ -673,15 +735,15 @@ object Range {
  *  @param lastElement The last element included in the Range
  *  @param initiallyEmpty Whether the Range was initially empty or not
  */
-@SerialVersionUID(3L)
+@SerialVersionUID(4L)
 private class RangeIterator(
   start: Int,
   step: Int,
   lastElement: Int,
   initiallyEmpty: Boolean
-) extends AbstractIterator[Int] with Serializable {
-  private[this] var _hasNext: Boolean = !initiallyEmpty
-  private[this] var _next: Int = start
+) extends AbstractIterator[Int] with Serializable { self: RangeIterator =>
+  private var _hasNext: Boolean = !initiallyEmpty
+  private var _next: Int = start
   override def knownSize: Int = if (_hasNext) (lastElement - _next) / step + 1 else 0
   def hasNext: Boolean = _hasNext
   @throws[NoSuchElementException]
@@ -705,6 +767,6 @@ private class RangeIterator(
         _hasNext = longPos >= lastElement
       }
     }
-      this
+    this
   }
 }
