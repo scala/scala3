@@ -107,9 +107,26 @@ trait RunnerOrchestration:
       def printLine(line: String): Unit = stdin.println(line)
 
       def getJdiPort(): Int =
-        stdout.readLine() match
-          case s"Listening for transport dt_socket at address: $port" => port.toInt
-          case line => throw IOException(s"Failed getting JDI port of child JVM: got $line")
+        // The JDWP agent of a reused child JVM may print diagnostics about the previous
+        // debugger connection before it starts listening again, e.g.
+        // 'ERROR: transport error 202: send failed: Broken pipe' (Linux) or
+        // '... Software caused connection abort' (Windows), when the debugger disconnects.
+        // Skip them.
+        val skipped = mutable.ListBuffer.empty[String]
+        def skippedReport = skipped.synchronized:
+          if skipped.isEmpty then "" else skipped.mkString(", got:\n", "\n", "")
+        def readPort(): Int =
+          while true do
+            stdout.readLine() match
+              case null =>
+                throw IOException("Failed getting JDI port of child JVM: unexpected end of output" + skippedReport)
+              case s"Listening for transport dt_socket at address: $port" => return port.toInt
+              case line => skipped.synchronized(skipped += line)
+          throw AssertionError("unreachable")
+        try Await.result(Future(readPort()), testTimeout)
+        catch case _: TimeoutException =>
+          p.destroy() // unblocks the reader thread
+          throw IOException("Timed out getting JDI port of child JVM" + skippedReport)
 
       def isAlive: Boolean = p.isAlive // export p.isAlive sans parens
 
@@ -232,7 +249,11 @@ trait RunnerOrchestration:
 
     private def withRunner(op: Runner => Status)(using SummaryReporting): Status =
       val runner = getRunner()
-      val status = op(runner)
+      val status =
+        try op(runner)
+        catch case e: Throwable =>
+          discardRunner(runner) // don't leak a busy runner on unexpected failures
+          throw e
       if !status.isSuccess then
         discardRunner(runner)
       else
