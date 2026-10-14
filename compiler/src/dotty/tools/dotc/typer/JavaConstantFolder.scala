@@ -37,9 +37,7 @@ object JavaConstantFolder:
       case Typed(x, tpt)                 => cast(loop(x), tpt)
       case _                             => notConstant()
     try loop(tree)
-    catch
-      case NotConstant => null
-      case _: ArithmeticException => null // integer division by zero, which javac rejects
+    catch case NotConstant => null
 
   private def checked(c: Constant | Null): Constant =
     if c != null && c.tag >= BooleanTag && c.tag <= StringTag then c else notConstant()

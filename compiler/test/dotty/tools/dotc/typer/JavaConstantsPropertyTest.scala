@@ -56,6 +56,7 @@ class JavaConstantsPropertyTest {
     val source = withSeed("generator crashed")(gen.source)
     val expected = withSeed("invalid Java")(javacFieldTypes(source))
     val actual = withSeed("dotc failed to compile valid Java")(fieldTypes("", source :: Nil))
+    assertEquals(s"seed $seed: fields read from javac's classfile", fields, expected.size)
     val decls = gen.decls.toMap
     def byField(types: List[String]) = types.map(t => t.substring(0, t.indexOf(':')) -> t).toMap
     val e = byField(expected)
@@ -84,7 +85,7 @@ object JavaConstantsPropertyTest {
       val reporter = ctx.reporter.asInstanceOf[StoreReporter]
       assertFalse(reporter.removeBufferedMessages.mkString("\n"), reporter.hasErrors)
       atPhase(typerPhase.next) {
-        val decls = requiredModuleRef("J").symbol.moduleClass.info.decls.toList
+        val decls = defn.EmptyPackageClass.info.decl("J".toTermName).symbol.moduleClass.info.decls.toList
         decls.filter(d => d.isTerm && !d.is(Method)).map(d => s"${d.name}: ${show(d.info)}").sorted
       }
     }

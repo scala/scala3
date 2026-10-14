@@ -280,7 +280,8 @@ class DeterminismTest {
       "D1" -> "double D1 = 1 / 2",
       "D2" -> "double D2 = 1.0 / 0",
       "D3" -> "double D3 = 5.5 % 2",
-      "MOD" -> "int MOD = -7 % 3",
+      "MOD" -> "int MOD = -7 % 3, DIV = -7 / 2",
+      "DIV" -> "",
       "SHR" -> "int SHR = -16 >> 2",
       "USHR" -> "int USHR = -16 >>> 28",
       "SHL" -> "int SHL = 1 << 33L",
@@ -312,7 +313,8 @@ class DeterminismTest {
       "BSHL" -> "",
       "SNEG" -> "short SNEG = -(short) 1",
       "PAREN" -> "int PAREN = (I1) - 1",
-      "CAST" -> "int CAST = (int) 3.9 + (int) -3.9",
+      "CAST" -> "int CAST = (int) 3.9 + (int) -3.9, CASTL = (int) 1e20",
+      "CASTL" -> "",
       "FCAST" -> "float FCAST = (float) 1e40",
       "LONGCHAR" -> "long LONGCHAR = 'a' * 1000000000L",
       "UND" -> "int UND = 1_000__000, BIN = 0b1010_1010, OCT = 0_17, HEXU = 0xFF_FF",
@@ -343,15 +345,22 @@ class DeterminismTest {
       "OBJ" -> "Object OBJ = \"a\" + \"b\"",
     )
     val javaFields = fields.collect { case (_, decl) if decl.nonEmpty => s"  public static final $decl;" }
+    // `INSTANCE6` and `nonConstant` are commented out until the pickler shares equivalent types: the
+    // TASTy of `nonConstant` depends on whether the `String` type of `INSTANCE6` comes from source.
     def code = List(
       source("K.java",
         s"""public class K implements I {
            |${javaFields.mkString("\n")}
            |  public static int SIZE() { return 0; }
            |  public final int INSTANCE = 1 + 1;
+           |  public final int INSTANCE2 = I1 + IC, INSTANCE3 = INSTANCE2 * 2;
+           |  public final String INSTANCE4 = "i" + K.I1 + INSTANCE3;
+           |  public final int INSTANCE5 = this.INSTANCE3; // not a constant expression
+           |  // public final String INSTANCE6 = "i" + this.INSTANCE3;
            |  public static int NONFINAL = 1 + 1;
            |  static final int K1 = IC + K.I1;
            |  static final String K2 = IS + K1;
+           |  static final int K3 = I.IC + 1;
            |}
            |interface I { int IC = 7 * 6; String IS = "i" + IC; }
            |""".stripMargin),
@@ -359,7 +368,8 @@ class DeterminismTest {
         s"""class C {
            |  def f = new Array[Byte](K.I1)
            |  def all: List[Any] = List(${fields.map("K." + _._1).mkString(", ")})
-           |  def others: List[Any] = List(new K().INSTANCE, K.NONFINAL, K.K1, K.K2, I.IC, I.IS)
+           |  def others: List[Any] = List(new K().INSTANCE, new K().INSTANCE2, new K().INSTANCE3, new K().INSTANCE4, new K().INSTANCE5, K.NONFINAL, K.K1, K.K2, K.K3, I.IC, I.IS)
+           |  // def nonConstant = List(new K().INSTANCE6, 1)
            |}
            |""".stripMargin)
     )
