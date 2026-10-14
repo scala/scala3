@@ -11,6 +11,7 @@ import scala.concurrent.duration.{Duration, DurationInt}
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
+import scala.util.control.NonFatal
 import ChildJVMMain.{MessageEnd, MessageStart}
 import Status.*
 import dotty.tools.debug.{Debugger, ExpressionEvaluator}
@@ -251,7 +252,7 @@ trait RunnerOrchestration:
       val runner = getRunner()
       val status =
         try op(runner)
-        catch case e: Throwable =>
+        catch case NonFatal(e) =>
           discardRunner(runner) // don't leak a busy runner on unexpected failures
           throw e
       if !status.isSuccess then
