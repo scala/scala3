@@ -3143,7 +3143,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         sym.resetFlag(Lazy)
       checkErasedOK(sym)
       sym.setFlag(Erased)
-    val tpt1 = checkSimpleKinded(typedType(tpt))
+    val tpt1 = sym.info match
+      case info: ConstantType if sym.is(JavaDefined) =>
+        // a Java constant variable, whose type the namer computes from its initializer.
+        // Keep it in the tree, which is what Java TASTy (`-Xjava-tasty`) pickles.
+        TypeTree(info).withSpan(tpt.span)
+      case _ =>
+        checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match
       case rhs @ Ident(nme.WILDCARD) =>
         rhs.withType(tpt1.tpe)
