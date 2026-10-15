@@ -49,9 +49,9 @@ object Dependencies {
   // otherwise the jackson versions are ancient, with known vulnerabilities
   val liqpDependencyOverrides = Seq(
     "com.fasterxml.jackson.core" % "jackson-annotations" % "2.22",
-    "com.fasterxml.jackson.core" % "jackson-core" % "2.22.2",
-    "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.2",
-    "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % "2.22.2"
+    "com.fasterxml.jackson.core" % "jackson-core" % "2.22.3",
+    "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.3",
+    "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % "2.22.3"
   )
 
   val lsp4j = "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "1.0.0"
