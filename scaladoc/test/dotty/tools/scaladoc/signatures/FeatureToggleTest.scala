@@ -87,6 +87,14 @@ class FeatureToggleTest extends ScaladocTest("captureCheckingSignatures"):
   }
 
   @Test
+  def ccFragmentsHaveHints(): Unit = afterRendering {
+    htmlFiles { (path, doc) =>
+      for on <- doc.select(".feature-cc > .feature-on").asScala do
+        assertFalse(s"no hover text for ${on.outerHtml} in $path", on.attr("title").isEmpty)
+    }
+  }
+
+  @Test
   def ccSwitchIsRendered(): Unit = afterRendering {
     var pages = 0
     htmlFiles { (path, doc) => if checkCcSwitch(path, doc) then pages += 1 }

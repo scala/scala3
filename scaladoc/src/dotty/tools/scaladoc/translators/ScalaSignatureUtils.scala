@@ -11,7 +11,7 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
   def tpe(text: String, dri: Option[DRI], isCaptureVar: Boolean = false/*under CC*/): SignatureBuilder =
     copy(content = content ++ (Type(text, dri) :: captureVarSuffix(isCaptureVar)))
   private def captureVarSuffix(isCaptureVar: Boolean): List[SignaturePart] =
-    if isCaptureVar then List(Toggleable(ToggleableFeature.CaptureChecking, List(Keyword("^")))) else Nil
+    if isCaptureVar then List(Toggleable(ToggleableFeature.CaptureChecking, List(Keyword("^")), hint = CaptureHints.captureSetParameter)) else Nil
   def keyword(str: String): SignatureBuilder = copy(content = content :+ Keyword(str))
   def tpe(text: String, dri: DRI): SignatureBuilder = copy(content = content :+ Type(text, Some(dri)))
   def signature(s: Signature): SignatureBuilder = copy(content = content ++ s)
@@ -79,7 +79,7 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
     member.usesClause match
       case None => this
       case Some(clause) =>
-        signature(List(Toggleable(ToggleableFeature.CaptureChecking, Keyword(" uses ") :: clause.signature)))
+        signature(List(Toggleable(ToggleableFeature.CaptureChecking, Keyword(" uses ") :: clause.signature, hint = CaptureHints.uses)))
 
   def modifiersAndVisibility(t: Member) =
     // Capture-checking-specific modifiers are wrapped in a Toggleable so they
@@ -91,7 +91,9 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
     val filtered = all.filter(_.trim.nonEmpty)
     val bdr = if filtered.nonEmpty then keyword(filtered.toSignatureString()) else this
     if ccMods.isEmpty then bdr
-    else bdr.signature(List(Toggleable(ToggleableFeature.CaptureChecking, List(Keyword(ccMods.map(_.name).toSignatureString())))))
+    else
+      val hint = if ccMods.contains(Modifier.Consume) then CaptureHints.consumeMethod else CaptureHints.update
+      bdr.signature(List(Toggleable(ToggleableFeature.CaptureChecking, List(Keyword(ccMods.map(_.name).toSignatureString())), hint = hint)))
 
   def kind(k: Kind) =
     keyword(k.name + " ")
@@ -109,7 +111,7 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
         bld.annotationsInline(p)
           .signature(
             if p.ccModifiers.isEmpty then Nil
-            else List(Toggleable(ToggleableFeature.CaptureChecking, List(Keyword(p.ccModifiers)))))
+            else List(Toggleable(ToggleableFeature.CaptureChecking, List(Keyword(p.ccModifiers)), hint = CaptureHints.consumeParameter)))
           .keyword(p.modifiers)
       val name = p.name match {
         case Some(name) => annotationsAndModifiers.name(name, p.dri).plain(": ")
