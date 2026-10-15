@@ -690,8 +690,8 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
     if (isEmpty) Right(right) else Left(this.get)
 
   @experimental
-  final def toMaybe: Maybe[A, Unit] =
-    if this.isEmpty then null.asInstanceOf[Maybe[A, Unit]] else Ok(this.get)
+  final def toMaybe: Maybe[A, Null] =
+    if this.isEmpty then null.asInstanceOf[Maybe[A, Null]] else Ok(this.get)
 }
 
 /** Class `Some[A]` represents existing values of type

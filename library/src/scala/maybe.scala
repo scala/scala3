@@ -15,15 +15,15 @@ object maybe {
   inline def apply[T, E](inline body: CanErr[E] ?=> T): Maybe[T, E] =
     boundary(Ok(body))
 
-  /** If `cond` does not hold, abort with `()` error. Typically used in a `maybe` block:
+  /** If `cond` does not hold, abort with `null` error. Typically used in a `maybe` block:
    *
    *     maybe:
    *       val y = str.toInt?
    *       provided(x >= 0)
    *       sqrt(y)
    */
-  inline def provided(inline cond: Boolean)(using CanErr[Unit]): Unit =
-    if !cond then boundary.break(Err(()))
+  inline def provided(inline cond: Boolean)(using CanErr[Null]): Unit =
+    if !cond then boundary.break(Err(null))
 
   /** If `cond` does not hold, abort with given error `err`. Typically used in a `maybe` block:
    *

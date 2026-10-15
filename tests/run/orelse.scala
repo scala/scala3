@@ -1,6 +1,6 @@
 // scalajs: --skip
-// scalajs needs to be diasabled since `null` gives an Err(undefined) instead of an Err(())
-// TODO: Figure out how to fix this under scalajs
+// TODO: Check whether this test now works under Scala.js. It used to fail when `T?` was
+// `T ? Unit`, since there `null` gave an Err(undefined) instead of an Err(()).
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
 

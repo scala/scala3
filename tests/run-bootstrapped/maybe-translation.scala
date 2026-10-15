@@ -28,14 +28,12 @@ def bar(x: Int?) =
                   }
                  else ()
                 {
-                  case val x3: scala.runtime.BoxedUnit =
-                    scala.runtime.BoxedUnit.UNIT
-                  case val e: scala.runtime.BoxedUnit = x3
-                  return[matchResult1] return[boundary1] null:Object:Object
+                  case val e: Null = null
+                  return[matchResult1] return[boundary1] null
                 }
                 throw new MatchError(x1)
               }
-          if (y > 0).unary_!() then return[boundary1] null:Object:Object else ()
+          if (y > 0).unary_!() then return[boundary1] null else ()
           Int.box(y:Int)
         }
       ):Object:Object

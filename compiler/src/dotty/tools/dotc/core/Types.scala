@@ -387,7 +387,7 @@ object Types extends TypeUtils {
       case tp: ThisType => true
       case tp: SuperType => true
       case tp: ClassInfo => !tp.cls.isNullableClass && !tp.isNothingType
-      case MaybeType(_, errArg) => !norMaybe && !errArg.admitsUnit
+      case MaybeType(_, errArg) => !norMaybe && !errArg.canBeNull
       case tp: TypeProxy => tp.superType.isNotNull(norMaybe)
       case AndType(tp1, tp2) => tp1.isNotNull(norMaybe) || tp2.isNotNull(norMaybe)
       case OrType(tp1, tp2) => tp1.isNotNull(norMaybe) && tp2.isNotNull(norMaybe)
@@ -410,9 +410,11 @@ object Types extends TypeUtils {
         case _ => false
       )
 
-    /** Can this type have () as a value? */
-    def admitsUnit(using Context): Boolean =
-      defn.unitSuperClasses.contains(classSymbol)
+    /** Can `null` be a value of this type or of one of its instances? Unlike `admitsNull`,
+     *  this also holds for abstract types whose upper bound is nullable, since they could
+     *  be instantiated to `Null`.
+     */
+    def canBeNull(using Context): Boolean = !isNotNull && !isNothingType
 
     /** Is this type produced as a repair for an error? */
     final def isError(using Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]

@@ -4,7 +4,7 @@ import language.experimental.errorHandling
 
 import compiletime.Maybe
 object G {
-  def unapply(m: Any): Maybe[Any, Unit] = Ok("")
+  def unapply(m: Any): Maybe[Any, Null] = Ok("")
 }
 
 object H {

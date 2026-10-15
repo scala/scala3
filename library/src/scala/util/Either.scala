@@ -528,9 +528,9 @@ sealed abstract class Either[+A, +B] extends Product with Serializable {
   }
 
   @experimental
-  final def toMaybe: Maybe[B, Unit] = this match
+  final def toMaybe: Maybe[B, Null] = this match
     case Right(b) => Ok(b)
-    case _        => null.asInstanceOf[Maybe[B, Unit]]
+    case _        => null.asInstanceOf[Maybe[B, Null]]
 
   @experimental
   final def toResult: Maybe[B, A] = this match

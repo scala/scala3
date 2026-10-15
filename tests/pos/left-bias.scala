@@ -11,7 +11,7 @@ def bar(x: Int ? String) =
   val y = foo(x)
   val _: Boolean ? String = y
 
-// Optional types `T?`, i.e. `T ? Unit`
+// Optional types `T?`, i.e. `T ? Null`
 def optional(x: Int?) =
   val y = foo(x)
   val _: Boolean? = y

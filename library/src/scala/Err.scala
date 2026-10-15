@@ -11,7 +11,7 @@ object Err:
   //  3.10.0 compiler. `inline` is also benefical since it can
   //  remove the condition and the `if` when the argument is known.
   inline def apply[E](e: E): Maybe[Nothing, E] =
-    (if e == () then null else new runtime.Fail(e))
+    (if e == null then null else new runtime.Fail(e))
       .asInstanceOf[Maybe[Nothing, E]]
 
   /** Wll be replaced by compiler with specialized code */

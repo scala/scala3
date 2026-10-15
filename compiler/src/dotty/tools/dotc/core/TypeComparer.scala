@@ -856,7 +856,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case OrNull(tp2a) =>
             tp1w match
               case MaybeType(tp1a, errArg) =>
-                if errArg.isRef(defn.UnitClass) && tp1a.isNotNullNorMaybe then
+                if errArg.isRef(defn.NullClass) && tp1a.isNotNullNorMaybe then
                   return recur(tp1a, tp2a)
               case _ =>
           case _ =>
@@ -1044,8 +1044,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 !ctx.explicitNulls && isNullable(tp.underlying)
               case tp: RefinedOrRecType => isNullable(tp.parent)
               case AppliedType(tycon, _ :: errArg :: Nil) if tycon.isRef(defn.MaybeClass) =>
-                // null <: T ? Unit
-                isSubType(defn.UnitType, errArg)
+                // null <: T ? E if null <: E
+                isSubType(defn.NullType, errArg)
               case tp: AppliedType => isNullable(tp.tycon)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)

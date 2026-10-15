@@ -509,6 +509,7 @@ class Definitions {
     @tu lazy val Ok_unapply: Symbol = OkModule.requiredMethod(nme.unapply)
 
   @tu lazy val ErrModule: Symbol = requiredModule("scala.Err")
+    @tu lazy val Err_apply: Symbol = ErrModule.requiredMethod(nme.apply)
     @tu lazy val Err_unapply: Symbol = ErrModule.requiredMethod(nme.unapply)
 
   // More synthetic symbols
@@ -1614,8 +1615,6 @@ class Definitions {
     Set(Caps_erasedValue, Caps_unsafeErasedValue)
   @tu lazy val erasedValueMethods =
     capsErasedValueMethods + Compiletime_erasedValue
-
-  @tu lazy val unitSuperClasses: Set[Symbol] = Set(UnitClass, AnyValClass, AnyClass)
 
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))

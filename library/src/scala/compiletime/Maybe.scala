@@ -47,22 +47,22 @@ object Maybe {
       case Ok(y) => Right(y)
       case Err(e) => Left(e)
 
-  extension [A](x: Maybe[A, Unit])
+  extension [A](x: Maybe[A, Null])
     def toOption: Option[A] = x.runtimeChecked match
       case Ok(y) => Some(y)
       case Err(e) => None
 
-    def filter(p: A => Boolean): Maybe[A, Unit] = x.runtimeChecked match
+    def filter(p: A => Boolean): Maybe[A, Null] = x.runtimeChecked match
       case Ok(y) if p(y) => x
-      case _ => null.asInstanceOf[Maybe[A, Unit]]
+      case _ => null.asInstanceOf[Maybe[A, Null]]
 
-    def filterNot(p: A => Boolean): Maybe[A, Unit] = x.filter(!p(_))
+    def filterNot(p: A => Boolean): Maybe[A, Null] = x.filter(!p(_))
 
     def withFilter(p: A => Boolean): WithFilter[A] = WithFilter(x, p)
 
-  class WithFilter[A](x: Maybe[A, Unit], p: A => Boolean):
-    def map[B](f: A => B): Maybe[B, Unit] = x.filter(p).map(f)
-    def flatMap[B](f: A => Maybe[B, Unit]): Maybe[B, Unit] = x.filter(p).flatMap(f)
+  class WithFilter[A](x: Maybe[A, Null], p: A => Boolean):
+    def map[B](f: A => B): Maybe[B, Null] = x.filter(p).map(f)
+    def flatMap[B](f: A => Maybe[B, Null]): Maybe[B, Null] = x.filter(p).flatMap(f)
     def foreach[U](f: A => U): Unit = x.filter(p).foreach(f)
     def withFilter(q: A => Boolean): WithFilter[A] = new WithFilter(x, x => p(x) && q(x))
 }

@@ -1,6 +1,6 @@
 ==== x
 Right(s)
-Left(())
+Left(null)
 Right(s)
 Left(bad)
 ==== y

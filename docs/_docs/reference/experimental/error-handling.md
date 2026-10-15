@@ -139,7 +139,7 @@ To go from values `T` to maybe types `T ? E` and back, we use `Ok` as before. Fo
       log(s)
       0
 ```
-The unary maybe type `T?` is now simply an abbreviation for `T ? Unit` where the error component carries no particular information. One tricky aspect is that there are now two ways to signal an error for a maybe type: `null` and `Err(())`. The two ways must come down to the same representation. So we make sure in the `Err` constructor that `Err(()) = null`, and in the `Err` extractor that a `null` value matches an `Err(())` pattern.
+The unary maybe type `T?` is now simply an abbreviation for `T ? Null`, where the error component carries no particular information. One tricky aspect is that there are now two ways to signal an error for a maybe type: `null` and `Err(null)`. The two ways must come down to the same representation. So we make sure in the `Err` constructor that `Err(null) = null`, and in the `Err` extractor that a `null` value matches an `Err(null)` pattern.
 
 The mechanics of all this are a straightforward extension of the scheme for maybe types.
 
@@ -152,12 +152,12 @@ Here, `Fail` is the type of invalid (error) values. Like `Valid`, it is an inter
   case class Fail[+E](elem: E)
 ```
 
-The `Err` constructor produces `null` if it is given a unit argument `()`.
+The `Err` constructor produces `null` if it is given a `null` argument.
 ```
-Err(x)    --->     null      if x == ()
+Err(x)    --->     null      if x == null
           --->     Fail(x)   otherwise
 ```
-The `Err` pattern match goes the other way, producing a `()` error value when matching `null`.
+The `Err` pattern match goes the other way, producing a `null` error value when matching `null`.
 
 The `Ok` constructor is now defined as follows:
 ```scala
@@ -190,7 +190,7 @@ so the result is morally the same as for `Either`, even though the roles of the 
 The new type `T ? E` can express a panoply of existing types in Scala:
 
 ```scala
-  Option[T]       ~~    T ? Unit  =  T?
+  Option[T]       ~~    T ? Null  =  T?
   Either[E, T]    ~~    T ? E
   Try[T]          ~~    T ? Exception
 ```
@@ -302,7 +302,7 @@ So, in terms of types, `maybe` and `?` are duals of each other. `maybe` maps a b
 
 ## Internals
 
-Maybe types are represented internally as instances of trait `scala.compiletime.Maybe`. `T?` is represented as `Maybe[T, Unit]` and `T ? E` is represented as `Maybe[T, E]`. The `Maybe` trait
+Maybe types are represented internally as instances of trait `scala.compiletime.Maybe`. `T?` is represented as `Maybe[T, Null]` and `T ? E` is represented as `Maybe[T, E]`. The `Maybe` trait
 is defined as follows:
 
     ```scala
@@ -373,11 +373,11 @@ is defined as follows:
 
     class Either[+A, +B]
       ...
-      final def toMaybe: Maybe[B, Unit] = this match
+      final def toMaybe: B? = this match
         case Right(b) => Ok(b)
         case _ => null
 
-      final def toResult: Maybe[B, A] = this match
+      final def toResult: B ? A = this match
         case Right(b) => Ok(b)
         case Left(a) => Err(a)
 
@@ -387,11 +387,11 @@ is defined as follows:
 
     - `T <: T?` if `T` is disjoint from `Null` and `Maybe[?, ?]`
     - `T? <: T | Null` if `T` disjoint from `Null` and `Maybe[?, ?]`
-    - `Null <: T | Unit`
+    - `Null <: T ? E` if `Null <: E`, in particular `Null <: T?`
  - TypeErasure erases `T ? E` to the erasure of `T` if the following
    conditions are met:
      - `T` is a reference type disjoint from `Null`
-     - `E` is `Unit` or `Nothing`
+     - `E` is `Null` or `Nothing`
 
    Otherwise `T ? E` is erased to `Object`.
 

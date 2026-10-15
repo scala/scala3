@@ -725,7 +725,7 @@ object Inlines:
     /** The Inlined node representing the inlined call */
     def expand(rhsToInline: Tree): Tree =
 
-      // Special handling of `requireConst`, `codeOf`, and `Ok`
+      // Special handling of `requireConst`, `codeOf`, `Ok`, and `Err`
       callValueArgss match
         case (arg :: Nil) :: Nil =>
           if inlinedMethod == defn.Compiletime_requireConst then
@@ -737,6 +737,16 @@ object Inlines:
             return Intrinsics.codeOf(arg, call.srcPos)
           else if inlinedMethod == defn.Ok_unapply && arg.tpe.isNotNullNorMaybe then
             return arg
+          else if inlinedMethod == defn.Err_apply then
+            // `Err(e)` is `null` if `e` is `null` and `Fail(e)` otherwise. Decide
+            // statically which case applies if the type of `e` tells us.
+            if arg.tpe.widen.isNullType then
+              val nullErr = nullLiteral.ensureConforms(call.tpe)
+              return (if isPureExpr(arg) then nullErr else Block(arg :: Nil, nullErr)).withSpan(call.span)
+            else if arg.tpe.isNotNull then
+              return New(defn.FailClass.typeRef.appliedTo(callTypeArgs.head.tpe), arg :: Nil)
+                .cast(call.tpe)
+                .withSpan(call.span)
         case _ =>
 
       // Special handling of `constValue[T]`, `constValueOpt[T]`, `constValueTuple[T]`, `summonInline[T]` and `summonAll[T]`

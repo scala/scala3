@@ -1000,14 +1000,13 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
   }
 
   /** The erasure of `T ? E`. A value of that type is represented at runtime either
-   *  as a value of type `T`, or, if `E` is `Unit`, as `null`, or otherwise as a
+   *  as a value of type `T`, or, if the error is `null`, as `null`, or otherwise as a
    *  `runtime.Fail` wrapping the error. So we can erase to the erasure of `T` only
-   *  if `T` cannot be `null` and no `Fail` can arise, i.e. `E` is `Unit`.
+   *  if `T` cannot be `null` and no `Fail` can arise, i.e. `E` is `Null` or `Nothing`.
    */
   private def eraseMaybe(tp: AppliedType)(using Context): Type =
     val arg :: errArg :: Nil = tp.args: @unchecked
-    if arg.isNotNull && arg.derivesFrom(defn.ObjectClass)
-       && (errArg.isRef(defn.UnitClass) || errArg.isRef(defn.NothingClass))
+    if arg.isNotNull && arg.derivesFrom(defn.ObjectClass) && errArg.isBottomTypeAfterErasure
     then apply(arg)
     else defn.ObjectType
 

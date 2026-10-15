@@ -50,12 +50,6 @@ class BetaReduce extends MiniPhase:
     if app1 ne app then report.log(i"beta reduce $app -> $app1")
     app1
 
-  /** Cleanup ifs after reduceUnitEQ */
-  override def transformIf(tree: If)(using Context): Tree = tree.cond match
-    case Literal(Constant(true)) => tree.thenp
-    case Literal(Constant(false)) => tree.elsep
-    case _ => tree
-
 object BetaReduce:
   import ast.tpd.*
 
@@ -82,9 +76,6 @@ object BetaReduce:
    *    type X1 = T1; ...; type Xm = Tm; b
    *
    *  This beta-reduction preserves the integrity of `Inlined` tree nodes.
-   *
-   *  Also, replace some == tests between constants with known outcomes by true/false.
-   *  This is useful since such tests can arise though inlining, e.g. in maybe-translation.scala.
    */
   def apply(tree: Tree)(using Context): Tree = {
     val bindingsBuf = new ListBuffer[DefTree]
@@ -118,9 +109,9 @@ object BetaReduce:
       case TypeApply(Select(fn, nme.apply), targs) if fn.tpe.typeSymbol eq defn.PolyFunctionClass =>
         reduce(fn, targs)
       case _ =>
-        inlines.Inliner.reduceUnitEQ(tree)
+        tree
   }
-  
+
   /** Beta-reduces a call to `ddef` with arguments `args` and registers new bindings.
    *  @return optionally, the expanded call, or none if the actual argument
    *          lists do not match in shape the formal parameters

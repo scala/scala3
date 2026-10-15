@@ -390,14 +390,14 @@ object PatternMatcher {
         gm.tpe.widenDealias match
           case MaybeType(res, errArg) =>
             if isErrMatch then
-              if errArg.isRef(defn.UnitClass) then
-                unitLiteral
+              if errArg.isNullType then
+                nullLiteral
               else
                 val select = gm.asInstance(defn.FailClass.typeRef.appliedTo(defn.AnyType))
                   .select(nme.elem)
-                if errArg.admitsUnit then
+                if errArg.canBeNull then
                   If(gm.nullTest(cond = true),
-                    unitLiteral.ensureConforms(errArg),
+                    nullLiteral.ensureConforms(errArg),
                     select)
                 else select
             else
@@ -542,7 +542,7 @@ object PatternMatcher {
         case UnApply(extractor, implicits, args) =>
           val mt @ MethodType(_) = extractor.tpe.widen.runtimeChecked
           val admitsNull = mt.paramInfos.headOption match
-            case Some(MaybeType(_, errTp)) => errTp.admitsUnit
+            case Some(MaybeType(_, errTp)) => errTp.canBeNull
             case _ => false
           val unappPlan = if (scrutinee.info.isBottomType)
             // Generate a throwaway but type-correct plan.
@@ -945,7 +945,7 @@ object PatternMatcher {
           scrutinee.tpe.widenDealias match
             case MaybeType(_, errArg) =>
               val test = scrutinee.nullTest(cond = false)
-              if errArg.isRef(defn.UnitClass)
+              if errArg.isNullType
               then test
               else test.and(scrutinee.isInstance(defn.FailClass.typeRef).not)
             case _ =>
@@ -956,15 +956,15 @@ object PatternMatcher {
         case IsErrTest =>
           val MaybeType(_, errTp) = scrutinee.tpe.widen.runtimeChecked
           val typeTest = scrutinee.isInstance(defn.FailClass.typeRef)
-          if errTp <:< defn.UnitType then scrutinee.nullTest(cond = true)
-          else if errTp.admitsUnit then scrutinee.nullTest(cond = true).or(typeTest)
+          if errTp <:< defn.NullType then scrutinee.nullTest(cond = true)
+          else if errTp.canBeNull then scrutinee.nullTest(cond = true).or(typeTest)
           else typeTest
         case NonNullTest =>
           scrutinee.testNotNull
         case GuardTest =>
           scrutinee
         case EqualTest(tree) =>
-          inlines.Inliner.reduceUnitEQ(tree.equal(scrutinee))
+          tree.equal(scrutinee)
         case LengthTest(len, exact) =>
           val lengthCompareSym = defn.Seq_lengthCompare.matchingMember(scrutinee.tpe)
           if (lengthCompareSym.exists)

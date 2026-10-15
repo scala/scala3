@@ -1,5 +1,6 @@
 // scalajs: --skip
-// scalajs needs to be disabled since `null` gives an Err(undefined) instead of an Err(())
+// TODO: Check whether this test now works under Scala.js. It used to fail when `T?` was
+// `T ? Unit`, since there `null` gave an Err(undefined) instead of an Err(()).
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
 
@@ -24,7 +25,7 @@ def maybeToOption() =
   val m3: String? = "abc"
   val m4: String? = null
   val m5: Int? = Ok(2)
-  val m6: Int? = Err(())
+  val m6: Int? = Err(null)
   println(m1.toOption)
   println(m2.toOption)
   println(m3.toOption)
@@ -73,7 +74,7 @@ def maybeToEither() =
   assert(m4.toEither == Right("abc"))
   assert(m5.toEither == Left(0))
   assert(m6.toEither == Right(3))
-  assert(m7.toEither == Left(()))
+  assert(m7.toEither == Left(null))
 
   // nested: a Maybe holding null or an Err
   val n1: (String | Null) ? String = Ok(nullStr)
@@ -169,18 +170,22 @@ def eitherToResult() =
   val e2: Either[String, Int] = Left("bad")
   val e3: Either[Int, String] = Right("abc")
   val e4: Either[Int, String] = Left(0)
-  val e5: Either[Unit, Int] = Left(())
+  val e5: Either[Null, Int] = Left(null)
+  val e6: Either[Unit, Int] = Left(())
   println(show(e1.toResult))
   println(show(e2.toResult))
   println(show(e3.toResult))
   println(show(e4.toResult))
   println(show(e5.toResult))
+  println(show(e6.toResult))
   assert(!e1.toResult.isEmpty)
   assert(e2.toResult.isEmpty)
   assert(!e3.toResult.isEmpty)
   assert(e4.toResult.isEmpty)
   assert(e5.toResult.isEmpty)
-  assert(e5.toResult == null)  // a Unit error is represented as null
+  assert(e5.toResult == null)  // a null error is represented as null
+  assert(e6.toResult.isEmpty)
+  assert(e6.toResult.asInstanceOf[Any] != null)  // a Unit error is an ordinary error
 
   // nested: an Either holding null or a Maybe on either side
   val n1: Either[String, String | Null] = Right(null)
@@ -212,7 +217,7 @@ def roundTrips() =
   val opts: List[Option[Int]] = List(Some(1), None)
   for o <- opts do
     assert(o.toMaybe.toOption == o)
-    assert(o.toMaybe.toEither == o.toRight(()))
+    assert(o.toMaybe.toEither == o.toRight(null))
   val eithers: List[Either[String, Int]] = List(Right(1), Left("bad"))
   for e <- eithers do
     assert(e.toResult.toEither == e)
