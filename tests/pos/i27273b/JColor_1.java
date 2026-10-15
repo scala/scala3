@@ -1,0 +1,1 @@
+enum JColor { RED, GREEN }
