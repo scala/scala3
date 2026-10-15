@@ -160,19 +160,24 @@ jobs:
         run: |
           ./cs/cs.exe setup --yes
           Get-ChildItem "$env:LOCALAPPDATA\Coursier\data\bin" -Force
+          Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Coursier\data\bin"
       - name: Run cs from the installed apps
         continue-on-error: true
         shell: cmd
-        run: '"%LOCALAPPDATA%\Coursier\data\bin\cs" version'
+        run: cs version
       - name: Run scala-cli from the installed apps
         continue-on-error: true
         shell: cmd
-        run: '"%LOCALAPPDATA%\Coursier\data\bin\scala-cli" version'
+        run: scala-cli version
       - name: Run scala from the installed apps
         continue-on-error: true
         shell: cmd
-        run: '"%LOCALAPPDATA%\Coursier\data\bin\scala" version'
+        run: scala version
       - name: Run a file with scala from the installed apps
         continue-on-error: true
         shell: cmd
-        run: '"%LOCALAPPDATA%\Coursier\data\bin\scala" run tests\pos\HelloWorld.scala -v'
+        run: scala run tests\pos\HelloWorld.scala -v
+      - name: Run a file with scala from the installed apps without Bloop
+        continue-on-error: true
+        shell: cmd
+        run: scala run tests\pos\HelloWorld.scala --server=false
