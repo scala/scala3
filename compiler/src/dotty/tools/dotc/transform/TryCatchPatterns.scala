@@ -70,7 +70,7 @@ class TryCatchPatterns extends MiniPhase {
   }
 
   import TryCatchPatterns.SimpleMultiCatch
-  private def transformTryCases(tryCases: List[CaseDef])(using Context) = tryCases.map {
+  private def transformTryCases(tryCases: List[CaseDef])(using Context) = tryCases.mapConserve {
     case cdef @ CaseDef(Typed(_, tpt @ DisjointUnion(types)), _, _) =>
       cdef.withAttachment(SimpleMultiCatch, types)
     case cdef @ CaseDef(Bind(_, Typed(_, tpt @ DisjointUnion(types))), _, _) =>
