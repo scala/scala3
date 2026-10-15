@@ -1,0 +1,7 @@
+> compile
+
+# give A.m a body
+$ copy-file changes/A.scala A.scala
+
+# B must be recompiled: B.m now needs an override modifier
+-> compile

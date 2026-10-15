@@ -710,7 +710,8 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
 
   def apiModifiers(sym: Symbol): api.Modifiers = {
     val absOver = sym.is(AbsOverride)
-    val abs = absOver || sym.isOneOf(Trait | Abstract | Deferred)
+    // `Trait | Abstract | Deferred` would be a type-only flag set, missing deferred terms
+    val abs = absOver || sym.isOneOf(Trait | Abstract) || sym.is(Deferred)
     val over = absOver || sym.is(Override)
     new api.Modifiers(abs, over, sym.is(Final), sym.is(Sealed),
       sym.isOneOf(GivenOrImplicit), sym.is(Lazy), sym.is(Macro), sym.isSuperAccessor)
