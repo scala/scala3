@@ -171,9 +171,31 @@ enum ToggleableFeature(val cssClass: String, val name: String, val label: String
  *  empty) when they are hidden. For example, a pure function arrow under
  *  capture checking is `Toggleable(CaptureChecking, on = ->, off = =>)`,
  *  while a capture set `^{io}` is purely additive and has an empty `off`.
+ *  `hint` explains the `on` fragment when hovering over it.
  */
-case class Toggleable(feature: ToggleableFeature, on: Signature, off: Signature = Nil) extends SignaturePart:
+case class Toggleable(feature: ToggleableFeature, on: Signature, off: Signature = Nil, hint: String = "") extends SignaturePart:
   override val name: String = on.map(_.name).mkString
+
+/** Hover texts explaining the fragments of capture checking. `set` is a
+ *  rendered capture set, such as `{io, fs}`.
+ */
+object CaptureHints:
+  val pureArrow = "Pure function: uses no capabilities"
+  def capturingArrow(set: String) = s"Function that may use the capabilities $set"
+  val pureContextArrow = "Pure context function: uses no capabilities"
+  def capturingContextArrow(set: String) = s"Context function that may use the capabilities $set"
+  val pureByName = "By-name parameter whose evaluation uses no capabilities"
+  def capturingByName(set: String) = s"By-name parameter whose evaluation may use the capabilities $set"
+  val polyArrow = "Applying this polymorphic function to types uses no capabilities"
+  val capturesAny = "May use any capability"
+  def captures(set: String) = if set == "{}" then "Uses no capabilities" else s"May use the capabilities $set"
+  def capabilitySet(set: String) = if set == "{}" then "The empty set of capabilities" else s"The set of capabilities $set"
+  val captureSetParameter = "Capture set parameter: stands for a set of capabilities"
+  val captureSetMember = "Capture set member: stands for a set of capabilities"
+  val uses = "The capabilities this class uses"
+  val consumeParameter = "Consumed: the argument cannot be used after the call"
+  val consumeMethod = "Consumed: this object cannot be used after the call"
+  val update = "Update method: may change this object"
 
 type Signature = List[SignaturePart]
 
