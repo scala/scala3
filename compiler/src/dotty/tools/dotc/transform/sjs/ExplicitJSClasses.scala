@@ -265,9 +265,10 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Is the given symbol a JS class (that is not a trait nor an object)? */
   private def isJSClass(sym: Symbol)(using Context): Boolean = {
+    // Use `lastKnownDenotation` as this is used while computing denots so it may otherwise lead to an infinite cycle
     sym.isClass &&
-    !sym.isOneOf(Trait | Module) &&
-    sym.hasAnnotation(jsdefn.JSTypeAnnot)
+    !sym.lastKnownDenotation.isOneOf(Trait | Module) &&
+    sym.lastKnownDenotation.hasAnnotation(jsdefn.JSTypeAnnot)
   }
 
   /** Is the given symbol a Module that should be exposed? */
@@ -337,10 +338,6 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
     case tp @ ClassInfo(_, cls, _, decls, _) if !cls.is(JavaDefined) && mayNeedJSClassOrJSObjectFields(cls) =>
-      decls.foreach(sym =>
-        if cls.toString == "class HashMapIterator" && sym.toString == "method next" then
-          val _ = sym.denot // updates the symbol's checkedPeriod / lastDenot and makes it work, but why?)
-      )
       val innerJSClasses = decls.filter(isJSClass)
 
       val innerObjectsForAdHocExposed =
