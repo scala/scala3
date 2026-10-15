@@ -995,11 +995,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // branches of the AndType tp1 conforms to tp2, but its base type does
           // not, or else that its base type for cls2 does not exist, in which case
           // it would not show up in `base`. In either case, we need to also fall back
-          // to fourthTry. Test cases are i18266.scala and i18226a.scala.
+          // to fourthTry. Test cases are i18226.scala and i18226a.scala.
           // If base is a disjunction, this might have come from a tp1 type that
           // expands to a match type. In this case, we should try to reduce the type
           // and compare the redux. This is done in fourthTry
-          either(checkBase, fourthTry)
+          checkBase || fourthTry
         else
           checkBase
       else fourthTry
