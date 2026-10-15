@@ -59,10 +59,22 @@ trait TypesSupport:
   private def tpe(using Quotes)(symbol: reflect.Symbol)(using inCC: Option[Any]): SSignature =
     import SymOps._
     val dri: Option[DRI] = Option(symbol).filterNot(_.isHiddenByVisibility).map(_.dri)
-    if ccEnabled && inCC.isDefined then // we are in the context of a capture set and want paths to be rendered plainly
-      dotty.tools.scaladoc.Plain(symbol.normalizedName).l
+    if ccEnabled && inCC.isDefined then // we are in the context of a capture set
+      capabilityPath(symbol, symbol.normalizedName)
     else
       dotty.tools.scaladoc.Type(symbol.normalizedName, dri).l
+
+  /** A class or term on a path in a capture set or uses clause, e.g. `Outer` and `io`
+   *  in `^{Outer.this.io}`. Classes and members of classes link to their documentation;
+   *  parameters, which have no documentation of their own, are rendered plainly.
+   */
+  private def capabilityPath(using Quotes)(symbol: reflect.Symbol, name: String): SSignature =
+    import SymOps._
+    val documented =
+      symbol.exists && !symbol.isTypeParam && !symbol.flags.is(reflect.Flags.Param)
+      && (symbol.isClassDef || symbol.owner.isClassDef) && !symbol.isHiddenByVisibility
+    if documented then dotty.tools.scaladoc.Type(name, Some(symbol.dri)).l
+    else dotty.tools.scaladoc.Plain(name).l
 
   private def commas(lists: List[SSignature]) = lists match
     case List(single) => single
@@ -358,6 +370,8 @@ trait TypesSupport:
         val typeSig = tr.termSymbol.tree match
           case vd: ValDef if tr.termSymbol.flags.is(Flags.Module) =>
             inner(vd.tpt.tpe, skipThisTypePrefix)
+          case _ if ccEnabled && inCC.isDefined && !tr.isCaptureRoot && !tr.isFreshCap =>
+            capabilityPath(tr.termSymbol, typeName)
           case _ => plain(typeName).l
         prefix ++ typeSig ++ suffix
 
@@ -547,10 +561,8 @@ trait TypesSupport:
       case OnlyCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("only"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
       case ExceptCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("except"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
       case t @ ThisType(tpe)      =>
-        // Render `this` for self-references and `EnclosingClass.this` otherwise.
-        // We deliberately call `inner` without `inCC` in scope so the enclosing
-        // class name renders as a clickable Type element rather than Plain
-        // (see the `tpe(symbol)` helper, which collapses to Plain when inCC is set).
+        // Render `this` for self-references and `EnclosingClass.this` otherwise,
+        // with the enclosing class name as a clickable Type element.
         if skipPrefix(t, elideThis, originalOwner, skipThisTypePrefix) then List(Keyword("this"))
         else inner(tpe, skipThisTypePrefix) ++ plain(".").l ++ List(Keyword("this"))
       case t                      => inner(t, skipThisTypePrefix)(using skipTypeSuffix = true, inCC = Some(Nil))
