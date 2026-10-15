@@ -82,16 +82,14 @@ class TryCatchPatterns extends MiniPhase {
   private def isCatchCase(cdef: CaseDef)(using Context): Boolean = cdef match {
     case CaseDef(Typed(Ident(nme.WILDCARD), tpt), guard, _) =>
       warnIfUnreasonableCatch(tpt)
-      tpt match {
-        case DisjointUnion(types) => guard == EmptyTree && types.forall(isSimpleThrowable)
-        case _ => guard == EmptyTree && isSimpleThrowable(tpt.tpe)
-      }
+      guard == EmptyTree && tpt.match
+        case DisjointUnion(types) => types.forall(isSimpleThrowable)
+        case _ => isSimpleThrowable(tpt.tpe)
     case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt)), guard, _) =>
       warnIfUnreasonableCatch(tpt)
-      tpt match {
-        case DisjointUnion(types) => guard == EmptyTree && types.forall(isSimpleThrowable)
-        case _ => guard == EmptyTree && isSimpleThrowable(tpt.tpe)
-      }
+      guard == EmptyTree && tpt.match
+        case DisjointUnion(types) => types.forall(isSimpleThrowable)
+        case _ => isSimpleThrowable(tpt.tpe)
     case _ =>
       if isDefaultCase(cdef) then
         warnForUnreasonableCatch(cdef)
