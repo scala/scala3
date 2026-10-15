@@ -129,3 +129,50 @@ jobs:
         shell: cmd
         env:
           LAUNCHER_PREFIX: 'dist\target\universal\stage'
+
+      - name: "[spike] Run with the Bloop compilation server (no --server=false)"
+        continue-on-error: true
+        run: 'dist\target\universal\stage\bin\scala.bat run tests\pos\HelloWorld.scala -v'
+        shell: cmd
+      - name: "[spike] Build the x86_64 native launcher distribution"
+        continue-on-error: true
+        run: sbt "dist-win-x86_64/Universal/stage"
+      - name: "[spike] Run the launcher command tests with the x86_64 native launcher (Prism emulation)"
+        continue-on-error: true
+        run: './project/scripts/native-integration/winTests.bat'
+        shell: cmd
+
+  win-aarch64-coursier:
+    name: "[spike] Install Scala with Coursier on Windows ARM64"
+    runs-on: windows-11-arm
+    continue-on-error: true
+    if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]') ) ||
+        (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3' )
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download the JVM-based Coursier launcher for Windows ARM64
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri 'https://github.com/coursier/coursier/releases/download/v2.1.26/cs-aarch64-pc-win32-jvm.zip' -OutFile cs.zip
+          Expand-Archive cs.zip -DestinationPath cs
+      - name: Run cs setup
+        shell: pwsh
+        run: |
+          ./cs/cs.exe setup --yes
+          Get-ChildItem "$env:LOCALAPPDATA\Coursier\data\bin" -Force
+      - name: Run cs from the installed apps
+        continue-on-error: true
+        shell: cmd
+        run: '"%LOCALAPPDATA%\Coursier\data\bin\cs" version'
+      - name: Run scala-cli from the installed apps
+        continue-on-error: true
+        shell: cmd
+        run: '"%LOCALAPPDATA%\Coursier\data\bin\scala-cli" version'
+      - name: Run scala from the installed apps
+        continue-on-error: true
+        shell: cmd
+        run: '"%LOCALAPPDATA%\Coursier\data\bin\scala" version'
+      - name: Run a file with scala from the installed apps
+        continue-on-error: true
+        shell: cmd
+        run: '"%LOCALAPPDATA%\Coursier\data\bin\scala" run tests\pos\HelloWorld.scala -v'
