@@ -1,6 +1,3 @@
-// scalajs: --skip
-// TODO: Check whether this test now works under Scala.js. It used to fail when `T?` was
-// `T ? Unit`, since there `null` gave an Err(undefined) instead of an Err(()).
 //> using options -Yexplicit-nulls
 import language.experimental.errorHandling
 
