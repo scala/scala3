@@ -486,7 +486,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         if list.isEmpty then Nil
          else Seq(div(cls := s"mono-small-block $className")(
          list.map(link =>
-          div(link.kind.name," ", link.signature.map(renderElement(_)))),
+          div(renderElement(Keyword(link.kind.name)), " ", link.signature.map(renderElement(_)))),
           if(expandable) then span(cls := "show-all-code show-content text-button h100")("Show all") else span()
         ))
 
