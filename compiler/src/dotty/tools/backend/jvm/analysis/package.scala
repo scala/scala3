@@ -237,6 +237,18 @@ package dotty.tools.backend.jvm
  * to #ins * #loc^2).
  *
  *
+ * Producer/consumer analysis and the analysis budget
+ * --------------------------------------------------
+ *
+ * The model above misses SourceValue (producer/consumer) analysis, where values are producer sets
+ * that grow at control flow joins, especially exception handlers. Nested try/finally after inlining
+ * (e.g. `Using.resources`) can take hundreds of milliseconds while passing the `opt.Limits` checks.
+ *
+ * So a SourceValue analysis charges its merge work to a per-method `AnalysisBudget`
+ * (`-Yopt-analysis-budget`); once spent, the method's remaining analysis-based optimizations are
+ * skipped. Unlike a timeout this is deterministic. `Limits` remains a cheap upfront gate.
+ *
+ *
  * Measuring analysis execution time
  * ---------------------------------
  *
