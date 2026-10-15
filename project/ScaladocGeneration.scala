@@ -144,7 +144,7 @@ object ScaladocGeneration {
   }
 
   case class SuppressCC(value: Boolean) extends Arg[Boolean] {
-    def key: String = "-suppressCC"
+    def key: String = "-suppress-cc"
   }
 
   case class NoSnippetNamesFor(value: List[String]) extends Arg[List[String]] {
