@@ -522,6 +522,61 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     button(cls := "clearButton label-only-button",  testId := "filterBarClearButton")("Clear all"),
   )
 
+  /** A link to the documentation of `feature`: into this site if it contains
+   *  the feature's page (as the Scala 3 documentation does), otherwise online.
+   */
+  private def featureDocsLink(feature: ToggleableFeature): String =
+    summon[DocContext].staticSiteContext
+      .flatMap { site =>
+        val source = site.docsPath.resolve(s"${feature.docsPage}.md")
+        site.staticSiteRoot.siteMappings.get(source).map(site.driFor)
+      }
+      .flatMap(link)
+      .getOrElse(feature.onlineDocsUrl)
+
+  /** Notices with switches showing or hiding the fragments of toggleable
+   *  features (see featureToggles.js), placed below the main signature since
+   *  they affect every signature on the page. The switches are rendered
+   *  checked, the script syncs them with the reader's stored preference.
+   */
+  private def buildFeatureToggles(m: Member, features: Seq[ToggleableFeature]): Seq[AppliedTag] =
+    if features.isEmpty then Nil
+    else Seq(div(cls := "feature-toggles body-small")(
+      features.map { feature =>
+        val descriptionId = s"feature-${feature.cssClass}-description"
+        // Pages of classes without the feature have its fragments through
+        // members defined elsewhere, e.g. inherited from the standard library
+        val enabledHere = feature match
+          case ToggleableFeature.CaptureChecking => m.captureChecked
+        val description = m.kind match
+          case Kind.Package | Kind.RootPackage => s"Some classes in this package were compiled with ${feature.name} enabled."
+          case k: Classlike if enabledHere => s"This ${k.name} was compiled with ${feature.name} enabled."
+          case _ if enabledHere => s"This was compiled with ${feature.name} enabled."
+          case _ => s"Some inherited members were compiled with ${feature.name} enabled."
+        div(cls := "feature-toggle-notice", Attr("data-feature") := feature.cssClass)(
+          div(cls := "feature-toggle-text", id := descriptionId)(
+            span(cls := "feature-toggle-title")(feature.name.capitalize),
+            span(description),
+            a(href := featureDocsLink(feature))("Learn more"),
+          ),
+          label(cls := "feature-toggle")(
+            span(feature.label),
+            span(cls := "switch")(
+              input(
+                `type` := "checkbox",
+                Attr("role") := "switch",
+                Attr("aria-describedby") := descriptionId,
+                Attr("data-feature-toggle") := feature.cssClass,
+                Attr("checked") := "",
+                Attr("autocomplete") := "off", // the script owns the state, also on history navigation
+              ),
+              span(cls := "slider")(),
+            ),
+          ),
+        )
+      }
+    ))
+
   private def companionBadge(m: Member): Seq[AppliedTag] = m.companion.fold(Nil) { companion =>
     Seq(div(cls := "companion-badge body-small")(
       span(
@@ -555,16 +610,24 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           )
         )
 
+    val info = memberInfo(m, full = true)
+    val members = Option.when(m.members.length > 0)(buildMembers(m))
+
+    // Only offer switches for the toggleable features whose fragments occur on this page
+    val rendered = (intro ++ info ++ members).map(_.toString)
+    val features = ToggleableFeature.values.toSeq.filter(f => rendered.exists(_.contains(s"""class="${f.wrapperClass}"""")))
+
     val memberContent = div(
       intro,
-      memberInfo(m, full = true),
-      if m.members.length > 0 then
-        Seq(section(id := "members-list")(
+      buildFeatureToggles(m, features),
+      info,
+      members.map { list =>
+        section(id := "members-list")(
           h2(cls := "h500")("Members list"),
           buildDocumentableFilter,
-          buildMembers(m)
-        ))
-      else Nil
+          list
+        )
+      }.toSeq
     )
 
     val memberDocument = Jsoup.parse(memberContent.toString)

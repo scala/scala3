@@ -114,7 +114,8 @@ case class TermParameter(
   dri: DRI,
   signature: Signature,
   isExtendedSymbol: Boolean = false,
-  isGrouped: Boolean = false
+  isGrouped: Boolean = false,
+  ccModifiers: String = "" // modifiers specific to capture checking, e.g. "consume "
 )
 
 type TypeParameterList = Seq[TypeParameter]
@@ -138,6 +139,41 @@ case class Name(override val name: String, dri: DRI) extends SignaturePart
 case class Type(override val name: String, dri: Option[DRI]) extends SignaturePart
 case class Keyword(override val name: String) extends SignaturePart
 case class Plain(override val name: String) extends SignaturePart
+
+/** An experimental language feature whose signature fragments can be toggled
+ *  on and off interactively in the rendered documentation.
+ *
+ *  @param cssClass          identifies the feature in the markup and in featureToggles.js
+ *  @param name              the feature's name in running text, as in "compiled with <name> enabled"
+ *  @param label             the label of the switch toggling the feature's fragments
+ *  @param docsPage          the feature's page in the Scala 3 documentation, relative to `_docs`
+ */
+enum ToggleableFeature(val cssClass: String, val name: String, val label: String, val docsPage: String):
+  case CaptureChecking extends ToggleableFeature(
+    "cc",
+    name = "capability tracking",
+    label = "Show tracked capabilities",
+    docsPage = "reference/experimental/capture-checking/overview"
+  )
+
+  /** The feature's page in the online Scala 3 documentation: the nightly one
+   *  for nightly and snapshot builds of scaladoc, the stable one otherwise.
+   */
+  def onlineDocsUrl: String =
+    if BuildInfo.version.contains("-bin-") then s"https://nightly.scala-lang.org/docs/$docsPage.html"
+    else s"https://docs.scala-lang.org/scala3/$docsPage.html"
+
+  /** The class of the spans wrapping the feature's signature fragments */
+  def wrapperClass: String = s"feature-$cssClass"
+
+/** A signature fragment that depends on a toggleable language feature.
+ *  `on` is rendered when the feature's annotations are shown, `off` (usually
+ *  empty) when they are hidden. For example, a pure function arrow under
+ *  capture checking is `Toggleable(CaptureChecking, on = ->, off = =>)`,
+ *  while a capture set `^{io}` is purely additive and has an empty `off`.
+ */
+case class Toggleable(feature: ToggleableFeature, on: Signature, off: Signature = Nil) extends SignaturePart:
+  override val name: String = on.map(_.name).mkString
 
 type Signature = List[SignaturePart]
 
@@ -181,7 +217,8 @@ case class Member(
   knownChildren: Seq[LinkToType] = Nil,
   companion: Option[(Kind, DRI)] = None,
   deprecated: Option[Annotation] = None,
-  experimental: Option[Annotation] = None
+  experimental: Option[Annotation] = None,
+  captureChecked: Boolean = false // a class compiled with capture checking (unless -suppress-cc)
 ):
   def needsOwnPage: Boolean =
     def properKind(kind: Kind): Boolean = kind match
@@ -257,12 +294,7 @@ extension (m: Module)
 
 extension (s: Signature)
   def getName: String =
-    s.map {
-      case Name(s, _) => s
-      case Plain(s) => s
-      case Type(s, _) => s
-      case Keyword(s) => s
-    }.mkString
+    s.map(_.name).mkString
 
 case class TastyMemberSource(path: java.nio.file.Path, lineNumber: Int)
 
