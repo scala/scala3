@@ -5,12 +5,12 @@ package semanticdb
 import core.*
 import Phases.*
 import ast.tpd.*
-import ast.Trees.{mods, WithEndMarker}
+import ast.Trees.{WithEndMarker, mods}
 import Contexts.*
 import Symbols.*
 import Flags.*
 import Names.Name
-import Types._
+import Types.*
 import StdNames.{nme, tpnme}
 import NameOps.*
 import Denotations.StaleSymbol
@@ -18,15 +18,15 @@ import util.Spans.Span
 import util.SourceFile
 
 import scala.collection.mutable
-import scala.annotation.{ threadUnsafe => tu, tailrec }
+import scala.annotation.{tailrec, threadUnsafe as tu}
 import scala.jdk.CollectionConverters.*
 import scala.PartialFunction.condOpt
 import typer.ImportInfo.withRootImports
-
-import dotty.tools.dotc.{semanticdb => s}
+import dotty.tools.dotc.semanticdb as s
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.semanticdb.DiagnosticOps.*
-import scala.util.{Using, Failure, Success}
+
+import scala.util.{Failure, Success, Using}
 import java.nio.file.Path
 
 
@@ -168,6 +168,7 @@ private[semanticdb] object ExtractSemanticDB:
       synthetics = synthetics,
     )
     val docs = TextDocuments(List(doc))
+    Files.deleteIfExists(outpath) // ensure if it points to a symlink we replace it
     val out = Files.newOutputStream(outpath)
     try
       val stream = internal.SemanticdbOutputStream.newInstance(out)
@@ -186,6 +187,7 @@ private[semanticdb] object ExtractSemanticDB:
       val sin = internal.SemanticdbInputStream.newInstance(in)
       val docs = TextDocuments.parseFrom(sin)
 
+      Files.deleteIfExists(outpath)
       val out = use(Files.newOutputStream(outpath))
       val sout = internal.SemanticdbOutputStream.newInstance(out)
       TextDocuments(docs.documents.map(_.withDiagnostics(diagnostics))).writeTo(sout)
