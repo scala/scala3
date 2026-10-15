@@ -183,12 +183,16 @@ jobs:
         run: scala run tests\pos\HelloWorld.scala --server=false
       - name: Write a script resolving directories the way Bloop does
         shell: pwsh
-        run: Set-Content dirs.sc 'println(dev.dirs.ProjectDirectories.from("", "", "bloop").cacheDir)'
+        run: Set-Content dirs.sc 'println(dev.dirs.ProjectDirectories.from(null, null, "bloop", dev.dirs.jni.WindowsJni.getJdkAwareSupplier()).cacheDir)'
       - name: Resolve directories with windows-jni-utils 0.3.3 (used by Bloop 2.1.2)
         continue-on-error: true
         shell: pwsh
-        run: scala run dirs.sc --server=false --dep io.get-coursier.util:directories-jni:0.1.2 --dep io.get-coursier.jniutils:windows-jni-utils:0.3.3
+        run: scala run dirs.sc --server=false --jvm 21 --dep io.get-coursier.util:directories-jni:0.1.2 --dep io.get-coursier.jniutils:windows-jni-utils:0.3.3
       - name: Resolve directories with windows-jni-utils 0.4.0
         continue-on-error: true
         shell: pwsh
-        run: scala run dirs.sc --server=false --dep io.get-coursier.util:directories-jni:0.1.2 --dep io.get-coursier.jniutils:windows-jni-utils:0.4.0
+        run: scala run dirs.sc --server=false --jvm 21 --dep io.get-coursier.util:directories-jni:0.1.2 --dep io.get-coursier.jniutils:windows-jni-utils:0.4.0
+      - name: Run a file with scala from the installed apps, with Bloop on JDK 25
+        continue-on-error: true
+        shell: cmd
+        run: scala run tests\pos\HelloWorld.scala --bloop-jvm zulu:25 -v
