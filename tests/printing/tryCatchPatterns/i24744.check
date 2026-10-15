@@ -1,4 +1,4 @@
-[[syntax trees at end of MegaPhase{protectedAccessors, extmethods, uncacheGivenAliases, checkStatic, elimByName, hoistSuperArgs, forwardDepChecks, specializeApplyMethods, tryCatchPatterns, patternMatcher, pruneInlinedMethods, pruneInlineTraits}]] // tests/printing/tryCatchPatterns/i24744.scala
+[[syntax trees at end of MegaPhase{protectedAccessors, extmethods, uncacheGivenAliases, checkStatic, elimByName, hoistSuperArgs, forwardDepChecks, specializeApplyMethods, tryCatchPatterns, patternMatcher, pruneInlineTraits}]] // tests/printing/tryCatchPatterns/i24744.scala
 package <empty> {
   class A() extends Exception() {}
   class B() extends Exception() {}
