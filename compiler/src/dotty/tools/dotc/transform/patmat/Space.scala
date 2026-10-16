@@ -1171,7 +1171,9 @@ object SpaceEngine {
 
   /** Returns `true` if the match is definitely exhaustive. */
   def checkMatch(m: Match)(using Context): Boolean =
-    inContext(ctx.withProperty(IsSubspaceCacheKey, Some(mutable.HashMap.empty))) {
+    // `maximizeType` adds pattern-bound symbols to the GADT state of its context:
+    // keep them local to this match rather than the phase (and run) context.
+    inContext(ctx.fresh.setFreshGADTBounds.setProperty(IsSubspaceCacheKey, mutable.HashMap.empty)) {
       val isExhaustive = exhaustivityCheckable(m.selector) &&
         inContext(ctx.withProperty(ExpandingCaseClassesKey, Some(mutable.Set.empty))) {
           checkExhaustivity(m)
