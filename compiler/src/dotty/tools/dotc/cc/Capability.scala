@@ -175,6 +175,7 @@ object Capabilities:
     override def exclude(cls: ClassSymbol)(using Context) = mkClassified(this, defn.AnyClass, cls :: Nil)
     override def singletonCaptureSet(using Context) = CaptureSet.universal
     override def captureSetOfInfo(using Context) = singletonCaptureSet
+    override def transClassifiers(using Context) = Unclassified
     private[Capabilities] override def cached[C <: DerivedCapability](newRef: C): C = newRef
     override def invalidateCaches() = ()
 
