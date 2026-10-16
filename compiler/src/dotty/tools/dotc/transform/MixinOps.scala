@@ -29,7 +29,12 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     )
     .enteredAfter(thisPhase)
     .asTerm.tap: forwarder =>
-      forwarder.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
+      val annots = member.annotations.filter(_.symbol != defn.TailrecAnnot)
+      // `addAnnotations` prepends one by one, reversing the order. For a Java member, whose
+      // `@throws` annotations are in the order of the `throws` clause, keep the order, so that
+      // the forwarder's `Exceptions` attribute lists them in source order.
+      if member.is(JavaDefined) then forwarder.annotations = annots
+      else forwarder.addAnnotations(annots)
       val paramSymss = forwarder.paramSymss // compute once; different from rawParamss
       forwarder.setParamss(paramSymss)
       atPhaseBeforeTransforms:
