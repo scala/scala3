@@ -6,84 +6,83 @@ import java.nio.file.Path
 import sbt._
 
 object ScaladocConfigs0 {
-  import ScaladocGeneration._
 
   private lazy val currentYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString
 
-  def dottyExternalMapping = ".*scala/.*::scaladoc3::https://nightly.scala-lang.org/api/"
-  def javaExternalMapping = ".*java/.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/java.base/"
-  def defaultSourceLinks(version: String, allowGitSHA: Boolean = true) = {
+  val dottyExternalMapping = ".*scala/.*::scaladoc3::https://nightly.scala-lang.org/api/"
+  val javaExternalMapping = ".*java/.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/java.base/"
+  def defaultSourceLinks(version: String, allowGitSHA: Boolean = true): String = {
     def dottySrcLink(v: String) = sys.env.get("GITHUB_SHA") match {
       case Some(sha) if allowGitSHA => s"github://scala/scala3/$sha"
       case None => s"github://scala/scala3/$v"
     }
-    SourceLinks(List(dottySrcLink(version), "docs=github://scala/scala3/main#docs"))
+    s"-source-links:${dottySrcLink(version)},docs=github://scala/scala3/main#docs"
   }
 
   def DefaultGenerationSettings(projectVersion: String) = {
-    def socialLinks = SocialLinks(List(
+    val socialLinks = "-social-links:" + List(
       "github::https://github.com/scala/scala3",
       "discord::https://discord.com/invite/scala",
       "twitter::https://twitter.com/scala_lang",
-    ))
-    def projectLogo = ProjectLogo("docs/_assets/images/logo.svg")
-    def skipByRegex = SkipByRegex(List(".+\\.internal($|\\..+)", ".+\\.impl($|\\..+)"))
-    def skipById = SkipById(List(
+    ).mkString(",")
+    val skipById = "-skip-by-id:" + List(
       "scala.runtime.stdLibPatches",
       "scala.runtime.MatchCase",
-    ))
-    def projectFooter = ProjectFooter(s"Copyright (c) 2002-$currentYear, LAMP/EPFL")
-    def defaultTemplate = DefaultTemplate("static-site-main")
-    GenerationConfig(
-      List(),
-      ProjectVersion(projectVersion),
-      GenerateInkuire(true),
+    ).mkString(",")
+    Array(
+      s"""-project-version "$projectVersion"""",
+      "-Ygenerate-inkuire:true",
       defaultSourceLinks(version = Versions.dottyVersion),
-      skipByRegex,
+      "-skip-by-regex:" + List(".+\\.internal($|\\..+)", ".+\\.impl($|\\..+)").mkString(","),
       skipById,
-      projectLogo,
+      "-project-logo:docs/_assets/images/logo.svg",
       socialLinks,
-      projectFooter,
-      defaultTemplate,
-      Author(true),
-      Groups(true),
-      QuickLinks(
-        List(
-          "Learn::https://docs.scala-lang.org/",
-          "Install::https://www.scala-lang.org/download/",
-          "Playground::https://scastie.scala-lang.org",
-          "Find\u00A0A\u00A0Library::https://index.scala-lang.org",
-          "Community::https://www.scala-lang.org/community/",
-          "Blog::https://www.scala-lang.org/blog/",
-        )
-      )
+      s"""-project-footer "Copyright (c) 2002-$currentYear, LAMP/EPFL"""",
+      "-default-template:static-site-main",
+      "-author:true",
+      "-groups:true",
+      "-quick-links:" + List(
+        "Learn::https://docs.scala-lang.org/",
+        "Install::https://www.scala-lang.org/download/",
+        "Playground::https://scastie.scala-lang.org",
+        "Find\u00A0A\u00A0Library::https://index.scala-lang.org",
+        "Community::https://www.scala-lang.org/community/",
+        "Blog::https://www.scala-lang.org/blog/",
+      ).mkString(",")
     )
   }
 
   def Scaladoc(projectVersion: String, classDir: File) = {
-    DefaultGenerationSettings(projectVersion)
-      .add(UseJavacp(true))
-      .add(ProjectName("scaladoc"))
-      .add(OutputDir("scaladoc/output/self"))
-      .add(Revision(VersionUtil.gitHash))
-      .add(ExternalMappings(List(dottyExternalMapping, javaExternalMapping)))
-      .withTargets(classDir.getAbsolutePath :: Nil)
+    val outDir = "scaladoc/output/self"
+    IO.createDirectory(file(outDir))
+    DefaultGenerationSettings(projectVersion) ++ Array(
+      "-usejavacp:true",
+      "-project:scaladoc",
+      s"-d:$outDir",
+      "-revision:" + VersionUtil.gitHash,
+      "-external-mappings " + List(dottyExternalMapping, javaExternalMapping).mkString("\"", ",", "\""),
+      // targets:
+      classDir.getAbsolutePath
+    )
   }
 
   def Testcases(projectVersion: String, tastyRoots: Seq[String]) = {
-    DefaultGenerationSettings(projectVersion)
-      .add(UseJavacp(true))
-      .add(OutputDir("scaladoc/output/testcases"))
-      .add(ProjectName("scaladoc testcases"))
-      .add(Revision("main"))
-      .add(SnippetCompiler(List("scaladoc-testcases/docs=compile")))
-      .add(SiteRoot("scaladoc-testcases/docs"))
-      .add(CommentSyntax(List(
-        "scaladoc-testcases/src/example/comment-md=markdown",
-        "scaladoc-testcases/src/example/comment-wiki=wiki"
-      )))
-      .add(ExternalMappings(List(dottyExternalMapping, javaExternalMapping)))
-      .withTargets(tastyRoots)
+    val outDir = "scaladoc/output/testcases"
+    IO.createDirectory(file(outDir))
+    DefaultGenerationSettings(projectVersion) ++ Array(
+      "-usejavacp:true",
+      s"-d:$outDir",
+      "-project \"scaladoc testcases\"",
+      "-revision:main",
+      "-snippet-compiler:scaladoc-testcases/docs=compile",
+      "-siteroot:scaladoc-testcases/docs",
+      "-comment-syntax:" + List(
+          "scaladoc-testcases/src/example/comment-md=markdown",
+          "scaladoc-testcases/src/example/comment-wiki=wiki"
+        ).mkString(","),
+      "-external-mappings " + List(dottyExternalMapping, javaExternalMapping).mkString("\"", ",", "\""),
+    // targets:
+    ) ++ tastyRoots
   }
 
   def snippetCompilerTargets(dottyLibSrc:String) = List(
@@ -106,29 +105,67 @@ object ScaladocConfigs0 {
     referenceSnippetRelativeRoots.map(path => s"$docsRoot/_docs/reference/$path=compile") ++
       captureCheckingSnippetTestTargets(docsRoot)
 
+  val scala3Output = "scaladoc/output/scala3"
   def Scala3(projectVersion: String, projectRoot: Path, stdlibRoot: Path, libraryProducts: Seq[String]) = {
     // relative path to the stdlib directory ('library/')
     val stdlib = projectRoot.relativize(stdlibRoot.normalize())
 
-    DefaultGenerationSettings(projectVersion)
-      .add(ProjectName("Scala 3"))
-      .add(OutputDir(file("scaladoc/output/scala3").getAbsoluteFile.getAbsolutePath))
-      .add(Revision("main"))
-      .add(ExternalMappings(List(javaExternalMapping)))
-      .add(DocRootContent((stdlib / "resources" / "rootdoc.txt").toString))
-      .add(CommentSyntax(List(
-        // Markdown syntax is used by default for all sources
-        "markdown"
-      )))
-      .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
-      .add(DocumentSyntheticTypes(true))
-      .add(SnippetCompiler(
-        snippetCompilerTargets(s"$stdlib/src") ++ referenceSnippetCompilerTargets("docs")
-      ))
-      .add(NoSnippetNamesFor(List("_docs/reference")))
-      .add(SiteRoot("docs"))
-      .add(ApiSubdirectory(true))
-      .withTargets(libraryProducts)
+    IO.createDirectory(file(scala3Output))
+    DefaultGenerationSettings(projectVersion) ++ Array(
+      "-project \"Scala 3\"",
+      s"-d:$scala3Output",
+      "-revision:main",
+      "-external-mappings \"" + javaExternalMapping + "\"",
+      s"""-doc-root-content "${stdlib / "resources" / "rootdoc.txt"}"""",
+      "-comment-syntax:markdown", // Markdown syntax is used by default for all sources
+      "-versions-dictionary-url:https://scala-lang.org/api/versions.json",
+      "-Ydocument-synthetic-types:true",
+      "-snippet-compiler " + (snippetCompilerTargets(s"$stdlib/src") ++ referenceSnippetCompilerTargets("docs")).mkString("\"", ",", "\""),
+      "-no-snippet-names-for:_docs/reference",
+      "-siteroot:docs",
+      "-Yapi-subdirectory:true",
+    // targets:
+    ) ++ libraryProducts
   }
 
+  val referenceDocumentationOutputDir = "scaladoc/output/reference"
+  def Reference(docs: File, baseConfig: Array[String]): Array[String] = {
+    IO.createDirectory(file(referenceDocumentationOutputDir))
+    baseConfig ++ Array(
+      s"-d:$referenceDocumentationOutputDir",
+      s"""-siteroot "${docs.getAbsolutePath}"""",
+      "-project \"Scala 3 Reference\"",
+      s"""-project-version "${Versions.baseVersion}"""",
+      s"""-source-links "${docs.getAbsolutePath}=github://scala/scala3/language-reference-stable#docs"""",
+      "-Ygenerate-api:false",
+      "-snippet-compiler:" + ScaladocConfigs0.referenceSnippetCompilerTargets(docs.getAbsolutePath).mkString(","),
+      "-versions-dictionary-url \"\"",
+    )
+  }
+
+  def ReferenceSnippets(baseConfig: Array[String], outputDir: String, tempRoot: String): Array[String] = {
+    baseConfig ++ Array(
+      s"""-d "$outputDir"""",
+      s"""-siteroot "$tempRoot"""",
+      "-project \"Scala 3 Reference Snippets\"",
+      s"""-project-version "${Versions.baseVersion}"""",
+      s"""-source-links "$tempRoot=github://scala/scala3/main#docs"""",
+      "-no-link-warnings:true",
+      "-no-link-asset-warnings:true",
+      "-Ygenerate-api:false",
+      "-snippet-compiler " + ScaladocConfigs0.referenceSnippetCompilerTargets(tempRoot).mkString("\"", ",", "\""),
+      "-versions-dictionary-url \"\"",
+    )
+  }
+
+  def StableDoc(baseConfig: Array[String], version: String, siteRoot: String): Array[String] = {
+    baseConfig ++ Array(
+      s"""-project-version "$version"""",
+      s"""-revision "$version"""",
+      s"""-d "scaladoc/output/$version"""",
+      s"""-siteroot "$siteRoot"""",
+      "-Yapi-subdirectory:false",
+      ScaladocConfigs0.defaultSourceLinks(version = version, allowGitSHA = false),
+    )
+  }
 }
