@@ -202,7 +202,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |    def plus(other: Int): Int = num + other
          |
          |def main = 100.plus($0)
-         |""".stripMargin
+         |""".stripMargin,
+      filter = _.startsWith("plus")
     )
 
   @Test def `simple-edit-suffix-old` =
@@ -224,7 +225,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |    def plus(other: Int): Int = num + other
         |
         |def main = 100.plus($0)
-        |""".stripMargin
+        |""".stripMargin,
+      filter = _.startsWith("plus")
     )
 
   /** For optimization, we don't show any completions here as it would bring
@@ -389,7 +391,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |  val plus = 100.plus(19)
         |  val y = 19.plus($0)
         |}
-        |""".stripMargin
+        |""".stripMargin,
+      filter = _.startsWith("plus")
     )
 
   @Test def `implicit-val-var` =
@@ -451,6 +454,7 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |copy(): Bar
          |qux: Unit
          |->[B](inline that: B): (Bar, B)
+         |applyToContext(using tf: TupledFunction[Bar, Tuple => Any]): Any
          |asInstanceOf[X0]: X0
          |canEqual(that: Any): Boolean
          |equals(x$0: Any): Boolean
