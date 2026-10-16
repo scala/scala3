@@ -1,0 +1,20 @@
+success 1
+success 2
+success 3
+success 4
+success 5
+success 6
+success 7
+success 8
+success 9.1
+success 9.2
+IllegalArgumentException: abc
+IllegalArgumentException
+NullPointerException | IOException
+NoSuchElementException
+EX
+InnerException
+NullPointerException
+ExceptionTrait
+ClassCastException
+TimeoutException escaped

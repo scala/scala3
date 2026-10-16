@@ -18,6 +18,9 @@ object MiMaFilters {
         // new experimental language feature: method block end markers (SIP-77)
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$methodBlockEndMarkers$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$methodBlockEndMarkers$"),
+        // new experimental language feature: error handling (SIP-84)
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$errorHandling$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.None.toMaybe"),
       ),
 
       // Additions since last LTS

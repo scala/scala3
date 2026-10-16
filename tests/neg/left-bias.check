@@ -1,0 +1,85 @@
+-- [E007] Type Mismatch Error: tests/neg/left-bias.scala:11:32 ---------------------------------------------------------
+11 |  val _: String ? Boolean = foo(x) // error
+   |                                ^
+   |                      Found:    (x : String ? Int)
+   |                      Required: F[Int]
+   |                      Note that implicit conversions were not tried because the result of an implicit conversion
+   |                      must be more specific than F[Int]
+   |
+   |                      where:    F is a type variable with constraint <: [_] =>> Any
+   |
+   |
+   |                      The following import might make progress towards fixing the problem:
+   |
+   |                        import scala.collection.Searching.search
+   |
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/left-bias.scala:14:23 ---------------------------------------------------------
+14 |  val _: String? = foo(x) // error
+   |                       ^
+   |                      Found:    (x : String ? Int)
+   |                      Required: F[Int]
+   |                      Note that implicit conversions were not tried because the result of an implicit conversion
+   |                      must be more specific than F[Int]
+   |
+   |                      where:    F is a type variable with constraint <: [_] =>> Any
+   |
+   |
+   |                      The following import might make progress towards fixing the problem:
+   |
+   |                        import scala.collection.Searching.search
+   |
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/left-bias.scala:20:26 ---------------------------------------------------------
+20 |  val _: String = extract(x) // error
+   |                          ^
+   |                      Found:    (x : Int ? String)
+   |                      Required: F[A]
+   |                      Note that implicit conversions were not tried because the result of an implicit conversion
+   |                      must be more specific than F[A]
+   |
+   |                      where:    A is a type variable with constraint <: String
+   |                                F is a type variable with constraint <: [_] =>> Any
+   |
+   |
+   |                      The following import might make progress towards fixing the problem:
+   |
+   |                        import scala.collection.Searching.search
+   |
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/left-bias.scala:26:38 ---------------------------------------------------------
+26 |  val _: (Int, Int) ? String = zip(x, y) // error
+   |                                      ^
+   |                                      Found:    (y : Int ? Boolean)
+   |                                      Required: Int ? String
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/left-bias.scala:32:13 ---------------------------------------------------------
+32 |  fooBounded(x) // error
+   |             ^
+   |             Found:    (x : String ? Int)
+   |             Required: F[Int]
+   |             Note that implicit conversions were not tried because the result of an implicit conversion
+   |             must be more specific than F[Int]
+   |
+   |             where:    F is a type variable with constraint <: [_ <: AnyVal] =>> Any
+   |
+   |
+   |             The following import might make progress towards fixing the problem:
+   |
+   |               import scala.collection.Searching.search
+   |
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E172] Type Error: tests/neg/left-bias.scala:45:21 ------------------------------------------------------------------
+45 |  fmapTwice(x)(_ + 1) // error
+   |                     ^
+   |       No given instance of type Functor[[T] =>> T ? Int] was found for a context parameter of method fmapTwice.
+   |       I found:
+   |
+   |           rightFunctor[T]
+   |
+   |       But given instance rightFunctor does not match type Functor[[T] =>> T ? Int].

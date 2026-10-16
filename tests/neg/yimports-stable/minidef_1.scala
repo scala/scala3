@@ -3,7 +3,7 @@ package hello
 
 trait stuff {
   type Numb = Int
-  val magic = 42
+  val magix = 42
 }
 
 object world {
