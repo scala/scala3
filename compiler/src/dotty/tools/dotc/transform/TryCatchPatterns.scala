@@ -44,7 +44,8 @@ import scala.annotation.tailrec
  *
  */
 class TryCatchPatterns extends MiniPhase {
-  import dotty.tools.dotc.ast.tpd.*
+  import ast.tpd.*
+  import TryCatchPatterns.SimpleMultiCatch
 
   override def phaseName: String = TryCatchPatterns.name
 
@@ -69,7 +70,6 @@ class TryCatchPatterns extends MiniPhase {
     cpy.Try(tree)(cases = transformTryCases(tryCases) ++ fallbackCase)
   }
 
-  import TryCatchPatterns.SimpleMultiCatch
   private def transformTryCases(tryCases: List[CaseDef])(using Context) = tryCases.mapConserve {
     case cdef @ CaseDef(Typed(_, tpt @ DisjointUnion(types)), _, _) =>
       cdef.withAttachment(SimpleMultiCatch, types)
@@ -139,5 +139,4 @@ object TryCatchPatterns:
   val name: String = "tryCatchPatterns"
   val description: String = "compile cases in try/catch"
   import util.Property
-  import core.Types.Type
   val SimpleMultiCatch: Property.StickyKey[List[Type]] = Property.StickyKey()
