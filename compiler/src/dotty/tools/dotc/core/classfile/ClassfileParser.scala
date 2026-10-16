@@ -888,10 +888,13 @@ final class ClassfileParser(
     }
     attrType match
       case tp: TypeRef if tp.denot.infoOrCompleter.isInstanceOf[StubInfo] =>
-        // Silently ignore missing annotation classes like javac
-        if ctx.debug then
-          report.warning(em"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
-        None
+        if tp.symbol.fullName.toString == defn.JdkInternalValueBasedAnnotCtSymName && defn.JdkInternalValueBasedAnnot.exists then
+          Some(ClassfileAnnotation(defn.JdkInternalValueBasedAnnot.typeRef, Nil))
+        else
+          // Silently ignore missing annotation classes like javac
+          if ctx.debug then
+            report.warning(em"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
+          None
       case _ =>
         if (hasError || skip) None
         else Some(ClassfileAnnotation(attrType, argbuf.toList))
