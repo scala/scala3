@@ -119,7 +119,12 @@ class OrderingTest {
       assert(ord.reverse eq ord.reverse)
     }
 
+    check(Ordering[Boolean])
+    check(Ordering[Byte])
+    check(Ordering[Char])
+    check(Ordering[Short])
     check(Ordering[Int])
+    check(Ordering[Long])
   }
 
   @Test
