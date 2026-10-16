@@ -19,14 +19,10 @@ class PruneInlineTraits extends MiniPhase with SymTransformer { thisTransform =>
 
   override def description: String = PruneInlineTraits.description
   
-  override def runsAfter: Set[String] = Set(PruneInlinedMethods.name)
-  
   override def transformSym(sym: SymDenotation)(using Context): SymDenotation = {
-    val hasSpecializations = ctx.compilationUnit.hasSpecializations
-
-    if hasSpecializations && isEraseable(sym) then 
+    if isEraseable(sym) then 
       sym.copySymDenotation(initFlags = sym.flags | Deferred)
-    else if hasSpecializations && sym.isInlineTrait then
+    else if sym.isInlineTrait then
       val clsInfo = sym.asClass.classInfo
       val clsInfo2 = clsInfo.derivedClassInfo(decls = 
           clsInfo.decls.filteredScope(!isDeletable(_))
