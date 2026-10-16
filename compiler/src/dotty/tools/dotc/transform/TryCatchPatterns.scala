@@ -1,16 +1,16 @@
 package dotty.tools.dotc
 package transform
 
+import core.Contexts.*
+import core.Flags
+import core.NameKinds.ExceptionBinderName
 import core.Symbols.*
 import core.StdNames.*
 import core.Types.*
-import core.NameKinds.ExceptionBinderName
-import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.reporting.UnreasonableCatch
-import dotty.tools.dotc.transform.MegaPhase.MiniPhase
-import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.util.SrcPos
+import reporting.UnreasonableCatch
+import util.Spans.Span
+import util.SrcPos
+import MegaPhase.MiniPhase
 
 import scala.annotation.tailrec
 
