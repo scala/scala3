@@ -1201,7 +1201,16 @@ class Definitions {
   @tu lazy val NoInlineAnnot: ClassSymbol = requiredClass("scala.noinline")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
-  @tu lazy val JdkInternalValueBasedAnnot: Symbol = getClassIfDefined("jdk.internal.ValueBased")
+  // JEP 390. Under `-release`, ct.sym lacks the class and its classfiles refer to `jdk.internal.ValueBased+Annotation`
+  // instead. Like javac, use a synthetic symbol in that case.
+  @tu lazy val JdkInternalValueBasedAnnot: Symbol = getClassIfDefined("jdk.internal.ValueBased").orElse {
+    val pkg = getPackageClassIfDefined("jdk.internal")
+    if pkg.exists then
+      val flags = JavaDefined | JavaAnnotation | PureInterfaceCreationFlags | Abstract
+      completeClass(newCompleteClassSymbol(pkg, "ValueBased".toTypeName, flags, List(ObjectType, JavaAnnotationClass.typeRef), newScope))
+    else NoSymbol
+  }
+  final val JdkInternalValueBasedAnnotCtSymName = "jdk.internal.ValueBased+Annotation"
 
   // Initialization annotations
   @tu lazy val InitModule: Symbol = requiredModule("scala.annotation.init")
