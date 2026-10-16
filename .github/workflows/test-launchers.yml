@@ -102,3 +102,97 @@ jobs:
       - name: Run the launcher command tests
         run: './project/scripts/native-integration/winTests.bat'
         shell: cmd
+
+  # GraalVM cannot build a native Scala CLI for Windows ARM64, so this tests the generic
+  # distribution, which runs scala-cli.jar on the JVM.
+  win-aarch64:
+    name: Deploy and Test on Windows ARM64 architecture
+    runs-on: windows-11-arm
+    # Experimental: don't fail the workflow until the platform is known to work
+    continue-on-error: true
+    if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]') ) ||
+        (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3' )
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up JDK 17
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          java-version: '17'
+          # Temurin has no GA JDK 17 build for Windows ARM64
+          distribution: 'zulu'
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - name: Build the launcher command
+        run: sbt "dist/Universal/stage"
+      - name: Run the launcher command tests
+        run: './project/scripts/native-integration/winTests.bat'
+        shell: cmd
+        env:
+          LAUNCHER_PREFIX: 'dist\target\universal\stage'
+
+      - name: "[spike] Run with the Bloop compilation server (no --server=false)"
+        continue-on-error: true
+        run: 'dist\target\universal\stage\bin\scala.bat run tests\pos\HelloWorld.scala -v'
+        shell: cmd
+      - name: "[spike] Build the x86_64 native launcher distribution"
+        continue-on-error: true
+        run: sbt "dist-win-x86_64/Universal/stage"
+      - name: "[spike] Run the launcher command tests with the x86_64 native launcher (Prism emulation)"
+        continue-on-error: true
+        run: './project/scripts/native-integration/winTests.bat'
+        shell: cmd
+
+  win-aarch64-coursier:
+    name: "[spike] Install Scala with Coursier on Windows ARM64"
+    runs-on: windows-11-arm
+    continue-on-error: true
+    if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]') ) ||
+        (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3' )
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download the JVM-based Coursier launcher for Windows ARM64
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri 'https://github.com/coursier/coursier/releases/download/v2.1.26/cs-aarch64-pc-win32-jvm.zip' -OutFile cs.zip
+          Expand-Archive cs.zip -DestinationPath cs
+      - name: Run cs setup
+        shell: pwsh
+        run: |
+          ./cs/cs.exe setup --yes
+          Get-ChildItem "$env:LOCALAPPDATA\Coursier\data\bin" -Force
+          Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Coursier\data\bin"
+      - name: Run cs from the installed apps
+        continue-on-error: true
+        shell: cmd
+        run: cs version
+      - name: Run scala-cli from the installed apps
+        continue-on-error: true
+        shell: cmd
+        run: scala-cli version
+      - name: Run scala from the installed apps
+        continue-on-error: true
+        shell: cmd
+        run: scala version
+      - name: Run a file with scala from the installed apps
+        continue-on-error: true
+        shell: cmd
+        run: scala run tests\pos\HelloWorld.scala -v
+      - name: Run a file with scala from the installed apps without Bloop
+        continue-on-error: true
+        shell: cmd
+        run: scala run tests\pos\HelloWorld.scala --server=false
+      - name: Write a script resolving directories the way Bloop does
+        shell: pwsh
+        run: Set-Content dirs.sc 'println(dev.dirs.ProjectDirectories.from(null, null, "bloop", dev.dirs.jni.WindowsJni.getJdkAwareSupplier()).cacheDir)'
+      - name: Resolve directories with windows-jni-utils 0.3.3 (used by Bloop 2.1.2)
+        continue-on-error: true
+        shell: pwsh
+        run: scala run dirs.sc --server=false --jvm 21 --dep io.get-coursier.util:directories-jni:0.1.2 --dep io.get-coursier.jniutils:windows-jni-utils:0.3.3
+      - name: Resolve directories with windows-jni-utils 0.4.0
+        continue-on-error: true
+        shell: pwsh
+        run: scala run dirs.sc --server=false --jvm 21 --dep io.get-coursier.util:directories-jni:0.1.2 --dep io.get-coursier.jniutils:windows-jni-utils:0.4.0
+      - name: Run a file with scala from the installed apps, with Bloop on JDK 25
+        continue-on-error: true
+        shell: cmd
+        run: scala run tests\pos\HelloWorld.scala --bloop-jvm zulu:25 -v
