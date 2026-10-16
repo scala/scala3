@@ -8,6 +8,7 @@ import core.Symbols.*
 import core.StdNames.*
 import core.Types.*
 import reporting.UnreasonableCatch
+import util.chaining.*
 import util.Spans.Span
 import util.SrcPos
 import MegaPhase.MiniPhase
@@ -79,7 +80,7 @@ class TryCatchPatterns extends MiniPhase {
   }
 
   /** Is this pattern node a catch-all or type-test pattern? */
-  private def isCatchCase(cdef: CaseDef)(using Context): Boolean = cdef match {
+  private def isCatchCase(cdef: CaseDef)(using Context): Boolean = cdef match
     case CaseDef(Typed(Ident(nme.WILDCARD), tpt), guard, _) =>
       warnIfUnreasonableCatch(tpt)
       guard == EmptyTree && isSimpleThrowable(tpt)
@@ -87,12 +88,7 @@ class TryCatchPatterns extends MiniPhase {
       warnIfUnreasonableCatch(tpt)
       guard == EmptyTree && isSimpleThrowable(tpt)
     case _ =>
-      if isDefaultCase(cdef) then
-        warnForUnreasonableCatch(cdef)
-        true
-      else
-        false
-  }
+      isDefaultCase(cdef).tap(if _ then warnForUnreasonableCatch(cdef))
 
   private def isSimpleThrowable(tpt: Tree)(using Context): Boolean = tpt match
     case DisjointUnion(types) => types.forall(isSimpleThrowable)
