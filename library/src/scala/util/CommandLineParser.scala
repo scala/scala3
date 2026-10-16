@@ -65,6 +65,10 @@ object CommandLineParser {
     println(s"Illegal command line$where: ${err.msg}")
   }
 
+  /** A type class for converting a command line `String` into a value of type `T`.
+   *
+   *  @tparam T the target type that the `String` argument is converted into
+   */
   trait FromString[T] {
     /** Can throw java.lang.IllegalArgumentException.
      *
@@ -73,6 +77,11 @@ object CommandLineParser {
      */
     def fromString(s: String): T
 
+    /** Returns `Some` of the value converted from `s`, or `None` if `fromString`
+     *  throws an `IllegalArgumentException`.
+     *
+     *  @param s the string to convert to type `T`
+     */
     def fromStringOption(s: String): Option[T] =
       try Some(fromString(s))
       catch {
