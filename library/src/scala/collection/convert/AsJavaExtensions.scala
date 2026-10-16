@@ -31,7 +31,7 @@ trait AsJavaExtensions {
     def asJava: ju.Iterator[A] = conv.asJava(i)
 
     /** Converts a Scala `Iterator` to a Java `Enumeration`, see
-      * [[AsJavaConverters.asJavaEnumeration `scala.jdk.javaapi.CollectionConverters.asJavaEnumeration`]].
+      * [[AsJavaConverters.asJavaEnumeration scala.jdk.javaapi.CollectionConverters.asJavaEnumeration]].
       */
     def asJavaEnumeration: ju.Enumeration[A] = conv.asJavaEnumeration(i)
   }
@@ -43,7 +43,7 @@ trait AsJavaExtensions {
     def asJava: jl.Iterable[A] = conv.asJava(i)
 
     /** Converts a Scala `Iterator` to a Java `Collection`, see
-      * [[AsJavaConverters.asJavaCollection `scala.jdk.javaapi.CollectionConverters.asJavaCollection`]].
+      * [[AsJavaConverters.asJavaCollection scala.jdk.javaapi.CollectionConverters.asJavaCollection]].
       */
     def asJavaCollection: ju.Collection[A] = conv.asJavaCollection(i)
   }
@@ -90,7 +90,7 @@ trait AsJavaExtensions {
     def asJava: ju.Map[K, V] = conv.asJava(m)
 
     /** Converts a Scala `mutable.Map` to a Java `Map`, see
-      * [[AsJavaConverters.asJavaDictionary `scala.jdk.javaapi.CollectionConverters.asJavaDictionary`]].
+      * [[AsJavaConverters.asJavaDictionary scala.jdk.javaapi.CollectionConverters.asJavaDictionary]].
       */
     def asJavaDictionary: ju.Dictionary[K, V] = conv.asJavaDictionary(m)
   }

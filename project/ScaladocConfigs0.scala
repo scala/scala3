@@ -115,7 +115,7 @@ object ScaladocConfigs0 {
       .add(OutputDir(file("scaladoc/output/scala3").getAbsoluteFile.getAbsolutePath))
       .add(Revision("main"))
       .add(ExternalMappings(List(javaExternalMapping)))
-      .add(DocRootContent((stdlib / "resources" / "rootdoc.txt").toString))
+      .add(DocRootContent((stdlib / "resources" / "rootdoc.md").toString))
       .add(CommentSyntax(List(
         // Markdown syntax is used by default for all sources
         "markdown"
