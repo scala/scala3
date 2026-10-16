@@ -2411,7 +2411,7 @@ object Build {
   def generateDocumentation(configTask: Def.Initialize[Task[Array[String]]]) =
     Def.taskDyn {
       val config = configTask.value
-      val command = config.mkString(" ", " ", "")
+      val command = config.map(s => if (s.isEmpty || s.contains(" ")) s""""$s"""" else s).mkString(" ", " ", "")
       Def.task {
         (Compile / run).toTask(command).value
       }
