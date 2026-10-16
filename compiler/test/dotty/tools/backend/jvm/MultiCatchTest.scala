@@ -2,6 +2,7 @@ package dotty.tools
 package backend.jvm
 
 import dotty.DottyBytecodeTest
+import io.*
 import org.junit.Test
 import org.junit.Assert.*
 import org.objectweb.asm.Opcodes.INSTANCEOF
@@ -130,13 +131,13 @@ class MultiCatchTest extends DottyBytecodeTest {
 
   private def withJavaEquivalentCompiled(
     name: String, javaSource: String
-  )(f: (io.AbstractFile, List[String]) => Unit) =
+  )(f: (AbstractFile, List[String]) => Unit) =
     val sharedJavaSources = List(
       VirtualJavaSource("A.java", "class A extends Exception {}"),
       VirtualJavaSource("B.java", "class B extends Exception {}"),
     )
     withJavaCompiled((sharedJavaSources :+ VirtualJavaSource(name, javaSource))*): dir =>
-      f(io.PlainDirectory(io.Directory(dir)), sharedJavaSources.map(_.getCharContent(ignoreEncodingErrors = true)))
+      f(PlainDirectory(Directory(dir)), sharedJavaSources.map(_.getCharContent(ignoreEncodingErrors = true)))
   private def testHandlersInvariant(handlers: List[ExceptionHandler]) =
     // The compiler should emit the precise exception table for multi-catch.
     assertEquals(3, handlers.size)
