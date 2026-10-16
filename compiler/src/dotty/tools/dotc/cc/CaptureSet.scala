@@ -624,9 +624,6 @@ object CaptureSet:
   def shared(using Context): Const =
     GlobalAny.readOnly.singletonCaptureSet
 
-  /** Used as a recursion brake */
-  @sharable private[dotc] val Pending = Const(SimpleIdentitySet.empty)
-
   def apply(elems: Capability*)(using Context): Const =
     if elems.isEmpty then empty
     else
