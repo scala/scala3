@@ -8,8 +8,8 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
  * PLEASE KEEP ALPHABETIZED!
  */
 object Dependencies {
-  val asmUtil = "org.ow2.asm" % "asm-util" % "9.10.1"
-  val asmCommons = "org.ow2.asm" % "asm-commons" % "9.10.1"
+  val asmUtil = "org.ow2.asm" % "asm-util" % "9.11"
+  val asmCommons = "org.ow2.asm" % "asm-commons" % "9.11"
 
   /** Version of Coursier to use + download for initializing the local maven repo of Scala command */
   val coursierJarVersion = "2.1.26"
@@ -37,7 +37,7 @@ object Dependencies {
 
   val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % "3.2.3"
 
-  private val jlineVersion = "4.4.6"
+  private val jlineVersion = "4.4.8"
   val jlineReader = "org.jline" % "jline-reader" % jlineVersion
   val jlineTerminal = "org.jline" % "jline-terminal" % jlineVersion
   val jlineTerminalJni = "org.jline" % "jline-terminal-jni" % jlineVersion
