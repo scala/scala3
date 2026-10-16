@@ -62,7 +62,7 @@ jobs:
           distribution: temurin
           java-version: ${{ inputs.java-version }}
           cache       : sbt
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Build and pack the SDK (universal)
         run : ./project/scripts/sbt dist/Universal/stage
       - name: Build and pack the SDK (linux x86-64)
