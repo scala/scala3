@@ -301,14 +301,14 @@ abstract class Reporter extends interfaces.ReporterResult {
    *  This includes any warning stored in `unreportedWarnings` which need to be propagated to
    *  get an accurate count of unreported warnings in the outer reporter.
    */
-  def hasUnreportedMessages(using Context): Boolean =
+  def hasUnreportedMessages: Boolean =
     pendingMessages.nonEmpty || unreportedWarnings.nonEmpty
 
   /** If this reporter buffers messages, remove and return all buffered messages. */
-  def removeBufferedMessages(using Context): List[Diagnostic] = Nil
+  def removeBufferedMessages: List[Diagnostic] = Nil
 
   /** If this reporter buffers messages, apply `f` to all buffered messages. */
-  def mapBufferedMessages(f: Diagnostic => Diagnostic)(using Context): Unit = ()
+  def mapBufferedMessages(f: Diagnostic => Diagnostic): Unit = ()
 
   /** Issue all messages in this reporter to next outer one, or make sure they are written. */
   def flush()(using Context): Unit =
@@ -319,5 +319,5 @@ abstract class Reporter extends interfaces.ReporterResult {
     unreportedWarnings = Map.empty
 
   /** If this reporter buffers messages, all buffered messages, otherwise Nil */
-  def pendingMessages(using Context): List[Diagnostic] = Nil
+  def pendingMessages: List[Diagnostic] = Nil
 }
