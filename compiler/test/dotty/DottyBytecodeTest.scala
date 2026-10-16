@@ -110,11 +110,12 @@ trait DottyBytecodeTest {
     def rec(node: AbstractInsnNode): Boolean =
       BCodeUtils.nextExecutableInstruction(node) match
         case Some(node: TypeInsnNode) =>
-          if(node.getOpcode == Opcodes.INSTANCEOF && node.desc == exName) true
-          else rec(node)
+             (node.getOpcode == Opcodes.INSTANCEOF && node.desc == exName)
+          || rec(node)
         case Some(node) => rec(node)
         case None => false
     rec(tcb.start)
+
   protected def getField(classNode: ClassNode, name: String): FieldNode =
     classNode.fields.asScala.find(_.name == name) getOrElse
       sys.error(s"Didn't find field '$name' in class '${classNode.name}'")
