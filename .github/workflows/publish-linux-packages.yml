@@ -1,0 +1,208 @@
+###################################################################################################
+###              THIS IS A WORKFLOW TO PUBLISH THE APT AND YUM REPOSITORIES                     ###
+### HOW TO USE:                                                                                 ###
+###   - RUN IT MANUALLY FROM THE ACTIONS TAB, OR CALL IT FROM ANOTHER WORKFLOW                  ###
+###   - IT UPLOADS THE .deb AND .rpm OF `version` TO THE HOST SERVING repo.scala-lang.org       ###
+###   - `bootstrap: true` ONLY ALLOWS CREATING AN INDEX THAT DOES NOT EXIST YET. AN EXISTING    ###
+###     INDEX IS ALWAYS MERGED INTO, NEVER DISCARDED, WHATEVER THE FLAG SAYS                    ###
+###################################################################################################
+
+name: Publish the APT and YUM repositories
+run-name: Publish Scala ${{ inputs.version }} to the APT and YUM repositories
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The Scala version to publish, i.e. the release tag'
+        required: true
+        type: string
+      bootstrap:
+        description: 'Allow creating an index that does not exist yet. Existing indexes are always merged into, never discarded.'
+        required: false
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      version:
+        description: 'The Scala version to publish, i.e. the release tag'
+        required: true
+        type: string
+      bootstrap:
+        description: 'Allow creating an index that does not exist yet. Existing indexes are always merged into, never discarded.'
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      SCALA_PGP_KEY:
+        required: true
+      SCALA_PGP_PASSPHRASE:
+        required: true
+      SYNCPKGS_KEY:
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-linux-packages-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VERSION     : ${{ inputs.version }}
+      BOOTSTRAP   : ${{ inputs.bootstrap }}
+      DEB         : scala3-${{ inputs.version }}-x86_64-pc-linux.deb
+      RPM         : scala3-${{ inputs.version }}-x86_64-pc-linux.rpm
+      BASE_URL    : ${{ vars.PACKAGES_BASE_URL }}
+      FINGERPRINT : ${{ vars.SCALA_PGP_FINGERPRINT }}
+      REMOTE      : ${{ vars.PACKAGES_USER }}@${{ vars.PACKAGES_HOST }}
+      REMOTE_USER : ${{ vars.PACKAGES_USER }}
+      REMOTE_HOST : ${{ vars.PACKAGES_HOST }}
+      REMOTE_PORT : ${{ vars.PACKAGES_PORT }}
+      KNOWN_HOSTS : ${{ vars.PACKAGES_KNOWN_HOSTS }}
+      REMOTE_DIR  : ${{ vars.PACKAGES_PATH }}
+      RSH         : ssh -p ${{ vars.PACKAGES_PORT }} -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -i ${{ github.workspace }}/.ssh-key -o UserKnownHostsFile=${{ github.workspace }}/.ssh-known-hosts
+      GPG_TTY     : /dev/null
+    steps:
+      - name: Check the configuration
+        shell: bash
+        env:
+          SSH_KEY: ${{ secrets.SYNCPKGS_KEY }}
+        run: |
+          for v in VERSION BASE_URL FINGERPRINT REMOTE_DIR REMOTE_USER REMOTE_HOST REMOTE_PORT KNOWN_HOSTS SSH_KEY; do
+            [ -n "${!v}" ] || { echo "$v is empty, check the PACKAGES_* variables and the secrets" >&2; exit 1; }
+          done
+          case "$BASE_URL" in */) echo "PACKAGES_BASE_URL must not end with a slash" >&2; exit 1 ;; esac
+
+      - name: Start from a clean workspace
+        shell: bash
+        run: rm -rf dl apt yum-new yum-old yum-merged published.Packages new.Packages
+
+      - name: Download the packages from the GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO : ${{ github.repository }}
+        run: |
+          gh release download "$VERSION" --dir dl --clobber \
+            --pattern "$DEB" --pattern "$RPM" \
+            --pattern "$DEB.sha256" --pattern "$RPM.sha256"
+          ( cd dl && sha256sum -c "$DEB.sha256" "$RPM.sha256" )
+
+      - name: Ensure the repository tooling
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends rpm createrepo-c dpkg-dev apt-utils
+
+      - name: Import the signing key
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.SCALA_PGP_KEY }}
+          passphrase     : ${{ secrets.SCALA_PGP_PASSPHRASE }}
+          fingerprint    : ${{ env.FINGERPRINT }}
+
+      - name: Set up SSH
+        shell: bash
+        env:
+          SSH_KEY    : ${{ secrets.SYNCPKGS_KEY }}
+          KNOWN_HOSTS: ${{ vars.PACKAGES_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          printf '%s\n' "$SSH_KEY"     > "$GITHUB_WORKSPACE/.ssh-key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$GITHUB_WORKSPACE/.ssh-known-hosts"
+
+      - name: Build the YUM repository
+        shell: bash
+        run: |
+          mkdir -p yum-new
+          nvra=$(rpm -qp --qf '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}' "dl/$RPM")
+          cp "dl/$RPM" "yum-new/$nvra.rpm"
+          rpmsign --define "__gpg /usr/bin/gpg" --define "_gpg_name $FINGERPRINT" --addsign "yum-new/$nvra.rpm"
+          createrepo_c --quiet yum-new
+
+          code=$(curl -sS --retry 3 --retry-connrefused -o /dev/null -w '%{http_code}' \
+                   "$BASE_URL/rpm/repodata/repomd.xml") || code=000
+          case "$code:$BOOTSTRAP" in
+            200:*)
+              mkdir -p yum-old
+              rsync -rt -e "$RSH" "$REMOTE:${REMOTE_DIR:?}/rpm/repodata/" yum-old/repodata/
+              mergerepo_c --all --omit-baseurl --repo=yum-new --repo=yum-old -o yum-merged
+              echo "YUM_INDEX=yum-merged/repodata" >> "$GITHUB_ENV"
+              echo "YUM: merged with the published index"
+              ;;
+            404:true)
+              echo "YUM_INDEX=yum-new/repodata" >> "$GITHUB_ENV"
+              echo "YUM: bootstrapping a new repository"
+              ;;
+            *)
+              echo "YUM: refusing to publish. HTTP $code for the published index with bootstrap=$BOOTSTRAP." >&2
+              echo "A 404 here without bootstrap=true would drop every published version from the index." >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Build the APT repository
+        shell: bash
+        run: |
+          mkdir -p apt
+          cp "dl/$DEB" apt/
+
+          code=$(curl -sS --retry 3 --retry-connrefused -o /dev/null -w '%{http_code}' \
+                   "$BASE_URL/debian/Packages") || code=000
+          case "$code:$BOOTSTRAP" in
+            200:*)
+              curl -fsS --retry 3 -o published.Packages "$BASE_URL/debian/Packages"
+              head -1 published.Packages | grep -q '^Package: ' \
+                || { echo "APT: what the server returned is not a Packages index" >&2; exit 1; }
+              echo "APT: appending to the published index"
+              ;;
+            404:true)
+              : > published.Packages
+              echo "APT: bootstrapping a new repository"
+              ;;
+            *)
+              echo "APT: refusing to publish. HTTP $code for the published index with bootstrap=$BOOTSTRAP." >&2
+              echo "A 404 here without bootstrap=true would drop every published version from the index." >&2
+              exit 1
+              ;;
+          esac
+
+          ( cd apt && dpkg-scanpackages --multiversion . ) > new.Packages
+          { [ -s published.Packages ] && { sed -e '$a\' published.Packages; printf '\n'; }
+            cat new.Packages; } | cat -s > apt/Packages
+          head -1 apt/Packages | grep -q '^Package: ' || { echo "APT: built an index that does not start with a stanza" >&2; exit 1; }
+
+          cd apt
+          gzip -k -f Packages
+          apt-ftparchive release . > Release
+          gpg --batch --yes --local-user "$FINGERPRINT" -abs        -o Release.gpg Release
+          gpg --batch --yes --local-user "$FINGERPRINT" --clearsign -o InRelease  Release
+
+      - name: Upload
+        shell: bash
+        run: |
+          opts=(-rt --chmod=D755,F644 --mkpath -e "$RSH")
+          dst="$REMOTE:${REMOTE_DIR:?}"
+
+          rsync "${opts[@]}" yum-new/*.rpm "$dst/rpm/"
+          rsync "${opts[@]}" apt/*.deb     "$dst/debian/"
+
+          rsync "${opts[@]}" --exclude repomd.xml "${YUM_INDEX:?}/" "$dst/rpm/repodata/"
+          rsync "${opts[@]}" "${YUM_INDEX:?}/repomd.xml"            "$dst/rpm/repodata/"
+          rsync "${opts[@]}" --delete "${YUM_INDEX:?}/"             "$dst/rpm/repodata/"
+
+          rsync "${opts[@]}" apt/Packages apt/Packages.gz "$dst/debian/"
+          rsync "${opts[@]}" apt/Release apt/Release.gpg  "$dst/debian/"
+          rsync "${opts[@]}" apt/InRelease                "$dst/debian/"
+
+          echo "Published scala3 $VERSION to $BASE_URL"
+
+      - name: Remove the credentials from the workspace
+        if: always()
+        shell: bash
+        run: rm -f "$GITHUB_WORKSPACE/.ssh-key" "$GITHUB_WORKSPACE/.ssh-known-hosts"
