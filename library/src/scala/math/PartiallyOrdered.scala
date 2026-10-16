@@ -36,24 +36,48 @@ trait PartiallyOrdered[+A] extends Any {
    */
   def tryCompareTo [B >: A: AsPartiallyOrdered](that: B): Option[Int]
 
+  /** Returns `true` if this value is less than `that` according to the partial
+   *  ordering, `false` otherwise (including when the two values are not comparable).
+   *
+   *  @tparam B a supertype of `A` for which an implicit conversion to `PartiallyOrdered[B]` exists
+   *  @param that the value to compare against
+   */
   def < [B >: A: AsPartiallyOrdered](that: B): Boolean =
     (this tryCompareTo that) match {
       case Some(x) if x < 0 => true
       case _ => false
     }
 
+  /** Returns `true` if this value is greater than `that` according to the partial
+   *  ordering, `false` otherwise (including when the two values are not comparable).
+   *
+   *  @tparam B a supertype of `A` for which an implicit conversion to `PartiallyOrdered[B]` exists
+   *  @param that the value to compare against
+   */
   def > [B >: A: AsPartiallyOrdered](that: B): Boolean =
     (this tryCompareTo that) match {
       case Some(x) if x > 0 => true
       case _ => false
     }
 
+  /** Returns `true` if this value is less than or equal to `that` according to the partial
+   *  ordering, `false` otherwise (including when the two values are not comparable).
+   *
+   *  @tparam B a supertype of `A` for which an implicit conversion to `PartiallyOrdered[B]` exists
+   *  @param that the value to compare against
+   */
   def <= [B >: A: AsPartiallyOrdered](that: B): Boolean =
     (this tryCompareTo that) match {
       case Some(x) if x <= 0 => true
       case _ => false
     }
 
+  /** Returns `true` if this value is greater than or equal to `that` according to the partial
+   *  ordering, `false` otherwise (including when the two values are not comparable).
+   *
+   *  @tparam B a supertype of `A` for which an implicit conversion to `PartiallyOrdered[B]` exists
+   *  @param that the value to compare against
+   */
   def >= [B >: A: AsPartiallyOrdered](that: B): Boolean =
     (this tryCompareTo that) match {
       case Some(x) if x >= 0 => true
