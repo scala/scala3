@@ -9,4 +9,8 @@ import scala.language.`2.13`
 case class ScalaReflectionException(msg: String) extends Exception(msg)
 
 object ScalaReflectionException extends scala.runtime.AbstractFunction1[String, ScalaReflectionException]:
+  /** Returns the name of this companion object, `"ScalaReflectionException"`, rather than
+   *  the `<function1>` rendering inherited via [[scala.runtime.AbstractFunction1]] from
+   *  [[scala.Function1]].
+   */
   override def toString(): String = "ScalaReflectionException"

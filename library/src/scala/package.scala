@@ -91,8 +91,22 @@ package object scala {
   // This should be an alias to LazyList.#:: but we need to support Stream, too
   //val #:: = scala.collection.immutable.LazyList.#::
   object #:: {
+    /** Extracts the head and tail of a non-empty [[scala.collection.immutable.LazyList]],
+     *  supporting the `head #:: tail` pattern wherever patterns are allowed.
+     *
+     *  @tparam A the element type of the lazy list
+     *  @param s the lazy list to decompose
+     *  @return `Some((head, tail))` if `s` is non-empty, or `None` if it is empty
+     */
     def unapply[A](s: LazyList[A]): Option[(A, LazyList[A])] =
       if (s.nonEmpty) Some((s.head, s.tail)) else None
+    /** Extracts the head and tail of a non-empty [[scala.collection.immutable.Stream]],
+     *  supporting the `head #:: tail` pattern wherever patterns are allowed.
+     *
+     *  @tparam A the element type of the stream
+     *  @param s the stream to decompose
+     *  @return `Some((head, tail))` if `s` is non-empty, or `None` if it is empty
+     */
     @deprecated("Prefer LazyList instead", since = "2.13.0")
     def unapply[A](s: Stream[A]): Option[(A, Stream[A])] =
       if (s.nonEmpty) Some((s.head, s.tail)) else None

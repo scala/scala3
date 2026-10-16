@@ -61,6 +61,11 @@ case class StringContext(parts: String*) {
   import StringContext.{checkLengths => scCheckLengths, glob, processEscapes, standardInterpolator => scStandardInterpolator}
 
   @deprecated("use same-named method on StringContext companion object", "2.13.0")
+  /** Checks that the number of given arguments is one less than the number of `parts`
+   *  of this `StringContext`, throwing an `IllegalArgumentException` if it is not.
+   *
+   *  @param args the interpolated argument values
+   */
   def checkLengths(args: scala.collection.Seq[Any]): Unit = scCheckLengths(args, parts)
 
   /** The simple string interpolator.
@@ -162,6 +167,17 @@ case class StringContext(parts: String*) {
   def raw(args: Any*): String = macro ??? // fasttracked to scala.tools.reflect.FastStringInterpolator::interpolateRaw
 
   @deprecated("Use the static method StringContext.standardInterpolator instead of the instance method", "2.13.0")
+  /** Interpolates the given arguments between the `parts` of this `StringContext`,
+   *  transforming each part with `process` first.
+   *
+   *  The number of `parts` of this `StringContext` must exceed the number of arguments
+   *  by exactly one; otherwise an `IllegalArgumentException` is thrown.
+   *
+   *  @param process the transformation applied to each literal part, such as escape expansion
+   *  @param args the values to be interpolated between the parts
+   *  @return the processed parts concatenated with the string representations of the
+   *          arguments interleaved between them
+   */
   def standardInterpolator(process: String => String, args: Seq[Any]): String = scStandardInterpolator(process, args, parts)
 
   /** The formatted string interpolator.
@@ -357,6 +373,15 @@ object StringContext {
    *  @return The string with all escape sequences expanded.
    */
   @deprecated("use processEscapes", "2.13.0")
+  /** Returns the given string with all standard Scala escape sequences expanded.
+   *
+   *  A backslash that does not start a valid escape sequence raises an
+   *  `InvalidEscapeException`, and a backslash followed by one or more `u`
+   *  characters that is not a well-formed four hex-digit Unicode escape raises
+   *  an `InvalidUnicodeEscapeException`.
+   *
+   *  @param str a string that may contain escape sequences
+   */
   def treatEscapes(str: String): String = processEscapes(str)
 
   /** Expands standard Scala escape sequences in a string.
@@ -366,6 +391,15 @@ object StringContext {
    *
    *  @param  str  A string that may contain escape sequences
    *  @return The string with all escape sequences expanded.
+   */
+  /** Returns the given string with all standard Scala escape sequences expanded,
+   *  including Unicode escapes of the form `\uxxxx`.
+   *  A backslash that does not start a valid escape sequence raises an
+   *  `InvalidEscapeException`. A backslash followed by one or more `u` characters
+   *  that is not a well-formed four hex-digit Unicode escape, such as `"\u1"`,
+   *  raises an `InvalidUnicodeEscapeException` instead.
+   *
+   *  @param str a string that may contain escape sequences
    */
   def processEscapes(str: String): String =
     str.indexOf('\\') match {
@@ -463,6 +497,19 @@ object StringContext {
     loop(0, backslash)
   }
 
+  /** Interpolates the given arguments between the given literal parts, transforming
+   *  each part with `process` first.
+   *
+   *  If the number of `parts` is not exactly `args.length + 1`, an
+   *  `IllegalArgumentException` is thrown.
+   *
+   *  @param process the transformation applied to each literal part, such as escape expansion
+   *  @param args the values to be interpolated between the parts
+   *  @param parts the literal parts of the interpolated string, which must number exactly
+   *               one more than `args`
+   *  @return the processed parts concatenated with the string representations of the
+   *          arguments interleaved between them
+   */
   def standardInterpolator(process: String => String, args: scala.collection.Seq[Any], parts: Seq[String]): String = {
     StringContext.checkLengths(args, parts)
     val pi = parts.iterator
@@ -481,6 +528,12 @@ object StringContext {
    *  @param args the interpolated argument values
    *  @param parts the literal parts of the interpolated string
    *  @throws IllegalArgumentException  if this is not the case.
+   */
+  /** Checks that the number of given arguments is one less than the number of given
+   *  parts, throwing an `IllegalArgumentException` if it is not.
+   *
+   *  @param args the interpolated argument values
+   *  @param parts the literal parts of the interpolated string
    */
   def checkLengths(args: scala.collection.Seq[Any], parts: Seq[String]): Unit =
     if (parts.length != args.length + 1)
