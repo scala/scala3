@@ -5,5 +5,8 @@ object test {
   import scala.concurrent.duration.FiniteDuration
 
   def applyImpl[A: Type](using Quotes): Expr[Unit] =
-    Type.of[A] match { case '[type d <: FiniteDuration; d] => '{ () } }
+    Type.of[A] match {
+      case '[type d <: FiniteDuration; d] => '{ () }
+      case _ => '{ () }
+    }
 }
