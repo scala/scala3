@@ -82,14 +82,10 @@ class TryCatchPatterns extends MiniPhase {
   private def isCatchCase(cdef: CaseDef)(using Context): Boolean = cdef match {
     case CaseDef(Typed(Ident(nme.WILDCARD), tpt), guard, _) =>
       warnIfUnreasonableCatch(tpt)
-      guard == EmptyTree && tpt.match
-        case DisjointUnion(types) => types.forall(isSimpleThrowable)
-        case _ => isSimpleThrowable(tpt.tpe)
+      guard == EmptyTree && isSimpleThrowable(tpt)
     case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt)), guard, _) =>
       warnIfUnreasonableCatch(tpt)
-      guard == EmptyTree && tpt.match
-        case DisjointUnion(types) => types.forall(isSimpleThrowable)
-        case _ => isSimpleThrowable(tpt.tpe)
+      guard == EmptyTree && isSimpleThrowable(tpt)
     case _ =>
       if isDefaultCase(cdef) then
         warnForUnreasonableCatch(cdef)
@@ -97,6 +93,10 @@ class TryCatchPatterns extends MiniPhase {
       else
         false
   }
+
+  private def isSimpleThrowable(tpt: Tree)(using Context): Boolean = tpt match
+    case DisjointUnion(types) => types.forall(isSimpleThrowable)
+    case _ => isSimpleThrowable(tpt.tpe)
 
   @tailrec
   private def isSimpleThrowable(tp: Type)(using Context): Boolean = tp.strippedDealias match {
