@@ -125,7 +125,6 @@ class MultiCatchTest extends DottyBytecodeTest {
       val catchBlock = meth.tryCatchBlocks.get(0)
       assertTrue(hasInstanceOfInsideBlock(catchBlock, "Ex"))
       assertTrue(hasInstanceOfInsideBlock(catchBlock, "java/lang/Exception"))
-      println(instructions)
     }
   }
 
