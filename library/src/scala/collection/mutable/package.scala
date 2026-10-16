@@ -18,14 +18,23 @@ import language.experimental.captureChecking
 package object mutable {
   @deprecated("Use ArraySeq instead of WrappedArray; it can represent both, boxed and unboxed arrays", "2.13.0")
   type WrappedArray[X] = ArraySeq[X]
+  /** Alias for the [[ArraySeq]] companion object, kept so that code written against
+   *  the old name can still call factory methods such as `WrappedArray(1, 2, 3)`.
+   */
   @deprecated("Use ArraySeq instead of WrappedArray; it can represent both, boxed and unboxed arrays", "2.13.0")
   val WrappedArray = ArraySeq
   @deprecated("Use Iterable instead of Traversable", "2.13.0")
   type Traversable[X] = Iterable[X]
+  /** Alias for the [[Iterable]] companion object, kept so that code written against
+   *  the old name can still call factory methods such as `Traversable(1, 2, 3)`.
+   */
   @deprecated("Use Iterable instead of Traversable", "2.13.0")
   val Traversable = Iterable
   @deprecated("Use Stack instead of ArrayStack; it now uses an array-based implementation", "2.13.0")
   type ArrayStack[X] = Stack[X]
+  /** Alias for the [[Stack]] companion object, kept so that code written against
+   *  the old name can still call factory methods such as `ArrayStack(1, 2, 3)`.
+   */
   @deprecated("Use Stack instead of ArrayStack; it now uses an array-based implementation", "2.13.0")
   val ArrayStack = Stack
 
