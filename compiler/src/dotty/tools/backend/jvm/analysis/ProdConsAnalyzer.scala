@@ -53,7 +53,12 @@ import dotty.tools.backend.jvm.BCodeUtils.{FrameExtensions, isLoad, isStore, isL
  * function (merging producer sets) is more complex than merging simple basic values.
  * See also the doc comment in the package object `analysis`.
  */
-class ProdConsAnalyzer(methodNode: MethodNode, classInternalName: String) extends AsmAnalyzer(methodNode, classInternalName, new Analyzer(new InitialProducerSourceInterpreter)) {
+class ProdConsAnalyzer private[analysis] (methodNode: MethodNode, classInternalName: String, budget: AnalysisBudget) extends AsmAnalyzer(methodNode, classInternalName, new Analyzer(new InitialProducerSourceInterpreter(budget))) {
+  /** An analyzer without a budget; see [[AnalysisBudget.prodConsAnalyzer]] for a budgeted one. */
+  def this(methodNode: MethodNode, classInternalName: String) = this(methodNode, classInternalName, AnalysisBudget.unlimited)
+
+  override protected def analysisStarting(): Unit = budget.analysisStarting(methodNode, classInternalName)
+
   /**
    * Returns the potential producer instructions of a (local or stack) value in the frame of `insn`.
    * This method simply returns the producer information computed by the SourceValue analysis.
@@ -446,7 +451,11 @@ case class ParameterProducer(local: Int)                                        
 case class UninitializedLocalProducer(local: Int)                                       extends InitialProducer
 case class ExceptionProducer[V <: Value](handlerLabel: LabelNode, handlerStackTop: Int) extends InitialProducer
 
-class InitialProducerSourceInterpreter extends SourceInterpreter(org.objectweb.asm.Opcodes.ASM7) {
+class InitialProducerSourceInterpreter(budget: AnalysisBudget) extends SourceInterpreter(org.objectweb.asm.Opcodes.ASM7) {
+  override def merge(d: SourceValue, w: SourceValue): SourceValue = {
+    budget.charge(d.insns.size + w.insns.size)
+    super.merge(d, w)
+  }
   override def newParameterValue(isInstanceMethod: Boolean, local: Int, tp: Type): SourceValue = {
     new SourceValue(tp.getSize, ParameterProducer(local))
   }
