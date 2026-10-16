@@ -719,6 +719,11 @@ object MiMaFilters {
       Versions.mimaPreviousVersion -> Seq(
         // SourceFile now has the (preferred) textContent to avoid copying to a char array
         ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.dotc.interfaces.SourceFile.textContent"),
+        // New public worksheet evaluator API
+        ProblemFilters.exclude[MissingClassProblem]("dotty.tools.repl.worksheet.interfaces.Dependency"),
+        ProblemFilters.exclude[MissingClassProblem]("dotty.tools.repl.worksheet.interfaces.EvaluatedWorksheet"),
+        ProblemFilters.exclude[MissingClassProblem]("dotty.tools.repl.worksheet.interfaces.EvaluatedWorksheetStatement"),
+        ProblemFilters.exclude[MissingClassProblem]("dotty.tools.repl.worksheet.interfaces.WorksheetEvaluator"),
       ),
 
       // Additions since last LTS
