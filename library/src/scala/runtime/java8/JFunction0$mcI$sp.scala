@@ -14,7 +14,16 @@ package scala.runtime.java8
 
 import scala.language.`2.13`
 
+/** A `@FunctionalInterface` specialization of [[scala.Function0]] returning an
+ *  unboxed `Int`, allowing a Java lambda or method reference (and the
+ *  compiler's `invokedynamic` lambda encoding) to implement `Function0[Int]`
+ *  without boxing.
+ */
 @FunctionalInterface trait JFunction0$mcI$sp extends Function0[Any] with Serializable {
+  /** Applies this function, returning the result as an unboxed `Int`. */
   def apply$mcI$sp(): Int
+  /** Applies this function by delegating to `apply$mcI$sp`, boxing the
+   *  `Int` result.
+   */
   override def apply(): Any = scala.runtime.BoxesRunTime.boxToInteger(apply$mcI$sp())
 }
