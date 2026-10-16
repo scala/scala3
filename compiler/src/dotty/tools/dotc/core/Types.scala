@@ -5188,7 +5188,7 @@ object Types extends TypeUtils {
     def underlying(using Context): Type = bound
 
     private var myReduced: Type | Null = null
-    private var reductionContext: util.MutableMap[Type, Type] | Null = null
+    private var reductionContext: util.HashMap[Type, Type] | Null = null
 
     private def thisMatchType = this
 
