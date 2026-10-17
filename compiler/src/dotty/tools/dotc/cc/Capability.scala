@@ -1215,7 +1215,15 @@ object Capabilities:
         case t @ AnnotatedType(parent, ann) =>
           t.derivedAnnotatedType(this(parent), ann)
         case t @ defn.RefinedFunctionOf(mt) =>
-          t.derivedRefinedType(refinedInfo = mapOver(mt))
+          t.derivedRefinedType(refinedInfo = this(mt))
+        case t: PolyType =>
+          // A root in the capture set bound of a type parameter only says that the
+          // parameter can be any capture set, it is not a capability of the declaration.
+          t.derivedLambdaType(
+            paramInfos = t.paramInfos.mapConserve: bounds =>
+              if bounds.hi.derivesFromCapSet then bounds
+              else atVariance(-variance)(this(bounds)).bounds,
+            resType = this(t.resType))
         case _ =>
           mapFollowingAliases(t)
 

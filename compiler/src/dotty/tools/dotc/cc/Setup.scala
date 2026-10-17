@@ -395,7 +395,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             addVar(apply(parent), tp)
           case AnnotatedType(parent, annot)
           if annot.symbol == defn.DeclaredAnnot =>
-            transformExplicitType(parent, sym, initialVariance = variance)
+            // A root in a capture set bound of a type parameter is not a capability
+            // of the declaration, so it is not mapped to a local root.
+            transformExplicitType(parent, sym,
+              initialVariance = if parent.derivesFromCapSet then -1 else variance)
           case tp @ RefinedType(parent, rname, rinfo) =>
             val saved = refiningNames
             refiningNames += rname
