@@ -203,6 +203,12 @@ object CheckCaptures:
             traverse(parent)
           case defn.RefinedFunctionOf(mt) =>
             traverse(mt)
+          case t: PolyType =>
+            // Roots in capture set bounds are not capabilities (see GlobalCapToLocal)
+            atVariance(-variance):
+              t.paramInfos.foreach: bounds =>
+                if !bounds.hi.derivesFromCapSet then traverse(bounds)
+            traverse(t.resType)
           case t: MethodType if t.marksExistentialScope =>
             atVariance(-variance):
               t.paramInfos.foreach(traverse)
@@ -1164,6 +1170,14 @@ class CheckCaptures extends Recheck, SymTransformer:
           adoptCaptures(parent1, tp2)
         case (tp1, CapturingType(parent2, _)) =>
           adoptCaptures(tp1, parent2)
+        case (defn.RefinedFunctionOf(mt1), defn.RefinedFunctionOf(mt2))
+        if mt1.paramNames.hasSameLengthAs(mt2.paramNames) =>
+          // References to parameters of `mt2` become references to parameters of `mt1`
+          mt1.paramInfos.lazyZip(mt2.paramInfos).foreach(adoptCaptures)
+          adoptCaptures(mt1.resType, mt2.instantiate(mt1.paramRefs))
+        case (TypeBounds(lo1, hi1), TypeBounds(lo2, hi2)) =>
+          adoptCaptures(lo1, lo2)
+          adoptCaptures(hi1, hi2)
         case (FunctionOrMethod(args1, res1), FunctionOrMethod(args2, res2)) =>
           args1.lazyZip(args2).foreach(adoptCaptures)
           adoptCaptures(res1, res2)
@@ -1386,7 +1400,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             // Anonymous functions propagate their type to the enclosing environment
             // so it is not in general sound to interpolate their types.
             interpolateIfInferred(tree.tpt, sym)
-          else if sym.info.hasCapInResult then
+          else if sym.info.hasCapInResult || closureDef.unapply(tree.rhs).isDefined then
             // If the info has an `any` in its result, this would be propagated
             // into the function type tp ensure monotonicity. We should do this
             // only if the _body_ of the lambda has an `any` in its type, not
@@ -1395,6 +1409,9 @@ class CheckCaptures extends Recheck, SymTransformer:
             // Why not sharpen unconditionally? This would also overwrite `fresh`
             // with the body's type, and thereby make it impossible to define lambdas
             // that return fresh results.
+            // A closure whose body is a closure, such as the type closure of a polymorphic
+            // lambda or a curried closure, also gets the type of its body. This keeps the
+            // declared parameter types of the inner closure, which cannot be re-inferred.
             tree.tpt.updNuType(tree.rhs.nuType)
           curEnv = saved
       }

@@ -1215,7 +1215,16 @@ object Capabilities:
         case t @ AnnotatedType(parent, ann) =>
           t.derivedAnnotatedType(this(parent), ann)
         case t @ defn.RefinedFunctionOf(mt) =>
-          t.derivedRefinedType(refinedInfo = mapOver(mt))
+          t.derivedRefinedType(refinedInfo = this(mt))
+        case t: PolyType =>
+          // A root in a capture set bound such as `C^ <: {any}` only bounds the instances
+          // of `C`. It is not a capability of the declaration, so it is not localized.
+          // This matters only at variance 0, since bounds are visited contravariantly.
+          t.derivedLambdaType(
+            paramInfos = t.paramInfos.mapConserve: bounds =>
+              if bounds.hi.derivesFromCapSet then bounds
+              else atVariance(-variance)(this(bounds)).bounds,
+            resType = this(t.resType))
         case _ =>
           mapFollowingAliases(t)
 
