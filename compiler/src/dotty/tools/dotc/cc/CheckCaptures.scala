@@ -203,6 +203,12 @@ object CheckCaptures:
             traverse(parent)
           case defn.RefinedFunctionOf(mt) =>
             traverse(mt)
+          case t: PolyType =>
+            // A root in a capture set bound only says that the parameter can be any capture set
+            atVariance(-variance):
+              t.paramInfos.foreach: bounds =>
+                if !bounds.hi.derivesFromCapSet then traverse(bounds)
+            traverse(t.resType)
           case t: MethodType if t.marksExistentialScope =>
             atVariance(-variance):
               t.paramInfos.foreach(traverse)
@@ -1164,6 +1170,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           adoptCaptures(parent1, tp2)
         case (tp1, CapturingType(parent2, _)) =>
           adoptCaptures(tp1, parent2)
+        case (defn.RefinedFunctionOf(rinfo1), defn.RefinedFunctionOf(rinfo2)) =>
+          adoptCaptures(rinfo1, rinfo2)
+        case (lt1: LambdaType, lt2: LambdaType) if lt1.paramNames.hasSameLengthAs(lt2.paramNames) =>
+          // References to parameters of `lt2` become references to parameters of `lt1`
+          lt1.paramInfos.lazyZip(lt2.paramInfos).foreach(adoptCaptures)
+          adoptCaptures(lt1.resType, lt2.resType.substParams(lt2, lt1.paramRefs))
         case (FunctionOrMethod(args1, res1), FunctionOrMethod(args2, res2)) =>
           args1.lazyZip(args2).foreach(adoptCaptures)
           adoptCaptures(res1, res2)
@@ -1395,6 +1407,12 @@ class CheckCaptures extends Recheck, SymTransformer:
             // Why not sharpen unconditionally? This would also overwrite `fresh`
             // with the body's type, and thereby make it impossible to define lambdas
             // that return fresh results.
+            tree.tpt.updNuType(tree.rhs.nuType)
+          else if closureDef.unapply(tree.rhs).isDefined then
+            // A closure whose body is a closure, such as the type closure of a
+            // polymorphic lambda or a curried closure, gets the type of the body
+            // as its result type. This keeps the declared parameter types of the
+            // inner closure, which could not be re-inferred.
             tree.tpt.updNuType(tree.rhs.nuType)
           curEnv = saved
       }
