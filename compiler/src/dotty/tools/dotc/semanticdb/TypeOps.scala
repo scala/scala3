@@ -22,8 +22,10 @@ private[semanticdb] class TypeOps:
   private val paramRefSymtab = mutable.Map[(LambdaType, Name), Symbol]()
   private val refinementSymtab = mutable.Map[(RefinedType, Name), Symbol]()
 
-  // save generated fake symbols so we can insert them into symbols section of SemanticDB
-  val fakeSymbols = mutable.Set[FakeSymbol]()
+  // save generated fake symbols so we can insert them into symbols section of SemanticDB.
+  // Insertion ordered: their hash codes depend on identity hash codes of names, and the
+  // iteration order decides the numbering of local symbols.
+  val fakeSymbols = mutable.LinkedHashSet[FakeSymbol]()
   given typeOps: TypeOps = this
 
   extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), Symbol])
