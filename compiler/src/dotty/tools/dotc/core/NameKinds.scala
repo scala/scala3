@@ -115,7 +115,7 @@ object NameKinds {
   /** The kind of qualified names, consisting of an underlying name as a prefix,
    *  followed by a separator, followed by a simple selector name.
    *
-   *  A qualified names always constitutes a new name, different from its underlying name.
+   *  A qualified name always constitutes a new name, different from its underlying name.
    */
   class QualifiedNameKind(tag: Int, val separator: String)
   extends NameKind(tag) {
@@ -203,7 +203,7 @@ object NameKinds {
   /** The kind of unique names that consist of an underlying name (can be empty),
    *  a separator indicating the class of unique name, and a unique number.
    *
-   *  A unique names always constitutes a new name, different from its underlying name.
+   *  A unique name always constitutes a new name, different from its underlying name.
    */
   case class UniqueNameKind(separator: String)
   extends NumberedNameKind(UNIQUE, s"Unique $separator") {
@@ -441,7 +441,7 @@ object NameKinds {
 
   /** Possible name kinds of a method that comes from Scala2 pickling info.
    *  and that need to be unmangled. Note: Scala2 protected accessors and setters
-   *  can be left mangled, so they are not included in thus list.
+   *  can be left mangled, so they are not included in this list.
    */
   val Scala2MethodNameKinds: List[NameKind] =
     List(DefaultGetterName, ExtMethName, UniqueExtMethName)

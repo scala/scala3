@@ -412,12 +412,8 @@ class AliasingAnalyzer[V <: Value](interpreter: Interpreter[V]) extends Analyzer
   override def newFrame(src: Frame[? <: V]): AliasingFrame[V] = new AliasingFrame(src)
 }
 
-// Marker trait for AsmAnalyzers that use AliasingFrame
-trait AliasingAsmAnalyzerMarker
-
 class BasicAliasingAnalyzer(methodNode: MethodNode, classInternalName: String)
   extends AsmAnalyzer[BasicValue](methodNode, classInternalName, new AliasingAnalyzer(new BasicInterpreter))
-    with AliasingAsmAnalyzerMarker
 
 /**
  * An iterator over Int (required to prevent boxing the result of next).

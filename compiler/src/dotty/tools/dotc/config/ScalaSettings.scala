@@ -183,7 +183,8 @@ private sealed trait WarningSettings:
       ChoiceWithHelp("explicits", "Warn if an explicit parameter is unused"),
       ChoiceWithHelp("implicits", "Warn if an implicit parameter is unused"),
       ChoiceWithHelp("params", "Enable -Wunused:explicits,implicits"),
-      ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
+      ChoiceWithHelp("patvars", "Warn if a variable bound in a pattern is unused"),
+      ChoiceWithHelp("unused", "Warn if an `@unused` parameter is used"),
       //ChoiceWithHelp("inlined", "Apply -Wunused to inlined expansions"), // TODO
       ChoiceWithHelp("linted", "Enable -Wunused:imports,privates,locals,implicits"),
     ),
@@ -211,6 +212,7 @@ private sealed trait WarningSettings:
     def privates(using Context) =
       allOr("privates") || allOr("linted")
     def patvars(using Context) = allOr("patvars") || isChoiceSet("unsafe-warn-patvars")
+    def unused(using Context) = allOr("unused")
     def inlined(using Context) = isChoiceSet("inlined")
     def linted(using Context) =
       allOr("linted")
@@ -341,6 +343,7 @@ private sealed trait OptimizerSettings:
     default = Nil
   )
   private def optEnabled(s: String)(using Context): Boolean = opt.value || YoptSpecific.value.contains(s)
+  def optAnyEnabled(using Context): Boolean = opt.value || YoptSpecific.value.nonEmpty
   def optUnreachableCode(using Context): Boolean = optEnabled("unreachable-code")
   def optSimplifyJumps(using Context): Boolean = optEnabled("simplify-jumps")
   def optCompactLocals(using Context): Boolean = optEnabled("compact-locals")
@@ -414,6 +417,9 @@ private sealed trait OptimizerSettings:
   def optWarningNoInlineMissingScalaInlineInfoAttr(using Context): Boolean = optWarningsEnabled("no-inline-missing-attribute")
 
   val YoptLogInline: Setting[String] = StringSetting(ForkSetting, "Yopt-log-inline", "package/Class.method", "Print a summary of inliner activity; `_` to print all, prefix match to select.", "")
+  val YoptAnalysisBudget: Setting[Int] = IntSetting(ForkSetting, "Yopt-analysis-budget",
+    "Per-method limit on the work of the producer/consumer analysis used by the box-unbox and copy-propagation optimizations (see -Yopt-specific), counted in merged producer-set elements. Methods that exceed it keep the other optimizations but skip these. The default affects only a few dozen of the largest methods of the standard library; raise it to optimize more methods at the cost of compile time.",
+    10_000_000)
   val YoptTrace = StringSetting(ForkSetting, "Yopt-trace", "package/Class.method", "Trace the optimizer progress for methods; `_` to print all, prefix match to select.", "")
 
 

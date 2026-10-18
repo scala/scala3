@@ -511,8 +511,7 @@ extension (tp: Type)
    *  result type?
    */
   def hasCapInResult(using Context): Boolean =
-    val (mt: MethodicType) = tp.stripPoly.runtimeChecked
-    mt.resType.spanCaptureSet.containsGlobalOrLocalCap
+    tp.asInstanceOf[MethodOrPoly].resType.spanCaptureSet.containsGlobalOrLocalCap
 
   /** The implied captures of a lambda that come from its result type.
    *  This is the set that needs to be added to a lambda type to ensure

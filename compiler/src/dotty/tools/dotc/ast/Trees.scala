@@ -385,7 +385,8 @@ object Trees {
     def nameSpan(using Context): Span =
       if (span.exists) {
         val point = span.point
-        if (rawMods.is(Synthetic) || span.isSynthetic || name.toTermName == nme.ERROR) Span(point)
+        if (rawMods.is(Synthetic) || span.isSynthetic || name.toTermName == nme.ERROR || srcName.is(NameKinds.DefaultGetterName))
+          Span(point)
         else {
           val realName = srcName.stripModuleClassSuffix.lastPart
           Span(point, point + realName.length, point)
@@ -1870,6 +1871,26 @@ object Trees {
         case Nil => Some(Nil)
         case (x: ValDef) :: _ => Some(xs.asInstanceOf[List[ValDef]])
         case _ => None
+
+    object DisjointUnion:
+      def unapply(tpt: Tree)(using Context): Option[List[Type]] = {
+        tpt.tpe match
+          case t @ OrType(_,_) =>
+            val types = collectAltTypes(t)
+            if isDisjoint(types) then Some(types)
+            else None
+          case _ => None
+      }
+      def isDisjoint(types: List[Type])(using Context): Boolean =
+        types.combinations(2).forall {
+          case one :: another :: Nil => !(one <:< another) && !(another <:< one)
+          case _ => false
+        }
+      private def collectAltTypes(t: Type)(using Context): List[Type] = t match {
+        case OrType(tp1,tp2) =>
+          (collectAltTypes(tp1) ::: collectAltTypes(tp2))
+        case _ => List(t)
+      }
 
     def termParamssIn(paramss: List[ParamClause]): List[List[ValDef]] = paramss match
       case ValDefs(vparams) :: paramss1 =>

@@ -1122,14 +1122,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           assert(sym.name.isSetterName && sym.info.firstParamTypes.nonEmpty, sym)
           sym
         }
-        val qual = tree match {
-          case id: Ident => desugarIdentPrefix(id)
-          case Select(qual, _) => qual
-        }
-        qual.select(setter).appliedTo(rhs)
+        setterAppliedTo(setter, rhs)
       }
       else Assign(tree, rhs)
     }
+
+    def setterAppliedTo(setter: Symbol, rhs: Tree)(using Context): Tree =
+      val qual = tree match
+        case id: Ident => desugarIdentPrefix(id)
+        case Select(qual, _) => qual
+      qual.select(setter).appliedTo(rhs)
 
     /** tree @annot
      *

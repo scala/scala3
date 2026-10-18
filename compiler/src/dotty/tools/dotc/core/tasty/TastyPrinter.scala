@@ -88,7 +88,6 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
   import unpickler.{nameAtRef, unpickle}
 
   private def printHeader(sb: StringBuilder): Unit =
-    val header = unpickler.header
     sb.append("Header:\n")
     if testPickler then
       // these fields are not stable when the TASTy/compiler versions change, so not useful for testing
@@ -96,6 +95,7 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
       sb.append("  tooling: <elided>\n")
       sb.append("     UUID: <elided>\n")
     else
+      val header = unpickler.header
       sb.append(s"  version: ${header.majorVersion}.${header.minorVersion}.${header.experimentalVersion}\n")
       sb.append("  tooling: ").append(header.toolingVersion).append("\n")
       sb.append("     UUID: ").append(header.uuid).append("\n")
@@ -141,6 +141,8 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
         sb.append(s"\n$length:" + " " * indent)
       }
       def printNat() = sb.append(treeStr(" " + readNat()))
+      def printInt() = sb.append(treeStr(" " + readInt()))
+      def printLongInt() = sb.append(treeStr(" " + readLongInt()))
       def printName() = {
         val idx = readNat()
         sb.append(nameStr(" " + idx + " [" + refs.nameRefToString(NameRef(idx)) + "]"))
@@ -190,6 +192,8 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
         else if (tag >= firstNatTreeTag)
           tag match {
             case TERMREFpkg | TYPEREFpkg | STRINGconst | IMPORTED => printName()
+            case BYTEconst | SHORTconst | INTconst | FLOATconst => printInt()
+            case LONGconst | DOUBLEconst => printLongInt()
             case _ => printNat()
           }
         indent -= 2

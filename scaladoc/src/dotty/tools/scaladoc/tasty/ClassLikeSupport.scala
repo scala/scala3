@@ -210,7 +210,7 @@ trait ClassLikeSupport:
     }.groupMap(_._1)(_._2).withDefaultValue(Nil)
     (evidenceMap, termParams)
 
-  private def parseMember(c: ClassDef)(s: Tree): Option[Member] = processTreeOpt(s) { s match
+  private def parseMember(c: ClassDef)(s: Tree): Option[Member] = withCaptureCheckingOf(s.symbol)(processTreeOpt(s) { s match
       case dd: DefDef if isDocumentableExtension(dd.symbol) =>
         dd.symbol.extendedSymbol.map { extSym =>
           val (evidenceMap, termParamClauses) = extractEvidences(dd.symbol.extendedTermParamLists)
@@ -262,7 +262,7 @@ trait ClassLikeSupport:
         Some(parseClasslike(c))
 
       case _ => None
-  }
+  })
 
   private def parseInheritedMember(c: ClassDef)(s: Tree): Option[Member] =
     def inheritance = Some(InheritedFrom(s.symbol.owner.normalizedName, s.symbol.dri, s.symbol.owner.isHiddenByVisibility))
@@ -341,10 +341,12 @@ trait ClassLikeSupport:
       .map(s => (bareClasslikeKind(s), s.dri))
 
 
-  def parseClasslike(classDef: ClassDef, signatureOnly: Boolean = false): Member = classDef match
-    case c: ClassDef if classDef.symbol.flags.is(Flags.Module) => parseObject(c, signatureOnly)
-    case c: ClassDef if classDef.symbol.flags.is(Flags.Enum) && !classDef.symbol.flags.is(Flags.Case) => parseEnum(c, signatureOnly)
-    case clazz => mkClass(classDef)(signatureOnly = signatureOnly)
+  def parseClasslike(classDef: ClassDef, signatureOnly: Boolean = false): Member =
+    withCaptureCheckingOf(classDef.symbol):
+      classDef match
+        case c: ClassDef if classDef.symbol.flags.is(Flags.Module) => parseObject(c, signatureOnly)
+        case c: ClassDef if classDef.symbol.flags.is(Flags.Enum) && !classDef.symbol.flags.is(Flags.Case) => parseEnum(c, signatureOnly)
+        case clazz => mkClass(classDef)(signatureOnly = signatureOnly)
 
   def parseObject(classDef: ClassDef, signatureOnly: Boolean = false): Member =
     mkClass(classDef)(

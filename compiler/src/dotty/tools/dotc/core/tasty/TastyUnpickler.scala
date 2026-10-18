@@ -29,6 +29,15 @@ case class CommonTastyHeader(
 object TastyUnpickler {
   type NameTable = mutable.ArrayBuffer[TermName]
 
+  def getUuidBytes(tasty: Array[Byte]): Array[Byte] =
+    val uuid = new TastyHeaderUnpickler(TastyUnpickler.scala3CompilerConfig, tasty).readHeader()
+    val lo = uuid.getMostSignificantBits
+    val hi = uuid.getLeastSignificantBits
+    val buffer = new TastyBuffer(16)
+    buffer.writeUncompressedLong(lo)
+    buffer.writeUncompressedLong(hi)
+    buffer.bytes
+
   abstract class SectionUnpickler[R](val name: String) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): R
   }
@@ -130,6 +139,7 @@ class TastyUnpickler(protected val reader: TastyReader, isBestEffortTasty: Boole
     result
   }
 
+  // This advances the reader position, it cannot be a lazy val or def!
   val header: CommonTastyHeader =
     if isBestEffortTasty then
       new CommonTastyHeader(new BestEffortTastyHeaderUnpickler(scala3CompilerConfig, reader).readFullHeader())

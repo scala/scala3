@@ -66,17 +66,32 @@ class TryCatchPatterns extends MiniPhase {
   override def transformTry(tree: Try)(using Context): Tree = {
     val (tryCases, patternMatchCases) = tree.cases.span(isCatchCase)
     val fallbackCase = mkFallbackPatterMatchCase(patternMatchCases, tree.span)
-    cpy.Try(tree)(cases = tryCases ++ fallbackCase)
+    cpy.Try(tree)(cases = transformTryCases(tryCases) ++ fallbackCase)
+  }
+
+  import TryCatchPatterns.SimpleMultiCatch
+  private def transformTryCases(tryCases: List[CaseDef])(using Context) = tryCases.map {
+    case cdef @ CaseDef(Typed(_, tpt @ DisjointUnion(types)), _, _) =>
+      cdef.withAttachment(SimpleMultiCatch, types)
+    case cdef @ CaseDef(Bind(_, Typed(_, tpt @ DisjointUnion(types))), _, _) =>
+      cdef.withAttachment(SimpleMultiCatch, types)
+    case cdef => cdef
   }
 
   /** Is this pattern node a catch-all or type-test pattern? */
   private def isCatchCase(cdef: CaseDef)(using Context): Boolean = cdef match {
     case CaseDef(Typed(Ident(nme.WILDCARD), tpt), guard, _) =>
       warnIfUnreasonableCatch(tpt)
-      guard == EmptyTree && isSimpleThrowable(tpt.tpe)
+      tpt match {
+        case DisjointUnion(types) => guard == EmptyTree && types.forall(isSimpleThrowable)
+        case _ => guard == EmptyTree && isSimpleThrowable(tpt.tpe)
+      }
     case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt)), guard, _) =>
       warnIfUnreasonableCatch(tpt)
-      guard == EmptyTree && isSimpleThrowable(tpt.tpe)
+      tpt match {
+        case DisjointUnion(types) => guard == EmptyTree && types.forall(isSimpleThrowable)
+        case _ => guard == EmptyTree && isSimpleThrowable(tpt.tpe)
+      }
     case _ =>
       if isDefaultCase(cdef) then
         warnForUnreasonableCatch(cdef)
@@ -125,3 +140,6 @@ class TryCatchPatterns extends MiniPhase {
 object TryCatchPatterns:
   val name: String = "tryCatchPatterns"
   val description: String = "compile cases in try/catch"
+  import util.Property
+  import core.Types.Type
+  val SimpleMultiCatch: Property.StickyKey[List[Type]] = Property.StickyKey()

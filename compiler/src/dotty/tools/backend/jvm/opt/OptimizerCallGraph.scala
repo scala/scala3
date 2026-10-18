@@ -137,7 +137,7 @@ class OptimizerCallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfil
 
   private def addMethod(methodNode: MethodNode, definingClass: ClassBType): Unit = {
     if (!BCodeUtils.isAbstractMethod(methodNode) && !BCodeUtils.isNativeMethod(methodNode) && Limits.sizeOKForBasicValue(methodNode)) {
-      lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(methodNode, definingClass.internalName)
+      val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(methodNode, definingClass.internalName)
 
       var methodCallsites = Map.empty[MethodInsnNode, Callsite]
       var methodClosureInstantiations = Map.empty[InvokeDynamicInsnNode, ClosureInstantiation]
@@ -284,7 +284,7 @@ class OptimizerCallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfil
    * Returns
    *   - the new instruction list
    *   - a map from old to new instructions
-   *   - a bit set containing local variable indices that are stored into
+   *   - a bit set containing local variable indices that are written
    */
   def cloneInstructions(methodNode: MethodNode, labelMap: Map[LabelNode, LabelNode], callsitePos: SourcePosition, keepLineNumbers: Boolean): (InsnList, Map[AbstractInsnNode, AbstractInsnNode], mutable.BitSet) = {
     val javaLabelMap = labelMap.asJava
@@ -307,6 +307,8 @@ class OptimizerCallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfil
         } else if (BCodeUtils.isStore(ins)) {
           val vi = ins.asInstanceOf[VarInsnNode]
           writtenLocals += vi.`var`
+        } else if (ins.getOpcode == Opcodes.IINC) {
+          writtenLocals += ins.asInstanceOf[IincInsnNode].`var`
         }
         result.add(cloned)
         map += ((ins, cloned))

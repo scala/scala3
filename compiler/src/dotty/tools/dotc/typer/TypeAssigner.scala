@@ -529,7 +529,7 @@ trait TypeAssigner {
       val rinfo = if (rsym.is(Accessor)) rsym.info.resultType else rsym.info
       if (rinfo.isError) rinfo
       else if (!rinfo.exists) parent // can happen after failure in self type definition
-      else RefinedType(parent, rsym.name, rinfo)
+      else RefinedType(parent, rsym.name, rinfo.curryPolyFunction(parent.typeSymbol))
     }
     val refined = refinements.foldLeft(parent.tpe)(addRefinement)
     tree.withType(RecType.closeOver(rt => refined.substThis(refineCls, rt.recThis)))

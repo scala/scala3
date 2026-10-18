@@ -54,6 +54,6 @@ def deleteDirectory(directory: File): Unit =
     file.delete()
   }
 
-class VirtualJavaSource(fileName: String, code: String) extends SimpleJavaFileObject(
+case class VirtualJavaSource(fileName: String, code: String) extends SimpleJavaFileObject(
     URI.create("string:///" + fileName), JavaFileObject.Kind.SOURCE):
   override def getCharContent(ignoreEncodingErrors: Boolean): String = code

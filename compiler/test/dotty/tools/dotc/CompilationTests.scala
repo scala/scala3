@@ -163,7 +163,7 @@ class CompilationTests {
     aggregateTests(
       compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.negScala2LibraryTastyExcludelisted)),
       compileFilesInDir("tests/neg-deep-subtype", allowDeepSubtypes),
-      compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
+      compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking")),
       compileFile("tests/neg-custom-args/sourcepath/outer/nested/Test1.scala", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath")),
       compileDir("tests/neg-custom-args/sourcepath2/hi", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath2", "-Werror")),
       compileList("duplicate source", List(
@@ -202,11 +202,30 @@ class CompilationTests {
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
-      compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
+      compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking", "-language:experimental.separationChecking")),
       // Run tests for legacy lazy vals.
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
     ))
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
+  }
+
+  @Test def runSpecial(): Unit = {
+    // TODO: this test should be much simpler if we used source roots correctly in Vulpix and in Context.getSource,
+    // because then we could switch the source root instead of moving the file
+    val firstFilePath = "tests/run-special/typecheck-boom/Macro_1.scala"
+    val tmpPath = java.nio.file.Files.createTempFile("typecheck-boom", ".scala")
+    val firstPath = TestSources.rootPath().resolve(firstFilePath)
+    try special(
+      defaultOptions,
+      "tests/run-special/typecheck-boom",
+      expectError = false,
+      o => compileFile(firstFilePath, o),
+      ("Macro_1/typecheck-boom/Macro_1/", o => {
+        java.nio.file.Files.move(firstPath, tmpPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        compileFile("tests/run-special/typecheck-boom/Use_2.scala", o)
+      })
+    )
+    finally java.nio.file.Files.move(tmpPath, firstPath)
   }
 
   // Generic java signatures tests ---------------------------------------------

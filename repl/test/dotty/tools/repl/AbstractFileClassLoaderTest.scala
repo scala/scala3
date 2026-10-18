@@ -143,12 +143,14 @@ class AbstractFileClassLoaderTest:
     val b = sut.classBytes("buzz/booz.class")
     assertEquals("hello, world", new String(b, UTF8.charSet))
 
-  def probeIsInterruptible(mode: InterruptInstrumentation): Boolean =
-    val parent = classOf[InterruptProbe].getClassLoader
+  def probeIsInterruptible(
+      mode: InterruptInstrumentation,
+      parent: ClassLoader = classOf[InterruptProbe].getClassLoader
+  ): Boolean =
     val name = classOf[InterruptProbe].getName
     val root = io.virtualDirectory("replout")
     val dir = name.split('.').init.foldLeft(root)(_.subdirectoryNamed(_))
-    closing(dir.fileNamed("InterruptProbe.class").output)(_.write(parent.classBytes(name)))
+    closing(dir.fileNamed("InterruptProbe.class").output)(_.write(classOf[InterruptProbe].getClassLoader.classBytes(name)))
     val loader = new AbstractFileClassLoader(root, parent, mode)
     ReplBytecodeInstrumentation.setStopFlag(loader, true)
     try
@@ -165,5 +167,8 @@ class AbstractFileClassLoaderTest:
 
   @Test def replClassesAreInstrumentedWhenLocal(): Unit =
     assertTrue(probeIsInterruptible(Local))
+
+  @Test def localModeWorksWhenParentCannotSeeStopRepl(): Unit =
+    assertTrue(probeIsInterruptible(Local, ClassLoader.getPlatformClassLoader))
 
 end AbstractFileClassLoaderTest

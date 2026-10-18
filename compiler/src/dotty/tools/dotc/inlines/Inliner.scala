@@ -1362,7 +1362,7 @@ class Inliner(val call: tpd.Tree)(using Context):
               case none => t
             }
             super.transform(t1)
-          case t: Apply =>
+          case t: (Apply | TypeApply) =>
             val t1 = super.transform(t)
             if (t1 `eq` t) t else BetaReduce(t1)
           case Block(Nil, expr) =>

@@ -858,9 +858,10 @@ object Denotations {
       end goForward
 
       def goBack: SingleDenotation =
-        // currentPeriod < end of valid; in this case a version must exist
-        // but to be defensive we check for infinite loop anyway
+        // currentPeriod < end of valid. If a full lap finds no version containing it,
+        // currentPeriod precedes the first version, which we return.
         var cur = this
+        var earliest = this
         var cnt = 0
         while !cur.validFor.contains(currentPeriod) do
           //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
@@ -870,6 +871,8 @@ object Denotations {
           // performance: Test setup: Compile everything in dotc and immediate subdirectories
           // 10 times. Best out of 10: 18154ms with `prev` field, 17777ms without.
           cnt += 1
+          if cur eq this then return earliest
+          if cur.validFor.firstPhaseId < earliest.validFor.firstPhaseId then earliest = cur
           if cnt > MaxPossiblePhaseId then
             return atPhase(coveredInterval.firstPhaseId)(current)
         cur

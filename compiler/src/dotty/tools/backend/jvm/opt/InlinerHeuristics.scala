@@ -31,7 +31,7 @@ class InlinerHeuristics(byteCodeRepository: BCodeRepository,
                         callGraph: OptimizerCallGraph, ts: OptimizerKnownBTypes,
                         settings: OptimizerSettings) {
 
-  private lazy val inlineSourceMatcher: InlineSourceMatcher = new InlineSourceMatcher(settings.optInlineFrom)
+  private val inlineSourceMatcher: InlineSourceMatcher = new InlineSourceMatcher(settings.optInlineFrom)
 
   private def canInlineFromSource(sourceFilePath: Option[String], calleeDeclarationClass: InternalName): Boolean = {
     inlineSourceMatcher.allowFromSources && sourceFilePath.isDefined ||
@@ -265,7 +265,7 @@ object InlinerHeuristics {
   case object HigherOrderWithLiteral extends InlineReason
   case object HigherOrderWithForwardedParam extends InlineReason
 
-  class InlineSourceMatcher(inlineFromSetting: List[String]) {
+  private final class InlineSourceMatcher(inlineFromSetting: List[String]) {
     // `terminal` is true if all remaining entries are of the same negation as this one
     case class Entry(pattern: Pattern, negated: Boolean, terminal: Boolean) {
       def matches(internalName: InternalName): Boolean = pattern.matcher(internalName).matches()

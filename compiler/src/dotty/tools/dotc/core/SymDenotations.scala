@@ -1456,9 +1456,16 @@ object SymDenotations {
 
     /** The class that encloses the owner of the current context
      *  and that is a subclass of this class. NoSymbol if no such class exists.
+     *  Java statics are entered in a companion module, but in Java they are part
+     *  of the class body (JLS 8.1.6), where protected access is allowed (JLS 6.6.2.1).
+     *  So the companion class of a Java statics module is also considered.
      */
     final def enclosingSubClass(using Context): Symbol =
-      ctx.owner.ownersIterator.findSymbol(_.isSubClass(symbol))
+      ctx.owner.ownersIterator
+        .flatMap: owner =>
+          if owner.isJavaStaticsClass then Iterator(owner, owner.companionClass)
+          else Iterator.single(owner)
+        .findSymbol(_.isSubClass(symbol))
 
     /** The alias of an opaque type alias that's stored in the self type of the
      *  containing object.
