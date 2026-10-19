@@ -67,9 +67,10 @@ final class SnippetDriver(snippetCompilerSettings: Seq[SnippetCompilerSetting[?]
     rootCtx.setSetting(rootCtx.settings.XreadComments, true)
     rootCtx.setSetting(rootCtx.settings.color, "never")
     rootCtx.setSetting(rootCtx.settings.XimportSuggestionTimeout, 0)
-    rootCtx.setSetting(rootCtx.settings.fromTasty, false)
     for scSetting <- snippetCompilerSettings do
       rootCtx.setSetting(scSetting.setting, scSetting.value)
+    // snippets are never from tasty, but we might have received that as part of snippetCompilerSettings
+    rootCtx.setSetting(rootCtx.settings.fromTasty, false)
     rootCtx.setSetting(rootCtx.settings.outputDir, target)
     // don't print any diagnostics, keep them for later
     rootCtx.setReporter(new StoreReporter())
