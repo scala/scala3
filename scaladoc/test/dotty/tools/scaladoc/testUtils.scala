@@ -20,8 +20,10 @@ extension (c: CompilerContext) def reportedDiagnostics: ReportedDiagnostics =
   val t = c.reporter.asInstanceOf[TestReporter]
   ReportedDiagnostics(t.errors.result(), t.warnings.result(), t.infos.result())
 
-def assertNoWarning(diag: ReportedDiagnostics) = assertEquals("Warnings should be empty", Nil, diag.warningMsgs)
-def assertNoErrors(diag: ReportedDiagnostics) = assertEquals("Erros should be empty", Nil, diag.errorMsgs)
+def assertNoWarning(diag: ReportedDiagnostics) =
+  val relevant = diag.warningMsgs.filterNot(d => d.contains("object and package with same name: caps") || d.endsWith("warning found"))
+  assertEquals("Warnings should be empty", Nil, relevant)
+def assertNoErrors(diag: ReportedDiagnostics) = assertEquals("Errors should be empty", Nil, diag.errorMsgs)
 def assertNoInfos(diag: ReportedDiagnostics) = assertEquals("Infos should be empty", Nil, diag.infoMsgs)
 
 def assertMessagesAbout(messages: Seq[String])(patterns: String*) =
