@@ -137,7 +137,7 @@ jobs:
             else
               printf '%s\n' "$out" >&2
               echo "cannot list $1, refusing to continue" >&2
-              exit 1
+              return 2
             fi
           }
 
@@ -161,6 +161,11 @@ jobs:
             for h in $(grep -oE 'href="repodata/[^"]*"' yum-old/repodata/repomd.xml | cut -d'"' -f2); do
               [ -f "yum-old/$h" ] || missing="$missing $h"
             done
+            for f in yum-old/repodata/*; do
+              b=$(basename "$f")
+              [ "$b" = repomd.xml ] && continue
+              grep -qF "href=\"repodata/$b\"" yum-old/repodata/repomd.xml || rm -f "$f"
+            done
             if [ -n "$missing" ]; then
               echo "YUM: the published repodata is incomplete, repomd.xml references:$missing" >&2
               echo "Neither this workflow nor mergerepo_c can rebuild those without the packages," >&2
@@ -171,7 +176,7 @@ jobs:
             echo "YUM_PUBLISHED=true" >> "$GITHUB_ENV"
             echo "YUM: found a published index"
           elif [ "$BOOTSTRAP" = "true" ]; then
-            n=$(count rpm/ '\.rpm$')
+            n=$(count rpm/ '\.rpm$') || exit 1
             [ "$n" -eq 0 ] || { echo "YUM: no index but $n packages are published, refusing to bootstrap" >&2; exit 1; }
             echo "YUM_PUBLISHED=false" >> "$GITHUB_ENV"
             echo "YUM: no index yet, bootstrapping"
@@ -181,16 +186,17 @@ jobs:
             exit 1
           fi
 
+          : > published.Packages
           if exists debian/Packages; then
             rsync -t -e "$RSH" "$REMOTE:${REMOTE_DIR:?}/debian/Packages" published.Packages
+          fi
+          if [ -s published.Packages ]; then
             head -1 published.Packages | grep -q '^Package: ' \
               || { echo "APT: the published Packages is not an index" >&2; exit 1; }
-            echo "PUBLISHED_DEBS=$(count debian/ '\.deb$')" >> "$GITHUB_ENV"
             echo "APT: found a published index"
           elif [ "$BOOTSTRAP" = "true" ]; then
-            n=$(count debian/ '\.deb$')
+            n=$(count debian/ '\.deb$') || exit 1
             [ "$n" -eq 0 ] || { echo "APT: no index but $n packages are published, refusing to bootstrap" >&2; exit 1; }
-            : > published.Packages
             echo "APT: no index yet, bootstrapping"
           else
             echo "APT: no published index and bootstrap is false, refusing to continue." >&2
@@ -205,10 +211,12 @@ jobs:
           echo "NVRA=$nvra" >> "$GITHUB_ENV"
 
           if [ "$YUM_PUBLISHED" = "true" ]; then
-            href=$(grep -m1 -oE 'href="repodata/[^"]*primary\.xml[^"]*"' yum-old/repodata/repomd.xml | cut -d'"' -f2 || true)
+            href=$(tr '<' '\n' < yum-old/repodata/repomd.xml | grep -A5 '^data type="primary"' \
+                     | grep -m1 -oE 'href="repodata/[^"]*"' | cut -d'"' -f2 || true)
             [ -n "$href" ] || { echo "YUM: the published repomd.xml references no primary index" >&2; exit 1; }
             zstdcat -f "yum-old/$href" > primary.cat
-            [ -s primary.cat ] || { echo "YUM: the published primary index decompressed to nothing" >&2; exit 1; }
+            grep -q '<metadata' primary.cat \
+              || { echo "YUM: the published primary index did not decompress to metadata" >&2; exit 1; }
             if grep -qF "href=\"$nvra.rpm\"" primary.cat; then
               echo "YUM_SKIP=true"              >> "$GITHUB_ENV"
               echo "YUM_INDEX=yum-old/repodata" >> "$GITHUB_ENV"
@@ -241,6 +249,13 @@ jobs:
           mkdir -p apt
 
           if grep -qxF "Filename: ./$DEB" published.Packages; then
+            want=$(awk -v f="Filename: ./$DEB" '$0==f{found=1} found&&/^SHA256: /{print $2; exit}' published.Packages)
+            have=$(sha256sum "dl/$DEB" | cut -d' ' -f1)
+            [ "$want" = "$have" ] \
+              || { echo "the release asset for $VERSION differs from the published one." >&2
+                   echo "published sha256 $want, release asset $have." >&2
+                   echo "Publish under a new version, or remove the published payload by hand." >&2
+                   exit 1; }
             echo "DEB_SKIP=true" >> "$GITHUB_ENV"
             cp published.Packages apt/Packages
             echo "APT: $DEB is already published, rebuilding the index only"
@@ -294,46 +309,48 @@ jobs:
       - name: Verify what is actually served
         shell: bash
         run: |
-          get() {
-            curl -sSL --retry 3 --retry-all-errors -o "$2" -w '%{http_code}' "$BASE_URL/$1"
-          }
+          fetch() { curl -fsSL  --retry 3 --retry-all-errors -o "$2"      "$BASE_URL/$1"; }
+          probe() { curl -fsSLI --retry 3 --retry-all-errors -o /dev/null "$BASE_URL/$1"; }
 
-          [ "$(get rpm/repodata/repomd.xml served.repomd.xml)" = 200 ] \
+          fetch rpm/repodata/repomd.xml served.repomd.xml \
             || { echo "rpm/repodata/repomd.xml is not served" >&2; exit 1; }
-          href=$(grep -m1 -oE 'href="repodata/[^"]*primary\.xml[^"]*"' served.repomd.xml | cut -d'"' -f2 || true)
+          for h in $(grep -oE 'href="repodata/[^"]*"' served.repomd.xml | cut -d'"' -f2); do
+            probe "rpm/$h" || { echo "repomd.xml references rpm/$h, which is not served" >&2; exit 1; }
+          done
+          href=$(tr '<' '\n' < served.repomd.xml | grep -A5 '^data type="primary"' \
+                   | grep -m1 -oE 'href="repodata/[^"]*"' | cut -d'"' -f2 || true)
           [ -n "$href" ] || { echo "the served repomd.xml references no primary index" >&2; exit 1; }
-          [ "$(get "rpm/$href" served.primary.z)" = 200 ] \
-            || { echo "rpm/$href is not served" >&2; exit 1; }
+          fetch "rpm/$href" served.primary.z || { echo "rpm/$href is not served" >&2; exit 1; }
           zstdcat -f served.primary.z > served.primary.xml
           grep -qF "href=\"${NVRA:?}.rpm\"" served.primary.xml \
             || { echo "the served YUM index does not list $NVRA" >&2; exit 1; }
-          [ "$(get "rpm/$NVRA.rpm" /dev/null)" = 200 ] \
-            || { echo "rpm/$NVRA.rpm is not served" >&2; exit 1; }
-          for h in $(grep -oE 'href="repodata/[^"]*"' served.repomd.xml | cut -d'"' -f2); do
-            [ "$(get "rpm/$h" /dev/null)" = 200 ] \
-              || { echo "repomd.xml references rpm/$h, which is not served" >&2; exit 1; }
-          done
+          probe "rpm/$NVRA.rpm" || { echo "rpm/$NVRA.rpm is not served" >&2; exit 1; }
 
           for f in Packages Packages.gz InRelease Release Release.gpg; do
-            [ "$(get "debian/$f" "served.$f")" = 200 ] \
-              || { echo "debian/$f is not served" >&2; exit 1; }
+            fetch "debian/$f" "served.$f" || { echo "debian/$f is not served" >&2; exit 1; }
           done
           grep -qxF "Filename: ./$DEB" served.Packages \
             || { echo "the served APT index does not list $DEB" >&2; exit 1; }
-          [ "$(get "debian/$DEB" /dev/null)" = 200 ] \
-            || { echo "debian/$DEB is not served" >&2; exit 1; }
+          probe "debian/$DEB" || { echo "debian/$DEB is not served" >&2; exit 1; }
 
           zstdcat -f served.Packages.gz > served.Packages.ungz
           cmp -s served.Packages served.Packages.ungz \
             || { echo "the served Packages.gz does not match Packages" >&2; exit 1; }
           for f in Packages Packages.gz; do
             want=$(sha256sum "served.$f" | cut -d' ' -f1)
-            grep -qF "$want" served.InRelease \
-              || { echo "InRelease does not record the sha256 of the served $f" >&2; exit 1; }
+            for sig in InRelease Release; do
+              grep -qF "$want" "served.$sig" \
+                || { echo "$sig does not record the sha256 of the served $f" >&2; exit 1; }
+            done
           done
+          gpg --verify served.Release.gpg served.Release \
+            || { echo "Release.gpg does not sign the served Release" >&2; exit 1; }
+          gpg --verify served.InRelease \
+            || { echo "the served InRelease is not correctly signed" >&2; exit 1; }
 
           echo "Verified: both indexes list $VERSION, both packages are reachable,"
-          echo "and the served APT index matches the hashes in its signature"
+          echo "every file repomd.xml references is served, and the APT index matches"
+          echo "the hashes in both of its signatures"
 
       - name: Remove the credentials from the workspace
         if: always()
