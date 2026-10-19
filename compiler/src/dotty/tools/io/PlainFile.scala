@@ -36,7 +36,7 @@ class PlainFile(givenPath: Path) extends AbstractFile {
 
   override def hashCode(): Int = path.hashCode
   override def equals(that: Any): Boolean = (this `eq` that.asInstanceOf[Object]) || (that match {
-    case x: PlainFile => path `eq` x.path
+    case x: PlainFile => path == x.path
     case _            => false
   })
 
