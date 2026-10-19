@@ -176,6 +176,14 @@ enum ToggleableFeature(val cssClass: String, val name: String, val label: String
 case class Toggleable(feature: ToggleableFeature, on: Signature, off: Signature = Nil, hint: String = "") extends SignaturePart:
   override val name: String = on.map(_.name).mkString
 
+/** Wrap capture-checking-specific signature fragments so they can be toggled
+ *  interactively in the rendered documentation. `off` is what to render when
+ *  cc annotations are hidden (usually nothing).
+ */
+def ccToggle(on: Signature, off: Signature = Nil, hint: String = ""): Signature =
+  if on.isEmpty && off.isEmpty then Nil
+  else List(Toggleable(ToggleableFeature.CaptureChecking, on, off, hint))
+
 /** Hover texts explaining the fragments of capture checking. `set` is a
  *  rendered capture set, such as `{io, fs}`.
  */

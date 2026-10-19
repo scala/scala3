@@ -525,7 +525,7 @@ trait ClassLikeSupport:
     // For capset members, prepend ^ to the signature (the bounds rendering
     // already elides the CapSet lower/upper defaults, so we just need the caret).
     val sig = tpeTree.asSignature(classDef, symbol.owner)
-    val sigWithCaret = if isCaptureVar then Toggleable(ToggleableFeature.CaptureChecking, Keyword("^") :: Nil, hint = CaptureHints.captureSetMember) :: sig else sig
+    val sigWithCaret = if isCaptureVar then ccToggle(List(Keyword("^")), hint = CaptureHints.captureSetMember) ++ sig else sig
 
     if symbol.flags.is(Flags.Exported)
     then {

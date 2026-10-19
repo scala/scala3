@@ -54,14 +54,6 @@ trait TypesSupport:
   protected def inParens(s: SSignature, wrap: Boolean = true) =
     if wrap then plain("(").l ++ s ++ plain(")").l else s
 
-  /** Wrap capture-checking-specific signature fragments so they can be toggled
-   *  interactively in the rendered documentation. `off` is what to render when
-   *  cc annotations are hidden (usually nothing).
-   */
-  protected def ccToggle(on: SSignature, off: SSignature = Nil, hint: String = ""): SSignature =
-    if on.isEmpty && off.isEmpty then Nil
-    else List(Toggleable(ToggleableFeature.CaptureChecking, on, off, hint))
-
   /** The hover text of a capturing suffix such as `^` or `^{io}` */
   private def capturingHint(capturing: SSignature): String =
     capturing.map(_.name).mkString.stripPrefix("^") match
