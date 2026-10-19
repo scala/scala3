@@ -243,7 +243,7 @@ object Decorators {
     def show(using Context): String = text.mkString(ctx.settings.pageWidth.value)
 
   /** Test whether a list of strings representing phases contains
-   *  a given phase. See [[config.CompilerCommand#explainAdvanced]] for the
+   *  a given phase. See `config.CompilerCommand#explainAdvanced` for the
    *  exact meaning of "contains" here.
    */
    extension (names: List[String])

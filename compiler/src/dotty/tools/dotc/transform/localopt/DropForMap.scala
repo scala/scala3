@@ -17,7 +17,7 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
  *  - it won't change the type of the expression, and
  *  - the function is an identity function or a const function to unit.
  *
- *  The latter condition is checked in [[Desugar.scala#makeFor]]
+ *  The latter condition is checked in `Desugar.scala#makeFor`
  */
 class DropForMap extends MiniPhase:
 

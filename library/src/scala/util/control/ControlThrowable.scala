@@ -30,7 +30,7 @@ import scala.language.`2.13`
  *  breakable {
  *    for (v <- values) {
  *      try {
- *        if (p(v)) break
+ *        if (p(v)) break()
  *        else ???
  *      } catch {
  *        case NonFatal(t) => log(t)  // can't catch a break

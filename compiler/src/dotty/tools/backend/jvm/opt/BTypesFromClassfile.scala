@@ -58,7 +58,7 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, cache: ClassBType
   }
 
   /**
-   * Parse the classfile for `internalName` and construct the [[BTypes.ClassBType]]. If the classfile cannot
+   * Parse the classfile for `internalName` and construct the BTypes.ClassBType. If the classfile cannot
    * be found in the `byteCodeRepository`, the `info` of the resulting ClassBType is undefined.
    */
   def classBTypeFromParsedClassfile(internalName: InternalName): Either[OptimizerWarning, ClassBType] = {
@@ -71,7 +71,7 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, cache: ClassBType
   }
 
   /**
-   * Construct the [[BTypes.ClassBType]] for a parsed classfile.
+   * Construct the BTypes.ClassBType for a parsed classfile.
    */
   def classBTypeFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): Either[OptimizerWarning, ClassBType] = {
     cache(classNode.name) { _ =>

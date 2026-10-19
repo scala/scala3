@@ -4661,7 +4661,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  import quotes.reflect.*
        *  //}
        *  '{
-       *    object MyModule$macro$1 extends Object:
+       *    object `MyModule$macro$1` extends Object:
        *      def run(): Unit = println("run")
        *    MyModule$macro$1.run()
        *  }
@@ -5096,7 +5096,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  ```scala sc:compile
          *  def rhsExpr(using q: Quotes): Expr[Unit] =
          *    import q.reflect.*
-         *    '{ val y = ???; (y, y) }
+         *    '{ val y = ???; (y, y): Unit }
          *  def aValDef(using q: Quotes)(owner: q.reflect.Symbol) =
          *    import q.reflect.*
          *    val sym = Symbol.newVal(owner, "x", TypeRepr.of[Unit], Flags.EmptyFlags, Symbol.noSymbol)
