@@ -35,6 +35,8 @@ class CompilationTests {
       compileDir("tests/pos-special/i18589", defaultOptions.and("-Wsafe-init").without("-Ycheck:all")),
       compileDir("tests/pos-special/i24547", defaultOptions.without("-Ycheck:all")),
       compileDir("tests/pos-special/i24719", defaultOptions.without("-Ycheck:all")),
+      // -Xsemanticdb reads positions from TASTy, which can hide missing positions
+      compileFilesInDir("tests/pos-special/no-semanticdb", defaultOptions.without("-Xsemanticdb")),
       // Run tests for legacy lazy vals
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
