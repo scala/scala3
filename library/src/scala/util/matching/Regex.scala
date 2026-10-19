@@ -131,7 +131,7 @@ import java.util.regex.{ Pattern, Matcher }
  *  val dates = "Important dates in history: 2004-01-20, 1958-09-05, 2010-10-06, 2011-07-15"
  *  val mi = date.findAllIn(dates)
  *  while (mi.hasNext) {
- *    val d = mi.next
+ *    val d = mi.next()
  *    if (mi.group(1).toInt < 1960) println(s"\$d: An oldie but goodie.")
  *  }
  *  ```
@@ -554,7 +554,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *  val vars = Map("x" -> "a var", "y" -> """some \$ and \ signs""")
    *  val text = "A text with variables %x, %y and %z."
    *  val varPattern = """%(\w+)""".r
-   *  val mapper = (m: Match) => vars get (m group 1) map (quoteReplacement(_))
+   *  val mapper = (m: Match) => vars.get(m.group(1)).map(quoteReplacement(_))
    *  val repl = varPattern replaceSomeIn (text, mapper)
    *  ```
    *
@@ -608,7 +608,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *  ```scala sc:compile
    *  val date = """(\d\d\d\d)-(\d\d)-(\d\d)""".r.unanchored
    *
-   *  val date(year, month, day) = "Date 2011-07-15"                       // OK
+   *  val date(year, month, day) = "Date 2011-07-15".runtimeChecked         // OK
    *
    *  val copyright: String = "Date of this document: 2011-07-15" match {
    *    case date(year, month, day) => s"Copyright \$year"                  // OK

@@ -37,7 +37,7 @@ import Decorators.*
  *  to find the correct extension method corresponding to a value class method
  *  (see [[ExtensionMethods.extensionMethod]]), therefore we choose to place it
  *  before phases which may perform their own name mangling on value class
- *  methods (like [[TypeSpecializer]]), this way [[VCInlineMethods]] does not
+ *  methods (like `TypeSpecializer`), this way [[VCInlineMethods]] does not
  *  need to have any knowledge of the name mangling done by other phases.
  */
 class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {

@@ -88,7 +88,7 @@ object NameOps {
 
     /** Does this name match `[{letter | digit} '_'] op`?
       *
-      * See examples in [[NameOpsTest]].
+      * See examples in NameOpsTest.
       */
     def isOperatorName: Boolean =
       name match
