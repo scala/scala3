@@ -38,6 +38,30 @@ object Comments {
 
     def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
       doc.foreach(d => _docstrings.update(sym, d))
+
+    /** Drop the docstrings of symbols that are no longer valid in the current run.
+     *
+     *  This instance lives on the root context, so it is shared by all runs of
+     *  a long-lived driver (REPL, IDE, compile server). Symbols that a later run
+     *  replaced (e.g. by recompiling their source) would otherwise be retained
+     *  forever, together with everything reachable from them, including their
+     *  trees and the contexts of the run that created them.
+     *  Symbols that are still valid (from the classpath, or defined in an earlier
+     *  REPL line) keep their docstrings.
+     */
+    def removeStale()(using Context): Unit =
+      // `isValidInCurrentRun` alone is not enough: package objects are brought forward
+      // to the new run before their source is recompiled (see `Namer.checkNoConflictIn`),
+      // so a replaced package object still looks valid. Also require that the symbol,
+      // and its top-level class, are still the ones entered in their package.
+      def isEntered(sym: Symbol): Boolean =
+        val owner = sym.maybeOwner
+        !owner.is(Flags.PackageClass) || owner.unforcedDecls.contains(sym.name, sym)
+      def isLive(sym: Symbol): Boolean =
+        sym.isValidInCurrentRun && isEntered(sym) && isEntered(sym.topLevelClass)
+      val stale = _docstrings.keysIterator.filterNot(isLive).toList
+      stale.foreach(_docstrings.remove)
+      templateExpander.clearCaches()
   }
 
   /**
@@ -437,6 +461,10 @@ object Comments {
      *  in their doc comments
      */
     private val defs = mutable.HashMap[Symbol, Map[String, String]]() withDefaultValue Map()
+
+    /** Forget the cached `@define`s; they are recomputed on demand from the docstrings. */
+    def clearCaches(): Unit = defs.clear()
+
     private val Trim = "(?s)^[\\s&&[^\n\r]]*(.*?)\\s*$".r
     private def getDefs(symbol: Symbol)(using Context): Map[String, String] = defs.get(symbol) match
       case Some(m) => m
