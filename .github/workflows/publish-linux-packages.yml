@@ -157,6 +157,17 @@ jobs:
           mkdir -p yum-old
           if exists rpm/repodata/repomd.xml; then
             rsync -rt -e "$RSH" "$REMOTE:${REMOTE_DIR:?}/rpm/repodata/" yum-old/repodata/
+            missing=
+            for h in $(grep -oE 'href="repodata/[^"]*"' yum-old/repodata/repomd.xml | cut -d'"' -f2); do
+              [ -f "yum-old/$h" ] || missing="$missing $h"
+            done
+            if [ -n "$missing" ]; then
+              echo "YUM: the published repodata is incomplete, repomd.xml references:$missing" >&2
+              echo "Neither this workflow nor mergerepo_c can rebuild those without the packages," >&2
+              echo "which are deliberately never downloaded. Rebuild the index by hand: fetch the" >&2
+              echo "published .rpm files over HTTP, run createrepo_c on them, upload repodata/." >&2
+              exit 1
+            fi
             echo "YUM_PUBLISHED=true" >> "$GITHUB_ENV"
             echo "YUM: found a published index"
           elif [ "$BOOTSTRAP" = "true" ]; then
@@ -298,6 +309,10 @@ jobs:
             || { echo "the served YUM index does not list $NVRA" >&2; exit 1; }
           [ "$(get "rpm/$NVRA.rpm" /dev/null)" = 200 ] \
             || { echo "rpm/$NVRA.rpm is not served" >&2; exit 1; }
+          for h in $(grep -oE 'href="repodata/[^"]*"' served.repomd.xml | cut -d'"' -f2); do
+            [ "$(get "rpm/$h" /dev/null)" = 200 ] \
+              || { echo "repomd.xml references rpm/$h, which is not served" >&2; exit 1; }
+          done
 
           for f in Packages Packages.gz InRelease Release Release.gpg; do
             [ "$(get "debian/$f" "served.$f")" = 200 ] \
