@@ -42,6 +42,15 @@ class TastyToolsTest:
     val reporter = Main.process(args, TestReporter.reporter(System.out, logLevel = ERROR))
     assertFalse("-from-tasty failed.", reporter.hasErrors)
 
+  /** Decompile the TASTy in `classes` and return the decompiled source. */
+  private def decompile(classes: Path): String =
+    val out = Files.createDirectories(classes.resolveSibling("decompiled"))
+    val args = Array("-color:never", "-d", out.toString, "-classpath", classpath(classes))
+      ++ tastyFiles(classes).map(_.toString)
+    val reporter = dotty.tools.dotc.decompiler.Main.process(args, TestReporter.reporter(System.out, logLevel = ERROR))
+    assertFalse("Decompilation failed.", reporter.hasErrors)
+    Files.readString(out.resolve("decompiled.scala"))
+
   private def printTasty(classes: Path): String =
     tastyFiles(classes).map(f => TastyPrinter.showContents(Files.readAllBytes(f), noColor = true, isBestEffortTasty = false)).mkString
 
@@ -77,3 +86,23 @@ class TastyToolsTest:
         |  case '[h *: t] => true
         |  case _ => false
         |""".stripMargin))
+
+  @Test def decompileSeqWildcard(): Unit =
+    val decompiled = decompile(compile("decompileSeqWildcard",
+      """def f(l: List[Int]) = l match
+        |  case List(1, xs*) => xs
+        |  case _ => Nil
+        |""".stripMargin))
+    assertTrue(decompiled, decompiled.contains("_*"))
+
+  @Test def decompileCaptureAnnotations(): Unit =
+    val decompiled = decompile(compile("decompileCaptureAnnotations",
+      """import language.experimental.captureChecking
+        |class C extends caps.SharedCapability
+        |class Ref(val c: C):
+        |  val get: () ->{c} Int = () => 1
+        |def f(c: C) =
+        |  val r = Ref(c)
+        |  r.get
+        |""".stripMargin))
+    assertTrue(decompiled, decompiled.contains("retains"))
