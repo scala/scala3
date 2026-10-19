@@ -211,8 +211,7 @@ jobs:
           echo "NVRA=$nvra" >> "$GITHUB_ENV"
 
           if [ "$YUM_PUBLISHED" = "true" ]; then
-            href=$(tr '<' '\n' < yum-old/repodata/repomd.xml | grep -A5 '^data type="primary"' \
-                     | grep -m1 -oE 'href="repodata/[^"]*"' | cut -d'"' -f2 || true)
+            href=$(awk 'BEGIN{RS="<"} /^data type="primary">/{f=1; next} f && /^location href="/ {sub(/^location href="/,""); sub(/".*/,""); print; exit}' yum-old/repodata/repomd.xml)
             [ -n "$href" ] || { echo "YUM: the published repomd.xml references no primary index" >&2; exit 1; }
             zstdcat -f "yum-old/$href" > primary.cat
             grep -q '<metadata' primary.cat \
@@ -317,8 +316,7 @@ jobs:
           for h in $(grep -oE 'href="repodata/[^"]*"' served.repomd.xml | cut -d'"' -f2); do
             probe "rpm/$h" || { echo "repomd.xml references rpm/$h, which is not served" >&2; exit 1; }
           done
-          href=$(tr '<' '\n' < served.repomd.xml | grep -A5 '^data type="primary"' \
-                   | grep -m1 -oE 'href="repodata/[^"]*"' | cut -d'"' -f2 || true)
+          href=$(awk 'BEGIN{RS="<"} /^data type="primary">/{f=1; next} f && /^location href="/ {sub(/^location href="/,""); sub(/".*/,""); print; exit}' served.repomd.xml)
           [ -n "$href" ] || { echo "the served repomd.xml references no primary index" >&2; exit 1; }
           fetch "rpm/$href" served.primary.z || { echo "rpm/$href is not served" >&2; exit 1; }
           zstdcat -f served.primary.z > served.primary.xml
