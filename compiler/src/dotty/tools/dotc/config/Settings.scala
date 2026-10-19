@@ -127,7 +127,7 @@ object Settings:
     validateSettingTag(ct)
 
     // Without the following assertion, it would be easy to mistakenly try to pass a file to a setting that ignores invalid args.
-    // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.<
+    // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
     assert(!(ct == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
 
     val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases.map(_.name)
