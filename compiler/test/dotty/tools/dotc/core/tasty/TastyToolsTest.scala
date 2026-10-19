@@ -1,5 +1,6 @@
 package dotty.tools.dotc.core.tasty
 
+import java.io.{File => JFile}
 import java.nio.file.{Files, Path}
 
 import scala.jdk.CollectionConverters.*
@@ -31,6 +32,16 @@ class TastyToolsTest:
   private def tastyFiles(classes: Path): List[Path] =
     Files.walk(classes).iterator.asScala.filter(_.toString.endsWith(".tasty")).toList
 
+  private def classpath(classes: Path): String =
+    s"${TestConfiguration.basicClasspath}${JFile.pathSeparator}$classes"
+
+  private def fromTasty(classes: Path): Unit =
+    val out = Files.createDirectories(classes.resolveSibling("from-tasty"))
+    val args = Array("-from-tasty", "-color:never", "-d", out.toString, "-classpath", classpath(classes))
+      ++ tastyFiles(classes).map(_.toString)
+    val reporter = Main.process(args, TestReporter.reporter(System.out, logLevel = ERROR))
+    assertFalse("-from-tasty failed.", reporter.hasErrors)
+
   private def printTasty(classes: Path): String =
     tastyFiles(classes).map(f => TastyPrinter.showContents(Files.readAllBytes(f), noColor = true, isBestEffortTasty = false)).mkString
 
@@ -57,3 +68,12 @@ class TastyToolsTest:
         |  case _ => 0
         |""".stripMargin)
     assertTrue(printTasty(subMatch).contains("SUBMATCH"))
+
+  @Test def fromTastyQuotePattern(): Unit =
+    // the only quotes are patterns, which also need staging when read back from TASTy
+    fromTasty(compile("fromTastyQuotePattern",
+      """import scala.quoted.*
+        |def isTuple[A](t: Type[A])(using Quotes): Boolean = t match
+        |  case '[h *: t] => true
+        |  case _ => false
+        |""".stripMargin))
