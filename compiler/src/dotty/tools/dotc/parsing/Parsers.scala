@@ -833,6 +833,9 @@ object Parsers {
         (in.lastOffset - 1, skipped)                      //   move the following text up to where the `)` or `}` was
     }
 
+    /** Inside a `do`/`while` that is rewritten to `while ({ ... }) ()`, whose braces must stay */
+    private var inMigratedDoWhile = false
+
     /** Parse brace-enclosed `body` and rewrite it to be an indentation region instead, if possible.
      *  If possible means:
      *   1. not inside (...), [...], case ... =>
@@ -857,7 +860,8 @@ object Parsers {
         case r: InBraces => allBraces(r.enclosing)
         case _ => false
       }
-      var canRewrite = allBraces(in.currentRegion) && // test (1)
+      var canRewrite = !inMigratedDoWhile && // its braces end up in `while ({ ... }) ()`
+        allBraces(in.currentRegion) && // test (1)
         !testChars(in.lastOffset - 3, " =>") // test(6)
 
       def isStartOfSymbolicFunction: Boolean =
@@ -2674,12 +2678,15 @@ object Parsers {
               |use `while <body> ; <cond> do ()` instead.${rewriteNotice()}""",
           in.sourcePos(), MigrationVersion.Scala2to3)
         val start = in.skipToken()
+        val outerInMigratedDoWhile = inMigratedDoWhile
+        inMigratedDoWhile = MigrationVersion.Scala2to3.needsPatch
         atSpan(start) {
           val body = expr()
           if (isStatSep) in.nextToken()
           val whileStart = in.offset
           accept(WHILE)
           val cond = expr()
+          inMigratedDoWhile = outerInMigratedDoWhile
           if MigrationVersion.Scala2to3.needsPatch then
             patch(source, Span(start, start + 2), "while ({")
             patch(source, Span(whileStart, whileStart + 5), ";")
