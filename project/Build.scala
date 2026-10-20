@@ -1515,9 +1515,6 @@ object Build {
       // Silence AnyRefMap deprecation warnings in the scalajs-ir sources
       Compile / compile / scalacOptions +=
         "-Wconf:src=scalajs-ir-src/.*&msg=object AnyRefMap in package scala\\.collection\\.mutable is deprecated:s",
-      // Silence Scaladoc warnings in the scalajs-ir sources
-      Compile / compile / scalacOptions +=
-        "-Wconf:src=scalajs-ir-src/.*&msg=resolve a member for the given link query:s",
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
@@ -1542,9 +1539,7 @@ object Build {
           val sjsSources = (trgDir ** "*.scala").get().toSet
           sjsSources.foreach(f => {
             val lines = IO.readLines(f)
-            val linesWithPackage = Shading.replacePackage(lines) {
-              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
-            }
+            val linesWithPackage = Shading.replacePackage(lines, "org.scalajs.ir", "dotty.tools.sjs.ir")
             IO.writeLines(f, linesWithPackage)
           })
           sjsSources
@@ -1647,9 +1642,6 @@ object Build {
       // Silence AnyRefMap deprecation warnings in the scalajs-ir sources
       Compile / compile / scalacOptions +=
         "-Wconf:src=scalajs-ir-src/.*&msg=object AnyRefMap in package scala\\.collection\\.mutable is deprecated:s",
-      // Silence Scaladoc warnings in the scalajs-ir sources
-      Compile / compile / scalacOptions +=
-        "-Wconf:src=scalajs-ir-src/.*&msg=resolve a member for the given link query:s",
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
@@ -1674,9 +1666,7 @@ object Build {
           val sjsSources = (trgDir ** "*.scala").get().toSet
           sjsSources.foreach(f => {
             val lines = IO.readLines(f)
-            val linesWithPackage = Shading.replacePackage(lines) {
-              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
-            }
+            val linesWithPackage = Shading.replacePackage(lines, "org.scalajs.ir", "dotty.tools.sjs.ir")
             IO.writeLines(f, linesWithPackage)
           })
           sjsSources
