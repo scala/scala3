@@ -1522,7 +1522,7 @@ object Build {
         "-Wconf:src=scalajs-ir-src/.*&msg=object AnyRefMap in package scala\\.collection\\.mutable is deprecated:s",
       // Silence Scaladoc warnings in the scalajs-ir sources
       Compile / compile / scalacOptions +=
-        "-Wconf:src=scalajs-ir-src/.*&msg=Couldn't resolve a member for the given link query:s",
+        "-Wconf:src=scalajs-ir-src/.*&msg=resolve a member for the given link query:s",
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
@@ -1654,7 +1654,7 @@ object Build {
         "-Wconf:src=scalajs-ir-src/.*&msg=object AnyRefMap in package scala\\.collection\\.mutable is deprecated:s",
       // Silence Scaladoc warnings in the scalajs-ir sources
       Compile / compile / scalacOptions +=
-        "-Wconf:src=scalajs-ir-src/.*&msg=Couldn't resolve a member for the given link query:s",
+        "-Wconf:src=scalajs-ir-src/.*&msg=resolve a member for the given link query:s",
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
