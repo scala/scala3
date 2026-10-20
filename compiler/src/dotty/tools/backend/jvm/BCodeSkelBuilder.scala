@@ -143,7 +143,7 @@ trait BCodeSkelBuilder(val bTypes: KnownBTypes) extends BCodeHelpers {
     private var isCZStaticModule    = false
 
     // keep track of interfaces that are used in super calls, as they need to be directly inherited even if they are also indirectly inherited
-    val superCallTargets = mutable.LinkedHashSet[ClassBType]()
+    val superCallTargets = mutable.LinkedHashSet.empty[ClassBType]
 
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 

@@ -1110,7 +1110,7 @@ object Contexts {
      *  instead of storing messages directly in ErrorTypes in order
      *  to avoid space leaks - the message usually captures a context.
      */
-    private[core] val errorTypeMsg: mutable.Map[Types.ErrorType, Message] = mutable.Map()
+    private[core] val errorTypeMsg: mutable.Map[Types.ErrorType, Message] = mutable.Map.empty
 
     // Phases state
 

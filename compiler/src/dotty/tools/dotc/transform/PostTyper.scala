@@ -127,7 +127,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
    *  the closure's type forms part of the type of a valdef or defdef
    *  that has a polymorphic closure type.
    */
-  private val closuresNeedingExplicify = mutable.Set[Symbol]()
+  private val closuresNeedingExplicify = mutable.Set.empty[Symbol]
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
@@ -148,7 +148,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     private val seenUnrolledMethods: util.EqHashMap[Symbol, Boolean] = new util.EqHashMap[Symbol, Boolean]
 
-    private var noCheckNews: Set[New] = Set()
+    private var noCheckNews: Set[New] = Set.empty
 
     def isValidUnrolledMethod(method: Symbol, origin: SrcPos)(using Context): Boolean =
       seenUnrolledMethods.getOrElseUpdate(method, {

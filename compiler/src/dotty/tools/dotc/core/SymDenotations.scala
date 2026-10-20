@@ -2534,8 +2534,8 @@ object SymDenotations {
       }
 
     def computeMemberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {
-      var names = Set[Name]()
-      def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
+      var names = Set.empty[Name]
+      inline def maybeAdd(name: Name) = if keepOnly(thisType, name) then names += name
       ctx.handleRecursive("member names of", this):
         for ptype <- parentTypes do
           ptype.classSymbol match

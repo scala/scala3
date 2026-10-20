@@ -1195,7 +1195,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     def collectSubTrees[A](f: PartialFunction[Tree, A])(using Context): List[A] =
-      val buf = mutable.ListBuffer[A]()
+      val buf = mutable.ListBuffer.empty[A]
       foreachSubTree(f.runWith(buf += _)(_))
       buf.toList
 

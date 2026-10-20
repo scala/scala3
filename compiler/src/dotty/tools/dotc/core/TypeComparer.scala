@@ -97,7 +97,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var maxErrorLevel: Int = -1
   protected var errorNotes: List[(Int, Note)] = Nil
 
-  val undoLog = mutable.ArrayBuffer[() => Unit]()
+  val undoLog = mutable.ArrayBuffer.empty[() => Unit]
 
   private var needsGc = false
 

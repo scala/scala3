@@ -172,7 +172,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     myUnits = us
 
   var suspendedUnits: ListBuffer[CompilationUnit] = ListBuffer.empty
-  var suspendedHints: mutable.Map[CompilationUnit, (String, Boolean)] = mutable.HashMap()
+  var suspendedHints: mutable.Map[CompilationUnit, (String, Boolean)] = mutable.HashMap.empty
 
   /** Were any units suspended in the typer phase? if so then pipeline tasty can not complete. */
   var suspendedAtTyperPhase: Boolean = false
@@ -207,7 +207,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   }
 
   /** The source files of all late entered symbols, as a set */
-  private val lateFiles = mutable.Set[AbstractFile]()
+  private val lateFiles = mutable.Set.empty[AbstractFile]
 
   /** A cache for static references to packages and classes */
   val staticRefs = util.EqHashMap[Name, Denotation](initialCapacity = 1024)

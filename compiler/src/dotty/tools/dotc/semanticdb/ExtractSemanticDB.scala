@@ -212,7 +212,7 @@ private[semanticdb] object ExtractSemanticDB:
     given converter: s.TypeOps = s.TypeOps()
 
     /** The bodies of synthetic locals */
-    private val localBodies = mutable.HashMap[Symbol, Tree]()
+    private val localBodies = new mutable.HashMap[Symbol, Tree]()
 
     /** The extracted symbol occurrences */
     val occurrences = new mutable.ListBuffer[SymbolOccurrence]()
@@ -226,7 +226,7 @@ private[semanticdb] object ExtractSemanticDB:
     val localNames = new mutable.HashSet[String]()
 
     /** The symbol occurrences generated so far, as a set */
-    private val generated = new mutable.HashSet[SymbolOccurrence]
+    private val generated = new mutable.HashSet[SymbolOccurrence]()
 
     def extract(tree: Tree)(using Context): Unit =
       traverse(tree)

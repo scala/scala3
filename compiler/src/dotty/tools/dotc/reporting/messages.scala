@@ -980,7 +980,7 @@ class UncheckedTypePattern(argType: Type, whyNot: String)(using Context)
         |"""
 }
 
-class MatchCaseUnreachable(why: String = "")(using Context)
+class MatchCaseUnreachable(why: => String = "")(using Context)
 extends Message(MatchCaseUnreachableID) {
   def kind = MessageKind.MatchCaseUnreachable
   override protected def msg(using Context) = "Unreachable case"

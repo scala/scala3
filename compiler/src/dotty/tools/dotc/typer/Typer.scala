@@ -198,7 +198,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  Note: It would be more proper to move importedFromRoot into typedIdent.
    *  We should check that this has no performance degradation, however.
    */
-  private var unimported: Set[Symbol] = Set()
+  private var unimported: Set[Symbol] = Set.empty
 
   /** Temporary data item for single call to typed ident:
    *  This symbol would be found under Scala2 mode, but is not
@@ -3344,7 +3344,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val TypeDef(name, impl @ Template(constr, _, self, _)) = cdef: @unchecked
     val parents = impl.parents
     val superCtx = ctx.superCallContext
-    val seenParents = mutable.Set[Symbol]()
+    val seenParents = mutable.Set.empty[Symbol]
 
     def typedParent(tree: untpd.Tree): Tree =
       val parent = tree match
