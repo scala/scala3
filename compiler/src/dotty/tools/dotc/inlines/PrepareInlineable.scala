@@ -122,7 +122,15 @@ object PrepareInlineable {
             val accessor = useAccessor(tree)
             if tree != accessor then
               checkUnstableAccessor(tree, accessor.symbol)
-            accessor
+              // The accessor's result type is the widened type of a stable member, but the
+              // declared result type of the inline method may depend on the member's path
+              // (e.g. `x.T`). Keep the reference's singleton type so the body still conforms.
+              // Only a private inline method can refer to a private path in its signature, and
+              // its expansions see the member as a member of the prefix, so restrict it to those.
+              if inlineSym.is(Private) && tree.symbol.isStableMember && !tree.symbol.is(Method) then
+                accessor.ensureConforms(tree.tpe)
+              else accessor
+            else accessor
         case _ =>
           tree
       }
