@@ -9,7 +9,7 @@ import collection.mutable
 import scala.annotation.tailrec
 import dotty.tools.dotc.reporting.Reporter
 
-import java.io.OutputStreamWriter
+import java.io.{OutputStreamWriter, StringWriter, Writer}
 import java.nio.charset.StandardCharsets.UTF_8
 import dotty.tools.dotc.reporting.CodeAction
 
@@ -43,7 +43,7 @@ object Rewrites {
       def p(other: Span): Boolean = span.start == other.start || span.end == other.end
       pbuf.filterInPlace(x => !p(x.span))
 
-    def apply(str: String, writer: OutputStreamWriter): Unit = {
+    def apply(str: String, writer: Writer): Unit = {
       val patches = pbuf.toList.distinct.sortBy(_.span.start)
       val delta = patches.map(_.delta).sum
       if (patches.nonEmpty)
@@ -70,8 +70,11 @@ object Rewrites {
 
     def writeBack(): Unit =
       assert(source.file != null, "Cannot rewrite nonexistent file!")
+      // patch into memory first, so that a failure (e.g. overlapping patches) leaves the file intact
+      val patched = StringWriter()
+      apply(source.textContent(), patched)
       val osw = OutputStreamWriter(source.file.output, UTF_8)
-      try apply(source.textContent(), osw)
+      try osw.write(patched.toString)
       finally osw.close()
   }
 
