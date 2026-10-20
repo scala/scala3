@@ -2,15 +2,18 @@ object Shading {
   /** Replace package names in package definitions, for shading.
    * It assumes the full package def is written on a single line.
    * It does not adapt the imports accordingly.
+   * It does fix references in Scaladoc to avoid warnings.
    */
-  def replacePackage(lines: List[String])(replace: PartialFunction[String, String]): List[String] = {
+  def replacePackage(lines: List[String], oldPkg: String, newPkg: String): List[String] = {
     def recur(lines: List[String]): List[String] =
       lines match {
         case head :: tail =>
           if (head.startsWith("package ")) {
             val packageName = head.stripPrefix("package ").trim
-            val newPackageName = replace.applyOrElse(packageName, (_: String) => packageName)
-            s"package $newPackageName" :: tail
+            val newPackageName = if (packageName == oldPkg) newPkg else packageName
+            s"package $newPackageName" :: recur(tail)
+          } else if (head.contains("[[") && head.trim().startsWith("*")) {
+            head.replace(oldPkg, newPkg) :: recur(tail)
           } else head :: recur(tail)
         case _ => lines
       }
