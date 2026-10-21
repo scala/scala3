@@ -55,6 +55,17 @@ sbtn "scala3-compiler-nonbootstrapped/testOnly *EGraph*"
 scala-cli format compiler/src/dotty/tools/dotc/qualified_types
 ```
 
+## Branches
+
+- `qualifiers-ci` ([mbovel/dotty](https://github.com/mbovel/dotty/tree/qualifiers-ci)) is the development branch, opened as [scala/scala3#21586](https://github.com/scala/scala3/pull/21586). Its last commit must always be "[Temporary] Enable qualified types by default".
+- `refinement-types` ([epfl-lara/dotty](https://github.com/epfl-lara/dotty/tree/refinement-types)) is the release branch for the Stainless fork. It is the same as `qualifiers-ci`, but with "[fork-only] CI Setup" instead of "[Temporary] Enable qualified types by default".
+
+`refinement-types` is regularly updated from `qualifiers-ci`:
+
+```
+git rebase --onto qualifiers-ci~1 refinement-types~1 refinement-types
+```
+
 ## Development guidelines
 
 - Commands in "Tests" and "Formatting" above must successfully pass before every commit.
