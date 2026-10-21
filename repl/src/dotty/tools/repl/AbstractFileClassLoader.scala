@@ -72,6 +72,8 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
 
   override def loadClass(name: String): Class[?] =
     if interruptInstrumentation.isOneOf(InterruptInstrumentation.Disabled, InterruptInstrumentation.Local) then
+      // `local` delegates what it does not instrument, so the flag would come from the
+      // parent and be shared: cancelling one session would end the others.
       if interruptInstrumentation == InterruptInstrumentation.Local && name == stopReplName then
         return ownStopRepl(name)
       return super.loadClass(name)
