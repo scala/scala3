@@ -4,6 +4,7 @@ package core
 package tasty
 
 import scala.compiletime.uninitialized
+import scala.collection.mutable
 
 import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyReader}
 import TastyFormat.SOURCE
@@ -17,8 +18,8 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: Int => TermName) {
   import reader.*
 
   private var myLineSizes: Array[Int] = uninitialized
-  private var mySpans: util.HashMap[Addr, Span] = uninitialized
-  private var mySourceNameRefs: util.HashMap[Addr, NameRef] = uninitialized
+  private var mySpans: mutable.HashMap[Addr, Span] = uninitialized
+  private var mySourceNameRefs: mutable.HashMap[Addr, NameRef] = uninitialized
   private var isDefined = false
 
   def ensureDefined(): Unit = {
@@ -33,8 +34,8 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: Int => TermName) {
         myLineSizes(i) += (if lineSize == 0xFFFFFFFFL then -1 else lineSize.toInt)
         i += 1
 
-      mySpans = util.HashMap[Addr, Span]()
-      mySourceNameRefs = util.HashMap[Addr, NameRef]()
+      mySpans = mutable.HashMap.empty[Addr, Span]
+      mySourceNameRefs = mutable.HashMap.empty[Addr, NameRef]
       var curIndex = 0
       var curStart = 0
       var curEnd = 0
@@ -61,12 +62,12 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: Int => TermName) {
     }
   }
 
-  private[tasty] def spans: util.HashMap[Addr, Span] = {
+  private[tasty] def spans: mutable.HashMap[Addr, Span] = {
     ensureDefined()
     mySpans
   }
 
-  private[tasty] def sourceNameRefs: util.HashMap[Addr, NameRef] = {
+  private[tasty] def sourceNameRefs: mutable.HashMap[Addr, NameRef] = {
     ensureDefined()
     mySourceNameRefs
   }

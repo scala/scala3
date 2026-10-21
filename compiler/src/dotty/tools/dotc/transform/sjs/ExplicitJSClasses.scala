@@ -4,6 +4,7 @@ package transform
 package sjs
 
 import scala.compiletime.uninitialized
+import scala.collection.mutable
 import MegaPhase.*
 import core.Annotations.*
 import core.Constants.*
@@ -729,6 +730,6 @@ object ExplicitJSClasses {
   private final class MyState {
     val nestedObject2superTypeConstructor = new MutableSymbolMap[Type]
     val localClass2jsclassVal = new MutableSymbolMap[TermSymbol]
-    val notYetReferencedLocalClasses = new util.HashSet[Symbol]
+    val notYetReferencedLocalClasses = new mutable.HashSet[Symbol]
   }
 }

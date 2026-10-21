@@ -919,7 +919,7 @@ trait Applications extends Compatibility {
                 addTyped(arg)
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
-                val typedVarArgs = util.HashSet[TypedArg]()
+                val typedVarArgs = mutable.HashSet.empty[TypedArg]
                 val typedArgs = harmonic(harmonizeArgs, elemFormal):
                   args.map: arg =>
                     if isVarArg(arg) then

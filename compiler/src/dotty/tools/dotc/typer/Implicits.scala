@@ -652,7 +652,7 @@ trait ImplicitRunInfo:
     object collectParts extends TypeTraverser:
 
       private var parts: mutable.LinkedHashSet[Type] = uninitialized
-      private val partSeen = util.HashSet[Type]()
+      private val partSeen = mutable.HashSet.empty[Type]
 
       def traverse(t: Type) = ctx.handleRecursive("collectParts of", t):
         if partSeen.contains(t) then ()
@@ -694,8 +694,8 @@ trait ImplicitRunInfo:
         parts
     end collectParts
 
-    val seen = util.HashSet[Type]()
-    val incomplete = util.HashSet[Type]()
+    val seen = mutable.HashSet.empty[Type]
+    val incomplete = mutable.HashSet.empty[Type]
 
     def collectCompanions(tp: Type, parts: collection.Set[Type]): TermRefSet =
       val companions = new TermRefSet
@@ -826,7 +826,7 @@ trait ImplicitRunInfo:
         record(i"implicitScope")
         val liftToAnchors = new TypeMap:
           override def stopAt = StopAt.Static
-          private val seen = util.HashSet[Type]()
+          private val seen = mutable.HashSet.empty[Type]
 
           override def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type): Type =
             if lo.exists && hi.exists then super.derivedTypeBounds(tp, lo, hi)
