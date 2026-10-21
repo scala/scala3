@@ -830,7 +830,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
        */
       var toCheck: List[List[Type]] = Nil
 
-      private val seen = mutable.HashSet.empty[Symbol]
+      private val seen = mutable.Set.empty[Symbol]
 
       def apply(c: Captures, t: Type) =
         if variance < 0 then c

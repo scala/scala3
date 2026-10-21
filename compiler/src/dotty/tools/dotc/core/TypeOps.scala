@@ -460,7 +460,7 @@ object TypeOps:
 
   /** An approximating map that drops NamedTypes matching `toAvoid` and wildcard types. */
   abstract class AvoidMap(using Context) extends AvoidWildcardsMap:
-    @threadUnsafe lazy val localParamRefs = mutable.HashSet.empty[Type]
+    @threadUnsafe lazy val localParamRefs = mutable.Set.empty[Type]
 
     def toAvoid(tp: NamedType): Boolean
 
@@ -788,7 +788,7 @@ object TypeOps:
   private def instantiateToSubType(tp1: NamedType, tp2: Type, mixins: List[Type])(using Context): Type = trace(i"instantiateToSubType($tp1, $tp2, $mixins)", typr) {
     /** Gather GADT symbols and singletons found in `tp2`, ie. the scrutinee. */
     object TraverseTp2 extends TypeTraverser:
-      val singletons = mutable.HashMap.empty[Symbol, SingletonType]
+      val singletons = mutable.Map.empty[Symbol, SingletonType]
       val gadtSyms = new mutable.ListBuffer[Symbol]
 
       def traverse(tp: Type) = ctx.handleRecursive("traverseTp2", tp):
@@ -865,7 +865,7 @@ object TypeOps:
     // 3. Replace non-reducing MatchType with its bound
     //
     val approximateParent = new TypeMap {
-      val boundTypeParams = mutable.HashMap.empty[TypeRef, TypeVar]
+      val boundTypeParams = mutable.Map.empty[TypeRef, TypeVar]
 
       def apply(tp: Type): Type = tp.dealias match {
         case tp: MatchType =>

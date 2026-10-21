@@ -1210,7 +1210,7 @@ final class InlineLog(optLogInline: Option[String]) {
   private var _active = false
 
   var roots: mutable.ArrayBuffer[InlineLogResult] | Null = null
-  var downstream: mutable.HashMap[Callsite, mutable.ArrayBuffer[InlineLogResult]] | Null = null
+  var downstream: mutable.Map[Callsite, mutable.ArrayBuffer[InlineLogResult]] | Null = null
   var callsiteInfo: String | Null = null
 
   // A bit of a hack.. We check the -Yopt-log-inline flag when logging the first inline request.
@@ -1226,7 +1226,7 @@ final class InlineLog(optLogInline: Option[String]) {
       }
       if (_active) {
         roots = mutable.ArrayBuffer.empty[InlineLogResult]
-        downstream = mutable.HashMap.empty[Callsite, mutable.ArrayBuffer[InlineLogResult]]
+        downstream = mutable.Map.empty[Callsite, mutable.ArrayBuffer[InlineLogResult]]
         callsiteInfo = s"Inlining into ${callsiteClass.internalName}.${callsiteMethod.name}"
       }
     }

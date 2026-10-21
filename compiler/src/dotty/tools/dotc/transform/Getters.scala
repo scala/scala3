@@ -94,7 +94,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
 
   private val NoGetterNeededFlags = Method | Param | JavaDefined | JavaStatic | PhantomSymbol | Erased
 
-  val newSetters = mutable.HashSet.empty[Symbol]
+  val newSetters = mutable.Set.empty[Symbol]
 
   def ensureSetter(sym: TermSymbol)(using Context): Symbol =
     val setter = sym.setter

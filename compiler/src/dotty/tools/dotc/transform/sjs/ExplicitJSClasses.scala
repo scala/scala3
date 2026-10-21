@@ -730,6 +730,6 @@ object ExplicitJSClasses {
   private final class MyState {
     val nestedObject2superTypeConstructor = new MutableSymbolMap[Type]
     val localClass2jsclassVal = new MutableSymbolMap[TermSymbol]
-    val notYetReferencedLocalClasses = new mutable.HashSet[Symbol]
+    val notYetReferencedLocalClasses = mutable.Set.empty[Symbol]
   }
 }

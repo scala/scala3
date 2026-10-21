@@ -183,7 +183,7 @@ object Plugin {
       case Failure(e)  => Failure(e)
     })
 
-    val seen = mutable.HashSet.empty[String]
+    val seen = mutable.Set.empty[String]
     val enabled = (fromPaths ::: fromDirs) map(_.flatMap {
       case (classname, loader) =>
         Plugin.load(classname, loader).flatMap {  clazz =>

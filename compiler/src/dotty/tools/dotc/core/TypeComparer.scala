@@ -63,13 +63,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     frozenConstraint = false
     if Config.checkTypeComparerReset then checkReset()
 
-  private var pendingSubTypes: mutable.HashSet[(Type, Type)] | Null = null
+  private var pendingSubTypes: mutable.Set[(Type, Type)] | Null = null
   /** Tracks the `(tycon, args, other, fromBelow, constraint)` tuples currently
    *  being compared by [[compareAppliedTypeParamRef]] to guard against infinite recursion.
    *  See https://github.com/scala/scala3/issues/24537.
    */
   private var pendingAppliedTypeParamRefs:
-    mutable.HashSet[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)] | Null = null
+    mutable.Set[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)] | Null = null
   private var appliedRecCount = 0
   private var appliedMonitored = false
 
@@ -77,7 +77,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       tycon: TypeParamRef, args: List[Type], other: AppliedType, fromBelow: Boolean)(inline op: Boolean): Boolean =
     def monitoredAppliedTypeParamRef =
       if pendingAppliedTypeParamRefs == null then
-        pendingAppliedTypeParamRefs = mutable.HashSet.empty[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)]
+        pendingAppliedTypeParamRefs = mutable.Set.empty[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)]
       val key = (tycon, args, other, fromBelow, constraint)
       !pendingAppliedTypeParamRefs.nn.contains(key) && {
         pendingAppliedTypeParamRefs.nn += key
@@ -294,7 +294,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
-        pendingSubTypes = mutable.HashSet.empty[(Type, Type)]
+        pendingSubTypes = mutable.Set.empty[(Type, Type)]
         report.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
         report.log(s"!!! constraint = ${constraint.show}")
         //if (ctx.settings.YnoDeepSubtypes.value) {
@@ -3125,7 +3125,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def provablyDisjoint(tp1: Type, tp2: Type)(using Context): Boolean =
     provablyDisjoint(tp1, tp2, null)
 
-  private def provablyDisjoint(tp1: Type, tp2: Type, pending: mutable.HashSet[(Type, Type)] | Null)(
+  private def provablyDisjoint(tp1: Type, tp2: Type, pending: mutable.Set[(Type, Type)] | Null)(
       using Context): Boolean = trace(i"provable disjoint $tp1, $tp2", matchTypes) {
     // println(s"provablyDisjoint(${tp1.show}, ${tp2.show})")
 
@@ -3271,7 +3271,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val cls1 = tp1.classSymbol.asClass
         val cls2 = tp2.classSymbol.asClass
 
-        def isBaseTypeWithDisjointArguments(baseClass: ClassSymbol, pending: mutable.HashSet[(Type, Type)]): Boolean =
+        def isBaseTypeWithDisjointArguments(baseClass: ClassSymbol, pending: mutable.Set[(Type, Type)]): Boolean =
           if baseClass.typeParams.isEmpty then
             // A common mono base class can never be disjoint thanks to type params
             false
@@ -3304,7 +3304,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
              */
             val innerPending =
               if pending != null then pending
-              else mutable.HashSet.empty[(Type, Type)]
+              else mutable.Set.empty[(Type, Type)]
             innerPending += tpPair
 
             val cls2BaseClassSet = SymDenotations.BaseClassSet(cls2.classDenot.baseClasses)
@@ -3380,7 +3380,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         false
   end provablyDisjointClasses
 
-  private def provablyDisjointTypeArgs(cls: ClassSymbol, args1: List[Type], args2: List[Type], pending: mutable.HashSet[(Type, Type)])(using Context): Boolean =
+  private def provablyDisjointTypeArgs(cls: ClassSymbol, args1: List[Type], args2: List[Type], pending: mutable.Set[(Type, Type)])(using Context): Boolean =
     // sjrd: I will not be surprised when this causes further issues in the future.
     // This is a compromise to be able to fix #21295 without breaking the world.
     def cannotBeNothing(tp: Type): Boolean = tp match

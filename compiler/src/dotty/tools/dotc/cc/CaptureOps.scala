@@ -999,7 +999,7 @@ object ContainsParam:
 /** A class encapsulating the accumulator logic needed for `CaptureSet.ofTypeDeeply`.
  */
 abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
-  val seen = mutable.HashSet.empty[Symbol]
+  val seen = mutable.Set.empty[Symbol]
 
   protected def capturingCase(acc: T, parent: Type, refs: CaptureSet, boxed: Boolean): T
 

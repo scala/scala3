@@ -79,7 +79,7 @@ object ClassPath {
     if sources.isEmpty then return classes
     if classes.isEmpty then return sources
 
-    val indices = mutable.HashMap.empty[String, Int]
+    val indices = mutable.Map.empty[String, Int]
     val merged = new mutable.ArrayBuffer[ClassRepresentation](classes.size + sources.size)
     var count = 0
     for entry <- classes do

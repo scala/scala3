@@ -583,9 +583,9 @@ object Contexts {
     def settings: ScalaSettings            = base.settings
     def definitions: Definitions           = base.definitions
     def platform: Platform                 = base.platform
-    def pendingUnderlying: mutable.HashSet[Type]      = base.pendingUnderlying
-    def uniqueNamedTypes: Uniques.NamedTypeUniques    = base.uniqueNamedTypes
-    def uniques: util.WeakHashSet[Type]               = base.uniques
+    def pendingUnderlying: mutable.Set[Type]       = base.pendingUnderlying
+    def uniqueNamedTypes: Uniques.NamedTypeUniques = base.uniqueNamedTypes
+    def uniques: util.WeakHashSet[Type]            = base.uniques
 
     def initialize()(using Context): Unit = base.initialize()
 
@@ -1055,12 +1055,12 @@ object Contexts {
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
 
     /** Sources and Files that were loaded */
-    val sources: mutable.HashMap[AbstractFile, SourceFile] = mutable.HashMap.empty
-    val files: mutable.HashMap[String, AbstractFile] = mutable.HashMap.empty
+    val sources: mutable.Map[AbstractFile, SourceFile] = mutable.Map.empty
+    val files: mutable.Map[String, AbstractFile] = mutable.Map.empty
 
     /** Cache for magic offset header lookups, scoped to this compiler instance
      *  so that concurrent compilers in the same classloader don't share stale entries. */
-    private[dotc] val magicHeaderCache: mutable.HashMap[SourceFile, WrappedSourceFile.MagicHeaderInfo] = mutable.HashMap.empty
+    private[dotc] val magicHeaderCache: mutable.Map[SourceFile, WrappedSourceFile.MagicHeaderInfo] = mutable.Map.empty
 
     /** Was best effort file used during compilation? */
     private[core] var usedBestEffortTasty = false
@@ -1104,7 +1104,7 @@ object Contexts {
 
     /** The set of named types on which a currently active invocation
      *  of underlying during a controlled operation exists. */
-    private[core] val pendingUnderlying: mutable.HashSet[Type] = mutable.HashSet.empty
+    private[core] val pendingUnderlying: mutable.Set[Type] = mutable.Set.empty
 
     /** A map from ErrorType to associated message. We use this map
      *  instead of storing messages directly in ErrorTypes in order
