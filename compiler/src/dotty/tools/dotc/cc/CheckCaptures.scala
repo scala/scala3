@@ -2038,6 +2038,13 @@ class CheckCaptures extends Recheck, SymTransformer:
         actual match
           case actual @ FlexibleType(hi) =>
             return actual.derivedFlexibleType(recur(hi, expected, covariant))
+          case actual: (AppliedType | MatchType) =>
+            // Adapt a reducible match type according to its reduct, since the reduct
+            // can be boxed. E.g. `Fst[(box C^{c}, Int)]` reduces to `box C^{c}`.
+            val reduced = actual.tryNormalize
+            if reduced.exists then
+              val adapted = recur(reduced, expected, covariant)
+              return if adapted eq reduced then actual else adapted
           case _ =>
 
         // Decompose the actual type into the inner shape type, the capture set and the box status
