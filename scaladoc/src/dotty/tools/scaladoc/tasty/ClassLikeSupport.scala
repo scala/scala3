@@ -156,7 +156,8 @@ trait ClassLikeSupport:
     ).copy(
       directParents = classDef.getParentsAsLinkToTypes,
       parents = supertypes,
-      usesClause = usesClauseFor(classDef)
+      usesClause = usesClauseFor(classDef),
+      captureChecked = ccEnabled
     )
 
     if summon[DocContext].args.generateInkuire then doInkuireStuff(classDef)
@@ -460,12 +461,13 @@ trait ClassLikeSupport:
     val defaultValue = Option.when(symbol.flags.is(Flags.HasDefault))(Plain(" = ..."))
     api.TermParameter(
       symbol.getAnnotations(),
-      consumePrefix + inlinePrefix + prefix(symbol),
+      inlinePrefix + prefix(symbol),
       nameIfNotSynthetic,
       symbol.dri,
       argument.tpt.asSignature(classDef, symbol.owner) :++ defaultValue,
       isExtendedSymbol = isExtendedSymbol,
-      isGrouped = isGrouped
+      isGrouped = isGrouped,
+      ccModifiers = consumePrefix
     )
 
   def mkTypeArgument(
@@ -523,7 +525,7 @@ trait ClassLikeSupport:
     // For capset members, prepend ^ to the signature (the bounds rendering
     // already elides the CapSet lower/upper defaults, so we just need the caret).
     val sig = tpeTree.asSignature(classDef, symbol.owner)
-    val sigWithCaret = if isCaptureVar then Plain("^") :: sig else sig
+    val sigWithCaret = if isCaptureVar then ccToggle(List(Keyword("^")), hint = CaptureHints.captureSetMember) ++ sig else sig
 
     if symbol.flags.is(Flags.Exported)
     then {
