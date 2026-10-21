@@ -60,7 +60,7 @@ private[io] abstract class ZipArchive(override val jpath: JPath) extends Abstrac
 
   /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
   class DirEntry(path: String, parent: Entry | Null) extends Entry(path, parent) {
-    private[io] val entries: mutable.HashMap[String, Entry] = mutable.HashMap()
+    private[io] val entries: mutable.HashMap[String, Entry] = mutable.HashMap.empty
 
     override def isDirectory: Boolean = true
     override def iterator: Iterator[Entry] = entries.valuesIterator

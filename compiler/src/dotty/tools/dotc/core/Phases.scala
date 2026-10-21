@@ -75,7 +75,7 @@ object Phases {
                          phasesToSkip: List[String],
                          stopBeforePhases: List[String],
                          YCheckAfter: List[String])(using Context): List[Phase] = {
-      val fusedPhases = ListBuffer[Phase]()
+      val fusedPhases: ListBuffer[Phase] = ListBuffer.empty
       var prevPhases: Set[String] = Set.empty
 
       var stop = false
@@ -136,14 +136,14 @@ object Phases {
      */
     final def usePhases(phasess: List[Phase], runCtx: FreshContext, fuse: Boolean = true): Unit = {
       myRecheckPhaseIds = 0L
-      val flatPhases = collection.mutable.ListBuffer[Phase]()
-
-      phasess.foreach(p => p match {
+      val flatPhases = collection.mutable.ArrayBuilder.make[Phase]
+      flatPhases += NoPhase
+      phasess.foreach {
         case p: MegaPhase => flatPhases ++= p.miniPhases
-        case _ => flatPhases += p
-      })
-
-      phases = (NoPhase :: flatPhases.toList ::: new TerminalPhase :: Nil).toArray
+        case p => flatPhases += p
+      }
+      flatPhases += new TerminalPhase
+      phases = flatPhases.result()
       setSpecificPhases()
       var phasesAfter: Set[String] = Set.empty
       nextDenotTransformerId = new Array[Int](phases.length)

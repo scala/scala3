@@ -1164,7 +1164,7 @@ object Inlines:
     // For a class symbol created during inlining of an inline trait,
     // the chain of inlined traits which produced it. We don't actually care about the order. 
     // Used as a "seen list" for cycle checking. Persists across invocations of InlineParentTrait
-    val inlineOrigins: mutable.Map[Symbol, Set[Symbol]] = mutable.HashMap[Symbol, Set[Symbol]]().withDefaultValue(Set.empty),
+    val inlineOrigins: mutable.Map[Symbol, Set[Symbol]] = mutable.HashMap.empty[Symbol, Set[Symbol]].withDefaultValue(Set.empty),
     val inlineTraitsPhase: InlineTraitState.InlineContext = InlineTraitState.InlineContext.None
   ):
 

@@ -592,8 +592,8 @@ class Namer { typer: Typer =>
   def index(stats: List[Tree])(using Context): Context = {
 
     // module name -> (stat, moduleCls | moduleVal)
-    val moduleClsDef = mutable.Map[TypeName, (Tree, TypeDef)]()
-    val moduleValDef = mutable.Map[TermName, (Tree, ValDef)]()
+    val moduleClsDef = mutable.Map.empty[TypeName, (Tree, TypeDef)]
+    val moduleValDef = mutable.Map.empty[TermName, (Tree, ValDef)]
 
     /** Remove the subtree `tree` from the expanded tree of `mdef` */
     def removeInExpanded(mdef: Tree, tree: Tree): Unit = {
@@ -699,8 +699,8 @@ class Namer { typer: Typer =>
         }
     }
 
-    val classDef  = mutable.Map[TypeName, TypeDef]()
-    val moduleDef = mutable.Map[TypeName, TypeDef]()
+    val classDef  = mutable.Map.empty[TypeName, TypeDef]
+    val moduleDef = mutable.Map.empty[TypeName, TypeDef]
 
     /** Create links between companion object and companion class.
      *  Populate `moduleDef` and `classDef` as a side effect.
@@ -1777,7 +1777,7 @@ class Namer { typer: Typer =>
        *  as an attachment on the ClassDef tree.
        */
       def enterParentRefinementSyms(refinements: List[(Name, Type)]) =
-        val refinedSyms = mutable.ListBuffer[Symbol]()
+        val refinedSyms = mutable.ListBuffer.empty[Symbol]
         for (name, tp) <- refinements do
           if decls.lookupEntry(name) == null then
             val flags = tp match
@@ -2093,7 +2093,7 @@ class Namer { typer: Typer =>
    */
   def completeTrailingParamss(ddef: DefDef, sym: Symbol, indexingCtor: Boolean)(using Context): Unit =
     // A map from context-bounded type parameters to associated evidence parameter names
-    val witnessNamesOfParam = mutable.Map[TypeDef, List[TermName]]()
+    val witnessNamesOfParam = mutable.Map.empty[TypeDef, List[TermName]]
     if !ddef.name.is(DefaultGetterName) && !sym.is(Synthetic) && (indexingCtor || !sym.isPrimaryConstructor) then
       for params <- ddef.paramss; case tdef: TypeDef <- params do
         for case WitnessNamesAnnot(ws) <- tdef.mods.annotations do

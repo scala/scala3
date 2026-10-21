@@ -23,10 +23,10 @@ private[semanticdb] class SemanticSymbolBuilder:
   private var nextLocalIdx: Int = 0
 
   /** The index of a local symbol */
-  private val locals = mutable.HashMap[Symbol, Int]()
+  private val locals = mutable.HashMap.empty[Symbol, Int]
 
   /** The local symbol(s) starting at given offset */
-  private val symsAtOffset = new mutable.HashMap[Int, Set[Symbol]]().withDefault(_ => Set[Symbol]())
+  private val symsAtOffset = new mutable.HashMap[Int, Set[Symbol]]().withDefault(_ => Set.empty[Symbol])
 
   def symbolName(sym: Symbol)(using Context): String =
     val b = StringBuilder(20)

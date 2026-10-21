@@ -2147,8 +2147,8 @@ class Definitions {
     ScalaNumericBoxedClasses() `union` Set(BoxedUnitClass, BoxedBooleanClass)
   )
 
-  private val valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()
-  private val typeTags = mutable.Map[TypeName, Name]().withDefaultValue(nme.specializedTypeNames.Object)
+  private val valueTypeEnc = mutable.Map.empty[TypeName, PrimitiveClassEnc]
+  private val typeTags = mutable.Map.empty[TypeName, Name].withDefaultValue(nme.specializedTypeNames.Object)
 
 //  private val unboxedTypeRef = mutable.Map[TypeName, TypeRef]()
 //  private val javaTypeToValueTypeRef = mutable.Map[Class[?], TypeRef]()
@@ -2219,7 +2219,7 @@ class Definitions {
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
   @tu lazy val specialErasure: collection.Map[Symbol, ClassSymbol] =
-    val m = mutable.Map[Symbol, ClassSymbol]()
+    val m = mutable.Map.empty[Symbol, ClassSymbol]
     m(AnyClass) = ObjectClass
     m(MatchableClass) = ObjectClass
     m(PureClass) = ObjectClass

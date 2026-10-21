@@ -1058,11 +1058,11 @@ object Types extends TypeUtils {
       case tp: OrType =>
         tp.tp1.memberNames(keepOnly, pre) & tp.tp2.memberNames(keepOnly, pre)
       case _ =>
-        Set()
+        Set.empty
     }
 
     def memberDenots(keepOnly: NameFilter, f: (Name, mutable.Buffer[SingleDenotation]) => Unit)(using Context): Seq[SingleDenotation] = {
-      val buf = mutable.ListBuffer[SingleDenotation]()
+      val buf = mutable.ListBuffer.empty[SingleDenotation]
       for (name <- memberNames(keepOnly)) f(name, buf)
       buf.toList
     }
@@ -5208,7 +5208,7 @@ object Types extends TypeUtils {
 
       def setReductionContext(): Unit =
         new TypeTraverser:
-          var footprint: Set[Type] = Set()
+          var footprint: Set[Type] = Set.empty
           var deep: Boolean = true
           val seen = util.HashSet[Type]()
           def traverse(tp: Type) =

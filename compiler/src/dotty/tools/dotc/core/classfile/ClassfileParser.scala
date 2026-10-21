@@ -278,7 +278,7 @@ final class ClassfileParser(
   private var pool: ConstantPool = uninitialized        // the classfile's constant pool
 
   private var currentClassName: SimpleName = uninitialized // JVM name of the current class
-  private var classTParams: Map[Name, Symbol] = Map()
+  private var classTParams: Map[Name, Symbol] = Map.empty
 
   // descriptors of the constructors with the ACC_VARARGS flag, see `tpnme.RecordATTR`
   private var varargsConstructors: Set[String] = Set.empty

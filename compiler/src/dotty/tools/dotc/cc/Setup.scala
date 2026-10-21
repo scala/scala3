@@ -589,9 +589,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   extension (sym: Symbol) def nextInfo(using Context): Type =
     atPhase(thisPhase.next)(sym.info)
 
-  val capturedBy: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
+  val capturedBy: mutable.HashMap[Symbol, Symbol] = mutable.HashMap.empty
 
-  val anonFunCallee: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
+  val anonFunCallee: mutable.HashMap[Symbol, Symbol] = mutable.HashMap.empty
 
   /** A traverser that adds knownTypes and updates symbol infos */
   def setupTraverser(checker: CheckerAPI) = new TreeTraverserWithPreciseImportContexts:

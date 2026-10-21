@@ -688,7 +688,7 @@ trait ImplicitRunInfo:
               traverseChildren(t)
 
       def apply(tp: Type): collection.Set[Type] =
-        parts = mutable.LinkedHashSet()
+        parts = mutable.LinkedHashSet.empty
         partSeen.clear(resetToInitial = false)
         traverse(tp)
         parts
@@ -1329,7 +1329,7 @@ trait Implicits:
       // A map that associates a priority change warning (between -source 3.6 and 3.7)
       // with the candidate refs mentioned in the warning. We report the associated
       // message if one of the critical candidates is part of the result of the implicit search.
-      val priorityChangeWarnings = mutable.ListBuffer[(/*critical:*/ List[TermRef], GivenSearchPriorityWarning)]()
+      val priorityChangeWarnings = mutable.ListBuffer.empty[(/*critical:*/ List[TermRef], GivenSearchPriorityWarning)]
 
       val sv = Feature.sourceVersion
       val isLastOldVersion = sv.stable == SourceVersion.`3.6`
