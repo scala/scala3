@@ -69,6 +69,12 @@ object Periods {
     /** The run identifier of this period. */
     def runId: RunId = code >>> (PhaseWidth * 2)
 
+    /** This period with its last phase moved to `pid`: same run, same first phase */
+    def withLastPhaseId(pid: PhaseId): Period = new Period(code + (pid - lastPhaseId) * ((1 << PhaseWidth) + 1))
+
+    /** This period's phases in run `rid`, for a period of `NoRunId` */
+    def inRun(rid: RunId): Period = new Period(code | (rid << (PhaseWidth * 2)))
+
     /** The last phase of this period */
     def lastPhaseId: PhaseId = (code >>> PhaseWidth) & PhaseMask
 
