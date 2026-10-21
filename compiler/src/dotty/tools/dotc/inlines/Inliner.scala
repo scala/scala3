@@ -1236,7 +1236,8 @@ class Inliner(val call: tpd.Tree)(using Context):
                         | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
                 errorTree(tree, msg)
             }
-        reduceInlineMatchExpr(retypedSel)
+        ctx.handleRecursive("reducing inline match expr", retypedSel, retypedSel):
+          reduceInlineMatchExpr(retypedSel)
       }
 
     override def newLikeThis(nestingLevel: Int): Typer = new InlineTyper(initialErrorCount, nestingLevel)
@@ -1251,8 +1252,8 @@ class Inliner(val call: tpd.Tree)(using Context):
       else if Inlines.needsInlining(tree) then inlinedConstToLiteral(Inlines.inlineCall(simplify(tree, pt, locked)))
       else tree
 
-    override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
-      super.typedUnadapted(tree, pt, locked) match
+    override def typedUnadapted(initTree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
+      super.typedUnadapted(initTree, pt, locked) match
         case member: MemberDef => member.setDefTree
         case tree => tree
 

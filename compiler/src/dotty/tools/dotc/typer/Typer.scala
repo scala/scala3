@@ -3932,7 +3932,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   protected def localTyper(sym: Symbol): Typer = nestedTyper.remove(sym).get
 
-  def typedUnadapted(initTree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
+  inline def typedUnadapted(initTree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
     typedUnadapted(initTree, pt, ctx.typerState.ownedVars)
 
   /** Typecheck tree without adapting it, returning a typed tree.
