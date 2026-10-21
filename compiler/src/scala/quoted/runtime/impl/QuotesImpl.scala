@@ -3060,7 +3060,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def fieldMembers: List[Symbol] =
           lookupPrefix.allMembers.iterator.map(_.symbol).collect {
             case sym if isField(sym) => sym.asTerm
-          }.toList
+          }.toList.sortBy(_.name.toString)
 
         def declaredMethod(name: String): List[Symbol] =
           self.typeRef.decls.iterator.collect {
@@ -3070,7 +3070,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def declaredMethods: List[Symbol] =
           self.typeRef.decls.iterator.collect {
             case sym if isMethod(sym) => sym.asTerm
-          }.toList
+          }.toList.sortBy(_.name.toString)
 
         def memberMethod(name: String): List[Symbol] = methodMember(name)
         def methodMember(name: String): List[Symbol] =
@@ -3082,7 +3082,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def methodMembers: List[Symbol] =
           lookupPrefix.allMembers.iterator.map(_.symbol).collect {
             case sym if isMethod(sym) => sym.asTerm
-          }.toList
+          }.toList.sortBy(_.name.toString)
 
         def declaredType(name: String): List[Symbol] =
           self.typeRef.decls.iterator.collect {
@@ -3092,7 +3092,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def declaredTypes: List[Symbol] =
           self.typeRef.decls.iterator.collect {
             case sym if sym.isType => sym.asType
-          }.toList
+          }.toList.sortBy(_.name.toString)
 
         def memberType(name: String): Symbol =
           self.typeRef.decls.find(sym => sym.name == name.toTypeName)
