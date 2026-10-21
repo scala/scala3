@@ -31,8 +31,6 @@ class CompilationTests {
       compileFilesInDir("tests/pos-scala2", defaultOptions.and("-source", "3.0-migration")),
       compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking")),
       compileFilesInDir("tests/pos-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes")),
-      // Same suite with skolem ANF lifting enabled, to check the phase on all qualified-types shapes.
-      compileFilesInDir("tests/pos-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes", "-Yqualified-types-anf")),
       compileFile("tests/pos-special/utf8encoded.scala", defaultOptions.and("-encoding", "UTF8")),
       compileFile("tests/pos-special/utf16encoded.scala", defaultOptions.and("-encoding", "UTF16")),
       compileDir("tests/pos-special/i18589", defaultOptions.and("-Wsafe-init").without("-Ycheck:all")),
@@ -49,6 +47,16 @@ class CompilationTests {
       else Nil
     )
     val compilationTest = withCoverage(aggregateTests(tests*))
+    runWithCoverageOrFallback[PosTestWithCoverage](compilationTest)
+  }
+
+  // Same qualified-types suite with skolem ANF lifting enabled, to check the phase on all qualified-types shapes.
+  // Own group: the output directory is derived from the group and source
+  // path, so compiling the same files twice in one group races.
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def posQualifiedTypesAnf: Unit = {
+    given TestGroup = TestGroup("pos/qualified-types-anf")
+    val compilationTest = withCoverage(
+      compileFilesInDir("tests/pos-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes", "-Yqualified-types-anf")))
     runWithCoverageOrFallback[PosTestWithCoverage](compilationTest)
   }
 
@@ -214,13 +222,19 @@ class CompilationTests {
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking", "-language:experimental.separationChecking")),
       compileFilesInDir("tests/run-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes")),
-      // Same suite with skolem ANF lifting enabled, to check runtime behavior is preserved.
-      // Own group: the output directory is derived from the group and source
-      // path, so compiling the same files twice in one group races.
-      compileFilesInDir("tests/run-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes", "-Yqualified-types-anf"))(using TestGroup("runAll/qualified-types-anf")),
       // Run tests for legacy lazy vals.
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
     ))
+    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
+  }
+
+  // Same qualified-types suite with skolem ANF lifting enabled, to check runtime behavior is preserved.
+  // Own group: the output directory is derived from the group and source
+  // path, so compiling the same files twice in one group races.
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def runQualifiedTypesAnf: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("run/qualified-types-anf")
+    val compilationTest = withCoverage(
+      compileFilesInDir("tests/run-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes", "-Yqualified-types-anf")))
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
