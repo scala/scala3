@@ -15,6 +15,7 @@ import java.io.IOException
 import java.lang.Integer.toHexString
 
 import scala.collection.immutable
+import scala.collection.mutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
@@ -1307,7 +1308,7 @@ final class ClassfileParser(
     )
 
   private object innerClasses {
-    private val map = util.HashMap[String, InnerClassEntry]()
+    private val map = mutable.HashMap.empty[String, InnerClassEntry]
 
     def get(str: String): Option[InnerClassEntry] =
       map.get(str)

@@ -278,8 +278,8 @@ object TreeChecker {
   class Checker(phasesToCheck: Seq[Phase]) extends ReTyper {
     import ast.tpd.*
 
-    protected val nowDefinedSyms = util.HashSet[Symbol]()
-    private val patBoundSyms = util.HashSet[Symbol]()
+    protected val nowDefinedSyms = mutable.HashSet.empty[Symbol]
+    private val patBoundSyms = mutable.HashSet.empty[Symbol]
     private val everDefinedSyms = MutableSymbolMap[untpd.Tree]()
 
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform

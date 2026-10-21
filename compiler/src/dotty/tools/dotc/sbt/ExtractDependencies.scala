@@ -445,7 +445,7 @@ class DependencyRecorder {
      *  of the associated value, see the documentation of parameter `includeSealedChildren`
      *  of `addUsedRawName`.
      */
-    private val _names = new util.HashMap[Name, DefaultScopes.type | PatMatScopes.type]
+    private val _names = mutable.HashMap.empty[Name, DefaultScopes.type | PatMatScopes.type]
 
     /** Each key corresponds to a class dependency used in the class.
      */

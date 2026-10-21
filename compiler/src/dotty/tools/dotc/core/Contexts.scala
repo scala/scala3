@@ -14,7 +14,7 @@ import Uniques.*
 import ast.Trees.*
 import Flags.ParamAccessor
 import ast.untpd
-import util.{HashSet, NoSource, SimpleIdentityMap, SourceFile, SrcPos, Store, WrappedSourceFile}
+import util.{NoSource, SimpleIdentityMap, SourceFile, SrcPos, Store, WrappedSourceFile}
 import typer.{Implicits, ImportInfo, Nullables, SearchHistory, SearchRoot, TypeAssigner, Typer}
 import inlines.Inliner
 import Nullables.*
@@ -583,9 +583,9 @@ object Contexts {
     def settings: ScalaSettings            = base.settings
     def definitions: Definitions           = base.definitions
     def platform: Platform                 = base.platform
-    def pendingUnderlying: util.HashSet[Type]      = base.pendingUnderlying
-    def uniqueNamedTypes: Uniques.NamedTypeUniques = base.uniqueNamedTypes
-    def uniques: util.WeakHashSet[Type]            = base.uniques
+    def pendingUnderlying: mutable.HashSet[Type]      = base.pendingUnderlying
+    def uniqueNamedTypes: Uniques.NamedTypeUniques    = base.uniqueNamedTypes
+    def uniques: util.WeakHashSet[Type]               = base.uniques
 
     def initialize()(using Context): Unit = base.initialize()
 
@@ -1055,12 +1055,12 @@ object Contexts {
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
 
     /** Sources and Files that were loaded */
-    val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
-    val files: util.HashMap[String, AbstractFile] = util.HashMap()
+    val sources: mutable.HashMap[AbstractFile, SourceFile] = mutable.HashMap.empty
+    val files: mutable.HashMap[String, AbstractFile] = mutable.HashMap.empty
 
     /** Cache for magic offset header lookups, scoped to this compiler instance
      *  so that concurrent compilers in the same classloader don't share stale entries. */
-    private[dotc] val magicHeaderCache: util.HashMap[SourceFile, WrappedSourceFile.MagicHeaderInfo] = util.HashMap()
+    private[dotc] val magicHeaderCache: mutable.HashMap[SourceFile, WrappedSourceFile.MagicHeaderInfo] = mutable.HashMap.empty
 
     /** Was best effort file used during compilation? */
     private[core] var usedBestEffortTasty = false
@@ -1104,7 +1104,7 @@ object Contexts {
 
     /** The set of named types on which a currently active invocation
      *  of underlying during a controlled operation exists. */
-    private[core] val pendingUnderlying: util.HashSet[Type] = util.HashSet[Type]()
+    private[core] val pendingUnderlying: mutable.HashSet[Type] = mutable.HashSet.empty
 
     /** A map from ErrorType to associated message. We use this map
      *  instead of storing messages directly in ErrorTypes in order

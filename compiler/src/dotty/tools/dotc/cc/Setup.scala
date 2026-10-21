@@ -150,7 +150,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   private def newFlagsFor(symd: SymDenotation)(using Context): FlagSet =
 
     object containsCovarRetains extends TypeAccumulator[Boolean]:
-      val seen = util.HashSet[Symbol]()
+      val seen = mutable.HashSet.empty[Symbol]
       def apply(x: Boolean, tp: Type): Boolean =
         if x then true
         else if tp.derivesFromCapability && variance >= 0 then true

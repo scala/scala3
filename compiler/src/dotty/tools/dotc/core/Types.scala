@@ -4209,7 +4209,7 @@ object Types extends TypeUtils {
   abstract class LambdaTypeCompanion[N <: Name, PInfo <: Type, LT <: LambdaType] {
     def syntheticParamName(n: Int): N
 
-    @sharable private val memoizedNames = util.HashMap[Int, List[N]]()
+    @sharable private val memoizedNames = mutable.HashMap.empty[Int, List[N]]
     def syntheticParamNames(n: Int): List[N] = synchronized {
       memoizedNames.getOrElseUpdate(n, (0 until n).map(syntheticParamName).toList)
     }
@@ -5188,7 +5188,7 @@ object Types extends TypeUtils {
     def underlying(using Context): Type = bound
 
     private var myReduced: Type | Null = null
-    private var reductionContext: util.HashMap[Type, Type] | Null = null
+    private var reductionContext: mutable.HashMap[Type, Type] | Null = null
 
     private def thisMatchType = this
 
@@ -5210,7 +5210,7 @@ object Types extends TypeUtils {
         new TypeTraverser:
           var footprint: Set[Type] = Set.empty
           var deep: Boolean = true
-          val seen = util.HashSet[Type]()
+          val seen = mutable.HashSet.empty[Type]
           def traverse(tp: Type) =
             if !seen.contains(tp) then
               seen += tp
@@ -5234,7 +5234,7 @@ object Types extends TypeUtils {
           traverse(scrutinee)
           deep = false
           cases.foreach(traverse)
-          reductionContext = util.HashMap()
+          reductionContext = mutable.HashMap.empty
           for tp <- footprint do
             reductionContext.nn(tp) = contextInfo(tp)
           matchTypes.println(i"footprint for $thisMatchType $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
@@ -6950,7 +6950,7 @@ object Types extends TypeUtils {
   class NamedPartsAccumulator(p: NamedType => Boolean)(using Context)
   extends TypeAccumulator[List[NamedType]]:
     def maybeAdd(xs: List[NamedType], tp: NamedType): List[NamedType] = if p(tp) then tp :: xs else xs
-    val seen = util.HashSet[Type]()
+    val seen = mutable.HashSet.empty[Type]
     def apply(xs: List[NamedType], tp: Type): List[NamedType] =
       if seen.contains(tp) then xs
       else
@@ -6988,7 +6988,7 @@ object Types extends TypeUtils {
   }
 
   class TypeSizeAccumulator(using Context) extends TypeAccumulator[Int] {
-    var seen = util.HashSet[Type](initialCapacity = 8)
+    var seen = new mutable.HashSet[Type](initialCapacity = 8, mutable.HashSet.defaultLoadFactor)
     def apply(n: Int, tp: Type): Int =
       tp match {
         case tp: AppliedType if defn.isTupleNType(tp) =>
@@ -7020,7 +7020,7 @@ object Types extends TypeUtils {
   }
 
   class CoveringSetAccumulator(using Context) extends TypeAccumulator[Set[Symbol]] {
-    var seen = util.HashSet[Type](initialCapacity = 8)
+    var seen = new mutable.HashSet[Type](initialCapacity = 8, mutable.HashSet.defaultLoadFactor)
     def apply(cs: Set[Symbol], tp: Type): Set[Symbol] =
       if seen.contains(tp) then cs
       else {
