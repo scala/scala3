@@ -113,7 +113,7 @@ object OverridingPairs:
      *  (maybe excluded because of already handled by a parent).
      *  These will not appear as overriding
      */
-    private val visited = mutable.HashSet.empty[Symbol]
+    private val visited = mutable.Set.empty[Symbol]
 
     /** The current entry candidate for overriding
      */

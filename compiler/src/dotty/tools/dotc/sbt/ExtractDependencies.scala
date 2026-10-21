@@ -445,7 +445,7 @@ class DependencyRecorder {
      *  of the associated value, see the documentation of parameter `includeSealedChildren`
      *  of `addUsedRawName`.
      */
-    private val _names = mutable.HashMap.empty[Name, DefaultScopes.type | PatMatScopes.type]
+    private val _names = mutable.Map.empty[Name, DefaultScopes.type | PatMatScopes.type]
 
     /** Each key corresponds to a class dependency used in the class.
      */
@@ -505,7 +505,7 @@ class DependencyRecorder {
   def sendToZinc()(using Context): Unit =
     if ctx.settings.YdumpSbtInc.value then dumpInc()
     ctx.withIncCallback: cb =>
-      val siblingClassfiles = new mutable.HashMap[AbstractFile, Path]
+      val siblingClassfiles = mutable.Map.empty[AbstractFile, Path]
       _foundDeps.iterator.foreach:
         case (clazz, foundDeps) =>
           val className = classNameAsString(clazz)

@@ -330,7 +330,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   extends TypeTraverser, ConstraintAwareTraversal[Unit]:
 
     var add: Boolean = compiletime.uninitialized
-    val seen = mutable.HashSet.empty[LazyRef]
+    val seen = mutable.Set.empty[LazyRef]
 
     override protected def hasBounds(param: TypeParamRef) =
       (param eq ignoreBinding) || super.hasBounds(param)
@@ -924,7 +924,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
      */
     def checkForward(srcParam: TypeParamRef)(using Context) =
       new TypeTraverser with ConstraintAwareTraversal[Unit]:
-        val seen = mutable.HashSet.empty[LazyRef]
+        val seen = mutable.Set.empty[LazyRef]
         def traverse(t: Type): Unit = t match
           case param: TypeParamRef if param ne srcParam =>
             def check(deps: ReverseDeps, directDeps: List[TypeParamRef], depsName: String) =

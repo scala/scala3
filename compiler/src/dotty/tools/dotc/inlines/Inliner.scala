@@ -273,20 +273,20 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  (if the argument is a pure expression of singleton type), or to `val` or `def` acting
    *  as a proxy (if the argument is something else).
    */
-  private val paramBinding = new mutable.HashMap[Name, Type]
+  private val paramBinding = mutable.Map.empty[Name, Type]
 
   /** A map from parameter names of the inlineable method to spans of the actual arguments */
-  private val paramSpan = new mutable.HashMap[Name, Span]
+  private val paramSpan = mutable.Map.empty[Name, Span]
 
   /** A map from references to (type and value) parameters of the inlineable method
    *  to their corresponding argument or proxy references, as given by `paramBinding`.
    */
-  private[inlines] val paramProxy = new mutable.HashMap[Type, Type]
+  private[inlines] val paramProxy = mutable.Map.empty[Type, Type]
 
   /** A map from proxy symbols to a skolem their argument already *was*, from
    *  outside this call (see `callValueSkolemss` for the complementary case).
    */
-  private val externalParamProxySkolem = new mutable.HashMap[Symbol, SkolemType]
+  private val externalParamProxySkolem = mutable.Map.empty[Symbol, SkolemType]
 
   /** A map from the classes of (direct and outer) this references in `rhsToInline`
    *  to references of their proxies.
@@ -301,7 +301,7 @@ class Inliner(val call: tpd.Tree)(using Context):
    *
    *  These are different (wrt ==) types but represent logically the same key
    */
-  private val thisProxy = new mutable.HashMap[ClassSymbol, TermRef]
+  private val thisProxy = mutable.Map.empty[ClassSymbol, TermRef]
 
   /** A buffer for bindings that define proxies for actual arguments */
   private val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]

@@ -460,7 +460,7 @@ object Comments {
     /** Maps symbols to the variable -> replacement maps that are defined
      *  in their doc comments
      */
-    private val defs = mutable.HashMap.empty[Symbol, Map[String, String]].withDefaultValue(Map.empty)
+    private val defs = mutable.Map.empty[Symbol, Map[String, String]].withDefaultValue(Map.empty)
 
     /** Forget the cached `@define`s; they are recomputed on demand from the docstrings. */
     def clearCaches(): Unit = defs.clear()

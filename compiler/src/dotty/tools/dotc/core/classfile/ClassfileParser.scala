@@ -1308,7 +1308,7 @@ final class ClassfileParser(
     )
 
   private object innerClasses {
-    private val map = mutable.HashMap.empty[String, InnerClassEntry]
+    private val map = mutable.Map.empty[String, InnerClassEntry]
 
     def get(str: String): Option[InnerClassEntry] =
       map.get(str)

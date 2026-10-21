@@ -219,7 +219,7 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
 
   // e.g. "java.lang" -> Seq(/876/java/lang, /87/java/lang, /8/java/lang))
   private val packageIndex: scala.collection.Map[String, scala.collection.Seq[Path]] = {
-    val index = collection.mutable.HashMap[String, collection.mutable.ListBuffer[Path]]()
+    val index = collection.mutable.Map.empty[String, collection.mutable.ListBuffer[Path]]
     rootsForRelease.foreach(root => Files.walk(root).iterator().asScala.filter(Files.isDirectory(_)).foreach { p =>
       if (p.getNameCount > root.getNameCount + 1) {
         val packageDotted = p.subpath(1 + root.getNameCount, p.getNameCount).toString.replace('/', '.')

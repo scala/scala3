@@ -324,7 +324,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     private val usedSet = util.EqHashMap[Tree, CaptureSet]()
 
     /** The set of symbols that were rechecked via a completer */
-    private val completed = new mutable.HashSet[Symbol]
+    private val completed = mutable.Set.empty[Symbol]
 
     private var needAnotherRun = false
 
@@ -2304,7 +2304,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  that joint and separate compilation give the same result.
      */
     def checkSelfTypes(unit: tpd.Tree)(using Context): Unit =
-      val parentTrees = mutable.HashMap[Symbol, List[Tree]]()
+      val parentTrees = mutable.Map.empty[Symbol, List[Tree]]
       unit.foreachSubTree {
         case cdef @ TypeDef(_, impl: Template) => parentTrees(cdef.symbol) = impl.parents
         case _ =>

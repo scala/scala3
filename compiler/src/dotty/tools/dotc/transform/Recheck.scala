@@ -170,7 +170,7 @@ abstract class Recheck extends Phase, SymTransformer:
   /** A map from NamedTypes to the denotations they had before this phase.
    *  Needed so that we can `reset` them after this phase.
    */
-  val prevSelDenots = mutable.HashMap.empty[NamedType, Denotation]
+  val prevSelDenots = mutable.Map.empty[NamedType, Denotation]
 
   def newRechecker()(using Context): Rechecker
 

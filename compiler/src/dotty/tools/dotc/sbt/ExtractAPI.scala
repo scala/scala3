@@ -68,7 +68,7 @@ class ExtractAPI extends Phase {
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val doZincCallback = ctx.runZincPhases
-    val nonLocalClassSymbols = new mutable.HashSet[Symbol]
+    val nonLocalClassSymbols = mutable.Set.empty[Symbol]
     val units0 =
       if doZincCallback then
         val ctx0 = ctx.withProperty(NonLocalClassSymbolsInCurrentUnits, Some(nonLocalClassSymbols))
@@ -83,7 +83,7 @@ class ExtractAPI extends Phase {
       units0
   end runOn
 
-  private def recordNonLocalClasses(nonLocalClassSymbols: mutable.HashSet[Symbol], cb: interfaces.IncrementalCallback)(using Context): Unit =
+  private def recordNonLocalClasses(nonLocalClassSymbols: mutable.Set[Symbol], cb: interfaces.IncrementalCallback)(using Context): Unit =
     for cls <- nonLocalClassSymbols do
       val sourceFile = cls.source
       if sourceFile.exists && cls.isDefinedInCurrentRun then
@@ -154,7 +154,7 @@ object ExtractAPI:
   val name: String = "sbt-api"
   val description: String = "sends a representation of the API of classes to sbt"
 
-  private val NonLocalClassSymbolsInCurrentUnits: Property.Key[mutable.HashSet[Symbol]] = Property.Key()
+  private val NonLocalClassSymbolsInCurrentUnits: Property.Key[mutable.Set[Symbol]] = Property.Key()
 
 /** Extracts full (including private members) API representation out of Symbols and Types.
  *
@@ -198,36 +198,36 @@ object ExtractAPI:
  *  without going through an intermediate representation, see
  *  http://www.scala-sbt.org/0.13/docs/Understanding-Recompilation.html#Hashing+an+API+representation
  */
-private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])(using Context) extends ThunkHolder {
+private class ExtractAPICollector(nonLocalClassSymbols: mutable.Set[Symbol])(using Context) extends ThunkHolder {
   import tpd.*
   import xsbti.api
 
   /** This cache is necessary for correctness, see the comment about inherited
    *  members in `apiClassStructure`
    */
-  private val classLikeCache = new mutable.HashMap[ClassSymbol, api.ClassLikeDef]
+  private val classLikeCache = mutable.Map.empty[ClassSymbol, api.ClassLikeDef]
   /** This cache is optional, it avoids recomputing representations */
-  private val typeCache = new mutable.HashMap[Type, api.Type]
+  private val typeCache = mutable.Map.empty[Type, api.Type]
   /** This cache is necessary to avoid unstable name hashing when `typeCache` is present,
    *  see the comment in the `RefinedType` case in `computeType`
    *  The cache key is (api of RefinedType#parent, api of RefinedType#refinedInfo).
    */
-  private val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition | Null), api.Structure]
+  private val refinedTypeCache = mutable.Map.empty[(api.Type, api.Definition | Null), api.Structure]
 
   /** This cache is necessary to avoid infinite loops when hashing an inline "Body" annotation.
    *  Its values are transitively seen inline references within a call chain starting from a single "origin" inline
    *  definition. Avoid hashing an inline "Body" annotation if its associated definition is already in the cache.
    *  Precondition: the cache is empty whenever we hash a new "origin" inline "Body" annotation.
    */
-  private val seenInlineCache = mutable.HashSet.empty[Symbol]
+  private val seenInlineCache = mutable.Set.empty[Symbol]
 
   /** This cache is optional, it avoids recomputing hashes of inline "Body" annotations,
    *  e.g. when a concrete inline method is inherited by a subclass.
    */
-  private val inlineBodyCache = mutable.HashMap.empty[Symbol, Int]
+  private val inlineBodyCache = mutable.Map.empty[Symbol, Int]
 
-  private val allNonLocalClassesInSrc = new mutable.HashSet[xsbti.api.ClassLike]
-  private val _mainClasses = new mutable.HashSet[String]
+  private val allNonLocalClassesInSrc = mutable.Set.empty[xsbti.api.ClassLike]
+  private val _mainClasses = mutable.Set.empty[String]
 
   private object Constants {
     val emptyStringArray = Array[String]()

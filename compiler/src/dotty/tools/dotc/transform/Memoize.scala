@@ -27,7 +27,7 @@ object Memoize {
   val description: String = "add private fields to getters and setters"
 
   private final class MyState {
-    val classesThatNeedReleaseFence = mutable.HashSet.empty[Symbol]
+    val classesThatNeedReleaseFence = mutable.Set.empty[Symbol]
   }
 }
 
