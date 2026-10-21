@@ -1,0 +1,89 @@
+name: "[spike] Install Scala on Windows ARM64"
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # Prints the CPU architecture each .exe under the given directory was built for
+  PE_ARCH_SCRIPT: |
+    param($Dir)
+    Get-ChildItem $Dir -Recurse -Filter *.exe | ForEach-Object {
+      $fs = [IO.File]::OpenRead($_.FullName); $b = New-Object byte[] 4096; [void]$fs.Read($b, 0, 4096); $fs.Close()
+      $machine = [BitConverter]::ToUInt16($b, [BitConverter]::ToInt32($b, 0x3C) + 4)
+      $arch = switch ($machine) { 0x8664 { 'x64' } 0xAA64 { 'arm64' } 0x14C { 'x86' } default { '0x{0:X}' -f $machine } }
+      "$arch`t$($_.FullName)"
+    }
+
+jobs:
+  coursier-x64:
+    name: "cs setup with cs-x86_64-pc-win32.zip (the scala-lang.org link)"
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download the native x64 Coursier launcher
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri 'https://github.com/coursier/coursier/releases/latest/download/cs-x86_64-pc-win32.zip' -OutFile cs.zip
+          Expand-Archive cs.zip -DestinationPath cs
+          Set-Content pe-arch.ps1 $env:PE_ARCH_SCRIPT
+          ./pe-arch.ps1 cs
+      - name: Run cs setup
+        shell: pwsh
+        run: |
+          ./cs/cs-x86_64-pc-win32.exe setup --yes
+          Get-ChildItem "$env:LOCALAPPDATA\Coursier\data\bin" -Force
+          ./pe-arch.ps1 "$env:LOCALAPPDATA\Coursier\data\bin"
+          Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Coursier\data\bin"
+      - name: Run cs
+        continue-on-error: true
+        shell: cmd
+        run: cs version
+      - name: Run scala-cli
+        continue-on-error: true
+        shell: cmd
+        run: scala-cli version
+      - name: Run scala
+        continue-on-error: true
+        shell: cmd
+        run: scala version
+      - name: Run a file with scala without Bloop
+        continue-on-error: true
+        shell: cmd
+        run: scala run tests\pos\HelloWorld.scala --server=false
+
+  chocolatey:
+    name: "choco install scala"
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check for Chocolatey
+        shell: pwsh
+        run: |
+          Set-Content pe-arch.ps1 $env:PE_ARCH_SCRIPT
+          if (Get-Command choco -ErrorAction SilentlyContinue) { choco --version }
+          else {
+            Write-Host "Chocolatey is not preinstalled, installing it"
+            Set-ExecutionPolicy Bypass -Scope Process -Force
+            Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+            Add-Content $env:GITHUB_PATH "$env:ProgramData\chocolatey\bin"
+          }
+      - name: Install the scala package
+        shell: pwsh
+        run: |
+          choco install scala -y
+          ./pe-arch.ps1 "$env:ProgramData\chocolatey\lib\scala"
+      - name: Run scala
+        continue-on-error: true
+        shell: cmd
+        run: scala version
+      - name: Run scalac
+        continue-on-error: true
+        shell: cmd
+        run: scalac -version
+      - name: Run a file with scala without Bloop
+        continue-on-error: true
+        shell: cmd
+        run: scala run tests\pos\HelloWorld.scala --server=false
