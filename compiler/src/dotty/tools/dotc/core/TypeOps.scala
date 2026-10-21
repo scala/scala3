@@ -958,6 +958,7 @@ object TypeOps:
     }
 
     def instantiate(): Type = {
+      // This bizarre loop fixes tests/pos/i16539.scala
       for tp <- mixins.reverseIterator do
         protoTp1 <:< tp
       maximizeType(protoTp1, NoSpan)
