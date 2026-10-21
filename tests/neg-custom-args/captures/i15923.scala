@@ -24,6 +24,6 @@ object test2:
       result
     }
 
-    val leak = withCap(cap => mkId(cap))  // no error here since type aliases don't box
+    val leak = withCap(cap => mkId(cap))  // error
     leak { cap => cap.use() }
   }

@@ -1,12 +1,27 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:27:23 ---------------------------------------
+27 |    val leak = withCap(cap => mkId(cap))  // error
+   |                       ^^^^^^^^^^^^^^^^
+   |Capability `lcap` outlives its scope: it leaks into outer capture set 's1 of parameter cap.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (lcap: scala.caps.Capability^) ?->'s2 (cap: test2.Cap^'s3) ->'s4 [T] -> (op: test2.Cap^'s5 ->'s6 T) ->'s7 T
+   |Required: (lcap²: scala.caps.Capability^) ?-> test2.Cap^{lcap²} => [T] -> (op: test2.Cap^'s8 ->'s9 T) ->'s10 T
+   |
+   |where:    =>    refers to a root capability created in value leak when checking argument to parameter op of method withCap
+   |          ^     refers to the root capability caps.any
+   |          lcap  is a reference to a value parameter
+   |          lcap² is a reference to a value parameter
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:12:20 ---------------------------------------
 12 |  val leak = withCap(cap => mkId(cap)) // error
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Capability `any` outlives its scope: it leaks into outer capture set 's1 of value leak.
+   |Capability `any` outlives its scope: it leaks into outer capture set 's11 of value leak.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    Id[Cap^{any}]^'s2
-   |Required: Id[Cap^'s1]^'s3
+   |Found:    Id[Cap^{any}]^'s12
+   |Required: Id[Cap^'s11]^'s13
    |
-   |where:    any is a root capability created in anonymous function of type (using lcap: scala.caps.Capability^): (cap: Cap^{lcap}) ->'s4 Id[Cap^{any}]^'s5 of parameter parameter lcap² of method $anonfun
+   |where:    any is a root capability created in anonymous function of type (using lcap: scala.caps.Capability^): (cap: Cap^{lcap}) ->'s14 Id[Cap^{any}]^'s15 of parameter parameter lcap² of method $anonfun
    |
    | longer explanation available when compiling with `-explain`
