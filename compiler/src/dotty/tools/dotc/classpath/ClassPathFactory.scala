@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.LogicalSourcePath
 import dotty.tools.dotc.interactive.LogicalPackage
 
-import java.net.URLDecoder
+import java.net.{URI, URLDecoder}
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.util.jar.{Attributes, JarInputStream}
@@ -88,10 +88,13 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
    */
   private def expandManifestPath(jarPath: String): List[Path] =
     def resolve(entry: String, baseDir: Directory): Path =
-      // Class-Path may only contain relative URLs, per
+      // Class-Path may only contain relative URLs, except for the 'file' scheme for compatibility reasons, per
       // https://docs.oracle.com/en/java/javase/17/docs/specs/jar/jar.html#class-path-attribute
-      val decoded = URLDecoder.decode(entry, StandardCharsets.UTF_8)
-      baseDir.resolve(Path(decoded))
+      if entry.startsWith("file:") then
+        Path(java.nio.file.Path.of(new URI(entry)))
+      else
+        val decoded = URLDecoder.decode(entry, StandardCharsets.UTF_8)
+        baseDir.resolve(Path(decoded))
 
     val file = File(jarPath)
     if !file.isFile then
