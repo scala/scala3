@@ -44,8 +44,9 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
       .filter(_.exists)
       .fold(emptyTemplate(rootDest, "index")) { f =>
         val loaded = loadTemplateFile(f)
-        if loaded.title.name != "index"
-        then report.warn("Property `title` will be overridden by project name", f)
+        // This does not work for pages that are set as index from the sidebar...
+        //if loaded.title.name != "index"
+        //then report.warn("Property `title` will be overridden by project name", f)
         loaded
       }.copy(title = TemplateName.FilenameDefined(args.name))
 

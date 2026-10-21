@@ -24,7 +24,7 @@ class RicherTest {
     assertEqualTo("1" * 24 + x"1000_0000")(extended.toBinaryString)
     assertEqualTo(x"ffff_ff80")(extended.toHexString)
     assertEqualTo("37777777600")(extended.toOctalString)
-    val neg = -1.toByte.toInt
+    val neg = (-1).toByte.toInt
     assertEqualTo("1" * 32)(neg.toBinaryString)
     assertEqualTo("f" * 8)(neg.toHexString)
     assertEqualTo("3" + "7" * 10)(neg.toOctalString)
@@ -42,7 +42,7 @@ class RicherTest {
     assertEqualTo(x"1111_1111_1111_1111_1000_0000_0000_0000")(extended.toBinaryString)
     assertEqualTo(x"ffff_8000")(extended.toHexString)
     assertEqualTo(x"37777700000")(extended.toOctalString)
-    val neg = -1.toShort.toInt
+    val neg = (-1).toShort.toInt
     assertEqualTo("1" * 32)(neg.toBinaryString)
     assertEqualTo(x"ffff_ffff")(neg.toHexString)
     assertEqualTo(x"37777777777")(neg.toOctalString)
@@ -61,7 +61,7 @@ class RicherTest {
     assertEqualTo(x"1000_0000_0000_0000")(extended.toBinaryString)
     assertEqualTo("8000")(extended.toHexString)
     assertEqualTo(x"10_0000")(extended.toOctalString)
-    val neg = -1.toChar.toInt
+    val neg = (-1).toChar.toInt
     assertEqualTo("1" * 16)(neg.toBinaryString)
     assertEqualTo("ffff")(neg.toHexString)
     assertEqualTo(x"17_7777")(neg.toOctalString)
@@ -83,7 +83,7 @@ class RicherTest {
     assertEqualTo("10")(16.toHexString)
     assertEqualTo("20")(16.toOctalString)
     assertEqualTo("10001")(65537.toHexString)
-    assertEqualTo("f" * 8)(-1.toHexString)
+    assertEqualTo("f" * 8)((-1).toHexString)
   }
 
   // see also StringLikeTest

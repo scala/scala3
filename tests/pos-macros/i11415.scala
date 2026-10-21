@@ -7,9 +7,9 @@ trait Context {
   val universe: Universe
 
   trait Universe {
-    type Tree >: Null <: AnyRef with TreeApi
-    type Literal >: Null <: LiteralApi with TermTree
-    type TermTree >: Null <: TermTreeApi with Tree
+    type Tree >: Null <: AnyRef & TreeApi
+    type Literal >: Null <: LiteralApi & TermTree
+    type TermTree >: Null <: TermTreeApi & Tree
 
     trait TermTreeApi extends TreeApi { this: TermTree => }
     trait LiteralApi extends TermTreeApi { this: Literal => }

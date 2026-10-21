@@ -11,4 +11,5 @@ object Tracer:
 
   def autoTraceImpl(using Quotes): Expr[Trace] =
     import quotes.reflect.*
-    Literal(StringConstant("loc")).asExprOf[String].asInstanceOf[Expr[Trace]]
+    // Upstream code changed in https://github.com/zio/zio/pull/10725
+    '{"loc".asInstanceOf[Trace]}

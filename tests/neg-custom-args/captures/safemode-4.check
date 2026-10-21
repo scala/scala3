@@ -1,0 +1,12 @@
+-- Error: tests/neg-custom-args/captures/safemode-4.scala:10:15 --------------------------------------------------------
+10 |    Properties.clearProp("foo") // error
+   |    ^^^^^^^^^^^^^^^^^^^^
+   |    Cannot refer to method clearProp in trait PropertiesTrait from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-4.scala:11:15 --------------------------------------------------------
+11 |    Properties.setProp("foo", "invalid") // error
+   |    ^^^^^^^^^^^^^^^^^^
+   |    Cannot refer to method setProp in trait PropertiesTrait from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-4.scala:13:13 --------------------------------------------------------
+13 |  Properties.main(Array()) // error
+   |  ^^^^^^^^^^^^^^^
+   |  Cannot refer to method main in trait PropertiesTrait from safe code since it is tagged @rejectSafe

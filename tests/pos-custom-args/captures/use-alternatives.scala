@@ -1,5 +1,5 @@
 import language.experimental.captureChecking
-import caps.{any, use}
+import caps.any
 
 def foo[C^](xs: List[() ->{C} Unit]): Unit =
   var x: () ->{C} Unit = xs.head

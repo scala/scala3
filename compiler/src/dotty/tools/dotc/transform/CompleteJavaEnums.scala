@@ -85,7 +85,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       case p => p
     }
 
-  /** If this is a constructor of a enum class that extends, add $name and $ordinal parameters to it. */
+  /** If this is a constructor of a enum class that extends, add \$name and \$ordinal parameters to it. */
   override def transformDefDef(tree: DefDef)(using Context): DefDef = {
     val sym = tree.symbol
     if sym.isConstructor && sym.owner.derivesFromJavaEnum then
@@ -167,19 +167,24 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   private def ordinalFor(enumCase: Symbol): Int =
     enumCaseOrdinals.remove(enumCase).nn
 
-  /** 1. If this is an enum class, add $name and $ordinal parameters to its
-   *     parameter accessors and pass them on to the java.lang.Enum constructor.
+  /** Adds parameters to enums.
+   *
+   *  1. If this is an enum class, add `$name` and `$ordinal` parameters to its
+   *     parameter accessors and pass them on to the `java.lang.Enum` constructor.
    *
    *  2. If this is an anonymous class that implement a singleton enum case,
-   *     pass $name and $ordinal parameters to the enum superclass. The class
+   *     pass `$name` and `$ordinal` parameters to the enum superclass. The class
    *     looks like this:
    *
+   *  ```
    *       class $anon extends E(...) {
    *          ...
    *       }
+   *  ```
    *
    *     After the transform it is expanded to
    *
+   *  ```
    *       class $anon extends E(..., $name, _$ordinal) { // if class implements a simple enum case
    *          "same as before"
    *       }
@@ -187,6 +192,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
    *       class $anon extends E(..., "A", 0) { // if class implements a value enum case `A` with ordinal 0
    *          "same as before"
    *       }
+   *  ```
    */
   override def transformTemplate(templ: Template)(using Context): Tree = {
     val cls = templ.symbol.owner

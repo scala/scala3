@@ -1,17 +1,24 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import dotc.*, core.*
-import Contexts.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
+import Contexts.*, Decorators.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
 import printing.ReplPrinter
 import printing.SyntaxHighlighting
 import reporting.Diagnostic
 import StackTraceOps.*
 
+import scala.annotation.nowarn
 import scala.compiletime.uninitialized
+import scala.jdk.CollectionConverters.*
+import org.objectweb.asm.*
+import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.tree.*
 import scala.util.control.NonFatal
+import java.net.{URL, URLClassLoader}
+import java.util.function.Predicate
+
+import dotty.vendored.fansi
 
 /** This rendering object uses `ClassLoader`s to accomplish crossing the 4th
  *  wall (i.e. fetching back values from the compiled class files put into a
@@ -27,20 +34,141 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
-  // Temporary fix for https://github.com/scala/scala3/issues/25116
-  // until `pprint` special-cases these.
+  private var myClasspathClassLoader: ClasspathClassLoader = uninitialized
+
+  // Temporary fix until `pprint` special-cases these.
   // (We cannot use, e.g., `isInstanceOf[LazyList]` because we're not in the same classloader)
   private val forcedToStringClasses = Set(
-    "scala.collection.immutable.LazyList",
-    "scala.collection.immutable.LazyListIterable",
     "scala.collection.mutable.StringBuilder", // not technically needed but quite ugly to print as an iterable of characters
-    "scala.xml.Elem" // Temporary fix for https://github.com/scala/scala3/issues/25691
+    "scala.xml.Elem" // is a Seq that contains itself, https://github.com/scala/scala3/issues/25691
   )
 
+  private object ProductToStringProbe {
+
+    def predicate(using Context): Any => Boolean = Predicate()
+
+    /** Should be a concrete class so we can reflectively load its apply method. */
+    private class Predicate(using Context) extends (Any => Boolean) {
+      def apply(value: Any): Boolean =
+        value != null && {
+          val clazz = value.getClass
+          val toStringDeclaringClass = userToStringDeclaringClass(clazz)
+          val testWithContext = fromSymbol.borrow(ctx) {
+            fromSymbol.cache.get(clazz).orElse(
+              toStringDeclaringClass.filter(_ != clazz).flatMap(fromSymbol.cache.get)
+            )
+          }
+
+          testWithContext.getOrElse(toStringDeclaringClass.exists(bytecodeCache.get))
+        }
+    }
+
+    /** provides access to a Context for a closure that by contract should not retain
+     * after return
+     */
+    private trait BorrowContext {
+      private var borrowed: Context | Null = null
+
+      def useContext[T](op: Context ?=> T): T = synchronized {
+        val localCtx = borrowed
+        assert(localCtx != null, "BorrowContext.access called without a borrowed context")
+        op(using localCtx)
+      }
+
+      def borrow[T](ctx: Context)(op: => T): T = synchronized {
+        val oldCtx = borrowed
+        try
+          borrowed = ctx
+          op
+        finally
+          borrowed = oldCtx
+      }
+    }
+
+    private object fromSymbol extends BorrowContext {
+      val cache = classValue { clazz =>
+        useContext(classHasUserDefinedToString(clazz))
+      }
+    }
+
+    private val bytecodeCache = classValue(hasRuntimeUserDefinedToString(_))
+
+    private def classValue[T](op: Class[?] => T): ClassValue[T] =
+      new ClassValue[T] {
+        def computeValue(clazz: Class[?]): T = op(clazz)
+      }
+
+    private def classHasUserDefinedToString(clazz: Class[?])(using Context): Option[Boolean] =
+      val classSym = runtimeClassSymbol(clazz)
+      if !classSym.exists || !classSym.isClass then None
+      else
+        val toStringSym = defn.Any_toString.matchingMember(classSym.asClass.thisType)
+        if !toStringSym.exists then None
+        else
+          Some(toStringSym != defn.Any_toString
+            && !toStringSym.is(Deferred)
+            && !toStringSym.is(Synthetic))
+
+    private def userToStringDeclaringClass(clazz: Class[?]): Option[Class[?]] =
+      try
+        val declaringClass = clazz.getMethod("toString").getDeclaringClass
+        if declaringClass == classOf[Object] then None else Some(declaringClass)
+      catch case NonFatal(_) => None
+
+    private def hasRuntimeUserDefinedToString(declaringClass: Class[?]): Boolean =
+      // Some classpath-local products do not resolve back to their TASTy symbol.
+      // Reject synthesized case-class toString by cracking its bytecode.
+      !ReplBytecodeAnalysis.isScalaRunTimeProductToString(declaringClass)
+
+    private def runtimeClassSymbol(clazz: Class[?])(using Context): Symbol = {
+      def getClassFromName(className: String | Null): Symbol =
+        if className == null then NoSymbol
+        else
+          val name = className.toTypeName
+          val direct = getClassIfDefined(name)
+          if direct.exists then direct
+          else getClassIfDefined(name.unmangleClassName)
+
+      def getMemberClass: Symbol =
+        val enclosingClass = clazz.getEnclosingClass
+        if enclosingClass == null then NoSymbol
+        else
+          val owner = runtimeClassSymbol(enclosingClass)
+          val name = clazz.getSimpleName.toTypeName.unmangleClassName
+          def lookup(owner: Symbol): Symbol =
+            if owner.exists then owner.info.member(name).symbol else NoSymbol
+
+          val direct = lookup(owner)
+          if direct.exists then direct
+          else if owner.exists then lookup(owner.linkedClass)
+          else NoSymbol
+
+      if clazz.isPrimitive || clazz.isArray then NoSymbol
+      else
+        val fromCanonicalName = getClassFromName(clazz.getCanonicalName)
+        if fromCanonicalName.exists then fromCanonicalName
+        else
+          val fromMemberClass = getMemberClass
+          if fromMemberClass.exists then fromMemberClass
+          else getClassFromName(clazz.getName)
+    }
+  }
+
   private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
+    val useProductToString = ProductToStringProbe.predicate
+
     def fallback() =
-      pprint.PPrinter.Color
-        .apply(value, width = width, height = height, initialOffset = initialOffset)
+      dotty.vendored.pprint.PPrinter.Color
+        .applyWithProductToString(
+          value,
+          width = width,
+          height = height,
+          indent = 2,
+          initialOffset = initialOffset,
+          escapeUnicode = false,
+          showFieldNames = true,
+          useProductToString = useProductToString
+        )
         .plainText
     try
       if value != null && forcedToStringClasses(value.getClass.getName) then return value.toString
@@ -55,10 +183,20 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       // Due to the possible interruption instrumentation, it is unlikely that we can get
       // rid of reflection here.
       val cl = classLoader()
-      val pprintCls = Class.forName("pprint.PPrinter$Color$", false, cl)
-      val fansiStrCls = Class.forName("fansi.Str", false, cl)
+      val pprintCls = Class.forName("dotty.vendored.pprint.PPrinter$Color$", false, cl)
+      val fansiStrCls = Class.forName("dotty.vendored.fansi.Str", false, cl)
       val Color = pprintCls.getField("MODULE$").get(null)
-      val Color_apply = pprintCls.getMethod("apply",
+      val Function1Cls = Class.forName("scala.Function1", false, cl)
+      val reflectivePredicate = locally {
+        // cant pass our predicate directly,
+        // so we have to reflectively invoke it from within the repl classloader.
+        val ReflectiveFunctionsCls = Class.forName("dotty.vendored.pprint.ReflectiveFunctions$", false, cl)
+        val ReflectiveFunctions = ReflectiveFunctionsCls.getField("MODULE$").get(null)
+        val factory = ReflectiveFunctionsCls.getMethod("reflectivePredicate", classOf[Any])
+
+        factory.invoke(ReflectiveFunctions, useProductToString)
+      }
+      val Color_apply = pprintCls.getMethod("applyWithProductToString",
         classOf[Any],     // value
         classOf[Int],     // width
         classOf[Int],     // height
@@ -66,10 +204,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         classOf[Int],     // initialOffset
         classOf[Boolean], // escape Unicode
         classOf[Boolean], // show field names
+        Function1Cls, // use product toString
       )
       val FansiStr_render = fansiStrCls.getMethod("render")
       val fansiStr = Color_apply.invoke(
-        Color, value, width, height, 2, initialOffset, false, true
+        Color, value, width, height, 2, initialOffset, false, true, reflectivePredicate
       )
       FansiStr_render.invoke(fansiStr).asInstanceOf[String]
     catch
@@ -83,16 +222,20 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   private[repl] def classLoader()(using Context) =
     if (myClassLoader != null && myClassLoader.root == ctx.settings.outputDir.value) myClassLoader
     else {
-      val parent = Option(myClassLoader).orElse(parentClassLoader).getOrElse {
-        val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
-        // We can't use the system classloader as a parent because it would
-        // pollute the user classpath with everything passed to the JVM
-        // `-classpath`. We can't use `null` as a parent either because on Java
-        // 9+ that's the bootstrap classloader which doesn't contain modules
-        // like `java.sql`, so we use the parent of the system classloader,
-        // which should correspond to the platform classloader on Java 9+.
-        val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
-        new java.net.URLClassLoader(compilerClasspath.toArray, baseClassLoader)
+      val parent = Option(myClassLoader).getOrElse {
+        myClasspathClassLoader = parentClassLoader match
+          case Some(given_) => ClasspathClassLoader(Array.empty, given_)
+          case None =>
+            val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
+            // We can't use the system classloader as a parent because it would
+            // pollute the user classpath with everything passed to the JVM
+            // `-classpath`. We can't use `null` as a parent either because on Java
+            // 9+ that's the bootstrap classloader which doesn't contain modules
+            // like `java.sql`, so we use the parent of the system classloader,
+            // which should correspond to the platform classloader on Java 9+.
+            val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
+            ClasspathClassLoader(compilerClasspath.toArray, baseClassLoader)
+        myClasspathClassLoader
       }
 
       myClassLoader = new AbstractFileClassLoader(
@@ -102,6 +245,12 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       )
       myClassLoader
     }
+
+  private[repl] def addToClasspath(urls: Iterable[URL])(using Context): Unit =
+    classLoader()
+    urls.foreach(myClasspathClassLoader.add)
+
+  private[repl] def addResource(url: URL)(using Context): Unit = addToClasspath(Seq(url))
 
   private[repl] def truncate(str: String, maxPrintCharacters: Int)(using ctx: Context): String =
     val ncp = str.codePointCount(0, str.length) // to not cut inside code point
@@ -156,10 +305,10 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       Some(value)
 
   def renderTypeDef(d: Denotation)(using Context): Diagnostic =
-    infoDiagnostic("// defined " ++ d.symbol.showUser, d)
+    infoDiagnostic("// defined " + d.symbol.showUser, d)
 
   def renderTypeAlias(d: Denotation)(using Context): Diagnostic =
-    infoDiagnostic("// defined alias " ++ d.symbol.showUser, d)
+    infoDiagnostic("// defined alias " + d.symbol.showUser, d)
 
   /** Render method definition result */
   def renderMethod(d: Denotation)(using Context): Diagnostic =
@@ -184,6 +333,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   end renderVal
 
   /** Force module initialization in the absence of members. */
+  // the module statements are executing in can fail to initialize if there's a problem
+  @nowarn("msg=Catching ExceptionInInitializerError can lead to unexpected behavior")
   def forceModule(sym: Symbol)(using Context): Seq[Diagnostic] =
     def load() =
       val objectName = sym.fullName.encode.toString
@@ -234,3 +385,7 @@ object Rendering:
         if x.getCause != null =>
       rootCause(x.getCause)
     case _ => x
+
+private class ClasspathClassLoader(urls: Array[URL], parent: ClassLoader)
+  extends URLClassLoader(urls, parent):
+  def add(url: URL): Unit = addURL(url)

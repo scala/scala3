@@ -67,6 +67,18 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Test def `version-sort-empty` =
+    checkSubset(
+      """|//> using dep "com.lihaoyi::pprint:@@"
+         |package A
+         |""".stripMargin,
+      """|0.7.3
+         |0.7.2
+         |0.7.1
+         |0.7.0
+         |""".stripMargin
+    )
+
   @Ignore
   @Test def `single-colon` =
     checkSubset(

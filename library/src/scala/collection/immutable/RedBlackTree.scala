@@ -77,6 +77,7 @@ private[collection] object RedBlackTree {
      *  @tparam B1 the value type of the result, a supertype of `B`
      *  @param tree the original tree whose left child is being replaced
      *  @param newLeft the new left subtree to substitute in
+     *  @return a rebalanced tree containing all entries of `tree` with `newLeft` replacing the original left subtree, possibly mutating `tree` or `newLeft` in place
      */
     protected final def mutableBalanceLeft[A1, B, B1 >: B](tree: Tree[A1, B], newLeft: Tree[A1, B1]): Tree[A1, B1] = {
       // Parameter trees
@@ -127,6 +128,7 @@ private[collection] object RedBlackTree {
      *  @tparam B1 the value type of the result, a supertype of `B`
      *  @param tree the original tree whose right child is being replaced
      *  @param newRight the new right subtree to substitute in
+     *  @return a rebalanced tree containing all entries of `tree` with `newRight` replacing the original right subtree, possibly mutating `tree` or `newRight` in place
      */
     protected final def mutableBalanceRight[A1, B, B1 >: B](tree: Tree[A1, B], newRight: Tree[A1, B1]): Tree[A1, B1] = {
       // Parameter trees
@@ -217,9 +219,9 @@ private[collection] object RedBlackTree {
   def to[A: Ordering, B](tree: Tree[A, B] | Null, to: A): Tree[A, B] | Null = blacken(doTo(tree, to))
   def until[A: Ordering, B](tree: Tree[A, B] | Null, key: A): Tree[A, B] | Null = blacken(doUntil(tree, key))
 
-  def drop[A: Ordering, B](tree: Tree[A, B] | Null, n: Int): Tree[A, B] | Null = blacken(doDrop(tree, n))
-  def take[A: Ordering, B](tree: Tree[A, B] | Null, n: Int): Tree[A, B] | Null = blacken(doTake(tree, n))
-  def slice[A: Ordering, B](tree: Tree[A, B] | Null, from: Int, until: Int): Tree[A, B] | Null = blacken(doSlice(tree, from, until))
+  def drop[A, B](tree: Tree[A, B] | Null, n: Int): Tree[A, B] | Null = blacken(doDrop(tree, n))
+  def take[A, B](tree: Tree[A, B] | Null, n: Int): Tree[A, B] | Null = blacken(doTake(tree, n))
+  def slice[A, B](tree: Tree[A, B] | Null, from: Int, until: Int): Tree[A, B] | Null = blacken(doSlice(tree, from, until))
 
   def smallest[A, B](tree: Tree[A, B] | Null): Tree[A, B] = {
     if (tree eq null) throw new NoSuchElementException("empty tree")
@@ -370,6 +372,7 @@ private[collection] object RedBlackTree {
    *  @tparam B1 the value type
    *  @param tree the original tree whose left child is being replaced
    *  @param newLeft the new left subtree to substitute in
+   *  @return a rebalanced immutable tree containing all entries of `tree` with `newLeft` replacing the original left subtree, or `tree` itself when `newLeft` is already its left child
    */
   private def balanceLeft[A, B1](tree: Tree[A, B1], newLeft: Tree[A, B1]): Tree[A, B1] = {
     // Parameter trees
@@ -417,6 +420,7 @@ private[collection] object RedBlackTree {
    *  @tparam B1 the value type
    *  @param tree the original tree whose right child is being replaced
    *  @param newRight the new right subtree to substitute in
+   *  @return a rebalanced immutable tree containing all entries of `tree` with `newRight` replacing the original right subtree, or `tree` itself when `newRight` is already its right child
    */
   private def balanceRight[A, B1](tree: Tree[A, B1], newRight: Tree[A, B1]): Tree[A, B1] = {
     // Parameter trees
@@ -830,6 +834,7 @@ private[collection] object RedBlackTree {
    *  @param value the value associated with the key
    *  @param left the left subtree, or `null` if absent
    *  @param right the right subtree, or `null` if absent
+   *  @return a new immutable red tree node whose size is the combined size of the subtrees plus one
    */
   private[immutable] def RedTree[A, B](key: A, value: B, left: Tree[A, B] | Null, right: Tree[A, B] | Null): Tree[A, B] = {
     //assertNotMutable(left)
@@ -904,6 +909,7 @@ private[collection] object RedBlackTree {
      *  functionality works.
      *
      *  @param key the key from which to start iteration
+     *  @return the leftmost subtree whose key is greater than or equal to `key`, or `null` if no such subtree exists
      */
     private def startFrom(key: A) : Tree[A,B] | Null = if (root eq null) null else {
       @tailrec def find(tree: Tree[A, B] | Null): Tree[A, B] | Null =
@@ -988,6 +994,7 @@ private[collection] object RedBlackTree {
    *  @tparam A the key type
    *  @param xs an iterator yielding keys in ascending order
    *  @param size the number of keys to consume from the iterator
+   *  @return a balanced red-black tree containing the consumed keys, or `null` if `size` is zero
    */
   def fromOrderedKeys[A](xs: Iterator[A]^, size: Int): Tree[A, Null] | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
@@ -1010,6 +1017,7 @@ private[collection] object RedBlackTree {
    *  @tparam B the value type
    *  @param xs an iterator yielding key-value pairs in ascending key order
    *  @param size the number of entries to consume from the iterator
+   *  @return a balanced red-black tree containing the consumed entries, or `null` if `size` is zero
    */
   def fromOrderedEntries[A, B](xs: Iterator[(A, B)]^, size: Int): Tree[A, B] | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
@@ -1062,44 +1070,40 @@ private[collection] object RedBlackTree {
 
   private val null2 = (null, null)
 
-  def partitionEntries[A, B](t: Tree[A, B] | Null, p: (A, B) => Boolean): (Tree[A, B] | Null, Tree[A, B] | Null) = if(t eq null) (null, null) else {
-    if (t eq null) null2
-    else {
-      object partitioner {
-        var tmpk, tmpd = null: Tree[A, B] | Null // shared vars to avoid returning tuples from fk
-        def fk(t: Tree[A, B]): Unit = {
-          val k                  = t.key
-          val v                  = t.value
-          var l                  = t.left
-          var r                  = t.right
-          var l2k, l2d, r2k, r2d = null: Tree[A, B] | Null
-          if (l ne null) {
-            fk(l)
-            l2k = tmpk
-            l2d = tmpd
-          }
-          val keep = p(k, v)
-          if (r ne null) {
-            fk(r)
-            r2k = tmpk
-            r2d = tmpd
-          }
-          val jk =
-            if (!keep) join2(l2k, r2k)
-            else if ((l2k eq l) && (r2k eq r)) t
-                 else join(l2k, k, v, r2k)
-          val jd =
-            if (keep) join2(l2d, r2d)
-            else if ((l2d eq l) && (r2d eq r)) t
-                 else join(l2d, k, v, r2d)
-          tmpk = jk
-          tmpd = jd
+  def partitionEntries[A, B](t: Tree[A, B] | Null, p: (A, B) => Boolean): (Tree[A, B] | Null, Tree[A, B] | Null) = if(t eq null) null2 else {
+      var tmpk: Tree[A, B] | Null = null // shared vars to avoid returning tuples from fk
+      var tmpd: Tree[A, B] | Null = null
+      def fk(t: Tree[A, B]): Unit = {
+        val k                  = t.key
+        val v                  = t.value
+        var l                  = t.left
+        var r                  = t.right
+        var l2k, l2d, r2k, r2d = null: Tree[A, B] | Null
+        if (l ne null) {
+          fk(l)
+          l2k = tmpk
+          l2d = tmpd
         }
+        val keep = p(k, v)
+        if (r ne null) {
+          fk(r)
+          r2k = tmpk
+          r2d = tmpd
+        }
+        val jk =
+          if (!keep) join2(l2k, r2k)
+          else if ((l2k eq l) && (r2k eq r)) t
+               else join(l2k, k, v, r2k)
+        val jd =
+          if (keep) join2(l2d, r2d)
+          else if ((l2d eq l) && (r2d eq r)) t
+               else join(l2d, k, v, r2d)
+        tmpk = jk
+        tmpd = jd
       }
 
-      partitioner.fk(t)
-      (blacken(partitioner.tmpk), blacken(partitioner.tmpd))
-    }
+      fk(t)
+      (blacken(tmpk), blacken(tmpd))
   }
 
   // Based on Stefan Kahrs' Haskell version of Okasaki's Red&Black Trees
@@ -1153,6 +1157,7 @@ private[collection] object RedBlackTree {
    *  @tparam B the value type
    *  @param tl the left subtree to append, or `null` if empty
    *  @param tr the right subtree to append, or `null` if empty
+   *  @return a tree containing all entries of `tl` followed by all entries of `tr`, with the same black height as the inputs (the root may be red, so callers typically blacken it), or `null` if both inputs are `null`
    */
   private def append[A, B](tl: Tree[A, B] | Null, tr: Tree[A, B] | Null): Tree[A, B] | Null = {
     if (tl eq null) tr
@@ -1197,6 +1202,7 @@ private[collection] object RedBlackTree {
    *
    *  @param t the tree node, or `null` for an empty subtree
    *  @param bh the black height of `t`
+   *  @return the rank of `t`: `2*(bh - 1)` for black nodes and `2*bh - 1` for red nodes, or `0` when `t` is `null`
    */
   @`inline` private def rank(t: Tree[?, ?] | Null, bh: Int): Int = {
     if(t eq null) 0

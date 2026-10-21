@@ -6,7 +6,7 @@ trait GT[A] extends GTT[A, GT]
 trait HNB[B]
 trait GTT[+C, DD[X] <: GT[X]] extends HNB[DD[C] @uncheckedVariance] // Can be any annotation and still crash
 
-class GTF[EE[X] <: GT[X] with GTT[X, EE]]
+class GTF[EE[X] <: GT[X] & GTT[X, EE]]
 {
   def foo[F]: EE[F] = ???
   def bar[G](f: G): EE[G] = ???

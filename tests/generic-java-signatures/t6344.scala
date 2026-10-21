@@ -28,6 +28,7 @@ class ValA[Q](val value: Q) extends AnyVal {
 }
 class ValB[Q, Q0 <: Q](val value: Q) extends AnyVal {
   def f: Q0 = ???
+  type PQ0 = Q0
 }
 
 class C0 {
@@ -72,6 +73,7 @@ class C5 {
   def f3(x: ValA[Int]) = x.f
   def f4(x: ValB[Int, Int]) = x.f
   def f5(x: ValB[Int, _ <: Int]) = x.f
+  def f5(x: ValB[Int, _ <: Int], y: x.PQ0) = 0
 }
 class C6[A] {
   def f1(x1: Val[A], x2: ValAny[A], x3: ValStr[A], x4: ValA[A]) = x4

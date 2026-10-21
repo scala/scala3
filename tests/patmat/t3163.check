@@ -1,1 +1,8 @@
-3: Pattern Match Exhaustivity: _: AnyVal
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t3163.scala:3:24 ----
+3 |  def foo(x : AnyVal) = x match {case b : Boolean => "It's a bool"}
+  |                        ^
+  |                        match may not be exhaustive.
+  |
+  |                        It would fail on pattern case: _: AnyVal
+  |
+  | longer explanation available when compiling with `-explain`

@@ -37,19 +37,27 @@ object Mixin {
  *
  *   1. (done in `traitDefs` and `transformSym`) For every concrete trait getter
  *
+ *  ```
  *       <mods> def x(): T = expr
+ *  ```
  *
  *   make it non-private, and add the definition of its trait setter:
  *
+ *  ```
  *       <mods> def TraitName$_setter_$x(v: T): Unit
+ *  ```
  *
  *   2. (done in `traitDefs`) Make every concrete trait setter
  *
+ *  ```
  *      <mods> def x_=(y: T) = ()
+ *  ```
  *
  *     deferred by mapping it to
  *
+ *  ```
  *      <mods> def x_=(y: T)
+ *  ```
  *
  *   3. (done in `transformSym`) For every module class constructor in traits,
  *      remove its Private flag (but do not expand its name), since it will have
@@ -63,7 +71,9 @@ object Mixin {
  *          4.1 (done in `traitInits`) For every parameter accessor `<mods> def x(): T` in M,
  *              in order of textual occurrence, add
  *
+ *  ```
  *               <mods> def x() = e
+ *  ```
  *
  *              where `e` is the constructor argument in C that corresponds to `x`. Issue
  *              an error if no such argument exists.
@@ -73,30 +83,42 @@ object Mixin {
  *
  *              4.2.1 If `x` is also a member of `C`, and is a lazy val,
  *
+ *  ```
  *                <mods> lazy val x: T = super[M].x
+ *  ```
  *
  *              4.2.2 If `x` is also a member of `C`, and is a module,
  *
+ *  ```
  *                <mods> lazy module val x: T = new T$(this)
+ *  ```
  *
  *              4.2.3 If `x` is also a member of `C`, and is something else:
  *
+ *  ```
  *                <mods> def x(): T = _
+ *  ```
  *
  *              4.2.5 If `x` is not a member of `C`, nothing gets added.
  *
  *          4.3 (done in `superCallOpt`) The call:
  *
+ *  ```
  *                super[M].$init$()
+ *  ```
  *
  *          4.4 (done in `setters`) For every concrete setter `<mods> def x_=(y: T)` in M:
  *
+ *  ```
  *                <mods> def x_=(y: T) = ()
+ *  ```
  *
  *          4.5 (done in `mixinForwarders`) For every method
- *          `<mods> def f[Ts](ps1)...(psN): U` in M` that needs to be disambiguated:
+ *          `<mods> def f[Ts](ps1)...(psN): U` in M that needs to be disambiguated:
  *
+ *  ```
  *                <mods> def f[Ts](ps1)...(psN): U = super[M].f[Ts](ps1)...(psN)
+ *  ```
  *
  *          A method in M needs to be disambiguated if it is concrete, not overridden in C,
  *          and if it overrides another concrete method.
@@ -164,8 +186,13 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           val setter = makeTraitSetter(decl.asTerm)
           setter.validFor = thisPhase.validFor // validity of setter = next phase up to next transformer afterwards
           decls1.enter(setter)
-          // Re-create the setter from the unerased getter so we can have its unerased form for generic signatures
-          mixinGenericInfos(setter) = atPhase(erasurePhase) { makeTraitSetter(decl.asTerm).info }
+          // Only populate generic infos for non-private decls, since private ones may refer to private types,
+          // and are anyway not useful as only Scala code can access them
+          atPhase(erasurePhase) {
+            if !decl.is(Private) then
+              // Re-create the setter from the unerased getter so we can have its unerased form for generic signatures
+              mixinGenericInfos(setter) = makeTraitSetter(decl.asTerm).info
+          }
           modified = true
       if modified then
         sym.copySymDenotation(
@@ -186,6 +213,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     sym.isGetter && !wasOneOf(sym, DeferredOrLazy | ParamAccessor)
       && atPhase(thisPhase) { !sym.setter.exists }
       && !sym.isConstExprFinalVal
+      && !sym.owner.isInlineTrait
 
   private def makeTraitSetter(getter: TermSymbol)(using Context): Symbol =
     getter.copy(
@@ -281,9 +309,9 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           val rhs =
             if (wasOneOf(getter, ParamAccessor))
               nextArgument()
-            else if (getter.is(Lazy, butNot = Module))
+            else if (!mixin.isInlineTrait && getter.is(Lazy, butNot = Module))
               transformFollowing(superRef(getter).appliedToNone)
-            else if (getter.is(Module))
+            else if (!mixin.isInlineTrait && getter.is(Module))
               if ctx.settings.scalajs.value && getter.moduleClass.isJSType then
                 if getter.is(Scala2x) then
                   report.error(
@@ -295,29 +323,33 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
                 New(getter.info.resultType, List(This(cls)))
             else
               Underscore(getter.info.resultType)
-          // transformFollowing call is needed to make memoize & lazy vals run
-          val forwarder = mkForwarderSym(getter.asTerm)
-          // Store the unerased form for generic signature use later,
-          // but only if it's not private (which we must check at erasure time, as here we've removed that flag already),
-          // since otherwise it might refer to private classes
-          if atPhase(erasurePhase) { !getter.is(Private) } then
-            mixinGenericInfos(forwarder) = atPhase(erasurePhase) { cls.thisType.memberInfo(getter) }
-          transformFollowing(DefDef(forwarder, rhs))
+          if (!mixin.isInlineTrait) then
+            // transformFollowing call is needed to make memoize & lazy vals run
+            val forwarder = mkForwarderSym(getter.asTerm)
+            // Store the unerased form for generic signature use later,
+            // but only if it's not private (which we must check at erasure time, as here we've removed that flag already),
+            // since otherwise it might refer to private classes
+            if atPhase(erasurePhase) { !getter.is(Private) } then
+              mixinGenericInfos(forwarder) = atPhase(erasurePhase) { cls.thisType.memberInfo(getter) }
+          
+            transformFollowing(DefDef(forwarder, rhs))
+          else
+            EmptyTree
         }
         else if wasOneOf(getter, ParamAccessor) then
-          // mixin parameter field is defined by an override; evaluate the argument and throw it away
-          nextArgument()
+          if (mixin.isInlineTrait) then {nextArgument(); EmptyTree} else nextArgument()
         else EmptyTree
     }
 
     def setters(mixin: ClassSymbol): List[Tree] =
       val mixinSetters = mixin.info.decls.filter { sym =>
-        sym.isSetter && (!wasOneOf(sym, Deferred) || sym.name.is(TraitSetterName))
+        sym.isSetter && (!wasOneOf(sym, Deferred) || sym.name.is(TraitSetterName)) && !sym.owner.isInlineTrait
       }
       mixinSetters.map(setter => {
         val copied = transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
         mixinGenericInfos.get(setter) match
-          case Some(gi) => mixinGenericInfos(copied.symbol) = gi
+          case Some(gi) =>
+            mixinGenericInfos(copied.symbol) = atPhase(erasurePhase) { gi.asSeenFrom(cls.thisType, mixin) }
           case None => ()
         copied
       })

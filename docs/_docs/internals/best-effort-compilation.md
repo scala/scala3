@@ -58,7 +58,7 @@ maintenance load. This way phases like PostTyper do not have to be continually a
 with errors from typer and usually the IDE is able to retrieve enough information with just the typer phase.
 
 An unfortunate consequence of this structure is the fact that we lose access to phases allowing for incremental
-compilation, which is something that could be adressed in the future.
+compilation, which is something that could be addressed in the future.
 
 `-Ywith-best-effort-tasty` option allows reading Best Effort TASTy files from classpath. If such file is read, then
 the compiler is disallowed from proceeding to any non-frontend phase. This is to be used either in combination with

@@ -19,6 +19,8 @@ import scala.language.`2.13`
  *
  *  Such runtime checks are not emitted by default.
  *  They can be enabled by the `-Xcheckinit` compiler option.
+ *
+ *  @param msg the error message describing which field was accessed before initialization
  */
 final case class UninitializedFieldError(msg: String) extends RuntimeException(msg) {
   def this(obj: Any) = this("" + obj)

@@ -222,7 +222,9 @@ private[scala] trait PropertiesTrait {
   }
 
   /** Compares the given specification version to the major version of the platform.
+   *
    *  @param version a specification major version number
+   *  @return `true` if the specification version of the current runtime is equal to or higher than the given version
    */
   def isJavaAtLeast(version: Int): Boolean = isJavaAtLeast(math.max(version, 0).toString)
 

@@ -70,8 +70,8 @@ class OrderingTest {
     }
     checkAll[Unit](())
     checkAll[Boolean](true, false)
-    checkAll[Byte](Byte.MinValue, -1.toByte, 0.toByte, 1.toByte, Byte.MaxValue)
-    checkAll[Char](Char.MinValue, -1.toChar, 0.toChar, 1.toChar, Char.MaxValue)
+    checkAll[Byte](Byte.MinValue, (-1).toByte, 0.toByte, 1.toByte, Byte.MaxValue)
+    checkAll[Char](Char.MinValue, (-1).toChar, 0.toChar, 1.toChar, Char.MaxValue)
     checkAll[Short](Short.MinValue, -1, 0, 1, Short.MaxValue)
     checkAll[Int](Int.MinValue, -1, 0, 1, Int.MaxValue)
     checkAll[Double](doubles*)

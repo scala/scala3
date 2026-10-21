@@ -59,11 +59,10 @@ class ContentContributors:
     fetch(link).flatMap(_.json()).flatMap { json =>
       val res = json.asInstanceOf[Commits]
       val authors = res.map { commit =>
-        commit.author match
-          case null =>
-            FullAuthor(commit.commit.author.name, "", s"$indenticonsUrl/${commit.commit.author.name}.png")
-          case author =>
-            FullAuthor(author.login, author.html_url, author.avatar_url)
+        if commit.author == null then
+          FullAuthor(commit.commit.author.name, "", s"$indenticonsUrl/${commit.commit.author.name}.png")
+        else
+          FullAuthor(commit.author.login, commit.author.html_url, commit.author.avatar_url)
       }
       val lastCommit = res.lastOption
       val lastCommitDescriptionLink = lastCommit.map(_.url)

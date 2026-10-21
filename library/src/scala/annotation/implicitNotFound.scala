@@ -53,5 +53,7 @@ import scala.language.`2.13`
  *   k.n[String]
  *      ^
  *  </pre>
+ *
+ *  @param msg the error message template, with `\${Xi}` placeholders for type parameters
  */
 final class implicitNotFound(msg: String) extends scala.annotation.ConstantAnnotation

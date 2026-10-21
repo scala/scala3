@@ -11,6 +11,7 @@ import scala.annotation.internal.sharable
  */
 object NameTransformer {
 
+  private val hexArray = Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F')
   private val nops = 128
   private val ncodes = 26 * 26
 
@@ -45,12 +46,12 @@ object NameTransformer {
   enterOp('@', "$at")
 
   /** Replace operator symbols by corresponding expansion strings, and replace
-   *  characters that are not valid Java identifiers by "$u" followed by the
+   *  characters that are not valid Java identifiers by "\$u" followed by the
    *  character's unicode expansion.
-   *  Note that no attempt is made to escape the use of '$' in `name`: blindly
+   *  Note that no attempt is made to escape the use of '\$' in `name`: blindly
    *  escaping them might make it impossible to call some platform APIs. This
    *  unfortunately means that `decode(encode(name))` might not be equal to
-   *  `name`, this is considered acceptable since '$' is a reserved character in
+   *  `name`, this is considered acceptable since '\$' is a reserved character in
    *  the Scala spec as well as the Java spec.
    */
   def encode(name: SimpleName): SimpleName = {
@@ -72,7 +73,13 @@ object NameTransformer {
           buf = new StringBuilder()
           buf.append(name.sliceToString(0, i))
         }
-        buf.append("$u%04X".format(c.toInt))
+        buf.append("$u")
+        // avoid `format` which would box the integer, this is hot
+        // (`toHexString` is lowercase and doesn't pad with zeroes)
+        buf.append(hexArray((c >> 12) & 0xF))
+        buf.append(hexArray((c >>  8) & 0xF))
+        buf.append(hexArray((c >>  4) & 0xF))
+        buf.append(hexArray((c >>  0) & 0xF))
       }
       else if (buf ne null) {
         buf.append(c)

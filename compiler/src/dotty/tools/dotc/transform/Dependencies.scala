@@ -243,6 +243,13 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
         captureImplicitThis(tree.tpe)
       case tree: Select =>
         if isExpr(sym) && isLocal(sym) then markCalled(sym, enclosure)
+        else if sym.isConstructor && tree.qualifier.isInstanceOf[Super] then
+          // Super-call to a parent constructor (e.g. `super(args)` in the body of a
+          // local class's primary constructor, after Constructors phase has moved
+          // parent constructor calls into the constructor body). We track this as
+          // a call edge so that free variables of the parent constructor are
+          // propagated to this constructor. See i25943.
+          symSet(called, enclosure) += sym
       case tree: New =>
         val constr = tree.tpe.typeSymbol.primaryConstructor
         if constr.exists then

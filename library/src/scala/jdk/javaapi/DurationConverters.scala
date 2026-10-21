@@ -59,7 +59,7 @@ object  DurationConverters {
 
   /** Converts a Scala `FiniteDuration` to a Java duration. Note that the Scala duration keeps the
    *  time unit it was created with, while a Java duration always is a pair of seconds and nanos,
-   *  so the unit it lost.
+   *  so the unit is lost.
    *
    *  @param duration the Scala `FiniteDuration` to convert
    *  @return a Java `java.time.Duration` representing the same length of time

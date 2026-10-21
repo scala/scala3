@@ -1,7 +1,6 @@
 package dotty.tools.pc.completions
 
 import scala.annotation.tailrec
-import scala.util.Try
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
@@ -10,7 +9,6 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.Names.Name
-import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.*
@@ -36,7 +34,7 @@ object NamedArgCompletions:
           indexedContext,
           clientSupportsSnippets
         )
-      case (app: Apply) :: _ =>
+      case (_: Apply) :: _ =>
         /** def foo(aaa: Int, bbb: Int, ccc: Int) = ??? val x = foo( bbb = 123,
          *  ccc = 123,
          *  @@ ) In this case, typed path doesn't contain already provided

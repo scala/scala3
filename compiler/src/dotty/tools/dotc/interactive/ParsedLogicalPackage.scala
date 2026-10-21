@@ -3,6 +3,8 @@ package dotty.tools.dotc.interactive
 import scala.collection.mutable
 import dotty.tools.io.AbstractFile
 
+import scala.jdk.CollectionConverters.*
+
 /**
  * Represent a package and its contents in a way that's close to the file system.
  *
@@ -26,7 +28,7 @@ class ParsedLogicalPackage(
 
   private val subpackages =
     mutable.LinkedHashMap.empty[String, ParsedLogicalPackage]
-  private val directSources = mutable.ListBuffer.empty[String]
+  private val directSources = mutable.ListBuffer.empty[AbstractFile]
 
   def fullName: String =
     if (parent.isEmpty || parent.get.name.isEmpty) name
@@ -54,8 +56,8 @@ class ParsedLogicalPackage(
   def getPackage(name: String): Option[ParsedLogicalPackage] =
     subpackages.get(name)
 
-  def enterSource(fileName: String): this.type = synchronized:
-    directSources += fileName
+  def enterSource(file: AbstractFile): this.type = synchronized:
+    directSources += file
     this
 
   /** Return all member packages. Only direct members are returned. */
@@ -66,8 +68,43 @@ class ParsedLogicalPackage(
    *
    * The return type is a sequence and not a Set in order to have deterministic runs
    */
-  def sources: Seq[AbstractFile] = directSources.toSeq.distinct.flatMap(name => Option(AbstractFile.getFile(name)))
+  def sources: Seq[AbstractFile] = directSources.toSeq.distinct
 
   override def toString(): String =
     s"package $name(${packages.size} packages and ${sources.size} files)"
+}
+
+object ParsedLogicalPackage{
+
+  def fromMbtIndex(
+      packages: java.util.Map[String, java.util.Set[java.nio.file.Path]]
+  ): ParsedLogicalPackage =
+    val root = new ParsedLogicalPackage("", None)
+    val disallowedPackages: Set[String] = Set("scala", "scala.test", "_empty_")
+    val validExtensions: Set[String] = Set(".scala", ".java")
+
+    def isSupported(path: java.nio.file.Path): Boolean =
+      val filename = path.getFileName.toString
+      validExtensions.exists(filename.endsWith)
+
+    def enterNestedPackage(pkg: String) =
+      val parts = pkg.split('/')
+      var current = root
+      for part <- parts if !part.isEmpty do
+        current = current.enterPackage(part)
+      current
+
+    for ((pkg, paths) <- packages.asScala) do
+      val p = enterNestedPackage(pkg)
+      // we don't enter anything in the empty package, which is special and generally not useful (it is not)
+      // visible from other packages. Similarly, the scala package is special and we don't want to enter any
+      // symbols into it, since they might hide standard library symbols, such as scala.Option.
+      if p.name.nonEmpty && !disallowedPackages.contains(p.fullName) then
+        for path <- paths.asScala if isSupported(path) do
+          val f = AbstractFile.getFile(path.toString)
+          if f != null then
+            p.enterSource(f)
+
+    root.removeEmptyPackages()
+    root
 }

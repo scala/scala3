@@ -1,4 +1,4 @@
-//> using options -feature -Werror -preview
+//> using options -feature -Werror
 
 import Conversion.into
 
@@ -26,5 +26,3 @@ trait C[X]:
 class D[X] extends C[X]
 
 def f = new D[Text].f("abc")
-
-

@@ -53,19 +53,13 @@ class ArrayApply extends MiniPhase {
     sym.name == nme.apply
     && (sym.owner == defn.ArrayModuleClass || (sym.owner == defn.IArrayModuleClass && !sym.is(Extension)))
 
-  private def isListApply(tree: Tree)(using Context): Boolean =
-    (tree.symbol == defn.ListModule_apply || tree.symbol.name == nme.apply) && appliedCore(tree).match
+  private def isSeqApply(tree: Tree)(using Context): Boolean =
+    tree.symbol.name == nme.apply && appliedCore(tree).match
       case Select(qual, _) =>
         val sym = qual.symbol
         sym == defn.ListModule
         || sym == defn.ListModuleAlias
-      case _ => false
-
-  private def isSeqApply(tree: Tree)(using Context): Boolean =
-    isListApply(tree) || tree.symbol == defn.SeqModule_apply && appliedCore(tree).match
-      case Select(qual, _) =>
-        val sym = qual.symbol
-        sym == defn.SeqModule
+        || sym == defn.SeqModule
         || sym == defn.SeqModuleAlias
         || sym == defn.CollectionSeqType.symbol.companionModule
       case _ => false

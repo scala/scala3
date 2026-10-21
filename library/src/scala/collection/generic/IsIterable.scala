@@ -113,6 +113,7 @@ transparent trait IsIterable[Repr] extends IsIterableOnce[Repr] {
   /** A conversion from the type `Repr` to `IterableOps[A, Iterable, C]`.
    *
    *  @param coll the collection or value to convert to `IterableOps[A, Iterable, C]`
+   *  @return an `IterableOps[A, Iterable, C]` instance that exposes the iterable operations of `coll`
    */
   def apply(coll: Repr): IterableOps[A, Iterable, C]
 

@@ -88,7 +88,7 @@ object Message:
    */
   private class Seen(disambiguate: Disambiguation):
 
-    val seen = new collection.mutable.HashMap[SeenKey, List[Recorded]].withDefaultValue(Nil)
+    private val seen = new collection.mutable.HashMap[SeenKey, List[Recorded]].withDefaultValue(Nil)
 
     var nonSensical = false
 
@@ -150,7 +150,7 @@ object Message:
 
         val suffix = alts.length match {
           case 1 => ""
-          case n => n.toString.toCharArray.map {
+          case n => n.toString.map {
             case '0' => '⁰'
             case '1' => '¹'
             case '2' => '²'
@@ -161,7 +161,7 @@ object Message:
             case '7' => '⁷'
             case '8' => '⁸'
             case '9' => '⁹'
-          }.mkString
+          }
         }
         str + suffix
       else str
@@ -334,7 +334,7 @@ end Message
   * @param errorId a unique id identifying the message, this will be
   *                used to reference documentation online
   *
-  * Messages modify the rendendering of interpolated strings in several ways:
+  * Messages modify the rendering of interpolated strings in several ways:
   *
   *  1. The size of the printed code is limited with a MessageLimiter. If the message
   *    would get too large or too deeply nested, a `...` is printed instead.
@@ -349,7 +349,7 @@ end Message
   *
   *  Messages inheriting from the NoDisambiguation trait or returned from the
   *  `noDisambiguation()` method skip point (3) above. This makes sense if the
-  *  message already exolains where different occurrences of the same identifier
+  *  message already explains where different occurrences of the same identifier
   *  are located. Examples are NamingMsgs such as double definition errors,
   *  overriding errors, and ambiguous implicit errors.
   *
@@ -364,7 +364,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
   import Message.*
 
   /** The kind of the error message, e.g. "Syntax" or "Type Mismatch".
-    * This will be printed as "$kind Error", "$kind Warning", etc, on the first
+    * This will be printed as "\$kind Error", "\$kind Warning", etc, on the first
     * line of the message.
     */
   def kind: MessageKind
@@ -396,7 +396,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
         msgPrinter.seen.disable()
           // Clear entries and stop futher recording so that messages containing the current
           // one don't repeat the explanations or use explanations from the msgPostscript.
-        if addendum.isEmpty then "" else "\n\n" ++ addendum
+        if addendum.isEmpty then "" else "\n\n" + addendum
       case _ =>
         ""
 
@@ -459,8 +459,8 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
     override val canExplain = self.canExplain
     override def isNonSensical = self.isNonSensical
 
-  def append(suffix: => String): Message = mapMsg(_ ++ suffix)
-  def prepend(prefix: => String): Message = mapMsg(prefix ++ _)
+  def append(suffix: => String): Message = mapMsg(_ + suffix)
+  def prepend(prefix: => String): Message = mapMsg(prefix + _)
 
   def mapMsg(f: String => String): Message = new Message(errorId):
     val kind = self.kind
@@ -473,7 +473,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
     val kind = self.kind
     def msg(using Context) = self.msg
     override def msgPostscript(using Context) = self.msgPostscript
-    def explain(using Context) = self.explain ++ suffix
+    def explain(using Context) = self.explain + suffix
     override def canExplain = true
 
   /** Override with `true` for messages that should always be shown even if their

@@ -1,6 +1,21 @@
 -- Error: tests/neg-macros/i25743/Test_2.scala:2:16 --------------------------------------------------------------------
  2 |  Macro.foo[Int]() // error // error
    |  ^^^^^^^^^^^^^^^^
+   |  Cannot create Tag for scala.Int
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Test_2.scala:2
+14 |    '{ useTag(Tag.apply[A]) }
+   |              ^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Test_2.scala:2
+14 |    '{ useTag(Tag.apply[A]) }
+   |       ^^^^^^^^^^^^^^^^^^^^
+    --------------------------------------------------------------------------------------------------------------------
+-- Error: tests/neg-macros/i25743/Test_2.scala:2:16 --------------------------------------------------------------------
+ 2 |  Macro.foo[Int]() // error // error
+   |  ^^^^^^^^^^^^^^^^
    |Malformed tree was found while expanding macro with -Xcheck-macros.
    |The tree does not conform to the compiler's tree invariants.
    |
@@ -20,19 +35,4 @@
    |This location contains code that was inlined from Macro_1.scala:12
 12 |  inline def foo[A](): Unit = ${ fooImpl[A] }
    |                              ^^^^^^^^^^^^^^^
-    --------------------------------------------------------------------------------------------------------------------
--- Error: tests/neg-macros/i25743/Test_2.scala:2:16 --------------------------------------------------------------------
- 2 |  Macro.foo[Int]() // error // error
-   |  ^^^^^^^^^^^^^^^^
-   |  Cannot create Tag for scala.Int
-   |--------------------------------------------------------------------------------------------------------------------
-   |Inline stack trace
-   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   |This location contains code that was inlined from Test_2.scala:2
-14 |    '{ useTag(Tag.apply[A]) }
-   |              ^^^^^^^^^^^^
-   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   |This location contains code that was inlined from Test_2.scala:2
-14 |    '{ useTag(Tag.apply[A]) }
-   |       ^^^^^^^^^^^^^^^^^^^^
     --------------------------------------------------------------------------------------------------------------------

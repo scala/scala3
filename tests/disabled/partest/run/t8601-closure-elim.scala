@@ -1,6 +1,6 @@
 import scala.tools.partest.BytecodeTest
-import scala.tools.asm
-import scala.tools.asm.util._
+import org.objectweb.asm
+import org.objectweb.asm.util._
 import scala.jdk.CollectionConverters._
 
 object Test extends BytecodeTest {

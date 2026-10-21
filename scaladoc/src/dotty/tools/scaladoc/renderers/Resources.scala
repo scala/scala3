@@ -65,22 +65,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "scripts/inkuire.js"
     ).map(dottyRes) ++
     List(
-      "scripts/inkuire-worker.js",
-      "webfonts/fa-brands-400.eot",
-      "webfonts/fa-brands-400.svg",
-      "webfonts/fa-brands-400.ttf",
-      "webfonts/fa-brands-400.woff",
-      "webfonts/fa-brands-400.woff2",
-      "webfonts/fa-regular-400.eot",
-      "webfonts/fa-regular-400.svg",
-      "webfonts/fa-regular-400.ttf",
-      "webfonts/fa-regular-400.woff",
-      "webfonts/fa-regular-400.woff2",
-      "webfonts/fa-solid-900.eot",
-      "webfonts/fa-solid-900.svg",
-      "webfonts/fa-solid-900.ttf",
-      "webfonts/fa-solid-900.woff",
-      "webfonts/fa-solid-900.woff2"
+      "scripts/inkuire-worker.js"
     ).map(dottyRes)
 
 
@@ -95,15 +80,12 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/theme/components/bundle.css",
       "styles/theme/components/button/bundle.css",
       "styles/theme/layout/bundle.css",
-      "styles/nord-light.css",
       "styles/dotty-icons.css",
       "styles/filter-bar.css",
-      "styles/code-snippets.css",
       "styles/searchbar.css",
       "styles/social-links.css",
       "styles/versions-dropdown.css",
       "styles/content-contributors.css",
-      "styles/fontawesome.css",
       "hljs/highlight.pack.js",
       "hljs/LICENSE",
       "scripts/hljs-scala3.js",
@@ -120,7 +102,6 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     ).map(dottyRes)
 
     val urls = List(
-      "https://code.jquery.com/jquery-3.5.1.min.js",
       "https://d3js.org/d3.v6.min.js",
       "https://cdn.jsdelivr.net/npm/graphlib-dot@0.6.2/dist/graphlib-dot.min.js",
       "https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.1/dagre-d3.min.js",
@@ -130,21 +111,10 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     fromResources ++ urls ++ projectLogo ++ darkProjectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
   }
 
-  val apiOnlyResources = List(
-    "styles/apistyles.css"
-  ).map(dottyRes)
-
-  val staticSiteOnlyResources = List(
-    "styles/staticsitestyles.css"
-  ).map(dottyRes)
-
   val searchDataPath = "scripts/searchData.js"
   val scastieConfigurationPath = "scripts/scastieConfiguration.js"
   val commonResourcesPaths = Seq(searchDataPath) ++ Seq(scastieConfigurationPath) ++ commonResources.map(_.path)
   val earlyCommonResourcePaths = earlyCommonResources.map(_.path)
-
-  val apiOnlyResourcesPaths: Seq[String] = apiOnlyResources.map(_.path)
-  val staticSiteOnlyResourcesPaths: Seq[String] = staticSiteOnlyResources.map(_.path)
 
   def searchData(pages: Seq[Page]) =
     val signatureProvider = ScalaSignatureProvider()
@@ -254,17 +224,10 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
   def allResources(pages: Seq[Page]): Seq[Resource] =
     earlyCommonResources ++
     commonResources ++
-    apiOnlyResources ++
-    staticSiteOnlyResources ++
     Seq(
       dottyRes("favicon.ico"),
       dottyRes("fonts/dotty-icons.woff"),
       dottyRes("fonts/dotty-icons.ttf"),
-      dottyRes("fonts/Inter-Bold.ttf"),
-      dottyRes("fonts/Inter-Medium.ttf"),
-      dottyRes("fonts/Inter-Regular.ttf"),
-      dottyRes("fonts/Inter-SemiBold.ttf"),
-      dottyRes("fonts/FiraCode-Regular.ttf"),
       dottyRes("images/scaladoc_logo.svg"),
       dottyRes("images/scaladoc_logo_dark.svg"),
       dottyRes("images/class.svg"),

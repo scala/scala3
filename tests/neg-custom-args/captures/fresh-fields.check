@@ -45,11 +45,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/fresh-fields.scala:33:13 ---------------------------------
 33 |  val _: F = f // error
    |             ^
-   |             Found:    (f : F^{any})
-   |             Required: F
+   |Found:    (f : F^{any})
+   |Required: F
    |
-   |             Note that capability `any` cannot flow into capture set {}.
+   |Note that capability `any` cannot flow into capture set {}.
    |
-   |             where:    any is a root capability in the type of value f with contributing fields value b, value e
+   |where:    any is a root capability classified as SharedCapability in the type of value f with contributing fields value b, value e
    |
    | longer explanation available when compiling with `-explain`

@@ -13,6 +13,7 @@ import scala.meta.internal.metals.{ClasspathSearch, ExcludedPackagesHandler}
 import scala.meta.internal.pc.PresentationCompilerConfigImpl
 import scala.meta.pc.{PresentationCompiler, PresentationCompilerConfig}
 import scala.meta.pc.CompletionItemPriority
+import scala.meta.pc.SemanticdbFileManager
 
 import dotty.tools.pc.*
 import dotty.tools.pc.ScalaPresentationCompiler
@@ -41,6 +42,7 @@ abstract class BasePCSuite extends PcAssertions:
     TestResources.classpath.map(_.toString)
   )
   protected val sourcePath: Seq[Path] = Nil
+  protected val semanticdbFileManager: SemanticdbFileManager = SemanticdbFileManager.EMPTY
 
   lazy val presentationCompiler: PresentationCompiler =
     val myclasspath: Seq[Path] = TestResources.classpath ++ additionalClasspath
@@ -55,6 +57,7 @@ abstract class BasePCSuite extends PcAssertions:
       .withExecutorService(executorService)
       .withScheduledExecutorService(executorService)
       .withSearch(search)
+      .withSemanticdbFileManager(semanticdbFileManager)
       .withCompletionItemPriority(completionItemPriority)
       .newInstance("", myclasspath.asJava, scalacOpts.asJava, () => sourcePath.asJava)
 

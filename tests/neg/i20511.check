@@ -9,6 +9,6 @@
 -- [E083] Type Error: tests/neg/i20511.scala:7:21 ----------------------------------------------------------------------
 7 |export toppingPrice, crustPrice // error // error
   |                     ^^^^^^^^^^
-  |                     Any is not a valid export prefix, since it is not an immutable path
+  |                     Double => Double is not a valid export prefix, since it is not an immutable path
   |
   | longer explanation available when compiling with `-explain`

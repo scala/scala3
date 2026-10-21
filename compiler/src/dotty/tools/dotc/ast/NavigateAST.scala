@@ -14,21 +14,6 @@ import dotty.tools.dotc.core.Types.Type
 // TODO: Handle trees with mixed source files
 object NavigateAST {
 
-  /** The untyped tree corresponding to typed tree `tree` in the compilation
-   *  unit specified by `ctx`
-   */
-  def toUntyped(tree: tpd.Tree)(using Context): untpd.Tree =
-    untypedPath(tree, exactMatch = true) match {
-      case (utree: untpd.Tree) :: _ =>
-        utree
-      case _ =>
-        val loosePath = untypedPath(tree, exactMatch = false)
-        throw new
-          Error(i"""no untyped tree for $tree, pos = ${tree.sourcePos}
-                   |best matching path =\n$loosePath%\n====\n%
-                   |path positions = ${loosePath.map(_.sourcePos)}""")
-    }
-
   /** The reverse path of untyped trees starting with a tree that closest matches
    *  `tree` and ending in the untyped tree at the root of the compilation unit
    *  specified by `ctx`.

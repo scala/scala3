@@ -15,7 +15,6 @@ import Spans.*
 
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
-import scala.compiletime.uninitialized
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
@@ -107,11 +106,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** A function def
    *
+   *  ```
    *    vparams => expr
+   *  ```
    *
    *  gets expanded to
    *
+   *  ```
    *    { def $anonfun(vparams) = expr; Closure($anonfun) }
+   *  ```
    *
    *  where the closure's type is the target type of the expression (FunctionN, unless
    *  otherwise specified).
@@ -352,7 +355,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree])(using Context): TypeDef = {
     val selfType =
-      if (cls.classInfo.selfInfo ne NoType) ValDef(newSelfSym(cls))
+      if (cls.info ne NoType) && (cls.classInfo.selfInfo ne NoType) then ValDef(newSelfSym(cls))
       else EmptyValDef
     def isOwnTypeParam(stat: Tree) =
       stat.symbol.is(TypeParam) && stat.symbol.owner == cls
@@ -559,7 +562,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def wrapArray(tree: Tree, elemtp: Type)(using Context): Tree =
     val wrapper = ref(defn.getWrapVarargsArrayModule)
       .select(wrapArrayMethodName(elemtp))
-      .appliedToTypes(if (elemtp.isPrimitiveValueType) Nil else elemtp :: Nil)
+      .appliedToTypes(if elemtp.classSymbol.isPrimitiveValueClass then Nil else elemtp :: Nil)
     val actualElem = wrapper.tpe.widen.firstParamTypes.head
     wrapper.appliedTo(tree.ensureConforms(actualElem))
 
@@ -1028,7 +1031,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
     def appliedToTypeTrees(targs: List[Tree])(using Context): Tree =
-      if targs.isEmpty then tree else TypeApply(tree, targs)
+      if targs.isEmpty then tree else tree match
+        case Block(stmts, expr) if stmts.nonEmpty => Block(stmts, TypeApply(expr, targs))
+        case _ => TypeApply(tree, targs)
 
     /** Apply to `()` unless tree's widened type is parameterless */
     def ensureApplied(using Context): Tree =
@@ -1085,11 +1090,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       // e.g. `null.ne(null)` doesn't type, but `(null: AnyRef).ne(null)` does.
       val receiver =
         if tree.tpe.isBottomType then
-          if ctx.explicitNulls then tree.cast(defn.AnyRefType)
+          if ctx.mode.is(Mode.SafeNulls) then tree.cast(defn.AnyRefType)
           else Typed(tree, TypeTree(defn.AnyRefType))
         else tree.ensureConforms(defn.ObjectType)
       // also need to cast the null literal to AnyRef in explicit nulls
-      val nullLit = if ctx.explicitNulls then nullLiteral.cast(defn.AnyRefType) else nullLiteral
+      val nullLit = if ctx.mode.is(Mode.SafeNulls) then nullLiteral.cast(defn.AnyRefType) else nullLiteral
       receiver.select(defn.Object_ne).appliedTo(nullLit).withSpan(tree.span)
     }
 
@@ -1117,14 +1122,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           assert(sym.name.isSetterName && sym.info.firstParamTypes.nonEmpty, sym)
           sym
         }
-        val qual = tree match {
-          case id: Ident => desugarIdentPrefix(id)
-          case Select(qual, _) => qual
-        }
-        qual.select(setter).appliedTo(rhs)
+        setterAppliedTo(setter, rhs)
       }
       else Assign(tree, rhs)
     }
+
+    def setterAppliedTo(setter: Symbol, rhs: Tree)(using Context): Tree =
+      val qual = tree match
+        case id: Ident => desugarIdentPrefix(id)
+        case Select(qual, _) => qual
+      qual.select(setter).appliedTo(rhs)
 
     /** tree @annot
      *
@@ -1199,6 +1206,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree
     }
 
+    /** Same as above, but when you already have `tree.symbol` */
+    def setDefTree(sym: Symbol)(using Context): ThisTree = {
+      if (sym.exists) sym.defTree = tree
+      tree
+    }
+
     /** Make sure tree has given symbol. This is called when typing or unpickling
      *  a ValDef or DefDef. It turns out that under very rare circumstances the symbol
      *  computed for a tree is not correct. The only known test case is i21755.scala.
@@ -1208,11 +1221,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  corresponding symbol in the superclass. It is not known what are the precise
      *  conditions where this happens, but my guess would be that it's connected to the
      *  recursion in the self type.
+     *  As an optimization, returns the symbol.
      */
-    def ensureHasSym(sym: Symbol)(using Context): Unit =
-      if sym.exists && sym != tree.symbol then
-        typr.println(i"correcting definition symbol from ${tree.symbol.showLocated} to ${sym.showLocated}")
-        tree.overwriteType(NamedType(sym.owner.thisType, sym.asTerm.name, sym.denot))
+    def ensureHasSym(sym: Symbol)(using Context): Symbol =
+      val treeSym = tree.symbol
+      if sym.exists && sym != treeSym then
+        typr.println(i"correcting definition symbol from ${treeSym.showLocated} to ${sym.showLocated}")
+        tree.overwriteType(NamedType(sym.owner.thisType, sym.name, sym.denot))
+      treeSym
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match
@@ -1373,13 +1389,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   trait TreeProvider {
     protected def computeRootTrees(using Context): List[Tree]
 
-    private var myTrees: List[Tree] | Null = uninitialized
+    private var myTrees: List[Tree] | Null = null
 
     /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
     def rootTrees(using Context): List[Tree] =
       if (ctx.settings.YretainTrees.value) {
-        if (myTrees == null) myTrees = computeRootTrees
-        myTrees.uncheckedNN
+        initialize(myTrees, myTrees = _, computeRootTrees)
       }
       else computeRootTrees
 
@@ -1393,7 +1408,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   // convert a numeric with a toXXX method
   def primitiveConversion(tree: Tree, numericCls: Symbol)(using Context): Tree =
-    val mname      = "to".concat(numericCls.name)
+    val mname      = termName("to" + numericCls.name.toString)
     val conversion = tree.tpe.member(mname)
     if conversion.symbol.exists then
       tree.select(conversion.symbol.termRef).ensureApplied
@@ -1412,8 +1427,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   @tailrec
   def sameTypes(trees: List[tpd.Tree], trees1: List[tpd.Tree]): Boolean =
-    if (trees.isEmpty) trees1.isEmpty
-    else if (trees1.isEmpty) trees.isEmpty
+    if trees eq trees1 then true
+    else if trees.isEmpty then trees1.isEmpty
+    else if trees1.isEmpty then trees.isEmpty
     else (trees.head.tpe eq trees1.head.tpe) && sameTypes(trees.tail, trees1.tail)
 
   /** If `tree`'s purity level is less than `level`, let-bind it so that it gets evaluated
@@ -1522,7 +1538,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case mt: MethodType if mt.paramInfos.isEmpty && mt.resultType.typeSymbol.is(Module) =>
           ref(mt.resultType.typeSymbol.sourceModule)
         case _ =>
-          ref(prefix)
+          val psym = prefix.symbol
+          if ctx.erasedTypes && psym.is(Module) && psym.isStatic then
+            // After erasure (i.e. when generating code), reference a statically
+            // reachable module through its own (static) path rather than through
+            // `prefix`, whose own prefix may be a `this` that is not addressable here --
+            // e.g. when the module is reached via the self type of a trait, `prefix` is
+            // `Trait.this.Module`, and building an outer path to `Trait.this` fails.
+            // The simplification is only sound for code generation, so it is guarded by
+            // `ctx.erasedTypes` to leave earlier purity/stability analysis untouched.
+            // See i24936.
+            ref(psym)
+          else
+            ref(prefix)
     case TermRef(prefix: ThisType, _) =>
       This(prefix.cls)
     case _ =>

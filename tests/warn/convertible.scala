@@ -1,4 +1,4 @@
-//> using options -feature -preview
+//> using options -feature
 
 import Conversion.into
 

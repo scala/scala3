@@ -9,7 +9,6 @@ import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
@@ -37,7 +36,7 @@ object AutoImports:
     case class Select(qual: SymbolIdent, name: String) extends SymbolIdent:
       def value: String = s"${qual.value}.$name"
 
-    def direct(name: String)(using Context): SymbolIdent = Direct(name)
+    def direct(name: String): SymbolIdent = Direct(name)
 
     def fullIdent(symbol: Symbol)(using Context): SymbolIdent =
       val symbols = symbol.ownersIterator.toList
@@ -67,7 +66,7 @@ object AutoImports:
       importSel: Option[ImportSel]
   ):
 
-    def name(using Context): String = ident.value
+    def name: String = ident.value
 
   object SymbolImport:
 
@@ -222,10 +221,6 @@ object AutoImports:
               )
 
             case None =>
-              val reverse = symbol.ownersIterator.toList.reverse
-              val fullName = reverse.drop(1).foldLeft(SymbolIdent.direct(reverse.head.nameBackticked)) {
-                case (acc, sym) => SymbolIdent.Select(acc, sym.nameBackticked(false))
-              }
               SymbolImport(
                 symbol,
                 SymbolIdent.Direct(symbol.fullNameBackticked),
@@ -365,9 +360,9 @@ object AutoImports:
           case None =>
             val scriptOffset =
               if path.isAmmoniteGeneratedFile
-              then ScriptFirstImportPosition.ammoniteScStartOffset(text, comments)
+              then ScriptFirstImportPosition.ammoniteScStartOffset(comments)
               else if path.isScalaCLIGeneratedFile
-              then ScriptFirstImportPosition.scalaCliScStartOffset(text, comments)
+              then ScriptFirstImportPosition.scalaCliScStartOffset(comments)
               else Some(skipUsingDirectivesOffset(tmpl.span.start))
 
             scriptOffset.getOrElse {

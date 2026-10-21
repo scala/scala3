@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core.*
+import reporting.*
 import DenotTransformers.SymTransformer
 import Contexts.*
 import SymDenotations.SymDenotation
@@ -94,28 +95,39 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
 
   val newSetters = util.HashSet[Symbol]()
 
-  def ensureSetter(sym: TermSymbol)(using Context) =
-    if !sym.setter.exists then
-      newSetters += sym.copy(
+  def ensureSetter(sym: TermSymbol)(using Context): Symbol =
+    val setter = sym.setter
+    if setter.exists || newSetters.contains(setter) then
+      setter
+    else
+      val newSetter = sym.copy(
         name = sym.name.setterName,
         info = MethodType(sym.info.widenExpr :: Nil, defn.UnitType)
       ).enteredAfter(thisPhase)
+      newSetters += newSetter
+      if sym.is(Private) then
+        sym.owner.info.decls.toList
+        .find(other => other != newSetter && other.name == newSetter.name && other.info =:= newSetter.info)
+        .foreach(other => report.error(DoubleDefinition(newSetter, other, sym.owner), sym.srcPos))
+      newSetter
 
   override def transformValDef(tree: ValDef)(using Context): Tree =
     val sym = tree.symbol
     if !sym.is(Method) then return tree
     val getterDef = DefDef(sym.asTerm, tree.rhs).withSpan(tree.span).withAttachmentsFrom(tree)
     if !sym.is(Mutable) then return getterDef
-    ensureSetter(sym.asTerm)
-    if !newSetters.contains(sym.setter) then return getterDef
-    val setterDef = DefDef(sym.setter.asTerm, unitLiteral)
+    val setter = ensureSetter(sym.asTerm)
+    if !newSetters.contains(setter) then return getterDef
+    val setterDef = DefDef(setter.asTerm, unitLiteral)
     Thicket(getterDef, setterDef)
 
   override def transformAssign(tree: Assign)(using Context): Tree =
     val lsym = tree.lhs.symbol.asTerm
     if lsym.is(Method) then
-      ensureSetter(lsym)
-      tree.lhs.becomes(tree.rhs).withSpan(tree.span)
+      val setter = ensureSetter(lsym)
+      if setter.exists then // possibly setter is not tree.lhs.symbol.setter
+        tree.lhs.setterAppliedTo(setter, tree.rhs).withSpan(tree.span)
+      else tree
     else tree
 }
 

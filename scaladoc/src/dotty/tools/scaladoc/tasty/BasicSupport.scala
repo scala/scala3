@@ -38,7 +38,7 @@ trait BasicSupport:
     Annotation(dri, params)
 
   extension (using Quotes)(sym: reflect.Symbol)
-    def documentation = parseComment(sym.docstring.getOrElse(""), sym.tree)
+    def documentation(ownerSym: reflect.Symbol) = parseComment(sym.docstring.getOrElse(""), sym, ownerSym)
 
     def getAnnotations(): List[Annotation] =
       // Custom annotations should be documented only if annotated by @java.lang.annotation.Documented
@@ -55,10 +55,7 @@ trait BasicSupport:
         "scala.annotation.threadUnsafe",
         "scala.annotation.varargs",
       )
-      val fqNameAllowlist =
-        if ccEnabled then
-          fqNameAllowlist0 + CaptureDefs.useAnnotFullName
-        else fqNameAllowlist0
+      val fqNameAllowlist = fqNameAllowlist0
       val documentedSymbol = summon[Quotes].reflect.Symbol.requiredClass("java.lang.annotation.Documented")
       val annotations = sym.annotations.filter { a =>
         a.tpe.typeSymbol.hasAnnotation(documentedSymbol) || fqNameAllowlist.contains(a.symbol.fullName)

@@ -1,4 +1,4 @@
-//> using options -Werror -preview
+//> using options -Werror
 
 import Conversion.into
 
@@ -19,5 +19,3 @@ class D[X] extends B[X], C[X] // error
 
 trait E[X] extends C[X]: // error
   override def f(x: X) = super.f(x)
-
-

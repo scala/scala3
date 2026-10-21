@@ -92,6 +92,7 @@ object BlockContext {
    *  @tparam T the result type of `body`
    *  @param blockContext the `BlockContext` to install for the duration of `body`
    *  @param body the code to execute with the given `blockContext` installed
+   *  @return the result of executing `body`
    */
   final def withBlockContext[T](blockContext: BlockContext)(body: => T): T = {
     val old = contextLocal.get // can be null

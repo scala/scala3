@@ -1,4 +1,32 @@
-29: Pattern Match Exhaustivity: Bus(_)
-38: Pattern Match Exhaustivity: Bus(_)
-49: Pattern Match Exhaustivity: Bus(_)
-58: Pattern Match Exhaustivity: Bus(_)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9657.scala:29:75 ---
+29 |  def refuel2[P <: Petrol.type](vehicle: Vehicle {type A = P} ): Vehicle = vehicle match {
+   |                                                                           ^^^^^^^
+   |                                   match may not be exhaustive.
+   |
+   |                                   It would fail on pattern case: Bus(_)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9657.scala:38:65 ---
+38 |  def foo2(vehicle: Vehicle {type A <: Petrol.type} ): Vehicle = vehicle match {
+   |                                                                 ^^^^^^^
+   |                                   match may not be exhaustive.
+   |
+   |                                   It would fail on pattern case: Bus(_)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9657.scala:49:55 ---
+49 |  def bar2(vehicle: Vehicle {type A <: P} ): Vehicle = vehicle match {
+   |                                                       ^^^^^^^
+   |                                   match may not be exhaustive.
+   |
+   |                                   It would fail on pattern case: Bus(_)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9657.scala:58:73 ---
+58 |  def qux2[P <: Petrol.type](vehicle: Vehicle {type A <: P} ): Vehicle = vehicle match {
+   |                                                                         ^^^^^^^
+   |                                   match may not be exhaustive.
+   |
+   |                                   It would fail on pattern case: Bus(_)
+   |
+   | longer explanation available when compiling with `-explain`

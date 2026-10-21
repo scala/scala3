@@ -21,6 +21,7 @@ import reporting.{Suppression, Action, Profile, ActiveProfile, MessageFilter, No
 import reporting.Diagnostic, Diagnostic.Warning
 import rewrites.Rewrites
 import profile.Profiler
+import quoted.QuotesCache
 import printing.XprintMode
 import typer.ImplicitRunInfo
 import config.Feature
@@ -34,10 +35,12 @@ import scala.collection.mutable, mutable.ListBuffer
 import scala.io.Codec
 
 import Run.Progress
+import Comments.docCtx
+import inlines.Inlines.InlineTraitState
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.transform.MegaPhase
+import dotty.tools.dotc.transform.Pickler
 import dotty.tools.dotc.transform.Pickler.AsyncTastyHolder
-import dotty.tools.io.FileWriters
 import dotty.tools.dotc.util.chaining.*
 import java.util.{Timer, TimerTask}
 
@@ -69,7 +72,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
   private var myUnits: List[CompilationUnit] = Nil
   private var myUnitsCached: List[CompilationUnit] = Nil
-  private var myFiles: Set[AbstractFile] = uninitialized
+  private var myFiles: Set[AbstractFile] = Set.empty
 
   // `@nowarn` annotations by source file, populated during typer
   private val mySuppressions: mutable.LinkedHashMap[SourceFile, ListBuffer[Suppression]] = mutable.LinkedHashMap.empty
@@ -82,9 +85,10 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     // When the REPL creates a new run (ReplDriver.compile), parsing is already done in the old context, with the
     // previous Run. Parser warnings were suspended in the old run and need to be copied over so they are not lost.
     // Same as scala/scala/commit/79ca1408c7.
-    def initSuspendedMessages(oldRun: Run | Null) = if oldRun != null then
+    def initSuspendedMessages(oldRun: Run | Null) =
       mySuspendedMessages.clear()
-      mySuspendedMessages ++= oldRun.mySuspendedMessages
+      if oldRun != null then
+        mySuspendedMessages ++= oldRun.mySuspendedMessages
 
     def suppressionsComplete(source: SourceFile) = source == NoSource || mySuppressionsComplete(source)
 
@@ -197,7 +201,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   def files: Set[AbstractFile] = {
     if (myUnits ne myUnitsCached) {
       myUnitsCached = myUnits
-      myFiles = (myUnits ++ suspendedUnits).map(_.source.file).toSet
+      myFiles = (myUnits ++ suspendedUnits).map(_.source.file).collect{ case f: AbstractFile => f }.toSet
     }
     myFiles
   }
@@ -209,7 +213,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   val staticRefs = util.EqHashMap[Name, Denotation](initialCapacity = 1024)
 
   /** Actions that need to be performed at the end of the current compilation run */
-  private var finalizeActions = ListBuffer.empty[() => Unit]
+  private val finalizeActions = ListBuffer.empty[() => Unit]
 
   private var _progress: Progress | Null = null // Set if progress reporting is enabled
 
@@ -301,29 +305,37 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     do
       import reporting.Diagnostic
       report match
-        case FileWriters.Report.Error(msg, pos) =>
+        case Pickler.Report.Error(msg, pos) =>
           ctx.reporter.report(Diagnostic.Error(msg(ctx), pos))
-        case FileWriters.Report.Warning(msg, pos) =>
+        case Pickler.Report.Warning(msg, pos) =>
           ctx.reporter.report(Diagnostic.Warning(msg(ctx), pos))
-        case FileWriters.Report.Log(msg) =>
+        case Pickler.Report.Log(msg) =>
           ctx.reporter.report(Diagnostic.Info(msg, NoSourcePosition))
 
   /** Will be set to true if any of the compiled compilation units contains
    *  a pureFunctions language import.
    */
   var pureFunsImportEncountered = false
+  
+  /** Will be set to true if any of the compiled compilation units contains
+   *  an inlineTraits language import.
+   */
+  var inlineTraitsImportEncountered = false
 
   /** Will be set to true if experimental.captureChecking is enabled
    *  or any of the compiled compilation units contains a captureChecking language import.
    */
   var ccEnabledSomewhere = Feature.ccEnabledBySetting(using ictx)
 
+  /** If -explain-cycles is set, a trace of cyclic reference dependencies, otherwise null */
+  var cyclicReferenceTrace: CyclicReference.Trace | Null = null
+
   private var myEnrichedErrorMessage = false
 
   def compile(files: List[AbstractFile]): Unit =
     try compileSources(files.map(runContext.getSource(_)))
     catch case ex: Exception if !this.enrichedErrorMessage =>
-      val files1 = if units.isEmpty then files else units.map(_.source.file)
+      val files1 = if units.isEmpty then files else units.map(_.source)
       report.echo(this.enrichErrorMessage(s"exception occurred while compiling ${files1.map(_.path)}"))
       throw ex
 
@@ -357,6 +369,8 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       ctx.base.checkSingleThreaded()
 
     compiling = true
+
+    Feature.checkDeprecatedSettingFeatures
 
     profile =
       if ctx.settings.Vprofile.value
@@ -440,7 +454,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
     val fusedPhases = runCtx.base.allPhases
     if ctx.settings.explainCyclic.value then
-      runCtx.setProperty(CyclicReference.Trace, new CyclicReference.Trace())
+      cyclicReferenceTrace = new CyclicReference.Trace()
     runCtx.withProgressCallback: cb =>
       _progress = Progress(cb, this, fusedPhases.map(_.traversals).sum)
     val cancelAsyncTasty: () => Unit =
@@ -460,6 +474,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       val action = finalizeActions.remove(0)
       action()
     }
+    ctx.docCtx.foreach(_.removeStale())
     compiling = false
   }
 
@@ -603,9 +618,18 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       .setTyper(new Typer)
       .addMode(Mode.ImplicitsEnabled)
       .setTyperState(ctx.typerState.fresh(ctx.reporter))
+      // GADT constraints and inline trait origins recorded while compiling must not
+      // end up in the root context, which may be shared with later runs.
+      .setFreshGADTBounds
+      .setInlineTraitState(InlineTraitState())
     if ctx.settings.YexplicitNulls.value && !Feature.enabledBySetting(nme.unsafeNulls) then
       start = start.addMode(Mode.SafeNulls)
     ctx.initialize()(using start) // re-initialize the base context with start
+
+    // Cache unpickled quote templates for the whole run (keyed by the pickled TASTY
+    // bytes, stable per quote-site), so a macro that expands many times unpickles
+    // each of its quotes once per run rather than once per expansion.
+    QuotesCache.init(start)
 
     // `this` must be unchecked for safe initialization because by being passed to setRun during
     // initialization, it is not yet considered fully initialized by the initialization checker
@@ -620,7 +644,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
 object Run {
 
-  case class SubPhase(val name: String):
+  case class SubPhase(name: String):
     override def toString: String = name
 
   class SubPhases(val phase: Phase):

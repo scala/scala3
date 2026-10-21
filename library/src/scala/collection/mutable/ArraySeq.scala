@@ -58,7 +58,11 @@ sealed abstract class ArraySeq[T]
    */
   def elemTag: ClassTag[?]
 
-  /** Updates element at given index. */
+  /** Updates element at given index.
+   *
+   *  @param index the zero-based position of the element to update
+   *  @param elem the new value to store at the given index
+   */
   def update(@deprecatedName("idx", "2.13.0") index: Int, elem: T): Unit
 
   /** The underlying array. Its element type does not have to be equal to the element type of this ArraySeq. A primitive

@@ -63,7 +63,7 @@ trait Map[K, V]
    *  @param d     default value used for non-present keys
    *  @return      a wrapper of the map with a default value
    */
-  def withDefaultValue(d: V): Map[K, V] = new Map.WithDefault[K, V](this, x => d)
+  def withDefaultValue(d: V): Map[K, V] = new Map.WithDefault[K, V](this, _ => d)
 }
 
 /**
@@ -182,6 +182,7 @@ transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K,
    *  `p` returns `true`.
    *
    *  @param p  The test predicate
+   *  @return   the map itself
    */
   def filterInPlace(p: (K, V) => Boolean): this.type = {
     if (!isEmpty) this match {

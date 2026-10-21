@@ -13,16 +13,14 @@
 package scala
 
 import scala.language.`2.13`
+import scala.annotation.unused
 
 /** `Unit` is a subtype of [[scala.AnyVal]]. There is only one value of type
  *  `Unit`, `()`, and it is not represented by any object in the underlying
  *  runtime system. A method with return type `Unit` is analogous to a Java
  *  method which is declared `void`.
  */
-final abstract class Unit private extends AnyVal {
-  // Provide a more specific return type for Scaladoc
-  override def getClass(): Class[Unit] = ???
-}
+final abstract class Unit private extends AnyVal
 
 @scala.annotation.compileTimeOnly("`Unit` companion object is not allowed in source; instead, use `()` for the unit value")
 object Unit extends AnyValCompanion {
@@ -35,7 +33,7 @@ object Unit extends AnyValCompanion {
    *  @param  x   the Unit to be boxed
    *  @return     a scala.runtime.BoxedUnit offering `x` as its underlying value.
    */
-  def box(x: Unit): scala.runtime.BoxedUnit = scala.runtime.BoxedUnit.UNIT
+  def box(@unused x: Unit): scala.runtime.BoxedUnit = scala.runtime.BoxedUnit.UNIT
 
   /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw

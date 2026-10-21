@@ -4,7 +4,7 @@ package parsing
 
 import scala.annotation.tailrec
 import scala.annotation.threadUnsafe as tu
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ListBuffer, ArrayBuffer}
 import scala.collection.immutable.BitSet
 import util.{SourceFile, SourcePosition, NoSourcePosition, SrcPos}
 import Tokens.*
@@ -18,11 +18,12 @@ import NameKinds.{WildcardParamName, QualifiedName}
 import NameOps.*
 import ast.{Positioned, Trees}
 import ast.Trees.*
+import ast.untpd
 import StdNames.*
 import util.Spans.*
+import util.chaining.*
 import Constants.*
 import Symbols.NoSymbol
-import ScriptParsers.*
 import Decorators.*
 import util.Chars
 import rewrites.Rewrites.{overlapsPatch, patch, unpatch}
@@ -30,10 +31,8 @@ import reporting.*
 import config.Feature
 import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion.*
-import config.SourceVersion
-import dotty.tools.dotc.config.MigrationVersion
-import dotty.tools.dotc.util.chaining.*
-import dotty.tools.dotc.config.Feature.ccEnabled
+import config.{SourceVersion, MigrationVersion}
+import Chars.isWhitespace
 
 object Parsers {
 
@@ -91,13 +90,6 @@ object Parsers {
       case x => buf += x
     }
 
-  /** The parse starting point depends on whether the source file is self-contained:
-   *  if not, the AST will be supplemented.
-   */
-  def parser(source: SourceFile)(using Context): Parser =
-    if source.isSelfContained then new ScriptParser(source)
-    else new Parser(source)
-
   private val InCase: Region => Region = Scanners.InCase(_)
   private val InCond: Region => Region = Scanners.InParens(LPAREN, _)
   private val InFor : Region => Region = Scanners.InBraces(_)
@@ -118,7 +110,10 @@ object Parsers {
      *  If `t` does not have a span yet, set its span to the given one.
      */
     def atSpan[T <: Positioned](span: Span)(t: T): T =
-      if (t.span.isSourceDerived) t else t.withSpan(span.union(t.span))
+      if t.span.isSourceDerived then t
+      else t match
+        case tree: Tree if tree.isEmpty => t
+        case _ => t.withSpan(span.union(t.span))
 
     def atSpan[T <: Positioned](start: Offset, point: Offset, end: Offset)(t: T): T =
       atSpan(Span(start, end, point))(t)
@@ -199,10 +194,12 @@ object Parsers {
         }
     }
   }
+  /** Parse given interval in the sourcefile, or the whole source file if the
+   *  interval is not defined.
+   */
+  class Parser(source: SourceFile, startFrom: Offset = 0, limit: Offset = -1)(using Context) extends ParserCommon(source) {
 
-  class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
-
-    val in: Scanner = new Scanner(source, profile = Profile.current)
+    val in: Scanner = new Scanner(source, startFrom, limit, profile = Profile.current)
     // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
 
     /** This is the general parse entry point.
@@ -223,10 +220,9 @@ object Parsers {
     def isErased =
       isIdent(nme.erased) && in.erasedEnabled && in.isSoftModifierInParamModifierPosition
     def isConsume =
-      isIdent(nme.consume) && ccEnabled //\&& in.isSoftModifierInParamModifierPosition
-    def isSimpleLiteral =
-      simpleLiteralTokens.contains(in.token)
-      || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
+      isIdent(nme.consume) && Feature.ccEnabled
+    def isNegatedNumber = isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
+    def isSimpleLiteral = simpleLiteralTokens.contains(in.token) || isNegatedNumber
     def isLiteral = literalTokens contains in.token
     def isNumericLit = numericLitTokens contains in.token
     def isTemplateIntro = templateIntroTokens contains in.token
@@ -389,9 +385,9 @@ object Parsers {
           val found = in.token
           val statFollows = mustStartStatTokens.contains(found)
           val extra =
-          if in.isOperator && Tokens.canStartExprTokens3.contains(in.lookahead.token) then
-            " - did you intend to apply an infix operator? If so, wrap the right operand in parentheses or in a block."
-          else ""
+            if in.isOperator && Tokens.canStartExprTokens3.contains(in.lookahead.token) then
+              " - did you intend to apply an infix operator? If so, wrap the right operand in parentheses or in a block."
+            else ""
           syntaxError(
             if noPrevStat then IllegalStartOfStatement(what, isModifier, statFollows)
             else em"end of $what expected but ${showToken(found)} found$extra")
@@ -540,22 +536,6 @@ object Parsers {
         syntaxError(IdentifierExpected(tree.show), tree.span)
         tree
     }
-
-    def makePolyFunction(tparams: List[Tree], body: Tree,
-        kind: String, errorTree: => Tree,
-        start: Offset, arrowOffset: Offset): Tree =
-      atSpan(start, arrowOffset):
-        getFunction(body) match
-          case None =>
-            syntaxError(em"Implementation restriction: polymorphic function ${kind}s must have a value parameter", arrowOffset)
-            errorTree
-          case Some(Function(_, _: CapturesAndResult)) =>
-            // A function tree like this will be desugared
-            // into a capturing type in the typer.
-            syntaxError(em"Implementation restriction: polymorphic function types cannot wrap function types that have capture sets", arrowOffset)
-            errorTree
-          case Some(f) =>
-            PolyFunction(tparams, body)
 
 /* --------------- PLACEHOLDERS ------------------------------------------- */
 
@@ -748,12 +728,12 @@ object Parsers {
     var possibleColonOffset: Int = -1
 
     def testChar(idx: Int, p: Char => Boolean): Boolean = {
-      val txt = source.content
+      val txt = source.textContent()
       idx >= 0 && idx < txt.length && p(txt(idx))
     }
 
     def testChar(idx: Int, c: Char): Boolean = {
-      val txt = source.content
+      val txt = source.textContent()
       idx >= 0 && idx < txt.length && txt(idx) == c
     }
 
@@ -822,9 +802,9 @@ object Parsers {
         patch(source, Span(startOpening, endOpening), " {")
         val next = in.next
         def closedByEndMarker =
-          next.token == END && (next.offset - next.lineOffset) == indentWidth.toPrefix.size
+          next.token == END && (next.offset - next.lineOffset) == indentWidth.toPrefixSize
         if closedByEndMarker then patch(source, Span(next.offset), "} // ")
-        else patch(source, Span(closingOffset(source.nextLine(in.lastOffset))), indentWidth.toPrefix ++ "}\n")
+        else patch(source, Span(closingOffset(source.nextLine(in.lastOffset))), indentWidth.toPrefix + "}\n")
       t
     end indentedToBraces
 
@@ -853,6 +833,9 @@ object Parsers {
         (in.lastOffset - 1, skipped)                      //   move the following text up to where the `)` or `}` was
     }
 
+    /** Inside a `do`/`while` that is rewritten to `while ({ ... }) ()`, whose braces must stay */
+    private var inMigratedDoWhile = false
+
     /** Parse brace-enclosed `body` and rewrite it to be an indentation region instead, if possible.
      *  If possible means:
      *   1. not inside (...), [...], case ... =>
@@ -877,7 +860,8 @@ object Parsers {
         case r: InBraces => allBraces(r.enclosing)
         case _ => false
       }
-      var canRewrite = allBraces(in.currentRegion) && // test (1)
+      var canRewrite = !inMigratedDoWhile && // its braces end up in `while ({ ... }) ()`
+        allBraces(in.currentRegion) && // test (1)
         !testChars(in.lastOffset - 3, " =>") // test(6)
 
       def isStartOfSymbolicFunction: Boolean =
@@ -1115,14 +1099,14 @@ object Parsers {
      *      and one of the following two subcases applies:
      *     1a. The next token is an indent. In this case the return parsing function parses
      *         an Expr in location Location.InColonArg.
-     *     1b. Under relaxedLambdaSyntax: the next token is on the same line and the enclosing region is not `(...)`.
+     *     1b. The next token is on the same line and the enclosing region is not `(...)`.
      *         In this case the parsing function parses an Expr in location Location.InColonArg
      *         enclosed in a SingleLineLambda region, and then eats the ENDlambda token
      *         generated by the Scanner at the end of that region.
      *     The reason for excluding (1b) in regions enclosed in parentheses is to avoid
      *     an ambiguity with type ascription `(x: A => B)`, where function types are only
      *     allowed inside parentheses.
-     *   2. Under relaxedLambdaSyntax: the input starts with a `case`.
+     *   2. The input starts with a `case`.
      */
     def followingIsLambdaAfterColon(): Option[() => Tree] =
       val lookahead = in.LookaheadScanner(allowIndent = true)
@@ -1132,10 +1116,12 @@ object Parsers {
           lookahead.observeArrowIndented()
           if lookahead.token == INDENT || lookahead.token == EOF then
             Some(() => expr(Location.InColonArg))
-          else if in.featureEnabled(Feature.relaxedLambdaSyntax) then
+          else if Feature.isPreviewEnabled || in.featureEnabled(Feature.relaxedLambdaSyntax) then
             isParamsAndArrow() match
               case success @ Some(_) => success
               case _ if !in.currentRegion.isInstanceOf[InParens] =>
+                if in.currentRegion.isInstanceOf[SingleLineLambda] then
+                  syntaxError(em"Can't have two single line lambdas on the same line, enclose the second in parentheses")
                 Some: () =>
                   val t = inSepRegion(SingleLineLambda(_)):
                     expr(Location.InColonArg)
@@ -1152,7 +1138,9 @@ object Parsers {
         else if lookahead.token == LPAREN || lookahead.token == LBRACKET then
           lookahead.skipParens()
           isArrowIndent()
-        else if lookahead.token == CASE && in.featureEnabled(Feature.relaxedLambdaSyntax) then
+        else if lookahead.token == CASE
+        	&& (Feature.isPreviewEnabled || in.featureEnabled(Feature.relaxedLambdaSyntax))
+        then
           Some: () =>
             inSepRegion(SingleLineLambda(_)):
               singleCaseMatch()
@@ -1227,9 +1215,9 @@ object Parsers {
     /** Optionally, if we are seeing a lambda argument after a colon of the form
      *    : (params) =>
      *      body
-     *  or a single-line lambda (under relaxedLambdaSyntax)
+     *  or a single-line lambda
      *    : (params) => body
-     *  or a case clause (under relaxedLambdaSyntax)
+     *  or a case clause
      *    : case pat guard => rhs
      *  then return the function used to parse `body` or the case clause.
      */
@@ -1406,30 +1394,39 @@ object Parsers {
      */
     def simpleLiteral(): Tree =
       if isIdent(nme.raw.MINUS) then
-        val start = in.offset
-        in.nextToken()
-        literal(negOffset = start, inTypeOrSingleton = true)
+        literal(start = in.skipToken(), inTypeOrSingleton = true)
       else
         literal(inTypeOrSingleton = true)
 
     /** Literal           ::=  SimpleLiteral
-     *                      |  processedStringLiteral
+     *                      |  interpolatedString
      *                      |  symbolLiteral
      *                      |  ‘null’
      *
-     *  @param negOffset   The offset of a preceding `-' sign, if any.
-     *                     If the literal is not negated, negOffset == in.offset.
+     *  @param start   The offset of a preceding `-' sign, if any.
+     *                 If the literal is not negated, start == in.offset.
      */
-    def literal(negOffset: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
+    def literal(start: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
+
       def literalOf(token: Token): Tree = {
-        val isNegated = negOffset < in.offset
+        val isNegated = start < in.offset
         def digits0 = in.removeNumberSeparators(in.strVal.nn)
-        def digits = if (isNegated) "-" + digits0 else digits0
+        def digits = if isNegated then "-" + digits0 else digits0
         if !inTypeOrSingleton then
+          if isNegated && start < in.offset - 1 then
+            warning(IllegalLiteral(), start)
+            patch(Span(start, in.offset + in.strVal.nn.length), "-" + in.strVal.nn.trim)
+          def num(kind: NumberKind): Tree =
+            val d = digits
+            if d.isEmpty then
+              syntaxError(IllegalLiteral(), start)
+              Literal(Constant.fromValue(null))
+            else
+              Number(d, kind)
           token match {
-            case INTLIT  => return Number(digits, NumberKind.Whole(in.base))
-            case DECILIT => return Number(digits, NumberKind.Decimal)
-            case EXPOLIT => return Number(digits, NumberKind.Floating)
+            case INTLIT  => return num(NumberKind.Whole(in.base))
+            case DECILIT => return num(NumberKind.Decimal)
+            case EXPOLIT => return num(NumberKind.Floating)
             case _ =>
           }
         import scala.util.FromDigits.*
@@ -1441,7 +1438,12 @@ object Parsers {
           case FLOATLIT                       => lit(floatFromDigits(digits))
           case DOUBLELIT | DECILIT | EXPOLIT  => lit(doubleFromDigits(digits))
           case CHARLIT                        => lit(in.strVal.nn.head)
-          case STRINGLIT | STRINGPART         => lit(in.strVal.nn)
+          case STRINGLIT if !inStringInterpolation =>
+            var str = in.strVal.nn
+            if in.delimChar == '\'' then str = trim(str, start + in.delimCount)
+            lit(str)
+          case STRINGLIT | STRINGPART
+                                              => lit(in.strVal.nn)
           case TRUE                           => lit(true)
           case FALSE                          => lit(false)
           case NULL                           => lit(null)
@@ -1460,15 +1462,15 @@ object Parsers {
         val t = in.token match {
           case STRINGLIT | STRINGPART =>
             val value = in.strVal.nn
-            atSpan(negOffset, negOffset, negOffset + value.length) { Literal(Constant(value)) }
+            atSpan(start, start, start + value.length) { Literal(Constant(value)) }
           case _ =>
             syntaxErrorOrIncomplete(IllegalLiteral())
-            atSpan(negOffset) { Literal(Constant(null)) }
+            atSpan(start) { Literal(Constant(null)) }
         }
         in.nextToken()
         t
       }
-      else atSpan(negOffset) {
+      else atSpan(start) {
         if (in.token == QUOTEID)
           val inName = in.name.nn
           if ((staged & StageKind.Spliced) != 0 && Chars.isIdentifierStart(inName(0))) {
@@ -1497,7 +1499,8 @@ object Parsers {
                 patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
                 patch(source, Span(in.charOffset - 1), "\")")
             atSpan(in.skipToken()) { SymbolLit(in.strVal.nn) }
-        else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
+        else if in.token == INTERPOLATIONID then
+          interpolatedString(inPattern)
         else {
           val t = literalOf(in.token)
           in.nextToken()
@@ -1506,45 +1509,159 @@ object Parsers {
       }
     }
 
-    private def interpolatedString(inPattern: Boolean = false): Tree = atSpan(in.offset) {
-      val segmentBuf = new ListBuffer[Tree]
-      val interpolator = in.name
-      val isTripleQuoted =
-        in.charOffset + 1 < in.buf.length &&
-        in.buf(in.charOffset) == '"' &&
-        in.buf(in.charOffset + 1) == '"'
+    private val interpolatorsFromAny = Set(nme.toString_, nme.hashCode_, nme.getClass_, nme.synchronized_, nme.eq, nme.ne)
+
+    private def interpolatedString(inPattern: Boolean): Tree = atSpan(in.offset) {
+      val segmentBuf = new ArrayBuffer[Tree]
+      val interpolator = in.name.nn
+      val startOffset = in.charOffset
       in.nextToken()
+
+      def interpolationExpr() = atSpan(in.offset):
+        if in.token == IDENTIFIER then
+          termIdent()
+        else if in.token == USCORE && inPattern then
+          in.nextToken()
+          Ident(nme.WILDCARD)
+        else if in.token == THIS then
+          in.nextToken()
+          This(EmptyTypeIdent)
+        else if in.token == LBRACE then
+          if inPattern then Block(Nil, inBraces(pattern()))
+          else expr()
+        else
+          report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
+          EmptyTree
+
       def nextSegment(literalOffset: Offset) =
         segmentBuf += Thicket(
-            literal(literalOffset, inPattern = inPattern, inStringInterpolation = true),
-            atSpan(in.offset) {
-              if (in.token == IDENTIFIER)
-                termIdent()
-              else if (in.token == USCORE && inPattern) {
-                in.nextToken()
-                Ident(nme.WILDCARD)
-              }
-              else if (in.token == THIS) {
-                in.nextToken()
-                This(EmptyTypeIdent)
-              }
-              else if (in.token == LBRACE)
-                if (inPattern) Block(Nil, inBraces(pattern()))
-                else expr()
-              else {
-                report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
-                EmptyTree
-              }
-            })
+          literal(literalOffset, inPattern = inPattern, inStringInterpolation = true),
+          interpolationExpr())
 
-      var offsetCorrection = if isTripleQuoted then 3 else 1
-      while (in.token == STRINGPART)
+      var offsetCorrection = in.delimCount
+      while in.token == STRINGPART do
         nextSegment(in.offset + offsetCorrection)
         offsetCorrection = 0
-      if (in.token == STRINGLIT)
-        segmentBuf += literal(inPattern = inPattern, negOffset = in.offset + offsetCorrection, inStringInterpolation = true)
 
-      InterpolatedString(interpolator.nn, segmentBuf.toList)
+      if in.token == STRINGLIT then
+        val dedentWidth =
+          if in.delimChar == '\''
+          then trim.lastIndent(in.strVal.nn)
+          else null
+        segmentBuf += literal(in.offset + offsetCorrection, inPattern = inPattern, inStringInterpolation = true)
+        if dedentWidth != null then
+          for i <- 0 until segmentBuf.length do
+            segmentBuf(i) = trim(segmentBuf(i), dedentWidth,
+              isFirst = i == 0, isLast = i == segmentBuf.length - 1, isSpec = interpolator == nme.SPEC)
+
+      if interpolatorsFromAny(interpolator) then
+        report.warning(UseOfAnyMethodAsInterpolator(interpolator), source.atSpan(Span(startOffset, in.charOffset)))
+
+      InterpolatedString(interpolator, segmentBuf.toList)
+    }
+
+    /** Trimming '''-enclosed strings */
+    object trim {
+
+      private case class Cut(offset: Int, length: Int)
+
+      private def shorten(cs: String, cuts: List[Cut]): String =
+        val totalCutSize = cuts.map(_.length).sum
+        if totalCutSize > cs.length then
+          "" // happens for empty '''-enclosed literals since the \n is counted twice
+        else
+          val target = new java.lang.StringBuilder(cs.length - totalCutSize)
+          def recur(cuts: List[Cut], fromIdx: Int, toIdx: Int): Unit = cuts match
+            case Nil =>
+              target.append(cs, fromIdx, cs.length)
+            case Cut(offset, length) :: cuts1 =>
+              val len = offset - fromIdx
+              target.append(cs, fromIdx, offset)
+              recur(cuts1, offset + length, toIdx + len)
+          recur(cuts, 0, 0)
+          target.toString
+
+      /** Trim the start of a '''-literal, up to and including the first \n.
+       *  This must be all whitespace.
+       */
+      private def trimStart(cs: String, strOffset: Int): List[Cut] =
+        var i = 0
+        while i < cs.length && isWhitespace(cs(i)) do i += 1
+        if i < cs.length && cs(i) == Chars.LF then
+          Cut(0, i + 1) :: Nil
+        else
+          syntaxError(em"Dedented string literal must start with newline after opening quotes", strOffset + i)
+          Nil
+
+      /** Trim the end of a '''-literal, up to and including the last \n.
+       *  This must be all whitespace.
+       */
+      private def trimEnd(cs: String, strOffset: Int): List[Cut] =
+        var i = cs.length - 1
+        while i >= 0 && isWhitespace(cs(i)) do i -= 1
+        if i >= 0 && cs(i) == Chars.LF then
+          Cut(i, cs.length - i) :: Nil
+        else
+          syntaxError(
+            em"Last line of dedented string literal must contain only whitespace before closing delimiter",
+            strOffset + i)
+          Nil
+
+      /** Trim the IndentWidth prefix from all starts of lines.
+       *  Error if a line does not start with at least IndentWidth.
+       */
+      private def trimLeft(cs: String, width: IndentWidth, strOffset: Int): List[Cut] =
+        def checkCut(cut: Cut): Boolean =
+          if cut.length < 0 then
+            var i = cut.offset
+            while isWhitespace(cs(i)) do i += 1
+            if cs(i) != Chars.LF then // lines consisting only of whitespace are ignored
+              syntaxError(
+                em"""Line in dedented string literal must be indented at least as much as the closing delimiter
+                    |This indent   : ${in.indentWidth(i, cs)}
+                    |Closing indent: $width""",
+                strOffset + i)
+          cut.length > 0
+        (0 until cs.length)
+          .filter(i => cs(i) == Chars.LF)
+          .map(i => Cut(i + 1, width.advance(cs, i + 1)))
+          .filter(checkCut)
+          .toList
+
+      /** The indentation width of the last line in `cs` (i.e. what comes before the closing `'''`).
+       */
+      def lastIndent(cs: String): IndentWidth =
+        in.indentWidth(cs.length, cs)
+
+      private def trimAll(cs: String, width: IndentWidth, strOffset: Int,
+                          isFirst: Boolean, isLast: Boolean): String =
+        val startCuts = if isFirst then trimStart(cs, strOffset) else Nil
+        var leftCuts = trimLeft(cs, width, strOffset)
+        if isLast then
+          leftCuts = leftCuts.dropRight(1) // last trimLeft overlaps with trimEnd
+        val endCuts = if isLast then trimEnd(cs, strOffset) else Nil
+        shorten(cs, startCuts ++ leftCuts ++ endCuts)
+
+      /** Trim a non-interpolated '''-enclosed string `str`.
+       *  The string without leading quotes starts at `strOffset`.
+       */
+      def apply(str: String, strOffset: Int): String =
+        trimAll(str, lastIndent(str), strOffset, isFirst = true, isLast = true)
+
+      /** Trim part of '''-enclosed interpolated string literal */
+      def apply(tree: Tree, width: IndentWidth, isFirst: Boolean, isLast: Boolean, isSpec: Boolean): Tree = tree match
+        case Thicket(lit :: rest) =>
+          Thicket(apply(lit, width, isFirst, isLast, isSpec) :: rest)
+        case Literal(Constant(str: String)) =>
+          val trimmed =
+            if isSpec then
+              if isFirst then
+                // just replace the leading "spec" with spaces, keeping positions unchanged
+                str.patch(0, "    ", 4)
+              else str
+            else
+              trimAll(str, width, tree.span.start, isFirst, isLast)
+          cpy.Literal(tree)(Constant(trimmed))
     }
 
 /* ------------- NEW LINES ------------------------------------------------- */
@@ -1636,6 +1753,9 @@ object Parsers {
         case _: Match => in.token == MATCH
         case _: New => in.token == NEW
         case _: (ForYield | ForDo) => in.token == FOR
+        case apply: Apply if in.featureEnabled(Feature.methodBlockEndMarkers) =>
+          val name = apply.srcName
+          !name.isEmpty && in.isIdent && in.name.nn == name.toTermName
         case _ => false
 
       def endName = if in.token == IDENTIFIER then in.name.toString else tokenString(in.token)
@@ -1669,17 +1789,17 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [CapFilter] [`.` `rd`] -- under captureChecking
-     *  CapFilter   ::=  `.` `only` `[` QualId `]`
+    /** CaptureRef    ::=  { SimpleRef `.` } SimpleRef [`*`] [OnlyFilter] {ExceptFilter} [`.` `rd`] -- under captureChecking
+     *  OnlyFilter    ::=  `.` `only` `[` QualId `]`
+     *  ExceptFilter  ::=  `.` `except` `[` QualId `]`
      */
     def captureRef(): Tree =
 
       def reachOpt(ref: Tree): Tree =
         if in.isIdent(nme.raw.STAR) then
-          atSpan(startOffset(ref)):
-            in.nextToken()
-            Annotated(ref, makeReachAnnot())
-        else ref
+          report.error("Reach capability is no longer supported", in.sourcePos())
+          in.nextToken()
+        ref
 
       def restrictedOpt(ref: Tree): Tree =
         if in.token == DOT && in.lookahead.isIdent(nme.only) then
@@ -1687,6 +1807,15 @@ object Parsers {
             in.nextToken()
             in.nextToken()
             Annotated(ref, makeOnlyAnnot(inBrackets(convertToTypeId(qualId()))))
+        else ref
+
+      def exceptOpt(ref: Tree): Tree =
+        if in.token == DOT && in.lookahead.isIdent(nme.except) then
+          val ref1 = atSpan(startOffset(ref)):
+            in.nextToken()
+            in.nextToken()
+            Annotated(ref, makeExceptAnnot(inBrackets(convertToTypeId(qualId()))))
+          exceptOpt(ref1)
         else ref
 
       def readOnlyOpt(ref: Tree): Tree =
@@ -1698,7 +1827,7 @@ object Parsers {
         else ref
 
       def recur(ref: Tree): Tree =
-        val ref1 = readOnlyOpt(restrictedOpt(reachOpt(ref)))
+        val ref1 = readOnlyOpt(exceptOpt(restrictedOpt(reachOpt(ref))))
         if (ref1 eq ref) && in.token == DOT then
           in.nextToken()
           recur(selector(ref))
@@ -1727,8 +1856,8 @@ object Parsers {
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
      *                   |  (‘->’ | ‘?->’ ) [CaptureSet] Type           -- under pureFunctions and captureChecking
-     *  PolyFunType    ::=  TypTypeParamClause '=>' Type
-     *                   |  TypTypeParamClause ‘->’ [CaptureSet] Type   -- under pureFunctions and captureChecking
+     *  PolyFunType    ::=  TypTypeParamClause ‘=>’ Type
+     *                   |  TypTypeParamClause ‘->’ Type                -- under pureFunctions and captureChecking
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ TypedFunParam {',' TypedFunParam } ')'
@@ -1736,8 +1865,7 @@ object Parsers {
      */
     def typ(inContextBound: Boolean = false): Tree =
       val start = in.offset
-      var imods = Modifiers()
-      val erasedArgs: ListBuffer[Boolean] = ListBuffer()
+      var funMods = Modifiers()
 
       def functionRest(params: List[Tree]): Tree =
         val paramSpan = Span(start, in.lastOffset)
@@ -1751,17 +1879,17 @@ object Parsers {
             isPure = true
             token = CTXARROW
           else if token == TLARROW then
-            if !imods.flags.isEmpty || params.isEmpty then
+            if !funMods.flags.isEmpty || params.isEmpty then
               syntaxError(em"illegal parameter list for type lambda", start)
               token = ARROW
           else if Feature.pureFunsEnabled then
             // `=>` means impure function under pureFunctions or captureChecking
             // language imports, whereas `->` is then a regular function.
-            imods |= Impure
+            funMods |= Impure
 
           if token == CTXARROW then
             in.nextToken()
-            imods |= Given
+            funMods |= Given
           else if token == ARROW || token == TLARROW then
             in.nextToken()
           else
@@ -1774,11 +1902,11 @@ object Parsers {
               if isByNameType(tpt) then
                 syntaxError(em"parameter of type lambda may not be call-by-name", tpt.span)
             TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], resultType)
-          else if imods.isOneOf(Given | Impure) || erasedArgs.contains(true) then
-            if imods.is(Given) && params.isEmpty then
-              imods &~= Given
+          else if !funMods.flags.isEmpty then
+            if funMods.is(Given) && params.isEmpty then
+              funMods &~= Given
               syntaxError(em"context function types require at least one parameter", paramSpan)
-            FunctionWithMods(params, resultType, imods, erasedArgs.toList)
+            FunctionWithMods(params, resultType, funMods)
           else if !ctx.settings.XkindProjector.isDefault then
             val (newParams :+ newResultType, tparams) = replaceKindProjectorPlaceholders(params :+ resultType): @unchecked
             lambdaAbstract(tparams, Function(newParams, newResultType))
@@ -1788,7 +1916,6 @@ object Parsers {
 
       def typeRest(t: Tree) = in.token match
         case ARROW | CTXARROW =>
-          erasedArgs.addOne(false)
           functionRest(t :: Nil)
         case MATCH =>
           matchType(t)
@@ -1796,18 +1923,17 @@ object Parsers {
           syntaxError(ExistentialTypesNoLongerSupported())
           t
         case _ if isPureArrow =>
-          erasedArgs.addOne(false)
           functionRest(t :: Nil)
         case _ =>
-          if erasedArgs.contains(true) && !t.isInstanceOf[FunctionWithMods] then
-            syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
           t
 
       def convertToElem(t: Tree): Tree = t match
         case ByNameTypeTree(t1) =>
           syntaxError(ByNameParameterNotSupported(t), t.span)
           t1
-        case ValDef(name, tpt, _) =>
+        case t @ ValDef(name, tpt, _) =>
+          if t.mods.is(Erased) then
+            report.error(ErasedTypesCanOnlyBeFunctionTypes(), t.srcPos)
           NamedArg(name, convertToElem(tpt)).withSpan(t.span)
         case _ => t
 
@@ -1818,28 +1944,26 @@ object Parsers {
           functionRest(Nil)
         else
           val paramStart = in.offset
-          def addErased() =
-            erasedArgs.addOne(isErased)
-            if isErased then in.skipToken()
-          addErased()
+          def erasedMods(): Modifiers =
+            if isErased then addModifier(EmptyModifiers) else EmptyModifiers
+          val leadingMods = erasedMods()
           val args =
             in.currentRegion.withCommasExpected:
               funArgType() match
                 case Ident(name) if name != tpnme.WILDCARD && in.isColon =>
-                  def funParam(start: Offset, mods: Modifiers) =
+                  def funParam(start: Offset) =
                     atSpan(start):
-                      addErased()
-                      typedFunParam(in.offset, ident(), imods)
+                      val mods = erasedMods()
+                      typedFunParam(in.offset, ident(), mods)
                   commaSeparatedRest(
-                    typedFunParam(paramStart, name.toTermName, imods),
-                    () => funParam(in.offset, imods))
+                    typedFunParam(paramStart, name.toTermName, leadingMods),
+                    () => funParam(in.offset))
                 case t =>
-                  def funArg() =
-                    erasedArgs.addOne(false)
-                    funArgType()
-                  commaSeparatedRest(t, funArg)
+                  if leadingMods.is(Erased) then
+                    report.error(em"Erased function parameter must be named", leadingMods.mods.head.srcPos)
+                  commaSeparatedRest(t, funArgType)
           accept(RPAREN)
-          if in.isArrow || isPureArrow || erasedArgs.contains(true) then
+          if in.isArrow || isPureArrow then
             functionRest(args)
           else
             val tuple = atSpan(start):
@@ -1860,7 +1984,8 @@ object Parsers {
         else if in.token == ARROW || isPureArrow(nme.PUREARROW) then
           val arrowOffset = in.skipToken()
           val body = toplevelTyp()
-          makePolyFunction(tparams, body, "type", Ident(nme.ERROR.toTypeName), start, arrowOffset)
+          atSpan(start, arrowOffset):
+            PolyFunction(tparams, body)
         else
           accept(TLARROW)
           typ()
@@ -1942,7 +2067,8 @@ object Parsers {
      */
     val refinedTypeFn: Location => Tree = _ => refinedType()
 
-    def refinedType() = refinedTypeRest(withType())
+    def refinedType(inPatternType: Boolean = false): Tree =
+      refinedTypeRest(withType(inPatternType))
 
     /** Disambiguation: a `^` is treated as a postfix operator meaning `^{any}`
      *  if followed by `{`, `->`, or `?->`,
@@ -1980,11 +2106,20 @@ object Parsers {
         t
     }
 
-    /** WithType ::= AnnotType {`with' AnnotType}    (deprecated)
+    /** WithType ::= AnnotType {`with' AnnotType}    (error since 3.10, deprecated since 3.4)
+     *
+     *  `inPatternType` indicates that this type appears in a typed pattern
+     *  position (such as `case x: A with B =>` or `case given A with B =>`).
+     *  The pattern grammar here is `PatVar ':' RefinedType` (not `InfixType`),
+     *  so `with` is accepted but `&` is not. When the `-rewrite` flag is also
+     *  set, the textual `with -> &` patch on its own would therefore produce
+     *  code that no longer parses; in that case we additionally wrap the whole
+     *  rewritten `WithType` in parentheses, turning `A with B` into `(A & B)`.
      */
-    def withType(): Tree = withTypeRest(annotType())
+    def withType(inPatternType: Boolean = false): Tree =
+      withTypeRest(annotType(), inPatternType)
 
-    def withTypeRest(t: Tree): Tree =
+    def withTypeRest(t: Tree, inPatternType: Boolean = false): Tree =
       if in.token == WITH then
         val withOffset = in.offset
         in.nextToken()
@@ -1998,7 +2133,11 @@ object Parsers {
             MigrationVersion.WithOperator)
           if MigrationVersion.WithOperator.needsPatch then
             patch(source, withSpan, "&")
-          atSpan(startOffset(t)) { makeAndType(t, withType()) }
+          val rest = withType()
+          if MigrationVersion.WithOperator.needsPatch && inPatternType then
+            patch(source, Span(t.span.start, t.span.start), "(")
+            patch(source, Span(rest.span.end, rest.span.end), ")")
+          atSpan(startOffset(t)) { makeAndType(t, rest) }
       else t
 
     /** AnnotType ::= SimpleType {Annotation}
@@ -2102,9 +2241,9 @@ object Parsers {
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
           if !inMatchPattern then
-            val msg =
-              em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}"
-            report.errorOrMigrationWarning(msg, in.sourcePos(), MigrationVersion.WildcardType)
+            report.errorOrMigrationWarning(
+              em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}",
+              in.sourcePos(), MigrationVersion.WildcardType)
           val start = in.skipToken()
           typeBounds().withSpan(Span(start, in.lastOffset, start))
             .tap: tbt =>
@@ -2393,8 +2532,8 @@ object Parsers {
 
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
-      else if location.inPattern then rejectWildcardType(refinedType())
-      else infixType()
+      else if location.inPattern then rejectWildcardType(refinedType(inPatternType = true))
+      else rejectWildcardType(infixType())
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
 
@@ -2441,7 +2580,7 @@ object Parsers {
 
     /** Expr              ::=  [`implicit'] FunParams (‘=>’ | ‘?=>’) Expr
      *                      |  TypTypeParamClause ‘=>’ Expr
-     *                      |  ExprCaseClause                              -- under experimental.relaxedLambdaSyntax
+     *                      |  ExprCaseClause
      *                      |  Expr1
      *  FunParams         ::=  Bindings
      *                      |  id
@@ -2492,8 +2631,11 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.Type)
           val arrowOffset = accept(ARROW)
           val body = expr(location)
-          makePolyFunction(tparams, body, "literal", errorTermTree(arrowOffset), start, arrowOffset)
-        case CASE if in.featureEnabled(Feature.relaxedLambdaSyntax) =>
+          if getFunction(body).isEmpty then
+            syntaxError(em"Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
+          atSpan(start, arrowOffset):
+            PolyFunction(tparams, body)
+        case CASE if Feature.isPreviewEnabled || in.featureEnabled(Feature.relaxedLambdaSyntax) =>
           singleCaseMatch()
         case _ =>
           val saved = placeholderParams
@@ -2536,12 +2678,15 @@ object Parsers {
               |use `while <body> ; <cond> do ()` instead.${rewriteNotice()}""",
           in.sourcePos(), MigrationVersion.Scala2to3)
         val start = in.skipToken()
+        val outerInMigratedDoWhile = inMigratedDoWhile
+        inMigratedDoWhile = MigrationVersion.Scala2to3.needsPatch
         atSpan(start) {
           val body = expr()
           if (isStatSep) in.nextToken()
           val whileStart = in.offset
           accept(WHILE)
           val cond = expr()
+          inMigratedDoWhile = outerInMigratedDoWhile
           if MigrationVersion.Scala2to3.needsPatch then
             patch(source, Span(start, start + 2), "while ({")
             patch(source, Span(whileStart, whileStart + 5), ";")
@@ -2705,7 +2850,7 @@ object Parsers {
      *        case x2 => "b"
      *     }
      * This issue is avoided by dropping the `InCase` region when parsing match clause,
-     * since `Indetented :+ Indented :+ ...` now allows handleNewLine to insert two outdents.
+     * since `Indented :+ Indented :+ ...` now allows handleNewLine to insert two outdents.
      * Note that this _could_ break previous code which relied on matches within guards
      * being considered as a separate region without explicit indentation.
      */
@@ -2832,14 +2977,15 @@ object Parsers {
      */
     val prefixExpr: Location => Tree = location =>
       if in.token == IDENTIFIER && nme.raw.isUnary(in.name)
-         && in.canStartExprTokens.contains(in.lookahead.token)
+        && {
+          val lookahead = in.lookahead
+          in.canStartExprTokens.contains(lookahead.token) && lookahead.lineOffset < 0
+        }
       then
-        val start = in.offset
-        val op = termIdent()
-        if (op.name == nme.raw.MINUS && isNumericLit)
-          simpleExprRest(literal(start), location, canApply = true)
+        if isNegatedNumber then
+          simpleExprRest(literal(start = in.skipToken()), location, canApply = true)
         else
-          atSpan(start) { PrefixOp(op, simpleExpr(location)) }
+          atSpan(in.offset) { PrefixOp(termIdent(), simpleExpr(location)) }
       else simpleExpr(location)
 
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
@@ -2860,8 +3006,8 @@ object Parsers {
      *                 |  SimpleExpr1 ColonArgument
      *  ColonArgument ::= colon {LambdaStart}
      *                    indent (CaseClauses | Block) outdent
-     *                 |  colon LambdaStart {LambdaStart} expr ENDlambda -- under experimental.relaxedLambdaSyntax
-     *                 |  colon ExprCaseClause                    -- under experimental.relaxedLambdaSyntax
+     *                 |  colon LambdaStart {LambdaStart} expr ENDlambda
+     *                 |  colon ExprCaseClause
      *  LambdaStart   ::= FunParams (‘=>’ | ‘?=>’)
      *                 |  TypTypeParamClause ‘=>’
      *  ColonArgBody  ::= indent (CaseClauses | Block) outdent
@@ -2917,6 +3063,25 @@ object Parsers {
       if (canApply) argumentStart()
       in.token match
         case DOT =>
+          t match
+            case Number(n, _) if n(0) == '-' =>
+              val start = t.span.start
+              val span = Span(start, in.lastOffset)
+              warning(IllegalLiteral(ambiguous = true), start)
+              unpatch(ctx.compilationUnit.source, span)
+              patch(span, s"($n)")
+            case Literal(const)
+                if testChar(t.span.start, '-')
+                && (const.tag == LongTag
+                    || const.tag == FloatTag
+                    || const.tag == DoubleTag) =>
+              val start = t.span.start
+              val span = Span(start, in.lastOffset)
+              warning(IllegalLiteral(ambiguous = true), start)
+              unpatch(ctx.compilationUnit.source, span)
+              val text = source.textContent().substring(start, span.end)
+              patch(span, s"($text)")
+            case _ =>
           in.nextToken()
           simpleExprRest(selectorOrMatch(t), location, canApply = true)
         case LBRACKET =>
@@ -3025,6 +3190,15 @@ object Parsers {
     def mkApply(fn: Tree, args: (List[Tree], Boolean)): Tree =
       val res = Apply(fn, args._1)
       if args._2 then res.setApplyKind(ApplyKind.Using)
+      // `Apply.srcName` already reads the name off a `Select`/`Ident` callee, so an
+      // attachment is only needed for a nested `Apply` (e.g. `test("arg"):`), whose
+      // own name would otherwise be out of reach.
+      if in.featureEnabled(Feature.methodBlockEndMarkers) then
+        fn match
+          case fn: Apply =>
+            val name = fn.srcName
+            if !name.isEmpty then res.putAttachment(untpd.MethodName, name)
+          case _ =>
       res
 
     val argumentExpr: () => Tree = () => expr(Location.InArgs) match
@@ -3432,9 +3606,8 @@ object Parsers {
      */
     def simplePattern(): Tree = in.token match {
       case IDENTIFIER | BACKQUOTED_IDENT | THIS | SUPER =>
-        simpleRef() match
-          case id @ Ident(nme.raw.MINUS) if isNumericLit => literal(startOffset(id))
-          case t => simplePatternRest(t)
+        if isNegatedNumber then literal(start = in.skipToken())
+        else simplePatternRest(simpleRef())
       case USCORE =>
         wildcardIdent()
       case LPAREN =>
@@ -3446,7 +3619,7 @@ object Parsers {
       case GIVEN =>
         atSpan(in.offset) {
           val givenMod = atSpan(in.skipToken())(Mod.Given())
-          val typed = Typed(Ident(nme.WILDCARD), refinedType())
+          val typed = Typed(Ident(nme.WILDCARD), refinedType(inPatternType = true))
           Bind(nme.WILDCARD, typed).withMods(addMod(Modifiers(), givenMod))
         }
       case _ =>
@@ -3513,9 +3686,7 @@ object Parsers {
           case nme.transparent => Mod.Transparent()
           case nme.infix => Mod.Infix()
           case nme.tracked => Mod.Tracked()
-          case nme.into =>
-            Feature.checkPreviewFeature("`into`", in.sourcePos())
-            Mod.Into()
+          case nme.into => Mod.Into()
           case nme.erased if in.erasedEnabled => Mod.Erased()
           case nme.update if Feature.ccEnabled => Mod.Update()
         }
@@ -3908,6 +4079,8 @@ object Parsers {
                            || in.name.nn == nme.tracked // tracked starts a name binding under x.modularity
                               && in.featureEnabled(Feature.modularity)
                            || in.lookahead.isColon)  // a following `:` starts a name binding
+                  if !paramsAreNamed && mods.is(Erased) then
+                    report.error(em"Erased method parameter must be named", mods.mods.head.srcPos)
                   (mods, paramsAreNamed)
               val params =
                 if paramsAreNamed then commaSeparated(() => param())
@@ -4272,7 +4445,7 @@ object Parsers {
             accept(EQUALS, help)
             EmptyTree
           else
-            if (!isExprIntro) syntaxError(MissingReturnType(), in.lastOffset)
+            if (!isExprIntro) syntaxErrorOrIncomplete(MissingReturnType(), in.lastOffset)
             accept(EQUALS)
             expr()
 
@@ -4365,7 +4538,7 @@ object Parsers {
           case SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | OUTDENT | EOF =>
             makeTypeDef(typeAndCtxBounds(tname))
           case _ if (staged & StageKind.QuotedPattern) != 0
-              || sourceVersion.enablesNewGivens && in.isColon =>
+              || (sourceVersion.enablesNewGivens && in.isColon && !mods.is(Opaque)) =>
             makeTypeDef(typeAndCtxBounds(tname))
           case _ =>
             syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))
@@ -5058,7 +5231,7 @@ object Parsers {
 
         // See test 17579. We allow `final` on `given` because these can be
         // translated to class definitions, for which `final` is allowed but
-        // redundant--there is a seperate warning for this.
+        // redundant--there is a separate warning for this.
         if isDclIntro && in.token != GIVEN then syntaxError(FinalLocalDef())
 
         tmplDef(start, mods)

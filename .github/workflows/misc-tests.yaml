@@ -1,0 +1,50 @@
+name: Miscellaneous Tests
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+
+  scripted-tests:
+    name: scripted-tests (${{ matrix.jdk }})
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - jdk: 17
+            command: scala3-bootstrapped/scripted
+          - jdk: 25
+            command: scala3-bootstrapped/scripted sbt-bridge/main-discovery sbt-bridge/main-discovery-scalajs
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up JDK ${{ matrix.jdk }}
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: 'temurin'
+          java-version: ${{ matrix.jdk }}
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - name: Run SBT scripted tests
+        run: ./project/scripts/sbt "${{ matrix.command }}"
+
+  test-bisect-script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: coursier/cache-action@95e5b1029b6b86e7bac033ee44a0697d8a527d2d # v8.1.1
+      - uses: VirtusLab/scala-cli-setup@3f5bf11a33bb88343238780c18257c8fa43789e1 # v1.18.0
+        with:
+          jvm: temurin:17
+      - name: Run bisect script tests
+        run: scala-cli test project/scripts/bisect.test.scala

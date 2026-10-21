@@ -10,10 +10,8 @@ import NameKinds.{DefaultGetterName, TailLabelName, TailLocalName, TailTempName}
 import StdNames.nme
 import reporting.*
 import transform.MegaPhase.MiniPhase
-import util.LinearSet
-import dotty.tools.uncheckedNN
-
-import scala.compiletime.uninitialized
+import scala.collection.immutable
+import dotty.tools.initialize
 
 /** A Tail Rec Transformer.
  *
@@ -99,7 +97,7 @@ import scala.compiletime.uninitialized
  *  the same parameters as type arguments. This is no longer the case in
  *  dotc thanks to being located after erasure.
  *  In scalac, this is named tailCall but it does only provide optimization for
- *  self recursive functions, that's why it's renamed to tailrec
+ *  self recursive functions, that's why it's renamed to tailrec.
  *
  *  @author
  *    Erik Stenman, Iulian Dragos,
@@ -236,12 +234,9 @@ class TailRec extends MiniPhase {
     var failureReported: Boolean = false
 
     /** The `tailLabelN` label symbol, used to encode a `continue` from the infinite `while` loop. */
-    private var myContinueLabel: Symbol | Null = uninitialized
-    def continueLabel(using Context): Symbol = {
-      if (myContinueLabel == null)
-        myContinueLabel = newSymbol(method, TailLabelName.fresh(), Label, defn.UnitType)
-      myContinueLabel.uncheckedNN
-    }
+    private var myContinueLabel: Symbol | Null = null
+    def continueLabel(using Context): Symbol =
+      initialize(myContinueLabel, myContinueLabel = _, newSymbol(method, TailLabelName.fresh(), Label, defn.UnitType))
 
     /** The local `var` that replaces `this`, if it is modified in at least one recursive call. */
     var varForRewrittenThis: Option[Symbol] = None
@@ -273,7 +268,7 @@ class TailRec extends MiniPhase {
       }
 
     /** Symbols of Labeled blocks that are in tail position. */
-    private var tailPositionLabeledSyms = LinearSet.empty[Symbol]
+    private var tailPositionLabeledSyms = immutable.HashSet.empty[Symbol]
 
     private var inTailPosition = true
 
@@ -419,7 +414,12 @@ class TailRec extends MiniPhase {
             rewriteApply(tree)
 
         case tree @ Select(qual, name) =>
-          cpy.Select(tree)(noTailTransform(qual), name)
+          val qual1 =
+            if tree.symbol == defn.Any_asInstanceOf && tree.span.isSynthetic then
+              transform(qual) // synthetic cast is still tailrec
+            else
+              noTailTransform(qual)
+          cpy.Select(tree)(qual1, name)
 
         case tree @ Block(stats, expr) =>
           cpy.Block(tree)(

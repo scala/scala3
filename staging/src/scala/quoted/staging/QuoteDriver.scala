@@ -4,8 +4,10 @@ package staging
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase, FreshContext}
+import dotty.tools.dotc.core.Periods
 import dotty.tools.dotc.quoted.QuotesCache
-import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
+import dotty.tools.io
+import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
 import dotty.tools.io.AbstractFileClassLoader
 import dotty.tools.dotc.reporting._
 import dotty.tools.dotc.config.Settings.Setting.value
@@ -22,9 +24,23 @@ import scala.annotation.tailrec
 private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
   import tpd._
 
-  private val contextBase: ContextBase = new ContextBase
+  private var contextBase: ContextBase = new ContextBase
+
+  /** Shared by all runs, so that each run gets a new run id and the run-dependent caches
+   *  of `contextBase` (e.g. base type caches) do not keep the trees of past runs (#12543).
+   */
+  private var compiler: QuoteCompiler = new QuoteCompiler
+
+  /** Number of runs on `contextBase`, as run ids are limited to `Periods.MaxPossibleRunId` */
+  private var runs: Int = 0
 
   def run[T](exprBuilder: Quotes => Expr[T], settings: Compiler.Settings): T =
+    if runs >= QuoteDriver.MaxRuns then
+      contextBase = new ContextBase
+      compiler = new QuoteCompiler
+      runs = 0
+    runs += 1
+
     val outDir: AbstractFile =
       settings.outDir match
         case Some(out) =>
@@ -32,18 +48,18 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
           dir.createDirectory()
           new PlainDirectory(Directory(out))
         case None =>
-          new VirtualDirectory("<quote compilation output>")
+          io.virtualDirectory("<quote compilation output>")
     end outDir
 
     val ctx = {
       val ctx0 = QuotesCache.init(initCtx.fresh)
       val ctx1 = setup(settings.compilerArgs.toArray :+ "dummy.scala", ctx0).get._2
-      setCompilerSettings(ctx1.fresh.setSetting(ctx1.settings.outputDir, outDir), settings)
+      ctx1.fresh.setSetting(ctx1.settings.outputDir, outDir)
     }
 
     val compiledExpr =
       try
-        new QuoteCompiler().newRun(using ctx).compileExpr(exprBuilder)
+        compiler.newRun(using ctx).compileExpr(exprBuilder)
       catch case ex: dotty.tools.FatalError =>
         val enrichedMessage =
           s"""An unhandled exception was thrown in the staging compiler.
@@ -89,9 +105,8 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
     ictx.settings.classpath.update(ClasspathFromClassloader(appClassloader))(using ictx)
     ictx
 
-  private def setCompilerSettings(ctx: FreshContext, settings: Compiler.Settings): ctx.type =
-    // An error in the generated code is a bug in the compiler
-    // Setting the throwing reporter however will report any exception
-    ctx.setReporter(new ThrowingReporter(ctx.reporter))
-
 end QuoteDriver
+
+private object QuoteDriver:
+  /** Runs on one `ContextBase` before it is replaced. The first run gets `InitialRunId + 1`. */
+  val MaxRuns: Int = Periods.MaxPossibleRunId - Periods.InitialRunId

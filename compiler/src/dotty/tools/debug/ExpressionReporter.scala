@@ -9,9 +9,7 @@ private class ExpressionReporter(reportError: String => Unit) extends AbstractRe
     // Debugging: println(messageAndPos(dia))
     dia match
       case error: Diagnostic.Error =>
-        val newPos = error.pos.source.positionInUltimateSource(error.pos)
-        val errorWithNewPos = new Diagnostic.Error(error.msg, newPos)
-        reportError(stripColor(messageAndPos(errorWithNewPos)))
+        reportError(stripColor(messageAndPos(error)))
       case _ =>
         // TODO report the warnings in the expression
         ()

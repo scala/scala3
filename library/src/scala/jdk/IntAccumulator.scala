@@ -68,6 +68,7 @@ final class IntAccumulator
   /** Appends an element to this `IntAccumulator`.
    *
    *  @param a the `Int` value to append
+   *  @return this `IntAccumulator` with the element appended
    */
   def addOne(a: Int): this.type = {
     totalSize += 1
@@ -152,6 +153,7 @@ final class IntAccumulator
   /** Retrieves the `ix`th element.
    *
    *  @param ix the zero-based index of the element to retrieve, as a `Long`
+   *  @return the `Int` element at index `ix`
    */
   def apply(ix: Long): Int = {
     if (totalSize - ix <= index || hIndex == 0) current((ix - (totalSize - index)).toInt)
@@ -164,6 +166,7 @@ final class IntAccumulator
   /** Retrieves the `ix`th element, using an `Int` index.
    *
    *  @param i the zero-based index of the element to retrieve
+   *  @return the `Int` element at index `i`
    */
   def apply(i: Int): Int = apply(i.toLong)
 
@@ -304,6 +307,7 @@ final class IntAccumulator
    *
    *  @tparam C1 the type of the target collection
    *  @param factory the factory for building the target collection from `Int` elements
+   *  @return a collection of type `C1` containing all elements of this `IntAccumulator`
    */
   override def to[C1](factory: Factory[Int, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)

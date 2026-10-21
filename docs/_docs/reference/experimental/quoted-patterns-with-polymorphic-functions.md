@@ -21,7 +21,7 @@ def decomposeFunc(x: Expr[Any])(using Quotes): Expr[Int] =
     case _ => Expr(0)
 ```
 
-In the example above, the first case matches the case where `x` is a function and `y` is bound to the body of the function. The higher-order pattern `$y(a, b)` states that it matches any code with free occurence of variables `a` and `b`. If it is `$y(a)` instead, an expression like `(a: Int, b: Int) => a + b` will not match because `a + b` has an occurence of `b`, which is not included in the higher-order pattern.
+In the example above, the first case matches the case where `x` is a function and `y` is bound to the body of the function. The higher-order pattern `$y(a, b)` states that it matches any code with free occurrence of variables `a` and `b`. If it is `$y(a)` instead, an expression like `(a: Int, b: Int) => a + b` will not match because `a + b` has an occurrence of `b`, which is not included in the higher-order pattern.
 
 ## Motivation
 This experimental feature extends this higher-order pattern syntax to allow type variables.
@@ -34,7 +34,7 @@ def decomposePoly(x: Expr[Any])(using Quotes): Expr[Int] =
     case _ => Expr(0)
 ```
 
-Now we can use a higher-order pattern `$y[A](x)` with type variables. `y` is bound to the body of code with occurences of `A` and `x`, and has the type `[A] => (x: List[A]) => Int`.
+Now we can use a higher-order pattern `$y[A](x)` with type variables. `y` is bound to the body of code with occurrences of `A` and `x`, and has the type `[A] => (x: List[A]) => Int`.
 
 ## Type Dependency
 If a higher-order pattern carries a value parameter with a type that has type parameters defined in the quoted pattern, those type parameters should also be captured in the higher-order pattern. For example, the following pattern will not be typed.

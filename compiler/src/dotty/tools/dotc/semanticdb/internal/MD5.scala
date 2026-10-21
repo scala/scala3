@@ -6,15 +6,15 @@ import java.security.MessageDigest
 
 object MD5 {
   def compute(string: String): String = {
-    compute(ByteBuffer.wrap(string.getBytes(StandardCharsets.UTF_8)))
+    compute(string.getBytes(StandardCharsets.UTF_8))
   }
-  def compute(buffer: ByteBuffer): String = {
+  def compute(buffer: Array[Byte]): String = {
     val md = MessageDigest.getInstance("MD5")
     md.update(buffer)
     bytesToHex(md.digest())
   }
-  private val hexArray = "0123456789ABCDEF".toCharArray
-  def bytesToHex(bytes: Array[Byte]): String = {
+  private val hexArray = Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F')
+  private def bytesToHex(bytes: Array[Byte]): String = {
     val hexChars = new Array[Char](bytes.length * 2)
     var j = 0
     while (j < bytes.length) {

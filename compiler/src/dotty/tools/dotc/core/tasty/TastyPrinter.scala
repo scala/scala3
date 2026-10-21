@@ -12,14 +12,12 @@ import util.Spans.offsetToInt
 import dotty.tools.tasty.TastyFormat.{ASTsSection, AttributesSection, CommentsSection, PositionsSection}
 
 import java.nio.file.{Files, Paths}
-import dotty.tools.io.{JarArchive, Path, PlainFile}
-import dotty.tools.tasty.TastyFormat.header
+import dotty.tools.io.{AbstractFile, JarArchive, Path}
 
 import scala.collection.immutable.BitSet
 import scala.compiletime.uninitialized
 import dotty.tools.tasty.TastyBuffer.Addr
 import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.classpath.FileUtils.hasTastyExtension
 
 object TastyPrinter:
 
@@ -59,9 +57,9 @@ object TastyPrinter:
           println("File not found: " + arg)
           System.exit(1)
       else if arg.endsWith(".jar") then
-        val jar = JarArchive.open(Path(arg), create = false)
+        val jar = JarArchive.open(Path(arg))
         try
-          for file <- jar.allFileNames().map(f => new PlainFile(Path(f))) if file.hasTastyExtension do
+          for file <- jar.deepIterator.filter(_.ext.isTasty) do
             printTasty(s"$arg ${file.path}", file.toByteArray, isBestEffortTasty = false)
         finally jar.close()
       else
@@ -90,7 +88,6 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
   import unpickler.{nameAtRef, unpickle}
 
   private def printHeader(sb: StringBuilder): Unit =
-    val header = unpickler.header
     sb.append("Header:\n")
     if testPickler then
       // these fields are not stable when the TASTy/compiler versions change, so not useful for testing
@@ -98,6 +95,7 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
       sb.append("  tooling: <elided>\n")
       sb.append("     UUID: <elided>\n")
     else
+      val header = unpickler.header
       sb.append(s"  version: ${header.majorVersion}.${header.minorVersion}.${header.experimentalVersion}\n")
       sb.append("  tooling: ").append(header.toolingVersion).append("\n")
       sb.append("     UUID: ").append(header.uuid).append("\n")
@@ -110,7 +108,7 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
       base = showBase(unpickler.namesStart.index),
       lineEnd = true
     ))
-    for ((name, idx) <- nameAtRef.contents.zipWithIndex) {
+    for ((name, idx) <- nameAtRef.zipWithIndex) {
       val index = nameStr("%6d".format(idx))
       sb.append(index).append(": ").append(refs.nameRefToString(NameRef(idx))).append("\n")
     }
@@ -143,6 +141,8 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
         sb.append(s"\n$length:" + " " * indent)
       }
       def printNat() = sb.append(treeStr(" " + readNat()))
+      def printInt() = sb.append(treeStr(" " + readInt()))
+      def printLongInt() = sb.append(treeStr(" " + readLongInt()))
       def printName() = {
         val idx = readNat()
         sb.append(nameStr(" " + idx + " [" + refs.nameRefToString(NameRef(idx)) + "]"))
@@ -164,7 +164,7 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
               printName(); printTrees()
             case REFINEDtype | TERMREFin | TYPEREFin | SELECTin =>
               printName(); printTree(); printTrees()
-            case RETURN | HOLE =>
+            case RETURN | HOLE | SELECTouter =>
               printNat(); printTrees()
             case METHODtype | POLYtype | TYPELAMBDAtype =>
               printTree()
@@ -192,6 +192,8 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
         else if (tag >= firstNatTreeTag)
           tag match {
             case TERMREFpkg | TYPEREFpkg | STRINGconst | IMPORTED => printName()
+            case BYTEconst | SHORTconst | INTconst | FLOATconst => printInt()
+            case LONGconst | DOUBLEconst => printLongInt()
             case _ => printNat()
           }
         indent -= 2
@@ -231,7 +233,7 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
       for ((addr, nameRef) <- sortedPath) {
         sb.append(treeStr("%6d".format(addr.index)))
         sb.append(": ")
-        sb.append(nameStr(s"${nameRef.index} [${tastyName(nameRef)}]"))
+        sb.append(nameStr(s"${nameRef.index} [${tastyName(nameRef.index)}]"))
         sb.append("\n")
       }
     }
@@ -264,20 +266,20 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
         if isBooleanAttrTag(tag) then ()
         else if isStringAttrTag(tag) then
           val utf8Ref = readNameRef()
-          val value = nameAtRef(utf8Ref).toString
+          val value = nameAtRef(utf8Ref.index).toString
           sb.append(nameStr(s" ${utf8Ref.index} [$value]"))
         sb.append("\n")
       sb.result()
     }
   }
 
-  class NameRefs(sourceFileRefs: Set[NameRef]) extends (NameRef => TermName):
+  class NameRefs(sourceFileRefs: Set[NameRef]) extends (Int => TermName):
     private val isSourceFile = sourceFileRefs.map(_.index).to(BitSet)
 
-    def nameRefToString(ref: NameRef): String = this(ref).debugString
+    def nameRefToString(ref: NameRef): String = this(ref.index).debugString
 
-    def apply(ref: NameRef): TermName =
-      if isSourceFile(ref.index) then NameRefs.elidedSourceFile
+    def apply(ref: Int): TermName =
+      if isSourceFile(ref) then NameRefs.elidedSourceFile
       else nameAtRef(ref)
 
   object NameRefs:

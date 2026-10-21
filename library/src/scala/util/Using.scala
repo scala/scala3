@@ -13,6 +13,7 @@
 package scala.util
 
 import scala.language.`2.13`
+import scala.annotation.nowarn
 import scala.util.control.{ControlThrowable, NonFatal}
 import scala.runtime.ScalaRunTime.nullForGC
 
@@ -143,6 +144,7 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  @define suppressionBehavior See the main doc for [[Using `Using`]] for full details of
  *                             suppression behavior.
  */
+@nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
 object Using {
   /** Performs an operation using a resource, and then releases the resource,
    *  even if the operation throws an exception.
@@ -196,6 +198,7 @@ object Using {
      *
      *  @tparam R the type of the resource, which must have a `Releasable` instance
      *  @param resource the resource to register with this manager
+     *  @return the same `resource`, unmodified, to allow fluent use at the call site
      */
     def apply[R: Releasable](resource: R): resource.type = {
       acquire(resource)

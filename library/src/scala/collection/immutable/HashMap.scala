@@ -341,6 +341,8 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
    *
    *
    *  @tparam V1 the value type of the resulting HashMap, a supertype of `V`
+   *
+   *  @return a new `HashMap` containing all key-value pairs from both maps, with `mergef` applied to resolve collisions when non-null
    */
   def merged[V1 >: V](that: HashMap[K, V1])(mergef: ((K, V), (K, V1)) => (K, V1)): HashMap[K, V1] =
     if (mergef == null) {
@@ -629,6 +631,7 @@ private[immutable] sealed abstract class MapNode[K, +V] extends Node[MapNode[K, 
    *  @param originalHash the original hash code of `key` (via `key.##`)
    *  @param hash the improved hash of `key`
    *  @param shift the bit-level offset into the hash code, equal to `depth * BitPartitionSize`
+   *  @return the `(key, value)` tuple bound to `key` in this node
    */
   def getTuple(key: K, originalHash: Int, hash: Int, shift: Int): (K, V)
 
@@ -776,7 +779,7 @@ private final class BitmapIndexedMapNode[K, +V](
           val value0 = this.getValue(index)
           if ((key0.asInstanceOf[AnyRef] eq key.asInstanceOf[AnyRef]) && (value0.asInstanceOf[AnyRef] eq value.asInstanceOf[AnyRef]))
             this
-          else copyAndSetValue(bitpos, key, value)
+          else copyAndSetValue(bitpos, value)
         } else this
       } else {
         val value0 = this.getValue(index)
@@ -976,7 +979,7 @@ private final class BitmapIndexedMapNode[K, +V](
 
   def nodeIndex(bitpos: Int) = bitCount(nodeMap & (bitpos - 1))
 
-  def copyAndSetValue[V1 >: V](bitpos: Int, newKey: K, newValue: V1): BitmapIndexedMapNode[K, V1] = {
+  def copyAndSetValue[V1 >: V](bitpos: Int, newValue: V1): BitmapIndexedMapNode[K, V1] = {
     val dataIx = dataIndex(bitpos)
     val idx = TupleLength * dataIx
 
@@ -1049,6 +1052,7 @@ private final class BitmapIndexedMapNode[K, +V](
    *  @param bitpos the bit position of the data to migrate to node
    *  @param keyHash the improved hash of the key currently at `bitpos`
    *  @param node the node to place at `bitpos` beneath `this`
+   *  @return `this`, after mutating it so that `node` replaces the inline data at `bitpos`
    */
   def migrateFromInlineToNodeInPlace[V1 >: V](bitpos: Int, keyHash: Int, node: MapNode[K, V1]): this.type = {
     val dataIx = dataIndex(bitpos)
@@ -1541,7 +1545,7 @@ private final class BitmapIndexedMapNode[K, +V](
               getNode(leftNodeIdx).updated(
                 key = bm.getKey(rightDataIdx),
                 value = bm.getValue(rightDataIdx),
-                originalHash = bm.getHash(rightDataIdx),
+                originalHash = rightOriginalHash,
                 hash = improve(rightOriginalHash),
                 shift = nextShift,
                 replaceValue = true
@@ -1926,12 +1930,6 @@ private final class HashCollisionMapNode[K, +V ](
   override def containsKey(key: K, originalHash: Int, hash: Int, shift: Int): Boolean =
     this.hash == hash && indexOf(key) >= 0
 
-  def contains[V1 >: V](key: K, value: V1, hash: Int, shift: Int): Boolean =
-    this.hash == hash && {
-      val index = indexOf(key)
-      index >= 0 && (content(index)._2.asInstanceOf[AnyRef] eq value.asInstanceOf[AnyRef])
-    }
-
   def updated[V1 >: V](key: K, value: V1, originalHash: Int, hash: Int, shift: Int, replaceValue: Boolean): MapNode[K, V1] = {
     val index = indexOf(key)
     if (index >= 0) {
@@ -2240,6 +2238,7 @@ object HashMap extends MapFactory[HashMap] {
   def from[K, V](source: collection.IterableOnce[(K, V)]^): HashMap[K, V] =
     (source: @unchecked) match {
       case hs: HashMap[K, V] => hs
+      case _ if source.knownSize == 0 => empty[K, V]
       case _ => (newBuilder[K, V] ++= source).result()
     }
 
@@ -2248,6 +2247,7 @@ object HashMap extends MapFactory[HashMap] {
    *
    *  @tparam K the key type of the HashMap
    *  @tparam V the value type of the HashMap
+   *  @return a fresh `ReusableBuilder` that constructs `HashMap[K, V]` instances and can be reused across multiple results
    */
   def newBuilder[K, V]: ReusableBuilder[(K, V), HashMap[K, V]] = new HashMapBuilder[K, V]
 }
@@ -2289,6 +2289,7 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
    *  @param as the source array to insert into
    *  @param ix the zero-based index at which to insert `elem`
    *  @param elem the element to insert
+   *  @return a new array of length `as.length + 1` containing the elements of `as` with `elem` inserted at index `ix`
    */
   private def insertElement(as: Array[Int], ix: Int, elem: Int): Array[Int] = {
     if (ix < 0) throw new ArrayIndexOutOfBoundsException

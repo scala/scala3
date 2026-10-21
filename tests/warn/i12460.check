@@ -1,5 +1,5 @@
 -- [E208] Potential Issue Warning: tests/warn/i12460.scala:3:23 --------------------------------------------------------
-3 |extension (s: String = "hello, world") def invert = s.reverse.toUpperCase // warn
+3 |extension (s: String = "hello, world") def invert : String = s.reverse.toUpperCase // warn
   |                       ^
   |                       Extension method invert should not have a default argument for its receiver.
   |---------------------------------------------------------------------------------------------------------------------
@@ -11,7 +11,7 @@
   | it should not be defined as an extension.
    ---------------------------------------------------------------------------------------------------------------------
 -- [E208] Potential Issue Warning: tests/warn/i12460.scala:5:37 --------------------------------------------------------
-5 |extension (using String)(s: String = "hello, world") def revert = s.reverse.toUpperCase // warn
+5 |extension (using String)(s: String = "hello, world") def revert : String = s.reverse.toUpperCase // warn
   |                                     ^
   |                                     Extension method revert should not have a default argument for its receiver.
   |---------------------------------------------------------------------------------------------------------------------

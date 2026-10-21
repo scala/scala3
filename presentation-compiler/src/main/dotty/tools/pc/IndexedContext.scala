@@ -1,25 +1,20 @@
 package dotty.tools.pc
 
 import scala.annotation.tailrec
-import scala.meta.pc.OffsetParams
-import scala.util.control.NonFatal
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.show
 import dotty.tools.dotc.core.Denotations.PreDenotation
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Phases
-import dotty.tools.dotc.core.Scopes.EmptyScope
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.Completion.CompletionResult
 import dotty.tools.dotc.interactive.Interactive
-import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.IndexedContext.Result
 import dotty.tools.pc.utils.InteractiveEnrichments.*
@@ -42,7 +37,7 @@ sealed trait IndexedContext:
       case Some(symbols) if symbols.map(_.dealiasType).exists(isRelated) => Result.InScope
       case Some(symbols) if symbols.nonEmpty && symbols.forall(_.isStale) => Result.Missing
       case Some(symbols) if symbols.exists(rename(_).isEmpty) => Result.Conflict
-      case Some(symbols) => Result.InScope
+      case Some(_) => Result.InScope
       case _ => Result.Missing
 
   final def hasRename(sym: Symbol, as: String): Boolean =
@@ -99,17 +94,20 @@ object IndexedContext:
   class LazyWrapper(pos: SourcePosition, tpdPath: List[tpd.Tree])(using val ctx: Context) extends IndexedContext:
 
     val scopeContext: CompletionResult = Completion.scopeContext(pos, tpdPath, ctx)
-    val names: Map[String, Seq[SingleDenotation]] = scopeContext.names.toList.groupBy(_._1.show).map {
-      case (name, denotations) =>
-        val denots = denotations.flatMap(_._2.denots)
-        val nonRoot = denots.filter(!_.symbol.owner.isRoot)
-        val (importedByDefault, conflictingValue) =
-          denots.partition(denot => Interactive.isImportedByDefault(denot.symbol))
-        if importedByDefault.nonEmpty && conflictingValue.nonEmpty then
-          name.trim -> conflictingValue
-        else
-          name.trim -> nonRoot
-    }
+    // `.show` re-derives `ctx.printer` (with `new RefinedPrinter(_)`) on every call - let's reuse one instead
+    private val namePrinter = ctx.printer
+    val names: Map[String, Seq[SingleDenotation]] =
+      scopeContext.names.toList.groupBy(_._1.toText(namePrinter).show).map {
+        case (name, denotations) =>
+          val denots = denotations.flatMap(_._2.denots)
+          val nonRoot = denots.filter(!_.symbol.owner.isRoot)
+          val (importedByDefault, conflictingValue) =
+            denots.partition(denot => Interactive.isImportedByDefault(denot.symbol))
+          if importedByDefault.nonEmpty && conflictingValue.nonEmpty then
+            name.trim -> conflictingValue
+          else
+            name.trim -> nonRoot
+      }
     val renames = scopeContext.renames
 
     def defaultScopes(name: Name): Option[List[Symbol]] =

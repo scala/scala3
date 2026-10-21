@@ -11,6 +11,7 @@ import org.junit.Test
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.*
 import scala.util.control.NonFatal
+import java.io.IOException
 
 class DebugTests:
   import DebugTests.{*, given}
@@ -18,26 +19,18 @@ class DebugTests:
     given TestGroup = TestGroup("debug")
     CompilationTest.aggregateTests(
       compileFile("tests/debug-custom-args/eval-explicit-nulls.scala", TestConfiguration.explicitNullsOptions),
+      compileFile("tests/debug-custom-args/eval-syntax.scala", TestConfiguration.oldSyntax),
       compileFilesInDir("tests/debug", TestConfiguration.defaultOptions),
     ).checkDebug()
 
+  // Separate group: compileFile derives the output directory from the group and file name,
+  // so compiling eval-syntax.scala twice in the same group makes the parallel runs clash.
+  @Test def debugNewSyntax: Unit =
+    given TestGroup = TestGroup("debugNewSyntax")
+    compileFile("tests/debug-custom-args/eval-syntax.scala", TestConfiguration.newSyntax).checkDebug()
+
 object DebugTests extends ParallelTesting:
-  def maxDuration =
-    // Increase the timeout when the user is debugging the tests
-    if isUserDebugging then 3.hours else 45.seconds
-  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
   override def debugMode = true
-
-  given summaryReport: SummaryReporting = new SummaryReport
-
-  @AfterClass def tearDown(): Unit =
-    super.cleanup()
-    summaryReport.echoSummary()
 
   extension (test: CompilationTest)
     private def checkDebug()(using SummaryReporting): test.type =
@@ -51,31 +44,22 @@ object DebugTests extends ParallelTesting:
       verifyDebug(testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
 
     private def verifyDebug(dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) =
-      if Properties.testsNoRun then addNoRunWarning()
-      else
-        val checkFile = testSource.checkFile.getOrElse(throw new Exception("Missing check file")).toPath
-        val debugSteps = DebugStepAssert.parseCheckFile(checkFile)
-        val expressionEvaluator =
-          ExpressionEvaluator(testSource.sourceFiles, testSource.flags, testSource.runClassPath, testSource.outDir)
-        try debugMain(testSource.runClassPath): debuggee =>
-          val jdiPort = debuggee.readJdiPort()
-          val debugger = Debugger(jdiPort, expressionEvaluator, maxDuration/* , verbose = true */)
-          // configure the breakpoints before starting the debuggee
+      val checkFile = testSource.checkFile.getOrElse(throw new Exception("Missing check file")).toPath
+      val debugSteps = DebugStepAssert.parseCheckFile(checkFile)
+      val expressionEvaluator =
+        ExpressionEvaluator(testSource.sourceFiles, testSource.flags, testSource.runClassPath, testSource.outDir)
+      val status =
+        try debugMain(testSource.runClassPath, expressionEvaluator): (debugger, debuggee) =>
           val breakpoints = debugSteps.map(_.step).collect { case b: DebugStep.Break => b }.distinct
           for b <- breakpoints do debugger.configureBreakpoint(b.className, b.line)
-          try
-            debuggee.launch()
-            playDebugSteps(debugger, debugSteps/* , verbose = true */)
-            val status = debuggee.exit()
-            reportDebuggeeStatus(testSource, status)
-          finally
-            // closing the debugger must be done at the very end so that the
-            // 'Listening for transport dt_socket at address: <port>' message is ready to be read
-            // by the next DebugTest
-            debugger.dispose()
-        catch case DebugStepException(message, location) =>
-          echo(s"\n[error] Debug step failed: $location\n" + message)
-          failTestSource(testSource)
+          debuggee.launch()
+          playDebugSteps(debugger, debugSteps/* , verbose = true */)
+        catch
+          case DebugStepException(message, location) =>
+            Failure(s"Debug step failed: $location\n" + message)
+          case e: Exception =>
+            Failure(s"Debug test failed due to unexpected error: ${e.getMessage}")
+      reportDebuggeeStatus(testSource, status)
     end verifyDebug
 
     private def playDebugSteps(debugger: Debugger, steps: Seq[DebugStepAssert[?]], verbose: Boolean = false): Unit =

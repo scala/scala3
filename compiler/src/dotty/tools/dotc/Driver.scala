@@ -4,14 +4,15 @@ import dotty.tools.FatalError
 import config.CompilerCommand
 import core.Comments.{ContextDoc, ContextDocstrings}
 import core.Contexts.*
-import core.{MacroClassLoader, TypeError}
+import core.{MacroClassLoader, RecursionOverflow, TypeError}
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.io.{AbstractFile, FileExtension}
 import reporting.*
 import core.Decorators.*
 import util.chaining.*
-
 import fromtasty.{TASTYCompiler, TastyFileUtil}
+
+import scala.annotation.nowarn
 
 /** Run the Dotty compiler.
  *
@@ -27,6 +28,7 @@ class Driver {
 
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
+  @nowarn("msg=Catching StackOverflowError can lead to unexpected behavior") // yes, but we immediately exit
   protected def doCompile(compiler: Compiler, files: List[AbstractFile])(using Context): Reporter =
     if files.nonEmpty then
       var runOrNull = ctx.run
@@ -36,6 +38,16 @@ class Driver {
         run.compile(files)
         finish(compiler, run)
       catch
+        case ro: RecursionOverflow =>
+          report.error(ro.toMessage, ro.pos)(using ro.ctx)
+          ro.ctx.reporter.flush()
+        case so: StackOverflowError =>
+          // This should be the ONLY point in the compiler where we catch stack overflows.
+          // The JVM cannot be assumed to function 100% properly after a stack overflow is caught.
+          // This is a pure best-effort attempt at helping the user.
+          report.error("Stack overflow in the compiler.\n"
+            + "See https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html\n"
+            + s"Stack trace:\n${so.getStackTrace.mkString("\n  ")}")
         case ex: FatalError =>
           report.error(ex.getMessage) // signals that we should fail compilation.
         case ex: Exception if ctx.usedBestEffortTasty =>
@@ -79,29 +91,26 @@ class Driver {
     val ictx = rootCtx.fresh
     val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
     ictx.setSettings(summary.sstate)
-    MacroClassLoader.init(ictx)
-    Positioned.init(using ictx)
 
     inContext(ictx):
       if !ctx.settings.XdropComments.value || ctx.settings.XreadComments.value then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
-      fileNamesOrNone.map: fileNames =>
-        val files = fileNames.map(ctx.getFile)
-        (files, fromTastySetup(files))
-      .tap: _ =>
-        if !ctx.settings.Yreporter.isDefault then
-          ctx.settings.Yreporter.value match
-          case "help" =>
-          case reporterClassName =>
-            try
-              Class.forName(reporterClassName).getDeclaredConstructor().newInstance() match
+      fileNamesOrNone.map(fileNames =>
+        MacroClassLoader.init(ictx)
+        Positioned.init
+        if !ctx.settings.Yreporter.isDefault && ctx.settings.Yreporter.value != "help" then
+          try
+            Class.forName(ctx.settings.Yreporter.value).getDeclaredConstructor().newInstance() match
               case userReporter: Reporter =>
                 ictx.setReporter(userReporter)
-              case badReporter => report.error:
-                em"Not a reporter: ${ctx.settings.Yreporter.value}"
-            catch case e: ReflectiveOperationException => report.error:
-              em"Could not create reporter ${ctx.settings.Yreporter.value}: ${e}"
+              case badReporter =>
+                report.error(em"Not a reporter: ${ctx.settings.Yreporter.value}")
+          catch case e: ReflectiveOperationException =>
+            report.error(em"Could not create reporter ${ctx.settings.Yreporter.value}: $e")
+        val files = fileNames.flatMap(ctx.getFile)
+        (files, fromTastySetup(files))
+      )
   }
 
   /** Setup extra classpath of tasty and jar files */

@@ -13,21 +13,26 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.backend.jvm.GenBCode.*
+import dotty.tools.backend.jvm.SymbolUtils.symExtensions
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Flags.{AbstractOrTrait, Artifact, Bridge, Deferred, Enum, Final, JavaEnum, JavaVarargs, Mutable, Private, Synchronized, Trait}
+import dotty.tools.dotc.core.Flags.{AbstractOrTrait, Artifact, Bridge, Deferred, Enum, Final, JavaEnum, JavaVarargs, Method, Mutable, Private, Synchronized, Synthetic, Trait}
 import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.report
 
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm
-import scala.tools.asm.Opcodes.*
-import scala.tools.asm.commons.CodeSizeEvaluator
-import scala.tools.asm.tree.*
-import scala.tools.asm.tree.analysis.*
-import scala.tools.asm.{Label, Type}
+import org.objectweb.asm
+import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.commons.CodeSizeEvaluator
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.tree.analysis.*
+import org.objectweb.asm.{ClassWriter, Label, Type}
 
 object BCodeUtils {
+  val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
+  val INSTANCE_CONSTRUCTOR_NAME = "<init>"
+
   // The JVM enforces a max length of 65535 bytes per UTF-8 constant.
   // Java uses "Modified UTF-8", in which the null character specifically is two bytes,
   // and the rest of the BMP is as usual, see https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8
@@ -173,8 +178,6 @@ object BCodeUtils {
   def isInterface(classNode: ClassNode): Boolean = (classNode.access & ACC_INTERFACE) != 0
 
   def isFinalMethod(methodNode: MethodNode): Boolean = (methodNode.access & (ACC_FINAL | ACC_PRIVATE | ACC_STATIC)) != 0
-
-  def isStrictfpMethod(methodNode: MethodNode): Boolean = (methodNode.access & ACC_STRICT) != 0
 
   def isReference(t: Type): Boolean = t.getSort == Type.OBJECT || t.getSort == Type.ARRAY
 
@@ -462,7 +465,6 @@ object BCodeUtils {
     }
   }
 
-
   /**
    * Return the Java modifiers for the given symbol.
    * Java modifiers for classes:
@@ -482,8 +484,6 @@ object BCodeUtils {
    *      and they would fail verification after lifted.
    */
   final def javaFlags(sym: Symbol)(using Context): Int = {
-    import SymbolUtils.given
-
     // Classes are always emitted as public. This matches the behavior of Scala 2
     // and is necessary for object deserialization to work properly, otherwise
     // ModuleSerializationProxy may fail with an accessiblity error (see
@@ -502,7 +502,7 @@ object BCodeUtils {
         // Primitives are "abstract final" to prohibit instantiation
         // without having to provide any implementations, but that is an
         // illegal combination of modifiers at the bytecode level so
-        // suppress final if abstract if present.
+        // suppress final if abstract is present.
         && !sym.isOneOf(AbstractOrTrait)
         // Bridges can be final, but final bridges confuse some frameworks
         && !sym.is(Bridge), ACC_FINAL)
@@ -512,8 +512,109 @@ object BCodeUtils {
       .addFlagIf(sym.isClass && !sym.is(Trait), ACC_SUPER)
       .addFlagIf(sym.isAllOf(JavaEnum), ACC_ENUM)
       .addFlagIf(sym.is(JavaVarargs), ACC_VARARGS)
-      .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)
+      // The JVM does not support synchronized interface methods, we implement those ourselves
+      .addFlagIf(sym.is(Synchronized) && !sym.owner.is(Trait), ACC_SYNCHRONIZED)
       .addFlagIf(sym.isDeprecated, ACC_DEPRECATED)
       .addFlagIf(sym.is(Enum), ACC_ENUM)
+  }
+
+
+  /**
+   * True if `classSym` is an anonymous class or a local class. I.e., false if `classSym` is a
+   * member class. This method is used to decide if we should emit an EnclosingMethod attribute.
+   * It is also used to decide whether the "owner" field in the InnerClass attribute should be
+   * null.
+   */
+  def isAnonymousOrLocalClass(classSym: Symbol)(using ctx: Context): Boolean = {
+    assert(classSym.isClass, s"not a class: $classSym")
+    // Here used to be an `assert(!classSym.isDelambdafyFunction)`: delambdafy lambda classes are
+    // always top-level. However, SI-8900 shows an example where the weak name-based implementation
+    // of isDelambdafyFunction failed (for a function declared in a package named "lambda").
+    classSym.isAnonymousClass || {
+      val originalOwner = classSym.originalOwner
+      originalOwner != NoSymbol && !originalOwner.isClass
+    }
+  }
+
+  /**
+   * Returns the enclosing method for non-member classes. In the following example
+   *
+   * class A {
+   *   def f = {
+   *     class B {
+   *       class C
+   *     }
+   *   }
+   * }
+   *
+   * the method returns Some(f) for B, but None for C, because C is a member class. For non-member
+   * classes that are not enclosed by a method, it returns None:
+   *
+   * class A {
+   *   { class B }
+   * }
+   *
+   * In this case, for B, we return None.
+   *
+   * The EnclosingMethod attribute needs to be added to non-member classes (see doc in BTypes).
+   * This is a source-level property, so we need to use the originalOwner chain to reconstruct it.
+   */
+  private def enclosingMethodForEnclosingMethodAttribute(classSym: Symbol)(using ctx: Context): Option[Symbol] = {
+    assert(classSym.isClass, classSym)
+    @tailrec
+    def enclosingMethod(sym: Symbol): Option[Symbol] = {
+      if (sym.isClass || sym == NoSymbol) None
+      else if (sym.is(Method, butNot=Synthetic)) Some(sym)
+      else enclosingMethod(sym.originalOwner)
+    }
+    enclosingMethod(classSym.originalOwner)
+  }
+
+  /**
+   * The enclosing class for emitting the EnclosingMethod attribute. Since this is a source-level
+   * property, this method looks at the originalOwner chain. See doc in BTypes.
+   */
+  private def enclosingClassForEnclosingMethodAttribute(classSym: Symbol)(using ctx: Context): Symbol = {
+    assert(classSym.isClass, classSym)
+    @tailrec
+    def enclosingClass(sym: Symbol): Symbol = {
+      if (sym.isClass) sym
+      else enclosingClass(sym.originalOwner.originalLexicallyEnclosingClass)
+    }
+    enclosingClass(classSym.originalOwner.originalLexicallyEnclosingClass)
+  }
+
+  final case class EnclosingMethodEntry(owner: String, name: String | Null, methodDescriptor: String | Null)
+
+  /**
+   * Data for emitting an EnclosingMethod attribute. None if `classSym` is a member class (not
+   * an anonymous or local class). See doc in BTypes.
+   *
+   * The class is parametrized by two functions to obtain a bytecode class descriptor for a class
+   * symbol, and to obtain a method signature descriptor from a method symbol. These function depend
+   * on the implementation of GenASM / GenBCode, so they need to be passed in.
+   */
+  def enclosingMethodAttribute(classSym: Symbol, classDesc: Symbol => String, methodDesc: Symbol => String)(using ctx: Context): Option[EnclosingMethodEntry] = {
+    if (isAnonymousOrLocalClass(classSym)) {
+      val methodOpt = enclosingMethodForEnclosingMethodAttribute(classSym)
+      report.debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(_.enclosingClass)})")
+      Some(EnclosingMethodEntry(
+        classDesc(enclosingClassForEnclosingMethodAttribute(classSym)),
+        methodOpt.map(_.javaSimpleName).orNull,
+        methodOpt.map(methodDesc).orNull))
+    } else {
+      None
+    }
+  }
+  
+  def createJAttribute(name: String, b: Array[Byte], offset: Int, len: Int): asm.Attribute = {
+    new asm.Attribute(name) {
+      override def write(classWriter: ClassWriter, code: Array[Byte],
+                         codeLength: Int, maxStack: Int, maxLocals: Int): asm.ByteVector = {
+        val byteVector = new asm.ByteVector(len)
+        byteVector.putByteArray(b, offset, len)
+        byteVector
+      }
+    }
   }
 }

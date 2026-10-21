@@ -1,6 +1,4 @@
 import caps.any
-import caps.use
-
 
 class Unit
 object u extends Unit

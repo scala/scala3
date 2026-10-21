@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 import base.*
 
 object Test extends App {

@@ -45,6 +45,5 @@ object A {
     T#T#T#T#T#T#T#T#T#T#T#T#T#T#T#T#
     T#T#T#T#T#T#T#T#T#T#T#T#T#T#T#T#
     T#T#T#T#T#T#T#T#T#T#T#T#T#T#T#T#
-    T#T#T#T#T#T#T#T#T#T#T#T#T#T#T#T#
     T#T#T#T#T#T#T#T#T#T#T#T#T#T#T#T
 }

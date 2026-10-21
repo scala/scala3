@@ -1,10 +1,9 @@
 package dotty
 
 import scala.jdk.CollectionConverters.*
-import scala.language.unsafeNulls
-import scala.tools.asm
-import scala.tools.asm.*
-import scala.tools.asm.tree.*
+import org.objectweb.asm
+import org.objectweb.asm.*
+import org.objectweb.asm.tree.*
 
 /** Makes using ASM from tests more convenient.
  *
@@ -12,7 +11,7 @@ import scala.tools.asm.tree.*
  * for the purpose of bytecode diffing and pretty printing.
  */
 object AsmConverters {
-  import scala.tools.asm.tree as t
+  import org.objectweb.asm.tree as t
 
   /**
    * Transform the instructions of an ASM Method into a list of [[Instruction]]s.
@@ -61,7 +60,7 @@ object AsmConverters {
   }
 
   def opcodeToString(op: Int, default: Any = "?"): String = {
-    import scala.tools.asm.util.Printer.OPCODES
+    import org.objectweb.asm.util.Printer.OPCODES
     if (OPCODES.isDefinedAt(op)) OPCODES(op) else default.toString
   }
 
@@ -200,58 +199,5 @@ object AsmConverters {
 
       case _ => false
     }) && equivalentBytecode(as.tail, bs.tail, varMap, labelMap)
-  }
-
-  def applyToMethod(method: t.MethodNode, instructions: List[Instruction]): Unit = {
-    val asmLabel = createLabelNodes(instructions)
-    instructions.foreach(visitMethod(method, _, asmLabel))
-  }
-
-  /**
-   * Convert back a [[Method]] to ASM land. The code is emitted into the parameter `asmMethod`.
-   */
-  def applyToMethod(asmMethod: t.MethodNode, method: Method): Unit = {
-    val asmLabel = createLabelNodes(method.instructions)
-    method.instructions.foreach(visitMethod(asmMethod, _, asmLabel))
-    method.handlers.foreach(h => asmMethod.visitTryCatchBlock(asmLabel(h.start), asmLabel(h.end), asmLabel(h.handler), h.desc.orNull))
-    method.localVars.foreach(v => asmMethod.visitLocalVariable(v.name, v.desc, v.signature.orNull, asmLabel(v.start), asmLabel(v.end), v.index))
-  }
-
-  private def createLabelNodes(instructions: List[Instruction]): Map[Label, asm.Label] = {
-    val labels = instructions collect {
-      case l: Label => l
-    }
-    assert(labels.distinct == labels, s"Duplicate labels in: $labels")
-    labels.map(l => (l, new asm.Label())).toMap
-  }
-
-  private def frameTypesToAsm(l: List[Any], asmLabel: Map[Label, asm.Label]): List[Object] = l map {
-    case l: Label => asmLabel(l)
-    case x => x.asInstanceOf[Object]
-  }
-
-  def unconvertMethodHandle(h: MethodHandle): asm.Handle = new asm.Handle(h.tag, h.owner, h.name, h.desc, h.itf)
-  def unconvertBsmArgs(a: List[Object]): Array[Object] = a.map({
-    case h: MethodHandle => unconvertMethodHandle(h)
-    case o => o
-  }).toArray
-
-  private def visitMethod(method: t.MethodNode, instruction: Instruction, asmLabel: Map[Label, asm.Label]): Unit = instruction match {
-    case Field(op, owner, name, desc)                => method.visitFieldInsn(op, owner, name, desc)
-    case Incr(op, vr, incr)                          => method.visitIincInsn(vr, incr)
-    case Op(op)                                      => method.visitInsn(op)
-    case IntOp(op, operand)                          => method.visitIntInsn(op, operand)
-    case Jump(op, label)                             => method.visitJumpInsn(op, asmLabel(label))
-    case Ldc(op, cst)                                => method.visitLdcInsn(cst)
-    case LookupSwitch(op, dflt, keys, labels)        => method.visitLookupSwitchInsn(asmLabel(dflt), keys.toArray, (labels map asmLabel).toArray)
-    case TableSwitch(op, min, max, dflt, labels)     => method.visitTableSwitchInsn(min, max, asmLabel(dflt), (labels map asmLabel).toArray*)
-    case Invoke(op, owner, name, desc, itf)          => method.visitMethodInsn(op, owner, name, desc, itf)
-    case InvokeDynamic(op, name, desc, bsm, bsmArgs) => method.visitInvokeDynamicInsn(name, desc, unconvertMethodHandle(bsm), unconvertBsmArgs(bsmArgs))
-    case NewArray(op, desc, dims)                    => method.visitMultiANewArrayInsn(desc, dims)
-    case TypeOp(op, desc)                            => method.visitTypeInsn(op, desc)
-    case VarOp(op, vr)                               => method.visitVarInsn(op, vr)
-    case l: Label                                    => method.visitLabel(asmLabel(l))
-    case FrameEntry(tp, local, stack)                => method.visitFrame(tp, local.length, frameTypesToAsm(local, asmLabel).toArray, stack.length, frameTypesToAsm(stack, asmLabel).toArray)
-    case LineNumber(line, start)                     => method.visitLineNumber(line, asmLabel(start))
   }
 }

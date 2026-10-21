@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/retains-alias/B_2.scala:8:19 --------------------------------------------------
+8 |  new A.Catch[Int](1) // error
+  |                   ^
+  |                   Found:    (1 : Int)
+  |                   Required: a.A.Catcher[Int]
+  |
+  | longer explanation available when compiling with `-explain`

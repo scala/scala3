@@ -2,7 +2,7 @@ trait K
 trait L
 
 object O {
-  type LK = K with L
+  type LK = K & L
   val A: LK = new K with L
   val B: LK = new K with L
 }

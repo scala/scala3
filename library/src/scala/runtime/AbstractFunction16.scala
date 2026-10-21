@@ -10,8 +10,6 @@
  * additional information regarding copyright ownership.
  */
 
-// GENERATED CODE: DO NOT EDIT. See scala.Function0 for timestamp.
-
 package scala.runtime
 
 import scala.language.`2.13`

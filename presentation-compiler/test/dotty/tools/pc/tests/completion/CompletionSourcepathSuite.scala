@@ -58,7 +58,7 @@ class CompletionSourcepathSuite extends BaseCompletionSuite:
     )
 
   override protected def config: PresentationCompilerConfigImpl =
-    super.config.copy(sourcePathMode = SourcePathMode.FULL)
+    super.config.copy(sourcePathMode = SourcePathMode.PRUNED)
   override protected val sourcePath: Seq[Path] = Seq(sourcepathDir, singleSourcepathFile)
 
   override protected def scalacOptions(classpath: Seq[Path]): Seq[String] =

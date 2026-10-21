@@ -59,6 +59,23 @@ A
 Trait
 example.A
 create
+94
+111
+8
+addService
+Apply
+false
+0
+false
+x1.addService(x2)
+
+3
+i21695/A.scala
+example
+A
+Trait
+example.A
+create
 69
 79
 7

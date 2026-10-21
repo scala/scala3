@@ -24,7 +24,6 @@ import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
-import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
@@ -175,7 +174,7 @@ class Completions(
         val allAdvanced = advanced ++ keywords
         path match
           // should not show completions for toplevel
-          case Nil | (_: PackageDef) :: _ if !completionPos.originalCursorPosition.source.file.ext.isScalaScript =>
+          case Nil | (_: PackageDef) :: _ if !completionPos.originalCursorPosition.source.ext.isScalaScript =>
             (allAdvanced, SymbolSearch.Result.COMPLETE)
           case (sel @ Select(qual, name)) :: _ if qual.typeOpt.isErroneous =>
             val fromCompiler = withGuessApplyType(sel)
@@ -251,9 +250,9 @@ class Completions(
         }
         .chain { suffix =>
           adjustedPath match
-            case (ident: Ident) :: (app @ Apply(_, List(arg))) :: _ =>
+            case (_: Ident) :: (app @ Apply(_, List(arg))) :: _ =>
               app.symbol.info match
-                case mt @ MethodType(termNames)
+                case _: MethodType
                     if app.symbol.paramSymss.last.exists(_.is(Given)) &&
                       !text.substring(app.fun.span.start, arg.span.end).contains("using") =>
                   suffix.withNewPrefix(Affix(PrefixKind.Using))
@@ -539,7 +538,6 @@ class Completions(
             this,
             config.isCompletionSnippetsEnabled(),
             search,
-            config,
             buildTargetIdentifier
           )
           .filterInteresting(enrich = false)
@@ -617,14 +615,14 @@ class Completions(
   ): Boolean =
     tree match
       case Import(Ident(ivy), _) =>
-        pos.source.file.name.isWorksheet &&
+        pos.source.name.isWorksheet &&
         (ivy.decoded == "$ivy" ||
           ivy.decoded == "$dep")
       case _ => false
 
   private def enrichWithSymbolSearch(
       visit: CompletionValue => Boolean,
-      qualType: Type = ctx.definitions.AnyType
+      qualType: Type
   ): Option[SymbolSearch.Result] =
     val query = completionPos.query
     if completionMode.is(Mode.Scope) && query.nonEmpty then
@@ -817,7 +815,7 @@ class Completions(
   private lazy val EnsuringClass: ClassSymbol = requiredClass("scala.Predef.Ensuring")
   private lazy val StringFormatClass: ClassSymbol = requiredClass("scala.Predef.StringFormat")
   private lazy val nnMethod: Symbol = defn.ScalaPredefModule.info.member("nn".toTermName).symbol
-  private lazy val runtimeCheckedMethod: Symbol = defn.ScalaPredefModule.info.member("runtimeChecked".toTermName).symbol
+  private lazy val runtimeCheckedMethod: Symbol = defn.ScalaPredefModule.info.member(nme.runtimeChecked).symbol
 
   private def isNotLocalForwardReference(sym: Symbol)(using Context): Boolean =
     !sym.isLocalToBlock ||
@@ -944,7 +942,7 @@ class Completions(
           isMember(symbol) && symbol.owner != tpe.typeSymbol
         def postProcess(items: List[CompletionValue]): List[CompletionValue] =
           items.map {
-            case completion @ CompletionValue.Compiler(label, denot, suffix)
+            case completion @ CompletionValue.Compiler(label, _, suffix)
                 if isMember(completion.symbol) =>
               CompletionValue.Compiler(
                 label,

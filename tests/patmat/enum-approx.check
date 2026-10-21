@@ -1,1 +1,8 @@
-24: Pattern Match Exhaustivity: Fun.ConstNullClass(_)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/enum-approx.scala:24:46 
+24 |  def f[T, U >: Null](f: Fun[T, U]): T => U = f match {
+   |                                              ^
+   |                    match may not be exhaustive.
+   |
+   |                    It would fail on pattern case: Fun.ConstNullClass(_)
+   |
+   | longer explanation available when compiling with `-explain`

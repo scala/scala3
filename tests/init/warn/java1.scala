@@ -4,7 +4,7 @@ import java.util.function.Consumer
 class A extends Spliterator.OfDouble:
   def characteristics() = 10
   def estimateSize() = 10
-  def trySplit() = ???
+  def trySplit(): Spliterator.OfDouble = ???
   def tryAdvance(`x$0`: java.util.function.DoubleConsumer): Boolean = false
 
   val m = n + 1

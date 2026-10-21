@@ -382,8 +382,12 @@ abstract class Recheck extends Phase, SymTransformer:
       funtpe.widen match
         case fntpe: PolyType =>
           assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
-          val argTypes = tree.args.map(recheck(_))
+          val argTypes = tree.args.lazyZip(fntpe.paramInfos).map:
+            recheckTypeArg(_, _, fntpe)
           constFold(tree, fntpe.instantiate(argTypes))
+
+    def recheckTypeArg(arg: Tree, formal: Type, binder: PolyType)(using Context): Type =
+      recheck(arg)
 
     def recheckTyped(tree: Typed)(using Context): Type =
       val tptType = recheck(tree.tpt)
@@ -642,8 +646,7 @@ abstract class Recheck extends Phase, SymTransformer:
       case _: DefTree | EmptyTree | _: TypeTree => tpe
       case _ => checkConformsExpr(tpe.widenExpr, pt.widenExpr, tree)
 
-    def isCompatible(actual: Type, expected: Type)(using Context): Boolean =
-     try
+    def isCompatible(actual: Type, expected: Type)(using Context): Boolean = printOnAssertionError(i"fail while $actual iscompat $expected"):
       actual <:< expected
       || expected.isRepeatedParam
           && isCompatible(actual,
@@ -652,9 +655,6 @@ abstract class Recheck extends Phase, SymTransformer:
         val widened = widenSkolems(expected)
         (widened ne expected) && isCompatible(actual, widened)
       }
-     catch case ex: AssertionError =>
-      println(i"fail while $actual iscompat $expected")
-      throw ex
 
     def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: List[Note] = Nil)(using Context): Type =
       //println(i"check conforms $actual <:< $expected")

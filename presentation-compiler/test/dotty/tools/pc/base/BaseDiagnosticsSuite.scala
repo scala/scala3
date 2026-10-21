@@ -8,6 +8,7 @@ import scala.meta.pc.CancelToken
 import scala.meta.pc.VirtualFileParams
 
 import dotty.tools.pc.RawScalaPresentationCompiler
+import dotty.tools.pc.ScalaPresentationCompiler
 import dotty.tools.pc.base.TestResources
 import dotty.tools.pc.utils.PcAssertions
 import dotty.tools.pc.utils.TestExtensions.getOffset
@@ -15,7 +16,8 @@ import dotty.tools.pc.utils.TestExtensions.getOffset
 import org.eclipse.lsp4j.Diagnostic
 import org.eclipse.lsp4j.DiagnosticSeverity
 
-class BaseDiagnosticsSuite extends PcAssertions:
+trait DiagnosticTestHelpers extends PcAssertions {
+
   case class TestDiagnostic(
       startIndex: Int,
       endIndex: Int,
@@ -23,18 +25,13 @@ class BaseDiagnosticsSuite extends PcAssertions:
       severity: DiagnosticSeverity
   )
 
-  def options: List[String] = Nil
-
-  val pc = RawScalaPresentationCompiler().newInstance(
-    "",
-    TestResources.classpath.asJava,
-    options.asJava
-  )
-
   case class TestVirtualFileParams(uri: URI, text: String)
-      extends VirtualFileParams:
+      extends VirtualFileParams {
     override def shouldReturnDiagnostics: Boolean = true
     override def token: CancelToken = EmptyCancelToken
+  }
+
+  def getDiagnostics(text: String): List[Diagnostic]
 
   def diagnosticMessageAsString(d: Diagnostic): String = {
     val msg = d.getMessage()
@@ -48,11 +45,7 @@ class BaseDiagnosticsSuite extends PcAssertions:
       expected: List[TestDiagnostic],
       additionalChecks: List[Diagnostic] => Unit = identity
   ): Unit =
-    val diagnostics = pc
-      .didChange(
-        TestVirtualFileParams(URI.create("file:/Diagnostic.scala"), text)
-      )
-      .asScala
+    val diagnostics = getDiagnostics(text)
 
     val actual = diagnostics.map(d =>
       TestDiagnostic(
@@ -68,3 +61,23 @@ class BaseDiagnosticsSuite extends PcAssertions:
       s"Expected [${expected.mkString(", ")}] but got [${actual.mkString(", ")}]"
     )
     additionalChecks(diagnostics.toList)
+}
+
+class BaseDiagnosticsSuite extends PcAssertions with DiagnosticTestHelpers:
+
+  def options: List[String] = Nil
+
+  val pc = RawScalaPresentationCompiler().newInstance(
+    "",
+    TestResources.classpath.asJava,
+    options.asJava
+  )
+
+  def getDiagnostics(text: String): List[Diagnostic] = {
+    pc
+      .didChange(
+        TestVirtualFileParams(URI.create("file:/Diagnostic.scala"), text)
+      )
+      .asScala
+      .toList
+  }

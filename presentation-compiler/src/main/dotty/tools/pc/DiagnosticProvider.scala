@@ -16,11 +16,24 @@ import org.eclipse.lsp4j
 
 class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
   def diagnostics(): List[lsp4j.Diagnostic] =
+    diagnostics(localOnly = false)
+
+  def diagnostics(localOnly: Boolean): List[lsp4j.Diagnostic] =
     if params.shouldReturnDiagnostics then
       val diags = driver.run(params.uri().nn, params.text().nn)
       given Context = driver.currentCtx
-      diags.flatMap(toLsp)
+      val uri = params.uri().nn
+      val filteredDiags =
+        if localOnly then diags.filter(isLocal(_, uri))
+        else diags
+      filteredDiags.flatMap(toLsp)
     else Nil
+
+  private def isLocal(diag: Diagnostic, uri: java.net.URI): Boolean =
+    diag.pos.exists && {
+      val sourcePath = diag.pos.source.jfile.map(_.toPath())
+      sourcePath.isPresent() && sourcePath.get().toUri().equals(uri)
+    }
 
   private def toLsp(diag: Diagnostic)(using Context): Option[lsp4j.Diagnostic] =
     Option.when(diag.pos.exists):
@@ -42,7 +55,6 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
       lspDiag.setData(actions)
       if diag.msg.errorId == ErrorMessageID.UnusedSymbolID then
         lspDiag.setTags(List(lsp4j.DiagnosticTag.Unnecessary).asJava)
-
       lspDiag
 
   private def toLspScalaAction(action: CodeAction): lsp4j.CodeAction =

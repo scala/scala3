@@ -1,0 +1,22 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/from-product.scala:17:14 ---------------------------------
+17 |    (fromProd(x), fromProd(x))  // error // error
+   |              ^
+   |              Found:    (x : Product^{any})
+   |              Required: Product
+   |
+   |              Note that capability `any` cannot flow into capture set {}.
+   |
+   |              where:    any is a root capability in the type of parameter x
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/from-product.scala:17:27 ---------------------------------
+17 |    (fromProd(x), fromProd(x))  // error // error
+   |                           ^
+   |                           Found:    (x : Product^{any})
+   |                           Required: Product
+   |
+   |                           Note that capability `any` cannot flow into capture set {}.
+   |
+   |                           where:    any is a root capability in the type of parameter x
+   |
+   | longer explanation available when compiling with `-explain`

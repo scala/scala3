@@ -248,9 +248,9 @@ final class JSDefinitions() {
 
   @threadUnsafe lazy val ReflectModuleRef = requiredModuleRef("scala.scalajs.reflect.Reflect")
   def ReflectModule(using Context) = ReflectModuleRef.symbol
-    @threadUnsafe lazy val Reflect_registerLoadableModuleClassR = ReflectModule.requiredMethodRef("registerLoadableModuleClass")
+    @threadUnsafe lazy val Reflect_registerLoadableModuleClassR = ReflectModule.requiredMethodRef("registerLoadableModuleClassV2")
     def Reflect_registerLoadableModuleClass(using Context) = Reflect_registerLoadableModuleClassR.symbol
-    @threadUnsafe lazy val Reflect_registerInstantiatableClassR = ReflectModule.requiredMethodRef("registerInstantiatableClass")
+    @threadUnsafe lazy val Reflect_registerInstantiatableClassR = ReflectModule.requiredMethodRef("registerInstantiatableClassV2")
     def Reflect_registerInstantiatableClass(using Context) = Reflect_registerInstantiatableClassR.symbol
 
   @threadUnsafe lazy val ReflectSelectableType: TypeRef = requiredClassRef("scala.reflect.Selectable")

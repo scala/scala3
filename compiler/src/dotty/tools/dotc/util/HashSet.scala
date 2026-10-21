@@ -1,7 +1,5 @@
 package dotty.tools.dotc.util
 
-import dotty.tools.uncheckedNN
-
 object HashSet:
 
   def from[T](xs: IterableOnce[T]): HashSet[T] =
@@ -26,14 +24,14 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Ge
 
   /** Hashcode, by default a processed `x.hashCode`, can be overridden */
   protected def hash(key: T): Int =
-    val h = key.hashCode
+    val h = java.util.Objects.hashCode(key)
     // Part of the MurmurHash3 32 bit finalizer
     val i = (h ^ (h >>> 16)) * 0x85EBCA6B
     val j = (i ^ (i >>> 13)) & 0x7FFFFFFF
     if j==0 then 0x41081989 else j
 
   /** Hashcode, by default `equals`, can be overridden */
-  protected def isEqual(x: T, y: T): Boolean = x.equals(y)
+  protected def isEqual(x: T, y: T): Boolean = java.util.Objects.equals(x, y)
 
   /** Turn hashcode `x` into a table index */
   protected def index(x: Int): Int = x & (table.length - 1)
@@ -51,7 +49,7 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Ge
     var idx = firstIndex(x)
     var e: T | Null = entryAt(idx)
     while e != null do
-      if isEqual(e.uncheckedNN, x) then return e
+      if isEqual(e, x) then return e
       idx = nextIndex(idx)
       e = entryAt(idx)
     null
@@ -69,7 +67,7 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Ge
     var idx = firstIndex(x)
     var e: T | Null = entryAt(idx)
     while e != null do
-      if isEqual(e.uncheckedNN, x) then return false // already entered
+      if isEqual(e, x) then return false // already entered
       idx = nextIndex(idx)
       e = entryAt(idx)
     addEntryAt(idx, x)
@@ -80,8 +78,7 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Ge
     var idx = firstIndex(x)
     var e: T | Null = entryAt(idx)
     while e != null do
-      // TODO: remove uncheckedNN when explicit-nulls is enabled for regule compiling
-      if isEqual(e.uncheckedNN, x) then return e.uncheckedNN
+      if isEqual(e, x) then return e
       idx = nextIndex(idx)
       e = entryAt(idx)
     addEntryAt(idx, x)
@@ -104,6 +101,6 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Ge
       var idx = 0
       while idx < oldTable.length do
         val e: T | Null = oldTable(idx).asInstanceOf[T | Null]
-        if e != null then addOld(e.uncheckedNN)
+        if e != null then addOld(e)
         idx += 1
 }

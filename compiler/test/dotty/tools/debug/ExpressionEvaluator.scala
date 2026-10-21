@@ -74,7 +74,8 @@ class ExpressionEvaluator(
       expression = expression,
       localVariables = localVariables.toSet.map(_.name).asJava,
       errorReporter = errorMsg => errorBuilder.append(errorMsg),
-      testMode = true
+      testMode = true,
+      oldSyntax = options.contains("-old-syntax")
     )
     val success = compiler.run(outputDir, classPath, options, sourceFile, config)
     val fullyQualifiedClassName =

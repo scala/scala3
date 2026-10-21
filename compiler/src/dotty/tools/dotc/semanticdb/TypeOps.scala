@@ -22,8 +22,10 @@ private[semanticdb] class TypeOps:
   private val paramRefSymtab = mutable.Map[(LambdaType, Name), Symbol]()
   private val refinementSymtab = mutable.Map[(RefinedType, Name), Symbol]()
 
-  // save generated fake symbols so we can insert them into symbols section of SemanticDB
-  val fakeSymbols = mutable.Set[FakeSymbol]()
+  // save generated fake symbols so we can insert them into symbols section of SemanticDB.
+  // Insertion ordered: their hash codes depend on identity hash codes of names, and the
+  // iteration order decides the numbering of local symbols.
+  val fakeSymbols = mutable.LinkedHashSet[FakeSymbol]()
   given typeOps: TypeOps = this
 
   extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), Symbol])
@@ -296,9 +298,20 @@ private[semanticdb] class TypeOps:
           s.ThisType(sym.symbolName)
 
         case tref: TermParamRef =>
-          paramRefSymtab.lookupOrErr(
-            tref.binder, tref.paramName, sym
-          ) match
+          val tsym = paramRefSymtab.lookup(tref.binder, tref.paramName) match
+            case found @ Some(_) => found
+            case None =>
+              // The binder might be a copy of the method type whose parameters were
+              // registered, e.g. for a dependent function type nested in the result
+              // of a polymorphic function type. Fall back to a fake symbol in that case.
+              tref.binder.paramNames.indexOf(tref.paramName) match
+                case -1 =>
+                  symbolNotFound(tref.binder, tref.paramName, sym)
+                  None
+                case idx =>
+                  val info = tref.binder.paramInfos(idx)
+                  Some(TermParamRefSymbol(sym, tref.paramName, info).tap(registerFakeSymbol))
+          tsym match
             case Some(ref) =>
               val ssym = ref.symbolName
               s.SingleType(s.Type.Empty, ssym)

@@ -99,14 +99,13 @@ object language {
    */
   implicit lazy val reflectiveCalls: reflectiveCalls = languageFeature.reflectiveCalls
 
-  /** Where this feature is enabled, definitions of implicit conversion methods are allowed.
-   *  If `implicitConversions` is not enabled, the definition of an implicit
-   *  conversion method will trigger a warning from the compiler.
+  /** There are two kinds of implicit conversions, depending on whether we are in
+   *  Scala 2 or 3. This language import has different meanings depending on which kind
+   *  of conversion is used.
    *
-   *  An implicit conversion is an implicit value of unary function type `A => B`,
-   *  or an implicit method that has in its first parameter section a single,
-   *  non-implicit parameter. Examples:
-   *
+   *  In Scala 2, an implicit conversion is an implicit method that has in its first
+   *  parameter section a single, non-implicit parameter, or it is an implicit value
+   *  of function type A => B. Examples:
    *  ```
    *     implicit def intToString(i: Int): String = s"\$i"
    *     implicit val conv: Int => String = i => s"\$i"
@@ -114,23 +113,50 @@ object language {
    *     implicit val strlen: String => Int = _.length
    *     implicit def listToInt[T](xs: List[T])(implicit f: T => Int): Int = xs.map(f).sum
    *  ```
-   *
-   *  This language feature warns only for implicit conversions introduced by methods.
-   *
-   *  Other values, including functions or data types which extend `Function1`,
-   *  such as `Map`, `Set`, and `List`, do not warn.
-   *
+   *  The language import controls whether _definitions_ of these Scala 2 conversions
+   *  are allowed. If `implicitConversions` is not enabled, the definition of an implicit
+   *  conversion method will trigger a warning from the compiler. The warning is only for
+   *  implicit conversions introduced by methods, implicit values are unaffected.
    *  Implicit class definitions, which introduce a conversion to the wrapping class,
    *  also do not warn.
    *
-   *  **Why keep the feature?** Implicit conversions are central to many aspects
-   *  of Scala’s core libraries.
+   *  In Scala 3, an implicit conversion is a given of type `scala.Conversion`.
+   *  Examples:
+   *  ```
+   *      given Conversion[Int, BigInt] = (i: Int) => BigInt(i)
+   *      given [T] => Conversion[T, Option[T]] = Some(_)
+   *  ```
+   *  As of Scala 3.9, the language still supports Scala-2 style conversions, but these
+   *  are slated to be phased out.
    *
-   *  **Why control it?** Implicit conversions are known to cause many pitfalls
-   *  if over-used. And there is a tendency to over-use them because they look
-   *  very powerful and their effects seem to be easy to understand. Also, in
-   *  most situations using implicit parameters leads to a better design than
-   *  implicit conversions.
+   *  In Scala 3, the _use_ of a (new style) implicit conversion triggers a warning or an error
+   *  if the `implicitConversions` language import is not given. Exempted are only uses that
+   *  map a value into an `into[...]` type, since `into[...]` signifies that an implicit
+   *  conversion is allowed. Everwhere else the language import has to be given. Example:
+   *  ```
+   *      import Conversion.into
+   *      given [T] => Conversion[T, Option[T]] = Some(_)
+   *
+   *      def strict(x: Option[String]) = ()
+   *      def lenient(x: into[Option[String]]) = ()
+   *
+   *      strict("abc")    // error or warning: language import needed
+   *      lenient("abc")   // ok
+   *  ```
+   *  The precise kind of diagnostic depends on the Scala version:
+   *
+   *   - For Scala 3.0 - 3.9: feature warning.
+   *   - For Scala 3.10: regular warning.
+   *   - For Scala 3.11 and higher: error.
+   *
+   *  **Why keep the feature?** Implicit conversions can add flexibility. They are
+   *  widely used in many libraries including Scala’s collection library.
+   *
+   *  **Why control it?** Implicit conversions may have unexpected global effects,
+   *  potentially causing unexpected behavior or performance degradation.
+   *  Their presence also imposes a tax on precise type inference. It's therefore
+   *  better to limit their use to specific situations where a library explicitly allows
+   *  them by wrapping expected argument types in `into`.
    *
    *  @group production
    */
@@ -195,7 +221,7 @@ object language {
    *
    *  @group experimental
    */
-  object experimental {
+  object experimental:
 
     import languageFeature.experimental._
 
@@ -243,11 +269,19 @@ object language {
     @compileTimeOnly("`erasedDefinitions` can only be used at compile time in import statements")
     object erasedDefinitions
 
+    /** Experimental support for specialized traits
+     * 
+     * @see [[docs/_docs/internals/specialized-traits.md]]
+     */
+    @compileTimeOnly("`specializedTraits` can only be used at compile time in import statements")
+    object specializedTraits
+
     /** Experimental support for relaxed CanEqual checks for ADT pattern matching
      *
      * @see [[https://github.com/scala/improvement-proposals/pull/97]]
      */
     @compileTimeOnly("`strictEqualityPatternMatching` can only be used at compile time in import statements")
+    @deprecated("`strictEqualityPatternMatching` is now standard, no language import is needed", since = "3.10")
     object strictEqualityPatternMatching
 
     /** Experimental support for using indentation for arguments
@@ -266,7 +300,7 @@ object language {
     /** Adds support for clause interleaving:
       * Methods can now have as many type clauses as they like, this allows to have type bounds depend on terms: `def f(x: Int)[A <: x.type]: A`
       *
-      * @see [[https://github.com/scala/improvement-proposals/blob/main/content/clause-interleaving.md]]
+      * @see [[https://docs.scala-lang.org/sips/clause-interleaving.html]]
       */
     @compileTimeOnly("`clauseInterleaving` can only be used at compile time in import statements")
     @deprecated("`clauseInterleaving` is now standard, no language import is needed", since = "3.6")
@@ -296,10 +330,10 @@ object language {
     /** Experimental support for automatic conversions of arguments, without requiring
      *  a language import `import scala.language.implicitConversions`.
      *
-     *  @see [[https://nightly.scala-lang.org/docs/reference/preview/into]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/other-new-features/into]]
      */
     @compileTimeOnly("`into` can only be used at compile time in import statements")
-    @deprecated("The into language import is no longer needed since the feature is now in preview", since = "3.8")
+    @deprecated("The `into` language import is no longer needed since the feature is now in preview", since = "3.8")
     object into
 
     /** Experimental support for named tuples.
@@ -307,7 +341,7 @@ object language {
      *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/named-tuples]]
      */
     @compileTimeOnly("`namedTuples` can only be used at compile time in import statements")
-    @deprecated("The experimental.namedTuples language import is no longer needed since the feature is now standard", since = "3.7")
+    @deprecated("`experimental.namedTuples` is now standard, no language import is needed", since = "3.7")
     object namedTuples
 
     /** Experimental support for new features for better modularity, including
@@ -327,7 +361,7 @@ object language {
       * @see [[https://nightly.scala-lang.org/docs/reference/contextual/extension-methods]]
       */
     @compileTimeOnly("`relaxedExtensionImports` can only be used at compile time in import statements")
-    @deprecated("The experimental.relaxedExtensionImports language import is no longer needed since the feature is now standard", since = "3.4")
+    @deprecated("`experimental.relaxedExtensionImports` is now standard, no language import is needed", since = "3.4")
     object relaxedExtensionImports
 
     /** Enhance match type extractors to follow aliases and singletons.
@@ -335,7 +369,7 @@ object language {
      *  @see [[https://github.com/scala/improvement-proposals/pull/84]]
      */
     @compileTimeOnly("`betterMatchTypeExtractors` can only be used at compile time in import statements")
-    @deprecated("The experimental.betterMatchTypeExtractors language import is no longer needed since the feature is now standard. It now has no effect, including when setting an older source version.", since = "3.6")
+    @deprecated("`experimental.betterMatchTypeExtractors` is now standard, no language import is needed", since = "3.6")
     object betterMatchTypeExtractors
 
     /** Experimental support for quote pattern matching with polymorphic functions
@@ -350,12 +384,13 @@ object language {
      * @see [[https://github.com/scala/improvement-proposals/pull/79]]
      */
     @compileTimeOnly("`betterFors` can only be used at compile time in import statements")
-    @deprecated("The `experimental.betterFors` language import no longer has any effect, the feature is being stabilised and can be enabled using `-preview` flag", since = "3.7")
+    @deprecated("`experimental.betterFors` is now standard, no language import is needed", since = "3.7")
     object betterFors
 
     /** Experimental support for package object values
      */
     @compileTimeOnly("`packageObjectValues` can only be used at compile time in import statements")
+    @deprecated("The `experimental.packageObjectValues` language import is no longer needed since the feature is now in preview", since = "3.10")
     object packageObjectValues
 
     /** Experimental support for multiple spread arguments.
@@ -368,18 +403,43 @@ object language {
     @compileTimeOnly("`subCases` can only be used at compile time in import statements")
     object subCases
 
-   /** Experimental support for single-line lambdas and case clause expressions after `:`
+    /** Experimental support for end markers for method blocks.
+     *
+     *  @see [[https://github.com/scala/improvement-proposals/pull/77]]
+     */
+    @compileTimeOnly("`methodBlockEndMarkers` can only be used at compile time in import statements")
+    object methodBlockEndMarkers
+
+    /** Experimental support for single-line lambdas and case clause expressions after `:`
      */
     @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
+    @deprecated("The `experimental.relaxedLambdaSyntax` language import is no longer needed since the feature is now in preview", since = "3.10")
     object relaxedLambdaSyntax
 
     /** Experimental support for safe mode
      */
     @compileTimeOnly("`safe` can only be used at compile time in import statements")
     object safe
-  }
 
-    /** The deprecated object contains features that are no longer officially suypported in Scala.
+    /** Experimental support for dedented string literals (SIP 72)
+     */
+    @compileTimeOnly("`dedentedStringLiterals` can only be used at compile time in import statements")
+    object dedentedStringLiterals
+
+    /** Experimental support for magic (Modular AGent Interface Code), enabling extensions
+     *  for coding agents.
+     */
+    @compileTimeOnly("`magic` can only be used at compile time in import statements")
+    object magic
+
+    
+    /** Experimental support for inline traits
+      */
+    @compileTimeOnly("`inlineTraits` can only be used at compile time in import statements")
+    object inlineTraits
+  end experimental
+
+  /** The deprecated object contains features that are no longer officially suypported in Scala.
    *  Features in this object are slated for removal. New code should not use them and
    *  old code should migrate away from them.
    */
@@ -614,6 +674,21 @@ object language {
     */
   @compileTimeOnly("`3.10` can only be used at compile time in import statements")
   object `3.10`
+
+
+  /** Sets source version to 3.10-migration.
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.11-migration` can only be used at compile time in import statements")
+  object `3.11-migration`
+
+  /** Sets source version to 3.10
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.11` can only be used at compile time in import statements")
+  object `3.11`
 
   // !!! Keep in sync with dotty.tools.dotc.config.SourceVersion !!!
   // When adding a new `3.x` / `3.x-migration` here, add matching tests:

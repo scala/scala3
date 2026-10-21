@@ -7,7 +7,7 @@ class Foo2[T <: Id[T]] // error
 
 object Foo { // error
   object Foo { }
-  Foo { } // error
+  Foo { }
 }
 implicit class Foo(a: Float)  // error
 case class Foo()

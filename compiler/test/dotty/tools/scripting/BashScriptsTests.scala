@@ -2,15 +2,11 @@ package dotty
 package tools
 package scripting
 
-import scala.language.unsafeNulls
-
 import java.nio.file.Paths
 import org.junit.{Test, Ignore, AfterClass}
 import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeFalse
 import org.junit.experimental.categories.Category
-
-import vulpix.TestConfiguration
 
 import ScriptTestEnv.*
 

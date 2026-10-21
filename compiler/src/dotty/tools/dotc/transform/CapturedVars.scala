@@ -12,9 +12,10 @@ import core.Names.*
 import core.NameKinds.TempResultName
 import core.Constants.*
 import util.Store
-import dotty.tools.uncheckedNN
+import dotty.tools.initialize
 import ast.tpd.*
-import compiletime.uninitialized
+
+import scala.annotation.threadUnsafe
 
 /** This phase translates variables that are captured in closures to
  *  heap-allocated refs.
@@ -33,24 +34,18 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
     val refClassKeys: collection.Set[Symbol] =
       defn.ScalaNumericValueClasses() `union` Set(defn.BooleanClass, defn.ObjectClass)
 
-    val refClass: Map[Symbol, Symbol] =
+    @threadUnsafe
+    lazy val refClass: Map[Symbol, Symbol] =
       refClassKeys.map(rc => rc -> requiredClass(s"scala.runtime.${rc.name}Ref")).toMap
 
-    val volatileRefClass: Map[Symbol, Symbol] =
+    @threadUnsafe
+    lazy val volatileRefClass: Map[Symbol, Symbol] =
       refClassKeys.map(rc => rc -> requiredClass(s"scala.runtime.Volatile${rc.name}Ref")).toMap
-
-    val boxedRefClasses: collection.Set[Symbol] =
-      refClassKeys.flatMap(k => Set(refClass(k), volatileRefClass(k)))
-
-    val objectRefClasses: collection.Set[Symbol] =
-      Set(refClass(defn.ObjectClass), volatileRefClass(defn.ObjectClass))
   }
 
   private var myRefInfo: RefInfo | Null = null
-  private def refInfo(using Context): RefInfo = {
-    if (myRefInfo == null) myRefInfo = new RefInfo()
-    myRefInfo.uncheckedNN
-  }
+  private def refInfo(using Context): RefInfo =
+    initialize(myRefInfo, myRefInfo = _, new RefInfo())
 
   override def prepareForUnit(tree: Tree)(using Context): Context =
     captured.clear()

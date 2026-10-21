@@ -1,7 +1,5 @@
 package dotty.tools.dotc.printing
 
-import scala.language.unsafeNulls
-
 import dotty.tools.DottyTest
 import org.junit.Assert.*
 import org.junit.{Ignore, Test}
@@ -173,5 +171,10 @@ class SyntaxHighlightingTests extends DottyTest {
         |  ()
         |<K|end> <D|foo>""".stripMargin
     )
+  }
+
+  @Test
+  def hexPeriod = {
+    test("val n = 0x.", "<K|val> <D|n> = <L|0x>.")
   }
 }

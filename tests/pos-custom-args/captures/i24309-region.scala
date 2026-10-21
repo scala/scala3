@@ -13,13 +13,23 @@ object Regions:
     region: Region[R]^ =>
       def alloc(value: Int): Ref^{R} = Ref(value)
 
+      // The inner function type has to be impure, since the argument
+      // closures capture `r1` (the polymorphic function type `[R2^ >: R] => ...`
+      // is a function type of its own, which returns the inner function).
       def subregion[T](f: [R2^ >: R] => (Region[R2]) => T): T =
         val r = new Region[R] {}
         f(r)
 
+      // Variant with an empty term-parameter list after the type binder.
+      def subregion2[T](f: [R2^ >: R] => () => (Region[R2]) => T): T =
+        val r = new Region[R] {}
+        f()(r)
+
 
   object Region:
-    def apply[T](f: [R^] => Region[R] => T): T =
+    // The inner function captures the region capability `R` bound by the
+    // polymorphic function type.
+    def apply[T](f: [R^] => Region[R] ->{R, any} T): T =
       val r = new Region[{}] {}
       f(r)
 
@@ -32,4 +42,10 @@ object Regions:
         val a = r1.alloc(0)
         val b = r2.alloc(0)
         a
+      val y = r1.subregion2: [R2^ >: R] =>
+       () =>
+        r2 =>
+         val a = r1.alloc(0)
+         val b = r2.alloc(0)
+         a
       0

@@ -5,7 +5,7 @@ trait A[X]:
   def bar(x: X): X
 
 trait B extends A[C]:
-  def foo(x: C): C        // error
+  def foo(x: C): C        // ok
   def bar(consume x: C): C // error
 
 trait B2:

@@ -266,6 +266,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   /** Dequeues all elements and returns them in a sequence, in priority order.
    *
    *  @tparam A1 a supertype of the element type `A`, allowing the result to be typed more broadly
+   *  @return an immutable sequence containing all elements of this queue in priority order
    */
   def dequeueAll[A1 >: A]: immutable.Seq[A1] = {
     val b = ArrayBuilder.make[Any]

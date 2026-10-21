@@ -88,6 +88,7 @@ object BooleanProp {
    *
    *  @param key the name of the system property
    *  @param isOn whether the constant property is true or false
+   *  @return a BooleanProp whose value is fixed and whose mutating operations are no-ops
    */
   def constant(key: String, isOn: Boolean): BooleanProp = new ConstantImpl(key, isOn)
 

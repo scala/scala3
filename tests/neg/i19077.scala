@@ -9,6 +9,8 @@ def i(x: Int, @deprecatedName("x") y: Int) = x+y // error
 
 def j(x: Int, @deprecatedName("x") x: Int) = x // error
 
+def k(@deprecatedName("a") x: Int, @deprecatedName(Symbol("a")) y: Int) = x+y // error
+
 @main def Test =
   f(1, 2, 3, x = 42) // error
   f(1, 2, 3, w = 42) // error

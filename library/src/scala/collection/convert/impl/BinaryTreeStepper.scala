@@ -61,6 +61,7 @@ extends EfficientSplit {
    *  may have things to its right.
    *
    *  @param from the tree node from which to begin unrolling leftward
+   *  @return the leftmost node reached, which has no left child and is not placed on the stack
    */
   @tailrec protected final def unroll(from: T): T = {
     val l = left(from)
@@ -80,6 +81,7 @@ extends EfficientSplit {
    *  on the stack.
    *
    *  @param node the tree node to detach, whose left subtree has already been visited
+   *  @return the detached `node`, ready to be consumed by the stepper
    */
   protected final def detach(node: T): node.type = {
     val r = right(node)

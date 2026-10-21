@@ -73,9 +73,9 @@ object Trees {
     /** The type of the tree. In case of an untyped tree,
      *   an UnAssignedTypeException is thrown. (Overridden by empty trees)
      */
-    final def tpe: T =
-      if myTpe == null then throw UnAssignedTypeException(this)
-      myTpe.uncheckedNN
+    final def tpe: T = myTpe match
+      case null => throw UnAssignedTypeException(this)
+      case t => t
 
     /** Copy `tpe` attribute from tree `from` into this tree, independently
      *  whether it is null or not.
@@ -292,10 +292,11 @@ object Trees {
   trait DefTree[+T <: Untyped] extends DenotingTree[T] {
     type ThisTree[+T <: Untyped] <: DefTree[T]
 
-    private var myMods: untpd.Modifiers | Null = uninitialized
+    private var myMods: untpd.Modifiers | Null = null
 
-    private[dotc] def rawMods: untpd.Modifiers =
-      if (myMods == null) untpd.EmptyModifiers else myMods.uncheckedNN
+    private[dotc] def rawMods: untpd.Modifiers = myMods match
+      case null => untpd.EmptyModifiers
+      case mods => mods
 
     def withAnnotations(annots: List[untpd.Tree]): ThisTree[Untyped] = withMods(rawMods.withAnnotations(annots))
 
@@ -319,7 +320,7 @@ object Trees {
   extension (mdef: untpd.DefTree) def mods: untpd.Modifiers = mdef.rawMods
 
   sealed trait WithEndMarker[+T <: Untyped]:
-    self: PackageDef[T] | NamedDefTree[T] =>
+    self: PackageDef[T] | NamedDefTree[T] | Apply[T] =>
 
     import WithEndMarker.*
 
@@ -369,8 +370,10 @@ object Trees {
 
     protected def srcName(using Context): Name =
       if name == nme.CONSTRUCTOR then nme.this_
-      else if symbol.isPackageObject then symbol.owner.name
-      else name
+      else
+        val sym = this.symbol
+        if sym.isPackageObject then sym.owner.name
+        else name
 
     /** The position of the name defined by this definition.
      *  This is a point position if the definition is synthetic, or a range position
@@ -382,7 +385,8 @@ object Trees {
     def nameSpan(using Context): Span =
       if (span.exists) {
         val point = span.point
-        if (rawMods.is(Synthetic) || span.isSynthetic || name.toTermName == nme.ERROR) Span(point)
+        if (rawMods.is(Synthetic) || span.isSynthetic || name.toTermName == nme.ERROR || srcName.is(NameKinds.DefaultGetterName))
+          Span(point)
         else {
           val realName = srcName.stripModuleClassSuffix.lastPart
           Span(point, point + realName.length, point)
@@ -520,18 +524,30 @@ object Trees {
 
   /** fun(args) */
   case class Apply[+T <: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
-    extends GenericApply[T] {
+    extends GenericApply[T] with WithEndMarker[T] {
     type ThisTree[+T <: Untyped] = Apply[T]
+
+    def srcName(using Context): Name =
+      // Prefer stored method name when present (handles nested Apply cases)
+      getAttachment(untpd.MethodName).getOrElse:
+        fun match
+          case Select(_, name) => name
+          case Ident(name) => name
+          case _ => nme.EMPTY
 
     def setApplyKind(kind: ApplyKind) =
       putAttachment(untpd.KindOfApply, kind)
       this
 
-    /** The kind of this application. Works reliably only for untyped trees; typed trees
-     *  are under no obligation to update it correctly.
-     */
-    def applyKind: ApplyKind =
-      attachmentOrElse(untpd.KindOfApply, ApplyKind.Regular)
+    /** The kind of this application. */
+    def applyKind(using Context): ApplyKind =
+      // The attachement is only guaranteed to be set on untyped trees.
+      if hasAttachment(untpd.KindOfApply) then
+        attachment(untpd.KindOfApply)
+      else
+        val funTpe = fun.typeOpt
+        if funTpe.exists && funTpe.widen.stripPoly.isImplicitMethod then ApplyKind.Using
+        else ApplyKind.Regular
   }
 
   /** fun[args] */
@@ -627,8 +643,6 @@ object Trees {
   case class CaseDef[+T <: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] {
     type ThisTree[+T <: Untyped] = CaseDef[T]
-    /** Should this case be considered partial for exhaustivity and unreachability checking */
-    def maybePartial(using Context): Boolean = !guard.isEmpty || body.isInstanceOf[SubMatch[T]]
   }
 
   /** label[tpt]: { expr } */
@@ -900,7 +914,7 @@ object Trees {
     override def isTerm: Boolean = name.isTermName
 
     override def nameSpan(using Context): Span =
-      if span.exists then Span(span.start, span.start + name.toString.length) else span
+      if span.exists then Span(span.start, span.start + name.length) else span
   }
 
   /** tree_1 | ... | tree_n */
@@ -1684,7 +1698,7 @@ object Trees {
           case Nil => x
         fold(x, trees)
 
-      def foldOver(x: X, tree: Tree)(using Context): X =
+      def foldOver(x: X, tree: Tree)(using Context): X = ctx.handleRecursive("folding over", tree):
         if (tree.source != ctx.source && tree.source.exists)
           foldOver(x, tree)(using ctx.withSource(tree.source))
         else {
@@ -1857,6 +1871,26 @@ object Trees {
         case Nil => Some(Nil)
         case (x: ValDef) :: _ => Some(xs.asInstanceOf[List[ValDef]])
         case _ => None
+
+    object DisjointUnion:
+      def unapply(tpt: Tree)(using Context): Option[List[Type]] = {
+        tpt.tpe match
+          case t @ OrType(_,_) =>
+            val types = collectAltTypes(t)
+            if isDisjoint(types) then Some(types)
+            else None
+          case _ => None
+      }
+      def isDisjoint(types: List[Type])(using Context): Boolean =
+        types.combinations(2).forall {
+          case one :: another :: Nil => !(one <:< another) && !(another <:< one)
+          case _ => false
+        }
+      private def collectAltTypes(t: Type)(using Context): List[Type] = t match {
+        case OrType(tp1,tp2) =>
+          (collectAltTypes(tp1) ::: collectAltTypes(tp2))
+        case _ => List(t)
+      }
 
     def termParamssIn(paramss: List[ParamClause]): List[List[ValDef]] = paramss match
       case ValDefs(vparams) :: paramss1 =>

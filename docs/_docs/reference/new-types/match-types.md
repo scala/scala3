@@ -210,8 +210,7 @@ def g[X]: L[X] = ???
    |                ^
    |Recursion limit exceeded.
    |Maybe there is an illegal cyclic reference?
-   |If that's not the case, you could also try to
-   |increase the stacksize using the -Xss JVM option.
+   |If that's not the case, you could try to increase the fuel and stack size: https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html
    |A recurring operation is (inner to outer):
    |
    |  subtype LazyRef(Test.L[Int]) <:< Int

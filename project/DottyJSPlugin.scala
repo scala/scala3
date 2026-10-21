@@ -17,7 +17,7 @@ object DottyJSPlugin extends AutoPlugin {
       config => config.withModuleKind(ModuleKind.ESModule)
 
     val switchToLatestESVersion: StandardConfig => StandardConfig =
-      config => config.withESFeatures(_.withESVersion(ESVersion.ES2021))
+      config => config.withESFeatures(_.withESVersion(ESVersion.ES2026))
 
     val enableWebAssembly: SettingKey[Boolean] =
       settingKey("enable all the configuration items required for WebAssembly")
@@ -30,11 +30,11 @@ object DottyJSPlugin extends AutoPlugin {
 
   override def requires: Plugins = ScalaJSPlugin
 
-  override def globalSettings: Seq[Setting[_]] = Def.settings(
+  override def globalSettings: Seq[Setting[?]] = Def.settings(
     enableWebAssembly := false,
   )
 
-  override def projectSettings: Seq[Setting[_]] = Def.settings(
+  override def projectSettings: Seq[Setting[?]] = Def.settings(
 
     /* #11709 Remove the dependency on scala3-library that ScalaJSPlugin adds.
      * Instead, in this build, we use `.dependsOn` relationships to depend on
@@ -60,7 +60,8 @@ object DottyJSPlugin extends AutoPlugin {
       if (enableWebAssembly.value) {
         prev
           .withModuleKind(ModuleKind.ESModule)
-          .withExperimentalUseWebAssembly(true)
+          .withESFeatures(_.withESVersion(ESVersion.ES2022).withUseWebAssembly(true))
+          .withWasmFeatures(_.withUseJSPI(true))
       } else {
         prev
       }

@@ -5,7 +5,7 @@ package core
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
-import Contexts.*, Names.*, Phases.*, Symbols.*
+import Contexts.*, Names.*, Phases.*, Symbols.*, Types.*
 import printing.{ Printer, Showable }, printing.Formatting.*, printing.Texts.*
 import transform.MegaPhase
 import reporting.{Message, NoExplanation}
@@ -29,28 +29,6 @@ object Decorators {
         if (idx == -1) None
         else Some((s.take(idx), s.drop(if (doDropIndex) idx + 1 else idx)))
       splitAt(s.indexWhere(f), doDropIndex)
-
-    /** Create a term name from a string slice, using a common buffer.
-     *  This avoids some allocation relative to `termName(s)`
-     */
-    def sliceToTermName(start: Int, end: Int)(using Context): SimpleName =
-      val len = end - start
-      val chars = ctx.base.sharedCharArray(len)
-      s.getChars(start, end, chars, 0)
-      termName(chars, 0, len)
-
-    def sliceToTypeName(start: Int, end: Int)(using Context): TypeName =
-      sliceToTermName(start, end).toTypeName
-
-    def concat(name: Name)(using Context): SimpleName = name match
-      case name: SimpleName =>
-        val len = s.length + name.length
-        var chars = ctx.base.sharedCharArray(len)
-        s.getChars(0, s.length, chars, 0)
-        if name.length != 0 then name.getChars(0, name.length, chars, s.length)
-        termName(chars, 0, len)
-      case name: TypeName => s.concat(name.toTermName)
-      case _ => termName(s.concat(name.toString))
 
     def indented(width: Int): String =
       val padding = " " * width
@@ -79,6 +57,24 @@ object Decorators {
       }
       NoSymbol
     }
+
+  extension (tp: Type)
+    /** Replace synthetic parameter names (`x$0`, `x$1`, ...) of any method
+     *  type group in `tp` (recursing through curried `MethodType`s and
+     *  through `PolyType` result types) with dollar-free names (`x0`,
+     *  `x1`, ...). Lets a printed signature be reused as a valid Scala
+     *  identifier - e.g. in stub implementations or "method is not
+     *  defined" diagnostics.
+     */
+    def withCleanParamNames(using Context): Type = tp match
+      case mt: MethodType if mt.allParamNamesSynthetic =>
+        val newNames = mt.paramNames.zipWithIndex.map((_, i) => termName("x" + i))
+        mt.derivedLambdaType(newNames, mt.paramInfos, mt.resType.withCleanParamNames)
+      case mt: MethodType =>
+        mt.derivedLambdaType(mt.paramNames, mt.paramInfos, mt.resType.withCleanParamNames)
+      case pt: PolyType =>
+        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, pt.resType.withCleanParamNames)
+      case _ => tp
 
   inline val MaxFilterRecursions = 10
 

@@ -39,8 +39,8 @@ Separation checking is an extension of capture checking that enforces unique, un
 import language.experimental.separationChecking
 ```
 (or the corresponding setting `-language:experimental.separationChecking`).
-The import has to be given in addition to the `language.experimental.captureChecking` import that enables capture checking.
-The reason for the second language import is that separation checking is less mature than capture checking proper, so we are less sure
+
+The reason for this separate language import is that separation checking is less mature than capture checking proper, so we are less sure
 we got the balance of safety and expressivity right for it at the present time.
 
 In capture checking, each occurrence of [`any`](scoped-capabilities.md), and therefore each use of `^`, has a context-dependent meaning that is tied to the lifetime of capabilities. Separation checking refines that model. It keeps track of the capabilities hidden by each `any` and enforces that these hidden sets are either separated or overlap only where the types permit it.
@@ -323,6 +323,41 @@ def consumeMethods(): Unit =
   // b cannot be used from here
 ```
 This code is equivalent to functional append with `+`, and is at the same time more efficient since it re-uses the storage of the argument buffer.
+
+## Consume Parameters of Case Classes
+
+Case classes with consume parameters in their first parameter section are called _linear case classes_. They differ in some aspects from other case classes. Here is an example:
+
+```scala sc:nocompile
+trait FreshList[+A]
+
+case class FreshCons[+A](consume head: A^, consume tail: FreshList[A]^) extends FreshList[A]
+
+object FreshNil extends FreshList[Nothing]
+```
+As implied by `consume`, arguments to linear case class constructors are consumed in the constrictor call. Furthermore, extracting arguments with an `unapply` is also linear. So one can do the following
+```scala sc:nocompile
+class Ref extends Mutable
+
+val xs: FreshList[Ref^{}]^ = FreshCons(Ref(), FreshCons(Ref(), FreshNil))
+
+val ys: FreshList[Ref^{}]^ = xs match
+  case FreshCons(h, t) =>
+    FreshCons(h, t)
+
+// xs no longer available here
+```
+Here, the implicit `unapply` in the pattern match `case FreshCons(h, t) =>` consumes the `xs` selector. Conversely, the extracted field values `h` and `t` are again treated as fresh, of types `Ref^` and `FreshList[Ref^{}]^`, so they can be used as consumed parameters in the second `FreshCons` constructor call.
+
+Specifically, expanding a linear case class propagates `consume` as follows:
+
+ - Parameters of the generated `apply` and `copy` methods are marked `consume` if the the corresponding case class parameters are marked `consume`.
+ - Element selectors `_1`, `_2`, ... are marked `consume` if the corresponding
+ case class parameters are marked `consume`.
+ - If the case class is linear, its `copy` and `unapply` methods are marked `consume`.
+
+Note that the `productElement` and `productIterator` methods that are declared in `Product` and inherited by each case class cannot be marked `consume`. Hence, linear case class elements can be extracted multiple times using these methods, but only at type `Any`. This constitutes no breach of capability safety, since `Any` is not a `Matchable` type and therefore cannot be safely downcast to
+a type that would be able to exploit the leaked capabilities.
 
 ## The `freeze` Wrapper
 

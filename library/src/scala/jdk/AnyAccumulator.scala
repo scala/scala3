@@ -66,6 +66,7 @@ final class AnyAccumulator[A]
   /** Appends an element to this `AnyAccumulator`.
    *
    *  @param a the element to append
+   *  @return this `AnyAccumulator`, to allow chaining of `addOne` calls
    */
   def addOne(a: A): this.type = {
     totalSize += 1
@@ -139,7 +140,8 @@ final class AnyAccumulator[A]
 
   /** Retrieves the `ix`th element.
    *
-   *  @param ix the zero-based index of the element to retrieve, as a `Long`
+   *  @param ix the zero-based index of the element to retrieve
+   *  @return the element at position `ix`
    */
   def apply(ix: Long): A = {
     if (totalSize - ix <= index || hIndex == 0) current((ix - (totalSize - index)).toInt).asInstanceOf[A]
@@ -152,6 +154,7 @@ final class AnyAccumulator[A]
   /** Retrieves the `ix`th element, using an `Int` index.
    *
    *  @param i the zero-based index of the element to retrieve
+   *  @return the element at position `i`
    */
   def apply(i: Int): A = apply(i.toLong)
 
@@ -179,6 +182,8 @@ final class AnyAccumulator[A]
   /** Copies the elements in this `AnyAccumulator` into an `Array`.
    *
    *  @tparam B the element type of the resulting array, must be a supertype of `A`
+   *  @return a new array containing all elements of this `AnyAccumulator` in order
+   *  @throws IllegalArgumentException if the total size exceeds `Int.MaxValue`
    */
   override def toArray[B >: A : ClassTag]: Array[B] = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for an array: "+totalSize.toString)
@@ -233,6 +238,8 @@ final class AnyAccumulator[A]
    *
    *  @tparam C1 the type of the resulting collection
    *  @param factory the factory used to build the target collection
+   *  @return a collection of type `C1` containing all elements of this `AnyAccumulator`
+   *  @throws IllegalArgumentException if the total size exceeds `Int.MaxValue`
    */
   override def to[C1](factory: Factory[A, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)
@@ -254,12 +261,14 @@ object AnyAccumulator extends collection.SeqFactory[AnyAccumulator] {
   /** A `Supplier` of `AnyAccumulator`s, suitable for use with `java.util.stream.Stream`'s `collect` method.
    *
    *  @tparam A the element type of the accumulator to supply
+   *  @return a `Supplier` that creates a new empty `AnyAccumulator[A]` on each invocation
    */
   def supplier[A]: jf.Supplier[AnyAccumulator[A]] = () => new AnyAccumulator[A]
 
   /** A `BiConsumer` that adds an element to an `AnyAccumulator`, suitable for use with `java.util.stream.Stream`'s `collect` method.
    *
    *  @tparam A the element type to add to the accumulator
+   *  @return a `BiConsumer` that appends its second argument to the `AnyAccumulator` given as its first argument
    */
   def adder[A]: jf.BiConsumer[AnyAccumulator[A], A] = (ac: AnyAccumulator[A], a: A) => ac addOne a
 
@@ -275,6 +284,7 @@ object AnyAccumulator extends collection.SeqFactory[AnyAccumulator] {
   /** A `BiConsumer` that merges `AnyAccumulator`s, suitable for use with `java.util.stream.Stream`'s `collect` method.
    *
    *  @tparam A the element type of the accumulators to merge
+   *  @return a `BiConsumer` that drains the elements of the second `AnyAccumulator` into the first, leaving the second empty
    */
   def merger[A]: jf.BiConsumer[AnyAccumulator[A], AnyAccumulator[A]] = (a1: AnyAccumulator[A], a2: AnyAccumulator[A]) => a1 drain a2
 

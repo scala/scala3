@@ -14,5 +14,5 @@ object AnObject/*<-_empty_::AnObject.*/ {
   List/*->scala::package.List.*/.`apply`/*->scala::collection::IterableFactory#apply().*/()
   println/*->scala::Predef.println(+1).*/(1 +/*->scala::Int#`+`(+4).*/ 2)
 
-  case class Foo/*<-_empty_::AnObject.Foo#*/(x/*<-_empty_::AnObject.Foo#x.*/: Int/*->scala::Int#*/)
+  case class Foo/*<-_empty_::AnObject.Foo#*/(x/*<-_empty_::AnObject.Foo#x.*//*<-_empty_::AnObject.Foo#`<init>`().(x)*/: Int/*->scala::Int#*/)
 }

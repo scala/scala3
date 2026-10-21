@@ -3,7 +3,7 @@ package dotty.tools.dotc.profile
 import scala.annotation.internal.sharable
 
 // Based on NameTransformer but dedicated for JSON encoding rules
-object JsonNameTransformer {
+private [profile] object JsonNameTransformer {
   private val nops = 128
 
   @sharable private val op2code = new Array[String](nops)
@@ -19,21 +19,21 @@ object JsonNameTransformer {
   enterOp('\t', "\\t")
 
   def encode(name: String): String = {
-    var buf: StringBuilder = null.asInstanceOf
+    var buf: java.lang.StringBuilder = null.asInstanceOf
     val len = name.length
     var i = 0
     while (i < len) {
       val c = name(i)
       if (c < nops && (op2code(c.toInt) ne null)) {
         if (buf eq null) {
-          buf = new StringBuilder()
-          buf.append(name.subSequence(0, i))
+          buf = new java.lang.StringBuilder()
+          buf.append(name, 0, i)
         }
         buf.append(op2code(c.toInt))
       } else if (c <= 0x1F || c >= 0x7F) {
         if (buf eq null) {
-          buf = new StringBuilder()
-          buf.append(name.subSequence(0, i))
+          buf = new java.lang.StringBuilder()
+          buf.append(name, 0, i)
         }
         buf.append("\\u%04X".format(c.toInt))
       } else if (buf ne null) {

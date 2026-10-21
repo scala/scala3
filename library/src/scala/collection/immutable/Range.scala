@@ -239,8 +239,7 @@ sealed abstract class Range(
     if (numRangeElements <= 0 && !isEmpty)
       fail()
   }
-  private def description = "%d %s %d by %s".format(start, if (isInclusive) "to" else "until", end, step)
-  private def fail() = throw new IllegalArgumentException(description + ": seqs cannot contain more than Int.MaxValue elements.")
+  private def fail() = Range.fail(start, end, step, isInclusive)
 
   @throws[IndexOutOfBoundsException]
   final def apply(idx: Int): Int = {
@@ -559,7 +558,7 @@ sealed abstract class Range(
   override def distinct: Range = this
 
   override def grouped(size: Int): Iterator[Range] = {
-    require(size >= 1, f"size=$size%d, but size must be positive")
+    require(size >= 1, s"size=$size, but size must be positive")
     if (isEmpty) {
       Iterator.empty
     } else {
@@ -594,6 +593,13 @@ sealed abstract class Range(
 /** Companion object for ranges. */
 object Range {
 
+  private def description(start: Int, end: Int, step: Int, isInclusive: Boolean): String =
+    s"$start ${if (isInclusive) "to" else "until"} $end by $step"
+
+  private def fail(start: Int, end: Int, step: Int, isInclusive: Boolean): Nothing =
+    throw new IllegalArgumentException(description(start, end, step, isInclusive) +
+        ": seqs cannot contain more than Int.MaxValue elements.")
+
   /** Counts the number of range elements.
    *  precondition:  step != 0
    *  If the size of the range exceeds Int.MaxValue, the
@@ -603,6 +609,7 @@ object Range {
    *  @param end the end value of the range (exclusive or inclusive depending on `isInclusive`)
    *  @param step the step value between consecutive elements, must be non-zero
    *  @param isInclusive whether `end` is included in the range
+   *  @return the number of elements in the range, `0` if the range is empty, or a negative value (modular wrap) if the count exceeds `Int.MaxValue`
    */
   def count(start: Int, end: Int, step: Int, isInclusive: Boolean): Int = {
     if (step == 0)
@@ -639,6 +646,7 @@ object Range {
    *  @param start the start value of the range
    *  @param end the exclusive end value of the range
    *  @param step the step value between consecutive elements, must be non-zero
+   *  @return a new exclusive `Range` from `start` (inclusive) to `end` (exclusive) with the given `step`
    */
   def apply(start: Int, end: Int, step: Int): Range.Exclusive = new Range.Exclusive(start, end, step)
 
@@ -646,6 +654,7 @@ object Range {
    *
    *  @param start the start value of the range
    *  @param end the exclusive end value of the range
+   *  @return a new exclusive `Range` from `start` (inclusive) to `end` (exclusive) with step `1`
    */
   def apply(start: Int, end: Int): Range.Exclusive = new Range.Exclusive(start, end, 1)
 
@@ -655,6 +664,7 @@ object Range {
    *  @param start the start value of the range
    *  @param end the inclusive end value of the range
    *  @param step the step value between consecutive elements, must be non-zero
+   *  @return a new inclusive `Range` from `start` to `end` (with `end` included only if reachable by `step` from `start`) with the given `step`
    */
   def inclusive(start: Int, end: Int, step: Int): Range.Inclusive = new Range.Inclusive(start, end, step)
 
@@ -662,6 +672,7 @@ object Range {
    *
    *  @param start the start value of the range
    *  @param end the inclusive end value of the range
+   *  @return a new inclusive `Range` from `start` to `end` (both inclusive) with step `1`
    */
   def inclusive(start: Int, end: Int): Range.Inclusive = new Range.Inclusive(start, end, 1)
 
@@ -730,7 +741,7 @@ private class RangeIterator(
   step: Int,
   lastElement: Int,
   initiallyEmpty: Boolean
-) extends AbstractIterator[Int] with Serializable { self =>
+) extends AbstractIterator[Int] with Serializable { self: RangeIterator =>
   private var _hasNext: Boolean = !initiallyEmpty
   private var _next: Int = start
   override def knownSize: Int = if (_hasNext) (lastElement - _next) / step + 1 else 0

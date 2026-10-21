@@ -1,2 +1,16 @@
-4: Pattern Match Exhaustivity: (_, _)
-8: Pattern Match Exhaustivity: (_, _)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9809.scala:4:4 -----
+4 |    case (_, b: Int) =>
+  |    ^
+  |    match may not be exhaustive.
+  |
+  |    It would fail on pattern case: (_, _)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9809.scala:8:4 -----
+8 |    case (_, b: Int) =>
+  |    ^
+  |    match may not be exhaustive.
+  |
+  |    It would fail on pattern case: (_, _)
+  |
+  | longer explanation available when compiling with `-explain`

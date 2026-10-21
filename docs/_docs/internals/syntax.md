@@ -161,7 +161,7 @@ SimpleLiteral     ::=  [‘-’] integerLiteral
                     |  characterLiteral
                     |  stringLiteral
 Literal           ::=  SimpleLiteral
-                    |  interpolatedStringLiteral
+                    |  interpolatedString
                     |  symbolLiteral
                     |  ‘null’
 
@@ -182,10 +182,10 @@ Type              ::=  FunType
                     |  FunParamClause ‘=>>’ Type                                TermLambdaTypeTree(ps, t)
                     |  MatchType
                     |  InfixType
-FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type                          Function(ts, t) | FunctionWithMods(ts, t, mods, erasedParams)
+FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type                          Function(ts, t) | FunctionWithMods(ts, t, mods)
                     |  FunTypeArgs (‘->’ | ‘?->’) [CaptureSet] Type             -- under pureFunctions and captureChecking
                     |  TypTypeParamClause ‘=>’ Type                             PolyFunction(ps, t)
-                    |  TypTypeParamClause ‘->’ [CaptureSet] Type                -- under pureFunctions and captureChecking
+                    |  TypTypeParamClause ‘->’ Type                             -- under pureFunctions and captureChecking
 FunTypeArgs       ::=  InfixType
                     |  ‘(’ [ FunArgTypes ] ‘)’
                     |  FunParamClause
@@ -236,8 +236,10 @@ TypeBound         ::=  Type
 NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
 NameAndType       ::=  id ':' Type
 CaptureSet        ::=  '{' CaptureRef {',' CaptureRef} '}'                      -- under captureChecking
-CaptureRef        ::=  { SimpleRef '.' } SimpleRef ['*'] [CapFilter] ['.' 'rd'] -- under captureChecking
-CapFilter         ::=  '.' 'only' '[' QualId ']'                                -- under captureChecking
+CaptureRef        ::=  { SimpleRef '.' } SimpleRef
+                       [OnlyFilter] {ExceptFilter} ['.' 'rd']                   -- under captureChecking
+OnlyFilter        ::=  '.' 'only' '[' QualId ']'                                -- under captureChecking
+ExceptFilter      ::=  '.' 'except' '[' QualId ']'                              -- under captureChecking
 ```
 
 ### Expressions

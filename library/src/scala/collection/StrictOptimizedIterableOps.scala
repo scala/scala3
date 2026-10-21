@@ -150,7 +150,7 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     val it = iterator
     while (it.hasNext) {
       val elem = it.next()
-      val v = pf.applyOrElse(elem, ((x: A) => marker).asInstanceOf[Function[A, B]])
+      val v = pf.applyOrElse(elem, ((_: A) => marker).asInstanceOf[Function[A, B]])
       if (marker ne v.asInstanceOf[AnyRef]) b += v
     }
     b.result()
@@ -256,6 +256,7 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
    *  $willForceEvaluation
    *
    *  @param n the number of elements to take from the end of this collection
+   *  @return a new collection containing the last `n` elements of this collection, or all elements if `n` is greater than the size, or an empty collection if `n` is non-positive
    */
   override def takeRight(n: Int): C = {
     val b = newSpecificBuilder
@@ -275,6 +276,7 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
    *  $willForceEvaluation
    *
    *  @param n the number of elements to drop from the end of this collection
+   *  @return a new collection containing all elements of this collection except the last `n`, or an empty collection if `n` is greater than or equal to the size, or all elements if `n` is non-positive
    */
   override def dropRight(n: Int): C = {
     val b = newSpecificBuilder

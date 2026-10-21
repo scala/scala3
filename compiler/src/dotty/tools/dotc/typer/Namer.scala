@@ -194,13 +194,29 @@ class Namer { typer: Typer =>
             simple.length == 2 && simple.endsWith(str.EXPAND_SEPARATOR)
           }
       }
+    // Desugaring of objects / enum cases can drop the Backquoted attachment, so also
+    // treat names that are already enclosed in backticks in the source as exempt.
+    // After atNameSpan, span.point is either on the opening backtick (e.g. comma enum
+    // cases) or just after it (most other defs).
+    def alreadyBackquotedInSource: Boolean =
+      val span = tree.span
+      if !span.exists || span.isSynthetic then false
+      else
+        val content = tree.source.textContent()
+        val point = span.point
+        content.length > point && (
+          content(point) == '`'
+          || point > 0 && content(point - 1) == '`'
+        )
     def exempt =
          isBackquoted(tree)
+      || alreadyBackquotedInSource
       || tree.span.isSynthetic
       || flags.isOneOf(Synthetic | Accessor | CaseAccessor) // check the case param not the accessor
       || flags.is(Param) && ctx.owner.is(Synthetic)
       || isDollars
-    if !exempt && (isModule || !name.toTermName.isInstanceOf[DerivedName]) then
+    // no point in warning about $ in Java, there are no backticks to insert nor other ways to suppress such a warning
+    if !flags.is(JavaDefined) && !exempt && (isModule || !name.toTermName.isInstanceOf[DerivedName]) then
       val simple = name.toSimpleName
       val max = if isModule then simple.length - 1 else simple.length
       val last = simple.lastIndexOf('$', start = max - 1)
@@ -368,7 +384,7 @@ class Namer { typer: Typer =>
         case d: PackageClassDenotation =>
           // Remove existing members coming from a previous compilation of this file,
           // they are obsolete.
-          d.unlinkFromFile(ctx.source.file)
+          d.unlinkFromFile(ctx.source.path)
         case _ =>
       }
       existing
@@ -538,7 +554,7 @@ class Namer { typer: Typer =>
       ann.symbol == defn.ChildAnnot && !ann.isEvaluating
     def insertInto(annots: List[Annotation]): List[Annotation] =
       annots.find(isReady) match {
-        case Some(Annotation.Child(other)) if other.span.exists && childStart <= other.span.start =>
+        case Some(Annotation.NonStaleChild(other)) if other.span.exists && childStart <= other.span.start =>
           if (child == other)
             annots // can happen if a class has several inaccessible children
           else {
@@ -600,7 +616,7 @@ class Namer { typer: Typer =>
         if (tree == modCls) {
           val fromTempl = fromCls.rhs.asInstanceOf[Template]
           val modTempl = modCls.rhs.asInstanceOf[Template]
-          res = cpy.TypeDef(modCls)(
+          val r = cpy.TypeDef(modCls)(
             rhs = cpy.Template(modTempl)(
               derived = if (fromTempl.derived.nonEmpty) fromTempl.derived else modTempl.derived,
               body = fromTempl.body.filter {
@@ -611,10 +627,10 @@ class Namer { typer: Typer =>
           if (fromTempl.derived.nonEmpty) {
             if (modTempl.derived.nonEmpty)
               report.error(em"a class and its companion cannot both have `derives` clauses", mdef.srcPos)
-            // `res` is inside a closure, so the flow-typing doesn't work here.
-            res.uncheckedNN.putAttachment(desugar.DerivingCompanion, fromTempl.srcPos.startPos)
+            r.putAttachment(desugar.DerivingCompanion, fromTempl.srcPos.startPos)
           }
-          res.uncheckedNN
+          res = r
+          r
         }
         else tree
       }
@@ -936,8 +952,9 @@ class Namer { typer: Typer =>
       completedTypeParamSyms = tparams
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
-      if completedTypeParamSyms != null then completedTypeParamSyms.uncheckedNN
-      else Nil
+      completedTypeParamSyms match
+        case null => Nil
+        case cpts => cpts
 
     protected def addAnnotations(sym: Symbol): Unit = original match {
       case original: untpd.MemberDef =>
@@ -974,8 +991,6 @@ class Namer { typer: Typer =>
      */
     private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit =
 
-      def isJavaRecord(owner: Symbol) =
-        owner.is(JavaDefined) && owner.derivesFrom(defn.JavaRecordClass)
 
       def isCaseClassOrCompanion(owner: Symbol) =
         owner.isClass && {
@@ -1001,7 +1016,7 @@ class Namer { typer: Typer =>
           )
           ||
           // remove synthetic constructor or method of a java Record if it clashes with a non-synthetic constructor
-          (isJavaRecord(denot.owner)
+          (denot.owner.isJavaRecord
             && denot.is(Method)
             && denot.owner.unforcedDecls.lookupAll(denot.name).exists(c => c != denot.symbol && c.info.matches(denot.info))
           )
@@ -1021,7 +1036,7 @@ class Namer { typer: Typer =>
       val sym = denot.symbol
 
       def register(child: Symbol, parentCls: ClassSymbol) = {
-        if (parentCls.is(Sealed))
+        if (parentCls.is(Sealed) && !(child.isAnonymousClass && parentCls.isSpecializedTrait))
           if ((child.isInaccessibleChildOf(parentCls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
             addChild(parentCls, parentCls)
           else if (!parentCls.is(ChildrenQueried))
@@ -1099,10 +1114,11 @@ class Namer { typer: Typer =>
       }
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
-      if myTypeParams == null then
+      initialize(myTypeParams, myTypeParams = _, {
         //println(i"completing type params of $sym in ${sym.owner}")
-        nestedCtx = localContext(sym).setNewScope
-        given Context = nestedCtx.uncheckedNN
+        val newScope = localContext(sym).setNewScope
+        nestedCtx = newScope
+        given Context = newScope
 
         def typeParamTrees(tdef: Tree): List[TypeDef] = tdef match
           case TypeDef(_, original) =>
@@ -1114,10 +1130,11 @@ class Namer { typer: Typer =>
 
         val tparams = typeParamTrees(original)
         index(tparams)
-        myTypeParams = tparams.map(symbolOfTree(_).asType)
+        val res = tparams.map(symbolOfTree(_).asType)
+        myTypeParams = res
         for param <- tparams do typedAheadExpr(param)
-      end if
-      myTypeParams.uncheckedNN
+        res
+      })
     end completerTypeParams
 
     override final def typeSig(sym: Symbol): Type =
@@ -1244,8 +1261,11 @@ class Namer { typer: Typer =>
           val path = typedAhead(expr, _.withType(pathMethod.termRef))
           (path, pathMethod.info.finalResultType)
         else
-          val path = typedAheadExpr(expr, AnySelectionProto)
-          checkLegalExportPath(path, selectors)
+          // Local owner avoids clashes, which improves error reporting (#21976)
+          val path = typedAheadExpr(expr, AnySelectionProto)(using ctx.withOwner(newLocalDummy(cls, exp.span)))
+          // Nothing to forward from an illegal path, forwarders would only add errors (#21976)
+          if !checkLegalExportPath(path, selectors) then
+            return Nil
           (path, path.tpe)
       lazy val wildcardBound = importBound(selectors, isGiven = false)
       lazy val givenBound = importBound(selectors, isGiven = true)
@@ -1264,7 +1284,9 @@ class Namer { typer: Typer =>
                it suffices to check if symbol is the same class. */
             cls == id.symbol
           case _ => false
-        if !sym.isAccessibleFrom(pathType) then
+        if mbr.info.isInstanceOf[ErrorType] then
+          No("already has an error")
+        else if !sym.isAccessibleFrom(pathType) then
           No("is not accessible")
         else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(PhantomSymbol) || sym.isAllOf(JavaModule) then
           Skip
@@ -1392,6 +1414,7 @@ class Namer { typer: Typer =>
                   (EmptyFlags, mbrInfo)
               var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
               if sym.is(Erased) then mbrFlags |= Inline
+              if sym.is(Module) then mbrFlags |= Accessor
               if pathMethod.exists then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
@@ -1929,10 +1952,9 @@ class Namer { typer: Typer =>
 
       // We cannot rely on `typedInLambdaTypeTree` since the computed type might not be fully-defined.
       case InLambdaTypeTree(/*isResult =*/ true, tpFun) =>
-        // A lambda has at most one type parameter list followed by exactly one term parameter list.
-        val tpe = (paramss: @unchecked) match
-          case TypeSymbols(tparams) :: TermSymbols(vparams) :: Nil => tpFun(tparams, vparams)
+        val tpe = paramss.runtimeChecked match
           case TermSymbols(vparams) :: Nil => tpFun(Nil, vparams)
+          case TypeSymbols(tparams) :: Nil => tpFun(tparams, Nil)
         val rhsCtx = prepareRhsCtx(ctx.fresh, paramss)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
         else typedAheadExpr(mdef.rhs, tpe)(using rhsCtx).tpe
@@ -2154,7 +2176,7 @@ class Namer { typer: Typer =>
   )(using Context): Type =
     /** Is this member tracked? This is true if it is marked as `tracked` or if
      *  it overrides a `tracked` member. To account for the later, `isTracked`
-     *  is overriden to `true` as a side-effect of computing `inherited`.
+     *  is overridden to `true` as a side-effect of computing `inherited`.
      */
     var isTracked: Boolean = sym.is(Tracked)
 
@@ -2276,7 +2298,7 @@ class Namer { typer: Typer =>
         // See i21558, the default argument new A(1.0) is of type A[?T]
         // With an uninterpolated, invariant ?T type variable.
         // So before we return the default getter parameter type (A[? <: Double])
-        // we want to force ?T to instantiate, so it's poly is removed from the constraint
+        // we want to force ?T to instantiate, so its poly is removed from the constraint
         isFullyDefined(tp, ForceDegree.all)
         // When possible, widen to the default getter parameter type to permit a
         // larger choice of overrides (see `default-getter.scala`).
