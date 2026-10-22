@@ -215,7 +215,7 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
 
   /** The content of the line containing position `offset` */
   def lineContent(offset: Int): String =
-    if substring.isEmpty then
+    if textContent.isEmpty then
       ""
     else
       textContent.substring(startOfLine(offset), nextLine(offset))
