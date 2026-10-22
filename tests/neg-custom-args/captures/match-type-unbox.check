@@ -1,0 +1,54 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/match-type-unbox.scala:15:16 -----------------------------
+15 |  val a: C = fst((c, 1)) // error
+   |             ^^^^^^^^^^^
+   |             Found:    C^{c}
+   |             Required: C
+   |
+   |             Note that capability `c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/match-type-unbox.scala:16:22 -----------------------------
+16 |  val l: () -> Unit = () => fst((c, 1)).use() // error
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^
+   |                      Found:    () ->{c} Unit
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/match-type-unbox.scala:17:23 -----------------------------
+17 |  val m: () -> C^{c} = () => fst((c, 1)) // error
+   |                       ^^^^^^^^^^^^^^^^^
+   |                       Found:    () ->{c} C^{c}
+   |                       Required: () -> C^{c}
+   |
+   |                       Note that capability `c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/match-type-unbox.scala:18:30 -----------------------------
+18 |  val h: () -> C^{c} = lazyFst((c, 1)) // error
+   |                       ^^^^^^^^^^^^^^^
+   |                       Found:    () ->{c} C^{c}
+   |                       Required: () -> C^{c}
+   |
+   |                       Note that capability `c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/match-type-unbox.scala:20:22 -----------------------------
+20 |  val k: () -> Unit = () => x.use() // error
+   |                      ^^^^^^^^^^^^^
+   |                      Found:    () ->{x} Unit
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `x` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/match-type-unbox.scala:24:22 -----------------------------
+24 |  val g: () -> Unit = () => fst((f, 1))() // error
+   |                      ^^^^^^^^^^^^^^^^^^^
+   |                      Found:    () ->{f} Unit
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `f` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
