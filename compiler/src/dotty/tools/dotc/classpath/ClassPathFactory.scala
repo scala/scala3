@@ -95,7 +95,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
         try new URI(entry)
         catch case _: URISyntaxException => return None
       if uri.getScheme == null then
-        Some(Path(java.nio.file.Path.of(uri.getPath))) // Path.of(URI) refuses scheme-less URIs
+        Some(baseDir.resolve(Path(uri.getPath)))
       else if uri.getScheme.toLowerCase(Locale.ROOT) == "file" then
         Some(Path(java.nio.file.Path.of(uri)))
       else
