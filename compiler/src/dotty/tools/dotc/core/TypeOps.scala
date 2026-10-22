@@ -888,13 +888,15 @@ object TypeOps:
         case tp: TypeRef if !tp.symbol.isClass =>
           if initialGadt.contains(tp.symbol) then tp
           else
-            boundTypeParams.getOrElseUpdate(tp, {
-              val TypeBounds(lo, hi) = tp.underlying.bounds
-              val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
-              assert(tv <:< apply(hi))
-              apply(lo) <:< tv //  no assert, since bounds might conflict
-              tv
-            })
+            boundTypeParams.get(tp) match
+              case None =>
+                val TypeBounds(lo, hi) = tp.underlying.bounds
+                val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
+                boundTypeParams(tp) = tv
+                assert(tv <:< apply(hi))
+                apply(lo) <:< tv //  no assert, since bounds might conflict
+                tv
+              case Some(tv) => tv
 
         case tp @ AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass && !tp.isMatchAlias =>
           // In tests/patmat/i3645g.scala, we need to tell whether it's possible
