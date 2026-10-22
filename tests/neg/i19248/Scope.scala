@@ -1,4 +1,4 @@
 object Scope {
 }
-object Foo {
+object Foo { // error
 }

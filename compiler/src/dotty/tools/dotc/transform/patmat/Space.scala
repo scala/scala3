@@ -279,7 +279,8 @@ object SpaceEngine {
         else a
       case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
         // rationale: every instance of `tp1` is covered by `tp2(_)`
-        if isSubType(tp1.stripNamedTuple, tp2) && covers(fun, tp1, ss.length) then
+        val applicable = isSubType(tp1.stripNamedTuple, tp2) || tp1.classSymbol == tp2.classSymbol
+        if applicable && covers(fun, tp1, ss.length) then
           minus(Prod(tp1, fun, signature(fun, tp1, ss.length).map(Typ(_, false))), b)
         else if canDecompose(a) then minus(Or(decompose(a)), b)
         else a
@@ -312,6 +313,12 @@ object SpaceEngine {
     }
   }
 
+  /** If `unapp` is the synthetic extractor of a Java record, the record type, otherwise None */
+  private def javaRecordUnapplyParam(unapp: TermRef)(using Context): Option[Type] =
+    if unapp.symbol.is(Synthetic) then
+      unapp.widen.firstParamTypes.headOption.filter(_.classSymbol.isJavaRecord)
+    else None
+
   /** Is the unapply or unapplySeq irrefutable?
    *  @param  unapp   The unapply function reference
    */
@@ -322,6 +329,7 @@ object SpaceEngine {
     || (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))  // scala2 compatibility
     || unapplySeqTypeElemTp(unappResult).exists // only for unapplySeq
     || isProductMatch(unappResult.stripNamedTuple, argLen)
+    || javaRecordUnapplyParam(unapp).isDefined // a Java record's extractor always matches
     || extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition) <:< ConstantType(Constant(false))
     || unappResult.derivesFrom(defn.NonEmptyTupleClass)
     || unapp.symbol == defn.TupleXXL_unapplySeq // Fixes TupleXXL.unapplySeq which returns Some but declares Option
@@ -555,9 +563,15 @@ object SpaceEngine {
     def isStable(tp: TermRef) =
       !tp.symbol.is(ExtensionMethod) // The "prefix" of an extension method may be, but the receiver isn't, so exclude
       && tp.prefix.isStable
-    // always assume two TypeTest[S, T].unapply are the same if they are equal in types
-    (isStable(tp1) && isStable(tp2) || tp1.symbol == defn.TypeTest_unapply)
-    && tp1 =:= tp2
+    // The synthetic extractor of a Java record lives in a fresh anonymous class for
+    // each pattern, so its prefix is neither stable nor equal across patterns. Treat
+    // two such extractors as the same when they unapply the same record type.
+    (javaRecordUnapplyParam(tp1), javaRecordUnapplyParam(tp2)) match
+      case (Some(rec1), Some(rec2)) => rec1 =:= rec2
+      case _ =>
+        // always assume two TypeTest[S, T].unapply are the same if they are equal in types
+        (isStable(tp1) && isStable(tp2) || tp1.symbol == defn.TypeTest_unapply)
+        && tp1 =:= tp2
   }
 
   /** Return term parameter types of the extractor `unapp`.
@@ -728,7 +742,7 @@ object SpaceEngine {
           val refined = trace(i"refineUsingParent($tp, $sym1, $mixins)")(TypeOps.refineUsingParent(tp, sym1, mixins))
 
           def containsUninhabitedField(tp: Type): Boolean =
-            !tp.typeSymbol.is(ModuleClass) && tp.fields.exists { field =>
+            !sym.is(JavaDefined) && !tp.typeSymbol.is(ModuleClass) && tp.fields.exists { field =>
               !field.symbol.flags.is(Lazy) && field.info.dealias.isBottomType
             }
 
@@ -891,6 +905,8 @@ object SpaceEngine {
         else if tp.isRef(defn.ConsType.symbol) then
           val body = params.map(doShow(_, flattenList = true)).filter(_.nonEmpty).mkString(", ")
           if flattenList then body else s"List($body)"
+        else if tp.classSymbol.isJavaRecord then
+          tp.typeConstructor.show + params.map(doShow(_)).mkString("(", ", ", ")")
         else
           val isUnapplySeq = fun.symbol.name eq nme.unapplySeq
           val paramsStr = params.map(doShow(_, flattenList = isUnapplySeq)).mkString("(", ", ", ")")
@@ -922,7 +938,7 @@ object SpaceEngine {
       }) ||
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnum) ||
-      classSym.is(Case) || tpw.isNamedTupleType ||
+      classSym.is(Case) || classSym.isJavaRecord || tpw.isNamedTupleType ||
       (tpw.isInstanceOf[TypeRef] && {
         val tref = tpw.asInstanceOf[TypeRef]
         tref.isUpperBoundedAbstract && isCheckable(tref.info.hiBound)
@@ -955,7 +971,7 @@ object SpaceEngine {
     case tp: SingletonType                          => toUnderlying(tp.underlying)
     case tp: ExprType                               => toUnderlying(tp.resultType)
     case AnnotatedType(tp, annot)                   => AnnotatedType(toUnderlying(tp), annot)
-    case tp: FlexibleType                           => tp.derivedFlexibleType(toUnderlying(tp.underlying))
+    case tp @ FlexibleType(hi)                      => tp.derivedFlexibleType(toUnderlying(hi))
     case _                                          => tp
   })
 
@@ -1065,7 +1081,7 @@ object SpaceEngine {
     val (space, maybePartial) = resolveCaseDef(c, project)
     if maybePartial then Empty else space
 
-  def checkExhaustivity(m: Match)(using Context): Unit = trace(i"checkExhaustivity($m)") {
+  def checkExhaustivity(m: Match)(using Context): Boolean = trace(i"checkExhaustivity($m)") {
     val selTyp = toUnderlying(m.selector.tpe.stripUnsafeNulls()).dealias
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
@@ -1084,6 +1100,9 @@ object SpaceEngine {
     if uncovered.nonEmpty then
       val deduped = dedup(uncovered)
       report.warning(PatternMatchExhaustivity(deduped, m), m.selector)
+      false
+    else
+      true
   }
 
   private def reachabilityCheckable(sel: Tree)(using Context): Boolean =
@@ -1099,7 +1118,7 @@ object SpaceEngine {
 
   def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)"):
     val selTyp = toUnderlying(m.selector.tpe).dealias
-    val isNullable = selTyp.isInstanceOf[FlexibleType] || selTyp.classSymbol.isNullableClass
+    val isNullable = FlexibleType.isInstance(selTyp) || selTyp.classSymbol.isNullableClass
     val targetSpace = trace(i"targetSpace($selTyp)"):
       if isNullable && !ctx.mode.is(Mode.SafeNulls)
       then project(OrType(selTyp, ConstantType(Constant(null)), soft = false))
@@ -1127,9 +1146,14 @@ object SpaceEngine {
             then
               if isSubspace(covered, prev) then
                 report.warning(MatchCaseUnreachable(), pat.srcPos)
-              else if isNullable && !hadNullOnly && isWildcardArg(pat)
-                && isSubspace(covered, Or(prev :: nullSpace :: Nil)) then
+              else if isNullable
+                && (!ctx.mode.is(Mode.SafeNulls) || FlexibleType.isInstance(selTyp))
+                && isWildcardArg(pat)
+                && isSubspace(covered, Or(prev :: nullSpace :: Nil))
+                && !hadNullOnly
+              then
                 // Issue OnlyNull warning only if:
+                // 0. Explicit nulls are disabled or the type of the selector is a flexible type;
                 // 1. The target space is nullable;
                 // 2. OnlyNull warning has not been issued before;
                 // 3. The pattern is a wildcard pattern;
@@ -1145,12 +1169,16 @@ object SpaceEngine {
     recur(m.cases, Nil, Nil)
   end checkReachability
 
-  def checkMatch(m: Match)(using Context): Unit =
-    inContext(ctx.withProperty(IsSubspaceCacheKey, Some(mutable.HashMap.empty))) {
-      if exhaustivityCheckable(m.selector) then
+  /** Returns `true` if the match is definitely exhaustive. */
+  def checkMatch(m: Match)(using Context): Boolean =
+    // `maximizeType` adds pattern-bound symbols to the GADT state of its context:
+    // keep them local to this match rather than the phase (and run) context.
+    inContext(ctx.fresh.setFreshGADTBounds.setProperty(IsSubspaceCacheKey, mutable.HashMap.empty)) {
+      val isExhaustive = exhaustivityCheckable(m.selector) &&
         inContext(ctx.withProperty(ExpandingCaseClassesKey, Some(mutable.Set.empty))) {
           checkExhaustivity(m)
         }
       if reachabilityCheckable(m.selector) then checkReachability(m)
+      isExhaustive
     }
 }

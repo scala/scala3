@@ -1,9 +1,9 @@
 // cf. pos/t8300-patmat-b.scala
 trait Universe {
-  type Name >: Null <: AnyRef with NameApi
+  type Name >: Null <: AnyRef & NameApi
   trait NameApi
 
-  type TermName >: Null <: Name with TermNameApi
+  type TermName >: Null <: Name & TermNameApi
   trait TermNameApi extends NameApi
 }
 

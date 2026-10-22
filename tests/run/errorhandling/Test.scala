@@ -79,6 +79,7 @@ def resultTest() = {
 def validateTest() = {
   println("validateTest")
   import Validation.validate
+  import Validation.scope
 
   case class Email private (value: String)
   object Email:
@@ -88,17 +89,17 @@ def validateTest() = {
   case class Form(name: String, email: Email, age: Int)
 
   def validatedForm(name: String, rawEmail: String, age: Int, confirmed: Boolean): Result[Form, List[String]] =
-    validate: v =>
-      v.require(!name.isEmpty, "Missing name")
-      v.test(name.head.isUpper, s"${name} does not start with uppercase letter")
-      val email = v.test(Email.from(rawEmail))
-      v.test(age >= 18, s"Age ${age} is below minimum age 18")
-      v.test(confirmed, "Missing confirmation")
-      Form(name, email.valid, age)
+    validate:
+      scope.require(!name.isEmpty, "Missing name")
+      scope.test(name.head.isUpper, s"${name} does not start with uppercase letter")
+      val email = scope.test(Email.from(rawEmail))
+      scope.test(age >= 18, s"Age ${age} is below minimum age 18")
+      scope.test(confirmed, "Missing confirmation")
+      Form(name, email.?, age)
 
   // Good stuff: can no longer edit the scope if you leak it
   // def leak(): Unit =
-  //   val leaked: Result[Validation[String]^, List[String]] = Validation.validate: v =>
+  //   val leaked: Result[Validation[String]^, List[String]] = Validation.validate:
   //     v
   //   leaked match
   //     case Ok(scope) =>
@@ -114,21 +115,21 @@ def validateTest() = {
     case Refund(invoiceId: String, reason: String)
 
   def validateJson(json: JsonDict): Result[InvoiceOrRefund, List[String]] =
-    validate: v =>
-      val kind = v.require(Result.fromOption(json.get("kind"), "missing 'kind'"))
-      v.require(kind == "invoice" || kind == "refund", s"invalid 'kind' ${kind}")
+    validate:
+      val kind = scope.test(Result.fromOption(json.get("kind"), "missing 'kind'")).?
+      scope.require(kind == "invoice" || kind == "refund", s"invalid 'kind' ${kind}")
       if kind == "invoice" then
-        val customerId = v.test(Result.fromOption(json.get("customerId"), s"Missing customerId"))
-        val amount = v.test {
+        val customerId = scope.test(Result.fromOption(json.get("customerId"), s"Missing customerId"))
+        val amount = scope.test {
           respond:
             val amount = Result.fromOption(json.get("amount"), s"Missing amount").?
             Result(BigInt(amount)).mapErr(err => s"Invalid amount: ${err.getMessage}").?
         }
-        InvoiceOrRefund.Invoice(customerId.valid, amount.valid)
+        InvoiceOrRefund.Invoice(customerId.?, amount.?)
       else
-        val invoiceId = v.test(Result.fromOption(json.get("invoiceId"), s"Missing invoiceId"))
-        val reason = v.test(Result.fromOption(json.get("reason"), s"Missing reason"))
-        InvoiceOrRefund.Refund(invoiceId.valid, reason.valid)
+        val invoiceId = scope.test(Result.fromOption(json.get("invoiceId"), s"Missing invoiceId"))
+        val reason = scope.test(Result.fromOption(json.get("reason"), s"Missing reason"))
+        InvoiceOrRefund.Refund(invoiceId.?, reason.?)
 
   def printResult[T, E](result: Result[T, List[E]]): Unit = result match
     case Ok(value) => println(s"ok: $value")

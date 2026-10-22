@@ -4,7 +4,7 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Contexts.*, Decorators.*
-import util.{SimpleIdentitySet, EqHashMap}
+import util.{SimpleIdentitySet, MutableIdentitySet, EqHashMap}
 import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*
@@ -53,6 +53,17 @@ object Capabilities:
   val invalid: Validity = validId(NoRunId, 0)
 
   @sharable private var nextRootId = 0
+
+  // Per-capability caches, allocated on first use.
+  private final class CapabilityCaches:
+    var myCaptureSet: CaptureSet | Null = null
+    var captureSetValid: Validity = invalid
+    var mySingletonCaptureSet: CaptureSet.Const | Null = null
+    var myDerived: List[DerivedCapability] = Nil
+    var myClassifiers: Classifiers = UnknownClassifier
+    var classifiersValid: Validity = invalid
+    // Recursion brake for `captureSetOfInfo`
+    var computingInfo: Boolean = false
 
   /** The base trait of all root capabilities */
   trait RootCapability extends Capability:
@@ -164,6 +175,7 @@ object Capabilities:
     override def exclude(cls: ClassSymbol)(using Context) = mkClassified(this, defn.AnyClass, cls :: Nil)
     override def singletonCaptureSet(using Context) = CaptureSet.universal
     override def captureSetOfInfo(using Context) = singletonCaptureSet
+    override def transClassifiers(using Context) = Unclassified
     private[Capabilities] override def cached[C <: DerivedCapability](newRef: C): C = newRef
     override def invalidateCaches() = ()
 
@@ -301,7 +313,7 @@ object Capabilities:
   case class ResultCap(binder: MethodicType) extends RootCapability:
 
     private var myOrigin: RootCapability = GlobalAny
-    private var variants: SimpleIdentitySet[ResultCap] = SimpleIdentitySet.empty
+    private val variants: MutableIdentitySet[ResultCap] = new MutableIdentitySet
 
     /** Every ResultCap capability has an origin. This is
      *   - A LocalCap capability `f`, if the current capability was created as a mirror
@@ -361,12 +373,11 @@ object Capabilities:
    */
   trait Capability extends Showable:
 
-    private var myCaptureSet: CaptureSet | Null = null
-    private var captureSetValid: Validity = invalid
-    private var mySingletonCaptureSet: CaptureSet.Const | Null = null
-    private var myDerived: List[DerivedCapability] = Nil
-    private var myClassifiers: Classifiers = UnknownClassifier
-    private var classifiersValid: Validity = invalid
+    private var myCaches: CapabilityCaches | Null = null
+
+    private def caches: CapabilityCaches =
+      if myCaches == null then myCaches = CapabilityCaches()
+      myCaches.nn
 
     private[Capabilities] def cached[C <: DerivedCapability](newRef: C): C =
       def recur(refs: List[DerivedCapability]): C = refs match
@@ -381,9 +392,9 @@ object Capabilities:
           if exists then ref.asInstanceOf[C]
           else recur(refs1)
         case Nil =>
-          myDerived = newRef :: myDerived
+          caches.myDerived = newRef :: caches.myDerived
           newRef
-      recur(myDerived)
+      recur(caches.myDerived)
 
     def maybe: Maybe = this match
       case self: Maybe => self
@@ -633,15 +644,17 @@ object Capabilities:
 
     /** The capture set consisting of exactly this reference */
     def singletonCaptureSet(using Context): CaptureSet.Const =
-      initialize(mySingletonCaptureSet, mySingletonCaptureSet = _, CaptureSet(this))
+      initialize(caches.mySingletonCaptureSet, caches.mySingletonCaptureSet = _, CaptureSet(this))
 
     /** The capture set of the type underlying this reference */
     def captureSetOfInfo(using Context): CaptureSet =
-      if captureSetValid == currentId then myCaptureSet.nn
-      else if myCaptureSet.asInstanceOf[AnyRef] eq CaptureSet.Pending then CaptureSet.empty
+      if caches.captureSetValid == currentId then caches.myCaptureSet.nn
+      else if caches.computingInfo then CaptureSet.empty
       else
-        myCaptureSet = CaptureSet.Pending
-        val computed = CaptureSet.ofInfo(this)
+        caches.computingInfo = true
+        val computed =
+          try CaptureSet.ofInfo(this)
+          finally caches.computingInfo = false
         def isProvisional = this.core match
           case core: TypeProxy => !core.underlying.exists || core.underlying.isProvisional
           case _ => false
@@ -650,10 +663,10 @@ object Capabilities:
             || ctx.mode.is(Mode.IgnoreCaptures)
             || isProvisional
         then
-          myCaptureSet = null
+          caches.myCaptureSet = null
         else
-          myCaptureSet = computed
-          captureSetValid = currentId
+          caches.myCaptureSet = computed
+          caches.captureSetValid = currentId
         computed
 
     /** The elements hidden by this capability, if this is a LocalCap
@@ -685,8 +698,8 @@ object Capabilities:
       def toClassifiers(cls: ClassSymbol): Classifiers =
         if cls.isTopClassifier then Unclassified
         else ClassifiedAs(cls :: Nil)
-      if classifiersValid != currentId then
-        myClassifiers = this match
+      if caches.classifiersValid != currentId then
+        caches.myClassifiers = this match
           case self: LocalCap =>
             toClassifiers(self.hiddenSet.classifier)
           case self: RootCapability =>
@@ -704,9 +717,9 @@ object Capabilities:
           case self: CoreCapability =>
             if self.derivesFromCapability then toClassifiers(self.inheritedClassifier)
             else captureSetOfInfo.transClassifiers
-        if myClassifiers != UnknownClassifier then
-          classifiersValid = currentId
-      myClassifiers
+        if caches.myClassifiers != UnknownClassifier then
+          caches.classifiersValid = currentId
+      caches.myClassifiers
     end transClassifiers
 
     /** May this capability be admitted into a capture set classified as `cls`? The
@@ -788,8 +801,8 @@ object Capabilities:
       case _ => false
 
     def invalidateCaches() =
-      captureSetValid = invalid
-      classifiersValid = invalid
+      caches.captureSetValid = invalid
+      caches.classifiersValid = invalid
 
     /**  x subsumes x
      *   x =:= y       ==>  x subsumes y
@@ -823,7 +836,8 @@ object Capabilities:
         case info: OrType => viaInfo(info.tp1)(test) && viaInfo(info.tp2)(test)
         case _ => false
 
-      try (this eq y)
+      printOnAssertionError(i"error while subsumes $this >> $y"):
+        (this eq y)
       || maxSubsumes(y, canAddHidden = !vs.isOpen)
           // if vs is open, we should add new elements to the set containing `this`
           // instead of adding them to the hidden set of of `this`.
@@ -882,9 +896,6 @@ object Capabilities:
           case x: ThisType if x.cls.is(Module) =>
             x.cls.sourceModule.termRef.subsumes(y)
           case _ => false
-      catch case ex: AssertionError =>
-        println(i"error while subsumes $this >> $y")
-        throw ex
     end subsumes
 
     /** This is a maximal capability that subsumes `y` in given context and VarState.

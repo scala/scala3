@@ -39,7 +39,7 @@ trait MessageRendering {
     * @return (lines before error, lines after error, line numbers offset)
     */
   private def sourceLines(pos: SourcePosition)(using Context, Level, Offset): (List[String], List[String], Int) = {
-    assert(pos.exists && pos.source.file.exists)
+    assert(pos.exists && pos.source.file != null && pos.source.file.exists)
     var maxLen = Int.MinValue
     def render(offsetAndLine: (Int, String)): String = {
       val (offset1, line) = offsetAndLine
@@ -50,19 +50,19 @@ trait MessageRendering {
       lnum + line.stripLineEnd
     }
 
-    def linesFrom(arr: Array[Char]): List[String] = {
+    def linesFrom(str: String): List[String] = {
       def pred(c: Char) = (c: @switch) match {
         case LF | CR | FF | SU => true
         case _ => false
       }
-      val (line, rest0) = arr.span(!pred(_))
+      val (line, rest0) = str.span(!pred(_))
       val (_, rest) = rest0.span(pred)
-      new String(line) :: { if (rest.isEmpty) Nil else linesFrom(rest) }
+      line :: { if (rest.isEmpty) Nil else linesFrom(rest) }
     }
 
     val syntax =
       if (ctx.settings.color.value != "never" && !ctx.isJava)
-        SyntaxHighlighting.highlight(new String(pos.linesSlice)).toCharArray
+        SyntaxHighlighting.highlight(pos.linesSlice)
       else pos.linesSlice
     val lines = linesFrom(syntax)
     val (before, after) = pos.beforeAndAfterPoint
@@ -167,15 +167,15 @@ trait MessageRendering {
     val msgStr = msg.linesIterator
       .map { line => offsetBox + (if line.isEmpty then "" else padding + line) }
       .mkString(EOL)
-    if addLine then msgStr ++ s"${EOL}$offsetBox" else msgStr
+    if addLine then msgStr + s"${EOL}$offsetBox" else msgStr
   }
 
-  // file.path or munge it to normalize for testing
-  protected def renderPath(file: AbstractFile): String = file.path
+  // path or munge it to normalize for testing
+  protected def renderPath(path: String): String = path
 
   /** The source file path, line and column numbers from the given SourcePosition */
   protected def posFileStr(pos: SourcePosition): String =
-    val path = renderPath(pos.source.file)
+    val path = renderPath(pos.source.path)
     if pos.exists then s"$path:${pos.line + 1}:${pos.column}" else path
 
   /** The separator between errors containing the source file and error type
@@ -293,7 +293,7 @@ trait MessageRendering {
     val sb = StringBuilder()
     val posString = posStr(pos1, msg, diagnosticLevel(dia))
     if posString.nonEmpty then sb.append(posString).append(EOL)
-    if pos.exists && pos1.exists && pos1.source.file.exists then
+    if pos.exists && pos1.exists && pos1.source.file != null && pos1.source.file.exists then
       val (srcBefore, srcAfter, offset) = sourceLines(pos1)
       val marker = positionMarker(pos1)
       val err = errorMsg(pos1, msg.message, srcAfter.nonEmpty)
@@ -305,7 +305,7 @@ trait MessageRendering {
         for inlinedPos <- inlineStack do
           sb.append(EOL).append(newBox(soft = true))
           sb.append(EOL).append(offsetBox).append(i"This location contains code that was inlined from $pos")
-          if inlinedPos.source.file.exists then
+          if inlinedPos.source.file != null && inlinedPos.source.file.exists then
             val (srcBefore, srcAfter, _) = sourceLines(inlinedPos)
             val marker = positionMarker(inlinedPos)
             sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))

@@ -869,14 +869,19 @@ class JSCodeGen()(using genCtx: Context) {
 
     assert(moduleClass.is(ModuleClass), moduleClass)
 
+    /* Unlike the JVM backend, we detect conflicts based on full signatures,
+     * not just simple names. Moreover, we only issue conflicts with *static*
+     * methods. In principle, this means we never have actual conflicts, and
+     * we can generate forwarders for all candidate methods.
+     *
+     * This is particularly important when we use Scala `object`s as
+     * implementations for Java static methods.
+     */
     val existingPublicStaticMethodNames = existingMethods.collect {
       case js.MethodDef(flags, name, _, _, _, _)
           if flags.namespace == js.MemberNamespace.PublicStatic =>
         name.name
     }.toSet
-
-    val staticNames = moduleClass.companionClass.info.allMembers
-      .collect { case d if d.name.isTermName && d.symbol.isScalaStatic => d.name }.toSet
 
     val members = {
       moduleClass.info.membersBasedOnFlags(required = Flags.Method,
@@ -900,7 +905,6 @@ class JSCodeGen()(using genCtx: Context) {
         || hasAccessBoundary
         || isOfJLObject
         || m.hasAnnotation(jsdefn.JSNativeAnnot) || isDefaultParamOfJSNativeDef // #4557
-        || staticNames(m.name)
     }
 
     val forwarders = for {
@@ -1059,8 +1063,12 @@ class JSCodeGen()(using genCtx: Context) {
       implicit pos: SourcePosition): Option[js.Tree] = {
     val fqcnArg = js.StringLiteral(sym.fullName.toString)
     val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
-    val loadModuleFunArg =
-      js.Closure(js.ClosureFlags.arrow, Nil, Nil, None, jstpe.AnyType, genLoadModule(sym), Nil)
+
+    val loadModuleFunArg = js.NewLambda(
+        js.NewLambda.Descriptor(AbstractFunction0ClassName, Nil,
+            MethodName("apply", Nil, jswkn.ObjectRef), Nil, jstpe.AnyType),
+        js.Closure(js.ClosureFlags.typed, Nil, Nil, None, jstpe.AnyType, genLoadModule(sym), Nil)
+    )(jstpe.ClassType(Function0ClassName, nullable = false, exact = false))
 
     val stat = genApplyMethod(
         genLoadModule(jsdefn.ReflectModule),
@@ -1079,33 +1087,83 @@ class JSCodeGen()(using genCtx: Context) {
     if (ctors.isEmpty) {
       None
     } else {
+      val objectArrayRef = jstpe.ArrayTypeRef(jswkn.ObjectRef, 1)
+      val objectArrayType = jstpe.ArrayType(objectArrayRef, nullable = true, exact = false)
+      val tuple2ArrayRef = jstpe.ArrayTypeRef(jstpe.ClassRef(Tuple2ClassName), 1)
+      val classClassRef = jstpe.ClassRef(jswkn.ClassClass)
+      val classArrayRef = jstpe.ArrayTypeRef(classClassRef, 1)
+
+      val tuple2Ctor = MethodName.constructor(List(jswkn.ObjectRef, jswkn.ObjectRef))
+
+      val newInstanceFunDescriptor = {
+        js.NewLambda.Descriptor(AbstractFunction1ClassName, Nil,
+            MethodName("apply", List(jswkn.ObjectRef), jswkn.ObjectRef),
+            List(jstpe.AnyType), jstpe.AnyType)
+      }
+
       val constructorsInfos = for {
         ctor <- ctors
       } yield {
-        withNewLocalNameScope {
-          val (parameterTypes, formalParams, actualParams) = (for {
-            (paramName, paramInfo) <- ctor.info.paramNamess.flatten.zip(ctor.info.paramInfoss.flatten)
+        val paramTypesArray = js.ArrayValue(classArrayRef,
+            ctor.info.paramInfoss.flatten.map(ptpe => js.ClassOf(toTypeRef(ptpe))))
+
+        val newInstanceClosure = {
+          // param args: Object
+          val argsParamDef = js.ParamDef(js.LocalIdent(LocalName("args")),
+              NoOriginalName, jstpe.AnyType, mutable = false)
+
+          // val argsArray: Object[] = args.asInstanceOf[Object[]]
+          val argsArrayVarDef = js.VarDef(js.LocalIdent(LocalName("argsArray")),
+              NoOriginalName, objectArrayType, mutable = false,
+              js.AsInstanceOf(argsParamDef.ref, objectArrayType))
+
+          // argsArray[i].asInstanceOf[Ti] for every parameter of the constructor
+          val actualParams = for {
+            (paramType, index) <- ctor.info.paramInfoss.flatten.zipWithIndex
           } yield {
-            val paramType = js.ClassOf(toTypeRef(paramInfo))
-            val paramDef = js.ParamDef(freshLocalIdent(paramName),
-                NoOriginalName, jstpe.AnyType, mutable = false)
-            val actualParam = unbox(paramDef.ref, paramInfo)
-            (paramType, paramDef, actualParam)
-          }).unzip3
+            /* Note that we do *not* use `paramType` entering posterasure
+             * (neither to compute `paramType` nor to give to `unbox`).
+             * Logic would tell us that we should do so, but we intentionally
+             * do not to preserve the behavior on the JVM regarding value
+             * classes. If a constructor takes a value class as parameter, as
+             * in:
+             *
+             *   class ValueClass(val underlying: Int) extends AnyVal
+             *   class Foo(val vc: ValueClass)
+             *
+             * then, from a reflection point of view, on the JVM, the
+             * constructor of `Foo` takes an `Int`, not a `ValueClas`. It
+             * must therefore be identified as the constructor whose
+             * parameter types is `List(classOf[Int])`, and when invoked
+             * reflectively, it must be given an `Int` (or `Integer`).
+             */
+            unbox(
+                js.ArraySelect(argsArrayVarDef.ref, js.IntLiteral(index))(jstpe.AnyType),
+                paramType)
+          }
 
-          val paramTypesArray = js.JSArrayConstr(parameterTypes)
-
-          val newInstanceFun = js.Closure(js.ClosureFlags.arrow, Nil, formalParams, None, jstpe.AnyType, {
-            js.New(encodeClassName(sym), encodeMethodSym(ctor), actualParams)
+          /* typed-lambda<>(args: Object): any = {
+           *   val argsArray: Object[] = args.asInstanceOf[Object[]]
+           *   new MyClass(...argsArray[i].asInstanceOf[Ti])
+           * }
+           */
+          js.Closure(js.ClosureFlags.typed, Nil, argsParamDef :: Nil, None, jstpe.AnyType, {
+            js.Block(
+              argsArrayVarDef,
+              js.New(encodeClassName(sym), encodeMethodSym(ctor), actualParams)
+            )
           }, Nil)
-
-          js.JSArrayConstr(List(paramTypesArray, newInstanceFun))
         }
+
+        val newInstanceFun = js.NewLambda(newInstanceFunDescriptor, newInstanceClosure)(
+            jstpe.ClassType(Function1ClassName, nullable = false, exact = false))
+
+        js.New(Tuple2ClassName, js.MethodIdent(tuple2Ctor), List(paramTypesArray, newInstanceFun))
       }
 
       val fqcnArg = js.StringLiteral(sym.fullName.toString)
       val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
-      val ctorsInfosArg = js.JSArrayConstr(constructorsInfos)
+      val ctorsInfosArg = js.ArrayValue(tuple2ArrayRef, constructorsInfos)
 
       val stat = genApplyMethod(
           genLoadModule(jsdefn.ReflectModule),
@@ -2264,19 +2322,21 @@ class JSCodeGen()(using genCtx: Context) {
         genApplyNew(tree)
 
       case _ =>
-        if (primitives.isPrimitive(tree)) {
-          genPrimitiveOp(tree, isStat)
-        } else if (Erasure.Boxing.isBox(sym)) {
-          // Box a primitive value (cannot be Unit)
-          val arg = args.head
-          makePrimitiveBox(genExpr(arg), arg.tpe)
-        } else if (Erasure.Boxing.isUnbox(sym)) {
-          // Unbox a primitive value (cannot be Unit)
-          val arg = args.head
-          makePrimitiveUnbox(genExpr(arg), tree.tpe)
-        } else {
-          genNormalApply(tree, isStat)
-        }
+        primitives.getPrimitive(tree) match
+          case Some(code) =>
+            genPrimitiveOp(tree, isStat, code)
+          case None =>
+            if (Erasure.Boxing.isBox(sym)) {
+              // Box a primitive value (cannot be Unit)
+              val arg = args.head
+              makePrimitiveBox(genExpr(arg), arg.tpe)
+            } else if (Erasure.Boxing.isUnbox(sym)) {
+              // Unbox a primitive value (cannot be Unit)
+              val arg = args.head
+              makePrimitiveUnbox(genExpr(arg), tree.tpe)
+            } else {
+              genNormalApply(tree, isStat)
+            }
     }
   }
 
@@ -2610,15 +2670,13 @@ class JSCodeGen()(using genCtx: Context) {
   }
 
   /** Gen JS code for a primitive method call. */
-  private def genPrimitiveOp(tree: Apply, isStat: Boolean): js.Tree = {
+  private def genPrimitiveOp(tree: Apply, isStat: Boolean, code: Int): js.Tree = {
     import dotty.tools.backend.ScalaPrimitivesOps.*
 
     implicit val pos = tree.span
 
     val Apply(fun, args) = tree
     val receiver = qualifierOf(fun)
-
-    val code = primitives.getPrimitive(tree, receiver.tpe)
 
     if (isArithmeticOp(code) || isLogicalOp(code) || isComparisonOp(code))
       genSimpleOp(tree, receiver :: args, code)
@@ -2977,7 +3035,10 @@ class JSCodeGen()(using genCtx: Context) {
           else externalEqualsNumObject
         } else externalEquals
       }
-      genApplyStatic(equalsMethod, List(lsrc, rsrc))
+
+      // Force the non-module class, to be consistent with the JVM
+      js.ApplyStatic(js.ApplyFlags.empty, BoxesRunTimeClassName,
+          encodeMethodSym(equalsMethod), List(lsrc, rsrc))(jstpe.BooleanType)
     } else {
       // if (lsrc eq null) rsrc eq null else lsrc.equals(rsrc)
       if (lsym == defn.StringClass) {
@@ -4342,8 +4403,6 @@ class JSCodeGen()(using genCtx: Context) {
   private def genLinkTimeExpr(tree: Tree): js.Tree = {
     import dotty.tools.backend.ScalaPrimitivesOps.*
 
-    import primitives.*
-
     implicit val pos = tree.span
 
     def invalid(): js.Tree = {
@@ -4372,51 +4431,52 @@ class JSCodeGen()(using genCtx: Context) {
             val propName = annotation.argumentConstantString(0).get
             js.LinkTimeProperty(propName)(toIRType(tree.tpe))
 
-          case None if isPrimitive(fun.symbol) =>
-            val code = getPrimitive(fun.symbol)
-            val receiver = (fun: @unchecked) match {
-              case fun: Select => fun.qualifier
-              case fun: Ident  => desugarIdent(fun).get.qualifier
-            }
-
-            def genLhs: js.Tree = genLinkTimeExpr(receiver)
-            def genRhs: js.Tree = genLinkTimeExpr(args.head)
-
-            def unaryOp(op: js.UnaryOp.Code): js.Tree =
-              js.UnaryOp(op, genLhs)
-            def binaryOp(op: js.BinaryOp.Code): js.Tree =
-              js.BinaryOp(op, genLhs, genRhs)
-
-            toIRType(receiver.tpe) match {
-              case jstpe.BooleanType =>
-                (code: @switch) match {
-                  case ZNOT     => unaryOp(js.UnaryOp.Boolean_!)
-                  case EQ       => binaryOp(js.BinaryOp.Boolean_==)
-                  case NE | XOR => binaryOp(js.BinaryOp.Boolean_!=)
-                  case OR       => binaryOp(js.BinaryOp.Boolean_|)
-                  case AND      => binaryOp(js.BinaryOp.Boolean_&)
-                  case ZOR      => js.LinkTimeIf(genLhs, js.BooleanLiteral(true), genRhs)(jstpe.BooleanType)
-                  case ZAND     => js.LinkTimeIf(genLhs, genRhs, js.BooleanLiteral(false))(jstpe.BooleanType)
-                  case _        => invalid()
+          case None =>
+            primitives.getPrimitive(fun) match
+              case Some(code) =>
+                val receiver = (fun: @unchecked) match {
+                  case fun: Select => fun.qualifier
+                  case fun: Ident  => desugarIdent(fun).get.qualifier
                 }
 
-              case jstpe.IntType =>
-                (code: @switch) match {
-                  case EQ => binaryOp(js.BinaryOp.Int_==)
-                  case NE => binaryOp(js.BinaryOp.Int_!=)
-                  case LT => binaryOp(js.BinaryOp.Int_<)
-                  case LE => binaryOp(js.BinaryOp.Int_<=)
-                  case GT => binaryOp(js.BinaryOp.Int_>)
-                  case GE => binaryOp(js.BinaryOp.Int_>=)
-                  case _  => invalid()
+                def genLhs: js.Tree = genLinkTimeExpr(receiver)
+                def genRhs: js.Tree = genLinkTimeExpr(args.head)
+
+                def unaryOp(op: js.UnaryOp.Code): js.Tree =
+                  js.UnaryOp(op, genLhs)
+                def binaryOp(op: js.BinaryOp.Code): js.Tree =
+                  js.BinaryOp(op, genLhs, genRhs)
+
+                toIRType(receiver.tpe) match {
+                  case jstpe.BooleanType =>
+                    (code: @switch) match {
+                      case ZNOT => unaryOp(js.UnaryOp.Boolean_!)
+                      case EQ => binaryOp(js.BinaryOp.Boolean_==)
+                      case NE | XOR => binaryOp(js.BinaryOp.Boolean_!=)
+                      case OR => binaryOp(js.BinaryOp.Boolean_|)
+                      case AND => binaryOp(js.BinaryOp.Boolean_&)
+                      case ZOR => js.LinkTimeIf(genLhs, js.BooleanLiteral(true), genRhs)(jstpe.BooleanType)
+                      case ZAND => js.LinkTimeIf(genLhs, genRhs, js.BooleanLiteral(false))(jstpe.BooleanType)
+                      case _ => invalid()
+                    }
+
+                  case jstpe.IntType =>
+                    (code: @switch) match {
+                      case EQ => binaryOp(js.BinaryOp.Int_==)
+                      case NE => binaryOp(js.BinaryOp.Int_!=)
+                      case LT => binaryOp(js.BinaryOp.Int_<)
+                      case LE => binaryOp(js.BinaryOp.Int_<=)
+                      case GT => binaryOp(js.BinaryOp.Int_>)
+                      case GE => binaryOp(js.BinaryOp.Int_>=)
+                      case _ => invalid()
+                    }
+
+                  case _ =>
+                    invalid()
                 }
 
-              case _ =>
+              case None =>
                 invalid()
-            }
-
-          case None => // if !isPrimitive
-            invalid()
         }
 
       case _ =>
@@ -5196,6 +5256,13 @@ object JSCodeGen {
   private val JSObjectClassName = ClassName("scala.scalajs.js.Object")
   private val JavaScriptExceptionClassName = ClassName("scala.scalajs.js.JavaScriptException")
   private val ScalaJSRuntimeModClassName = ClassName("scala.scalajs.runtime.package$")
+
+  private val AbstractFunction0ClassName = ClassName("scala.runtime.AbstractFunction0")
+  private val AbstractFunction1ClassName = ClassName("scala.runtime.AbstractFunction1")
+  private val BoxesRunTimeClassName = ClassName("scala.runtime.BoxesRunTime")
+  private val Function0ClassName = ClassName("scala.Function0")
+  private val Function1ClassName = ClassName("scala.Function1")
+  private val Tuple2ClassName = ClassName("scala.Tuple2")
 
   private val ObjectArrayTypeRef = jstpe.ArrayTypeRef(jswkn.ObjectRef, 1)
 

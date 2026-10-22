@@ -32,7 +32,7 @@ import scala.collection.mutable
  *   - pass outer arguments in constructor calls
  *
  *   replacement of outer this by outer paths is done in Erasure.
- *   needs to run after pattern matcher as it can add outer checks and force creation of $outer
+ *   needs to run after pattern matcher as it can add outer checks and force creation of `$outer`.
  */
 class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
   import ExplicitOuter.*

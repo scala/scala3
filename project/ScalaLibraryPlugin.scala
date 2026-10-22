@@ -15,8 +15,7 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSVersion
 import ch.epfl.scala.sbtmissinglink.MissingLinkPlugin
 import ch.epfl.scala.sbtmissinglink.MissingLinkPlugin.autoImport.missinglinkCheck
 import com.spotify.missinglink.Conflict
-
-import dotty.tools.tasty.TastyHeaderUnpickler
+import xsbti.FileConverter
 
 object ScalaLibraryPlugin extends AutoPlugin {
 
@@ -46,6 +45,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
       val stream = streams.value
       val log = stream.log
       val classDir = (Compile / classDirectory).value
+      val converter = fileConverter.value
 
       // Fetch classfiles and sjsir files
       val patches: Seq[(Set[File], File)] = scala2LibraryClasspath.value.map(fetch(stream, _))
@@ -65,13 +65,12 @@ object ScalaLibraryPlugin extends AutoPlugin {
         path = id.toString().replace("\\", "/").stripSuffix(".class").stripSuffix(".sjsir")
         if ScalaLibraryFilesToCopy.filesToCopy.exists(s => path == s || path.startsWith(s + '$')) // Only Override Some Very Specific Files
         dest = classDir / (id.toString)
-        ref <- dest.relativeTo((LocalRootProject / baseDirectory).value)
       } {
         log.debug(s"Replacing generated .class file with Scala 2.13 patch: ${id}")
         StripScala2Annotations.patchFile(input = file, output = dest, classDirectory = classDir)
         // Update the timestamp in the analysis
         stamps = stamps.markProduct(
-          VirtualFileRef.of(s"$${BASE}/$ref"),
+          converter.toVirtualFile(dest.toPath()),
           Stamper.forFarmHashP(dest.toPath()))
       }
 
@@ -106,16 +105,17 @@ object ScalaLibraryPlugin extends AutoPlugin {
     // We need to redefine it which requires reflective access
     Compile / missinglinkCheck := {
       val log = streams.value.log
+      val converter: FileConverter = fileConverter.value
       val cp = (Compile / fullClasspath).value
       val classDir = (Compile / classDirectory).value
 
-      val conflicts: Seq[Conflict] = {
+      val (conflicts, sourceModules) = {
         val method = MissingLinkPlugin.getClass.getDeclaredMethods()
           .find(_.getName == "loadArtifactsAndCheckConflicts")
           .getOrElse(sys.error("MissingLinkPlugin.loadArtifactsAndCheckConflicts not found"))
         method.setAccessible(true)
-        method.invoke(MissingLinkPlugin, cp, classDir, java.lang.Boolean.FALSE, (_ => true):ModuleFilter, log)
-          .asInstanceOf[Seq[Conflict]]
+        method.invoke(MissingLinkPlugin, cp, classDir, java.lang.Boolean.FALSE, (_ => true):ModuleFilter, log, converter)
+          .asInstanceOf[(Seq[Conflict], Map[?, ModuleID])]
       }
 
       val filteredConflicts = conflicts.filterNot { conflict =>
@@ -134,7 +134,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
             .find(_.getName == "outputConflicts")
             .getOrElse(sys.error("MissingLinkPlugin.outputConflicts not found"))
           method.setAccessible(true)
-          method.invoke(MissingLinkPlugin, filteredConflicts, log)
+          method.invoke(MissingLinkPlugin, filteredConflicts, sourceModules, java.lang.Boolean.TRUE, log)
         }
         throw new MessageOnlyException(s"There were $filteredTotal conflicts")
       }
@@ -152,7 +152,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
     (FileFunction.cached(cache / "fetch-scala-library-classes", FilesInfo.lastModified, FilesInfo.exists) { _ =>
       stream.log.info(s"Unpacking scala-library binaries to persistent directory: ${target.getAbsolutePath}")
       IO.unzip(jar, target)
-      (target ** "*.class").get.toSet ++ (target ** "*.sjsir").get.toSet
+      (target ** "*.class").get().toSet ++ (target ** "*.sjsir").get().toSet
     } (Set(jar)), target)
   }
 

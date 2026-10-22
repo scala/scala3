@@ -600,7 +600,7 @@ object Future {
   private[concurrent] final val recoverWithFailedMarker: Future[Nothing] =
     scala.concurrent.Future.failed(new Throwable with NoStackTrace)
 
-  private[concurrent] final val recoverWithFailed = (t: Throwable) => recoverWithFailedMarker
+  private[concurrent] final val recoverWithFailed = (_: Throwable) => recoverWithFailedMarker
 
   private final val _zipWithTuple2: (Any, Any) => (Any, Any) = Tuple2.apply
   private[concurrent] final def zipWithTuple2Fun[T,U] = _zipWithTuple2.asInstanceOf[(T,U) => (T,U)]

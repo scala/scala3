@@ -6,15 +6,22 @@ import core.Contexts.*
 import java.io.{ BufferedReader, PrintWriter }
 import Diagnostic.*
 import dotty.tools.dotc.interfaces.Diagnostic.INFO
+import scala.annotation.threadUnsafe
 
 /**
   * This class implements a Reporter that displays messages on a text console
   */
 class ConsoleReporter(
   reader: BufferedReader | Null = Console.in,
-  writer: PrintWriter = new PrintWriter(Console.err, true),
-  echoer: PrintWriter = new PrintWriter(Console.out, true)
+  initWriter: PrintWriter | Null = null,
+  initEchoer: PrintWriter | Null = null
 ) extends ConsoleReporter.AbstractConsoleReporter {
+  // Avoid allocating these if we don't need them, i.e., if compilation succeeds without diagnostics.
+  @threadUnsafe
+  private lazy val writer: PrintWriter = if initWriter != null then initWriter else new PrintWriter(Console.err, true)
+  @threadUnsafe
+  private lazy val echoer: PrintWriter = if initEchoer != null then initEchoer else new PrintWriter(Console.out, true)
+
   override def printMessage(msg: String): Unit = { writer.println(msg); writer.flush() }
   override def echoMessage(msg: String): Unit = { echoer.println(msg); echoer.flush() }
   override def flush()(using Context): Unit    = writer.flush()

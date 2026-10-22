@@ -17,7 +17,9 @@ import dotty.tools.dotc.printing.Formatting.ShownDef.Shown.runCtxShow
  *  completions by coding agents. They are enabled under the experimental
  *  `magic` language import:
  *
+ *  ```
  *     import language.experimental.magic
+ *  ```
  *
  *  The syntax of a spec strings is like a dedented string literal (see SIP 72) where the
  *  opening quote is followed by `spec`. Example:
@@ -28,7 +30,7 @@ import dotty.tools.dotc.printing.Formatting.ShownDef.Shown.runCtxShow
  *
  *  Spec strings are formatted in markdown syntax. The result of parsing and typing
  *  a spec string is an interpolated string literal. Like other interpolated  literals
- *  this is represented internally by a selection identifier (`$spec` in this case) on
+ *  this is represented internally by a selection identifier (`\$spec` in this case) on
  *  a string context that represents a string with holes and typed argument expressions
  *  that go in the holes.
  *
@@ -50,12 +52,14 @@ import dotty.tools.dotc.printing.Formatting.ShownDef.Shown.runCtxShow
  *
  *  This string will be represented internally as follows:
  *
+ *  ```
  *     scala.compiletime.$spec(
  *       StringContext(
  *         "    \n   Parse date string into `",
  *         "` structure. The string is in the format given by `",
  *         "`.\n    "
  *       )(scala.compiletime.$wrappedType[Date], formatString)
+ *  ```
  *
  *  Notes:
  *
@@ -70,7 +74,7 @@ import dotty.tools.dotc.printing.Formatting.ShownDef.Shown.runCtxShow
  *    - If neither parse and typecheck works, the errors of the first attempt,
  *      when the code block was treated as an expression, are produced as warnings
  *      whereas the code block is kept without extraction in the surrounding string.
- *    - The compiletime $spec function is a unit-valued inline function that collapses
+ *    - The compiletime `$spec` function is a unit-valued inline function that collapses
  *      calls to just `()`. That is, spec strings have no significant runtime
  *      representation.
  *    - The purpose of the compile-time representation of a spec string is as
@@ -90,14 +94,14 @@ trait SpecStrings { this: Typer =>
 
   /** The interval defining the first code in `...` or ```...``` */
   def firstQuoteSpan(str: String, startFrom: Int): Option[QuoteSpan] =
-    val opening = str.indexOf('`', from = startFrom)
+    val opening = str.indexOf('`', /*fromIndex =*/ startFrom)
     if opening >= 0 then
       var start = opening + 1
       while start < str.length && str(start) == '`' do start += 1
       val nquotes = start - opening
 
       def findClosing(start: Int): Option[QuoteSpan] =
-        val closing = str.indexOf('`', from = start)
+        val closing = str.indexOf('`', /*fromIndex =*/ start)
         if closing < 0 then None
         else if str.startsWith("`" * nquotes, closing) then Some((opening, closing, nquotes))
         else findClosing(closing + 1)

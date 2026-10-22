@@ -13,7 +13,7 @@ import reporting.trace
 import reporting.Message.Note
 import printing.{Showable, Printer}
 import printing.Texts.*
-import util.{SimpleIdentitySet, Property, EqHashMap}
+import util.{SimpleIdentitySet, MutableIdentitySet, Property, EqHashMap}
 import scala.collection.{mutable, immutable}
 import CCState.*
 import TypeOps.AvoidMap
@@ -312,11 +312,8 @@ sealed abstract class CaptureSet extends Showable:
         capt.println(i"WIDEN ro $this with ${this.mutability} <:< $that with ${that.mutability} to $this1")
         this1.subCaptures(that, vs)
       else
-        try
+        printOnAssertionError(i"error while subcap $this <:< $that"):
           that.tryInclude(elems, this) && addDependent(that)
-        catch case ex: AssertionError =>
-          println(i"error while subcap $this <:< $that")
-          throw ex
 
   /** Two capture sets are considered =:= equal if they mutually subcapture each other
    *  in a frozen state.
@@ -393,8 +390,9 @@ sealed abstract class CaptureSet extends Showable:
    *      the same transformation is applied to all future additions of new elements.
    *      We try to fuse with previous maps to avoid long paths of BiTypeMapped sets.
    *    - If the map is a BiTypeMap, and CCState.mapVars is false,
-   *      we return the original capture set. In this case any elements that are
-   *      already in the set must be invariant under the mapping. This mode is
+   *      return the original capture set if all current elements are invariant
+   *      under the mapping; otherwise freeze the set (i.e. make it provisionally
+   *      solved) and return the mapped elements as a constant set,  This mode is
    *      necessary for bootstrap when we create capset variables the first time.
    *    - If the map is some other map that maps the current set of elements
    *      to itself, return the current var. We implicitly assume that the map
@@ -424,9 +422,13 @@ sealed abstract class CaptureSet extends Showable:
               case Some(fused: BiTypeMap) => BiMapped(self.source, fused, mappedElems)
               case _ => unfused
             case _ => unfused
+        else if mappedElems == elems then this
         else
-          assert(mappedElems == elems)
-          this
+          // The map changes existing elements but cannot be installed for future
+          // additions (mapVars == false). Freeze the set and return the mapped
+          // elements as a constant set.
+          asVar.markSolved(provisional = true)
+          Const(mappedElems)
       case tm: IdentityCaptRefMap =>
         this
       case tm: AvoidMap if this.isInstanceOf[HiddenSet] =>
@@ -573,7 +575,7 @@ sealed abstract class CaptureSet extends Showable:
 object CaptureSet:
   type Refs = SimpleIdentitySet[Capability]
   type Vars = SimpleIdentitySet[Var]
-  type Deps = SimpleIdentitySet[CaptureSet]
+  type Deps = MutableIdentitySet[CaptureSet]
 
   enum Mutability derives CanEqual:
     case Writer, Reader, Ignored
@@ -621,9 +623,6 @@ object CaptureSet:
   /** The shared capture set `{caps.any.rd}` */
   def shared(using Context): Const =
     GlobalAny.readOnly.singletonCaptureSet
-
-  /** Used as a recursion brake */
-  @sharable private[dotc] val Pending = Const(SimpleIdentitySet.empty)
 
   def apply(elems: Capability*)(using Context): Const =
     if elems.isEmpty then empty
@@ -788,7 +787,7 @@ object CaptureSet:
     /** The sets currently known to be dependent sets (i.e. new additions to this set
      *  are propagated to these dependent sets.)
      */
-    var deps: Deps = SimpleIdentitySet.empty
+    val deps: Deps = new MutableIdentitySet[CaptureSet]
 
     def associateWithStateful()(using Context): CaptureSet =
       mutability = Writer
@@ -867,6 +866,7 @@ object CaptureSet:
       if !elems.contains(elem) then
         if debugVars && id == debugTarget then
           println(i"###INCLUDE $elem in $this")
+          //new Error().printStackTrace()
         elems += elem
         TypeComparer.logUndoAction: () =>
           elems -= elem
@@ -889,10 +889,8 @@ object CaptureSet:
         // id == 108 then assert(false, i"trying to add $elem to $this")
         assert(elem.isWellformed, elem)
         assert(!this.isInstanceOf[HiddenSet] || summon[VarState].isSeparating, summon[VarState])
-        try includeElem(elem)
-        catch case ex: AssertionError =>
-          println(i"error for incl $elem in $this, ${summon[VarState].toString}")
-          throw ex
+        printOnAssertionError(i"error for incl $elem in $this, ${summon[VarState].toString}"):
+          includeElem(elem)
         newElemAddedHandlers.foreach(_(elem))
         val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
@@ -921,13 +919,13 @@ object CaptureSet:
             case _ => foldOver(b, t)
       find(false, binder)
 
-    def levelOK(elem: Capability)(using Context): Boolean = elem match
-      case elem @ ResultCap(binder) =>
+    def levelOK(elem: Capability)(using Context): Boolean = elem.core match
+      case core @ ResultCap(binder) =>
         rootLimit == null && isPartOf(binder.resType)
       case _: GlobalCap =>
         rootLimit == null
-      case elem: ParamRef =>
-        isPartOf(elem.binder.resType)
+      case core: ParamRef =>
+        isPartOf(core.binder.resType)
       case _ =>
         if owner.exists then
           val elemVis = elem.visibility
@@ -976,7 +974,8 @@ object CaptureSet:
 
     /** The intersection of all upper approximations of dependent sets */
     protected def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
-      ((universal: CaptureSet) /: deps) { (acc, sup) => acc ** sup.upperApprox(this) }
+      deps.foldLeft(universal: CaptureSet): (acc, sup) =>
+        acc ** sup.upperApprox(this)
 
     /** Widen the variable's elements to its upper approximation and
      *  mark it as constant from now on. This is used for contra-variant type variables
@@ -1024,7 +1023,7 @@ object CaptureSet:
     override def optionalInfo(using Context): String =
       for vars <- ctx.property(ShownVars) do vars += this
       if !ctx.settings.YccDebug.value then ""
-      else if isConst then ids ++ "(solved)"
+      else if isConst then ids + "(solved)"
       else ids
 
     /** Used for diagnostics and debugging: A string that traces the creation
@@ -1045,7 +1044,7 @@ object CaptureSet:
   end Var
 
   /** Variables created in types of inferred type trees */
-  class VarInTypeTree(override val owner: Symbol, initialElems: Refs = emptyRefs, val nestedOK: Boolean = true, isRefining: Boolean)(using /*@constructorOnly*/ ictx: Context)
+  class VarInTypeTree(override val owner: Symbol, initialElems: Refs = emptyRefs, val nestedOK: Boolean = true, val isRefining: Boolean)(using /*@constructorOnly*/ ictx: Context)
   extends Var(owner, initialElems, nestedOK) {
 
     /** Make sure that capset variables in types of vals and result types of
@@ -1068,8 +1067,9 @@ object CaptureSet:
           def fail = i"attempting to add $elem to $this"
 
           def hideIn(ac: LocalCap): Boolean =
-            assert(elem.tryClassifyAs(ac.hiddenSet.classifier), fail)
-            if isRefining then
+            if !elem.tryClassifyAs(ac.hiddenSet.classifier) then
+              false
+            else if isRefining then
               // If a variable is added by addCaptureRefinements in a synthetic
               // refinement of a class type, don't do level checking. The problem is
               // that the variable might be matched against a type that does not have
@@ -1090,7 +1090,7 @@ object CaptureSet:
           elem match
             case elem: LocalCap =>
               if elem.origin != Origin.InDecl(owner) then
-                val isSubsumed = (false /: inDeclRoots): (isSubsumed, root) =>
+                val isSubsumed = inDeclRoots.exists: root =>
                   hideIn(root.asInstanceOf[LocalCap])
                 if !isSubsumed then
                   val fc = LocalCap(owner, Origin.InDecl(owner, elem.origin.contributingFields))
@@ -1169,7 +1169,6 @@ object CaptureSet:
 
     if debugVars && id == debugTarget then
       println(i"variable $id is derived from $source")
-      assert(false)
 
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if origin eq source then
@@ -1180,12 +1179,9 @@ object CaptureSet:
       else
         // Propagate backwards to source. The element will be added then by another
         // forward propagation from source that hits the first branch `if origin eq source then`.
-        try
+        printOnAssertionError(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}"):
           reporting.trace(i"prop backwards $elem from $this # $id to $source # ${source.id} via $summarize"):
             source.tryInclude(bimap.inverse.mapCapability(elem), this)
-        catch case ex: AssertionError =>
-          println(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}")
-          throw ex
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
      *  the source via the inverse type mapping and vice versa. That is, if
@@ -1476,7 +1472,7 @@ object CaptureSet:
         case cs: EmptyOfBoxed =>
           trailing:
             val (boxed, unboxed) =
-              if cs.tp1.isBoxedCapturing then (cs.tp1, cs.tp2) else (cs.tp2, cs.tp1)
+              if cs.tp1.isBoxed then (cs.tp1, cs.tp2) else (cs.tp2, cs.tp1)
             i"${cs.tp1} does not conform to ${cs.tp2} because $boxed is boxed but $unboxed is not"
         case _ =>
           def why =
@@ -1787,8 +1783,9 @@ object CaptureSet:
         case tp: (TypeRef | TypeParamRef) =>
           if tp.derivesFromCapSet then tp.captureSet
           else empty
-        case CapturingOrRetainsType(parent, refs) =>
-          recur(parent) ++ refs
+        case tp @ CapturingOrRetainsType(parent, refs) =>
+          if parent.isBoxed && !tp.isBoxed then refs
+          else recur(parent) ++ refs
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodOrPoly) if followResult =>
           ofType(tpd.parent, followResult = false)            // pick up capture set from parent type
           ++ recur(rinfo.resType).freeInResult(rinfo)         // add capture set of result

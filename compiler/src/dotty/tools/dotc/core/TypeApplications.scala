@@ -214,14 +214,19 @@ class TypeApplications(val self: Type) extends AnyVal {
       case NoPrefix => true
       case _ => false
     }
-    try self match {
-      case self: TypeRef =>
-        val tsym = self.symbol
-        if (tsym.isClass) tsym.typeParams
-        else tsym.infoOrCompleter match {
-          case info: LazyType if isTrivial(self.prefix, tsym) =>
-            val tparams = info.completerTypeParams(tsym)
-            if tsym.isCompleted then tsym.info.typeParams
+    // This `handleRecursive` is load-bearing!
+    // It is possible to end up in infinite recursion here,
+    // and if we don't surround the match with a `handleRecursive`, this function is tail-recursive,
+    // so the compiler loops forever. See, e.g., neg/i9328.scala.
+    ctx.handleRecursive("type parameters of", self):
+      self match
+        case self: TypeRef =>
+          val tsym = self.symbol
+          if (tsym.isClass) tsym.typeParams
+          else tsym.infoOrCompleter match {
+            case info: LazyType if isTrivial(self.prefix, tsym) =>
+              val tparams = info.completerTypeParams(tsym)
+              if tsym.isCompleted then tsym.info.typeParams
               // Completers sometimes represent parameters as symbols where
               // the completed type represents them as paramrefs. Make sure we get
               // a stable result by calling `typeParams` recursively. Test case
@@ -229,28 +234,24 @@ class TypeApplications(val self: Type) extends AnyVal {
               // After calling its completerTypeParams, we get a list of parameter symbols
               // and as a side effect F0 is completed. Calling typeParams on the completed
               // type gives a list of paramrefs.
-            else tparams
-          case _ => self.info.typeParams
-        }
-      case self: AppliedType =>
-        if (self.tycon.typeSymbol.isClass) Nil
-        else self.superType.typeParams
-      case self: ClassInfo =>
-        self.cls.typeParams
-      case self: HKTypeLambda =>
-        self.typeParams
-      case _: SingletonType | _: RefinedType | _: RecType =>
-        Nil
-      case self: WildcardType =>
-        self.optBounds.typeParams
-      case self: TypeProxy =>
-        self.superType.typeParams
-      case _ =>
-        Nil
-    }
-    catch {
-      case ex: Throwable => handleRecursive("type parameters of", self.show, ex)
-    }
+              else tparams
+            case _ => self.info.typeParams
+          }
+        case self: AppliedType =>
+          if (self.tycon.typeSymbol.isClass) Nil
+          else self.superType.typeParams
+        case self: ClassInfo =>
+          self.cls.typeParams
+        case self: HKTypeLambda =>
+          self.typeParams
+        case _: SingletonType | _: RefinedType | _: RecType =>
+          Nil
+        case self: WildcardType =>
+          self.optBounds.typeParams
+        case self: TypeProxy =>
+          self.superType.typeParams
+        case _ =>
+          Nil
   }
 
   /** Substitute in `self` the type parameters of `tycon` by some other types. */
@@ -435,12 +436,9 @@ class TypeApplications(val self: Type) extends AnyVal {
               if hasParamsWithoutArg then
                 AppliedType(self, args)
               else
-                try
+                ctx.handleRecursive("try to instantiate", () => i"$dealiased[$args%, %]"):
                   val instantiated = dealiased.instantiate(args)
                   if (followAlias) instantiated.normalized else instantiated
-                catch
-                  case ex: Throwable => handleRecursive("try to instantiate", i"$dealiased[$args%, %]", ex)
-
             else AppliedType(self, args)
           }
           else stripped match
@@ -591,8 +589,8 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Existential types in arguments are returned as TypeBounds instances.
    */
   final def argInfos(using Context): List[Type] = self.stripped match
+    case FlexibleType(hi) => hi.argInfos
     case AppliedType(tycon, args) => args
-    case tp: FlexibleType => tp.underlying.argInfos
     case _ => Nil
 
   /** If this is an encoding of a function type, return its arguments, otherwise return Nil.
@@ -600,7 +598,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def functionArgInfos(using Context): List[Type] = self.dealias match
     case defn.PolyFunctionOf(mt: MethodType) => (mt.paramInfos :+ mt.resultType)
-    case _ => self.dropDependentRefinement.dealias.argInfos
+    case _ => self.dropFunctionRefinement.dealias.argInfos
 
   /** Argument types where existential types in arguments are disallowed */
   def argTypes(using Context): List[Type] = argInfos mapConserve noBounds

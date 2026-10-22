@@ -3,7 +3,7 @@
   |      ^
   |      Name clash between inherited members:
   |      def equals[T >: Boolean <: Boolean](obj: Any): T in trait SAMTrait at line 3 and
-  |      def equals(x$0: Any): Boolean in class Any
+  |      override def equals(x$0: Any): Boolean in class Object
   |      have the same type (x$0: Object): Boolean after erasure.
   |
   |      Consider adding a @targetName annotation to one of the conflicting definitions

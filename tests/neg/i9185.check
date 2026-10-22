@@ -4,7 +4,7 @@
   |value pure is not a member of String.
   |An extension method was tried, but could not be fully constructed:
   |
-  |    M.pure[A, F]("ola")(
+  |    M.pure[A, F]("ola")(using
   |      /* ambiguous: both object listMonad in object M and object optionMonad in object M match type M[F] */summon[M[F]])
   |
   |    failed with:

@@ -150,7 +150,7 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     val it = iterator
     while (it.hasNext) {
       val elem = it.next()
-      val v = pf.applyOrElse(elem, ((x: A) => marker).asInstanceOf[Function[A, B]])
+      val v = pf.applyOrElse(elem, ((_: A) => marker).asInstanceOf[Function[A, B]])
       if (marker ne v.asInstanceOf[AnyRef]) b += v
     }
     b.result()

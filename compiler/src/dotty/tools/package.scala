@@ -1,5 +1,7 @@
 package dotty
 
+import scala.annotation.nowarn
+
 package object tools {
 
   /** Cached single-element list of Nil. (Whether this helps performance has not been tested) */
@@ -13,15 +15,6 @@ package object tools {
   def unreachable(x: Any = "<< this case was declared unreachable >>"): Nothing =
     throw new MatchError(x)
 
-  /** Forward-ported from the explicit-nulls branch. */
-  extension [T](x: T | Null)
-    /** Should be used when we know from the context that `x` is not null.
-     *  Flow-typing under explicit nulls will automatically insert many necessary
-     *  occurrences of uncheckedNN.
-     */
-    transparent inline def uncheckedNN: T = x.asInstanceOf[T]
-  end extension
-
   /**
    * Allows one to lazily initialize values without explicit `.nn`.
    * This is useful for values that need a Context and thus can't be `lazy val`s.
@@ -33,6 +26,18 @@ package object tools {
       val res = value
       setter(res)
       res
+
+  /**
+   * Prints the given text if the given operation throws an AssertionError, then rethrows.
+   */
+  @nowarn("msg=Catching AssertionError can lead to unexpected behavior") // we immediately rethrow
+  inline def printOnAssertionError[T](text: => String)(inline op: => T): T =
+    try
+      op
+    catch
+      case ex: AssertionError =>
+        println(text)
+        throw ex
 
   /**
    * Infrastructure to shorten method calls by not requiring a lambda.
@@ -48,9 +53,4 @@ package object tools {
   type WrappedResult[T] = resultWrapper.WrappedResult[T]
   def WrappedResult[T](x: T): WrappedResult[T] = resultWrapper.wrap(x)
   def result[T](using x: WrappedResult[T]): T = resultWrapper.unwrap(x)
-
-  // Ensure this object is already classloaded, since it's only actually used
-  // when handling stack overflows and every operation (including class loading)
-  // risks failing.
-  dotty.tools.dotc.core.handleRecursive
  }

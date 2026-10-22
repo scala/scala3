@@ -2,13 +2,15 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.collection.immutable
-import scala.tools.asm
+import scala.collection.{immutable, mutable}
+import org.objectweb.asm
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import tpd.*
+import dotty.tools.dotc.core.TypeComparer
+import dotty.tools.dotc.transform.TryCatchPatterns
 
 /*
  *
@@ -22,8 +24,8 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
    */
   class SyncAndTryBuilder extends PlainBodyBuilder {
 
-    def genSynchronized(tree: Apply, expectedType: BType)(using Context): BType = (tree: @unchecked) match {
-      case Apply(TypeApply(fun, _), args) =>
+    /** Precondition: the target of the 'synchronized' call must already be on the stack. (`tree` is only used for positions) */
+    def genSynchronized(tree: Tree, args: List[Tree], expectedType: BType)(using Context): BType = {
       val monitor = locals.makeLocal(bTypes.ObjectRef, "monitor", defn.ObjectType, tree.span)
       val monCleanup = new asm.Label
 
@@ -32,8 +34,9 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       val hasResult = expectedType != UNIT
       val monitorResult: Symbol | Null = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", defn.ObjectType, tree.span) else null
 
-      /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
-      genLoadQualifier(fun)
+      /* ------ (0) the monitor itself has been pushed to stack already, precondition of this method. ------ */
+
+      /* ------ (1) entering the monitor, also keeping a reference to it in a local var. ------ */
       bc.dup(bTypes.ObjectRef)
       locals.store(monitor)
       emit(asm.Opcodes.MONITORENTER)
@@ -181,11 +184,31 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       val kind = tpeTK(tree)
 
       val caseHandlers: List[EHClause] =
-        for (CaseDef(pat, _, caseBody) <- catches) yield {
+        for (cdef @ CaseDef(pat, _, caseBody) <- catches) yield {
+          val maybeSimpleMultiMatchTypes = cdef
+            .getAttachment(TryCatchPatterns.SimpleMultiCatch)
           pat match {
-            case Typed(Ident(nme.WILDCARD), tpt)  => NamelessEH(tpeTK(tpt).asClassBType, caseBody)
-            case Ident(nme.WILDCARD)              => NamelessEH(bTypes.jlThrowableRef,  caseBody)
-            case Bind(_, _)                       => BoundEH   (pat.symbol, caseBody)
+            case Typed(Ident(nme.WILDCARD), tpt) =>
+              maybeSimpleMultiMatchTypes match {
+                case Some(types) =>
+                  val lubType = TypeComparer.lub(types)
+                  val classBTypes = types.map(it => symInfoTK(it.typeSymbol).asClassBType)
+                  NamelessEH(symInfoTK(lubType.typeSymbol).asClassBType, classBTypes,caseBody)
+                case None =>
+                  val t = tpeTK(tpt).asClassBType
+                  NamelessEH(t, List(t),caseBody)
+              }
+            case Ident(nme.WILDCARD)              =>
+              NamelessEH(bTypes.jlThrowableRef, List(bTypes.jlThrowableRef),caseBody)
+            case Bind(_, _)                       =>
+              maybeSimpleMultiMatchTypes match {
+                case Some(types) =>
+                  val classBTypes = types.map(it => symInfoTK(it.typeSymbol).asClassBType)
+                  BoundEH   (pat.symbol, classBTypes, caseBody)
+                case None =>
+                  val t0 = symInfoTK(pat.symbol).asClassBType
+                  BoundEH   (pat.symbol,List(t0), caseBody)
+              }
           }
         }
 
@@ -294,17 +317,17 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
         // (2.a) emit case clause proper
         val startHandler = currProgramPoint()
         var endHandler: asm.Label | Null = null
-        var excType: ClassBType | Null = null
+        val excTypes = mutable.ArrayBuffer.empty[ClassBType]
         registerCleanup(finCleanup)
         ch match {
-          case NamelessEH(typeToDrop, caseBody) =>
+          case NamelessEH(typeToDrop, exs, caseBody) =>
             bc.drop(typeToDrop)
             genLoad(caseBody, kind) // adapts caseBody to `kind`, thus it can be stored, if `guardResult`, in `tmp`.
             nopIfNeeded(startHandler)
             endHandler = currProgramPoint()
-            excType = typeToDrop
+            excTypes ++= exs
 
-          case BoundEH   (patSymbol,  caseBody) =>
+          case BoundEH   (patSymbol, exs, caseBody) =>
             // test/files/run/contrib674.scala , a local-var already exists for patSymbol.
             // rather than creating on first-access, we do it right away to emit debug-info for the created local var.
             val Local(patTK, _, patIdx, _) = locals.getOrMakeLocal(patSymbol)
@@ -313,11 +336,13 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
             nopIfNeeded(startHandler)
             endHandler = currProgramPoint()
             emitLocalVarScope(patSymbol, startHandler, endHandler)
-            excType = patTK.asClassBType
+            excTypes ++= exs
         }
         unregisterCleanup(finCleanup)
         // (2.b)  mark the try-body as protected by this case clause.
-        protect(startTryBody, endTryBody, startHandler, excType)
+        for(excType <- excTypes) {
+          protect(startTryBody, endTryBody, startHandler, excType)
+        }
         // (2.c) emit jump to the program point where the finally-clause-for-normal-exit starts, or in effect `after` if no finally-clause was given.
         bc.goTo(postHandlers)
 
@@ -464,9 +489,8 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
     }.isDefined
 
     private trait EHClause
-    private case class NamelessEH(typeToDrop: ClassBType,  caseBody: Tree) extends EHClause
-    private case class BoundEH    (patSymbol: Symbol, caseBody: Tree) extends EHClause
-
+    private case class NamelessEH(typeToDrop: ClassBType, excTypes: List[ClassBType], caseBody: Tree) extends EHClause
+    private case class BoundEH    (patSymbol: Symbol,excTypes: List[ClassBType], caseBody: Tree) extends EHClause
   }
 
 }

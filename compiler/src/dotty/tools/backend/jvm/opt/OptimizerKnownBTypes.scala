@@ -1,7 +1,7 @@
-package dotty.tools.backend.jvm.opt
+package dotty.tools.backend.jvm
+package opt
 
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.{BType, BTypeLoader, ClassBType, KnownBTypes, MethodBType, UNIT}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols
@@ -11,20 +11,25 @@ import scala.annotation.constructorOnly
 
 case class MethodNameAndType(name: String, methodType: MethodBType)
 
-final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx: Context) extends KnownBTypes(ts) {
+// This class loads everything eagerly, as the optimizer does not, and must not, have access to a Context,
+// since the optimizer can run on multiple threads at once whereas the Context is single-threaded.
+final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx: Context) {
+
+  val ObjectRef: ClassBType = ts.classBTypeFromSymbol(defn.ObjectClass)
+  val StringRef: ClassBType = ts.classBTypeFromSymbol(defn.StringClass)
 
   val srNothingRef: ClassBType = ts.classBTypeFromSymbol(defn.RuntimeNothingClass)
   val srNullRef: ClassBType = ts.classBTypeFromSymbol(defn.RuntimeNullClass)
-
-  val boxedClasses: Set[ClassBType] = boxedClassOfPrimitive.values.toSet
 
   val srBoxedUnitRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[scala.runtime.BoxedUnit])
 
   val PredefRef: ClassBType = ts.classBTypeFromSymbol(defn.ScalaPredefModuleClass)
 
-  val jlCloneableRef: ClassBType = ts.classBTypeFromSymbol(defn.JavaCloneableClass)
-
-  val jiSerializableRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[java.io.Serializable])
+  /**
+   * Map from primitive types to their boxed class type.
+   */
+  val boxedClassOfPrimitive: Map[BType, ClassBType] =
+    Set(UNIT, BOOL, BYTE, SHORT, CHAR, INT, LONG, FLOAT, DOUBLE).map(p => p -> ts.classBTypeFromSymbol(requiredClass(p.boxedClass.getName))).toMap
 
   // java/lang/Boolean -> MethodNameAndType(valueOf,(Z)Ljava/lang/Boolean;)
   val javaBoxMethods: Map[InternalName, MethodNameAndType] = _javaBoxMethods(using initctx)
@@ -164,4 +169,17 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
       )
     )
   }
+
+  lazy val sideEffectFreeConstructors: Set[(String, String)] =
+    def ownerDesc(p: (InternalName, MethodNameAndType)) = (p._1, p._2.methodType.descriptor)
+    primitiveBoxConstructors.map(ownerDesc).toSet ++
+      srRefConstructors.map(ownerDesc) ++
+      tupleClassConstructors.map(ownerDesc) ++ Set(
+      (ObjectRef.internalName, MethodBType(Nil, UNIT).descriptor),
+      (StringRef.internalName, MethodBType(Nil, UNIT).descriptor),
+      (StringRef.internalName, MethodBType(List(StringRef), UNIT).descriptor),
+      (StringRef.internalName, MethodBType(List(ArrayBType(CHAR)), UNIT).descriptor))
+
+  lazy val classesOfSideEffectFreeConstructors: Set[String] =
+    sideEffectFreeConstructors.map(_._1)
 }

@@ -1,0 +1,18 @@
+-- [E187] Potential Issue Warning: tests/explicit-nulls/warn/synchronized-value-class.scala:3:4 ------------------------
+3 |  d.synchronized {} // warn
+  |  ^^^^^^^^^^^^^^
+  |  Suspicious synchronized call on value class
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E187] Potential Issue Warning: tests/explicit-nulls/warn/synchronized-value-class.scala:6:28 -----------------------
+6 |  java.time.LocalDate.now().synchronized {} // warn
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Suspicious synchronized call on value class
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E187] Potential Issue Warning: tests/explicit-nulls/warn/synchronized-value-class.scala:10:4 -----------------------
+10 |  d.synchronized {} // warn
+   |  ^^^^^^^^^^^^^^
+   |  Suspicious synchronized call on value class
+   |
+   | longer explanation available when compiling with `-explain`

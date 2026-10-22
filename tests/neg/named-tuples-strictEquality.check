@@ -5,7 +5,7 @@
   |I found:
   |
   |    NamedTuple.namedTupleCanEqual[(("name" : String), ("age" : String)), (("name" : String), ("birthYear" : String)), V1, V2
-  |      ](/* missing */summon[(("name" : String), ("age" : String)) =:= (("name" : String), ("birthYear" : String))])
+  |      ](using /* missing */summon[(("name" : String), ("age" : String)) =:= (("name" : String), ("birthYear" : String))])
   |
   |But no implicit values were found that match type (("name" : String), ("age" : String)) =:= (("name" : String), ("birthYear" : String)).
 -- [E172] Type Error: tests/neg/named-tuples-strictEquality.scala:15:11 ------------------------------------------------
@@ -15,6 +15,6 @@
    |I found:
    |
    |    NamedTuple.namedTupleCanEqual[(("name" : String), ("published" : String)), (("name" : String), ("age" : String)), V1, V2
-   |      ](/* missing */summon[(("name" : String), ("published" : String)) =:= (("name" : String), ("age" : String))])
+   |      ](using /* missing */summon[(("name" : String), ("published" : String)) =:= (("name" : String), ("age" : String))])
    |
    |But no implicit values were found that match type (("name" : String), ("published" : String)) =:= (("name" : String), ("age" : String)).

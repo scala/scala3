@@ -417,7 +417,7 @@ object PartialFunction {
     def apply(x: Any) = throw new MatchError(x)
     override def orElse[A1, B1](that: PartialFunction[A1, B1]^) = that
     override def andThen[C](k: PartialFunction[Nothing, C]^): PartialFunction[Any, C]^{k} = this
-    override val lift: Any -> None.type = (x: Any) => None
+    override val lift: Any -> None.type = (_: Any) => None
     override def runWith[U](action: Nothing => U) = constFalse
   }
 

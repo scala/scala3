@@ -84,10 +84,10 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
 
   override def toText(printer: Printer): Text = refs.toText(printer)
 
-  override def hash: Int =
+  override def hashCode(): Int =
     (refs.hashCode << 1) | (if boxed then 1 else 0)
 
-  override def eql(that: Annotation) = that match
+  override def equals(that: Any): Boolean = that match
     case that: CaptureAnnotation => (this.refs eq that.refs) && (this.boxed == that.boxed)
     case _ => false
 

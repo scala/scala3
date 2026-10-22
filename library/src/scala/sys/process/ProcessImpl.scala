@@ -178,7 +178,7 @@ private[process] trait ProcessImpl {
     }
   }
 
-  private[process] abstract class PipeThread(isSink: Boolean, labelFn: () => String) extends Thread {
+  private[process] abstract class PipeThread(isSink: Boolean) extends Thread {
     def run(): Unit
 
     private[process] def runloop(src: InputStream, dst: OutputStream): Unit = {
@@ -192,7 +192,7 @@ private[process] trait ProcessImpl {
   }
 
   @nowarn("msg=Calling the external method .*Name") // setName+getName are safe to call in a constructor
-  private[process] class PipeSource(label: => String) extends PipeThread(isSink = false, () => label) {
+  private[process] class PipeSource(label: => String) extends PipeThread(isSink = false) {
     setName(s"PipeSource($label)-$getName")
     protected val pipe = new PipedOutputStream
     protected val source = new LinkedBlockingQueue[Option[InputStream]](1)
@@ -216,7 +216,7 @@ private[process] trait ProcessImpl {
     def done() = source.put(None)
   }
   @nowarn("msg=Calling the external method .*Name") // setName+getName are safe to call in a constructor
-  private[process] class PipeSink(label: => String) extends PipeThread(isSink = true, () => label) {
+  private[process] class PipeSink(label: => String) extends PipeThread(isSink = true) {
     setName(s"PipeSink($label)-$getName")
     protected val pipe = new PipedInputStream
     protected val sink = new LinkedBlockingQueue[Option[OutputStream]](1)

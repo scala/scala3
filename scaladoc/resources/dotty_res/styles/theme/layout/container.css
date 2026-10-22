@@ -19,7 +19,7 @@ p {
   --header-height: calc(8 * var(--base-spacing));
 }
 
-.site-container img{
+#content img {
   max-width: 100%;
   height: auto;
 }

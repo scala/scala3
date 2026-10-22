@@ -1,10 +1,14 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
 
 import org.junit.Assert.*
 import org.junit.Test
+
+import AbstractFileClassLoader.InterruptInstrumentation
+import AbstractFileClassLoader.InterruptInstrumentation.*
+
+class InterruptProbe
 
 class AbstractFileClassLoaderTest:
 
@@ -31,7 +35,7 @@ class AbstractFileClassLoaderTest:
   // cf ScalaClassLoader#classBytes
   extension (loader: ClassLoader)
     // An InputStream representing the given class name, or null if not found.
-    def classAsStream(className: String): InputStream = loader.getResourceAsStream {
+    def classAsStream(className: String): InputStream | Null = loader.getResourceAsStream {
       if className.endsWith(".class") then className
       else s"${className.replace('.', '/')}.class"  // classNameToPath
     }
@@ -40,7 +44,10 @@ class AbstractFileClassLoaderTest:
       case null   => Array()
       case stream => stream.bytes
 
-  val NoClassLoader: ClassLoader = null
+  // A parent that resolves nothing from the application classpath, so these tests
+  // only ever see resources served by the AbstractFileClassLoader under test.
+  // `fromURLsParallelCapable` defaults to the platform classloader on Java 9+.
+  val noResourcesParent: ClassLoader = ScalaClassLoader.fromURLsParallelCapable(Nil)
 
   // virtual dir "fuzz" and "fuzz/buzz/booz.class"
   def fuzzBuzzBooz: (AbstractFile, AbstractFile) =
@@ -58,7 +65,7 @@ class AbstractFileClassLoaderTest:
   @Test def afclGetsResource(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     booz.writeContent("hello, world")
-    val sut = new AbstractFileClassLoader(fuzz, NoClassLoader)
+    val sut = new AbstractFileClassLoader(fuzz, noResourcesParent)
     val res = sut.getResource("buzz/booz.class")
     assertNotNull("Find buzz/booz.class", res)
     assertEquals("hello, world", slurp(res))
@@ -68,7 +75,7 @@ class AbstractFileClassLoaderTest:
     val (fuzz_, booz_) = fuzzBuzzBooz
     booz.writeContent("hello, world")
     booz_.writeContent("hello, world_")
-    val p = new AbstractFileClassLoader(fuzz, NoClassLoader)
+    val p = new AbstractFileClassLoader(fuzz, noResourcesParent)
     val sut = new AbstractFileClassLoader(fuzz_, p)
     val res = sut.getResource("buzz/booz.class")
     assertNotNull("Find buzz/booz.class", res)
@@ -80,7 +87,7 @@ class AbstractFileClassLoaderTest:
     val bass = fuzz.fileNamed("bass")
     booz.writeContent("hello, world")
     bass.writeContent("lo tone")
-    val sut = new AbstractFileClassLoader(fuzz, NoClassLoader)
+    val sut = new AbstractFileClassLoader(fuzz, noResourcesParent)
     val res = sut.getResource("booz.class")
     assertNotNull(res)
     assertEquals("hello, world", slurp(res))
@@ -90,7 +97,7 @@ class AbstractFileClassLoaderTest:
   @Test def afclGetsResources(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     booz.writeContent("hello, world")
-    val sut = new AbstractFileClassLoader(fuzz, NoClassLoader)
+    val sut = new AbstractFileClassLoader(fuzz, noResourcesParent)
     val e = sut.getResources("buzz/booz.class")
     assertTrue("At least one buzz/booz.class", e.hasMoreElements)
     assertEquals("hello, world", slurp(e.nextElement))
@@ -101,7 +108,7 @@ class AbstractFileClassLoaderTest:
     val (fuzz_, booz_) = fuzzBuzzBooz
     booz.writeContent("hello, world")
     booz_.writeContent("hello, world_")
-    val p = new AbstractFileClassLoader(fuzz, NoClassLoader)
+    val p = new AbstractFileClassLoader(fuzz, noResourcesParent)
     val x = new AbstractFileClassLoader(fuzz_, p)
     val e = x.getResources("buzz/booz.class")
     assertTrue(e.hasMoreElements)
@@ -113,15 +120,15 @@ class AbstractFileClassLoaderTest:
   @Test def afclGetsResourceAsStream(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     booz.writeContent("hello, world")
-    val x = new AbstractFileClassLoader(fuzz, NoClassLoader)
+    val x = new AbstractFileClassLoader(fuzz, noResourcesParent)
     val r = x.getResourceAsStream("buzz/booz.class")
     assertNotNull(r)
-    assertEquals("hello, world", closing(r)(is => Source.fromInputStream(is).mkString))
+    assertEquals("hello, world", closing(r.nn)(is => Source.fromInputStream(is).mkString))
 
   @Test def afclGetsClassBytes(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     booz.writeContent("hello, world")
-    val sut = new AbstractFileClassLoader(fuzz, NoClassLoader)
+    val sut = new AbstractFileClassLoader(fuzz, noResourcesParent)
     val b = sut.classBytes("buzz/booz.class")
     assertEquals("hello, world", new String(b, UTF8.charSet))
 
@@ -131,8 +138,37 @@ class AbstractFileClassLoaderTest:
     booz.writeContent("hello, world")
     booz_.writeContent("hello, world_")
 
-    val p = new AbstractFileClassLoader(fuzz, NoClassLoader)
+    val p = new AbstractFileClassLoader(fuzz, noResourcesParent)
     val sut = new AbstractFileClassLoader(fuzz_, p)
     val b = sut.classBytes("buzz/booz.class")
     assertEquals("hello, world", new String(b, UTF8.charSet))
+
+  def probeIsInterruptible(
+      mode: InterruptInstrumentation,
+      parent: ClassLoader = classOf[InterruptProbe].getClassLoader
+  ): Boolean =
+    val name = classOf[InterruptProbe].getName
+    val root = io.virtualDirectory("replout")
+    val dir = name.split('.').init.foldLeft(root)(_.subdirectoryNamed(_))
+    closing(dir.fileNamed("InterruptProbe.class").output)(_.write(classOf[InterruptProbe].getClassLoader.classBytes(name)))
+    val loader = new AbstractFileClassLoader(root, parent, mode)
+    ReplBytecodeInstrumentation.setStopFlag(loader, true)
+    try
+      loader.loadClass(name).getDeclaredConstructor().newInstance()
+      false
+    catch case e: java.lang.reflect.InvocationTargetException => e.getCause.isInstanceOf[ThreadDeath]
+    finally ReplBytecodeInstrumentation.setStopFlag(loader, false)
+
+  @Test def replClassesAreNotInstrumentedWhenDisabled(): Unit =
+    assertFalse(probeIsInterruptible(Disabled))
+
+  @Test def replClassesAreInstrumentedWhenEnabled(): Unit =
+    assertTrue(probeIsInterruptible(Enabled))
+
+  @Test def replClassesAreInstrumentedWhenLocal(): Unit =
+    assertTrue(probeIsInterruptible(Local))
+
+  @Test def localModeWorksWhenParentCannotSeeStopRepl(): Unit =
+    assertTrue(probeIsInterruptible(Local, ClassLoader.getPlatformClassLoader))
+
 end AbstractFileClassLoaderTest

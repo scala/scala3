@@ -268,8 +268,6 @@ class DeterminismTest {
     test(List(code))
   }
 
-  // TODO: fix compiler determinism for this to pass
-  @Ignore("classfile member order and InnerClasses attribute differ under separate compilation, see scala/scala3#26552")
   @Test def testReferenceToInnerClassMadeNonPrivate(): Unit = {
     def code = List(
       source("t.scala",
@@ -331,6 +329,47 @@ class DeterminismTest {
           |object B {
           |  val m = summon[scala.deriving.Mirror.Of[CC]]
           |}
+          |""".stripMargin)
+    )
+    test(List(code))
+  }
+
+  /** A nested class referenced only from a generic signature must get its
+   *  InnerClasses entry regardless of separate compilation and file order (#26552).
+   */
+  @Test def testInnerClassesSignatureOnly(): Unit = {
+    def code = List(
+      source("a.scala",
+        """class A {
+          |  class B
+          |}
+          |""".stripMargin),
+      source("d.scala",
+        """class D {
+          |  def g: Option[A#B] = None
+          |}
+          |""".stripMargin)
+    )
+    test(List(code))
+  }
+
+  /** A static forwarder in a mirror class can carry the only signature
+   *  reference to a nested class in the run (#26552).
+   */
+  @Test def testInnerClassesStaticForwarder(): Unit = {
+    def code = List(
+      source("a.scala",
+        """class A {
+          |  class B
+          |}
+          |""".stripMargin),
+      source("base.scala",
+        """class Base {
+          |  def g: Option[A#B] = None
+          |}
+          |""".stripMargin),
+      source("o.scala",
+        """object O extends Base
           |""".stripMargin)
     )
     test(List(code))

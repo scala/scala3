@@ -98,7 +98,7 @@ private[concurrent] object ExecutionContextImpl {
     val threadFactory = new DefaultThreadFactory(daemonic = true,
                                                  maxBlockers = getInt("scala.concurrent.context.maxExtraThreads", "256"),
                                                  prefix = "scala-execution-context-global",
-                                                 uncaught = (thread: Thread, cause: Throwable) => reporter(cause))
+                                                 uncaught = (_: Thread, cause: Throwable) => reporter(cause))
 
     new ForkJoinPool(desiredParallelism, threadFactory, threadFactory.uncaught, true) with ExecutionContextExecutorService {
       final override def reportFailure(cause: Throwable): Unit =

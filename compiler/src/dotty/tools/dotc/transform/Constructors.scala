@@ -45,10 +45,10 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     // to more symbols being retained as parameters. Test case in run/capturing.scala.
 
   /** The private vals that are known to be retained as class fields */
-  private val retainedPrivateVals = mutable.Set[Symbol]()
+  private val retainedPrivateVals = mutable.Set.empty[Symbol]
 
   /** The private vals whose definition comes before the current focus */
-  private val seenPrivateVals = mutable.Set[Symbol]()
+  private val seenPrivateVals = mutable.Set.empty[Symbol]
 
   // Collect all private parameter accessors and value definitions that need
   // to be retained. There are several reasons why a parameter accessor or
@@ -220,7 +220,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       }
     }
 
-    val dropped = mutable.Set[Symbol]()
+    val dropped = mutable.Set.empty[Symbol]
 
     // Split class body into statements that go into constructor and
     // definitions that are kept as members of the class.
@@ -242,7 +242,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
               constrStats += intoConstr(stat, sym)
             } else
               dropped += sym
-          case stat @ DefDef(name, _, tpt, _) if stat.symbol.isGetter && !stat.symbol.is(Lazy) =>
+          case stat @ DefDef(name, _, tpt, _) if stat.symbol.isGetter && !stat.symbol.is(Lazy) && !stat.symbol.owner.isInlineTrait =>
             val sym = stat.symbol
             assert(isRetained(sym), sym)
             if sym.isConstExprFinalVal then
@@ -292,7 +292,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
      *  name `x$field` instead of `FieldName(x).
      */
     def checkNoFieldClashes() =
-      val fieldNames = mutable.HashSet[Name]()
+      val fieldNames = mutable.HashSet.empty[Name]
       for case field: ValDef <- clsStats do
         field.symbol.name match
           case FieldName(_) =>

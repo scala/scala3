@@ -5,12 +5,9 @@ import dotty.tools.io.JarArchive
 import dotty.tools.io.PlainFile
 
 import java.io.BufferedOutputStream
-import java.io.DataOutputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.nio.ByteBuffer
 import java.nio.channels.ClosedByInterruptException
-import java.nio.channels.FileChannel
 import java.nio.file.{FileAlreadyExistsException, Files, Path, Paths, StandardOpenOption}
 import java.nio.file.attribute.FileAttribute
 import java.util
@@ -96,7 +93,7 @@ object FileWriters {
       val basicClassWriter = new SingleClassWriter(FileWriter(output, manifest, jarCompressionLevel))
       dumpClassesPath match
         case None => basicClassWriter
-        case Some(out) => new DebugClassWriter(basicClassWriter, FileWriter(out, Seq.empty))
+        case Some(out) => new DebugClassWriter(basicClassWriter, FileWriter(out, Seq.empty, jarCompressionLevel))
     }
 
     private final class SingleClassWriter(underlying: FileWriter) extends ClassfileWriter {
@@ -223,32 +220,22 @@ object FileWriters {
       checkName(filePath.getFileName)
     }
 
-    // the common case is that we are creating a new file, and on MS Windows the create and truncate is expensive
-    // because there is not an options in the Windows API that corresponds to this so the truncate is applied as a separate call
-    // even if the file is new.
-    // as this is rare, it's best to always try to create a new file, and it that fails, then open with truncate if that fails
-    private val fastOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
-    private val fallbackOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
+    private val openOptions = Array(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
 
     override def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile = {
       val path = base.resolve(relativePath)
       try {
         ensureDirForPath(base, path)
-        val os = if (isWindows) {
-          try FileChannel.open(path, fastOpenOptions)
-          catch {
-            case _: FileAlreadyExistsException => FileChannel.open(path, fallbackOpenOptions)
-          }
-        } else FileChannel.open(path, fallbackOpenOptions)
-
-        try os.write(ByteBuffer.wrap(bytes), 0L)
-        catch {
+        try
+          // If the path points to a symlink, we want to replace the symlink itself (not its target).
+          // The only way is `deleteIfExists`; `LinkOption.NOFOLLOW_LINKS` instead means "throw if you find a symlink at that path".
+          Files.deleteIfExists(path)
+          Files.write(path, bytes, openOptions*)
+        catch
           case ex: ClosedByInterruptException =>
             try Files.deleteIfExists(path) // don't leave an empty of half-written classfile around after an interrupt
-            catch { case _: java.io.IOException => () }
+            catch case _: java.io.IOException => ()
             throw ex
-        }
-        os.close()
       } catch {
         case e: IOException => throw new IOException(s"Error writing $path: ${e.getClass.getName}: ${e.getMessage}", e)
       }

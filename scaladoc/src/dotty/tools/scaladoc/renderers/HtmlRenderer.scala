@@ -316,16 +316,6 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
             .get
         )
       ),
-      div(id := "footer", cls := "body-small")(
-        div(cls := "left-container")(
-         "Generated with"
-        ),
-        div(cls := "right-container")(
-          socialLinks,
-          div(cls := "text")(textFooter)
-        ),
-        div(cls := "text-mobile")(textFooter)
-      ),
       div(id := "scaladoc-searchBar"),
       div(id := "main")(
         parentsHtml,
@@ -340,7 +330,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
             },
           ),
         ),
-        div(id := "footer", cls := "body-small mobile-footer")(
+        div(id := "footer", cls := "body-small")(
           div(cls := "left-container")(
             "Generated with"
           ),

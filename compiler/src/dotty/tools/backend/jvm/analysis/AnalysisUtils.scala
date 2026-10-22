@@ -3,9 +3,9 @@ package dotty.tools.backend.jvm.analysis
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.{BCodeUtils, ClassBType}
 
-import scala.tools.asm
-import scala.tools.asm.{Handle, Opcodes}
-import scala.tools.asm.tree.{AbstractInsnNode, FieldInsnNode, InvokeDynamicInsnNode, MethodInsnNode, MethodNode}
+import org.objectweb.asm
+import org.objectweb.asm.{Handle, Opcodes}
+import org.objectweb.asm.tree.{AbstractInsnNode, FieldInsnNode, InvokeDynamicInsnNode, MethodInsnNode, MethodNode}
 
 object AnalysisUtils {
 

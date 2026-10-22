@@ -440,6 +440,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case tpd.Apply(ta @ tpd.TypeApply(sel @ tpd.Select(expr: Apply, nme), tpts), args) =>
               val tree1 = cpy.Apply(tree)(cpy.TypeApply(ta)(cpy.Select(sel)(transform(expr), nme), tpts), args)
               dotc.transform.BetaReduce(tree1).withSpan(tree.span)
+            case tpd.TypeApply(sel @ tpd.Select(expr, nme), tpts) =>
+              val tree1 = cpy.TypeApply(tree)(cpy.Select(sel)(transform(expr), nme), tpts)
+              dotc.transform.BetaReduce(tree1).withSpan(tree.span)
             case _ =>
               dotc.transform.BetaReduce(tree).withSpan(tree.span)
           }
@@ -1931,7 +1934,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               member.info.substThis(self.classSymbol.asClass, self)
             else
               member.info
-          
+
           // We treat the constructor type parameters as if they were the same as corresponding type members.
           // That's how Scala 2 symbols are unpickled to begin with.
           val memberInfoSubstituted =
@@ -1961,13 +1964,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           dotc.core.Symbols.defn.isContextFunctionType(self)
         def isErasedFunctionType: Boolean =
           self match
-            case dotc.core.Symbols.defn.PolyFunctionOf(mt) =>
-              mt match
-                case mt: MethodType => mt.hasErasedParams
-                case PolyType(_, _, mt1) => mt1.hasErasedParams
+            case dotc.core.Symbols.defn.PolyFunctionOf(mt: MethodType) => mt.hasErasedParams
             case _ => false
         def isDependentFunctionType: Boolean =
-          val tpNoRefinement = self.dropDependentRefinement
+          val tpNoRefinement = self.dropFunctionRefinement
           tpNoRefinement != self
           && dotc.core.Symbols.defn.isNonRefinedFunction(tpNoRefinement)
         def isTupleN: Boolean =
@@ -1981,9 +1981,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.subst(from, to)
 
         def typeArgs: List[TypeRepr] = self match
+          case FlexibleType(tp) => tp.typeArgs
           case AppliedType(_, args) => args
           case AnnotatedType(parent, _) => parent.typeArgs
-          case FlexibleType(underlying) => underlying.typeArgs
           case _ => List.empty
       end extension
     end TypeReprMethods
@@ -2473,24 +2473,28 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def unapply(x: NoPrefix): true = true
     end NoPrefix
 
-    type FlexibleType = dotc.core.Types.FlexibleType
+    // A flexible type is represented as an `AppliedType` over the synthetic
+    // `<FlexibleType>` symbol. We use an opaque type so that `FlexibleType` is
+    // nominally distinct from `AppliedType`, otherwise the two `TypeTest`s would
+    // be indistinguishable and `case FlexibleType(_)` could match plain applied types.
+    opaque type FlexibleType <: TypeRepr = dotc.core.Types.AppliedType
 
     object FlexibleTypeTypeTest extends TypeTest[TypeRepr, FlexibleType]:
       def unapply(x: TypeRepr): Option[FlexibleType & x.type] = x match
-        case x: (Types.FlexibleType & x.type) => Some(x)
+        case x: (Types.AppliedType & x.type) if Types.FlexibleType.isInstance(x) => Some(x)
         case _ => None
     end FlexibleTypeTypeTest
 
     object FlexibleType extends FlexibleTypeModule:
-      def apply(tp: TypeRepr): FlexibleType = Types.FlexibleType(tp)
-      def unapply(x: FlexibleType): Some[TypeRepr] = Some(x.hi)
+      def apply(tp: TypeRepr): FlexibleType = Types.FlexibleType(tp).asInstanceOf[FlexibleType]
+      def unapply(x: FlexibleType): Option[TypeRepr] = Types.FlexibleType.unapply(x)
     end FlexibleType
 
     given FlexibleTypeMethods: FlexibleTypeMethods with
       extension (self: FlexibleType)
-        def underlying: TypeRepr = self.hi
-        def lo: TypeRepr = self.lo
-        def hi: TypeRepr = self.hi
+        def underlying: TypeRepr = Types.FlexibleType.unapply(self).get
+        def lo: TypeRepr = Types.OrNull(Types.FlexibleType.unapply(self).get)
+        def hi: TypeRepr = Types.FlexibleType.unapply(self).get
       end extension
     end FlexibleTypeMethods
 
@@ -3056,7 +3060,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def fieldMembers: List[Symbol] =
           lookupPrefix.allMembers.iterator.map(_.symbol).collect {
             case sym if isField(sym) => sym.asTerm
-          }.toList
+          }.toList.sortBy(_.name.toString)
 
         def declaredMethod(name: String): List[Symbol] =
           self.typeRef.decls.iterator.collect {
@@ -3076,9 +3080,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def memberMethods: List[Symbol] = methodMembers
         def methodMembers: List[Symbol] =
-          lookupPrefix.allMembers.iterator.map(_.symbol).collect {
-            case sym if isMethod(sym) => sym.asTerm
-          }.toList
+          lookupPrefix.allMembers.filter(denot => isMethod(denot.symbol)).sortWith { (methodA, methodB) =>
+            val nameOrder = methodA.name.toString.compareTo(methodB.name.toString)
+            if nameOrder != 0 then nameOrder < 0
+            else dotc.core.Signature.lexicographicOrdering.compare(methodA.signature, methodB.signature) < 0
+          }.map(_.symbol.asTerm).toList
 
         def declaredType(name: String): List[Symbol] =
           self.typeRef.decls.iterator.collect {
@@ -3383,9 +3389,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def startColumn: Int = self.startColumn
         def endColumn: Int = self.endColumn
         def sourceCode: Option[String] =
-          val contents = self.source.content()
+          val contents = self.source.textContent()
           if contents.length < self.end then None
-          else Some(new String(contents, self.start, self.end - self.start))
+          else Some(contents.substring(self.start, self.end))
       end extension
     end PositionMethods
 
@@ -3396,19 +3402,19 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val unit = ctx.compilationUnit
         if unit eq NoCompilationUnit then
           throw new java.lang.UnsupportedOperationException(
-            "`reflect.SourceFile.current` cannot be called within the TASTy ispector")
+            "`reflect.SourceFile.current` cannot be called within the TASTy inspector")
         else unit.source
     }
 
     given SourceFileMethods: SourceFileMethods with
       extension (self: SourceFile)
         @deprecated("This will return `null` for files that are not on disk, such as in an IDE or in the REPL.", "3.9.0")
-        def jpath: java.nio.file.Path = self.file.jpath.asInstanceOf[java.nio.file.Path]
+        def jpath: java.nio.file.Path = self.jfile.map(_.toPath).get
         @deprecated("This will return `None` for files that are not on disk, such as in an IDE or in the REPL.", "3.9.0")
-        def getJPath: Option[java.nio.file.Path] = Option(self.file.jpath)
+        def getJPath: Option[java.nio.file.Path] = Option(self.jfile.map(_.toPath).orElse(null))
         def name: String = self.name
         def path: String = self.path
-        def content: Option[String] = Option.when(self.exists)(new String(self.content()))
+        def content: Option[String] = Option.when(self.exists)(self.textContent())
       end extension
     end SourceFileMethods
 

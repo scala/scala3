@@ -8,6 +8,7 @@ import dotty.tools.scaladoc.test.BuildInfo
 import java.nio.file.Path;
 import org.jsoup.Jsoup
 import util.IO
+import org.junit.Test
 
 private enum SignatureRes:
   case Expected(name: String, signature: String)
@@ -22,7 +23,8 @@ abstract class SignatureTest(
   filterFunc: (Path) => Boolean = _ => true
 ) extends ScaladocTest(testName):
 
-  def runTest = { org.junit.Assume.assumeTrue("Running on Windows", java.io.File.separatorChar == '/'); afterRendering {
+  @Test
+  def runTest(): Unit = { org.junit.Assume.assumeTrue("Running on Windows", java.io.File.separatorChar == '/'); afterRendering {
     val sources = sourceFiles match
       case Nil => testName :: Nil
       case s => s
@@ -112,6 +114,10 @@ abstract class SignatureTest(
 
     def processFile(path: Path): Unit = if filterFunc(path) then
       val document = Jsoup.parse(IO.read(path))
+      // Toggleable feature fragments (e.g. capture checking) carry both an
+      // `on` and an `off` variant in the DOM; only the `on` variant is shown
+      // by default, so drop the hidden one before extracting text.
+      document.select(".feature-off").remove()
       val documentable = document.select(".groupHeader").forEach { element =>
         signatures += element.text
       }

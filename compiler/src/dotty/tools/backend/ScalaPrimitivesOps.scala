@@ -63,45 +63,6 @@ object ScalaPrimitivesOps {
   // RunTime operations
   inline val BOX = 110                          // RunTime.box_<X>(x)
   inline val UNBOX = 111                        // RunTime.unbox_<X>(x)
-  inline val NEW_ZARRAY = 112                   // RunTime.zarray(x)
-  inline val NEW_BARRAY = 113                   // RunTime.barray(x)
-  inline val NEW_SARRAY = 114                   // RunTime.sarray(x)
-  inline val NEW_CARRAY = 115                   // RunTime.carray(x)
-  inline val NEW_IARRAY = 116                   // RunTime.iarray(x)
-  inline val NEW_LARRAY = 117                   // RunTime.larray(x)
-  inline val NEW_FARRAY = 118                   // RunTime.farray(x)
-  inline val NEW_DARRAY = 119                   // RunTime.darray(x)
-  inline val NEW_OARRAY = 120                   // RunTime.oarray(x)
-
-  inline val ZARRAY_LENGTH = 131                // RunTime.zarray_length(x)
-  inline val BARRAY_LENGTH = 132                // RunTime.barray_length(x)
-  inline val SARRAY_LENGTH = 133                // RunTime.sarray_length(x)
-  inline val CARRAY_LENGTH = 134                // RunTime.carray_length(x)
-  inline val IARRAY_LENGTH = 135                // RunTime.iarray_length(x)
-  inline val LARRAY_LENGTH = 136                // RunTime.larray_length(x)
-  inline val FARRAY_LENGTH = 137                // RunTime.farray_length(x)
-  inline val DARRAY_LENGTH = 138                // RunTime.darray_length(x)
-  inline val OARRAY_LENGTH = 139                // RunTime.oarray_length(x)
-
-  inline val ZARRAY_GET = 140                   // RunTime.zarray_get(x,y)
-  inline val BARRAY_GET = 141                   // RunTime.barray_get(x,y)
-  inline val SARRAY_GET = 142                   // RunTime.sarray_get(x,y)
-  inline val CARRAY_GET = 143                   // RunTime.carray_get(x,y)
-  inline val IARRAY_GET = 144                   // RunTime.iarray_get(x,y)
-  inline val LARRAY_GET = 145                   // RunTime.larray_get(x,y)
-  inline val FARRAY_GET = 146                   // RunTime.farray_get(x,y)
-  inline val DARRAY_GET = 147                   // RunTime.darray_get(x,y)
-  inline val OARRAY_GET = 148                   // RunTime.oarray_get(x,y)
-
-  inline val ZARRAY_SET = 150                   // RunTime.zarray(x,y,z)
-  inline val BARRAY_SET = 151                   // RunTime.barray(x,y,z)
-  inline val SARRAY_SET = 152                   // RunTime.sarray(x,y,z)
-  inline val CARRAY_SET = 153                   // RunTime.carray(x,y,z)
-  inline val IARRAY_SET = 154                   // RunTime.iarray(x,y,z)
-  inline val LARRAY_SET = 155                   // RunTime.larray(x,y,z)
-  inline val FARRAY_SET = 156                   // RunTime.farray(x,y,z)
-  inline val DARRAY_SET = 157                   // RunTime.darray(x,y,z)
-  inline val OARRAY_SET = 158                   // RunTime.oarray(x,y,z)
 
   inline val B2B = 200                          // RunTime.b2b(x)
   inline val B2S = 201                          // RunTime.b2s(x)
@@ -161,35 +122,16 @@ object ScalaPrimitivesOps {
 
   /** Check whether the given operation code is an array operation. */
   def isArrayOp(code: Int): Boolean =
-    isArrayNew(code) | isArrayLength(code) | isArrayGet(code) | isArraySet(code)
+    isArrayLength(code) | isArrayGet(code) | isArraySet(code)
 
-  def isArrayNew(code: Int): Boolean = code match {
-    case NEW_ZARRAY | NEW_BARRAY | NEW_SARRAY | NEW_CARRAY |
-         NEW_IARRAY | NEW_LARRAY | NEW_FARRAY | NEW_DARRAY |
-         NEW_OARRAY => true
-    case _ => false
-  }
+  def isArrayLength(code: Int): Boolean =
+    code == LENGTH
 
-  def isArrayLength(code: Int): Boolean = code match {
-    case ZARRAY_LENGTH | BARRAY_LENGTH | SARRAY_LENGTH | CARRAY_LENGTH |
-         IARRAY_LENGTH | LARRAY_LENGTH | FARRAY_LENGTH | DARRAY_LENGTH |
-         OARRAY_LENGTH | LENGTH => true
-    case _ => false
-  }
+  def isArrayGet(code: Int): Boolean =
+    code == APPLY
 
-  def isArrayGet(code: Int): Boolean = code match {
-    case ZARRAY_GET | BARRAY_GET | SARRAY_GET | CARRAY_GET |
-         IARRAY_GET | LARRAY_GET | FARRAY_GET | DARRAY_GET |
-         OARRAY_GET | APPLY => true
-    case _ => false
-  }
-
-  def isArraySet(code: Int): Boolean = code match {
-    case ZARRAY_SET | BARRAY_SET | SARRAY_SET | CARRAY_SET |
-         IARRAY_SET | LARRAY_SET | FARRAY_SET | DARRAY_SET |
-         OARRAY_SET | UPDATE => true
-    case _ => false
-  }
+  def isArraySet(code: Int): Boolean =
+    code == UPDATE
 
   /** Check whether the given code is a comparison operator */
   def isComparisonOp(code: Int): Boolean = code match {

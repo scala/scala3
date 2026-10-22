@@ -38,7 +38,7 @@ trait BasicSupport:
     Annotation(dri, params)
 
   extension (using Quotes)(sym: reflect.Symbol)
-    def documentation = parseComment(sym.docstring.getOrElse(""), sym.tree)
+    def documentation(ownerSym: reflect.Symbol) = parseComment(sym.docstring.getOrElse(""), sym, ownerSym)
 
     def getAnnotations(): List[Annotation] =
       // Custom annotations should be documented only if annotated by @java.lang.annotation.Documented

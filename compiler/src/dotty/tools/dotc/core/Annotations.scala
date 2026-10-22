@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*
+import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*, NameKinds.*
 import ast.tpd, tpd.*
 import util.Spans.{Span, NoSpan}
 import printing.{Showable, Printer}
@@ -10,13 +10,15 @@ import printing.Texts.Text
 import cc.{isRetainsLike, RetainingAnnotation}
 import config.Feature.sourceVersion
 import Decorators.*
+import dotty.tools.dotc.core.StdNames.nme
 
 import scala.annotation.internal.sharable
 
 object Annotations {
 
   def annotClass(tree: Tree)(using Context) =
-    if (tree.symbol.isConstructor) tree.symbol.owner
+    val sym = tree.symbol
+    if (sym.isConstructor) sym.owner
     else tree.tpe.typeSymbol
 
   abstract class Annotation extends Showable {
@@ -44,15 +46,29 @@ object Annotations {
     def argumentTypes(using Context): List[Type] =
       tpd.allArguments(tree).filterConserve(_.isType).tpes
 
-    def argument(i: Int)(using Context): Option[Tree] = {
+    def argument(i: Int)(using Context): Option[Tree] =
       val args = arguments
-      if (i < args.length) Some(args(i)) else None
-    }
+      if i < args.length then Some(args(i)) else None
+
+    def hasExplicitArgument(i: Int)(using Context): Boolean =
+      argument(i) match
+        case Some(Select(Ident(_), DefaultGetterName(nme.CONSTRUCTOR, _))) => false
+        case Some(_) => true
+        case None => false
+
     def argumentConstant(i: Int)(using Context): Option[Constant] =
       for case ConstantType(c) <- argument(i).map(stripCast(_).tpe.widenTermRefExpr.normalized) yield c
 
     def argumentConstantString(i: Int)(using Context): Option[String] =
       for (case Constant(s: String) <- argumentConstant(i)) yield s
+
+    def argumentConstantSymbol(i: Int)(using Context): Option[String] =
+      argument(i) match
+        case Some(Apply(Select(Ident(nme.Symbol), nme.apply), Literal(Constant(s: String)) :: Nil)) => Some(s)
+        case _ => None
+
+    def argumentConstantStringOrSymbol(i: Int)(using Context): Option[String] =
+      argumentConstantString(i).orElse(argumentConstantSymbol(i))
 
     /** The tree evaluation is in progress. */
     def isEvaluating: Boolean = false
@@ -78,7 +94,7 @@ object Annotations {
               if tm.isRange(x) then x
               else
                 val tp1 = tm(tree.tpe)
-                foldOver(if !tp1.exists || tp1.eql(tree.tpe) then x else tp1, tree)
+                foldOver(if !tp1.exists || tp1.equals(tree.tpe) then x else tp1, tree)
           val diff = findDiff(NoType, args)
           if tm.isRange(diff) then EmptyAnnotation
           else if diff.exists then derivedAnnotation(tm.mapOver(tree))
@@ -122,10 +138,6 @@ object Annotations {
         metaSyms.exists(symbol.hasAnnotation) || rec(tree)
       go(metaSyms) || orNoneOf.nonEmpty && !go(orNoneOf)
     }
-
-    /** Operations for hash-consing, can be overridden */
-    def hash: Int = System.identityHashCode(this)
-    def eql(that: Annotation) = this eq that
   }
 
   case class ConcreteAnnotation(t: Tree) extends Annotation:
@@ -192,9 +204,9 @@ object Annotations {
     override def refersToParamOf(tl: TermLambda)(using Context): Boolean =
       refersToLambdaParam(tpe, tl)
 
-    override def hash: Int = tpe.hash
-    override def eql(that: Annotation) = that match
-      case that: CompactAnnotation => this.tpe `eql` that.tpe
+    override def hashCode(): Int = tpe.hash
+    override def equals(that: Any): Boolean = that match
+      case that: CompactAnnotation => this.tpe.equals(that.tpe)
       case _ => false
 
   object CompactAnnotation:

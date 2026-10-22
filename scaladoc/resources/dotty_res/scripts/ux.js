@@ -92,7 +92,7 @@ function attachAllListeners() {
         expanderChild !== null
       ) {
         expanderChild.onclick = function (e) {
-          if (!$(e.target).is("a") && e.fromSnippet !== true) {
+          if (!e.target.tagName === "A" && e.fromSnippet !== true) {
             this.parentElement.classList.toggle("expand");
             this.children[0].classList.toggle("expanded");
             this.querySelector(".show-content").classList.toggle("expand");
@@ -127,7 +127,7 @@ function attachAllListeners() {
   var memberLists = document.getElementsByClassName("tab");
   if (memberLists) {
     for (i = 0; i < memberLists.length; i++) {
-      if ($(memberLists[i].children[0].children[0]).is("button")) {
+      if (memberLists[i].children[0].children[0].tagName === "BUTTON") {
         memberLists[i].children[0].onclick = function (e) {
           this.classList.toggle("expand");
           this.children[0].classList.toggle("expand");
@@ -147,56 +147,6 @@ function attachAllListeners() {
       brief.parentElement.parentElement.parentElement.previousElementSibling.children[0].classList.add(
         "expanded",
       );
-    });
-  });
-
-  document.querySelectorAll("a").forEach((el) => {
-    const href = el.href;
-    if (href === "") {
-      return;
-    }
-    const url = new URL(href);
-    if (attachedElements.has(el)) return;
-    attachedElements.add(el);
-    el.addEventListener("click", (e) => {
-      if (
-        url.href.replace(/#.*/, "") === window.location.href.replace(/#.*/, "")
-      ) {
-        return;
-      }
-      if (url.origin !== window.location.origin) {
-        return;
-      }
-      // ISSUE-19208, treat as normal link when lacking HTTP server,
-      // otherwise GET request blocked by CORS protections.
-      if (window.location.protocol.startsWith("file")) {
-        return;
-      }
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
-        return;
-      }
-      e.preventDefault();
-      e.stopPropagation();
-      $.get(href, function (data) {
-        const oldLoc = getRawLoc();
-        if (window.history.state === null) {
-          window.history.replaceState(savePageState(document), "");
-        }
-        const parser = new DOMParser();
-        const parsedDocument = parser.parseFromString(data, "text/html");
-        const state = savePageState(parsedDocument);
-        window.history.pushState(state, "", href);
-        loadPageState(document, state);
-        const newLoc = getRawLoc();
-        if (dynamicSideMenu) {
-          updateMenu(oldLoc, newLoc);
-        }
-
-        window.dispatchEvent(new Event(DYNAMIC_PAGE_LOAD));
-        document
-          .querySelector("#main")
-          .scrollTo({ top: 0, left: 0, behavior: "instant" });
-      });
     });
   });
 
@@ -556,9 +506,24 @@ window.addEventListener("popstate", (e) => {
 var zoom;
 var transform;
 
+/* The diagram's node sizes are measured when it is first rendered, so a
+ * feature toggle changing the visible fragments of its labels invalidates
+ * the layout: drop it and re-render if it is currently shown. */
+window.addEventListener("feature-toggled", (e) => {
+  const graph = document.querySelector("svg#graph");
+  const diagram = document.getElementById("inheritance-diagram");
+  if (graph != null && graph.querySelector(`.feature-${e.detail.feature}`) != null) {
+    graph.innerHTML = "";
+    if (diagram != null && diagram.classList.contains("shown")) {
+      showGraph();
+    }
+  }
+});
+
 function showGraph() {
   document.getElementById("inheritance-diagram").classList.add("shown");
-  if ($("svg#graph").children().length == 0) {
+  const graph = document.querySelector("svg#graph");
+  if (graph != null && graph.children.length == 0) {
     var dotNode = document.querySelector("#dot");
 
     if (dotNode) {

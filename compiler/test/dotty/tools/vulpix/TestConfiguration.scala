@@ -9,8 +9,10 @@ import java.io.File
 import dotc.config.ScalaSettingsProperties.supportedReleaseVersions
 
 object TestConfiguration {
+  /** Default target of the generated class files */
+  private val defaultTarget: String = "17"
 
-  val usingBaselineJava = javaSpecVersion.startsWith(supportedReleaseVersions.headOption.getOrElse("17"))
+  val usingBaselineJava = javaSpecVersion.startsWith(supportedReleaseVersions.headOption.getOrElse(defaultTarget))
 
   val pageWidth = 120
 
@@ -35,9 +37,8 @@ object TestConfiguration {
 
   val basicClasspath = mkClasspath(List(Properties.scalaLibrary))
 
-  lazy val withCompilerClasspath = mkClasspath(List(
+  lazy val withCompilerClasspath = mkClasspath(Properties.asmAll ++ List(
     Properties.scalaLibrary,
-    Properties.scalaAsm,
     Properties.compilerInterface,
     Properties.dottyInterfaces,
     Properties.tastyCore,
@@ -56,7 +57,7 @@ object TestConfiguration {
     Properties.scalaJSLibrary,
   ))
 
-  def mkClasspath(classpaths: List[String]): String =
+  def mkClasspath(classpaths: Iterable[String]): String =
     classpaths.map({ p =>
       val file = new java.io.File(p)
       assert(file.exists, s"File $p couldn't be found.")
@@ -95,6 +96,4 @@ object TestConfiguration {
   val oldSyntax = defaultOptions `and` "-old-syntax"
   val newSyntax = defaultOptions `and` "-new-syntax"
 
-  /** Default target of the generated class files */
-  private def defaultTarget: String = "17"
 }

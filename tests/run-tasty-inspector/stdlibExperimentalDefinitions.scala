@@ -96,6 +96,10 @@ val experimentalDefinitionInLibrary = Set(
 
   // New feature: Erased trait
   "scala.compiletime.Erased",
+  
+  // New feature: Specialized traits
+  "scala.specialize.Specialized",
+  "scala.specialize.Specialized$"
 )
 
 
@@ -143,7 +147,7 @@ val experimentalDefinitionInLibrary = Set(
 
    // Artefact of the current test infrastructure
   // TODO improve infrastructure to avoid needing this code on each test
-  val libJarClasspath = dotty.tools.dotc.util.ClasspathFromClassloader(this.getClass.getClassLoader).split(java.io.File.pathSeparator).find(x => x.contains("scala-library-bootstrapped") && x.endsWith(".jar")).get
+  val libJarClasspath = dotty.tools.dotc.util.ClasspathFromClassloader(getClass.getClassLoader).split(java.io.File.pathSeparator).find(x => x.contains("scala-library-bootstrapped") && x.endsWith(".jar")).get
 
   TastyInspector.inspectTastyFilesInJar(libJarClasspath)(inspector)
 }

@@ -46,6 +46,7 @@ import transform.Recheck.currentRechecker
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
+import scala.util.control.NonFatal
 
 object Types extends TypeUtils {
 
@@ -279,37 +280,37 @@ object Types extends TypeUtils {
      *  a non-bottom subclass of `cls`.
      */
     final def derivesFrom(cls: Symbol, defaultIfUnknown: Boolean = false)(using Context): Boolean = {
-      def isLowerBottomType(tp: Type) =
+      inline def isLowerBottomType(tp: Type) =
         tp.isBottomType
         && (tp.hasClassSymbol(defn.NothingClass)
             || cls != defn.NothingClass && !cls.isValueClass)
-      def loop(tp: Type): Boolean = try tp match
-        case tp: TypeRef =>
-          val sym = tp.symbol
-          if (sym.isClass) sym.derivesFrom(cls, defaultIfUnknown) else loop(tp.superType)
-        case tp: AppliedType =>
-          tp.superType.derivesFrom(cls)
-        case tp: MatchType =>
-          tp.bound.derivesFrom(cls) || tp.reduced.derivesFrom(cls)
-        case tp: TypeProxy =>
-          loop(tp.underlying)
-        case tp: AndType =>
-          loop(tp.tp1) || loop(tp.tp2)
-        case tp: OrType =>
-          // If the type is `T | Null` or `T | Nothing`, the class is != Nothing,
-          // and `T` derivesFrom the class, then the OrType derivesFrom the class.
-          // Otherwise, we need to check both sides derivesFrom the class.
-          if isLowerBottomType(tp.tp1) then
-            loop(tp.tp2)
-          else if isLowerBottomType(tp.tp2) then
-            loop(tp.tp1)
-          else
-            loop(tp.tp1) && loop(tp.tp2)
-        case tp: JavaArrayType =>
-          cls == defn.ObjectClass
-        case _ =>
-          false
-      catch case ex: Throwable => handleRecursive(i"derivesFrom $cls:", show, ex)
+      def loop(tp: Type): Boolean = ctx.handleRecursive("check derivation from", cls):
+        tp match
+          case tp: TypeRef =>
+            val sym = tp.symbol
+            if (sym.isClass) sym.derivesFrom(cls, defaultIfUnknown) else loop(tp.superType)
+          case tp: AppliedType =>
+            tp.superType.derivesFrom(cls)
+          case tp: MatchType =>
+            tp.bound.derivesFrom(cls) || tp.reduced.derivesFrom(cls)
+          case tp: TypeProxy =>
+            loop(tp.underlying)
+          case tp: AndType =>
+            loop(tp.tp1) || loop(tp.tp2)
+          case tp: OrType =>
+            // If the type is `T | Null` or `T | Nothing`, the class is != Nothing,
+            // and `T` derivesFrom the class, then the OrType derivesFrom the class.
+            // Otherwise, we need to check both sides derivesFrom the class.
+            if isLowerBottomType(tp.tp1) then
+              loop(tp.tp2)
+            else if isLowerBottomType(tp.tp2) then
+              loop(tp.tp1)
+            else
+              loop(tp.tp1) && loop(tp.tp2)
+          case tp: JavaArrayType =>
+            cls == defn.ObjectClass
+          case _ =>
+            false
       loop(this)
     }
 
@@ -317,7 +318,7 @@ object Types extends TypeUtils {
       isRef(defn.ObjectClass) && (typeSymbol eq defn.FromJavaObjectSymbol)
 
     def containsFromJavaObject(using Context): Boolean = this match
-      case tp: FlexibleType => tp.underlying.containsFromJavaObject
+      case FlexibleType(hi) => hi.containsFromJavaObject
       case tp: OrType => tp.tp1.containsFromJavaObject || tp.tp2.containsFromJavaObject
       case tp: AndType => tp.tp1.containsFromJavaObject && tp.tp2.containsFromJavaObject
       case _ => isFromJavaObject
@@ -382,7 +383,9 @@ object Types extends TypeUtils {
     /** Is this type guaranteed not to have `null` as a value? */
     final def isNotNull(using Context): Boolean = this match {
       case tp: ConstantType => tp.value.value != null
-      case tp: FlexibleType => false
+      case FlexibleType(_) => false
+      case tp: ThisType => true
+      case tp: SuperType => true
       case tp: ClassInfo => !tp.cls.isNullableClass && !tp.isNothingType
       case tp: AppliedType => tp.superType.isNotNull
       case tp: TypeBounds => tp.hi.isNotNull
@@ -398,7 +401,7 @@ object Types extends TypeUtils {
         case OrType(l, r) => r.admitsNull || l.admitsNull
         case AndType(l, r) => r.admitsNull && l.admitsNull
         case TypeBounds(lo, hi) => lo.admitsNull
-        case FlexibleType(lo, hi) => true
+        case FlexibleType(_) => true
         case tp: TypeProxy => tp.underlying.admitsNull
         case _ => false
       )
@@ -419,18 +422,17 @@ object Types extends TypeUtils {
      *  (since these are relevant for inference or resolution) but never consider prefixes
      *  (since these often do not constrain the search space anyway).
      */
-    def unusableForInference(using Context): Boolean = try widenDealias match
-      case AppliedType(tycon, args) => tycon.unusableForInference || args.exists(_.unusableForInference)
-      case RefinedType(parent, _, rinfo) => parent.unusableForInference || rinfo.unusableForInference
-      case TypeBounds(lo, hi) => lo.unusableForInference || hi.unusableForInference
-      case tp: FlexibleType => tp.underlying.unusableForInference
-      case tp: AndOrType => tp.tp1.unusableForInference || tp.tp2.unusableForInference
-      case tp: LambdaType => tp.resultType.unusableForInference || tp.paramInfos.exists(_.unusableForInference)
-      case WildcardType(optBounds) => optBounds.unusableForInference
-      case CapturingType(parent, refs) => parent.unusableForInference || refs.elems.exists(_.coreType.unusableForInference)
-      case _: ErrorType => true
-      case _ => false
-    catch case ex: Throwable => handleRecursive("unusableForInference", show, ex)
+    def unusableForInference(using Context): Boolean = ctx.handleRecursive("unusableForInference", this):
+      widenDealias match
+        case AppliedType(tycon, args) => tycon.unusableForInference || args.exists(_.unusableForInference)
+        case RefinedType(parent, _, rinfo) => parent.unusableForInference || rinfo.unusableForInference
+        case TypeBounds(lo, hi) => lo.unusableForInference || hi.unusableForInference
+        case tp: AndOrType => tp.tp1.unusableForInference || tp.tp2.unusableForInference
+        case tp: LambdaType => tp.resultType.unusableForInference || tp.paramInfos.exists(_.unusableForInference)
+        case WildcardType(optBounds) => optBounds.unusableForInference
+        case CapturingType(parent, refs) => parent.unusableForInference || refs.elems.exists(_.coreType.unusableForInference)
+        case _: ErrorType => true
+        case _ => false
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     @tailrec final def hasAnnotation(cls: ClassSymbol)(using Context): Boolean = stripTypeVar match
@@ -464,8 +466,9 @@ object Types extends TypeUtils {
       (new isGroundAccumulator).apply(true, this)
 
     /** Is this a type of a repeated parameter? */
-    def isRepeatedParam(using Context): Boolean =
-      typeSymbol eq defn.RepeatedParamClass
+    def isRepeatedParam(using Context): Boolean = this match
+      case FlexibleType(hi) => hi.isRepeatedParam
+      case _ => typeSymbol eq defn.RepeatedParamClass
 
     /** Is this type of the form `compiletime.into[T]`, which means it can be the
      *  target of an implicit converson without requiring a language import?
@@ -726,7 +729,7 @@ object Types extends TypeUtils {
      */
     def baseClasses(using Context): List[ClassSymbol] =
       record("baseClasses")
-      try
+      ctx.handleRecursive("base classes of", this):
         this match
           case tp: TypeProxy =>
             tp.superType.baseClasses
@@ -735,7 +738,6 @@ object Types extends TypeUtils {
           case tp: WildcardType =>
             tp.effectiveBounds.hi.baseClasses
           case _ => Nil
-      catch case ex: Throwable => handleRecursive("base classes of", this.show, ex)
 
 // ----- Member access -------------------------------------------------
 
@@ -1016,25 +1018,24 @@ object Types extends TypeUtils {
       if (recCount >= Config.LogPendingFindMemberThreshold)
         ctx.base.pendingMemberSearches = name :: ctx.base.pendingMemberSearches
       ctx.base.findMemberCount = recCount + 1
-      try go(this)
-      catch {
-        case ex: Throwable =>
+
+      def showPrefixSafely(pre: Type)(using Context): String = pre.stripTypeVar match
+        case pre: TermRef => i"${pre.symbol.name}."
+        case pre: TypeRef => i"${pre.symbol.name}#"
+        case pre: TypeProxy => showPrefixSafely(pre.superType)
+        case _ => if (pre.typeSymbol.exists) i"${pre.typeSymbol.name}#" else "."
+
+      try
+        ctx.handleRecursive("find-member", () => i"${showPrefixSafely(pre)}$name"):
+          go(this)
+      catch
+        case NonFatal(t) =>
           core.println(s"findMember exception for $this member $name, pre = $pre, recCount = $recCount")
-
-          def showPrefixSafely(pre: Type)(using Context): String = pre.stripTypeVar match {
-            case pre: TermRef => i"${pre.symbol.name}."
-            case pre: TypeRef => i"${pre.symbol.name}#"
-            case pre: TypeProxy => showPrefixSafely(pre.superType)
-            case _ => if (pre.typeSymbol.exists) i"${pre.typeSymbol.name}#" else "."
-          }
-
-          handleRecursive("find-member", i"${showPrefixSafely(pre)}$name", ex)
-      }
-      finally {
+          throw t
+      finally
         if (recCount >= Config.LogPendingFindMemberThreshold)
           ctx.base.pendingMemberSearches = ctx.base.pendingMemberSearches.tail
         ctx.base.findMemberCount = recCount
-      }
     }
 
     /** The set of names of members of this type that pass the given name filter
@@ -1057,11 +1058,11 @@ object Types extends TypeUtils {
       case tp: OrType =>
         tp.tp1.memberNames(keepOnly, pre) & tp.tp2.memberNames(keepOnly, pre)
       case _ =>
-        Set()
+        Set.empty
     }
 
     def memberDenots(keepOnly: NameFilter, f: (Name, mutable.Buffer[SingleDenotation]) => Unit)(using Context): Seq[SingleDenotation] = {
-      val buf = mutable.ListBuffer[SingleDenotation]()
+      val buf = mutable.ListBuffer.empty[SingleDenotation]
       for (name <- memberNames(keepOnly)) f(name, buf)
       buf.toList
     }
@@ -1318,8 +1319,10 @@ object Types extends TypeUtils {
     /** `this & that`, but handle CyclicReferences by falling back to `safe_&`.
      */
     def recoverable_&(that: Type)(using Context): Type =
-      try this & that
-      catch {
+      try {
+        ctx.handleRecursive("construction of & with", that):
+          this & that
+      } catch {
         case ex: CyclicReference => this safe_& that
           // A test case where this happens is tests/pos/i536.scala.
           // The & causes a subtype check which calls baseTypeRef again with the same
@@ -1471,8 +1474,8 @@ object Types extends TypeUtils {
         tp.rebind(tp.parent.widenUnion)
       case tp: HKTypeLambda =>
         tp.derivedLambdaType(resType = tp.resType.widenUnion)
-      case tp: FlexibleType =>
-        tp.derivedFlexibleType(tp.hi.widenUnionWithoutNull)
+      case tp @ FlexibleType(hi) =>
+        tp.derivedFlexibleType(hi.widenUnionWithoutNull)
       case tp =>
         tp
 
@@ -1660,7 +1663,7 @@ object Types extends TypeUtils {
     }
 
     /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
-    final def dropDependentRefinement(using Context): Type = dealias match {
+    final def dropFunctionRefinement(using Context): Type = dealias match {
       case RefinedType(parent, nme.apply, mt) if defn.isNonRefinedFunction(parent) => parent
       case tp => tp
     }
@@ -1902,8 +1905,6 @@ object Types extends TypeUtils {
         t
       case t @ SAMType(_, _) =>
         t
-      case ft: FlexibleType =>
-        ft.underlying.findFunctionType
       case _ =>
         NoType
 
@@ -2023,7 +2024,6 @@ object Types extends TypeUtils {
      */
     def toFunctionType(isJava: Boolean = false, alwaysDependent: Boolean = false)(using Context): Type = this match {
       case mt: MethodType =>
-        assert(!mt.isParamDependent)
         def nonDependentFunType =
           val isContextual = mt.isContextualMethod && !ctx.erasedTypes
           val result1 = mt.nonDependentResultApprox match {
@@ -2034,14 +2034,18 @@ object Types extends TypeUtils {
             mt.paramInfos.mapConserve:
               _.translateFromRepeated(toArray = isJava),
             result1, isContextual)
-        if mt.hasErasedParams then
+        if mt.hasErasedParams || mt.isParamDependent then
+          // Function types with erased parameters are represented with a PolyFunction
+          // parent. We do the same for parameter-dependent method types, since we
+          // don't know how to construct a parametric FunctionN parent for them.
+          // Such method types can only come from explicit `PolyFunction` refinements
+          // or from Tasty files of previous versions; a dependent function type
+          // in source cannot have inter-parameter dependencies.
           defn.PolyFunctionOf(mt)
         else if alwaysDependent || mt.isResultDependent then
           RefinedType(nonDependentFunType, nme.apply, mt)
         else nonDependentFunType
-      case poly @ PolyType(_, mt: MethodType) =>
-        // mt can be paramDependent here since we don't need to compute a
-        // non-dependent result approximation.
+      case poly: PolyType =>
         // TODO: Move all dependent functions to PolyFunctionOf and drop the
         // no parameter dependencies restriction everywhere.
         defn.PolyFunctionOf(poly)
@@ -2149,11 +2153,6 @@ object Types extends TypeUtils {
      *  It is assumed that `this.ne(that)`.
      */
     protected def iso(that: Any, bs: BinderPairs): Boolean = this.equals(that)
-
-    /** Equality used for hash-consing; uses `eq` on all recursive invocations,
-     *  except where a BindingType is involved. The latter demand a deep isomorphism check.
-     */
-    def eql(that: Type): Boolean = this.equals(that)
 
     /** customized hash code of this type.
      *  NotCached for uncached types. Cached types
@@ -2949,8 +2948,6 @@ object Types extends TypeUtils {
       if (myStableHash == 0) myStableHash = if (prefix.hashIsStable) 1 else -1
       myStableHash > 0
     }
-
-    override def eql(that: Type): Boolean = this eq that // safe because named types are hash-consed separately
   }
 
   /** A reference to an implicit definition. This can be either a TermRef or a
@@ -3149,11 +3146,6 @@ object Types extends TypeUtils {
 
     override def computeHash(bs: Binders): Int = doHash(bs, tref)
 
-    override def eql(that: Type): Boolean = that match {
-      case that: ThisType => tref.eq(that.tref)
-      case _ => false
-    }
-
     /** Check that the rhs is a ThisType that refers to the same class.
      */
     def sameThis(that: Type)(using Context): Boolean = (that eq this) || that.match
@@ -3183,11 +3175,6 @@ object Types extends TypeUtils {
       else SuperType(thistpe, supertpe)
 
     override def computeHash(bs: Binders): Int = doHash(bs, thistpe, supertpe)
-
-    override def eql(that: Type): Boolean = that match {
-      case that: SuperType => thistpe.eq(that.thistpe) && supertpe.eq(that.supertpe)
-      case _ => false
-    }
   }
 
   final class CachedSuperType(thistpe: Type, supertpe: Type) extends SuperType(thistpe, supertpe)
@@ -3303,14 +3290,6 @@ object Types extends TypeUtils {
     override def computeHash(bs: Binders): Int = doHash(bs, refinedName, refinedInfo, parent)
     override def hashIsStable: Boolean = refinedInfo.hashIsStable && parent.hashIsStable
 
-    override def eql(that: Type): Boolean = that match {
-      case that: RefinedType =>
-        refinedName.eq(that.refinedName) &&
-        refinedInfo.eq(that.refinedInfo) &&
-        parent.eq(that.parent)
-      case _ => false
-    }
-
     // equals comes from case class; no matching override is needed
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
@@ -3416,8 +3395,6 @@ object Types extends TypeUtils {
       // one RecThis occurrence. Since `stableHash` does not keep track of enclosing
       // bound types, it will return "unstable" for this occurrence and this would propagate.
 
-    // No definition of `eql` --> fall back on equals, which calls iso
-
     override def equals(that: Any): Boolean = equals(that, null)
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
@@ -3476,47 +3453,38 @@ object Types extends TypeUtils {
    * `T | Null .. T`, so that `T | Null <: FlexibleType(T) <: T`.
    * A flexible type will be erased to its original type `T`.
    */
-  case class FlexibleType protected(lo: Type, hi: Type) extends CachedProxyType with ValueType {
-
-    override def underlying(using Context): Type = hi
-
-    def derivedFlexibleType(hi: Type)(using Context): Type =
-      if hi eq this.hi then this else FlexibleType.make(hi)
-
-    override def computeHash(bs: Binders): Int = doHash(bs, hi)
-
-    override final def baseClasses(using Context): List[ClassSymbol] = hi.baseClasses
-  }
-
   object FlexibleType:
-    def apply(tp: Type)(using Context): FlexibleType =
+    def apply(tp: Type)(using Context): Type =
       assert(tp.isValueType, s"Should not flexify ${tp}")
       tp match
-        case ft: FlexibleType => ft
-        case _ => FlexibleType(OrNull(tp), tp)
-          // val tp1 = tp.stripNull()
-          // if tp1.isNullType then
-          //   // (Null)? =:= ? >: Null <: (Object & Null)
-          //   FlexibleType(tp, AndType(defn.ObjectType, defn.NullType))
-          // else
-          //   // (T | Null)? =:= ? >: T | Null <: T
-          //   // (T)? =:= ? >: T | Null <: T
-          //   val hi = tp1
-          //   val lo = if hi eq tp then OrNull(hi) else tp
-          //   FlexibleType(lo, hi)
-          //
-          // The commented out code does more work to analyze the original type to ensure the
-          // flexible type is always a subtype of the original type and the Object type.
-          // It is not necessary according to the use cases, so we choose to use a simpler
-          // rule.
+        case ft @ FlexibleType(hi) => ft
+        case _ => AppliedType(defn.FlexibleTypeType, tp :: Nil)
+
+    def unapply(tp: AppliedType)(using Context): Option[Type] =
+      if tp.tycon.isRef(defn.FlexibleTypeSymbol) then Some(tp.args.head)
+      else None
+
+    def isInstance(tp: Type)(using Context): Boolean = tp match
+      case FlexibleType(_) => true
+      case _ => false
+
+    /** Is `tp` the `<FlexibleType>` type constructor itself (possibly eta-expanded)?
+     *  Such a type is an implementation device of explicit nulls; it must never be
+     *  inferred as the instance of a higher-kinded type parameter.
+     */
+    def isTypeConstructor(tp: Type)(using Context): Boolean = tp.stripTypeVar match
+      case tp: TypeRef => tp.symbol eq defn.FlexibleTypeSymbol
+      case tp: HKTypeLambda => isInstance(tp.resType) || isTypeConstructor(tp.resType)
+      case _ => false
 
     def make(tp: Type)(using Context): Type = tp match
-      case _: FlexibleType => tp // tp is already flexible
+      case tp @ FlexibleType(hi) => tp // tp is already flexible
       case SimpleOrNull(_) => tp // tp is already nullable
       case TypeBounds(lo, hi) => TypeBounds(FlexibleType.make(lo), FlexibleType.make(hi))
       case wt: WildcardType => wt.optBounds match
         case tb: TypeBounds => WildcardType(FlexibleType.make(tb).asInstanceOf[TypeBounds])
         case _ => wt
+      case tl: TypeLambda => tl
       case other => FlexibleType(tp)
   end FlexibleType
 
@@ -3568,11 +3536,6 @@ object Types extends TypeUtils {
       else tp1 & tp2
 
     override def computeHash(bs: Binders): Int = doHash(bs, tp1, tp2)
-
-    override def eql(that: Type): Boolean = that match {
-      case that: AndType => tp1.eq(that.tp1) && tp2.eq(that.tp2)
-      case _ => false
-    }
 
     override protected def iso(that: Any, bs: BinderPairs) = that match
       case that: AndType => tp1.equals(that.tp1, bs) && tp2.equals(that.tp2, bs)
@@ -3719,11 +3682,6 @@ object Types extends TypeUtils {
     override def computeHash(bs: Binders): Int =
       doHash(bs, if isSoft then 0 else 1, tp1, tp2)
 
-    override def eql(that: Type): Boolean = that match {
-      case that: OrType => tp1.eq(that.tp1) && tp2.eq(that.tp2) && isSoft == that.isSoft
-      case _ => false
-    }
-
     override protected def iso(that: Any, bs: BinderPairs) = that match
       case that: OrType => tp1.equals(that.tp1, bs) && tp2.equals(that.tp2, bs) && isSoft == that.isSoft
       case _ => false
@@ -3822,11 +3780,6 @@ object Types extends TypeUtils {
 
     override def computeHash(bs: Binders): Int = doHash(bs, resType)
     override def hashIsStable: Boolean = resType.hashIsStable
-
-    override def eql(that: Type): Boolean = that match {
-      case that: ExprType => resType.eq(that.resType)
-      case _ => false
-    }
 
     // equals comes from case class; no matching override is needed
 
@@ -4052,8 +4005,6 @@ object Types extends TypeUtils {
     final override def hashCode: Int = System.identityHashCode(this)
 
     final override def equals(that: Any): Boolean = equals(that, null)
-
-    // No definition of `eql` --> fall back on equals, which is `eq`
 
     final override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: MethodOrPoly =>
@@ -4300,10 +4251,10 @@ object Types extends TypeUtils {
     /** Produce method type from parameter symbols, with special mappings for repeated
      *  and inline parameters:
      *   - replace `@repeated` annotations on Seq or Array types by <repeated> types
-     *   - map into annotations to $into annotations
+     *   - map into annotations to \$into annotations
      *   - add `@inlineParam` to inline parameters
      *   - add `@erasedParam` to erased parameters
-     *   - map `T @$into` types to `into[T]`
+     *   - map `T @\$into` types to `into[T]`
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(using Context): MethodType =
       apply(params.map(_.name.asTermName))(
@@ -4453,8 +4404,6 @@ object Types extends TypeUtils {
 
     override def computeHash(bs: Binders): Int =
       doHash(new SomeBinders(this, bs), declaredVariances ::: paramNames, resType, paramInfos)
-
-    // No definition of `eql` --> fall back on equals, which calls iso
 
     final override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: HKTypeLambda =>
@@ -4782,7 +4731,8 @@ object Types extends TypeUtils {
 
     override def tryNormalize(using Context): Type =
       if isMatchAlias && MatchTypeTrace.isRecording then
-        MatchTypeTrace.recurseWith(this)(superType.tryNormalize)
+        ctx.handleRecursive("try to normalize", superType):
+          MatchTypeTrace.recurseWith(this)(superType.tryNormalize)
       else super.tryNormalize
 
     /** Is this an unreducible application to wildcard arguments?
@@ -4836,10 +4786,6 @@ object Types extends TypeUtils {
       if (myStableHash == 0) myStableHash = if (tycon.hashIsStable && args.hashIsStable) 1 else -1
       myStableHash > 0
     }
-
-    override def eql(that: Type): Boolean = this `eq` that // safe because applied types are hash-consed separately
-
-    // equals comes from case class; no matching override is needed
 
     final override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: AppliedType => tycon.equals(that.tycon, bs) && args.equalElements(that.args, bs)
@@ -5262,7 +5208,7 @@ object Types extends TypeUtils {
 
       def setReductionContext(): Unit =
         new TypeTraverser:
-          var footprint: Set[Type] = Set()
+          var footprint: Set[Type] = Set.empty
           var deep: Boolean = true
           val seen = util.HashSet[Type]()
           def traverse(tp: Type) =
@@ -5309,13 +5255,14 @@ object Types extends TypeUtils {
         if (myReduced != null) record("MatchType.reduce cache miss")
         val saved = ctx.typerState.snapshot()
         try
-          myReduced = trace(i"reduce match type $this $hashCode", matchTypes, show = true):
-            withMode(Mode.Type):
-              TypeComparer.reduceMatchWith: cmp =>
-                cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze))
-        catch case ex: Throwable =>
+          myReduced = ctx.handleRecursive("reduce match type for scrutinee", scrutinee):
+            trace(i"reduce match type $this $hashCode", matchTypes, show = true):
+              withMode(Mode.Type):
+                TypeComparer.reduceMatchWith: cmp =>
+                  cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze))
+        catch case NonFatal(t) =>
           myReduced = NoType
-          handleRecursive("reduce type ", i"$scrutinee match ...", ex)
+          throw t
         finally
           ctx.typerState.resetTo(saved)
           // this drops caseLambdas in constraint and undoes any typevar
@@ -5332,12 +5279,6 @@ object Types extends TypeUtils {
         case _ => false
 
     override def computeHash(bs: Binders): Int = doHash(bs, scrutinee, bound :: cases)
-
-    override def eql(that: Type): Boolean = that match {
-      case that: MatchType =>
-        bound.eq(that.bound) && scrutinee.eq(that.scrutinee) && cases.eqElements(that.cases)
-      case _ => false
-    }
   }
 
   class CachedMatchType(bound: Type, scrutinee: Type, cases: List[Type]) extends MatchType(bound, scrutinee, cases)
@@ -5664,16 +5605,6 @@ object Types extends TypeUtils {
     override def computeHash(bs: Binders  | Null): Int = doHash(bs, cls, prefix)
     override def hashIsStable: Boolean = prefix.hashIsStable && declaredParents.hashIsStable
 
-    override def eql(that: Type): Boolean = that match {
-      case that: ClassInfo =>
-        prefix.eq(that.prefix) &&
-        cls.eq(that.cls) &&
-        declaredParents.eqElements(that.declaredParents) &&
-        decls.eq(that.decls) &&
-        selfInfo.eq(that.selfInfo)
-      case _ => false
-    }
-
     override def equals(that: Any): Boolean = equals(that, null)
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
@@ -5783,12 +5714,6 @@ object Types extends TypeUtils {
       case that: TypeBounds => lo.equals(that.lo, bs) && hi.equals(that.hi, bs)
       case _ => false
     }
-
-    override def eql(that: Type): Boolean = that match {
-      case that: AliasingBounds => false
-      case that: TypeBounds => lo.eq(that.lo) && hi.eq(that.hi)
-      case _ => false
-    }
   }
 
   class RealTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
@@ -5804,13 +5729,6 @@ object Types extends TypeUtils {
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: AliasingBounds => this.isTypeAlias == that.isTypeAlias && alias.equals(that.alias, bs)
-      case _ => false
-    }
-
-    // equals comes from case class; no matching override is needed
-
-    override def eql(that: Type): Boolean = that match {
-      case that: AliasingBounds => this.isTypeAlias == that.isTypeAlias && alias.eq(that.alias)
       case _ => false
     }
 
@@ -5904,16 +5822,12 @@ object Types extends TypeUtils {
     // equals comes from case class; no matching override is needed
 
     override def computeHash(bs: Binders): Int =
-      doHash(bs, annot.hash, parent)
+      doHash(bs, annot, parent)
     override def hashIsStable: Boolean =
       parent.hashIsStable
 
-    override def eql(that: Type): Boolean = that match
-      case that: AnnotatedType => (parent eq that.parent) && annot.eql(that.annot)
-      case _ => false
-
     override def iso(that: Any, bs: BinderPairs): Boolean = that match
-      case that: AnnotatedType => parent.equals(that.parent, bs) && annot.eql(that.annot)
+      case that: AnnotatedType => parent.equals(that.parent, bs) && annot.equals(that.annot)
       case _ => false
   }
 
@@ -5935,11 +5849,6 @@ object Types extends TypeUtils {
 
     override def computeHash(bs: Binders): Int = doHash(bs, elemType)
     override def hashIsStable: Boolean = elemType.hashIsStable
-
-    override def eql(that: Type): Boolean = that match {
-      case that: JavaArrayType => elemType.eq(that.elemType)
-      case _ => false
-    }
   }
   final class CachedJavaArrayType(elemType: Type) extends JavaArrayType(elemType)
   object JavaArrayType {
@@ -6010,13 +5919,6 @@ object Types extends TypeUtils {
 
     override def computeHash(bs: Binders): Int = doHash(bs, optBounds)
     override def hashIsStable: Boolean = optBounds.hashIsStable
-
-    override def eql(that: Type): Boolean = that match {
-      case that: WildcardType => optBounds.eq(that.optBounds)
-      case _ => false
-    }
-
-    // equals comes from case class; no matching override is needed
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: WildcardType => optBounds.equals(that.optBounds, bs)
@@ -6149,8 +6051,6 @@ object Types extends TypeUtils {
       case tp: TypeVar =>
         samClass(tp.underlying)
       case tp: AnnotatedType =>
-        samClass(tp.underlying)
-      case tp: FlexibleType =>
         samClass(tp.underlying)
       case _ =>
         NoSymbol
@@ -6309,8 +6209,6 @@ object Types extends TypeUtils {
       tp.derivedJavaArrayType(elemtp)
     protected def derivedExprType(tp: ExprType, restpe: Type): Type =
       tp.derivedExprType(restpe)
-    protected def derivedFlexibleType(tp: FlexibleType, hi: Type): Type =
-      tp.derivedFlexibleType(hi)
     // note: currying needed  because Scala2 does not support param-dependencies
     protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
       tp.derivedLambdaType(tp.paramNames, formals, restpe)
@@ -6506,9 +6404,6 @@ object Types extends TypeUtils {
         case tp: OrType =>
           derivedOrType(tp, this(tp.tp1), this(tp.tp2))
 
-        case tp: FlexibleType =>
-          derivedFlexibleType(tp, this(tp.hi))
-
         case tp: MatchType =>
           val bound1 = this(tp.bound)
           val scrut1 = atVariance(0)(this(tp.scrutinee))
@@ -6687,7 +6582,7 @@ object Types extends TypeUtils {
     /** Derived selection.
      *  @pre   the (upper bound of) prefix `pre` has a member named `tp.name`.
      */
-    override protected def derivedSelect(tp: NamedType, pre: Type): Type =
+    override protected def derivedSelect(tp: NamedType, pre: Type): Type = ctx.handleRecursive("derived select for approximation of", tp):
       if (pre eq tp.prefix) tp
       else pre match {
         case Range(preLo, preHi) =>
@@ -6753,6 +6648,16 @@ object Types extends TypeUtils {
 
     override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
       tycon match {
+        case tr if tr.isRef(defn.FlexibleTypeSymbol) =>
+          val hi = args.head
+          hi match {
+            case Range(lo, hi) =>
+              // We know FlexibleType(t).hi = t and FlexibleType(t).lo = OrNull(t)
+              range(OrNull(lo), hi)
+            case _ =>
+              if (hi.isExactlyNothing) hi
+              else tp.derivedFlexibleType(hi)
+          }
         case Range(tyconLo, tyconHi) =>
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
         case _ =>
@@ -6818,16 +6723,6 @@ object Types extends TypeUtils {
         case _ =>
           if (underlying.isExactlyNothing) underlying
           else tp.derivedAnnotatedType(underlying, annot)
-      }
-
-    override protected def derivedFlexibleType(tp: FlexibleType, hi: Type): Type =
-      hi match {
-        case Range(lo, hi) =>
-          // We know FlexibleType(t).hi = t and FlexibleType(t).lo = OrNull(t)
-          range(OrNull(lo), hi)
-        case _ =>
-          if (hi.isExactlyNothing) hi
-          else tp.derivedFlexibleType(hi)
       }
 
     override protected def derivedCapturingType(tp: Type, parent: Type, refs: CaptureSet): Type =
@@ -6967,9 +6862,6 @@ object Types extends TypeUtils {
         this(y, restpe)
 
       case tp: TypeVar =>
-        this(x, tp.underlying)
-
-      case tp: FlexibleType =>
         this(x, tp.underlying)
 
       case ExprType(restpe) =>
@@ -7157,7 +7049,7 @@ object Types extends TypeUtils {
 
   object VarianceMap:
     /** An immutable map representing the variance of keys of type `K` */
-    opaque type VarianceMap[K <: AnyRef] <: AnyRef = SimpleIdentityMap[K, Integer]
+    opaque type VarianceMap[K <: AnyRef] = SimpleIdentityMap[K, Integer]
     def empty[K <: AnyRef]: VarianceMap[K] = SimpleIdentityMap.empty[K]
     extension [K <: AnyRef](vmap: VarianceMap[K])
       /** The backing map used to implement this VarianceMap. */

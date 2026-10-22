@@ -14,6 +14,7 @@ package scala
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
+import scala.annotation.unused
 
 //import scala.collection.generic._
 import scala.collection.{Factory, immutable, mutable}
@@ -54,7 +55,7 @@ object Array {
    */
   implicit def toFactory[A : ClassTag](dummy: Array.type): Factory[A, Array[A]] = new ArrayFactory(dummy)
   @SerialVersionUID(3L)
-  private class ArrayFactory[A : ClassTag](dummy: Array.type) extends Factory[A, Array[A]] with Serializable {
+  private class ArrayFactory[A : ClassTag](@unused dummy: Array.type) extends Factory[A, Array[A]] with Serializable {
     def fromSpecific(it: IterableOnce[A]^): Array[A] = Array.from[A](it)
     def newBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder[A]
   }

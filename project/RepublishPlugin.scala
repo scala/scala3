@@ -112,7 +112,7 @@ object RepublishPlugin extends AutoPlugin {
     args =>
       val cmdLine = cmdLine0 ++ args
       // invoke cmdLine with env, but also capture the output
-      val p = new ProcessBuilder(cmdLine: _*)
+      val p = new ProcessBuilder(cmdLine*)
         .directory(cache)
         .inheritIO()
         .redirectOutput(ProcessBuilder.Redirect.PIPE)
@@ -352,7 +352,7 @@ object RepublishPlugin extends AutoPlugin {
     Dist.generateVersionFile(base, distDir, progVersion, log.info(_))
   }
 
-  override val projectSettings: Seq[Def.Setting[_]] = Def.settings(
+  override val projectSettings: Seq[Def.Setting[?]] = Def.settings(
     republishCoursierDir := republishRepo.value / "coursier",
     republishLaunchers := Seq.empty,
     republishCoursier := Seq.empty,

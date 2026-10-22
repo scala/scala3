@@ -5,7 +5,7 @@ import dotty.DottyBytecodeTest
 import org.junit.Test
 import org.junit.Assert.*
 
-import scala.tools.asm.Opcodes.*
+import org.objectweb.asm.Opcodes.*
 
 class ArrayApplyOptTest extends DottyBytecodeTest {
   import dotty.AsmConverters.*

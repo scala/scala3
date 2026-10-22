@@ -5,11 +5,11 @@ import dotty.DottyBytecodeTest
 import org.junit.Assert.*
 import org.junit.Test
 
-import scala.tools.asm
-import scala.tools.asm.*
-import scala.tools.asm.tree.*
-import scala.tools.asm.Opcodes
-import scala.tools.asm.Opcodes.*
+import org.objectweb.asm
+import org.objectweb.asm.*
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.Opcodes.*
 import scala.jdk.CollectionConverters.*
 
 class DottyBytecodeTests extends DottyBytecodeTest {
@@ -1188,19 +1188,8 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         VarOp(ILOAD, 5),
         Op(IRETURN),
         Label(19),
-        Field(GETSTATIC, "scala/package$", "MODULE$", "Lscala/package$;"),
-        Invoke(INVOKEVIRTUAL, "scala/package$", "Nil", "()Lscala/collection/immutable/Nil$;", false),
-        VarOp(ALOAD, 2),
-        Invoke(INVOKESTATIC, "java/util/Objects", "equals", "(Ljava/lang/Object;Ljava/lang/Object;)Z", false),
-        Jump(IFEQ, Label(28)),
         IntOp(BIPUSH, 20),
-        Op(IRETURN),
-        Label(28),
-        TypeOp(NEW, "scala/MatchError"),
-        Op(DUP),
-        VarOp(ALOAD, 2),
-        Invoke(INVOKESPECIAL, "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false),
-        Op(ATHROW),
+        Op(IRETURN)
       ))
 
       // ---------------
@@ -1506,10 +1495,10 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val c2 = loadClassNode(lookupClass(dir, "C2.class"))
       assertSameCode(getMethod(c1, "clone"), List(VarOp(ALOAD, 0), Invoke(INVOKESTATIC, "T", "clone$", "(LT;)Ljava/lang/Object;", true), Op(ARETURN)))
       assertInvoke(getMethod(c1, "f1"), "T", "clone")
-      assertInvoke(getMethod(c1, "f2"), "T", "clone")
+      assertInvoke(getMethod(c1, "f2"), "U", "clone")
       assertInvoke(getMethod(c1, "f3"), "C1", "clone")
       assertInvoke(getMethod(c2, "f1"), "T", "clone")
-      assertInvoke(getMethod(c2, "f2"), "T", "clone")
+      assertInvoke(getMethod(c2, "f2"), "U", "clone")
       assertInvoke(getMethod(c2, "f3"), "C1", "clone")
     }
     checkBCode(List(invocationReceiversTestCode.definitions("String"))) { dir =>
@@ -2087,6 +2076,140 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assert(bridge.signature == null, "vararg bridges should not have generic signatures")
     }
   }
+
+  /** Java record patterns compile to plain accessor calls: the synthesized identity
+   *  `unapply` and the anonymous class hosting it are eliminated by InlinePatterns,
+   *  for monomorphic and polymorphic records alike.
+   */
+  @Test def javaRecordPatternsAreInlined = {
+    val recJava = "public record Rec(int x, String y) {}"
+    val recGenJava = "public record RecGen<T>(int x, T y) {}"
+    val source =
+      """class Test {
+        |  def mono(r: Rec): String = r match {
+        |    case Rec(i, s) => s * i
+        |  }
+        |  def poly(r: RecGen[String]): String = r match {
+        |    case RecGen(i, s) => s * i
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(List(source), List(recJava, recGenJava)) { dir =>
+      val classfiles = getGeneratedClassfiles(dir).map(_._1)
+      assert(!classfiles.exists(_.contains("$anon")),
+        s"no anonymous classes should be generated for record patterns, found: $classfiles")
+
+      val clsNode = loadClassNode(lookupClass(dir, "Test.class"))
+      for methName <- List("mono", "poly") do
+        val meth = getMethod(clsNode, methName)
+        val invokes = instructionsFromMethod(meth).collect { case i: Invoke => i.name }
+        assert(!invokes.contains("unapply"),
+          s"no unapply call should remain in $methName, found calls to: $invokes")
+        assert(invokes.contains("x") && invokes.contains("y"),
+          s"$methName should call the record's accessors directly, found calls to: $invokes")
+    }
+  }
+
+  @Test def synchronizedClassMethods = {
+    val source =
+      """|class A {
+         |  def yesBasic: Int = synchronized {
+         |    1
+         |  }
+         |  def yesExplicit: Int =
+         |    this.synchronized {
+         |      1
+         |    }
+         |  def yesExplicitWithBraces: Int = {
+         |    this.synchronized {
+         |      1
+         |    }
+         |  }
+         |  inline def noIsInline: Int = synchronized {
+         |    1
+         |  }
+         |  def noHasOtherCode: Int =
+         |    synchronized {
+         |      ()
+         |    }
+         |    1
+         |}
+         |object A {
+         |  @scala.annotation.static
+         |  def yesStaticOne: Int = synchronized {
+         |    1
+         |  }
+         |  def yesInModule: Int = synchronized {
+         |    1
+         |  }
+         |}
+         |""".stripMargin
+    checkBCode(source) { dir =>
+      val cls = loadClassNode(lookupClass(dir, "A.class"))
+      val clsMod = loadClassNode(lookupClass(dir, "A$.class"))
+      // ignore the forwarder one
+      val meths = cls.methods.asScala.filter(_.name != "yesInModule") ++ clsMod.methods.asScala
+      meths.filter(_.name.startsWith("yes")).foreach(m =>
+        assert((m.access & ACC_SYNCHRONIZED) != 0, s"method ${m.name} is not ACC_SYNCHRONIZED")
+        assertSameCode(m, List(
+          Op(ICONST_1),
+          Op(IRETURN)
+        ))
+      )
+      meths.filter(_.name.startsWith("no")).foreach(m =>
+        assert((m.access & ACC_SYNCHRONIZED) == 0, s"method ${m.name} is ACC_SYNCHRONIZED")
+      )
+    }
+  }
+
+  @Test def synchronizedInterfaceMethod = {
+    val source =
+      """|trait Test:
+         |  def m(x: Int): Int = synchronized { x }
+         |""".stripMargin
+    checkBCode(source) { dir =>
+      val clsIn = lookupClass(dir, "Test.class")
+      val clsNode = loadClassNode(clsIn)
+      val meth = clsNode.methods.asScala.find(_.name == "m").get
+      assert((meth.access & ACC_SYNCHRONIZED) == 0) // illegal!
+      val instrs = instructionsFromMethod(meth)
+      assert(instrs.contains(Op(MONITORENTER)))
+      assert(instrs.contains(Op(MONITOREXIT)))
+    }
+  }
+
+  @Test def arrayGetSetLength = {
+    val source =
+      """class Foo {
+         |  def get(a: Array[Int]) = a(1)
+         |  def set(a: Array[Double]) = a(2) = 0.0
+         |  def length(a: Array[Boolean]) = a.length
+         |}
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val fooClass = loadClassNode(lookupClass(dir, "Foo.class"))
+      assertSameCode(getMethod(fooClass, "get"), List(
+        VarOp(ALOAD, 1),
+        Op(ICONST_1),
+        Op(IALOAD),
+        Op(IRETURN)
+      ))
+      assertSameCode(getMethod(fooClass, "set"), List(
+        VarOp(ALOAD, 1),
+        Op(ICONST_2),
+        Op(DCONST_0),
+        Op(DASTORE),
+        Op(RETURN)
+      ))
+      assertSameCode(getMethod(fooClass, "length"), List(
+        VarOp(ALOAD, 1),
+        Op(ARRAYLENGTH),
+        Op(IRETURN)
+      ))
+    }
+  }
 }
 
 object invocationReceiversTestCode {
@@ -2103,9 +2226,7 @@ object invocationReceiversTestCode {
         |  // invokeinterface T.clone
         |  def f1 = (this: T).clone()
         |
-        |  // cannot invokeinterface U.clone (NoSuchMethodError). Object.clone would work here, but
-        |  // not in the example in C2 (illegal access to protected). T.clone works in all cases and
-        |  // resolves correctly.
+        |  // invokeinterface U.clone
         |  def f2 = (this: U).clone()
         |
         |  // invokevirtual C1.clone()
@@ -2114,7 +2235,7 @@ object invocationReceiversTestCode {
         |
         |class C2 {
         |  def f1(t: T) = t.clone()  // invokeinterface T.clone
-        |  def f2(t: U) = t.clone()  // invokeinterface T.clone -- Object.clone would be illegal (protected, explained in C1)
+        |  def f2(t: U) = t.clone()  // invokeinterface U.clone -- Object.clone would be illegal (protected, explained in C1)
         |  def f3(t: C1) = t.clone() // invokevirtual C1.clone -- Object.clone would be illegal
         |}
     """.stripMargin

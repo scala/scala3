@@ -19,7 +19,9 @@ import NameKinds.ParamAccessorName
  *      to a parameter that's also named `x`
  *  then change the accessor to
  *
+ *  ```
  *      private def x$accessor: T = super.x'.asInstanceOf[T]
+ *  ```
  *
  *  where x' is a reference to the final parameter in the chain.
  *  Property (1) is established by the @see forwardParamAccessors method in PostTyper.

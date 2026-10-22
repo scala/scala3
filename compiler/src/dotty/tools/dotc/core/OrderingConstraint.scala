@@ -341,20 +341,19 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       if newSet.isEmpty then deps.remove(referenced)
       else deps.updated(referenced, newSet)
 
-    def traverse(t: Type) = try
+    def traverse(t: Type) = ctx.handleRecursive("adjust", t):
       t match
-      case param: TypeParamRef =>
-        if hasBounds(param) then
-          if variance >= 0 then coDeps = update(coDeps, param)
-          if variance <= 0 then contraDeps = update(contraDeps, param)
-        else
-          traverse(entry(param))
-      case tp: LazyRef =>
-        if !seen.contains(tp) then
-          seen += tp
-          traverse(tp.ref)
-      case _ => traverseChildren(t)
-    catch case ex: Throwable => handleRecursive("adjust", t.show, ex)
+        case param: TypeParamRef =>
+          if hasBounds(param) then
+            if variance >= 0 then coDeps = update(coDeps, param)
+            if variance <= 0 then contraDeps = update(contraDeps, param)
+          else
+            traverse(entry(param))
+        case tp: LazyRef =>
+          if !seen.contains(tp) then
+            seen += tp
+            traverse(tp.ref)
+        case _ => traverseChildren(t)
   end Adjuster
 
   /** Adjust dependencies to account for the delta of previous entry `prevEntry`
@@ -558,8 +557,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         if underlying1 ne tp.underlying then underlying1 else tp
       case CapturingType(parent, refs) =>
         tp.derivedCapturingType(recur(parent), refs)
-      case tp: FlexibleType =>
-        tp.derivedFlexibleType(recur(tp.hi))
+      case tp @ FlexibleType(hi) =>
+        tp.derivedFlexibleType(recur(hi))
       case tp: AnnotatedType =>
         tp.derivedAnnotatedType(recur(tp.parent), tp.annot)
       case _ =>
@@ -755,7 +754,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case tp: TypeVar if contains(tp.origin) => withHard(tp)
     case tp: TypeParamRef if contains(tp)   => hardenTypeVars(typeVarOfParam(tp))
     case tp: AndOrType                      => hardenTypeVars(tp.tp1).hardenTypeVars(tp.tp2)
-    case tp: FlexibleType                   => hardenTypeVars(tp.hi)
+    case FlexibleType(hi)                   => hardenTypeVars(hi)
     case _                                  => this
 
   def remove(pt: TypeLambda)(using Context): This = {

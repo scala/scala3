@@ -60,8 +60,8 @@ object Test/*<-types::Test.*/ {
     val superType3/*<-types::Test.C#superType3.*/ = C.super[M].m/*->types::Test.M#m().*/
 
     val compoundType1/*<-types::Test.C#compoundType1.*/: { def k/*<-local0*/: Int/*->scala::Int#*/ } = ???/*->scala::Predef.`???`().*/
-    val compoundType2/*<-types::Test.C#compoundType2.*/: M/*->types::Test.M#*/ with N/*->types::Test.N#*/ = ???/*->scala::Predef.`???`().*/
-    val compoundType3/*<-types::Test.C#compoundType3.*/: M/*->types::Test.M#*/ with N/*->types::Test.N#*/ { def k/*<-local1*/: Int/*->scala::Int#*/ } = ???/*->scala::Predef.`???`().*/
+    val compoundType2/*<-types::Test.C#compoundType2.*/: M/*->types::Test.M#*/ &/*->scala::`&`#*/ N/*->types::Test.N#*/ = ???/*->scala::Predef.`???`().*/
+    val compoundType3/*<-types::Test.C#compoundType3.*/: M/*->types::Test.M#*/ &/*->scala::`&`#*/ N/*->types::Test.N#*/ { def k/*<-local1*/: Int/*->scala::Int#*/ } = ???/*->scala::Predef.`???`().*/
     val compoundType4/*<-types::Test.C#compoundType4.*/ = /*<-local3*/new { def k/*<-local2*/: Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/ }
     val compoundType5/*<-types::Test.C#compoundType5.*/ = /*<-local5*/new M/*->types::Test.M#*/ with N/*->types::Test.N#*/
     val compoundType6/*<-types::Test.C#compoundType6.*/ = /*<-local8*/new M/*->types::Test.M#*/ with N/*->types::Test.N#*/ { def k/*<-local7*/: Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/ }

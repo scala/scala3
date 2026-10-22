@@ -9,15 +9,18 @@ import core.Decorators.*
 
 import scala.io.Codec
 import Chars.*
+
 import scala.annotation.internal.sharable
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.ArrayBuilder
 import scala.compiletime.uninitialized
+import dotty.tools.dotc.util.chaining.*
 
 import java.io.File.separator
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.{FileSystemException, Paths}
 import java.util.Optional
+import scala.annotation.threadUnsafe
 
 object WrappedSourceFile:
   enum MagicHeaderInfo:
@@ -41,7 +44,7 @@ object WrappedSourceFile:
         val result =
           if magicHeader.isEmpty then NoHeader
           else
-            val text = new String(sourceFile.content)
+            val text = sourceFile.textContent()
             val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
             val regex = s"(?m)^$headerQuoted:(.+)$$".r
             regex.findFirstMatchIn(text) match
@@ -49,7 +52,8 @@ object WrappedSourceFile:
                 val sourceStartOffset = sourceFile.nextLine(m.start)
                 val name = m.group(1).nn
                 val src = ctx.getSource(name)
-                if src.file.exists then
+                val file = src.file
+                if file != null && file.exists then
                   HasHeader(sourceStartOffset, src)
                 else
                   report.warning(em"original source file not found: $name")
@@ -59,19 +63,60 @@ object WrappedSourceFile:
         result
       case result => result
 
-class SourceFile private[util] (val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
-  private var myContent: Array[Char] | Null = null
+class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec: Codec) extends interfaces.SourceFile {
+  private var myContent: String | Null = null
+
+  private var _maybeIncomplete: Boolean = false
+
+  def maybeIncomplete: Boolean = _maybeIncomplete
+
+  private var cachedCharArrayContent: Array[Char] | Null = null
+  @deprecated("Use `textContent` to not require a copy of the data.")
+  override def content(): Array[Char] =
+    initialize(cachedCharArrayContent, cachedCharArrayContent = _, textContent().toCharArray)
 
   /** The contents of the original source file. Note that this can be empty, for example when
    * the source is read from Tasty. */
-  def content(): Array[Char] = {
-    if (myContent == null) myContent = computeContent
-    myContent.nn
-  }
+  override def textContent(): String =
+    if file == null then ""
+    else
+      initialize(myContent, myContent = _,
+        try new String(file.toByteArray, codec.charSet)
+        catch case _: FileSystemException => ""
+      )
 
-  override def name: String = file.name
-  override def path: String = file.path
-  override def jfile: Optional[JFile] = file.jfile
+  override def name: String =
+    if file eq null then "" else file.name
+  val ext: FileExtension =
+    if file eq null then FileExtension.Empty else file.ext
+  override def path: String =
+    if file eq null then "" else file.path
+  @threadUnsafe lazy val pathRelativeToSourceRoot: String =
+    if file eq null then
+      // While this should not happen, it currently does due to known definitions being loaded without a source file
+      ""
+    else if file.isVirtual || sourceRoot.isVirtual then
+      // This can happen when evaluating debug expressions with fake in-memory files
+      file.path
+    else
+      val sourcePath = file.jpath.nn.toAbsolutePath.normalize
+      val refPath = sourceRoot.jpath.nn.toAbsolutePath.normalize
+      if sourcePath.startsWith(refPath) then
+        // On Windows we can only relativize paths if root component matches:
+        //     try refPath.relativize(sourcePath).toString
+        //     catch case _: IllegalArgumentException => sourcePath.toString
+        // As we already check that the prefix matches, the special handling for
+        // Windows is not needed.
+        //
+        // Also, consistently use '/' as separator so any path loaded from anywhere
+        // is guaranteed to have the same separator, otherwise we'd see, e.g., "a\path",
+        // and wonder "is this a Windows 2-part path, or a non-Windows file name with a backslash in it?"
+        refPath.relativize(sourcePath).toString.replace(java.io.File.separatorChar, '/')
+      else
+        file.path
+
+  override def jfile: Optional[JFile] =
+    if file eq null then Optional.empty() else file.jfile
 
   override def equals(that: Any): Boolean =
     (this `eq` that.asInstanceOf[AnyRef]) || {
@@ -81,16 +126,16 @@ class SourceFile private[util] (val file: AbstractFile, computeContent: => Array
       }
     }
 
-  override def hashCode: Int = file.hashCode
+  override def hashCode: Int = if file eq null then 0 else file.hashCode
 
-  def apply(idx: Int): Char = content().apply(idx)
+  def apply(idx: Int): Char = textContent().charAt(idx)
 
   /** length of the original source file
-   * Note that when the source is from Tasty, content() could be empty even though length > 0.
-   * Use content().length to determine the length of content(). */
+   * Note that when the source is from Tasty, textContent() could be empty even though length > 0.
+   * Use textContent().length to determine the length of content(). */
   def length: Int =
     if lineIndicesCache ne null then lineIndicesCache.last
-    else content().length
+    else textContent().length
 
   /** true for all source files except `NoSource` */
   def exists: Boolean = true
@@ -100,9 +145,10 @@ class SourceFile private[util] (val file: AbstractFile, computeContent: => Array
     else NoSourcePosition
 
   private def calculateLineIndicesFromContents() = {
-    val cs = content()
-    val buf = new ArrayBuffer[Int]
-    buf += 0
+    val cs = textContent()
+    val buf = new ArrayBuilder.ofInt // unboxed, unlike ArrayBuffer[Int]
+    buf.sizeHint(cs.length / 30 + 2) // guess a short average line length to avoid regrowing
+    buf.addOne(0)
     var i = 0
     while i < cs.length do
       val isLineBreak =
@@ -110,10 +156,10 @@ class SourceFile private[util] (val file: AbstractFile, computeContent: => Array
         // don't identify the CR in CR LF as a line break, since LF will do.
         if ch == CR then i + 1 == cs.length || cs(i + 1) != LF
         else isLineBreakChar(ch)
-      if isLineBreak then buf += i + 1
+      if isLineBreak then buf.addOne(i + 1)
       i += 1
-    buf += cs.length // sentinel, so that findLine below works smoother
-    buf.toArray
+    buf.addOne(cs.length) // sentinel, so that findLine below works smoother
+    buf.result()
   }
 
   private var lineIndicesCache: Array[Int] = uninitialized
@@ -122,7 +168,7 @@ class SourceFile private[util] (val file: AbstractFile, computeContent: => Array
       lineIndicesCache = calculateLineIndicesFromContents()
     lineIndicesCache
 
-  def initialized = lineIndicesCache != null
+  def initialized: Boolean = lineIndicesCache != null
 
   def setLineIndicesFromLineSizes(sizes: Array[Int]): Unit =
     val lines = sizes.length
@@ -169,14 +215,14 @@ class SourceFile private[util] (val file: AbstractFile, computeContent: => Array
 
   /** The content of the line containing position `offset` */
   def lineContent(offset: Int): String =
-    if content.isEmpty then
+    if substring.isEmpty then
       ""
     else
-      content.slice(startOfLine(offset), nextLine(offset)).mkString
+      textContent.substring(startOfLine(offset), nextLine(offset))
 
   /** The column corresponding to `offset`, starting at 0 */
   def column(offset: Int): Int = {
-    var idx = startOfLine(offset)
+    val idx = startOfLine(offset)
     offset - idx
   }
 
@@ -184,79 +230,34 @@ class SourceFile private[util] (val file: AbstractFile, computeContent: => Array
   def startColumnPadding(offset: Int): String = {
     var idx = startOfLine(offset)
     val pad = new StringBuilder
+    val text = textContent()
     while (idx != offset) {
-      pad.append(if (idx < content().length && content()(idx) == '\t') '\t' else ' ')
+      pad.append(if idx < text.length && text(idx) == '\t' then '\t' else ' ')
       idx += 1
     }
     pad.result()
   }
 
-  override def toString: String = file.toString
+  override def toString: String = 
+    if file eq null then "<no file>" else file.toString
 }
 object SourceFile {
-  implicit def eqSource: CanEqual[SourceFile, SourceFile] = CanEqual.derived
-
   implicit def fromContext(using Context): SourceFile = ctx.source
 
   /** A source file with an underlying virtual file. The path is taken as a file system path
    *  with the local separator converted to "/". The last element of the path will be the simple name of the file.
    */
-  def virtual(name: String, content: String) =
-    new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
+  def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
+    new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), new VirtualFile("_root_", Array.emptyByteArray), Codec.UTF8)
+      .tap(_._maybeIncomplete = maybeIncomplete)
 
   /** A helper method to create a virtual source file for given URI.
    */
   def virtual(uri: URI, content: String): SourceFile =
     virtual(java.nio.file.Path.of(uri).toString, content)
-
-  /** Returns the relative path of `source` within the `reference` path
-   *
-   *  It returns the current path under `source.file.jpath` if it is not contained in `reference`.
-   */
-  def relativePath(source: SourceFile, reference: String): String = {
-    val file = source.file
-    val jpath = file.jpath
-    if jpath eq null then
-      file.path // repl and other custom tests use abstract files with no path
-    else
-      val sourcePath = jpath.toAbsolutePath.normalize
-      val refPath = java.nio.file.Paths.get(reference).toAbsolutePath.normalize
-
-      if sourcePath.startsWith(refPath) then
-        // On Windows we can only relativize paths if root component matches
-        // (see implementation of sun.nio.fs.WindowsPath#relativize)
-        //
-        //     try refPath.relativize(sourcePath).toString
-        //     catch case _: IllegalArgumentException => sourcePath.toString
-        //
-        // As we already check that the prefix matches, the special handling for
-        // Windows is not needed.
-
-        // We also consistently use forward slashes as path element separators
-        // for relative paths. If we didn't do that, it'd be impossible to parse
-        // them back, as one would need to know whether they were created on Windows
-        // and use both slashes as separators, or on other OS and use forward slash
-        // as separator, backslash as file name character.
-
-        import scala.jdk.CollectionConverters.*
-        val path = refPath.relativize(sourcePath)
-        path.iterator.asScala.mkString("/")
-      else
-        jpath.toString
-  }
-
-  def apply(file: AbstractFile, codec: Codec): SourceFile =
-    val chars =
-      try new String(file.toByteArray, codec.charSet).toCharArray
-      catch case _: FileSystemException => Array.empty[Char]
-
-    new SourceFile(file, chars)
-
-  def apply(file: AbstractFile, contents: => Array[Char]): SourceFile =
-    new SourceFile(file, contents)
 }
 
-@sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {
+@sharable object NoSource extends SourceFile(null, new VirtualFile("_root_", Array.emptyByteArray), Codec.UTF8) {
   override def exists: Boolean = false
   override def atSpan(span: Span): SourcePosition = NoSourcePosition
 }

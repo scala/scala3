@@ -194,8 +194,23 @@ class Namer { typer: Typer =>
             simple.length == 2 && simple.endsWith(str.EXPAND_SEPARATOR)
           }
       }
+    // Desugaring of objects / enum cases can drop the Backquoted attachment, so also
+    // treat names that are already enclosed in backticks in the source as exempt.
+    // After atNameSpan, span.point is either on the opening backtick (e.g. comma enum
+    // cases) or just after it (most other defs).
+    def alreadyBackquotedInSource: Boolean =
+      val span = tree.span
+      if !span.exists || span.isSynthetic then false
+      else
+        val content = tree.source.textContent()
+        val point = span.point
+        content.length > point && (
+          content(point) == '`'
+          || point > 0 && content(point - 1) == '`'
+        )
     def exempt =
          isBackquoted(tree)
+      || alreadyBackquotedInSource
       || tree.span.isSynthetic
       || flags.isOneOf(Synthetic | Accessor | CaseAccessor) // check the case param not the accessor
       || flags.is(Param) && ctx.owner.is(Synthetic)
@@ -369,7 +384,7 @@ class Namer { typer: Typer =>
         case d: PackageClassDenotation =>
           // Remove existing members coming from a previous compilation of this file,
           // they are obsolete.
-          d.unlinkFromFile(ctx.source.file)
+          d.unlinkFromFile(ctx.source.path)
         case _ =>
       }
       existing
@@ -577,8 +592,8 @@ class Namer { typer: Typer =>
   def index(stats: List[Tree])(using Context): Context = {
 
     // module name -> (stat, moduleCls | moduleVal)
-    val moduleClsDef = mutable.Map[TypeName, (Tree, TypeDef)]()
-    val moduleValDef = mutable.Map[TermName, (Tree, ValDef)]()
+    val moduleClsDef = mutable.Map.empty[TypeName, (Tree, TypeDef)]
+    val moduleValDef = mutable.Map.empty[TermName, (Tree, ValDef)]
 
     /** Remove the subtree `tree` from the expanded tree of `mdef` */
     def removeInExpanded(mdef: Tree, tree: Tree): Unit = {
@@ -684,8 +699,8 @@ class Namer { typer: Typer =>
         }
     }
 
-    val classDef  = mutable.Map[TypeName, TypeDef]()
-    val moduleDef = mutable.Map[TypeName, TypeDef]()
+    val classDef  = mutable.Map.empty[TypeName, TypeDef]
+    val moduleDef = mutable.Map.empty[TypeName, TypeDef]
 
     /** Create links between companion object and companion class.
      *  Populate `moduleDef` and `classDef` as a side effect.
@@ -976,8 +991,6 @@ class Namer { typer: Typer =>
      */
     private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit =
 
-      def isJavaRecord(owner: Symbol) =
-        owner.is(JavaDefined) && owner.derivesFrom(defn.JavaRecordClass)
 
       def isCaseClassOrCompanion(owner: Symbol) =
         owner.isClass && {
@@ -1003,7 +1016,7 @@ class Namer { typer: Typer =>
           )
           ||
           // remove synthetic constructor or method of a java Record if it clashes with a non-synthetic constructor
-          (isJavaRecord(denot.owner)
+          (denot.owner.isJavaRecord
             && denot.is(Method)
             && denot.owner.unforcedDecls.lookupAll(denot.name).exists(c => c != denot.symbol && c.info.matches(denot.info))
           )
@@ -1023,7 +1036,7 @@ class Namer { typer: Typer =>
       val sym = denot.symbol
 
       def register(child: Symbol, parentCls: ClassSymbol) = {
-        if (parentCls.is(Sealed))
+        if (parentCls.is(Sealed) && !(child.isAnonymousClass && parentCls.isSpecializedTrait))
           if ((child.isInaccessibleChildOf(parentCls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
             addChild(parentCls, parentCls)
           else if (!parentCls.is(ChildrenQueried))
@@ -1248,8 +1261,11 @@ class Namer { typer: Typer =>
           val path = typedAhead(expr, _.withType(pathMethod.termRef))
           (path, pathMethod.info.finalResultType)
         else
-          val path = typedAheadExpr(expr, AnySelectionProto)
-          checkLegalExportPath(path, selectors)
+          // Local owner avoids clashes, which improves error reporting (#21976)
+          val path = typedAheadExpr(expr, AnySelectionProto)(using ctx.withOwner(newLocalDummy(cls, exp.span)))
+          // Nothing to forward from an illegal path, forwarders would only add errors (#21976)
+          if !checkLegalExportPath(path, selectors) then
+            return Nil
           (path, path.tpe)
       lazy val wildcardBound = importBound(selectors, isGiven = false)
       lazy val givenBound = importBound(selectors, isGiven = true)
@@ -1398,6 +1414,7 @@ class Namer { typer: Typer =>
                   (EmptyFlags, mbrInfo)
               var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
               if sym.is(Erased) then mbrFlags |= Inline
+              if sym.is(Module) then mbrFlags |= Accessor
               if pathMethod.exists then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
@@ -1760,7 +1777,7 @@ class Namer { typer: Typer =>
        *  as an attachment on the ClassDef tree.
        */
       def enterParentRefinementSyms(refinements: List[(Name, Type)]) =
-        val refinedSyms = mutable.ListBuffer[Symbol]()
+        val refinedSyms = mutable.ListBuffer.empty[Symbol]
         for (name, tp) <- refinements do
           if decls.lookupEntry(name) == null then
             val flags = tp match
@@ -1935,10 +1952,9 @@ class Namer { typer: Typer =>
 
       // We cannot rely on `typedInLambdaTypeTree` since the computed type might not be fully-defined.
       case InLambdaTypeTree(/*isResult =*/ true, tpFun) =>
-        // A lambda has at most one type parameter list followed by exactly one term parameter list.
-        val tpe = (paramss: @unchecked) match
-          case TypeSymbols(tparams) :: TermSymbols(vparams) :: Nil => tpFun(tparams, vparams)
+        val tpe = paramss.runtimeChecked match
           case TermSymbols(vparams) :: Nil => tpFun(Nil, vparams)
+          case TypeSymbols(tparams) :: Nil => tpFun(tparams, Nil)
         val rhsCtx = prepareRhsCtx(ctx.fresh, paramss)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
         else typedAheadExpr(mdef.rhs, tpe)(using rhsCtx).tpe
@@ -2077,7 +2093,7 @@ class Namer { typer: Typer =>
    */
   def completeTrailingParamss(ddef: DefDef, sym: Symbol, indexingCtor: Boolean)(using Context): Unit =
     // A map from context-bounded type parameters to associated evidence parameter names
-    val witnessNamesOfParam = mutable.Map[TypeDef, List[TermName]]()
+    val witnessNamesOfParam = mutable.Map.empty[TypeDef, List[TermName]]
     if !ddef.name.is(DefaultGetterName) && !sym.is(Synthetic) && (indexingCtor || !sym.isPrimaryConstructor) then
       for params <- ddef.paramss; case tdef: TypeDef <- params do
         for case WitnessNamesAnnot(ws) <- tdef.mods.annotations do

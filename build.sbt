@@ -9,6 +9,7 @@ val `scala3-compiler-nonbootstrapped` = Build.`scala3-compiler-nonbootstrapped`
 val `scala3-compiler-bootstrapped` = Build.`scala3-compiler-bootstrapped`
 
 val `scala3-repl` = Build.`scala3-repl`
+val `scala3-repl-nonbootstrapped` = Build.`scala3-repl-nonbootstrapped`
 
 // The Standard Library
 val `scala2-library` = Build.`scala2-library`
@@ -23,7 +24,6 @@ val `scala3-sbt-bridge-bootstrapped` = Build.`scala3-sbt-bridge-bootstrapped`
 val `scala3-sbt-bridge-nonbootstrapped` = Build.`scala3-sbt-bridge-nonbootstrapped`
 val `scala3-staging` = Build.`scala3-staging`
 val `scala3-tasty-inspector` = Build.`scala3-tasty-inspector`
-val `scala3-language-server` = Build.`scala3-language-server`
 //val `scala3-bench` = Build.`scala3-bench`
 //val `scala3-bench-bootstrapped` = Build.`scala3-bench-bootstrapped`
 //val `scala3-bench-micro` = Build.`scala3-bench-micro`
@@ -42,6 +42,8 @@ val `dist-mac-x86_64` = Build.`dist-mac-x86_64`
 val `dist-mac-aarch64` = Build.`dist-mac-aarch64`
 val `dist-win-x86_64` = Build.`dist-win-x86_64`
 val `dist-linux-x86_64` = Build.`dist-linux-x86_64`
+val `dist-linux-x86_64-deb` = Build.`dist-linux-x86_64-deb`
+val `dist-linux-x86_64-rpm` = Build.`dist-linux-x86_64-rpm`
 val `dist-linux-aarch64` = Build.`dist-linux-aarch64`
 val `community-build` = Build.`community-build`
 val `scala3-presentation-compiler` = Build.`scala3-presentation-compiler`

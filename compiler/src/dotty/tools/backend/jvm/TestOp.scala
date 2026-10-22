@@ -16,17 +16,17 @@ enum TestOp:
     case GT => LE
 
   def opcodeIF(): Int = this match
-    case EQ => scala.tools.asm.Opcodes.IFEQ
-    case NE => scala.tools.asm.Opcodes.IFNE
-    case LT => scala.tools.asm.Opcodes.IFLT
-    case GE => scala.tools.asm.Opcodes.IFGE
-    case LE => scala.tools.asm.Opcodes.IFLE
-    case GT => scala.tools.asm.Opcodes.IFGT
+    case EQ => org.objectweb.asm.Opcodes.IFEQ
+    case NE => org.objectweb.asm.Opcodes.IFNE
+    case LT => org.objectweb.asm.Opcodes.IFLT
+    case GE => org.objectweb.asm.Opcodes.IFGE
+    case LE => org.objectweb.asm.Opcodes.IFLE
+    case GT => org.objectweb.asm.Opcodes.IFGT
 
   def opcodeIFICMP(): Int = this match
-    case EQ => scala.tools.asm.Opcodes.IF_ICMPEQ
-    case NE => scala.tools.asm.Opcodes.IF_ICMPNE
-    case LT => scala.tools.asm.Opcodes.IF_ICMPLT
-    case GE => scala.tools.asm.Opcodes.IF_ICMPGE
-    case LE => scala.tools.asm.Opcodes.IF_ICMPLE
-    case GT => scala.tools.asm.Opcodes.IF_ICMPGT
+    case EQ => org.objectweb.asm.Opcodes.IF_ICMPEQ
+    case NE => org.objectweb.asm.Opcodes.IF_ICMPNE
+    case LT => org.objectweb.asm.Opcodes.IF_ICMPLT
+    case GE => org.objectweb.asm.Opcodes.IF_ICMPGE
+    case LE => org.objectweb.asm.Opcodes.IF_ICMPLE
+    case GT => org.objectweb.asm.Opcodes.IF_ICMPGT

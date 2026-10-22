@@ -15,13 +15,13 @@ import java.nio.file.*
 class BootstrappedOnlyCompilationTests {
   import ParallelTesting.*
   import TestConfiguration.*
-  import BootstrappedOnlyCompilationTests.*
+  import BootstrappedOnlyCompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
   // Positive tests ------------------------------------------------------------
 
   @Test def posMacros: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compilePosMacros")
+    implicit val testGroup: TestGroup = TestGroup("posMacros")
     aggregateTests(
       compileFilesInDir("tests/bench", defaultOptions.without("-Yno-deep-subtypes")),
       compileFilesInDir("tests/pos-macros", defaultOptions.and("-Xcheck-macros")),
@@ -29,7 +29,7 @@ class BootstrappedOnlyCompilationTests {
   }
 
   @Test def posWithCompiler: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compilePosWithCompiler")
+    implicit val testGroup: TestGroup = TestGroup("posWithCompiler")
     aggregateTests(
       compileFilesInDir("tests/pos-with-compiler", withCompilerOptions),
       compileFilesInDir("tests/pos-staging", withStagingOptions),
@@ -98,7 +98,7 @@ class BootstrappedOnlyCompilationTests {
   }
 
   @Test def negWithCompiler: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
+    implicit val testGroup: TestGroup = TestGroup("negWithCompiler")
     aggregateTests(
       compileFilesInDir("tests/neg-with-compiler", withCompilerOptions),
       compileFilesInDir("tests/neg-staging", withStagingOptions),
@@ -107,13 +107,13 @@ class BootstrappedOnlyCompilationTests {
 
   // Run tests -----------------------------------------------------------------
 
-  @Test def runMacros: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
     val compilationTest = withCoverage(compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"), FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyExcludelisted)))
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
-  @Test def runWithCompiler: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def runWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
     val basicTests = List(
       compileFilesInDir("tests/run-with-compiler", withCompilerOptions),
@@ -138,7 +138,7 @@ class BootstrappedOnlyCompilationTests {
     ).limitThreads(2).checkRuns() // TODO reduce to limitThreads(1) if it still causes problems, this would be around 50% slower based on local benchmarking
   }
 
-  @Test def runBootstrappedOnly: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def runBootstrappedOnly: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runBootstrappedOnly")
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/run-bootstrapped", withCompilerOptions),
@@ -152,7 +152,7 @@ class BootstrappedOnlyCompilationTests {
   // lower level of concurrency as to not kill their running VMs
 
   @Test def picklingWithCompiler: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("testPicklingWithCompiler")
+    implicit val testGroup: TestGroup = TestGroup("picklingWithCompiler")
     aggregateTests(
       compileDir("compiler/src/dotty/tools", picklingWithCompilerOptions, recursive = false),
       compileDir("compiler/src/dotty/tools/dotc", picklingWithCompilerOptions, recursive = false),
@@ -207,20 +207,4 @@ class BootstrappedOnlyCompilationTests {
   }
 }
 
-object BootstrappedOnlyCompilationTests extends ParallelTesting with CoverageSupport {
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 100.seconds
-  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
-
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def tearDown(): Unit = {
-    super.cleanup()
-    summaryReport.echoSummary()
-  }
-}
+object BootstrappedOnlyCompilationTests extends ParallelTesting with CoverageSupport

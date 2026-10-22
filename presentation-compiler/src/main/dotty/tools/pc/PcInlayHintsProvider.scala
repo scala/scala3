@@ -576,7 +576,7 @@ object XRayModeHint:
     if pos.exists then
       // Bound on `content().length`, not `source.length`: a TASTy-only source has
       // empty `content()` but a non-zero `length`. See InlayHintsInlinedDependencySuite.
-      val content = pos.source.content()
+      val content = pos.source.textContent()
       val end = pos.end
       end >= content.length || content(end) == '\n' || content(end) == '\r'
     else false
@@ -609,5 +609,5 @@ object ClosingLabel:
     // Bound on `content().length` before indexing: a TASTy-only source has empty
     // `content()` but a non-zero span. See InlayHintsInlinedDependencySuite.
     pos.exists && !pos.span.isZeroExtent &&
-    pos.end - 1 < pos.source.content().length && pos.source(pos.end - 1) == '}'
+    pos.end - 1 < pos.source.textContent().length && pos.source.textContent()(pos.end - 1) == '}'
 end ClosingLabel

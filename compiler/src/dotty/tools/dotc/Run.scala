@@ -21,6 +21,7 @@ import reporting.{Suppression, Action, Profile, ActiveProfile, MessageFilter, No
 import reporting.Diagnostic, Diagnostic.Warning
 import rewrites.Rewrites
 import profile.Profiler
+import quoted.QuotesCache
 import printing.XprintMode
 import typer.ImplicitRunInfo
 import config.Feature
@@ -34,6 +35,8 @@ import scala.collection.mutable, mutable.ListBuffer
 import scala.io.Codec
 
 import Run.Progress
+import Comments.docCtx
+import inlines.Inlines.InlineTraitState
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.transform.MegaPhase
 import dotty.tools.dotc.transform.Pickler
@@ -82,9 +85,10 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     // When the REPL creates a new run (ReplDriver.compile), parsing is already done in the old context, with the
     // previous Run. Parser warnings were suspended in the old run and need to be copied over so they are not lost.
     // Same as scala/scala/commit/79ca1408c7.
-    def initSuspendedMessages(oldRun: Run | Null) = if oldRun != null then
+    def initSuspendedMessages(oldRun: Run | Null) =
       mySuspendedMessages.clear()
-      mySuspendedMessages ++= oldRun.mySuspendedMessages
+      if oldRun != null then
+        mySuspendedMessages ++= oldRun.mySuspendedMessages
 
     def suppressionsComplete(source: SourceFile) = source == NoSource || mySuppressionsComplete(source)
 
@@ -168,7 +172,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     myUnits = us
 
   var suspendedUnits: ListBuffer[CompilationUnit] = ListBuffer.empty
-  var suspendedHints: mutable.Map[CompilationUnit, (String, Boolean)] = mutable.HashMap()
+  var suspendedHints: mutable.Map[CompilationUnit, (String, Boolean)] = mutable.HashMap.empty
 
   /** Were any units suspended in the typer phase? if so then pipeline tasty can not complete. */
   var suspendedAtTyperPhase: Boolean = false
@@ -197,19 +201,19 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   def files: Set[AbstractFile] = {
     if (myUnits ne myUnitsCached) {
       myUnitsCached = myUnits
-      myFiles = (myUnits ++ suspendedUnits).map(_.source.file).toSet
+      myFiles = (myUnits ++ suspendedUnits).map(_.source.file).collect{ case f: AbstractFile => f }.toSet
     }
     myFiles
   }
 
   /** The source files of all late entered symbols, as a set */
-  private val lateFiles = mutable.Set[AbstractFile]()
+  private val lateFiles = mutable.Set.empty[AbstractFile]
 
   /** A cache for static references to packages and classes */
   val staticRefs = util.EqHashMap[Name, Denotation](initialCapacity = 1024)
 
   /** Actions that need to be performed at the end of the current compilation run */
-  private var finalizeActions = ListBuffer.empty[() => Unit]
+  private val finalizeActions = ListBuffer.empty[() => Unit]
 
   private var _progress: Progress | Null = null // Set if progress reporting is enabled
 
@@ -312,6 +316,11 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
    *  a pureFunctions language import.
    */
   var pureFunsImportEncountered = false
+  
+  /** Will be set to true if any of the compiled compilation units contains
+   *  an inlineTraits language import.
+   */
+  var inlineTraitsImportEncountered = false
 
   /** Will be set to true if experimental.captureChecking is enabled
    *  or any of the compiled compilation units contains a captureChecking language import.
@@ -326,7 +335,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   def compile(files: List[AbstractFile]): Unit =
     try compileSources(files.map(runContext.getSource(_)))
     catch case ex: Exception if !this.enrichedErrorMessage =>
-      val files1 = if units.isEmpty then files else units.map(_.source.file)
+      val files1 = if units.isEmpty then files else units.map(_.source)
       report.echo(this.enrichErrorMessage(s"exception occurred while compiling ${files1.map(_.path)}"))
       throw ex
 
@@ -465,6 +474,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       val action = finalizeActions.remove(0)
       action()
     }
+    ctx.docCtx.foreach(_.removeStale())
     compiling = false
   }
 
@@ -608,9 +618,18 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       .setTyper(new Typer)
       .addMode(Mode.ImplicitsEnabled)
       .setTyperState(ctx.typerState.fresh(ctx.reporter))
+      // GADT constraints and inline trait origins recorded while compiling must not
+      // end up in the root context, which may be shared with later runs.
+      .setFreshGADTBounds
+      .setInlineTraitState(InlineTraitState())
     if ctx.settings.YexplicitNulls.value && !Feature.enabledBySetting(nme.unsafeNulls) then
       start = start.addMode(Mode.SafeNulls)
     ctx.initialize()(using start) // re-initialize the base context with start
+
+    // Cache unpickled quote templates for the whole run (keyed by the pickled TASTY
+    // bytes, stable per quote-site), so a macro that expands many times unpickles
+    // each of its quotes once per run rather than once per expansion.
+    QuotesCache.init(start)
 
     // `this` must be unchecked for safe initialization because by being passed to setRun during
     // initialization, it is not yet considered fully initialized by the initialization checker
@@ -625,7 +644,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
 object Run {
 
-  case class SubPhase(val name: String):
+  case class SubPhase(name: String):
     override def toString: String = name
 
   class SubPhases(val phase: Phase):

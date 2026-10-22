@@ -4,9 +4,7 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Properties.{javaSpecVersion, versionNumberString}
 
 import java.io.File
-import java.lang.System.{lineSeparator => EOL}
 import java.nio.file.{Files, Paths}
-import java.nio.charset.StandardCharsets
 
 
 object FileDiff {
@@ -24,7 +22,7 @@ object FileDiff {
   //at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:257)
   private val frame = """\s+at [^(]+\([^:]+:(\d+)\)""".r
 
-  def check(sourceTitle: String, outputLines: Seq[String], checkFile: String): Option[String] = {
+  def check(sourceTitle: String, outputLines: Seq[String], checkFile: String, tolerateMissing: Boolean = true): Option[String] = {
     val path = Paths.get(checkFile)
     if Files.exists(path) then
       var stacked = false
@@ -47,10 +45,11 @@ object FileDiff {
       else if matched then
         None
       else
-        Some(s"""|Output from '$sourceTitle' did not match check file. Actual output:
-                 |${outputLines.mkString(EOL)}
-                 |""".stripMargin + "\n")
-    else None
+        // Do not use a """ literal here with .stripMargin since `outputLines` may begin with |
+        Some(s"Output from '$sourceTitle' did not match check file. Actual output:\n${outputLines.mkString(System.lineSeparator())}\n")
+    else
+      assert(tolerateMissing, "Missing check file: " + path.toString)
+      None
   }
 
   def matches(actual: String, expect: String): Boolean = {
@@ -68,12 +67,12 @@ object FileDiff {
 
   def dump(path: String, content: Seq[String]): Unit = {
     val outFile = dotty.tools.io.File(path)
-    outFile.writeAll(content.mkString("", EOL, EOL))
+    outFile.writeAll(content.mkString("", System.lineSeparator(), System.lineSeparator()))
   }
 
-  def checkAndDumpOrUpdate(sourceTitle: String, actualLines: Seq[String], checkFilePath: String): Boolean = {
+  def checkAndDumpOrUpdate(sourceTitle: String, actualLines: Seq[String], checkFilePath: String, tolerateMissingCheckFile: Boolean = true): Boolean = {
     val outFilePath = checkFilePath + ".out"
-    FileDiff.check(sourceTitle, actualLines, checkFilePath) match {
+    FileDiff.check(sourceTitle, actualLines, checkFilePath, tolerateMissingCheckFile) match {
       case Some(msg) if dotty.Properties.testsUpdateCheckfile =>
         Files.deleteIfExists(Paths.get(outFilePath))
         if actualLines.isEmpty

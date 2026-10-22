@@ -4,7 +4,7 @@ import dotty.DottyBytecodeTest
 import org.junit.Test
 import org.junit.Assert.*
 
-import scala.tools.asm.Opcodes.*
+import org.objectweb.asm.Opcodes.*
 
 class IincTest extends DottyBytecodeTest {
   import dotty.AsmConverters.*

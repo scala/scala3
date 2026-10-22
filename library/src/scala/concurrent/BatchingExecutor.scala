@@ -172,7 +172,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
       runN(BatchingExecutorStatics.runLimit)
       null
     } catch {
-      case t: Throwable => t // We are handling exceptions on the outside of this method
+      case NonFatal(t) => t // We are handling exceptions on the outside of this method
     } finally {
       parentBlockContext = BatchingExecutorStatics.MissingParentBlockContext
       _tasksLocal.remove()
@@ -186,12 +186,10 @@ private[concurrent] trait BatchingExecutor extends Executor {
     private final def resubmit(cause: Throwable | Null): Throwable | Null =
       if (this.size > 0) {
         try { submitForExecution(this); cause } catch {
-          case inner: Throwable =>
-            if (NonFatal(inner)) {
-              val e = new ExecutionException("Non-fatal error occurred and resubmission failed, see suppressed exception.", cause)
-              e.addSuppressed(inner)
-              e
-            } else inner
+          case NonFatal(inner) =>
+            val e = new ExecutionException("Non-fatal error occurred and resubmission failed, see suppressed exception.", cause)
+            e.addSuppressed(inner)
+            e
         }
       } else cause // TODO: consider if NonFatals should simply be `reportFailure`:ed rather than rethrown
 

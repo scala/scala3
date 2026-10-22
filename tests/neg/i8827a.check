@@ -4,7 +4,7 @@
    | No given instance of type pkg.Order[List[pkg.Foo]] was found for parameter x of method summon in object Predef.
    | I found:
    |
-   |     pkg.Order.orderList[pkg.Foo](/* missing */summon[pkg.Order[pkg.Foo]])
+   |     pkg.Order.orderList[pkg.Foo](using /* missing */summon[pkg.Order[pkg.Foo]])
    |
    | But no implicit values were found that match type pkg.Order[pkg.Foo].
    |

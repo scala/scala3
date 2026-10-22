@@ -1,0 +1,14 @@
+-- [E030] Match case Unreachable Warning: tests/neg/i24789.scala:11:7 --------------------------------------------------
+11 |  case C(_) => "Not OK" // error // nopos-error for the warning
+   |       ^^^^
+   |       Unreachable case
+-- [E030] Match case Unreachable Error: tests/neg/i24789.scala:11:7 ----------------------------------------------------
+11 |  case C(_) => "Not OK" // error // nopos-error for the warning
+   |       ^
+   |       Unreachable case
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | type A | B and class C are unrelated
+    --------------------------------------------------------------------------------------------------------------------
+No warnings can be incurred under -Werror

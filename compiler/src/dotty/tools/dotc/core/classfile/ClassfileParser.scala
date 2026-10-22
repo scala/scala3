@@ -32,11 +32,11 @@ object ClassfileParser {
     object Version:
       val Unknown: Version = -1L
 
-      def brokenVersionAddendum(classfileVersion: Version)(using Context): String =
+      def brokenVersionAddendum(classfileVersion: Version): String =
         if classfileVersion.exists then
           val (maj, min) = (classfileVersion.majorVersion, classfileVersion.minorVersion)
           val scalaVersion = config.Properties.versionNumberString
-          i""" (version $maj.$min),
+          s""" (version $maj.$min),
             |  please check the JDK compatibility of your Scala version ($scalaVersion)"""
         else
           ""
@@ -278,7 +278,10 @@ final class ClassfileParser(
   private var pool: ConstantPool = uninitialized        // the classfile's constant pool
 
   private var currentClassName: SimpleName = uninitialized // JVM name of the current class
-  private var classTParams: Map[Name, Symbol] = Map()
+  private var classTParams: Map[Name, Symbol] = Map.empty
+
+  // descriptors of the constructors with the ACC_VARARGS flag, see `tpnme.RecordATTR`
+  private var varargsConstructors: Set[String] = Set.empty
 
   private val Scala2UnpicklingMode = Mode.Scala2Unpickling
   private var classfileVersion: Header.Version = Header.Version.Unknown
@@ -446,6 +449,8 @@ final class ClassfileParser(
     val preName = pool.getName(in.nextChar)
     if (!sflags.isOneOf(Flags.PrivateOrArtifact) || preName.name == nme.CONSTRUCTOR) {
       val sig = pool.getExternalName(in.nextChar).value
+      if preName.name == nme.CONSTRUCTOR && (jflags & JAVA_ACC_VARARGS) != 0 then
+        varargsConstructors += sig
       val completer = MemberCompleter(preName.name, jflags, sig)
       val member = newSymbol(
         getOwner(jflags), preName.name, sflags, completer,
@@ -652,7 +657,23 @@ final class ClassfileParser(
           while (sig(index) == '.') {
             accept('.')
             val name = subName(c => c == ';' || c == '<' || c == '.').toTypeName
-            val tp = tpe.select(name)
+            // Java allows for certain cyclic signatures, so we must too.
+            // If we are already in a class, we manually lookup instead of
+            // tpe.select to avoid cyclic errors. See #26646
+            val tp =
+              if tpe.typeSymbol eq classRoot.symbol then
+                // classRoot is being completed - we have to use classRoot's instanceScope
+                // e.g. case: `class CyclicSignature<S extends CyclicSignature<S>.Nested>`
+                val member = instanceScope.lookup(name)
+                if member.exists then TypeRef(tpe, member) else tpe.select(name)
+              else if tpe.typeSymbol.isContainedIn(classRoot.symbol) then
+                // classRoot is completed - using .info is safe
+                // e.g. case: `class CyclicSignature<S extends CyclicSignature<S>.Nested.Deeper>`
+                val member = tpe.typeSymbol.info.decls.lookup(name)
+                if member.exists then TypeRef(tpe, member) else tpe.select(name)
+              else
+                // non-cyclic case
+                tpe.select(name)
             tpe = processTypeArgs(tp)
           }
           accept(';')
@@ -867,10 +888,13 @@ final class ClassfileParser(
     }
     attrType match
       case tp: TypeRef if tp.denot.infoOrCompleter.isInstanceOf[StubInfo] =>
-        // Silently ignore missing annotation classes like javac
-        if ctx.debug then
-          report.warning(em"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
-        None
+        if tp.symbol.fullName.toString == defn.JdkInternalValueBasedAnnotCtSymName && defn.JdkInternalValueBasedAnnot.exists then
+          Some(ClassfileAnnotation(defn.JdkInternalValueBasedAnnot.typeRef, Nil))
+        else
+          // Silently ignore missing annotation classes like javac
+          if ctx.debug then
+            report.warning(em"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
+          None
       case _ =>
         if (hasError || skip) None
         else Some(ClassfileAnnotation(attrType, argbuf.toList))
@@ -930,13 +954,20 @@ final class ClassfileParser(
         sym.addAnnotation(ThrowsAnnotation(cls.asClass))
       }
 
-      permittedSubclasses.foreach { child =>
-        val cls = getClassSymbol(child.name)
-        sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)(
+      // The children of a Java enum are its enum constants, registered in `MemberCompleter`.
+      // javac lists the anonymous classes of constants with bodies as permitted subclasses
+      // of the (implicitly sealed) enum class; they must not be registered as children,
+      // otherwise a match on the constants would be reported as non-exhaustive.
+      if !sym.flagsUNSAFE.is(Flags.Enum) then permittedSubclasses.foreach { child =>
+        sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)({
+          // It's important to fetch this symbol in the deferred tree function,
+          // since otherwise it may create cycles, e.g.,
+          // A extends from B which also permits C which also extends from D which permits A
+          val cls = getClassSymbol(child.name)
           New(defn.ChildAnnot.typeRef.appliedTo(cls.owner.thisType.select(cls.name, cls)), Nil)
-          .withSpan(NoSpan)
-          ))
-        }
+            .withSpan(NoSpan)
+        }))
+      }
 
       def fillInParamNames(t: Type): Type = t match
         case mt @ MethodType(oldp) if namedParams.nonEmpty =>
@@ -1023,6 +1054,22 @@ final class ClassfileParser(
             res.permittedSubclasses ::= childName
           }
 
+        case tpnme.RecordATTR =>
+          // JVMS 4.7.30: each record component has a name, a descriptor, and attributes
+          val components = List.fill(in.nextChar):
+            val name = pool.getName(in.nextChar).value
+            val descriptor = pool.getExternalName(in.nextChar).value
+            skipAttributes()
+            (name, descriptor)
+          val (names, descriptors) = components.unzip
+          // JLS 8.10.4: the canonical constructor's descriptor is the concatenation of the component
+          // descriptors, no other constructor can have that descriptor. It is vararg if the record is.
+          val canonicalConstructor = descriptors.mkString("(", "", ")V")
+          val isVararg = varargsConstructors.contains(canonicalConstructor)
+          // Record the component names and whether it's vararg, see `Applications.javaRecordFields`
+          res.annotations ::= Annotation.deferredSymAndTree(defn.JavaRecordFieldsAnnot):
+            JavaRecordFieldsAnnot.tpdTree(isVararg, names)
+
         case _ =>
           in.skip(attrLen)
       }
@@ -1098,10 +1145,11 @@ final class ClassfileParser(
     for entry <- innerClasses.valuesIterator do
       // create a new class member for immediate inner classes
       if entry.outer.name == currentClassName then
-        val file = ctx.platform.classPath.findClassFile(entry.externalName) getOrElse {
-          throw new AssertionError(entry.externalName)
-        }
-        enterClassAndModule(entry, file, entry.jflags)
+        ctx.platform.classPath.findClassFile(entry.externalName) match
+          case Some(file) =>
+            enterClassAndModule(entry, file, entry.jflags)
+          case None =>
+            dependencyStub(getOwner(entry.jflags), entry).entered
   }
 
   // Nothing$ and Null$ were incorrectly emitted with a Scala attribute
@@ -1251,6 +1299,13 @@ final class ClassfileParser(
     def strippedOuter = outer.name.stripModuleClassSuffix
   }
 
+  private def dependencyStub(owner: Symbol, entry: InnerClassEntry)(using Context): Symbol =
+    newStubSymbol(
+      owner,
+      entry.originalName.toTypeName,
+      CompilationUnitInfo(classfile),
+    )
+
   private object innerClasses extends util.HashMap[String, InnerClassEntry] {
     /** Return the Symbol of the top level class enclosing `name`,
      *  or 'name's symbol if no entry found for `name`.
@@ -1305,14 +1360,8 @@ final class ClassfileParser(
             getMember(owner, innerName.toTypeName)
           else
             atPhase(typerPhase)(getMember(owner, innerName.toTypeName))
-      assert(result ne NoSymbol,
-        i"""failure to resolve inner class:
-           |externalName = ${entry.externalName},
-           |outerName = $outerName,
-           |innerName = $innerName
-           |owner.fullName = ${owner.showFullName}
-           |while parsing ${classfile}""")
-      result
+      if result eq NoSymbol then dependencyStub(owner, entry)
+      else result
     }
   }
 

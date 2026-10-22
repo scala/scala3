@@ -32,7 +32,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
 
   protected final val _consoleBuf = new StringWriter
   protected final val _consoleReporter = new TestConsoleReporter(new PrintWriter(_consoleBuf)):
-    override protected def renderPath(file: AbstractFile): String = TestReporter.renderPath(file)
+    override protected def renderPath(path: String): String = TestReporter.renderPath(path)
 
   final def consoleOutput: String = _consoleBuf.toString
 
@@ -40,7 +40,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   final def setSkip(): Unit = _skip = true
   final def skipped: Boolean = _skip
 
-  override protected def renderPath(file: AbstractFile): String = TestReporter.renderPath(file)
+  override protected def renderPath(path: String): String = TestReporter.renderPath(path)
 
   protected final def inlineInfo(pos: SourcePosition)(using Context): String =
     if (pos.exists) {
@@ -149,9 +149,9 @@ object TestReporter {
     tests.foreach(failed => failedTestsWriter.println(failed))
     failedTestsWriter.flush()
 
-  def renderPath(file: AbstractFile): String =
+  def renderPath(path: String): String =
     if JFile.separatorChar == '\\' then
-      file.path.replace('\\', '/')
+      path.replace('\\', '/')
     else
-      file.path
+      path
 }

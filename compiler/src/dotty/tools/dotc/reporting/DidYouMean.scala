@@ -50,10 +50,8 @@ object DidYouMean:
     val ignoredRootImports = mutable.Set.empty[Symbol]
 
     def recur()(using Context): Unit =
-      if ctx eq NoContext then
-        () // done
-      else if ctx.isImportContext then
-        val imp = ctx.importInfo.nn
+      val imp = ctx.importInfoIfImportContext
+      if imp `ne` null then
         if imp.isRootImport && !rootImportOK then
           () // done
         else imp.importSym.info match
@@ -74,7 +72,7 @@ object DidYouMean:
               ignoredRootImports += imp.unimported
           case _ =>
         recur()(using nextInteresting(ctx))
-      else
+      else if ctx `ne` NoContext then
         if ctx.owner.isClass then
           for sym <- memberCandidates(ctx.owner.typeRef, isType, isApplied) do
             acc += Binding(sym.name, sym, ctx.owner.thisType)
@@ -153,7 +151,7 @@ object DidYouMean:
       case (d, b) :: rest
       if d != 0 || b.sym.is(ModuleClass) => // Avoid repeating the same name in "did you mean"
         if qualifies(b) then
-          def hint(b: Binding) = prefix ++ showName(b.name, b.sym)
+          def hint(b: Binding) = prefix + showName(b.name, b.sym)
           val alts = alternatives(d, rest).filter(_.name != b.name).map(hint).take(3).distinct
           val suffix = if alts.isEmpty then "" else alts.mkString(" or perhaps ", " or ", "?")
           s" - did you mean ${hint(b)}?$suffix"

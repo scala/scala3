@@ -56,14 +56,14 @@ class PerfectHashing[Key](initialCapacity: Int = 8, capacityMultiple: Int = 2):
    *  can be overridden
    */
   protected def hash(k: Key): Int =
-    val h = k.hashCode
+    val h = java.util.Objects.hashCode(k)
     // Part of the MurmurHash3 32 bit finalizer
     val i = (h ^ (h >>> 16)) * 0x85EBCA6B
     val j = (i ^ (i >>> 13)) & 0x7FFFFFFF
     if (j==0) 0x41081989 else j
 
   /** Equality test, by default `equals`, can be overridden */
-  protected def isEqual(x: Key, y: Key): Boolean = x.equals(y)
+  protected def isEqual(x: Key, y: Key): Boolean = java.util.Objects.equals(x, y)
 
   private def matches(entry: Int, k: Key) = isEqual(key(entry), k)
 

@@ -50,7 +50,10 @@ def test(c: Cap, d: Cap, e: Cap) =
   def m3 = [A, B] => () =>
       (f: A => B) => (xs: LIST[A]) => xs.map(f)
 
-  def m3c: [A, B] -> () -> (f: A => B) -> LIST[A] ->{f} LIST[B] = m3
+//  def m3c: [A, B] -> () -> (f: A => B) -> (xs: LIST[A]) ->{f} LIST[B] = m3
+//  Does not work. This is independent of polyfunction representation.
+//  It comes simply from the fact that cc does not handle an additional
+//  () => between the type parameters and the rest
 
   def m4 = [A, B] =>
       (f: A => B) => () => (xs: LIST[A]) => xs.map(f)

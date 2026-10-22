@@ -4,6 +4,7 @@ enum FileExtension(val toLowerCase: String):
   case Tasty extends FileExtension("tasty")
   case Betasty extends FileExtension("betasty")
   case Class extends FileExtension("class")
+  case Sig extends FileExtension("sig")
   case Jar extends FileExtension("jar")
   case Scala extends FileExtension("scala")
   case ScalaScript extends FileExtension("sc")
@@ -15,8 +16,13 @@ enum FileExtension(val toLowerCase: String):
   /** Fallback extension */
   private case External(override val toLowerCase: String) extends FileExtension(toLowerCase)
 
+  // The comparisons below use `eq` rather than `==`: all the compared cases are
+  // singletons without `equals` overrides, and the only equals-overriding case
+  // `External` can never equal a singleton case, so `==` and `eq` agree while
+  // `eq` avoids the virtual `equals` dispatch on this very hot path.
+
   /** represents an empty file extension. */
-  def isEmpty: Boolean = this == Empty
+  def isEmpty: Boolean = this eq Empty
 
   /** the full extension including a leading dot */
   val withDot: String = "." + toLowerCase
@@ -24,21 +30,23 @@ enum FileExtension(val toLowerCase: String):
   override def toString: String = toLowerCase
 
   /** represents `".tasty"` */
-  def isTasty = this == Tasty
+  def isTasty = this eq Tasty
   /** represents `".betasty"` */
-  def isBetasty = this == Betasty
+  def isBetasty = this eq Betasty
   /** represents `".class"` */
-  def isClass = this == Class
+  def isClass = this eq Class
+  /** represents `".sig"`, a class signature in the JDK's `ct.sym` */
+  def isSig = this eq Sig
   /** represents `".scala"` */
-  def isScala = this == Scala
+  def isScala = this eq Scala
   /** represents `".sc"` */
-  def isScalaScript = this == ScalaScript
+  def isScalaScript = this eq ScalaScript
   /** represents `".java"` */
-  def isJava = this == Java
+  def isJava = this eq Java
   /** represents `".jar"` */
-  def isJar: Boolean = this == Jar
+  def isJar: Boolean = this eq Jar
   /** represents `".zip"` */
-  def isZip: Boolean = this == Zip
+  def isZip: Boolean = this eq Zip
   /** represents `".jar"` or `".zip"` */
   def isJarOrZip: Boolean = isJar || isZip
   /** represents `".scala"` or `".java"` */
@@ -53,6 +61,7 @@ object FileExtension:
   private def initialLookup(s: String): FileExtension = s match
     case "tasty" => Tasty
     case "class" => Class
+    case "sig" => Sig
     case "jar" => Jar
     case "scala" => Scala
     case "sc" => ScalaScript
@@ -66,6 +75,7 @@ object FileExtension:
   private def slowLookup(s: String): FileExtension =
     if s.equalsIgnoreCase("tasty") then Tasty
     else if s.equalsIgnoreCase("class") then Class
+    else if s.equalsIgnoreCase("sig") then Sig
     else if s.equalsIgnoreCase("jar") then Jar
     else if s.equalsIgnoreCase("scala") then Scala
     else if s.equalsIgnoreCase("sc") then ScalaScript

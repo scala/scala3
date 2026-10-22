@@ -5,7 +5,8 @@ import java.io.File
 
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts, Contexts.{ Context, ctx }
-import dotty.tools.io.{ PlainDirectory, Directory, ClassPath }
+import dotty.tools.io.{ PlainDirectory, Directory }
+import dotty.tools.dotc.classpath.ClassPath
 import Util.*
 
 class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs: Array[String]) extends Driver:

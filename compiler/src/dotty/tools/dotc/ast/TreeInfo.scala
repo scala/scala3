@@ -67,12 +67,16 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
   /** The method part of an application node, possibly enclosed in a block
    *  with only valdefs as statements. the reason for also considering blocks
    *  is that named arguments can transform a call into a block, e.g.
+   *  ```
    *   <init>(b = foo, a = bar)
+   *  ```
    * is transformed to
+   *  ```
    *   { val x$1 = foo
    *     val x$2 = bar
    *     <init>(x$2, x$1)
    *   }
+   *  ```
    */
   def methPart(tree: Tree): Tree = stripApply(tree) match {
     case TypeApply(fn, _) => methPart(fn)
@@ -405,8 +409,11 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
           }
           fun.symbol != NoSymbol && loop(fun.symbol.info)
       }
-    case _ =>
-      tree.tpe.isInstanceOf[ThisType]
+    case fun =>
+      tree.tpe match
+        case tref: TermRef if fun.symbol.is(ExtensionMethod) =>          // ext(b)(x): b.type
+          termArgss(tree).exists(_.exists(tref.symbol == _.symbol))
+        case tpe => tpe.isInstanceOf[ThisType]
   }
 
   /** Under x.modularity: Extractor for `annotation.internal.WitnessNames(name_1, ..., name_n)`
@@ -431,6 +438,32 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
             case _ => None
         case _ => None
   end WitnessNamesAnnot
+
+  /** Constructor and extractor for `annotation.internal.JavaRecordFields(isVararg, name_1, ..., name_n)`
+   *  represented as an untyped or typed tree.
+   */
+  object JavaRecordFieldsAnnot:
+    def tpdTree(isVararg: Boolean, names: List[String])(using Context): tpd.Tree =
+      tpd.New(
+        defn.JavaRecordFieldsAnnot.typeRef,
+        List(
+          tpd.Literal(Constant(isVararg)),
+          tpd.SeqLiteral(names.map(n => tpd.Literal(Constant(n))), tpd.TypeTree(defn.StringType))
+        )
+      )
+
+    def apply(isVararg: Boolean, names: List[String])(using Context): untpd.Tree =
+      untpd.TypedSplice(tpdTree(isVararg, names))
+
+    def unapply(tree: Tree)(using Context): Option[(Boolean, List[TermName])] =
+      unsplice(tree) match
+        case Apply(Select(New(tpt: tpd.TypeTree), nme.CONSTRUCTOR), Literal(Constant(isVararg: Boolean)) :: SeqLiteral(elems, _) :: Nil)
+        if tpt.tpe.classSymbol == defn.JavaRecordFieldsAnnot =>
+          val names = elems.map:
+            case Literal(Constant(str: String)) => str.toTermName
+          Some((isVararg, names))
+        case _ => None
+  end JavaRecordFieldsAnnot
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
@@ -479,12 +512,26 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case _ => false
   }
 
+  def isConsumeAnnot(tree: Tree)(using Context): Boolean = unsplice(tree) match
+    case Apply(
+      Select(
+        New(
+          Select(
+            Select(
+              Select(
+                Select(
+                  Ident(nme.ROOTPKG),
+                  nme.scala),
+                nme.caps),
+              nme.internal),
+            tpnme.consume)), _), _) => true
+    case _ => false
+
   /**  The largest subset of {NoInits, PureInterface} that a
    *   trait or class enclosing this statement can have as flags.
    */
   private def defKind(tree: Tree)(using Context): FlagSet = unsplice(tree) match {
     case EmptyTree | _: Import => NoInitsInterface
-    case _: ModuleDef => NoInits
     case tree: TypeDef =>
       if tree.isClassDef then
         if Feature.shouldBehaveAsScala2 then EmptyFlags
@@ -609,10 +656,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case TypeApply(fn, _) =>
       val sym = fn.symbol
       if tree.tpe.isInstanceOf[MethodOrPoly] then exprPurity(fn)
-      else if sym == defn.Any_typeCast then
-        fn match
-          case Select(qual, _) => exprPurity(qual) `min` Pure
-          case _ => Impure
       else if sym == defn.QuotedTypeModule_of
           || sym == defn.Predef_classOf
           || sym == defn.Compiletime_erasedValue && tree.tpe.dealias.isInstanceOf[ConstantType]
@@ -672,15 +715,16 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       cls.is(Case) && cls.isNoInitsRealClass
     }
 
+  /** True for operations known not to observe their arguments, such as primitive arithmetic. */
+  def isKnownPureOp(sym: Symbol)(using Context): Boolean =
+    sym.owner.isPrimitiveValueClass
+    || sym.owner == defn.StringClass
+    || defn.pureMethods.contains(sym)
+
   /** Is the application `tree` with function part `fn` known to be pure?
    *  Function value and arguments can still be impure.
    */
   def isPureApply(tree: Tree, fn: Tree)(using Context): Boolean =
-    def isKnownPureOp(sym: Symbol) =
-      sym.owner.isPrimitiveValueClass
-      || sym.owner == defn.StringClass
-      || defn.pureMethods.contains(sym)
-
     tree.tpe.isInstanceOf[ConstantType] && tree.symbol != NoSymbol && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
     || fn.symbol.isStableMember && fn.symbol.isConstructor // constructors of no-inits classes are stable
     || isPureSyntheticCaseApply(fn.symbol)
@@ -701,7 +745,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     else if tree.tpe.isInstanceOf[ConstantType] then PurePath
     else if (!sym.isStableMember) Impure
     else if (sym.is(Module))
-      if (sym.moduleClass.isNoInitsRealClass) PurePath else IdempotentPath
+      if sym.moduleClass.isNoInitsRealClass || sym.is(Package) || sym.moduleClass.isJavaStaticsClass then PurePath
+      else IdempotentPath
     else if (sym.is(Lazy)) IdempotentPath
     else if sym.isAllOf(InlineParam) then Impure
     else PurePath
@@ -1002,7 +1047,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     else
       val locals = new mutable.ListBuffer[Symbol]
       for stat <- stats do
-        if stat.isDef && stat.symbol.exists then locals += stat.symbol
+        if stat.isDef then
+          val sym = stat.symbol
+          if sym.exists then locals += sym
       locals.toList
 
   /** If `tree` is a DefTree, the symbol defined by it, otherwise NoSymbol */

@@ -26,6 +26,7 @@
 package scala.util.matching
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.collection.AbstractIterator
 import java.util.regex.{ Pattern, Matcher }
 
@@ -211,7 +212,7 @@ import java.util.regex.{ Pattern, Matcher }
  */
 @SerialVersionUID(-2094783597747625537L)
 class Regex private[matching](val pattern: Pattern, groupNames: String*) extends Serializable {
-  outer =>
+  outer: Regex =>
 
   import Regex._
 
@@ -862,7 +863,7 @@ object Regex {
    *  @param _groupNames the names of the capturing groups, if any
    */
   class MatchIterator(val source: CharSequence, val regex: Regex, private[Regex] val _groupNames: Seq[String])
-  extends AbstractIterator[String] with MatchData { self =>
+  extends AbstractIterator[String] with MatchData { self: MatchIterator =>
 
     @deprecated("groupNames does not include inline group names, and should not be used anymore", "2.13.7")
     val groupNames: Seq[String] = _groupNames

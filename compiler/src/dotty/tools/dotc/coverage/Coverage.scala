@@ -2,7 +2,6 @@ package dotty.tools.dotc
 package coverage
 
 import scala.collection.mutable
-import java.nio.file.Path
 
 /** Holds a list of statements to include in the coverage reports. */
 class Coverage:

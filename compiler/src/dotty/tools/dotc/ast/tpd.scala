@@ -106,11 +106,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** A function def
    *
+   *  ```
    *    vparams => expr
+   *  ```
    *
    *  gets expanded to
    *
+   *  ```
    *    { def $anonfun(vparams) = expr; Closure($anonfun) }
+   *  ```
    *
    *  where the closure's type is the target type of the expression (FunctionN, unless
    *  otherwise specified).
@@ -351,7 +355,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree])(using Context): TypeDef = {
     val selfType =
-      if (cls.classInfo.selfInfo ne NoType) ValDef(newSelfSym(cls))
+      if (cls.info ne NoType) && (cls.classInfo.selfInfo ne NoType) then ValDef(newSelfSym(cls))
       else EmptyValDef
     def isOwnTypeParam(stat: Tree) =
       stat.symbol.is(TypeParam) && stat.symbol.owner == cls
@@ -1086,11 +1090,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       // e.g. `null.ne(null)` doesn't type, but `(null: AnyRef).ne(null)` does.
       val receiver =
         if tree.tpe.isBottomType then
-          if ctx.explicitNulls then tree.cast(defn.AnyRefType)
+          if ctx.mode.is(Mode.SafeNulls) then tree.cast(defn.AnyRefType)
           else Typed(tree, TypeTree(defn.AnyRefType))
         else tree.ensureConforms(defn.ObjectType)
       // also need to cast the null literal to AnyRef in explicit nulls
-      val nullLit = if ctx.explicitNulls then nullLiteral.cast(defn.AnyRefType) else nullLiteral
+      val nullLit = if ctx.mode.is(Mode.SafeNulls) then nullLiteral.cast(defn.AnyRefType) else nullLiteral
       receiver.select(defn.Object_ne).appliedTo(nullLit).withSpan(tree.span)
     }
 
@@ -1118,14 +1122,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           assert(sym.name.isSetterName && sym.info.firstParamTypes.nonEmpty, sym)
           sym
         }
-        val qual = tree match {
-          case id: Ident => desugarIdentPrefix(id)
-          case Select(qual, _) => qual
-        }
-        qual.select(setter).appliedTo(rhs)
+        setterAppliedTo(setter, rhs)
       }
       else Assign(tree, rhs)
     }
+
+    def setterAppliedTo(setter: Symbol, rhs: Tree)(using Context): Tree =
+      val qual = tree match
+        case id: Ident => desugarIdentPrefix(id)
+        case Select(qual, _) => qual
+      qual.select(setter).appliedTo(rhs)
 
     /** tree @annot
      *
@@ -1189,13 +1195,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     def collectSubTrees[A](f: PartialFunction[Tree, A])(using Context): List[A] =
-      val buf = mutable.ListBuffer[A]()
+      val buf = mutable.ListBuffer.empty[A]
       foreachSubTree(f.runWith(buf += _)(_))
       buf.toList
 
     /** Set this tree as the `defTree` of its symbol and return this tree */
     def setDefTree(using Context): ThisTree = {
       val sym = tree.symbol
+      if (sym.exists) sym.defTree = tree
+      tree
+    }
+
+    /** Same as above, but when you already have `tree.symbol` */
+    def setDefTree(sym: Symbol)(using Context): ThisTree = {
       if (sym.exists) sym.defTree = tree
       tree
     }
@@ -1209,11 +1221,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  corresponding symbol in the superclass. It is not known what are the precise
      *  conditions where this happens, but my guess would be that it's connected to the
      *  recursion in the self type.
+     *  As an optimization, returns the symbol.
      */
-    def ensureHasSym(sym: Symbol)(using Context): Unit =
-      if sym.exists && sym != tree.symbol then
-        typr.println(i"correcting definition symbol from ${tree.symbol.showLocated} to ${sym.showLocated}")
+    def ensureHasSym(sym: Symbol)(using Context): Symbol =
+      val treeSym = tree.symbol
+      if sym.exists && sym != treeSym then
+        typr.println(i"correcting definition symbol from ${treeSym.showLocated} to ${sym.showLocated}")
         tree.overwriteType(NamedType(sym.owner.thisType, sym.name, sym.denot))
+      treeSym
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match
@@ -1393,7 +1408,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   // convert a numeric with a toXXX method
   def primitiveConversion(tree: Tree, numericCls: Symbol)(using Context): Tree =
-    val mname      = "to".concat(numericCls.name)
+    val mname      = termName("to" + numericCls.name.toString)
     val conversion = tree.tpe.member(mname)
     if conversion.symbol.exists then
       tree.select(conversion.symbol.termRef).ensureApplied
@@ -1412,8 +1427,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   @tailrec
   def sameTypes(trees: List[tpd.Tree], trees1: List[tpd.Tree]): Boolean =
-    if (trees.isEmpty) trees1.isEmpty
-    else if (trees1.isEmpty) trees.isEmpty
+    if trees eq trees1 then true
+    else if trees.isEmpty then trees1.isEmpty
+    else if trees1.isEmpty then trees.isEmpty
     else (trees.head.tpe eq trees1.head.tpe) && sameTypes(trees.tail, trees1.tail)
 
   /** If `tree`'s purity level is less than `level`, let-bind it so that it gets evaluated
@@ -1661,6 +1677,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   def repeated(trees: List[Tree], tpt: Tree)(using Context): Tree =
     ctx.typeAssigner.arrayToRepeated(JavaSeqLiteral(trees, tpt))
+
+  /** Convert a list of trees to a vararg-compatible tree represented as SeqLiteral.
+   */
+  def repeatedSeq(trees: List[Tree], tpt: Tree)(using Context): Tree =
+    ctx.typeAssigner.seqToRepeated(SeqLiteral(trees, tpt))
 
   /** Create a tree representing a list containing all
    *  the elements of the argument list. A "list of tree to

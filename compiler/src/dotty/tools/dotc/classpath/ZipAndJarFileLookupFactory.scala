@@ -8,7 +8,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.attribute.{BasicFileAttributes, FileTime}
 
-import dotty.tools.io.{AbstractFile, ClassPath, FileZipArchive}
+import dotty.tools.io.{AbstractFile, FileZipArchive}
 import dotty.tools.dotc.core.Contexts.*
 import FileUtils.*
 
@@ -37,13 +37,13 @@ sealed trait ZipAndJarFileLookupFactory {
  * It should be the only way of creating them as it provides caching.
  */
 object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
-  private case class ZipArchiveClassPath(zipFile: File, override val release: String)
+  private class ZipArchiveClassPath(protected override val zipFile: File, protected override val release: String)
     extends ZipArchiveFileLookup[BinaryFileEntry] {
 
     override def findClassFile(className: String): Option[AbstractFile] =
       file(className).map(_.file)
 
-    override def classes(inPackage: String): Seq[BinaryFileEntry] = files(inPackage)
+    override def classes(inPackage: String): Iterable[BinaryFileEntry] = files(inPackage)
 
     override protected def createFileEntry(file: AbstractFile): BinaryFileEntry = BinaryFileEntry(file)
 
@@ -61,8 +61,8 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
  * It should be the only way of creating them as it provides caching.
  */
 object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
-  private case class ZipArchiveSourcePath(zipFile: File, override val release: String) extends ZipArchiveFileLookup[SourceFileEntry] {
-    override def sources(inPackage: String): Seq[SourceFileEntry] = files(inPackage)
+  private class ZipArchiveSourcePath(protected override val zipFile: File, protected override val release: String) extends ZipArchiveFileLookup[SourceFileEntry] {
+    override def sources(inPackage: String): Iterable[SourceFileEntry] = files(inPackage)
 
     override protected def createFileEntry(file: AbstractFile): SourceFileEntry = SourceFileEntry(file)
     override protected def isRequiredFileType(file: AbstractFile): Boolean = file.ext.isSourceExtension
