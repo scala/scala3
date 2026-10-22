@@ -248,11 +248,12 @@ sealed abstract class CaptureSet extends Showable:
   /** Classifier splitting: the projections of `x`'s base in this set may cover `x` where
    *  `subsumes` cannot show it, typically several of them together. A projection under
    *  `.rd` or `?` takes part only if `x` has that wrapper too. Subtract the projections
-   *  from `x` in turn. `x` is covered if nothing remains, or if what remains lies outside
-   *  the classifiers of the base. A root base is not asked for its classifiers, since a
+   *  from `x` in turn. `x` is covered if nothing remains, if what remains lies outside
+   *  the classifiers of the base, or if `coversPiece` covers each remaining piece, for
+   *  instance by widening it. A root base is not asked for its classifiers, since a
    *  local root that is not yet classified would cache an answer that can still change.
    */
-  private def coveredByProjections(x: Capability)(using Context): Boolean =
+  private def coveredByProjections(x: Capability)(coversPiece: Capability => Boolean)(using Context): Boolean =
     val base = x.core
     def isReadOnly(c: Capability) = c.stripMaybe.isInstanceOf[ReadOnly]
     def peer(elem: Capability): Classified | Null = elem.stripMaybe.stripReadOnly match
@@ -270,7 +271,7 @@ sealed abstract class CaptureSet extends Showable:
         peer(elem) match
           case p: Classified => rest.flatMap(_.remainderAfter(p))
           case null => rest
-      rest.isEmpty || emptyUnderBase(rest)
+      rest.isEmpty || emptyUnderBase(rest) || rest.forall(coversPiece)
     }
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
@@ -282,18 +283,23 @@ sealed abstract class CaptureSet extends Showable:
       val suffix = if ctx.settings.YccVerbose.value then i" with ${x.captureSetOfInfo}" else ""
       i"$this accountsFor $x$suffix"
 
+    def subsumed(y: Capability) = elems.exists(_.subsumes(y))
+
+    // Even though subsumes already follows captureSetOfInfo, this is not enough.
+    // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
+    def widened(y: Capability) =
+      !y.isTerminalCapability
+      && !y.coreType.derivesFromCapSet
+      && !(vs.isSeparating && y.captureSetOfInfo.containsTerminalCapability)
+        // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
+        // and might therefore insert an element that is too unspecific.
+      && ifNotTried(y)(y.captureSetOfInfo.subCaptures(this, VarState.Separate))
+
     def test(using Context) = reporting.trace(debugInfo):
       TypeComparer.noNotes: // Any failures in accountsFor should not lead to error notes
-        elems.exists(_.subsumes(x))
-        || coveredByProjections(x)
-        || // Even though subsumes already follows captureSetOfInfo, this is not enough.
-           // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
-          !x.isTerminalCapability
-          && !x.coreType.derivesFromCapSet
-          && !(vs.isSeparating && x.captureSetOfInfo.containsTerminalCapability)
-            // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
-            // and might therefore insert an element that is too unspecific.
-          && ifNotTried(x)(x.captureSetOfInfo.subCaptures(this, VarState.Separate))
+        subsumed(x)
+        || coveredByProjections(x)(r => subsumed(r) || widened(r))
+        || widened(x)
 
     comparer match
       case comparer: ExplainingTypeComparer => comparer.traceIndented(debugInfo)(test)
@@ -308,17 +314,21 @@ sealed abstract class CaptureSet extends Showable:
    *  root capability `any`.
    */
   def mightAccountFor(x: Capability)(using Context): Boolean =
-    reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
+    def subsumed(y: Capability) =
       CCState.withCollapsedLocalCaps:
         // TODO Can we drop withCollapsedLocalCaps?. Without it we get errors in
         // LazyListIterable.scala.
         TypeComparer.noNotes:
-          elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
-      || coveredByProjections(x)
-      || !x.isTerminalCapability
-        && ifNotTried(x):
-          val xelems = x.captureSetOfInfo.elems
-          !xelems.isEmpty && xelems.forall(mightAccountFor(_))
+          elems.exists(_.subsumes(y)(using ctx)(using VarState.ClosedUnrecorded))
+    def widened(y: Capability) =
+      !y.isTerminalCapability
+      && ifNotTried(y):
+        val yelems = y.captureSetOfInfo.elems
+        !yelems.isEmpty && yelems.forall(mightAccountFor(_))
+    reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
+      subsumed(x)
+      || coveredByProjections(x)(r => subsumed(r) || widened(r))
+      || widened(x)
 
   /** A more optimistic version of subCaptures used to choose one of two typing rules
    *  for selections and applications. `cs1 mightSubcapture cs2` if `cs2` might account for
