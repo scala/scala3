@@ -1,3 +1,6 @@
+// scalajs: --skip
+// (uses reflection to get generic interfaces)
+
 abstract class B { def m(): Int }
 trait T extends B with A
 class C extends T

@@ -1,3 +1,6 @@
+// scalajs: --skip
+// (uses reflection to get generic interfaces)
+
 class ChildScala extends GenericBaseIntermidiateJava[Int] {
   // override def someMethod() = ???
 }
