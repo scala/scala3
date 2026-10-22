@@ -169,7 +169,10 @@ class SourceFile private[util] (val file: AbstractFile, computeContent: => Array
 
   /** The content of the line containing position `offset` */
   def lineContent(offset: Int): String =
-    content.slice(startOfLine(offset), nextLine(offset)).mkString
+    if content.isEmpty then
+      ""
+    else
+      content.slice(startOfLine(offset), nextLine(offset)).mkString
 
   /** The column corresponding to `offset`, starting at 0 */
   def column(offset: Int): Int = {
