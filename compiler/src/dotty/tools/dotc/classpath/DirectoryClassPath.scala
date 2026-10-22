@@ -98,7 +98,9 @@ trait JFileDirectoryLookup[FileEntryType] extends DirectoryLookup[FileEntryType]
   protected def isPackage(f: JFile): Boolean = f.isPackage
 
   override def searchLocations: Iterable[AbstractFile] =
-    Iterable(AbstractFile.getDirectory(dir.toPath, "").nn)
+    AbstractFile.getDirectory(dir.toPath, "") match
+      case null => Nil
+      case d => Iterable(d)
 }
 
 object JrtClassPath {
