@@ -27,7 +27,7 @@ import scala.collection.mutable.{ArrayBuilder, ArraySeq}
  *  which are not yet adequately represented in manifests.
  *
  *  Example usages:
- *  ```scala sc:compile
+ *  ```scala sc:nocompile
  *    import scala.reflect.Manifest
  *
  *    def arr[T: Manifest]: Array[T] = new Array[T](0)
@@ -41,7 +41,7 @@ import scala.collection.mutable.{ArrayBuilder, ArraySeq}
  *    def retType[T: Manifest](name: String) =
  *      methods[T].find(_.getName == name).map(_.getGenericReturnType)
  *
- *    val mapValuesReturnType = retType[Map[_, _]]("values")
+ *    val mapValuesReturnType = retType[Map[?, ?]]("values")
  *  ```
  */
 @nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifest(DeprecatedApis.*)?""")

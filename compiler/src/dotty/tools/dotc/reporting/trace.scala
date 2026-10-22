@@ -11,7 +11,7 @@ import scala.compiletime.*
 /** Exposes the {{{ trace("question") { op } }}} syntax.
  *
  * Traced operations will print indented messages if enabled.
- * Tracing depends on [[Config.tracingEnabled]] and [[dotty.tools.dotc.config.ScalaSettings.Ylog]].
+ * Tracing depends on [[dotty.tools.dotc.config.Config.tracingEnabled]] and [[dotty.tools.dotc.config.ScalaSettings.Ylog]].
  * Tracing can be forced by replacing [[trace]] with [[trace.force]] or [[trace.log]] (see below).
  */
 object trace extends TraceSyntax:

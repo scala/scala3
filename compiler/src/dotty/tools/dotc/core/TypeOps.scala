@@ -1008,7 +1008,7 @@ object TypeOps:
       case _ =>
         mapFollowingAliases(t)
 
-  /** Apply [[Type.stripTypeVar]] recursively. */
+  /** Apply `Type.stripTypeVar` recursively. */
   def stripTypeVars(tp: Type)(using Context): Type =
     new StripTypeVarsMap().apply(tp)
 

@@ -370,7 +370,7 @@ object BCodeUtils {
   }
 
   /**
-   * Create a new [[LabelNode]] with a correctly associated [[Label]].
+   * Create a new LabelNode with a correctly associated Label.
    */
   def newLabelNode: LabelNode = {
     val label = new Label

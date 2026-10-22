@@ -17,7 +17,7 @@ import dotty.tools.dotc.config.SourceVersion
 
 /**
  *
- * @param addRootImports Set to false in the REPL. Calling [[ImportInfo.withRootImports]] on the [[Context]]
+ * @param addRootImports Set to false in the REPL. Calling [[ImportInfo.withRootImports]] on the `Context`
  *                       for each [[CompilationUnit]] causes dotty.tools.repl.ScriptedTests to fail.
  */
 class TyperPhase(addRootImports: Boolean = true) extends Phase {
