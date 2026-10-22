@@ -2159,6 +2159,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  ```
    *  The result type `R` is inferred from the expected type if that is a polymorphic
    *  function type `[T_1, ..., T_M] => R` with the same number of type parameters.
+   *
+   *  Erasure replaces the closure by the value parameter closure in `body`, which is
+   *  therefore created once and shared by all type applications. So that closure must
+   *  not be converted to a SAM type, since it might then be implemented by an anonymous
+   *  class.
    */
   def typedPolyFunctionValue(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val untpd.PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun) = tree: @unchecked
@@ -2172,7 +2177,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           poly.resultType.substParams(poly, tsyms.map(_.typeRef)))
       case _ =>
         untpd.TypeTree()
-    typed(desugar.makeClosure(tparams, fun, resultTpt, tree.span), pt)
+    val closure = typed(desugar.makeClosure(tparams, fun, resultTpt, tree.span), pt)
+    closure match
+      case closureDef(mdef) => mdef.rhs match
+        case tpd.closure(_, _, samTpt) if !samTpt.isEmpty =>
+          report.error(
+            em"Implementation restriction: the body of a polymorphic function literal cannot be converted to SAM type ${samTpt.tpe}",
+            tree.srcPos)
+        case _ =>
+      case _ =>
+    closure
 
   def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree = {
     val env1 = tree.env.mapconserve(typed(_))
