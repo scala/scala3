@@ -10,7 +10,6 @@ import dotty.tools.dotc.interactive.LogicalSourcePath
 import dotty.tools.dotc.interactive.LogicalPackage
 
 import java.net.{URI, URISyntaxException}
-import java.nio.file.Files
 import java.util.Locale
 import java.util.jar.{Attributes, JarInputStream}
 
