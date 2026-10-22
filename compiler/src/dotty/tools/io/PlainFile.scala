@@ -7,7 +7,6 @@ package dotty.tools
 package io
 
 import java.io.{InputStream, OutputStream}
-import java.net.URL
 import java.nio.file.{InvalidPathException, Paths}
 
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
@@ -32,7 +31,6 @@ class PlainFile(givenPath: Path) extends AbstractFile {
   override def container: Option[AbstractFile] = Some(new PlainFile(givenPath.parent))
   override def input: InputStream = givenPath.toFile.inputStream()
   override def output: OutputStream = givenPath.toFile.outputStream()
-  override def toURL: Option[URL] = Some(jpath.toUri.toURL)
 
   override def hashCode(): Int = path.hashCode
   override def equals(that: Any): Boolean = (this `eq` that.asInstanceOf[Object]) || (that match {

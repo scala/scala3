@@ -6,7 +6,6 @@ package dotty.tools.io
 
 import scala.collection.mutable
 import java.io.{InputStream, OutputStream}
-import java.net.URL
 /**
  * An in-memory directory.
  *
@@ -27,7 +26,6 @@ class VirtualDirectory private[io] (val name: String, maybeContainer: Option[Vir
   override val lastModified: Long = System.currentTimeMillis
 
   override def jpath: JPath | Null = null
-  override def toURL: Option[URL] = None
   override def input: InputStream = sys.error("directories cannot be read")
   override def output: OutputStream = sys.error("directories cannot be written")
 
