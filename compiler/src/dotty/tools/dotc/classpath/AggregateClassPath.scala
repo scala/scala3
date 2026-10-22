@@ -6,7 +6,7 @@ package dotc.classpath
 
 import scala.collection.mutable
 
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.File
 
 /**
  * A classpath unifying multiple class- and sourcepath entries.
@@ -20,7 +20,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   // Implementation note:
   // This class is used a lot. It's important to keep it efficient and low-allocation.
 
-  override def findClassFile(className: String): Option[AbstractFile] = {
+  override def findClassFile(className: String): Option[File] = {
     val pkg = PackageNameUtils.separatePackageName(className)
     val iterator = aggregatesForPackage(pkg).iterator
     while iterator.hasNext do

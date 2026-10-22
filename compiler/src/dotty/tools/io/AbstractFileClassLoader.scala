@@ -15,6 +15,7 @@ package io
 
 import java.io.InputStream
 import java.net.{URL, URLConnection}
+import dotty.tools.nio.*
 
 import scala.jdk.CollectionConverters.IteratorHasAsJava
 
@@ -36,7 +37,7 @@ class AbstractFileClassLoader(entries: Seq[AbstractFile], jarVersion: String, pa
     else Option(AbstractFile.getDirectory(entry.path, jarVersion))
 
   override protected def findClass(name: String): Class[?] =
-    searchLocations.iterator.flatMap(_.lookupPath(name, '.', lastSuffix = ".class", directory = false)).nextOption().map(file =>
+    searchLocations.iterator.flatMap(_.getFile(name, separator = '.', FileExtension("class"))).nextOption().map(file =>
       defineClass(name, file.toByteArray)
     ).getOrElse(throw new ClassNotFoundException(name))
 
@@ -48,10 +49,10 @@ class AbstractFileClassLoader(entries: Seq[AbstractFile], jarVersion: String, pa
   // but the recommended replacement, URL.of, doesn't exist on JDK 17
   @annotation.nowarn("cat=deprecation")
   override protected def findResources(name: String): java.util.Enumeration[URL] =
-    searchLocations.iterator.flatMap(_.lookupPath(name, '/', directory = false)).map(file =>
+    searchLocations.iterator.flatMap(_.getFile(name, separator = '/')).map(file =>
       new URL(null, s"memory:${file.path}", url => new URLConnection(url) {
         override def connect(): Unit = ()
-        override def getInputStream: InputStream = file.input
+        override def getInputStream: InputStream = file.input()
     })).asJavaEnumeration
 
   // overrideable for the REPL

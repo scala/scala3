@@ -9,8 +9,8 @@ import collection.mutable
 import scala.annotation.tailrec
 import dotty.tools.dotc.reporting.Reporter
 
-import java.io.{OutputStreamWriter, StringWriter, Writer}
-import java.nio.charset.StandardCharsets.UTF_8
+import java.io.{StringWriter, Writer}
+import scala.io.Codec
 import dotty.tools.dotc.reporting.CodeAction
 
 /** Handles rewriting of Scala2 files to Dotty */
@@ -73,7 +73,7 @@ object Rewrites {
       // patch into memory first, so that a failure (e.g. overlapping patches) leaves the file intact
       val patched = StringWriter()
       apply(source.textContent(), patched)
-      val osw = OutputStreamWriter(source.file.output, UTF_8)
+      val osw = source.file.writer(Codec.UTF8)
       try osw.write(patched.toString)
       finally osw.close()
   }
