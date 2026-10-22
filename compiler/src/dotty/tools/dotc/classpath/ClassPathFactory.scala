@@ -94,7 +94,9 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
       val uri =
         try new URI(entry)
         catch case _: URISyntaxException => return None
-      if uri.getScheme == null || uri.getScheme.toLowerCase(Locale.ROOT) == "file" then
+      if uri.getScheme == null then
+        Some(Path(java.nio.file.Path.of(uri.getPath))) // Path.of(URI) refuses scheme-less URIs
+      else if uri.getScheme.toLowerCase(Locale.ROOT) == "file" then
         Some(Path(java.nio.file.Path.of(uri)))
       else
         None
