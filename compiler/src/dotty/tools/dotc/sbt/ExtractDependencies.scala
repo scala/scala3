@@ -1,9 +1,8 @@
 package dotty.tools.dotc
 package sbt
 
-import java.io.File
 import java.nio.file.Path
-import java.util.{Arrays, EnumSet}
+import java.util.EnumSet
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
@@ -24,8 +23,7 @@ import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext.*
 
 import scala.jdk.CollectionConverters.*
-import scala.collection.{Set, mutable}
-import scala.compiletime.uninitialized
+import scala.collection.mutable
 import scala.io.Codec
 
 /** This phase collects information on classes' dependencies for sbt.
@@ -468,8 +466,9 @@ class DependencyRecorder {
 
     def namesString: String = {
       val builder = new StringBuilder
-      names.foreach { case (name, scopes) =>
-        builder.append(name.mangledString)
+      val sortedNames = names.iterator.map((name, scopes) => (name.mangledString, scopes)).toList.sortBy(_._1)
+      sortedNames.foreach { case (mangledName, scopes) =>
+        builder.append(mangledName)
         builder.append(" in [")
         scopes.forEach(scope => builder.append(scope.toString))
         builder.append("]")
@@ -480,8 +479,9 @@ class DependencyRecorder {
 
     def classesString: String = {
       val builder = new StringBuilder
-      classes.foreach { case (clazz, scopes) =>
-        builder.append(clazz.toString)
+      val sortedClasses = names.iterator.map((clazz, scopes) => (clazz.toString, scopes)).toList.sortBy(_._1)
+      sortedClasses.foreach { case (clazzName, scopes) =>
+        builder.append(clazzName)
         builder.append(" in [")
         scopes.forEach(scope => builder.append(scope.toString))
         builder.append("]")
@@ -518,20 +518,17 @@ class DependencyRecorder {
 
   /** Write the dependencies to a `.inc` file next to the source, for `-Ydump-sbt-inc`. */
   private def dumpInc()(using Context): Unit =
-    val deps = _foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray[Object]
-    val names = _foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray[Object]
-    Arrays.sort(deps)
-    Arrays.sort(names)
     ctx.compilationUnit.source.jfile.ifPresent(jpath => {
+      val sortedDeps = _foundDeps.iterator.map { case (clazz, found) => (clazz.toString, found) }.toList.sortBy(_._1)
       val pw = io.File(jpath.toPath)(using Codec.UTF8).changeExtension(io.FileExtension.Inc).toFile.printWriter()
       try
         pw.println("Used Names:")
         pw.println("===========")
-        names.foreach(pw.println)
+        sortedDeps.foreach { case (clazz, found) => pw.println(s"$clazz: ${found.classesString}") }
         pw.println()
         pw.println("Dependencies:")
         pw.println("=============")
-        deps.foreach(pw.println)
+        sortedDeps.foreach { case (clazz, found) => pw.println(s"$clazz: ${found.namesString}") }
       finally pw.close()
     })
 
