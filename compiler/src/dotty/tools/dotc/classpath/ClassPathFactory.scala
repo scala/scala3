@@ -9,9 +9,10 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.LogicalSourcePath
 import dotty.tools.dotc.interactive.LogicalPackage
 
-import java.net.{URI, URLDecoder}
+import java.net.{URI, URISyntaxException}
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.util.Locale
 import java.util.jar.{Attributes, JarInputStream}
 
 /**
@@ -87,14 +88,16 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
    *  relative to the location of the jar.
    */
   private def expandManifestPath(jarPath: String): List[Path] =
-    def resolve(entry: String, baseDir: Directory): Path =
+    def resolve(entry: String, baseDir: Directory): Option[Path] =
       // Class-Path may only contain relative URLs, except for the 'file' scheme for compatibility reasons, per
       // https://docs.oracle.com/en/java/javase/17/docs/specs/jar/jar.html#class-path-attribute
-      if entry.startsWith("file:") then
-        Path(java.nio.file.Path.of(new URI(entry)))
+      val uri =
+        try new URI(entry)
+        catch case _: URISyntaxException => return None
+      if uri.getScheme == null || uri.getScheme.toLowerCase(Locale.ROOT) == "file" then
+        Some(Path(java.nio.file.Path.of(uri)))
       else
-        val decoded = URLDecoder.decode(entry, StandardCharsets.UTF_8)
-        baseDir.resolve(Path(decoded))
+        None
 
     val file = File(jarPath)
     if !file.isFile then
@@ -112,7 +115,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
         val attrs = m.getMainAttributes.asInstanceOf[java.util.Map[Attributes.Name, String]]
         attrs.get(Attributes.Name.CLASS_PATH) match
           case cp: String if cp.trim().nonEmpty =>
-            cp.split("\\s+").toList.map(elem => resolve(elem, baseDir))
+            cp.split("\\s+").toList.flatMap(elem => resolve(elem, baseDir))
           case _ => Nil
 }
 
