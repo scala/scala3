@@ -1,6 +1,6 @@
 Used Names:
 ===========
-class Hello: hello in [Default], Unit in [Default], java$u003Blang$u003BObject$u003Binit$u003B in [Default], Object in [Default], 
+class Hello: java$u003Blang$u003BObject$u003Binit$u003B in [Default], Object in [Default], Unit in [Default], hello in [Default], 
 
 Dependencies:
 =============
