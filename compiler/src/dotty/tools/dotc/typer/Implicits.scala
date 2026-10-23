@@ -87,6 +87,9 @@ object Implicits:
   def strictEquality(using Context): Boolean =
     ctx.mode.is(Mode.StrictEquality) || Feature.enabled(nme.strictEquality)
 
+  def relaxedNullChecks(using Context): Boolean =
+    Feature.enabled(Feature.relaxedNullChecks)
+
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
    */
@@ -1043,8 +1046,9 @@ trait Implicits:
    *   - if one of T, U is a subtype of the lifted version of the other,
    *     unless strict equality is set.
    *   - if the strictEqualityPatternMatching (SIP-67) conditions apply
+   *   - if one of the sides is Null and the other is a supertype of Null
    */
-  def assumedCanEqual(ltp: Type, rtp: Type, leftTree: Tree = EmptyTree)(using Context): Boolean = {
+  def assumedCanEqual(ltp: Type, rtp: Type, leftTree: Tree = EmptyTree, rightTree: Tree = EmptyTree)(using Context): Boolean = {
     // Map all non-opaque abstract types to their upper bound.
     // This is done to check whether such types might plausibly be comparable to each other.
     val lift = new TypeMap {
@@ -1076,8 +1080,13 @@ trait Implicits:
     || rtp.isError
     || locally:
       if strictEquality then
+        def isNull(t: Tree) = t match
+          case Literal(Constants.Constant(null)) => true
+          case _ => false
         (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.is(Flags.Module)) &&
           ltp <:< rtp
+        || relaxedNullChecks && isNull(leftTree) && ltp <:< rtp
+        || relaxedNullChecks && isNull(rightTree) && rtp <:< ltp
       else
         ltp <:< lift(rtp) || rtp <:< lift(ltp)
   }
@@ -1085,9 +1094,10 @@ trait Implicits:
   /** Check that equality tests between types `ltp` and `left.tpe` make sense.
    * `left` is required to check for the condition for language.strictEqualityPatternMatching (SIP-67)
    */
-  def checkCanEqual(left: Tree, rtp: Type, span: Span)(using Context): Unit =
+  def checkCanEqual(left: Tree, right: Tree, span: Span)(using Context): Unit =
     val ltp = left.tpe.widen
-    if !ctx.isAfterTyper && !assumedCanEqual(ltp, rtp, left) then
+    val rtp = right.tpe.widen
+    if !ctx.isAfterTyper && !assumedCanEqual(ltp, rtp, left, right) then
       val res = implicitArgTree(defn.CanEqualClass.typeRef.appliedTo(ltp, rtp), span)
       implicits.println(i"CanEqual witness found for $ltp / $rtp: $res: ${res.tpe}")
 
