@@ -291,7 +291,9 @@ class SymOpsWithLinkCache:
           (sym.className, sym.anchor)
 
         val location = (sym.packageNameSplitted ++ className).map(escapeFilename)
-        val externalLink = {
+        // Parameters have no page or anchor of their own in external documentation either,
+        // so linking them would point at their owner's page with an anchor that doesn't exist.
+        val externalLink = if sym.flags.is(Flags.Param) || sym.isTypeParam then None else {
           import dotty.tools.dotc
           given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
           val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]

@@ -19,6 +19,11 @@ class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationPro
     "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#subList(int,int)",
     "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#printf(java.lang.String,java.lang.Object...)",
     "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#write(byte[],int,int)"
+  ),
+  // parameters have no anchors of their own
+  unexpectedLinks = List(
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#x$0",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#x$0"
   )
 )
 
@@ -80,7 +85,8 @@ class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationP
 abstract class ExternalLocationProviderIntegrationTest(
   name: String,
   mappings: Seq[String],
-  expectedLinks: Seq[String]
+  expectedLinks: Seq[String],
+  unexpectedLinks: Seq[String] = Nil
   ) extends ScaladocTest(name):
 
   override def args = super.args.copy(
@@ -107,11 +113,14 @@ abstract class ExternalLocationProviderIntegrationTest(
     IO.foreachFileIn(output, processFile)
     val links = linksBuilder.result()
     val errors = expectedLinks.flatMap(expect => Option.when(!links.contains(expect))(expect))
-    if !errors.isEmpty then {
+    val unexpected = unexpectedLinks.filter(links.contains)
+    if !errors.isEmpty || !unexpected.isEmpty then {
       val reportMessage =
       "External location provider integration test failed.\n" +
       "Missing links:\n"
       + errors.mkString("\n","\n","\n")
+      + "Unexpected links:\n"
+      + unexpected.mkString("\n","\n","\n")
       + "Found links:" + links.mkString("\n","\n","\n")
       reportError(reportMessage)
     }
