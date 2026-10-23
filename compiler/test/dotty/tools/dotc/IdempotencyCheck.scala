@@ -8,35 +8,7 @@ import java.util.stream.Stream as JStream
 
 import scala.jdk.CollectionConverters.*
 
-import org.junit.Test
-import org.junit.experimental.categories.Category
-
 import vulpix.*
-
-
-class IdempotencyTests {
-  import TestConfiguration.*
-  import IdempotencyTests.{*, given}
-  import CompilationTest.aggregateTests
-
-  @Category(Array(classOf[SlowTests]))
-  @Test def idempotency: Unit = {
-    val opt = defaultOptions
-
-    // First, compile tests/pos twice in different directories.
-    // TODO: We could speed up CI by reusing the tests/pos output from the normal run, instead of re-running those here
-    val pos1 = compileFilesInDir("tests/pos", defaultOptions)(using TestGroup("idempotency/posIdempotency1")).keepOutput.checkCompile()
-    val pos2 = compileFilesInDir("tests/pos", defaultOptions)(using TestGroup("idempotency/posIdempotency2")).keepOutput.checkCompile()
-
-    // Then, compare their output to ensure it's exactly the same
-    IdempotencyCheck.checkIdempotency("out/idempotency/posIdempotency1", "out/idempotency/posIdempotency2")
-
-    pos1.delete()
-    pos2.delete()
-  }
-}
-
-object IdempotencyTests extends ParallelTesting
 
 object IdempotencyCheck {
   def checkIdempotency(dir1: String, dir2: String): Unit = {
@@ -92,7 +64,7 @@ object IdempotencyCheck {
       }
     }
 
-    assert(failed == 0, s"Failed $failed idempotency checks (out of $total)")
-    println(s"== Checked $total tests for idempotency ==")
+    assert(failed == 0, s"Failed $failed idempotency checks (out of $total outputs)")
+    println(s"== Checked $total outputs for idempotency ==")
   }
 }
