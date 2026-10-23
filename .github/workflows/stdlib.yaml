@@ -21,6 +21,7 @@ jobs:
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: 'temurin'
+          check-latest: 'true'
           java-version: 17
           cache: 'sbt'
       - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
@@ -35,6 +36,7 @@ jobs:
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: 'temurin'
+          check-latest: 'true'
           java-version: 17
           cache: 'sbt'
       - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
@@ -52,6 +54,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 17
+          check-latest: 'true'
           cache: 'sbt'
 
       - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
