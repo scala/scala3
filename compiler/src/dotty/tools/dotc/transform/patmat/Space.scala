@@ -744,11 +744,17 @@ object SpaceEngine {
           // The above doesn't do what we want when a subclass inherits from a raw version of the superclass,
           // e.g., `class X<T>` having `A<String> extends X<String>` and `B extends X` as children.
           // Detect this and use the type anyway. See tests/warn/patmat-raw.
+          def looksLikeRawType(t: Type): Boolean = t match
+            case AppliedType(_, args) => args.forall {
+              case b: TypeBounds => b.lo == defn.NothingType && b.hi == defn.AnyType
+              case _ => false
+            }
+            case _ => t.typeParams.nonEmpty
           val refined =
             if refined0.exists then refined0
             else
               val symTp = sym1.typeRef
-              if symTp.isValueType then symTp
+              if symTp.parents.exists(looksLikeRawType) then symTp
               else NoType
 
           def containsUninhabitedField(tp: Type): Boolean =
