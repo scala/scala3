@@ -462,9 +462,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   // ------ Additional creation methods for untyped only -----------------
 
-  /**     new T(args1)...(args_n)
+  /**     `new T(args1)...(args_n)`
    *  ==>
-   *      new T.<init>[Ts](args1)...(args_n)
+   *      `new T.<init>[Ts](args1)...(args_n)`
    *
    *  where `Ts` are the class type arguments of `T` or its class type alias.
    *  Note: we also keep any type arguments as parts of `T`. This is necessary to allow
