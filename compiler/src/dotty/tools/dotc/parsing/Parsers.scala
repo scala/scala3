@@ -464,6 +464,13 @@ object Parsers {
       finally inMatchPattern = saved
     }
 
+    private var inQualifiedType = false
+    private def fromWithinQualifiedType[T](body: => T): T =
+      val saved = inQualifiedType
+      inQualifiedType = true
+      try body
+      finally inQualifiedType = saved
+
     private var staged = StageKind.None
     def withinStaged[T](kind: StageKind)(op: => T): T = {
       val saved = staged
@@ -1852,6 +1859,7 @@ object Parsers {
      *                   |  TypTypeParamClause ‘=>>’ Type
      *                   |  FunParamClause ‘=>>’ Type
      *                   |  MatchType
+     *                   |  QualifiedType2                              -- under qualifiedTypes
      *                   |  InfixType
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
@@ -1862,6 +1870,11 @@ object Parsers {
      *                   |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ TypedFunParam {',' TypedFunParam } ')'
      *  MatchType      ::=  InfixType `match` <<< TypeCaseClauses >>>
+     *  QualifiedType2 ::=  InfixType `with` PostfixExpr
+     *  IntoType       ::=  [‘into’] IntoTargetType
+     *                   |  ‘( IntoType ‘)’
+     *  IntoTargetType ::=  Type
+     *                   |  FunTypeArgs (‘=>’ | ‘?=>’) IntoType
      */
     def typ(inContextBound: Boolean = false): Tree =
       val start = in.offset
@@ -1919,6 +1932,8 @@ object Parsers {
           functionRest(t :: Nil)
         case MATCH =>
           matchType(t)
+        case WITH if in.featureEnabled(Feature.qualifiedTypes) =>
+          qualifiedTypeShort(t)
         case FORSOME =>
           syntaxError(ExistentialTypesNoLongerSupported())
           t
@@ -2051,6 +2066,7 @@ object Parsers {
     def funParamClauses(): List[List[ValDef]] =
       if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil
 
+
     /** InfixType ::= RefinedType {id [nl] RefinedType}
      *             |  RefinedType `^`   -- under captureChecking
      */
@@ -2106,7 +2122,11 @@ object Parsers {
         t
     }
 
-    /** WithType ::= AnnotType {`with' AnnotType}    (error since 3.10, deprecated since 3.4)
+    /** With qualifiedTypes enabled:
+     *  WithType ::= AnnotType [`with' PostfixExpr]
+     *
+     *  Otherwise:
+     *  WithType ::= AnnotType {`with' AnnotType}    (error since 3.10, deprecated since 3.4)
      *
      *  `inPatternType` indicates that this type appears in a typed pattern
      *  position (such as `case x: A with B =>` or `case given A with B =>`).
@@ -2120,7 +2140,7 @@ object Parsers {
       withTypeRest(annotType(), inPatternType)
 
     def withTypeRest(t: Tree, inPatternType: Boolean = false): Tree =
-      if in.token == WITH then
+      if in.token == WITH && !in.featureEnabled(Feature.qualifiedTypes) then
         val withOffset = in.offset
         in.nextToken()
         if in.token == LBRACE || in.token == INDENT then
@@ -2277,6 +2297,7 @@ object Parsers {
      *                     |  ‘(’ ArgTypes ‘)’
      *                     |  ‘(’ NamesAndTypes ‘)’
      *                     |  Refinement
+     *                     |  QualifiedType             -- under qualifiedTypes
      *                     |  TypeSplice                -- deprecated syntax (since 3.0.0)
      *                     |  SimpleType1 TypeArgs
      *                     |  SimpleType1 `#' id
@@ -2287,7 +2308,10 @@ object Parsers {
           makeTupleOrParens(inParensWithCommas(argTypes(namedOK = false, wildOK = true, tupleOK = true)))
         }
       else if in.token == LBRACE then
-        atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement(indentOK = false)) }
+        if in.featureEnabled(Feature.qualifiedTypes) && in.lookahead.token == IDENTIFIER then
+          qualifiedType()
+        else
+          atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement(indentOK = false)) }
       else if (isSplice)
         splice(isType = true)
       else
@@ -2451,6 +2475,30 @@ object Parsers {
       else
         inBraces(refineStatSeq())
 
+    /** QualifiedType ::= `{` Ident `:` Type `with` Block `}`
+     */
+    def qualifiedType(): Tree =
+      val startOffset = in.offset
+      accept(LBRACE)
+      val id = ident()
+      accept(COLONfollow)
+      val tp = fromWithinQualifiedType(typ())
+      accept(WITH)
+      val qualifier = block(simplify = true)
+      accept(RBRACE)
+      QualifiedTypeTree(tp, Some(id), qualifier).withSpan(Span(startOffset, qualifier.span.end))
+
+    /** `with` PostfixExpr
+     */
+    def qualifiedTypeShort(t: Tree): Tree =
+      if inQualifiedType then
+        t
+      else
+        accept(WITH)
+        val qualifier = postfixExpr()
+        QualifiedTypeTree(t, None, qualifier).withSpan(Span(t.span.start, qualifier.span.end))
+
+
     /** TypeBounds ::= [`>:' TypeBound ] [`<:' TypeBound ]
      *  TypeBound  ::= Type
      *               | CaptureSet -- under captureChecking
@@ -2532,7 +2580,12 @@ object Parsers {
 
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
-      else if location.inPattern then rejectWildcardType(refinedType(inPatternType = true))
+      else if location.inPattern then
+        val t = rejectWildcardType(refinedType(inPatternType = true))
+        if in.featureEnabled(Feature.qualifiedTypes) && in.token == WITH then
+          qualifiedTypeShort(t)
+        else
+          t
       else rejectWildcardType(infixType())
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
@@ -3536,10 +3589,11 @@ object Parsers {
               pat.sourcePos,
               MigrationVersion.AscriptionAfterPattern)
 
-    /**  Pattern1     ::= PatVar `:` RefinedType
-     *                  | [‘-’] integerLiteral `:` RefinedType
-     *                  | [‘-’] floatingPointLiteral `:` RefinedType
-     *                  | Pattern2
+    /**  Pattern1       ::= PatVar `:` QualifiedType3
+     *                    | [‘-’] integerLiteral `:` QualifiedType3
+     *                    | [‘-’] floatingPointLiteral `:` QualifiedType3
+     *                    | Pattern2
+     *   QualifiedType3 ::= RefinedType [`with` PostfixExpr]
      */
     def pattern1(location: Location = Location.InPattern): Tree =
       val pat = pattern2(location)

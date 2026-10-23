@@ -1,0 +1,93 @@
+[[syntax trees at end of                     typer]] // tests/printing/qualified-types-lara_issue_1.scala
+<package <<empty>:<empty>> {
+  class CheckedArray(size: Pos) extends <<<new Object:Object>:((): Object)>():
+    Object> {
+    val size: Pos
+    private[this] val data: Array[Double] =
+      <
+        <<<new Array[Double]:Array[Double]>:([T](_length: Int): Array[T])>:
+          ((_length: Int): Array[Double])>
+      (<CheckedArray.this.size:Pos>):Array[Double]>
+    def apply(i: Pos with <boundArg(0):Pos> < CheckedArray.this.size): Double =
+      <
+        <<<this:(CheckedArray.this : CheckedArray)>.data:Array[Double]>.apply:
+          ((i: Int): Double)>
+      (<i:Pos with <boundArg(0):Pos> < CheckedArray.this.size>):Double>
+    def update(i: Pos with <boundArg(0):Pos> < CheckedArray.this.size, x: Double
+      ): Unit =
+      <
+        <<<this:(CheckedArray.this : CheckedArray)>.data:Array[Double]>.update:
+          ((i: Int, x: Double): Unit)>
+      (<i:Pos with <boundArg(0):Pos> < CheckedArray.this.size>, <x:Double>):Unit
+        >
+  }
+  final lazy module val CheckedArray: CheckedArray =
+    <<<new CheckedArray:CheckedArray>:((): CheckedArray)>():CheckedArray>
+  final module class CheckedArray() extends <<<new Object:Object>:((): Object)>(
+    ):Object> { this: CheckedArray.type =>
+    def ofDim(size: Pos):
+      CheckedArray with <boundArg(0):CheckedArray>.size == size =
+      <
+        <
+          <<<new CheckedArray:CheckedArray>:((size: Pos): CheckedArray)>(
+            <size:Pos>):CheckedArray>
+        .asInstanceOf:([X0]: X0)>
+      [CheckedArray with <boundArg(0):CheckedArray>.size == size]:
+        CheckedArray with <boundArg(0):CheckedArray>.size == size>
+  }
+  case class Matrix(width: Dim, height: Dim) extends
+    <<<new Object:Object>:((): Object)>():Object>, Product, Serializable {
+    val width: Dim
+    val height: Dim
+    private[this] val size: Int =
+      <<Matrix.this.width:Dim> * <Matrix.this.height:Dim>:Int>
+    private[this] val data: CheckedArray =
+      <
+        <<CheckedArray:CheckedArray>.ofDim:
+          ((size: Pos):
+            CheckedArray with <boundArg(0):CheckedArray>.size == size)
+        >
+      (
+        <
+          <<<<this:(Matrix.this : Matrix)>.size:Int>.asInstanceOf:([X0]: X0)>[
+            Pos]:Pos>
+         :Pos @QualifierSkolemIndex(<1:(1 : Int)>):
+          Pos @QualifierSkolemIndex(<1:(1 : Int)>)>
+      ):
+        CheckedArray with <boundArg(0):CheckedArray>.size == <skolem(1,Matrix):
+          Pos @QualifierSkolemIndex(<1:(1 : Int)>)>
+      >
+    def copy(width: Dim, height: Dim): Matrix =
+      <<<new Matrix:Matrix>:((width: Dim, height: Dim): Matrix)>(<width:Dim>,
+        <height:Dim>):Matrix>
+    def copy$default$1: Dim @uncheckedVariance = <Matrix.this.width:Dim>
+    def copy$default$2: Dim @uncheckedVariance = <Matrix.this.height:Dim>
+    def _1: Dim = <<this:(Matrix.this : Matrix)>.width:Dim>
+    def _2: Dim = <<this:(Matrix.this : Matrix)>.height:Dim>
+  }
+  final lazy module val Matrix: Matrix =
+    <<<new Matrix:Matrix>:((): Matrix)>():Matrix>
+  final module class Matrix() extends <<<new AnyRef:AnyRef>:((): Object)>():
+    Object> { this: Matrix.type =>
+    def apply(width: Dim, height: Dim): Matrix =
+      <<<new Matrix:Matrix>:((width: Dim, height: Dim): Matrix)>(<width:Dim>,
+        <height:Dim>):Matrix>
+    def unapply(x$1: Matrix): Matrix = <x$1:Matrix>
+    override def toString: String = <"Matrix":("Matrix" : String)>
+  }
+  final lazy module val qualified-types-lara_issue_1$package:
+    qualified-types-lara_issue_1$package =
+    <
+      <
+        <new qualified-types-lara_issue_1$package:
+          qualified-types-lara_issue_1$package>
+      :((): qualified-types-lara_issue_1$package)>
+    ():qualified-types-lara_issue_1$package>
+  final module class qualified-types-lara_issue_1$package() extends <
+    <<new Object:Object>:((): Object)>():Object> {
+    this: qualified-types-lara_issue_1$package.type =>
+    type Pos = Int with <boundArg(0):Int> >= 0
+    type Dim = Int with <boundArg(0):Int> >= 0
+  }
+}:<empty>.type>
+
