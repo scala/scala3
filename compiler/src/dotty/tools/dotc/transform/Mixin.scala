@@ -346,6 +346,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         sym.isSetter && (!wasOneOf(sym, Deferred) || sym.name.is(TraitSetterName)) && !sym.owner.isInlineTrait
       }
       mixinSetters.map(setter => {
+        report.log(i"TRACE-25108 Mixin: create $cls.${setter.name} and transformFollowing it")
         val copied = transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
         mixinGenericInfos.get(setter) match
           case Some(gi) =>

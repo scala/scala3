@@ -143,6 +143,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
           tree
         else
           val field = newField.asTerm
+          report.log(i"TRACE-25108 Memoize: getter ${sym.owner}.${sym.name}: create field ${field.name}")
           var rhs = tree.rhs.changeOwnerAfter(sym, field, thisPhase)
           if (isWildcardArg(rhs)) rhs = EmptyTree
           val fieldDef = transformFollowing(ValDef(field, adaptToField(field, rhs)))
@@ -156,6 +157,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       else if sym.isSetter then
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs: @unchecked } // This is intended as an assertion
         val field = sym.field
+        report.log(i"TRACE-25108 Memoize: setter ${sym.owner}.${sym.name}: sym.field = ${if field.exists then i"${field.owner}.${field.name}: ${field.info}" else "NoSymbol"}")
         if !field.exists then
           // When transforming the getter, we determined that no field was needed.
           // In that case we can keep the setter as is, with a () rhs.
