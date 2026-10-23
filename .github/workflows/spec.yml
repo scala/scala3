@@ -49,7 +49,7 @@ jobs:
         env:
           USER_FOR_TEST: ${{ secrets.SPEC_DEPLOY_USER }}
         if: ${{ env.USER_FOR_TEST != '' }}
-        uses: burnett01/rsync-deployments@155b6d6c1219ab2224c20c58d423a3f1b850395f # 9.0.1
+        uses: burnett01/rsync-deployments@2cbb5ed94b73d111d07a40b071b1c7d3c0272435 # 9.0.2
         with:
           switches: -rzv
           path: docs/_spec/_site/
