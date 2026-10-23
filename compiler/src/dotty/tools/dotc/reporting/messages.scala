@@ -2675,12 +2675,13 @@ class SynchronizedCallOnValueClass(stat: tpd.Tree)(using Context)
         |you intended."""
 }
 
-class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
+class ExtensionNullifiedByMember(method: Symbol, receiver: Symbol, target: Type)(using Context)
   extends Message(ExtensionNullifiedByMemberID):
   def kind = MessageKind.PotentialIssue
   def msg(using Context) =
-    val targetName = hl(target.name.toString)
-    i"""Extension method ${hl(method.name.toString)} will never be selected from type $targetName
+    val receiverName = hl(receiver.name.toString)
+    val targetName = if target == NoType then receiverName else hl(target.typeSymbol.name.toString)
+    i"""Extension method ${hl(method.name.toString)} will never be selected from type $receiverName
        |because $targetName already has a member with the same name and compatible parameter types."""
   def explain(using Context) =
     i"""Although extensions can be overloaded, they do not overload existing member methods.
