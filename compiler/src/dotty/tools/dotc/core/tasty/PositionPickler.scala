@@ -145,7 +145,12 @@ object PositionPickler:
     for (root <- roots)
       traverse(root, NoSource)
 
-    for annotTree <- typeAnnots do
+    // An annotated type can be copied here from another source file, e.g. an inherited
+    // result type or the inferred type of a selection. Its annotation tree then still
+    // carries that file's positions. Pickling them would make this TASTy depend on the
+    // layout of the other file, and would differ from the result of compiling against
+    // that file's TASTy, where such trees come back without positions.
+    for annotTree <- typeAnnots if annotTree.source == source do
       traverse(annotTree, NoSource)
   end picklePositions
 end PositionPickler
