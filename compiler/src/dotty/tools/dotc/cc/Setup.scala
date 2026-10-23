@@ -1082,7 +1082,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 if !r.isTerminalCapability
               yield r
             val remaining = CaptureSet(others*)
-            check(remaining, remaining)
+            if remaining.accountsFor(ref) then
+              // Elements that `ref` subsumes but not vice versa, such as projections of `ref`,
+              // are redundant themselves. They should not make `ref` redundant together, as in
+              // `{x, x.only[C], x.except[C]}`, since dropping `ref` would keep the pieces
+              // instead of the whole.
+              val notBelow = others.filterNot(r => ref.subsumes(r) && !r.subsumes(ref))
+              val dom = if notBelow.length == others.length then remaining else CaptureSet(notBelow*)
+              if (dom eq remaining) || dom.accountsFor(ref) then
+                report.warning(em"redundant capture: $dom already accounts for $ref", pos)
       end for
     catch case ex: IllegalCaptureRef =>
       report.error(em"Illegal capture reference: ${ex.getMessage}", tpt.srcPos)
