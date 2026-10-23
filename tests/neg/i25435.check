@@ -1,0 +1,14 @@
+-- Error: tests/neg/i25435.scala:8:14 ----------------------------------------------------------------------------------
+8 |    case Test(x*) => println(x) // error // error
+  |              ^^
+  |Sequence wildcard pattern is not allowed when the case class companion also defines unapply, only unapplySeq is allowed
+-- [E006] Not Found Error: tests/neg/i25435.scala:8:29 -----------------------------------------------------------------
+8 |    case Test(x*) => println(x) // error // error
+  |                             ^
+  |                             Not found: x
+  |
+  | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/i25435.scala:10:14 ---------------------------------------------------------------------------------
+10 |    case Test(_*) => () // error
+   |              ^^
+   |Sequence wildcard pattern is not allowed when the case class companion also defines unapply, only unapplySeq is allowed
