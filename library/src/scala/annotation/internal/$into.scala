@@ -1,5 +1,7 @@
 package scala.annotation.internal
 
+import language.experimental.captureChecking
+
 /** An internal annotation on (part of) a parameter type that serves as a marker where
  *  the original type was of the form `into[T]`. These annotated types are mapped back
  *  to `into[T]` types when forming a method types from the parameter types. The idea is
