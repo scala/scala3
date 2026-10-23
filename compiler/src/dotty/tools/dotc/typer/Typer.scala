@@ -2161,9 +2161,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  function type `[T_1, ..., T_M] => R` with the same number of type parameters.
    *
    *  Erasure replaces the closure by the value parameter closure in `body`, which is
-   *  therefore created once and shared by all type applications. So that closure must
-   *  not be converted to a SAM type, since it might then be implemented by an anonymous
-   *  class.
+   *  therefore created once and shared by all type applications. So if that closure is
+   *  converted to a SAM type, creating an instance of it must be unobservable, see
+   *  `ExpandSAMs.hasPureInstances`.
    */
   def typedPolyFunctionValue(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val untpd.PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun) = tree: @unchecked
@@ -2180,10 +2180,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val closure = typed(desugar.makeClosure(tparams, fun, resultTpt, tree.span), pt)
     closure match
       case closureDef(mdef) => mdef.rhs match
-        case tpd.closure(_, _, samTpt) if !samTpt.isEmpty =>
-          report.error(
-            em"Implementation restriction: the body of a polymorphic function literal cannot be converted to SAM type ${samTpt.tpe}",
-            tree.srcPos)
+        case tpd.closure(_, _, samTpt)
+        if !samTpt.isEmpty && !transform.ExpandSAMs.hasPureInstances(samTpt.tpe, checkStatics = false) =>
+          report.error(transform.ExpandSAMs.impurePolyFunctionBody(samTpt.tpe), tree.srcPos)
         case _ =>
       case _ =>
     closure

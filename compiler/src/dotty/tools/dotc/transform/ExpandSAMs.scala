@@ -11,6 +11,7 @@ import Names.TypeName
 
 import NullOpsDecorator.*
 import ast.untpd
+import reporting.Message
 import scala.collection.mutable.ListBuffer
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.
@@ -39,6 +40,53 @@ object ExpandSAMs:
       case cls: ClassSymbol => !isPlatformSam(cls) || cls == defn.PartialFunctionClass
       case _ => false
 
+  /** Is creating an instance of a closure converted to SAM type `tpe` unobservable, except
+   *  for object identity? So that all platforms accept the same programs, this assumes that
+   *  the closure is implemented by an anonymous class that extends the class of `tpe`, or
+   *  `AbstractPartialFunction` if `tpe` is a `PartialFunction`. This requires that the
+   *  superclass of that class is `Object`, and that it and all traits it inherits have no
+   *  initialization code, no fields and no outer reference. If `checkStatics` is set, it
+   *  also requires that none of them has a static initializer, which the JVM runs when it
+   *  creates the first instance of a class implementing an interface with default methods.
+   *  Checking this forces the members of their companion objects, so Typer does not do it.
+   */
+  def hasPureInstances(tpe: Type, checkStatics: Boolean)(using Context): Boolean =
+    def isPure(cls: ClassSymbol) =
+      cls.superClass == defn.ObjectClass
+      && (cls :: cls.directlyInheritedTraits).forall: bc =>
+        bc.is(NoInits)
+        && !ExplicitOuter.needsOuterIfReferenced(bc)
+        && !bc.info.decls.exists(isField)
+        && !(checkStatics && hasStaticInitializer(bc))
+    tpe.classSymbol match
+      case cls: ClassSymbol =>
+        if cls == defn.PartialFunctionClass then isPure(defn.AbstractPartialFunctionClass)
+        else cls.is(Trait) && isPure(cls)
+      case _ => false
+
+  /** Is `sym` a field, or a lazy val or object, which needs a field? Lazy vals and objects
+   *  have no initialization code, so they do not reset `NoInits` in traits loaded from TASTy.
+   *  This only tests flags that are set from the start, so it does not force `sym`.
+   */
+  private def isField(sym: Symbol)(using Context): Boolean =
+    sym.isTerm && !sym.isOneOf(Method | PhantomSymbol)
+
+  /** Does `cls` have static fields that are not Java constants? These are fields of a Java
+   *  interface, or `@static` vals in the companion object of a Scala trait.
+   */
+  private def hasStaticInitializer(cls: ClassSymbol)(using Context): Boolean =
+    val companion = cls.companionModule
+    companion.exists && companion.moduleClass.info.decls.exists: m =>
+      m.isTerm && !m.isOneOf(Method | Module)
+      && (m.hasAnnotation(defn.ScalaStaticAnnot)
+          || m.is(JavaStatic) && !(m.is(JavaDefined) && m.info.isInstanceOf[ConstantType]))
+
+  def impurePolyFunctionBody(samTpe: Type)(using Context): Message =
+    em"""Implementation restriction: the body of a polymorphic function literal cannot be converted to SAM type $samTpe.
+        |The body is created once and shared by all type applications, so it can only be converted to `PartialFunction`
+        |or to a trait that extends no class and, like all traits it extends, has no initialization code, fields,
+        |outer reference or static fields."""
+
 class ExpandSAMs extends MiniPhase:
   import ast.tpd.*
 
@@ -48,6 +96,7 @@ class ExpandSAMs extends MiniPhase:
 
   override def transformBlock(tree: Block)(using Context): Tree = tree match {
     case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
+      checkPolyFunctionBody(tree, tpt)
       tpt.tpe match {
         case NoType =>
           tree // it's a plain function
@@ -118,6 +167,16 @@ class ExpandSAMs extends MiniPhase:
     case _ =>
       tree
   }
+
+  /** If `tree` is the body of a polymorphic function literal, check that creating an instance
+   *  of its SAM type is unobservable. Typer checked this already, except for static
+   *  initializers, but the literal might also come from inlined code that was compiled
+   *  against another version of the SAM type.
+   */
+  private def checkPolyFunctionBody(tree: Block, tpt: Tree)(using Context): Unit =
+    if !tpt.isEmpty && ctx.owner.isAnonymousFunction && ctx.owner.info.isInstanceOf[PolyType]
+        && !ExpandSAMs.hasPureInstances(tpt.tpe, checkStatics = true)
+    then report.error(ExpandSAMs.impurePolyFunctionBody(tpt.tpe), tree.srcPos)
 
   /** A pattern-matching anonymous function:
    *
