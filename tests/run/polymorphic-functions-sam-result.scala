@@ -23,6 +23,11 @@ trait WithClass[A]:
   class C
   def apply(x: A): A
 
+// a universal trait
+trait UnivSam[A] extends Any:
+  def apply(x: A): A
+  def twice(x: A): A = apply(apply(x))
+
 class Outer:
   trait Inner[A]: // a pure interface needs no outer reference
     def apply(x: A): A
@@ -59,3 +64,9 @@ class Outer:
 
   val f7: [A] => WithClass[A] = [A] => (x: A) => x
   assert(f7[Int](1) == 1)
+
+  val f8: [A] => UnivSam[Int] = [A] => (x: Int) => x + 1
+  assert(f8[String].twice(1) == 3)
+
+  val f9: [A] => Equiv[A] = [A] => (x: A, y: A) => x == y // a universal trait extending `Serializable`
+  assert(f9[Int].equiv(1, 1) && !f9[String].equiv("a", "b"))

@@ -44,7 +44,8 @@ object ExpandSAMs:
    *  for object identity? So that all platforms accept the same programs, this assumes that
    *  the closure is implemented by an anonymous class that extends the class of `tpe`, or
    *  `AbstractPartialFunction` if `tpe` is a `PartialFunction`. This requires that the
-   *  superclass of that class is `Object`, and that it and all traits it inherits have no
+   *  superclass of that class is `Object` or, for a universal trait, `Any` (the anonymous
+   *  class then extends `Object`), and that it and all traits it inherits have no
    *  initialization code, no fields and no outer reference. If `checkStatics` is set, it
    *  also requires that none of them has a static initializer, which the JVM runs when it
    *  creates the first instance of a class implementing an interface with default methods.
@@ -52,24 +53,19 @@ object ExpandSAMs:
    */
   def hasPureInstances(tpe: Type, checkStatics: Boolean)(using Context): Boolean =
     def isPure(cls: ClassSymbol) =
-      cls.superClass == defn.ObjectClass
+      (cls.superClass == defn.ObjectClass || cls.isUniversalTrait)
       && (cls :: cls.directlyInheritedTraits).forall: bc =>
         bc.is(NoInits)
         && !ExplicitOuter.needsOuterIfReferenced(bc)
-        && !bc.info.decls.exists(isField)
+        // Lazy vals and objects have no initialization code, so they do not reset `NoInits`
+        // in traits loaded from TASTy. `isField` only tests flags that are set from the start.
+        && !bc.info.decls.exists(_.isField)
         && !(checkStatics && hasStaticInitializer(bc))
     tpe.classSymbol match
       case cls: ClassSymbol =>
         if cls == defn.PartialFunctionClass then isPure(defn.AbstractPartialFunctionClass)
         else cls.is(Trait) && isPure(cls)
       case _ => false
-
-  /** Is `sym` a field, or a lazy val or object, which needs a field? Lazy vals and objects
-   *  have no initialization code, so they do not reset `NoInits` in traits loaded from TASTy.
-   *  This only tests flags that are set from the start, so it does not force `sym`.
-   */
-  private def isField(sym: Symbol)(using Context): Boolean =
-    sym.isTerm && !sym.isOneOf(Method | PhantomSymbol)
 
   /** Does `cls` have static fields that are not Java constants? These are fields of a Java
    *  interface, or `@static` vals in the companion object of a Scala trait.

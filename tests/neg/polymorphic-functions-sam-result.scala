@@ -18,6 +18,15 @@ trait ViaParent[A] extends InitParent:
   def apply(x: A): A
 trait ViaGrandParent[A] extends ViaParent[A]
 
+trait UnivInit[A] extends Any:
+  println("init")
+  def apply(x: A): A
+
+trait UnivInitParent extends Any:
+  println("init")
+trait ViaUnivParent[A] extends Any with UnivInitParent:
+  def apply(x: A): A
+
 abstract class Base
 trait ExtendsClass[A] extends Base:
   def apply(x: A): A
@@ -37,3 +46,5 @@ def test(o: Out) =
   val f6: [A] => ExtendsClass[A] = [A] => (x: A) => x // error
   val f7: [A] => o.Inner[A] = [A] => (x: A) => x // error
   val f8: [A] => o.ExtendsInner[A] = [A] => (x: A) => x // error
+  val f9: [A] => UnivInit[A] = [A] => (x: A) => x // error
+  val f10: [A] => ViaUnivParent[A] = [A] => (x: A) => x // error
