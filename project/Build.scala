@@ -334,6 +334,9 @@ object Build {
       docScalaInstance
     },
     Compile / doc / scalacOptions ++= ScaladocOptions.scalacOptionsDocSettings(),
+    // `-siteroot` defaults to `./docs`, which sbt resolves against the repo root, so without
+    // this every javadoc JAR would bundle the repo's static site (blog, reference, PDFs).
+    Compile / doc / scalacOptions ++= Seq("-siteroot", (baseDirectory.value / "docs").getPath),
   )
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
