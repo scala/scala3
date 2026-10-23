@@ -125,3 +125,8 @@ jobs:
         shell: cmd
         env:
           LAUNCHER_PREFIX: 'dist\target\universal\stage'
+      - name: Build the x86_64 launcher command
+        run: sbt "dist-win-x86_64/Universal/stage"
+      - name: Run the launcher command tests with the x86_64 launcher
+        run: './project/scripts/native-integration/winTests.bat'
+        shell: cmd
