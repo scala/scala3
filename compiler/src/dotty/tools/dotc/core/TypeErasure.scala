@@ -82,7 +82,11 @@ object TypeErasure:
   private val DisallowSpecialized = Property.Key[Unit]
 
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
-    sym == defn.ArrayClass || sym == defn.PairClass || sym.isDerivedValueClass || sym.isSpecializedTrait
+    sym == defn.ArrayClass
+    || sym == defn.PairClass
+    || sym == defn.MaybeClass
+    || sym.isDerivedValueClass
+    || sym.isSpecializedTrait
 
   /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs.
    *
@@ -809,6 +813,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else if (tycon.isRef(defn.PairClass)) erasePair(tp)
         else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = sourceLanguage.isJava))
         else if (semiEraseVCs && tycon.classSymbol.isDerivedValueClass) eraseDerivedValueClass(tp)
+        else if tycon.isRef(defn.MaybeClass) then eraseMaybe(tp)
         else this(checkedSuperType(tp))
       case tp: TermRef =>
         this(underlyingOfTermRef(tp))
@@ -993,6 +998,17 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     else if arity <= Definitions.MaxTupleArity then defn.TupleType(arity).nn
     else defn.TupleXXLClass.typeRef
   }
+
+  /** The erasure of `T ? E`. A value of that type is represented at runtime either
+   *  as a value of type `T`, or, if the error is `null`, as `null`, or otherwise as a
+   *  `runtime.Fail` wrapping the error. So we can erase to the erasure of `T` only
+   *  if `T` cannot be `null` and no `Fail` can arise, i.e. `E` is `Null` or `Nothing`.
+   */
+  private def eraseMaybe(tp: AppliedType)(using Context): Type =
+    val arg :: errArg :: Nil = tp.args: @unchecked
+    if arg.isNotNull && arg.derivesFrom(defn.ObjectClass) && errArg.isBottomTypeAfterErasure
+    then apply(arg)
+    else defn.ObjectType
 
   /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s and
    *  `PolyType`s are treated. `eraseInfo` maps them to method types, whereas `apply` maps them

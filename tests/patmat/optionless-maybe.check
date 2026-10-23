@@ -1,0 +1,8 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/optionless-maybe.scala:30:41 
+30 |  def qux(t: Tree)(using c: Cap): Unit = t match {
+   |                                         ^
+   |                                 match may not be exhaustive.
+   |
+   |                                 It would fail on pattern case: Ident(_)
+   |
+   | longer explanation available when compiling with `-explain`

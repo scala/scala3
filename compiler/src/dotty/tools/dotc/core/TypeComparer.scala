@@ -851,6 +851,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             return recur(tp1, OrType(tp21, tp221, tp2.isSoft)) && recur(tp1, OrType(tp21, tp222, tp2.isSoft))
           case _ =>
         }
+        // T? <: T | Null if T disjoint from null or Err
+        tp2 match
+          case OrNull(tp2a) =>
+            tp1w match
+              case MaybeType(tp1a, errArg) =>
+                if errArg.isRef(defn.NullClass) && tp1a.isNotNullNorMaybe then
+                  return recur(tp1a, tp2a)
+              case _ =>
+          case _ =>
         either(recur(tp1, tp21), recur(tp1, tp22)) || fourthTry
       case tp2: MatchType =>
         val reduced = tp2.reduced
@@ -1034,6 +1043,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 // Same as above; this.type is also a singleton type in spec language
                 !ctx.explicitNulls && isNullable(tp.underlying)
               case tp: RefinedOrRecType => isNullable(tp.parent)
+              case AppliedType(tycon, _ :: errArg :: Nil) if tycon.isRef(defn.MaybeClass) =>
+                // null <: T ? E if null <: E
+                isSubType(defn.NullType, errArg)
               case tp: AppliedType => isNullable(tp.tycon)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
@@ -1260,6 +1272,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *
      *    adaptedTycon := [T_0, ..., T_k-1] =>> otherTycon[bodyArgs]
      *
+     *  Exception: If `otherTycon` is the `Maybe` constructor, we choose left bias
+     *  instead of right bias and define
+     *
+     *    bodyArgs := T_0, ..., T_k-1, otherArgs.dropRight(d)
+     *
      *  where the bounds of `T_i` are set based on the bounds of `otherTycon.typeParams(d+i)`
      *  after substituting type parameter references by the corresponding argument
      *  in `bodyArgs` (see `adaptedBounds` in the implementation).
@@ -1283,13 +1300,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val d = otherArgs.length - args.length
       d >= 0 && {
         val tparams = tycon.typeParams
-        val remainingTparams = otherTycon.typeParams.drop(d)
+        val leftBias = otherTycon.classSymbol == defn.MaybeClass
+        val remainingTparams =
+          if leftBias then otherTycon.typeParams.dropRight(d) else otherTycon.typeParams.drop(d)
         variancesConform(remainingTparams, tparams) && {
           val adaptedTycon =
             if d > 0 then
-              val initialArgs = otherArgs.take(d)
+              val fixedArgs =
+                if leftBias then otherArgs.takeRight(d) else otherArgs.take(d)
               /** The arguments passed to `otherTycon` in the body of `tl` */
-              def bodyArgs(tl: HKTypeLambda) = initialArgs ++ tl.paramRefs
+              def bodyArgs(tl: HKTypeLambda) =
+                if leftBias then tl.paramRefs ++ fixedArgs else fixedArgs ++ tl.paramRefs
               /** The bounds of the type parameters of `tl` */
               def adaptedBounds(tl: HKTypeLambda) =
                 val bodyArgsComputed = bodyArgs(tl)
@@ -1500,6 +1521,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case _ => false
         } && recordGadtUsageIf(true)
 
+      /** T <: T? if T is not null or Err */
+      def byMaybeWidening: Boolean = tp2 match
+        case MaybeType(res2, err2) if tp1.isNotNullNorMaybe =>
+          recur(tp1, res2)
+        case _ => false
+
       tycon2 match {
         case param2: TypeParamRef =>
           isMatchingApply(tp1) ||
@@ -1508,6 +1535,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         case tycon2: TypeRef =>
           isMatchingApply(tp1)
           || byGadtBounds
+          || byMaybeWidening
           || defn.isCompiletimeAppliedType(tycon2.symbol)
               && compareCompiletimeAppliedType(tp2, tp1, fromBelow = true)
           || tycon2.info.match

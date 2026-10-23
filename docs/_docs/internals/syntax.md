@@ -296,7 +296,8 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ArgumentExprs                                 Apply(expr, args)
                     |  SimpleExpr ColonArgument                                 -- under language.experimental.fewerBraces
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
-                    |  XmlExpr							-- to be dropped
+                    |  SimpleExpr '?'                                           -- under language.experimental.magic
+                    |  XmlExpr							                             -- to be dropped
 ColonArgument     ::=  colon {LambdaStart}
                        indent (CaseClauses | Block) outdent
                     |  colon LambdaStart {LambdaStart} expr ENDlambda                         -- ENDlambda is inserted for each production at next EOL
@@ -329,6 +330,7 @@ BlockStat         ::=  Import
                     |  Extension
                     |  Expr1
                     |  EndMarker
+                    |  ‘if’ Expr [‘else’ Expr]
 TypeBlock         ::=  {TypeBlockStat semi} Type
 TypeBlockStat     ::=  ‘type’ {nl} TypeDef
 
