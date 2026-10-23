@@ -39,6 +39,7 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     with SortedMapFactoryDefaults[K, V, TreeMap, Iterable, Map]
     with DefaultSerializable {
 
+  /** Returns the companion object [[TreeMap]], the factory used to create new tree maps of the same type */
   override def sortedMapFactory: TreeMap.type = TreeMap
 
   /** Creates an empty `TreeMap`.
@@ -47,36 +48,61 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
    */
   def this()(implicit ord: Ordering[K]) = this(RB.Tree.empty)(using ord)
 
+  /** Returns an iterator over the key-value pairs of this tree map, in ascending order of keys */
   def iterator: Iterator[(K, V)] = {
     if (isEmpty) Iterator.empty
     else RB.iterator(tree)
   }
 
+  /** Returns an iterator over the keys of this tree map, in ascending order */
   override def keysIterator: Iterator[K] = {
     if (isEmpty) Iterator.empty
     else RB.keysIterator(tree, None)
   }
 
+  /** Returns an iterator over the values of this tree map, in ascending order of the associated keys */
   override def valuesIterator: Iterator[V] = {
     if (isEmpty) Iterator.empty
     else RB.valuesIterator(tree, None)
   }
 
+  /** Returns an iterator over the keys of this tree map that are greater than or equal to `start`, in ascending
+   *  order.
+   *
+   *  @param start the lower bound (inclusive) on the keys to return
+   */
   def keysIteratorFrom(start: K): Iterator[K] = {
     if (isEmpty) Iterator.empty
     else RB.keysIterator(tree, Some(start))
   }
 
+  /** Returns an iterator over the key-value pairs of this tree map whose keys are greater than or equal to `start`,
+   *  in ascending order of keys.
+   *
+   *  @param start the lower bound (inclusive) on the keys of the entries to return
+   */
   def iteratorFrom(start: K): Iterator[(K, V)] = {
     if (isEmpty) Iterator.empty
     else RB.iterator(tree, Some(start))
   }
 
+  /** Returns an iterator over the values of the entries of this tree map whose keys are greater than or equal to
+   *  `start`, in ascending order of the associated keys.
+   *
+   *  @param start the lower bound (inclusive) on the keys of the entries whose values to return
+   */
   override def valuesIteratorFrom(start: K): Iterator[V] = {
     if (isEmpty) Iterator.empty
     else RB.valuesIterator(tree, Some(start))
   }
 
+  /** Returns a [[Stepper]] for the key-value pairs of this tree map. The stepper visits the pairs in ascending
+   *  order of keys and supports efficient splitting, so the converters in [[scala.jdk.StreamConverters]] can create
+   *  parallel streams from it.
+   *
+   *  @tparam S the type of the returned `Stepper`, determined by the implicit `StepperShape`
+   *  @param shape the `StepperShape` that determines the concrete `Stepper` subtype to return
+   */
   override def stepper[S <: Stepper[?]](implicit shape: StepperShape[(K, V), S]): S & EfficientSplit =
     shape.parUnbox(
       scala.collection.convert.impl.AnyBinaryTreeStepper.from[(K, V), RB.Node[K, V]](
@@ -84,6 +110,14 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
       )
     )
 
+  /** Returns a [[Stepper]] for the keys of this tree map. The stepper visits the keys in ascending order and
+   *  supports efficient splitting, so the converters in [[scala.jdk.StreamConverters]] can create parallel streams
+   *  from it.
+   *
+   *  @tparam S the type of the returned `Stepper`, determined by the implicit `StepperShape`
+   *  @param shape the `StepperShape` that determines the concrete `Stepper` subtype to return
+   *  @return a stepper over the keys, using a primitive-typed `Stepper` subclass when the resolved `StepperShape` corresponds to `Int`, `Long`, or `Double`
+   */
   override def keyStepper[S <: Stepper[?]](implicit shape: StepperShape[K, S]): S & EfficientSplit = {
     import scala.collection.convert.impl._
     type T = RB.Node[K, V]
@@ -96,6 +130,14 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     s.asInstanceOf[S & EfficientSplit]
   }
 
+  /** Returns a [[Stepper]] for the values of this tree map. The stepper visits the values in ascending order of the
+   *  associated keys and supports efficient splitting, so the converters in [[scala.jdk.StreamConverters]] can
+   *  create parallel streams from it.
+   *
+   *  @tparam S the type of the returned `Stepper`, determined by the implicit `StepperShape`
+   *  @param shape the `StepperShape` that determines the concrete `Stepper` subtype to return
+   *  @return a stepper over the values, using a primitive-typed `Stepper` subclass when the resolved `StepperShape` corresponds to `Int`, `Long`, or `Double`
+   */
   override def valueStepper[S <: Stepper[?]](implicit shape: StepperShape[V, S]): S & EfficientSplit = {
     import scala.collection.convert.impl._
     type T = RB.Node[K, V]
@@ -108,12 +150,29 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     s.asInstanceOf[S & EfficientSplit]
   }
 
+  /** Adds the key-value pair `elem` to this tree map. If the map already contains an entry whose key is equal to
+   *  `elem._1` under the ordering, that entry's value is replaced by `elem._2`.
+   *
+   *  @param elem the key-value pair to add
+   *  @return this tree map
+   */
   def addOne(elem: (K, V)): this.type = { RB.insert(tree, elem._1, elem._2); this }
 
+  /** Removes the entry with key `elem` from this tree map, if one exists; otherwise does nothing.
+   *
+   *  @param elem the key of the entry to remove
+   *  @return this tree map
+   */
   def subtractOne(elem: K): this.type = { RB.delete(tree, elem); this }
 
+  /** Removes all entries from this tree map, leaving it empty */
   override def clear(): Unit = RB.clear(tree)
 
+  /** Returns the value associated with `key` in this tree map.
+   *
+   *  @param key the key to look up
+   *  @return a `Some` containing the value associated with `key`, or `None` if the key is not present
+   */
   def get(key: K): Option[V] = RB.get(tree, key)
 
   /** Creates a ranged projection of this map. Any mutations in the ranged projection will update the original map and
@@ -132,23 +191,60 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
    */
   def rangeImpl(from: Option[K], until: Option[K]): TreeMap[K, V] = new TreeMapProjection(from, until)
 
+  /** Applies `f` to each key-value pair of this tree map, in ascending order of keys, for its side effects.
+   *
+   *  @tparam U the result type of `f`, which is discarded
+   *  @param f the function to apply to each key-value pair
+   */
   override def foreach[U](f: ((K, V)) => U): Unit = RB.foreach(tree, f)
+  /** Applies `f` to the key and value of each entry of this tree map, passed as two separate arguments, in ascending
+   *  order of keys, for its side effects.
+   *
+   *  @tparam U the result type of `f`, which is discarded
+   *  @param f the function applied to the key and value of each entry
+   */
   override def foreachEntry[U](f: (K, V) => U): Unit = RB.foreachEntry(tree, f)
 
+  /** Returns the number of entries in this tree map, in O(1) time */
   override def size: Int = RB.size(tree)
+  /** Returns the number of entries in this tree map; never -1, because the size is always known */
   override def knownSize: Int = size
+  /** Returns `true` if this tree map contains no entries */
   override def isEmpty: Boolean = RB.isEmpty(tree)
 
+  /** Returns `true` if this tree map contains an entry whose key is equal to `key` under the ordering.
+   *
+   *  @param key the key to look for
+   */
   override def contains(key: K): Boolean = RB.contains(tree, key)
 
+  /** Returns the entry with the smallest key of this tree map.
+   *
+   *  @throws NoSuchElementException if this tree map is empty
+   */
   override def head: (K, V) = RB.min(tree).get
 
+  /** Returns the entry with the largest key of this tree map.
+   *
+   *  @throws NoSuchElementException if this tree map is empty
+   */
   override def last: (K, V) = RB.max(tree).get
 
+  /** Returns the entry with the smallest key greater than or equal to `key`, if any.
+   *
+   *  @param key the lower bound (inclusive) for the key lookup
+   *  @return a `Some` containing the entry with the smallest key greater than or equal to `key`, or `None` if no such entry exists
+   */
   override def minAfter(key: K): Option[(K, V)] = RB.minAfter(tree, key)
 
+  /** Returns the entry with the largest key strictly less than `key`, if any.
+   *
+   *  @param key the upper bound (exclusive) for the key lookup
+   *  @return a `Some` containing the entry with the largest key strictly less than `key`, or `None` if no such entry exists
+   */
   override def maxBefore(key: K): Option[(K, V)] = RB.maxBefore(tree, key)
 
+  /** Returns `"TreeMap"`, the name used in this map's string representation */
   override protected def className: String = "TreeMap"
 
 
@@ -251,11 +347,32 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
 @SerialVersionUID(3L)
 object TreeMap extends SortedMapFactory[TreeMap] {
 
+  /** Returns a new `TreeMap` containing the key-value pairs of `it`, ordered by the implicit `Ordering` on the keys.
+   *  If `it` contains several pairs whose keys are equal under the ordering, the value of the last such pair wins.
+   *
+   *  @tparam K the type of the keys, which must have an implicit `Ordering`
+   *  @tparam V the type of the values
+   *  @param it the key-value pairs of the new tree map
+   *  @return a new `TreeMap` containing the entries of `it`
+   */
   def from[K : Ordering, V](it: IterableOnce[(K, V)]^): TreeMap[K, V] =
     Growable.from(empty[K, V], it)
 
+  /** Returns a new, empty `TreeMap` ordered by the implicit `Ordering` on the keys.
+   *
+   *  @tparam K the type of the keys, which must have an implicit `Ordering`
+   *  @tparam V the type of the values
+   *  @return an empty `TreeMap`
+   */
   def empty[K : Ordering, V]: TreeMap[K, V] = new TreeMap[K, V]()
 
+  /** Returns a new builder that builds a `TreeMap` by inserting the supplied key-value pairs into an initially
+   *  empty tree map.
+   *
+   *  @tparam K the type of the keys, which must have an implicit `Ordering`
+   *  @tparam V the type of the values
+   *  @return a builder for a new `TreeMap`
+   */
   def newBuilder[K: Ordering, V]: Builder[(K, V), TreeMap[K, V]] = new GrowableBuilder(empty[K, V])
 
 }
