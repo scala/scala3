@@ -1,9 +1,9 @@
--- Error: tests/neg-custom-args/captures/mutvars.scala:3:28 ------------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/mutvars.scala:3:19 ------------------------------------------------------------
 3 |  def hide(x: T) = this.fld = x // error
   |                   ^^^^^^^^^^^^
   |                   Cannot assign to field fld of Ref.this
   |                   since the access is in method hide, which is not an update method.
--- Error: tests/neg-custom-args/captures/mutvars.scala:8:13 ------------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/mutvars.scala:8:4 -------------------------------------------------------------
 8 |    self.fld = x  // error
   |    ^^^^^^^^^^^^
   |    Cannot assign to field fld of self
@@ -20,7 +20,7 @@
   |                         where:    any is a root capability classified as Unscoped in the type of value self2
   |
   | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/mutvars.scala:13:16 -----------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/mutvars.scala:13:4 ------------------------------------------------------------
 13 |    self3().fld = x  // error
    |    ^^^^^^^^^^^^^^^
    |    Cannot assign to field fld of Ref[T^{}]^{self3}
@@ -37,7 +37,7 @@
    |                            where:    any is a root capability classified as Unscoped in the type of value self4
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/mutvars.scala:18:16 -----------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/mutvars.scala:18:4 ------------------------------------------------------------
 18 |    self5().fld = x  // error
    |    ^^^^^^^^^^^^^^^
    |    Cannot assign to field fld of Ref[T^{}]^{Ref.this.rd}
@@ -54,17 +54,17 @@
    |                    where:    any is a root capability classified as Unscoped in the result type of method self6
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/mutvars.scala:24:29 -----------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/mutvars.scala:24:18 -----------------------------------------------------------
 24 |  def set(x: T) = this.x.fld = x // error
    |                  ^^^^^^^^^^^^^^
    |                  Cannot assign to field fld of Ref2.this.x
    |                  since the access is in method set, which is not an update method.
--- Error: tests/neg-custom-args/captures/mutvars.scala:31:9 ------------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/mutvars.scala:31:2 ------------------------------------------------------------
 31 |  r1.fld = 33 // error
    |  ^^^^^^^^^^^
    |  Cannot assign to field fld of r1
    |  since its capture set {r1} is read-only.
--- Error: tests/neg-custom-args/captures/mutvars.scala:36:11 -----------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/mutvars.scala:36:2 ------------------------------------------------------------
 36 |  r3.x.fld = 33 // error
    |  ^^^^^^^^^^^^^
    |  Cannot assign to field fld of r3.x
@@ -84,7 +84,7 @@
    |                                      any² is a root capability classified as Unscoped in the type of value ref2
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/mutvars.scala:44:13 -----------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/mutvars.scala:44:2 ------------------------------------------------------------
 44 |  r6().x.fld = 33 // error
    |  ^^^^^^^^^^^^^^^
    |  Cannot assign to field fld of Ref[Int]^{any.rd}
