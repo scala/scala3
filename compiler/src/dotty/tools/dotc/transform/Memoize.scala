@@ -12,7 +12,7 @@ import Symbols.*
 import Constants.*
 import MegaPhase.*
 import NameOps.*
-import NameKinds.{ExpandedName, TraitSetterName}
+import NameKinds.TraitSetterName
 import Flags.*
 import Decorators.*
 import StdNames.nme
@@ -106,13 +106,10 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
    */
   private def isSetterForOverriddenTraitVal(setter: Symbol)(using Context): Boolean =
     setter.name.is(TraitSetterName) && {
-      val cls = setter.owner
       val getterName = setter.name.asTermName.fieldName.getterName
       setter.allOverriddenSymbols.exists: traitSetter =>
-        val getter = traitSetter.owner.info.decl(getterName).suchThat(_.isGetter).symbol
-        getter.exists
-        && !getter.name.is(ExpandedName)
-        && atPhase(mixinPhase)(!cls.info.nonPrivateMember(getter.name).hasAltWith(_.symbol == getter))
+        val getter = traitSetter.accessorNamed(getterName)
+        getter.exists && !Mixin.inheritsTraitGetter(setter.owner, getter)
     }
 
   override def transformDefDef(tree: DefDef)(using Context): Tree = {
