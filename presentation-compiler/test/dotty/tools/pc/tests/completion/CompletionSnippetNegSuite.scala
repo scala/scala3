@@ -21,6 +21,7 @@ class CompletionSnippetNegSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """|apply
+         |applyToContext
          |apply
          |unapplySeq""".stripMargin
     )

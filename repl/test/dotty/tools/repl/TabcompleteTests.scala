@@ -24,7 +24,7 @@ class TabcompleteTests extends ReplTest {
 
   @Test def tabCompleteInClass = initially {
     val comp = tabComplete("class Foo { def bar: List[Int] = List.ap")
-    assertEquals(List("apply"), comp)
+    assertEquals(List("apply", "applyToContext"), comp)
   }
 
   @Test def tabCompleteInExtensionDefinition = initially {
@@ -89,7 +89,7 @@ class TabcompleteTests extends ReplTest {
   @Test def tabClosureComplete = initially {
     assertEquals(List("map", "mapConserve"), tabComplete("Nil.map"))
     assertEquals(List("map", "mapConserve"), tabComplete("(x: Int => Int) => Nil.map"))
-    assertEquals(List("apply"), tabComplete("(x: Int => Int) => x.ap"))
+    assertEquals(List("apply", "applyToContext"), tabComplete("(x: Int => Int) => x.ap"))
   }
 
   @Test def importScala = initially {
@@ -110,7 +110,7 @@ class TabcompleteTests extends ReplTest {
   @Test def anyRef = initially {
     val comp = tabComplete("(null: AnyRef).")
     assertEquals(
-      List("!=", "##", "->", "==", "asInstanceOf", "ensuring", "eq", "equals", "formatted",
+      List("!=", "##", "->", "==", "applyToContext", "asInstanceOf", "ensuring", "eq", "equals", "formatted",
           "getClass", "hashCode", "isInstanceOf", "ne", "nn", "notify", "notifyAll", "runtimeChecked", "synchronized", "toString", "wait"),
       comp.distinct.sorted)
   }
@@ -147,6 +147,7 @@ class TabcompleteTests extends ReplTest {
         "__system",
         "`back-tick`",
         "`match`",
+        "applyToContext",
         "asInstanceOf",
         "dot_product_*",
         "ensuring",
