@@ -869,8 +869,9 @@ object Erasure {
       if inContext(preErasureCtx)(mdef.symbol.info.isInstanceOf[PolyType]) =>
         // The body of a polymorphic closure is its value parameter closure or, if that was
         // converted to a SAM type that needs a wrapper class, the instance of the anonymous
-        // class created by ExpandSAMs (which checked that creating it is unobservable).
-        mdef.rhs match
+        // class created by ExpandSAMs (which checked that creating it is unobservable),
+        // possibly cast to its expected type. Typer rejected all other bodies.
+        stripCast(mdef.rhs) match
           case closureDef(_) | ExpandedSamClosure() =>
           case rhs => assert(false, i"unexpected body of polymorphic closure: $rhs")
         super.typed(mdef.rhs, pt).changeOwnerAfter(mdef.symbol, ctx.owner, erasurePhase)

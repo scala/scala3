@@ -2160,10 +2160,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  The result type `R` is inferred from the expected type if that is a polymorphic
    *  function type `[T_1, ..., T_M] => R` with the same number of type parameters.
    *
-   *  Erasure replaces the closure by the value parameter closure in `body`, which is
-   *  therefore created once and shared by all type applications. So if that closure is
-   *  converted to a SAM type, creating an instance of it must be unobservable, see
-   *  `ExpandSAMs.hasPureInstances`.
+   *  Erasure replaces the closure by `body`, which is therefore evaluated once and shared
+   *  by all type applications. So `body` must be the value parameter closure, possibly cast
+   *  to its expected type, and not, e.g., an implicit conversion of it, which could run
+   *  arbitrary code. If the closure is converted to a SAM type, creating an instance of it
+   *  must be unobservable, see `ExpandSAMs.hasPureInstances`.
    */
   def typedPolyFunctionValue(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val untpd.PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun) = tree: @unchecked
@@ -2177,13 +2178,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           poly.resultType.substParams(poly, tsyms.map(_.typeRef)))
       case _ =>
         untpd.TypeTree()
-    val closure = typed(desugar.makeClosure(tparams, fun, resultTpt, tree.span), pt)
+    // Not adapted here, since adapting it to `pt` could hide it behind a cast or conversion
+    val closure = typedUnadapted(desugar.makeClosure(tparams, fun, resultTpt, tree.span), pt)
     closure match
-      case closureDef(mdef) => mdef.rhs match
-        case tpd.closure(_, _, samTpt)
-        if !samTpt.isEmpty && !transform.ExpandSAMs.hasPureInstances(samTpt.tpe, checkStatics = false) =>
-          report.error(transform.ExpandSAMs.impurePolyFunctionBody(samTpt.tpe), tree.srcPos)
+      case closureDef(mdef) => stripCast(mdef.rhs) match
+        case tpd.closure(_, _, samTpt) =>
+          if !samTpt.isEmpty && !transform.ExpandSAMs.hasPureInstances(samTpt.tpe, checkStatics = false) then
+            report.error(transform.ExpandSAMs.impurePolyFunctionBody(samTpt.tpe), tree.srcPos)
         case _ =>
+          report.error(
+            em"Implementation restriction: the body of a polymorphic function literal cannot be converted to type ${mdef.tpt.tpe}",
+            tree.srcPos)
       case _ =>
     closure
 
