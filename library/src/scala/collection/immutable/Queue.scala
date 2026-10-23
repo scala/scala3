@@ -50,6 +50,7 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
     with IterableFactoryDefaults[A, Queue]
     with DefaultSerializable {
 
+  /** The factory used to build queues, the [[Queue$ `Queue`]] companion object. */
   override def iterableFactory: SeqFactory[Queue] = Queue
 
   /** Returns the `n`-th element of this queue.
@@ -91,38 +92,107 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
    */
   override def isEmpty: Boolean = in.isEmpty && out.isEmpty
 
+  /** Returns the first element of this queue, the one that `dequeue` would remove.
+   *
+   *  This costs `O(1)` unless the *out* list has run dry, in which case the last
+   *  element of the *in* list is found in `O(n)`; no pivot is performed.
+   *
+   *  @throws NoSuchElementException if this queue is empty
+   */
   override def head: A =
     if (out.nonEmpty) out.head
     else if (in.nonEmpty) in.last
     else throw new NoSuchElementException("head on empty queue")
 
+  /** Returns a queue holding all elements of this queue except the first.
+   *
+   *  This costs `O(1)` unless the *out* list has run dry, in which case the queue is
+   *  pivoted at a cost of `O(n)`.
+   *
+   *  @throws NoSuchElementException if this queue is empty
+   */
   override def tail: Queue[A] =
     if (out.nonEmpty) new Queue(in, out.tail)
     else if (in.nonEmpty) new Queue(Nil, in.reverse.tail)
     else throw new NoSuchElementException("tail on empty queue")
 
+  /** Returns the last element of this queue, the one enqueued most recently.
+   *
+   *  This costs `O(1)` unless nothing has been enqueued since the last pivot, in
+   *  which case the last element of the *out* list is found in `O(n)`.
+   *
+   *  @throws NoSuchElementException if this queue is empty
+   */
   override def last: A =
     if (in.nonEmpty) in.head
     else if (out.nonEmpty) out.last
     else throw new NoSuchElementException("last on empty queue")
 
   /* This is made to avoid inefficient implementation of iterator. */
+  /** Returns `true` if `p` holds for every element of this queue.
+   *
+   *  Tests the two underlying lists directly instead of going through the iterator,
+   *  which would have to reverse the *in* list.
+   *
+   *  @param p the predicate used to test elements
+   *  @return `true` if this queue is empty or `p` holds for all of its elements
+   */
   override def forall(p: A => Boolean): Boolean =
     in.forall(p) && out.forall(p)
 
   /* This is made to avoid inefficient implementation of iterator. */
+  /** Returns `true` if `p` holds for at least one element of this queue.
+   *
+   *  Tests the two underlying lists directly instead of going through the iterator,
+   *  which would have to reverse the *in* list; the elements are therefore not
+   *  necessarily tested in queue order.
+   *
+   *  @param p the predicate used to test elements
+   *  @return `true` if `p` holds for some element of this queue, `false` if this
+   *          queue is empty
+   */
   override def exists(p: A => Boolean): Boolean =
     in.exists(p) || out.exists(p)
 
+  /** The prefix of this queue's string representation: `"Queue"`. */
   override protected def className = "Queue"
 
   /** Returns the length of the queue. */
   override def length: Int = in.length + out.length
 
+  /** Returns a queue with `elem` at its front, so that `elem` is the next element to
+   *  be dequeued, followed by all elements of this queue.
+   *
+   *  This costs `O(1)`.
+   *
+   *  @tparam B the element type of the returned queue, a supertype of `A`
+   *  @param elem the element to place at the front
+   *  @return a new queue consisting of `elem` followed by the elements of this queue
+   */
   override def prepended[B >: A](elem: B): Queue[B] = new Queue(in, elem :: out)
 
+  /** Returns a queue with `elem` at its end, the same queue that `enqueue` returns.
+   *
+   *  This costs `O(1)`.
+   *
+   *  @tparam B the element type of the returned queue, a supertype of `A`
+   *  @param elem the element to place at the end
+   *  @return a new queue consisting of the elements of this queue followed by `elem`
+   */
   override def appended[B >: A](elem: B): Queue[B] = enqueue(elem)
 
+  /** Returns a queue consisting of the elements of this queue followed by the
+   *  elements of `that`, in the order `that` gives them out.
+   *
+   *  The elements of `that` are pushed onto the *in* list, which costs `O(m)` in the
+   *  size of `that` and leaves this queue's *out* list untouched. If `that` is empty
+   *  this queue is returned as is.
+   *
+   *  @tparam B the element type of the returned queue, a supertype of `A`
+   *  @param that the collection of elements to append
+   *  @return a new queue with the elements of `that` appended, or this queue itself
+   *          if `that` is empty
+   */
   override def appendedAll[B >: A](that: scala.collection.IterableOnce[B]^): Queue[B] = {
     val newIn = that match {
       case that: Queue[B] => that.in ++ (that.out reverse_::: this.in)
@@ -207,8 +277,23 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
  */
 @SerialVersionUID(3L)
 object Queue extends StrictOptimizedSeqFactory[Queue] {
+  /** Returns a new builder that collects elements into a queue, in the order they
+   *  are added.
+   *
+   *  @tparam A the element type of the queue being built
+   *  @return a builder backed by a `ListBuffer` whose result is a queue ready to be
+   *          dequeued without a pivot
+   */
   def newBuilder[A]: Builder[A, Queue[A]] = new ListBuffer[A] mapResult (x => new Queue[A](Nil, x))
 
+  /** Returns a queue containing the elements of `source`, in the order `source`
+   *  gives them out, so that its first element is the first to be dequeued.
+   *
+   *  If `source` is already a queue it is returned unchanged.
+   *
+   *  @tparam A the element type
+   *  @param source the collection whose elements are to be contained
+   */
   def from[A](source: IterableOnce[A]^): Queue[A] = source match {
     case q: Queue[A] => q
     case _ =>
@@ -217,7 +302,19 @@ object Queue extends StrictOptimizedSeqFactory[Queue] {
       else new Queue(Nil, list)
   }
 
+  /** Returns the empty queue.
+   *
+   *  All calls return the same instance, which is shared across element types.
+   *
+   *  @tparam A the element type of the queue
+   */
   def empty[A]: Queue[A] = EmptyQueue
+  /** Returns a queue containing the given elements, the first of which is the first
+   *  to be dequeued.
+   *
+   *  @tparam A the element type of the queue
+   *  @param xs the elements of the new queue, in dequeuing order
+   */
   override def apply[A](xs: A*): Queue[A] = new Queue[A](Nil, xs.toList)
 
   private object EmptyQueue extends Queue[Nothing](Nil, Nil) { }
