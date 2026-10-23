@@ -45,19 +45,29 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     with MapFactoryDefaults[K, V, HashMap, Iterable]
     with DefaultSerializable {
 
+  /** Creates an empty map, backed by the shared empty root node. */
   def this() = this(MapNode.empty)
 
   // This release fence is present because rootNode may have previously been mutated during construction.
   releaseFence()
 
+  /** Returns the [[HashMap$ HashMap]] companion object, the factory used to build new hash maps. */
   override def mapFactory: MapFactory[HashMap] = HashMap
 
+  /** Returns the number of key-value pairs in this map. The size is cached in the root node,
+   *  so this is always known and never `-1`.
+   */
   override def knownSize: Int = rootNode.size
 
+  /** Returns the number of key-value pairs in this map, read from the cached count in the root node. */
   override def size: Int = rootNode.size
 
+  /** Returns `true` if this map contains no key-value pairs, `false` otherwise. */
   override def isEmpty: Boolean = rootNode.size == 0
 
+  /** Returns the set of all keys in this map. For a non-empty map the result shares this map's
+   *  trie structure rather than copying the keys; for an empty map it is `Set.empty`.
+   */
   override def keySet: Set[K] = if (size == 0) Set.empty else new HashKeySet
 
 
@@ -79,15 +89,24 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     override def filterNot(pred: K => Boolean): Set[K] = newKeySetOrThis(HashMap.this.filterNot(kv => pred(kv._1)))
   }
 
+  /** Returns an iterator over the key-value pairs of this map, in the depth-first order of the
+   *  underlying trie (payload entries of a node before its sub-nodes).
+   */
   def iterator: Iterator[(K, V)] = {
     if (isEmpty) Iterator.empty
     else new MapKeyValueTupleIterator[K, V](rootNode)
   }
 
+  /** Returns an iterator over the keys of this map, in the same order as `iterator`, without
+   *  allocating a tuple per entry.
+   */
   override def keysIterator: Iterator[K] = {
     if (isEmpty) Iterator.empty
     else new MapKeyIterator[K, V](rootNode)
   }
+  /** Returns an iterator over the values of this map, in the same order as `iterator`, without
+   *  allocating a tuple per entry.
+   */
   override def valuesIterator: Iterator[V] = {
     if (isEmpty) Iterator.empty
     else new MapValueIterator[K, V](rootNode)
@@ -98,10 +117,26 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     else new MapKeyValueTupleReverseIterator[K, V](rootNode)
   }
 
+  /** Returns a stepper over the key-value pairs of this map that supports efficient splitting,
+   *  for use with Java streams and parallel processing. The stepper walks the trie nodes
+   *  directly rather than going through an iterator.
+   *
+   *  @tparam S the type of the stepper, determined by `shape`
+   *  @param shape the implicit evidence selecting the stepper implementation for `(K, V)` tuples
+   *  @return an efficiently splittable stepper over the key-value pairs
+   */
   override def stepper[S <: Stepper[?]](implicit shape: StepperShape[(K, V), S]): S & EfficientSplit =
     shape.
       parUnbox(collection.convert.impl.AnyChampStepper.from[(K, V), MapNode[K, V]](size, rootNode, (node, i) => node.getPayload(i)))
 
+  /** Returns a stepper over the keys of this map that supports efficient splitting, for use with
+   *  Java streams and parallel processing. When the key type is `Int`, `Long`, or `Double`, the
+   *  returned stepper is a primitive one that avoids boxing.
+   *
+   *  @tparam S the type of the stepper, determined by `shape`
+   *  @param shape the implicit evidence selecting the stepper implementation for the key type
+   *  @return an efficiently splittable stepper over the keys
+   */
   override def keyStepper[S <: Stepper[?]](implicit shape: StepperShape[K, S]): S & EfficientSplit = {
     import collection.convert.impl._
     val s = shape.shape match {
@@ -113,6 +148,14 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     s.asInstanceOf[S & EfficientSplit]
   }
 
+  /** Returns a stepper over the values of this map that supports efficient splitting, for use
+   *  with Java streams and parallel processing. When the value type is `Int`, `Long`, or
+   *  `Double`, the returned stepper is a primitive one that avoids boxing.
+   *
+   *  @tparam S the type of the stepper, determined by `shape`
+   *  @param shape the implicit evidence selecting the stepper implementation for the value type
+   *  @return an efficiently splittable stepper over the values
+   */
   override def valueStepper[S <: Stepper[?]](implicit shape: StepperShape[V, S]): S & EfficientSplit = {
     import collection.convert.impl._
     val s = shape.shape match {
@@ -124,24 +167,49 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     s.asInstanceOf[S & EfficientSplit]
   }
 
+  /** Tests whether this map contains a binding for a key.
+   *
+   *  @param key the key to look up
+   *  @return `true` if this map contains a binding for `key`, `false` otherwise
+   */
   override final def contains(key: K): Boolean = {
     val keyUnimprovedHash = key.##
     val keyHash = improve(keyUnimprovedHash)
     rootNode.containsKey(key, keyUnimprovedHash, keyHash, 0)
   }
 
+  /** Returns the value associated with a key.
+   *
+   *  @param key the key to look up
+   *  @return the value associated with `key`
+   *  @throws NoSuchElementException if this map contains no binding for `key`
+   */
   override def apply(key: K): V = {
     val keyUnimprovedHash = key.##
     val keyHash = improve(keyUnimprovedHash)
     rootNode.apply(key, keyUnimprovedHash, keyHash, 0)
   }
 
+  /** Optionally returns the value associated with a key.
+   *
+   *  @param key the key to look up
+   *  @return `Some(value)` if `key` is bound to `value` in this map, `None` otherwise
+   */
   def get(key: K): Option[V] = {
     val keyUnimprovedHash = key.##
     val keyHash = improve(keyUnimprovedHash)
     rootNode.get(key, keyUnimprovedHash, keyHash, 0)
   }
 
+  /** Returns the value associated with a key, or a default value if the key is not contained in
+   *  this map.
+   *
+   *  @tparam V1 the result type, a supertype of `V`
+   *  @param key the key to look up
+   *  @param default a computation that yields the default value; only evaluated if `key` is not
+   *                bound in this map
+   *  @return the value bound to `key`, or `default` if `key` is not bound
+   */
   override def getOrElse[V1 >: V](key: K, default: => V1): V1 = {
     val keyUnimprovedHash = key.##
     val keyHash = improve(keyUnimprovedHash)
@@ -151,20 +219,63 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
   @inline private def newHashMapOrThis[V1 >: V](newRootNode: BitmapIndexedMapNode[K, V1]): HashMap[K, V1] =
     if (newRootNode eq rootNode) this else new HashMap(newRootNode)
 
+  /** Returns a map containing all key-value pairs of this map, with `key` bound to `value`,
+   *  replacing any existing binding for `key`.
+   *
+   *  This map is returned unchanged when it already holds the binding by identity, that is,
+   *  when the stored key is reference-equal to `key` and the stored value is reference-equal
+   *  to `value`. A stored key that is merely equal to `key` is replaced, producing a new map.
+   *
+   *  @tparam V1 the value type of the returned map, a supertype of `V`
+   *  @param key the key to add or update
+   *  @param value the value to associate with `key`
+   *  @return a map with `key` bound to `value`, or this map if it already holds that exact
+   *          binding
+   */
   def updated[V1 >: V](key: K, value: V1): HashMap[K, V1] = {
     val keyUnimprovedHash = key.##
     newHashMapOrThis(rootNode.updated(key, value, keyUnimprovedHash, improve(keyUnimprovedHash), 0, replaceValue = true))
   }
 
   // preemptively overridden in anticipation of performance optimizations
+  /** Updates the binding for a key based on its current, optional value. The remapping function
+   *  is applied to `Some(currentValue)` if `key` is bound, or to `None` otherwise; the binding
+   *  is then set to the value in the function's result, or removed if the result is `None`.
+   *  Delegates to the inherited implementation; this override exists only so an optimized
+   *  version can be added without breaking binary compatibility.
+   *
+   *  @tparam V1 the value type of the returned map, a supertype of `V`
+   *  @param key the key whose binding is updated
+   *  @param remappingFunction the function mapping the current optional value to the new
+   *                          optional value
+   *  @return a map with the binding for `key` updated, added, or removed according to the
+   *          result of `remappingFunction`
+   */
   override def updatedWith[V1 >: V](key: K)(remappingFunction: Option[V] => Option[V1]): HashMap[K, V1] =
     super.updatedWith[V1](key)(remappingFunction)
 
+  /** Returns a map containing all key-value pairs of this map except any binding for `key`. If
+   *  `key` is not bound, returns this map unchanged.
+   *
+   *  @param key the key to remove
+   *  @return a map without a binding for `key`, or this map if none was present
+   */
   def removed(key: K): HashMap[K, V] = {
     val keyUnimprovedHash = key.##
     newHashMapOrThis(rootNode.removed(key, keyUnimprovedHash, improve(keyUnimprovedHash), 0))
   }
 
+  /** Returns a map containing all key-value pairs of this map and of `that`. For keys present in
+   *  both, the binding from `that` wins. When `that` is another `HashMap`, the two tries are
+   *  merged node by node, sharing unchanged subtrees with the inputs; for other collection types
+   *  the entries of `that` are added one at a time, mutating freshly created private nodes in
+   *  place. Where possible, one of the two original maps is returned unchanged.
+   *
+   *  @tparam V1 the value type of the returned map, a supertype of `V`
+   *  @param that the collection of key-value pairs to add
+   *  @return a map containing all pairs of this map and `that`, with `that` taking precedence
+   *          on duplicate keys
+   */
   override def concat[V1 >: V](that: scala.IterableOnce[(K, V1)]^): HashMap[K, V1] = (that: @unchecked) match {
     case hm: HashMap[K, V1] =>
       if (isEmpty) hm
@@ -262,16 +373,48 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
       }
   }
 
+  /** Returns a map containing all key-value pairs of this map except `head`. As maps are
+   *  unordered, which pair is removed is not defined.
+   *
+   *  @throws NoSuchElementException if this map is empty
+   */
   override def tail: HashMap[K, V] = this - head._1
 
+  /** Returns a map containing all key-value pairs of this map except `last`. As maps are
+   *  unordered, which pair is removed is not defined.
+   *
+   *  @throws NoSuchElementException if this map is empty
+   */
   override def init: HashMap[K, V] = this - last._1
 
+  /** Returns the first key-value pair in iteration order. As maps are unordered, which pair is
+   *  first is not defined.
+   *
+   *  @throws NoSuchElementException if this map is empty
+   */
   override def head: (K, V) = iterator.next()
 
+  /** Returns the last key-value pair in iteration order. As maps are unordered, which pair is
+   *  last is not defined.
+   *
+   *  @throws NoSuchElementException if this map is empty
+   */
   override def last: (K, V) = reverseIterator.next()
 
+  /** Applies a function to each key-value pair of this map, walking the trie directly rather
+   *  than going through an iterator.
+   *
+   *  @tparam U the result type of `f`; the results are discarded
+   *  @param f the function applied to each key-value pair
+   */
   override def foreach[U](f: ((K, V)) => U): Unit = rootNode.foreach(f)
 
+  /** Applies a two-argument function to each key and value of this map, without allocating a
+   *  tuple per entry.
+   *
+   *  @tparam U the result type of `f`; the results are discarded
+   *  @param f the function applied to each key and its associated value
+   */
   override def foreachEntry[U](f: (K, V) => U): Unit = rootNode.foreachEntry(f)
 
   /** Applies a function to each key, value, and **original** hash value in this Map.
@@ -280,12 +423,23 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
    */
   @inline private[collection] def foreachWithHash(f: (K, V, Int) => Unit): Unit = rootNode.foreachWithHash(f)
 
+  /** Tests whether this map is equal to another object. Two `HashMap`s are compared by their
+   *  root nodes, exploiting the canonical trie structure to compare bitmaps and cached hashes
+   *  before contents; any other object is compared with the generic `Map` equality.
+   *
+   *  @param that the object to compare with
+   *  @return `true` if `that` is a map with the same key-value pairs as this map
+   */
   override def equals(that: Any): Boolean =
     that match {
       case map: HashMap[?, ?] => (this eq map) || (this.rootNode == map.rootNode)
       case _ => super.equals(that)
     }
 
+  /** Returns a hash code compatible with the universal `Map` hash: the unordered MurmurHash3 of
+   *  the key-value pairs. Key hash codes are read from the caches in the trie nodes instead of
+   *  being recomputed.
+   */
   override def hashCode(): Int = {
     if (isEmpty) MurmurHash3.emptyMapHash
     else {
@@ -298,6 +452,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     }
   }
 
+  /** The name of this collection class, used as the prefix in its `toString` representation. */
   override protected def className = "HashMap"
 
   /** Merges this HashMap with an other HashMap by combining all key-value pairs of both maps, and delegating to a merge
@@ -385,6 +540,15 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
       }
     }
 
+  /** Returns a map with the same keys as this map, where each value is the result of applying
+   *  `f` to the key and its current value. The trie structure is reused: subtrees whose values
+   *  are all returned unchanged (by reference) are shared with this map, and if no value
+   *  changes, this map itself is returned.
+   *
+   *  @tparam W the value type of the returned map
+   *  @param f the function applied to each key and its associated value
+   *  @return a map with each value replaced by the result of `f`
+   */
   override def transform[W](f: (K, V) => W): HashMap[K, W] =
     newHashMapOrThis(rootNode.transform[Any](f)).asInstanceOf[HashMap[K, W]]
 
@@ -395,6 +559,14 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     else new HashMap(newRootNode)
   }
 
+  /** Returns a map containing all key-value pairs of this map except those whose keys occur in
+   *  `keys`. Hash sets are handled specially so their cached key hashes are reused instead of
+   *  recomputed. Returns this map if no key is removed, and stops early with the empty map once
+   *  all entries have been removed.
+   *
+   *  @param keys the keys to remove
+   *  @return a map without bindings for any key in `keys`
+   */
   override def removedAll(keys: IterableOnce[K]^): HashMap[K, V] = {
     if (isEmpty) {
       this
@@ -464,6 +636,13 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     }
   }
 
+  /** Splits this map into a pair of maps: the key-value pairs that satisfy the predicate, and
+   *  those that do not. Delegates to the inherited implementation; this override exists only so
+   *  an optimized version can be added without breaking binary compatibility.
+   *
+   *  @param p the predicate used to test key-value pairs
+   *  @return a pair of maps: the pairs satisfying `p`, and the pairs not satisfying it
+   */
   override def partition(p: ((K, V)) => Boolean): (HashMap[K, V], HashMap[K, V]) = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
@@ -473,6 +652,15 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     super.partition(p)
   }
 
+  /** Returns a map containing the first `n` key-value pairs in iteration order, or this map if
+   *  it has at most `n` entries. As maps are unordered, which pairs are taken is not defined.
+   *  Delegates to the inherited implementation; this override exists only so an optimized
+   *  version can be added without breaking binary compatibility.
+   *
+   *  @param n the number of key-value pairs to take
+   *  @return a map of the first `n` pairs, the empty map if `n` is non-positive, or this map if
+   *          it has at most `n` entries
+   */
   override def take(n: Int): HashMap[K, V] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
@@ -482,6 +670,15 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     super.take(n)
   }
 
+  /** Returns a map containing the last `n` key-value pairs in iteration order, or this map if
+   *  it has at most `n` entries. As maps are unordered, which pairs are taken is not defined.
+   *  Delegates to the inherited implementation; this override exists only so an optimized
+   *  version can be added without breaking binary compatibility.
+   *
+   *  @param n the number of key-value pairs to take
+   *  @return a map of the last `n` pairs, the empty map if `n` is non-positive, or this map if
+   *          it has at most `n` entries
+   */
   override def takeRight(n: Int): HashMap[K, V] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
@@ -491,6 +688,14 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     super.takeRight(n)
   }
 
+  /** Returns a map containing the longest prefix of key-value pairs, in iteration order, that
+   *  all satisfy the predicate. As maps are unordered, the result is not defined beyond that.
+   *  Delegates to the inherited implementation; this override exists only so an optimized
+   *  version can be added without breaking binary compatibility.
+   *
+   *  @param p the predicate used to test key-value pairs
+   *  @return a map of the longest prefix of pairs satisfying `p`
+   */
   override def takeWhile(p: ((K, V)) => Boolean): HashMap[K, V] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
@@ -500,6 +705,14 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     super.takeWhile(p)
   }
 
+  /** Returns a map containing the key-value pairs remaining after dropping the longest prefix,
+   *  in iteration order, that all satisfy the predicate. As maps are unordered, the result is
+   *  not defined beyond that. Delegates to the inherited implementation; this override exists
+   *  only so an optimized version can be added without breaking binary compatibility.
+   *
+   *  @param p the predicate used to test key-value pairs
+   *  @return a map of the pairs remaining after the longest prefix satisfying `p` is dropped
+   */
   override def dropWhile(p: ((K, V)) => Boolean): HashMap[K, V] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
@@ -509,6 +722,14 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     super.dropWhile(p)
   }
 
+  /** Returns a map containing all key-value pairs except the last `n` in iteration order. As
+   *  maps are unordered, which pairs are dropped is not defined. Delegates to the inherited
+   *  implementation; this override exists only so an optimized version can be added without
+   *  breaking binary compatibility.
+   *
+   *  @param n the number of key-value pairs to drop
+   *  @return a map without the last `n` pairs, or this map if `n` is non-positive
+   */
   override def dropRight(n: Int): HashMap[K, V] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
@@ -518,6 +739,14 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     super.dropRight(n)
   }
 
+  /** Returns a map containing all key-value pairs except the first `n` in iteration order. As
+   *  maps are unordered, which pairs are dropped is not defined. Delegates to the inherited
+   *  implementation; this override exists only so an optimized version can be added without
+   *  breaking binary compatibility.
+   *
+   *  @param n the number of key-value pairs to drop
+   *  @return a map without the first `n` pairs, or this map if `n` is non-positive
+   */
   override def drop(n: Int): HashMap[K, V] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
@@ -527,6 +756,14 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     super.drop(n)
   }
 
+  /** Splits this map into the longest prefix of key-value pairs, in iteration order, that all
+   *  satisfy the predicate, and the remainder. As maps are unordered, the split point is not
+   *  defined beyond that. Delegates to the inherited implementation; this override exists only
+   *  so an optimized version can be added without breaking binary compatibility.
+   *
+   *  @param p the predicate used to test key-value pairs
+   *  @return a pair of maps: the longest prefix satisfying `p`, and the rest
+   */
   override def span(p: ((K, V)) => Boolean): (HashMap[K, V], HashMap[K, V]) = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
@@ -2232,9 +2469,26 @@ object HashMap extends MapFactory[HashMap] {
   @transient
   private final val EmptyMap = new HashMap(MapNode.empty)
 
+  /** Returns the empty `HashMap`: a single shared, immutable instance cast to the requested
+   *  key and value types.
+   *
+   *  @tparam K the key type of the returned map
+   *  @tparam V the value type of the returned map
+   *  @return the shared empty hash map
+   */
   def empty[K, V]: HashMap[K, V] =
     EmptyMap.asInstanceOf[HashMap[K, V]]
 
+  /** Returns a `HashMap` containing the key-value pairs of the given collection. When keys
+   *  repeat, later pairs win. A source that is already a `HashMap` is returned as is, a source
+   *  known to be empty yields the shared empty map, and anything else is copied through a
+   *  builder.
+   *
+   *  @tparam K the key type of the returned map
+   *  @tparam V the value type of the returned map
+   *  @param source the collection of key-value pairs
+   *  @return a hash map containing the pairs of `source`
+   */
   def from[K, V](source: collection.IterableOnce[(K, V)]^): HashMap[K, V] =
     (source: @unchecked) match {
       case hs: HashMap[K, V] => hs
