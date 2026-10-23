@@ -124,6 +124,8 @@ object ScaladocConfigs0 {
       "-no-snippet-names-for", "_docs/reference",
       "-siteroot", "docs",
       "-Yapi-subdirectory:true",
+      // Without this, every page embeds the full navigation tree (~300 KB per page).
+      "-dynamic-side-menu",
     // targets:
     ) ++ libraryProducts
   }
