@@ -710,10 +710,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *  @return     a $coll consisting of the elements of this $coll
    *              sorted according to the ordering `ord`.
    */
-  def sorted[B >: A](implicit ord: Ordering[B]): C^{this} = sortedImpl
-
-  // The actual sort implementation. `sorted` needs a more lenient capture set because of lazy seqs.
-  private[collection] def sortedImpl[B >: A](implicit ord: Ordering[B]): C^{this} = {
+  def sorted[B >: A](implicit ord: Ordering[B]): C^{this} = {
     val len = this.length
     val b = newSpecificBuilder
     if (len == 1) b += head
