@@ -130,3 +130,8 @@ jobs:
       - name: Run the launcher command tests with the x86_64 launcher
         run: './project/scripts/native-integration/winTests.bat'
         shell: cmd
+      # TODO: enable after bumping Scala CLI to a version whose Bloop includes scalacenter/bloop#3107,
+      # Bloop fails to load its x64-only JNI library on an ARM64 JVM until then
+      - name: Run the launcher command with the Bloop compilation server
+        run: 'dist\target\universal\stage\bin\scala.bat run tests\pos\HelloWorld.scala --bloop-version 2.1.2-101-c0354c22-SNAPSHOT | findstr /C:"hello world"'
+        shell: cmd
