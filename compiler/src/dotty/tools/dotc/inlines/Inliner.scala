@@ -1245,7 +1245,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     /** True if this inline typer has already issued errors */
     override def hasInliningErrors(using Context) = ctx.reporter.errorCount > initialErrorCount
 
-    private def inlineIfNeeded(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree =
+    private def inlineIfNeeded(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = ctx.handleRecursive("inlining if needed", tree, tree):
       val meth = tree.symbol
       if meth.isAllOf(DeferredInline) then
         errorTree(tree, em"Deferred inline ${meth.showLocated} cannot be invoked")
