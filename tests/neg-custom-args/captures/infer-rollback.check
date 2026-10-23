@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/infer-rollback.scala:11:31 -------------------------------
+11 |  val h = Holder(g => pure(g), op)  // error
+   |                               ^^
+   |                               Found:    (op : () ->{C1, C2} Unit)
+   |                               Required: () ->{C1} Unit
+   |
+   |                               Note that capability `C2` cannot flow into capture set 's1.
+   |
+   | longer explanation available when compiling with `-explain`
