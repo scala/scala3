@@ -650,8 +650,8 @@ object Short extends AnyValCompanion {
   implicit def short2double(x: Short): Double = x.toDouble
 
   extension (self: Short) {
-    /** Returns `'''true'''` if this number has no decimal component.
-      * Always `'''true'''` for `Short`.
+    /** Returns `true` if this number has no decimal component.
+      * Always `true` for `Short`.
       */
     @deprecated("isWhole on Short is always true", "2.12.15")
     def isWhole: Boolean = true
