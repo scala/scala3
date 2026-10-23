@@ -6,7 +6,7 @@ import dotty.tools.io.{AbstractFile, Directory, File, FileExtension}
 
 import java.util.regex.PatternSyntaxException
 
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable
 
 /**
  * A representation of the compiler's class- or sourcepath.
@@ -79,8 +79,8 @@ object ClassPath {
     if sources.isEmpty then return classes
     if classes.isEmpty then return sources
 
-    val indices = dotc.util.HashMap[String, Int]()
-    val merged = new ArrayBuffer[ClassRepresentation](classes.size + sources.size)
+    val indices = mutable.Map.empty[String, Int]
+    val merged = new mutable.ArrayBuffer[ClassRepresentation](classes.size + sources.size)
     var count = 0
     for entry <- classes do
       if !indices.contains(entry.name) then

@@ -20,6 +20,7 @@ import typer.IfBottom
 import Annotations.Annotation
 import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed}
 import CaptureSet.{IdentityCaptRefMap, VarState}
+import util.*
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -459,7 +460,7 @@ object TypeOps:
 
   /** An approximating map that drops NamedTypes matching `toAvoid` and wildcard types. */
   abstract class AvoidMap(using Context) extends AvoidWildcardsMap:
-    @threadUnsafe lazy val localParamRefs = util.HashSet[Type]()
+    @threadUnsafe lazy val localParamRefs = mutable.Set.empty[Type]
 
     def toAvoid(tp: NamedType): Boolean
 
@@ -787,7 +788,7 @@ object TypeOps:
   private def instantiateToSubType(tp1: NamedType, tp2: Type, mixins: List[Type])(using Context): Type = trace(i"instantiateToSubType($tp1, $tp2, $mixins)", typr) {
     /** Gather GADT symbols and singletons found in `tp2`, ie. the scrutinee. */
     object TraverseTp2 extends TypeTraverser:
-      val singletons = util.HashMap[Symbol, SingletonType]()
+      val singletons = mutable.Map.empty[Symbol, SingletonType]
       val gadtSyms = new mutable.ListBuffer[Symbol]
 
       def traverse(tp: Type) = ctx.handleRecursive("traverseTp2", tp):
@@ -864,7 +865,7 @@ object TypeOps:
     // 3. Replace non-reducing MatchType with its bound
     //
     val approximateParent = new TypeMap {
-      val boundTypeParams = util.HashMap[TypeRef, TypeVar]()
+      val boundTypeParams = mutable.Map.empty[TypeRef, TypeVar]
 
       def apply(tp: Type): Type = tp.dealias match {
         case tp: MatchType =>
@@ -887,15 +888,15 @@ object TypeOps:
         case tp: TypeRef if !tp.symbol.isClass =>
           if initialGadt.contains(tp.symbol) then tp
           else
-            val lookup = boundTypeParams.lookup(tp)
-            if lookup != null then lookup
-            else
-              val TypeBounds(lo, hi) = tp.underlying.bounds
-              val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
-              boundTypeParams(tp) = tv
-              assert(tv <:< apply(hi))
-              apply(lo) <:< tv //  no assert, since bounds might conflict
-              tv
+            boundTypeParams.get(tp) match
+              case None =>
+                val TypeBounds(lo, hi) = tp.underlying.bounds
+                val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
+                boundTypeParams(tp) = tv
+                assert(tv <:< apply(hi))
+                apply(lo) <:< tv //  no assert, since bounds might conflict
+                tv
+              case Some(tv) => tv
 
         case tp @ AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass && !tp.isMatchAlias =>
           // In tests/patmat/i3645g.scala, we need to tell whether it's possible

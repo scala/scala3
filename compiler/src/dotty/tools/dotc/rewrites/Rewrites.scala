@@ -15,8 +15,8 @@ import dotty.tools.dotc.reporting.CodeAction
 
 /** Handles rewriting of Scala2 files to Dotty */
 object Rewrites {
-  opaque type PatchedFiles = mutable.HashMap[SourceFile, Patches]
-  def newPatchedFiles(): PatchedFiles = new PatchedFiles
+  opaque type PatchedFiles = mutable.Map[SourceFile, Patches]
+  def newPatchedFiles(): PatchedFiles = mutable.Map.empty
 
   private case class Patch(span: Span, replacement: String) {
     def delta: Int = replacement.length - (span.end - span.start)
