@@ -9,27 +9,27 @@ import org.junit.Test
 
 class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
   "externalJavadoc",
-  List(".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"),
+  List(".*java.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/java.base/"),
   List(
-    "https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.Builder.html",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/Map.Entry.html",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/Map.html",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#forEach-java.util.function.Consumer-",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#toArray-T:A-",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#subList-int-int-",
-    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#printf-java.lang.String-java.lang.Object...-",
-    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#write-byte:A-int-int-"
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/stream/Stream.Builder.html",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.Entry.html",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.html",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#forEach(java.util.function.Consumer)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#toArray(T[])",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#subList(int,int)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#printf(java.lang.String,java.lang.Object...)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#write(byte[],int,int)"
   )
 )
 
 class JavadocExplicitNullsExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
   "externalJavadoc",
-  List(".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"),
+  List(".*java.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/java.base/"),
   List(
-    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#forEach-java.util.function.Consumer-",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#subList-int-int-",
-    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#printf-java.lang.String-java.lang.Object...-",
-    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#write-byte:A-int-int-"
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#forEach(java.util.function.Consumer)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#subList(int,int)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#printf(java.lang.String,java.lang.Object...)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#write(byte[],int,int)"
   )
 ):
   override protected def compilerContext =

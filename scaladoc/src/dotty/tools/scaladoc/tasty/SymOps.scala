@@ -248,7 +248,8 @@ class SymOpsWithLinkCache:
             val paramSigs = sym.paramSymss.flatten.map(_.tree).collect {
               case v: ValDef => v.tpt.tpe
             }.map(getJavadocType)
-            "#" + sym.name + paramSigs.mkString("-","-","-")
+            // The anchors of javadoc since JDK 10, e.g. `#subList(int,int)`; JDK 8 used `#subList-int-int-`
+            "#" + sym.name + paramSigs.mkString("(", ",", ")")
           else
             "#" + sym.name
         } else ""

@@ -2,7 +2,7 @@ object ScaladocOptions {
   def scalacOptionsDocSettings(includeExternalMappings: Boolean = true) = {
     val extMap = Seq("-external-mappings:" +
         (if (includeExternalMappings) ".*scala/.*::scaladoc3::https://nightly.scala-lang.org/api/," else "") +
-        ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/")
+        ".*java/.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/java.base/")
     Seq(
       "-skip-by-regex:.+\\.internal($|\\..+)",
       "-skip-by-regex:.+\\.impl($|\\..+)",
