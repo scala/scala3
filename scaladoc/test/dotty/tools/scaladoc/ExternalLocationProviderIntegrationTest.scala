@@ -79,9 +79,12 @@ class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationP
     "https://nightly.scala-lang.org/api/scala/collection/immutable/Map.html",
     "https://nightly.scala-lang.org/api/scala/Predef$.html#String-0",
     "https://nightly.scala-lang.org/api/scala/util/matching/Regex$$Match.html",
+    "https://nightly.scala-lang.org/api/scala/jdk/StreamConverters$.html",
     "https://external.stubs/api/tests/externalStubs/$div$bslash$.html",
     "https://external.stubs/api/tests/externalStubs/$bslash$div$.html"
-  )
+  ),
+  // the object has no companion class
+  unexpectedLinks = List("https://nightly.scala-lang.org/api/scala/jdk/StreamConverters.html")
 )
 
 abstract class ExternalLocationProviderIntegrationTest(
