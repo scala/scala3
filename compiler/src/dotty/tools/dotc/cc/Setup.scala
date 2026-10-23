@@ -337,7 +337,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     *  4. Add capture set variables to all types that can be tracked
     *  5. Perform normalizeCaptures
     *
-    *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
+    *  Parts annotated with `@caps.internal.declared` (see PostTyper.explicifyTpt)
+    *  are transformed as explicit types instead.
     *  @param tp            the type to transform
     *  @param sym           the definition to which this type belongs
     *  @param typeArgFormal if `tp` is an an inferred type argument, the formal parameter info,
@@ -395,7 +396,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             addVar(apply(parent), tp)
           case AnnotatedType(parent, annot)
           if annot.symbol == defn.DeclaredAnnot =>
-            transformExplicitType(parent, sym, initialVariance = variance)
+            // A root in a capture set bound is not mapped to a local root (see GlobalCapToLocal)
+            transformExplicitType(parent, sym,
+              initialVariance = if parent.derivesFromCapSet then -1 else variance)
           case tp @ RefinedType(parent, rname, rinfo) =>
             val saved = refiningNames
             refiningNames += rname
