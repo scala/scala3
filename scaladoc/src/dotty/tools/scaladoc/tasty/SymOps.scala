@@ -302,7 +302,7 @@ class SymOpsWithLinkCache:
             externalLinkCache.get(file) match
               case Some(s) => s
               case None =>
-                val calculatedLink = Option(file).flatMap { f =>
+                val calculatedLink = Option(file).filterNot(dctx.isInput).flatMap { f =>
                   dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(f.path)))
                 }
                 externalLinkCache += (file -> calculatedLink)

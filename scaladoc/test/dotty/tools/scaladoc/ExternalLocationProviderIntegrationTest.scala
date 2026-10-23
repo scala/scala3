@@ -87,6 +87,14 @@ class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationP
   unexpectedLinks = List("https://nightly.scala-lang.org/api/scala/jdk/StreamConverters.html")
 )
 
+// What is documented in this run links to its own page, even if a mapping matches it
+class SelfMappedExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
+  "externalScaladoc3",
+  List(".*externalScaladoc3.*::scaladoc3::https://self.mapped/api/"),
+  List("Test.html"),
+  unexpectedLinks = List("https://self.mapped/api/tests/externalScaladoc3/Test.html")
+)
+
 abstract class ExternalLocationProviderIntegrationTest(
   name: String,
   mappings: Seq[String],
