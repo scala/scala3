@@ -20,10 +20,20 @@ object JavadocAnchorCreator:
     else if sym == defn.ObjectClass then Some("java.lang.Object")
     else None
 
-  private def transformPrimitiveType(using Quotes)(tpe: reflect.TypeRepr): String = tpe.classSymbol
-    .flatMap(javadocPrimitives)
-    .filter(_ => !tpe.typeSymbol.isTypeParam)
-    .getOrElse(tpe.show)
+  // A static nested class is a member of the companion module class, e.g. `Thread$`
+  private def javadocName(using Quotes)(sym: reflect.Symbol): String =
+    import reflect.*
+    val owner = sym.owner
+    if owner.isPackageDef then sym.fullName
+    else
+      val companion = if owner.flags.is(Flags.Module) then owner.companionClass else Symbol.noSymbol
+      javadocName(if companion.exists then companion else owner) + "." + sym.name
+
+  // javadoc names type parameters as declared (`add(E)`, not `ArrayList.this.E`), and
+  // nested classes with dots (`java.lang.Thread.UncaughtExceptionHandler`)
+  private def transformPrimitiveType(using Quotes)(tpe: reflect.TypeRepr): String =
+    if tpe.typeSymbol.isTypeParam then tpe.typeSymbol.name
+    else tpe.classSymbol.map(sym => javadocPrimitives(sym).getOrElse(javadocName(sym))).getOrElse(tpe.show)
 
   private def transformType(using Quotes)(tpe: reflect.TypeRepr): String =
     import reflect.*

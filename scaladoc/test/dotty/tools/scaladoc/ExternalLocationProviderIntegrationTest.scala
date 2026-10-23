@@ -18,7 +18,9 @@ class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationPro
     "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#toArray(T[])",
     "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#subList(int,int)",
     "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#printf(java.lang.String,java.lang.Object...)",
-    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#write(byte[],int,int)"
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#write(byte[],int,int)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#add(E)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Thread.html#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)"
   ),
   // parameters have no anchors of their own
   unexpectedLinks = List(
