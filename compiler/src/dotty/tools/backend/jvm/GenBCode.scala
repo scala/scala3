@@ -48,12 +48,12 @@ final class GenBCode extends Phase:
           val localOpt = new LocalOptimizer(callGraph, globalOpt, optimizerKnownBTypes, bTypesFromClassfile, optSettings)
           val globalOptOption = Option.when(ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations)(globalOpt)
           val localOptOption = Option.when(ctx.settings.optAnyEnabled)(localOpt)
-          CodeGen(this, bc, localOptOption, globalOptOption)
+          CodeGen(this, bc, localOptOption, globalOptOption, Some(bTypesFromClassfile))
         else
           val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, None)
           val knownBTypes = new KnownBTypes(bTypeLoader)
           val bc = BCode(knownBTypes, bTypeLoader, primitives, DisabledCallGraph)
-          CodeGen(this, bc, None, None)
+          CodeGen(this, bc, None, None, None)
       codeGen = gen
       gen
     case cg => cg

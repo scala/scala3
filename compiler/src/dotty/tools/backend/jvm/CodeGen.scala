@@ -1,7 +1,7 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.opt.{GlobalOptimizer, LocalOptimizer}
+import dotty.tools.backend.jvm.opt.{BTypesFromClassfile, GlobalOptimizer, LocalOptimizer}
 import dotty.tools.dotc.ast.Trees.PackageDef
 import dotty.tools.dotc.ast.tpd.{EmptyTree, Tree, TypeDef, ValDef}
 import dotty.tools.dotc.core.Contexts.{Context, atPhase}
@@ -28,7 +28,7 @@ import scala.annotation.constructorOnly
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimizer], globalOpt: Option[GlobalOptimizer])(using @constructorOnly initctx: Context):
+final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimizer], globalOpt: Option[GlobalOptimizer], bTypesFromClassfile: Option[BTypesFromClassfile])(using @constructorOnly initctx: Context):
   // Save the compiler callbacks to avoid having to capture a Context
   private val compilerCallback = initctx.compilerCallback
   private val incrementalCallback = initctx.incCallback
@@ -208,10 +208,12 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
         override def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
           gen.classBTypeCache().previouslyConstructedClassBType(internalName).get.info.nestedClasses
 
-        override def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
-          val c = gen.classBTypeCache().previouslyConstructedClassBType(internalName).get
-          Option.when(c.isNestedClass)(c)
-        }
+        override def getClassIfNested(internalName: InternalName): Option[ClassBType] =
+          // Code inlined from the classpath can refer to classes that codegen never needed a ClassBType for,
+          // e.g. MethodHandles$Lookup in an invokedynamic bootstrap handle.
+          gen.classBTypeCache().previouslyConstructedClassBType(internalName)
+            .orElse(bTypesFromClassfile.flatMap(_.classBTypeFromParsedClassfile(internalName).toOption))
+            .filter(_.isNestedClass)
       }
       c.visit(classNode)
       (c.declaredInnerClasses, c.referredInnerClasses)
