@@ -12,6 +12,7 @@ import Symbols.*
 import Constants.*
 import MegaPhase.*
 import NameOps.*
+import NameKinds.{ExpandedName, TraitSetterName}
 import Flags.*
 import Decorators.*
 import StdNames.nme
@@ -98,6 +99,22 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     else
       tree
 
+  /** Is `setter` a class's implementation of the trait setter of a concrete val of some
+   *  trait that the class does not inherit, because it is overridden, by a val or parameter
+   *  of the class or by a trait later in the linearization? Mixin then gives the class no
+   *  getter forwarder, and hence no field, for the trait's val (see `Mixin.traitInits`).
+   */
+  private def isSetterForOverriddenTraitVal(setter: Symbol)(using Context): Boolean =
+    setter.name.is(TraitSetterName) && {
+      val cls = setter.owner
+      val getterName = setter.name.asTermName.fieldName.getterName
+      setter.allOverriddenSymbols.exists: traitSetter =>
+        val getter = traitSetter.owner.info.decl(getterName).suchThat(_.isGetter).symbol
+        getter.exists
+        && !getter.name.is(ExpandedName)
+        && atPhase(mixinPhase)(!cls.info.nonPrivateMember(getter.name).hasAltWith(_.symbol == getter))
+    }
+
   override def transformDefDef(tree: DefDef)(using Context): Tree = {
     val sym = tree.symbol
 
@@ -160,11 +177,12 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
           // When transforming the getter, we determined that no field was needed.
           // In that case we can keep the setter as is, with a () rhs.
           tree
-        else if field.getter.is(ParamAccessor, butNot = Mutable) then
-          // This is a trait setter (because not Mutable) for a param accessor.
-          // We must keep the () rhs of the trait setter, otherwise the value
-          // inherited from the trait will overwrite the value of the parameter.
-          // See tests/run/traitValOverriddenByParamAccessor.scala
+        else if isSetterForOverriddenTraitVal(sym) then
+          // `field` belongs to the val or parameter that overrides the trait val, not to the
+          // trait val. We must keep the () rhs of the trait setter, otherwise the value
+          // inherited from the trait will overwrite the overriding value (which may not even
+          // have the same type). See tests/run/traitValOverriddenByParamAccessor.scala and
+          // tests/run/i25108.scala
           tree
         else
           if !field.is(Mutable) then
