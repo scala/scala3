@@ -212,6 +212,14 @@ class CompilationTests {
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
+  // Fusing miniphases into a MegaPhase should not change the output, so each test runs
+  // fused and unfused against the same checkfile.
+  // No -Ycheck in the unfused run: it is incompatible with this mode, as invariants only hold at MegaPhase boundaries.
+  @Test def runFusion: Unit = {
+    compileFilesInDir("tests/run-fusion", defaultOptions)(using TestGroup("runFusion")).checkRuns()
+    compileFilesInDir("tests/run-fusion", noYcheckOptions.and(NoFusionPlugin.option))(using TestGroup("runFusionUnfused")).checkRuns()
+  }
+
   @Test def runSpecial(): Unit = {
     // TODO: this test should be much simpler if we used source roots correctly in Vulpix and in Context.getSource,
     // because then we could switch the source root instead of moving the file
