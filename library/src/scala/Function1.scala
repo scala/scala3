@@ -16,6 +16,11 @@ import scala.language.`2.13`
 
 object Function1 {
 
+  /** Provides the [[UnliftOps.unlift]] method on functions that return an [[scala.Option]].
+   *
+   *  @tparam A the argument type of the wrapped function
+   *  @tparam B the type of the value contained in the `Option` result of the wrapped function
+   */
   implicit final class UnliftOps[A, B] private[Function1](private val f: A => Option[B]) extends AnyVal {
     /** Converts an optional function to a partial function.
      *
@@ -87,5 +92,6 @@ trait Function1[@specialized(Specializable.Arg) -T1, @specialized(Specializable.
    */
   @annotation.unspecialized def andThen[A](g: R => A): T1 => A = { x => g(apply(x)) }
 
+  /** Returns the string `"<function1>"`. */
   override def toString(): String = "<function1>"
 }
