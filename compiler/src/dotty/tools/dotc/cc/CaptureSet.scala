@@ -1216,12 +1216,17 @@ object CaptureSet:
         accountsFor(mappedElem) || addNewElem(mappedElem)
       else if accountsFor(elem) then
         true
-      else
-        // Propagate backwards to source. The element will be added then by another
-        // forward propagation from source that hits the first branch `if origin eq source then`.
-        printOnAssertionError(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}"):
-          reporting.trace(i"prop backwards $elem from $this # $id to $source # ${source.id} via $summarize"):
-            source.tryInclude(bimap.inverse.mapCapability(elem), this)
+      else bimap match
+        case bimap: ClassifierMap if !bimap.keeps(elem) =>
+          // The projection drops parts of `elem`, so no instance of `source` makes
+          // this set account for `elem`.
+          failWith(IncludeFailure(this, elem))
+        case _ =>
+          // Propagate backwards to source. The element will be added then by another
+          // forward propagation from source that hits the first branch `if origin eq source then`.
+          printOnAssertionError(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}"):
+            reporting.trace(i"prop backwards $elem from $this # $id to $source # ${source.id} via $summarize"):
+              source.tryInclude(bimap.inverse.mapCapability(elem), this)
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
      *  the source via the inverse type mapping and vice versa. That is, if
@@ -1748,16 +1753,38 @@ object CaptureSet:
     override def mapCapability(c: Capability) = c.readOnly
     override def toString = "ReadOnly"
 
-  private class RestrictMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
+  /** A narrowing map that projects capabilities by a classifier. Its identity
+   *  inverse is exact only for capabilities that the projection keeps whole:
+   *  {c} <: f(cs) holds iff {c} <: cs and {c} <: {f(c)}.
+   */
+  private abstract class ClassifierMap(using Context) extends NarrowingCapabilityMap:
+
+    /** Does the projection keep all of `c`, i.e. {c} <: {f(c)}? Subclasses decide the
+     *  common cases from the classifiers of `c` before running this full check.
+     */
+    def keeps(c: Capability)(using Context): Boolean =
+      mapCapability(c).singletonCaptureSet.accountsFor(c)
+
+  /** Maps `x` to `x.only[cls]` */
+  private class RestrictMap(val cls: ClassSymbol)(using Context) extends ClassifierMap:
     override def mapCapability(c: Capability) = c.restrict(cls)
+    override def keeps(c: Capability)(using Context): Boolean = c.transClassifiers match
+      case ClassifiedAs(cs) if cs.forall(_.isSubClass(cls)) => true
+      case Unclassified => false // a part of `c` has no classifier
+      case _ => super.keeps(c)
     override def toString = "Restrict"
     override def isSameMap(other: BiTypeMap) = other match
       case other: RestrictMap => cls == other.cls
       case _ => false
 
   /** Maps `x` to `x.except[cls]` */
-  private class ExceptMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
+  private class ExceptMap(val cls: ClassSymbol)(using Context) extends ClassifierMap:
     override def mapCapability(c: Capability) = c.exclude(cls)
+    override def keeps(c: Capability)(using Context): Boolean = c.transClassifiers match
+      // Not for roots, whose classifier `super.keeps` sees only once it is frozen
+      case ClassifiedAs(cs)
+      if cs.forall(leastClassifier(_, cls) == defn.NothingClass) && !c.isTerminalCapability => true
+      case _ => super.keeps(c)
     override def toString = "Except"
     // TODO: once except carries a list of classes, fuse except[A] ∘ except[B] into one map;
     // distinct-cls excepts don't fuse today (sound, just unoptimized).
