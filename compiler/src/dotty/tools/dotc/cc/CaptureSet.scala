@@ -250,8 +250,8 @@ sealed abstract class CaptureSet extends Showable:
    *  `.rd` or `?` takes part only if `x` has that wrapper too. Subtract the projections
    *  from `x` in turn. `x` is covered if nothing remains, if what remains lies outside
    *  the classifiers of the base, or if `coversPiece` covers each remaining piece, for
-   *  instance by widening it. A root base is not asked for its classifiers, since a
-   *  local root that is not yet classified would cache an answer that can still change.
+   *  instance by widening it. A root base is not asked for its classifiers, since those
+   *  of a local root can still change.
    */
   private def coveredByProjections(x: Capability)(coversPiece: Capability => Boolean)(using Context): Boolean =
     val base = x.core
