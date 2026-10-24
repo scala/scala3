@@ -1100,6 +1100,15 @@ object Capabilities:
     else if cls2.isSubClass(cls1) then cls2
     else defn.NothingClass
 
+  /** The least of the classifiers `clss` inherited by a class or type, or `AnyClass` if
+   *  there is none or two of them are unrelated, as in `Control & IO` or in a class not
+   *  checked by Setup.checkClassifiedInheritance. `leastClassifier` would give
+   *  `NothingClass`, which would make such instances count as empty.
+   */
+  def leastInheritedClassifier(clss: List[ClassSymbol])(using Context): ClassSymbol =
+    val least = clss.foldLeft(defn.AnyClass)(leastClassifier)
+    if least == defn.NothingClass then defn.AnyClass else least
+
   /** The least classifier that both `cls1` and `cls2` extend, or `AnyClass`,
    *  if `cls1` and `cls2` don't have a common ancestor classifier. It is
    *  assumed that each of `cls1` and `cls2` is either a classifier class or
