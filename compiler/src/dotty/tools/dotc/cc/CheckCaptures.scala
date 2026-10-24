@@ -1346,10 +1346,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           // LocalCaps from inside the class.
           markFree(declaredCaptures, tree, addUseInfo = false)
 
-        if sym.owner.derivesFrom(defn.Caps_Classifier) then
-          todoAtPostCheck += { () =>
-            checkFieldOfClassifiedClass(sym, declaredCaptures, sym.owner.asClass, tree.namePos)
-          }
+        sym.owner match
+          case cls: ClassSymbol if cls.derivesFrom(defn.Caps_Classifier) =>
+            todoAtPostCheck += { () =>
+              checkFieldOfClassifiedClass(sym, declaredCaptures, cls, tree.namePos)
+            }
+          case _ =>
     }
 
     /** Recheck method definitions:
@@ -1486,26 +1488,28 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  the classifier of `cls`.
      */
     def checkFieldOfClassifiedClass(fld: Symbol, cs: CaptureSet, cls: ClassSymbol, pos: SrcPos)(using Context): Unit =
-      if !fld.name.is(WildcardParamName) then
-        for ref <- cs.elems do
-          //println(i"checking $fld: $ref, ${ref.transClassifiers}, ${cs.transClassifiers} / ${cs.isConst}")
-          def fail(classified: String) =
-            val captures =
-              if ref.isTerminalCapability then ""
-              else i" captures ${ref.showAsCapability} which"
-            report.error(
-              em"""$fld's type ${fld.info}$captures is $classified,
-                  |but it is a field of $cls which is classied as ${cls.classifier.typeRef}.
-                  |Field classifiers have to conform to the classifier of the containing class.""",
-              pos)
-          ref.transClassifiers match
-            case Classifiers.Unclassified =>
-              fail("unclassified")
-            case Classifiers.ClassifiedAs(cs) =>
-              for c <- cs do
-                if !c.derivesFrom(cls.classifier) then
-                  fail(i"classified as ${c.typeRef}")
-            case _ =>
+      if !fld.name.is(WildcardParamName) && !cs.elems.isEmpty then
+        val clsClassifier = cls.classifier
+        if !clsClassifier.isTopClassifier then
+          for ref <- cs.elems do
+            //println(i"checking $fld: $ref, ${ref.transClassifiers}, ${cs.transClassifiers} / ${cs.isConst}")
+            def fail(classified: String) =
+              val captures =
+                if ref.isTerminalCapability then ""
+                else i" captures ${ref.showAsCapability} which"
+              report.error(
+                em"""$fld's type ${fld.info}$captures is $classified,
+                    |but it is a field of $cls which is classied as ${clsClassifier.typeRef}.
+                    |Field classifiers have to conform to the classifier of the containing class.""",
+                pos)
+            ref.transClassifiers match
+              case Classifiers.Unclassified =>
+                fail("unclassified")
+              case Classifiers.ClassifiedAs(cs) =>
+                for c <- cs do
+                  if !c.derivesFrom(clsClassifier) then
+                    fail(i"classified as ${c.typeRef}")
+              case _ =>
 
     /** Check: If `cls` is externally visible and has fields with `any` types, it must
      *  extend Capability.

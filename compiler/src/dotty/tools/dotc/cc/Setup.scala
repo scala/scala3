@@ -1022,6 +1022,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   // ------ Checks to run at Setup ----------------------------------------
 
   private def checkClassifiedInheritance(cls: ClassSymbol)(using Context): Unit =
+    if cls.derivesFrom(defn.Caps_Classifier) && cls.parentSyms.contains(defn.Caps_Classifier)
+        && !cls.derivesFromCapability
+    then
+      report.error(
+        em"""$cls extends `caps.Classifier` but not `caps.Capability`, so it cannot be a classifier.
+            |A classifier class is a class extending `caps.Capability` and directly extending `caps.Classifier`.""",
+        cls.srcPos)
     def recur(cs: List[ClassSymbol]): Unit = cs match
       case c :: cs1 =>
         for c1 <- cs1 do
