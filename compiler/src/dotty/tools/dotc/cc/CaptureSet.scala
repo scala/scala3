@@ -287,9 +287,11 @@ sealed abstract class CaptureSet extends Showable:
 
     // Even though subsumes already follows captureSetOfInfo, this is not enough.
     // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
+    // A capture set parameter is not widened to its bound, but a projection of one is:
+    // with `X <: {y, z}`, `X.except[C]` widens to `{y.except[C], z.except[C]}`.
     def widened(y: Capability) =
       !y.isTerminalCapability
-      && !y.coreType.derivesFromCapSet
+      && (!y.coreType.derivesFromCapSet || y.stripMaybe.stripReadOnly.isInstanceOf[Classified])
       && !(vs.isSeparating && y.captureSetOfInfo.containsTerminalCapability)
         // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
         // and might therefore insert an element that is too unspecific.
