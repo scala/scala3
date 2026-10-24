@@ -427,8 +427,14 @@ object Capabilities:
       case Classified(ref1, only, except) => mkClassified(ref1, only, except :+ cls)
       case self: (CoreCapability | RootCapability) => mkClassified(self, defn.AnyClass, cls :: Nil)
 
+    /** The parts of this capability that are covered by `that`, a projection
+     *  `b.only[O].except[E1, ..., En]`: `this.only[O].except[E1, ..., En]`.
+     */
+    final def partUnder(that: Classified)(using Context): Capability =
+      that.except.foldLeft(restrict(that.only))(_.exclude(_))
+
     /** The parts of this capability that are not covered by `that`, a projection
-     *  `b.only[O].except[E1, ..., En]` of the same underlying capability `b`. Since
+     *  `b.only[O].except[E1, ..., En]`. Since
      *
      *      A \ (O \ (E1 | ... | En))  =  (A \ O) | (A & E1) | ... | (A & En)
      *
@@ -710,9 +716,8 @@ object Capabilities:
      */
     def computeHiddenSet(f: Refs => Refs)(using Context): Refs = this match
       case self: LocalCap => f(self.hiddenSet.elems)
-      case Classified(elem1, only, except) =>
-        elem1.computeHiddenSet(f).map: r =>
-          except.foldLeft(r.restrict(only))(_.exclude(_))
+      case self @ Classified(elem1, _, _) =>
+        elem1.computeHiddenSet(f).map(_.partUnder(self))
       case ReadOnly(elem1) => elem1.computeHiddenSet(f).map(_.readOnly)
       case _ => emptyRefs
 

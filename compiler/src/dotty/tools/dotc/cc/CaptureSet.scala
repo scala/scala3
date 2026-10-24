@@ -233,8 +233,15 @@ sealed abstract class CaptureSet extends Showable:
   protected def toReader()(using Context): Boolean
 
   protected def addIfHiddenOrFail(elem: Capability)(using ctx: Context, vs: VarState): Boolean =
-    elems.exists(_.maxSubsumes(elem, canAddHidden = true))
+    def hides(r: Capability, c: Capability) = r.maxSubsumes(c, canAddHidden = true)
+    def hidden(c: Capability) = elems.exists(hides(_, c))
+    hidden(elem)
     || elem.isKnownEmpty
+    // Split across roots, if this set has one. Otherwise `accountsFor` has already
+    // tried the same split.
+    || !elem.core.isInstanceOf[GlobalCap | ResultCap]
+       && containsTerminalCapability
+       && coveredByProjections(elem, hides)(hidden)
     || failWith(IncludeFailure(this, elem))
 
   /** If this is a variable, add `cs` as a dependent set */
@@ -252,27 +259,55 @@ sealed abstract class CaptureSet extends Showable:
    *  the classifiers of the base, or if `coversPiece` covers each remaining piece, for
    *  instance by widening it. A root base is not asked for its classifiers, since those
    *  of a local root can still change.
+   *
+   *  If `hides` is given, projections of other local and global roots take part as well,
+   *  after those of the base. The part of a piece under such a projection `p` of an
+   *  element `elem` is subtracted if `hides(elem, part)` adds it to the hidden set of the
+   *  root, as if the root were instantiated with `x`. Result roots do not take part since
+   *  they unify one-to-one. Callers do not pass a global or result root `x`, since no root
+   *  subsumes it whole either.
    */
-  private def coveredByProjections(x: Capability)(coversPiece: Capability => Boolean)(using Context): Boolean =
+  private def coveredByProjections(x: Capability, hides: ((Capability, Capability) => Boolean) | Null = null)
+      (coversPiece: Capability => Boolean)(using Context): Boolean =
     val base = x.core
     def isReadOnly(c: Capability) = c.stripMaybe.isInstanceOf[ReadOnly]
-    def peer(elem: Capability): Classified | Null = elem.stripMaybe.stripReadOnly match
+    def projection(elem: Capability): Classified | Null = elem.stripMaybe.stripReadOnly match
       case p: Classified
-      if (p.underlying eq base) && p.only != defn.NothingClass
+      if p.only != defn.NothingClass
           && (x.isMaybe || !elem.isMaybe)
           && (isReadOnly(x) || !isReadOnly(elem)) => p
       case _ => null
+    def peer(elem: Capability): Classified | Null = projection(elem) match
+      case p: Classified if p.underlying eq base => p
+      case _ => null
+    def rootPeer(elem: Capability): Classified | Null = projection(elem) match
+      case p @ Classified(_: (LocalCap | GlobalCap), _, _) if p.underlying ne base => p
+      case _ => null
     def emptyUnderBase(rest: List[Capability]) =
-      !x.isTerminalCapability && (base.transClassifiers match
-        case ClassifiedAs(cs) => rest.forall(r => cs.forall(r.isProjectionDisjointFrom(_)))
-        case _ => false)
-    elems.exists(peer(_) != null) && {
-      val rest = elems.toList.foldLeft(x :: Nil): (rest, elem) =>
+      !x.isTerminalCapability && rest.forall(_.transClassifiers == ClassifiedAs(Nil))
+    def subtractPeers(rest: List[Capability]) =
+      elems.toList.foldLeft(rest): (rest, elem) =>
         peer(elem) match
           case p: Classified => rest.flatMap(_.remainderAfter(p))
           case null => rest
+    def subtractRoots(rest: List[Capability], hides: (Capability, Capability) => Boolean) =
+      elems.toList.foldLeft(rest): (rest, elem) =>
+        rootPeer(elem) match
+          case p: Classified =>
+            rest.flatMap: r =>
+              val part = r.partUnder(p)
+              if part.isEmptyProjection || emptyUnderBase(part :: Nil) || !hides(elem, part)
+              then r :: Nil
+              else r.remainderAfter(p)
+          case null => rest
+    def covered(rest: List[Capability]) =
       rest.isEmpty || emptyUnderBase(rest) || rest.forall(coversPiece)
-    }
+    if hides == null then
+      elems.exists(peer(_) != null) && covered(subtractPeers(x :: Nil))
+    else
+      // Pieces may be added to hidden sets, so this needs to be atomic
+      elems.exists(elem => peer(elem) != null || rootPeer(elem) != null)
+      && TypeComparer.atomicOp(covered(subtractRoots(subtractPeers(x :: Nil), hides)))
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
