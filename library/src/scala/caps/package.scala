@@ -30,7 +30,8 @@ sealed trait Capability extends Any
 
 /** A marker trait for classifier capabilities that can appear in `.only`
  *  and `.except` qualifiers. Capability classes directly extending `Classifier` are treated
- *  as classifier capbilities.
+ *  as classifier capabilities. Under capture checking, a class that extends `Classifier`
+ *  directly without extending [[Capability]] is an error.
  *
  *  [[Classifier]] has a formal meaning when
  *  [[scala.language.experimental.captureChecking Capture Checking]]
