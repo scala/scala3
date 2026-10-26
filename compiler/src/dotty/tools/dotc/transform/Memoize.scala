@@ -20,13 +20,14 @@ import sjs.JSSymUtils.*
 
 import util.Store
 import scala.compiletime.uninitialized
+import scala.collection.mutable
 
 object Memoize {
   val name: String = "memoize"
   val description: String = "add private fields to getters and setters"
 
   private final class MyState {
-    val classesThatNeedReleaseFence = new util.HashSet[Symbol]
+    val classesThatNeedReleaseFence = mutable.Set.empty[Symbol]
   }
 }
 

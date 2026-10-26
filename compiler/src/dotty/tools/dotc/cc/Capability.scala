@@ -218,7 +218,7 @@ object Capabilities:
     /** A map from context owners to skolem TermRefs that were created by ensurePath
      *  TypeMap's mapCapability.
      */
-    var skolems: immutable.Map[Symbol, TermRef] = immutable.HashMap.empty
+    var skolems: immutable.Map[Symbol, TermRef] = immutable.Map.empty
 
     //assert(rootId != 4, i"any $prefix, $origin, ${ctx.owner}")
 

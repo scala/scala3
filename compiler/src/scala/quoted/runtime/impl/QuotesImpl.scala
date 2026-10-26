@@ -2879,7 +2879,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case result =>
               List()
         // Maps PolyType indexes to type parameter symbol typerefs
-        val paramRefMap = collection.mutable.HashMap[Int, Symbol]()
+        val paramRefMap = collection.mutable.Map.empty[Int, Symbol]
         val paramRefRemapper = new Types.TypeMap {
           def apply(tp: Types.Type) = tp match {
             case pRef: ParamRef if pRef.binder == methodType => paramRefMap(pRef.paramNum).typeRef

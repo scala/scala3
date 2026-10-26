@@ -11,6 +11,7 @@ import java.io.InputStream
 import java.util.Properties
 import scala.util.{Failure, Success, Try}
 import scala.annotation.nowarn
+import scala.collection.mutable
 
 trait PluginPhase extends MiniPhase {
   def runsBefore: Set[String] = Set.empty
@@ -182,7 +183,7 @@ object Plugin {
       case Failure(e)  => Failure(e)
     })
 
-    val seen = util.HashSet[String]()
+    val seen = mutable.Set.empty[String]
     val enabled = (fromPaths ::: fromDirs) map(_.flatMap {
       case (classname, loader) =>
         Plugin.load(classname, loader).flatMap {  clazz =>
