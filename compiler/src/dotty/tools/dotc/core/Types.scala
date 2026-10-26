@@ -3875,8 +3875,17 @@ object Types extends TypeUtils {
      *  involving such [[TermParamRef]]s in [[NamedType#withPrefix]] could then
      *  result in a [[NoDenotation]], which would make later disambiguation of
      *  overloads impossible. See `tests/pos/annot-17242.scala` for example.
+     *
+     *  The map is a bijection: its inverse maps `paramRefs` back to references
+     *  to the symbols in `params`. Under capture checking, capture set variables
+     *  of the integrated type therefore become BiMapped views of the variables
+     *  of the symbol-based type, which translate elements added later in either
+     *  direction. A plain map would instead share a variable between the two
+     *  types if it leaves the current elements unchanged, and freeze it otherwise.
      */
-    private class IntegrateMap(from: List[Symbol], to: List[Type])(using Context) extends TypeMap:
+    private class IntegrateMap(from: List[Symbol], to: List[Type])(using Context) extends BiTypeMap:
+      thisMap =>
+
       override def apply(tp: Type) =
         // Same implementation as in `SubstMap`, except the `derivedSelect` in
         // the `NamedType` case, and the default case that just calls `mapOver`.
@@ -3903,6 +3912,14 @@ object Types extends TypeUtils {
               NamedType(pre, tp.name, tp.denot.asSeenFrom(pre))
             case _ =>
               tp.derivedSelect(pre)
+
+      class Inverse extends BiTypeMap:
+        def apply(tp: Type): Type = tp match
+          case tp: ParamRef if tp.binder eq self => from(tp.paramNum).namedType
+          case _ => mapOver(tp)
+        def inverse = thisMap
+
+      lazy val inverse = Inverse()
 
     final def derivedLambdaType(paramNames: List[ThisName] = this.paramNames,
                           paramInfos: List[PInfo] = this.paramInfos,
