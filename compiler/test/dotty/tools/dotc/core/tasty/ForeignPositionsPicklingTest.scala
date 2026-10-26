@@ -3,7 +3,7 @@ package dotty.tools.dotc.core.tasty
 import java.nio.file.{Files, Path}
 
 import org.junit.Test
-import org.junit.Assert.{assertArrayEquals, assertFalse}
+import org.junit.Assert.{assertArrayEquals, assertFalse, assertTrue}
 
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
@@ -52,7 +52,48 @@ class ForeignPositionsPicklingTest {
 
   private val childClasses = List("Q", "R1", "R2", "R3", "R4")
 
+  // `export` copies the annotations of the exported members, and of their
+  // parameters, onto the forwarders unchanged.
+  private val exportParent =
+    """package p
+      |class foo(x: Int) extends scala.annotation.StaticAnnotation
+      |class Svc:
+      |  @foo(3) def run(@foo(4) n: Int): Int = n
+      |  @deprecated("s", "1") def old: Int = 2
+      |  @foo(5) val v: Int = 1
+      |  @foo(6) var w: Int = 1
+      |  @foo(7) def poly[@foo(8) T](t: T): T = t
+      |  @foo(9) given gv: Ordering[Int] = Ordering.Int
+      |  @foo(10) type A = Int
+      |  @foo(11) def curried(@foo(12) a: Int)(@foo(13) b: Int): Int = a + b
+      |  extension (@foo(14) s: String) @foo(15) def ext: Int = 1
+      |""".stripMargin
+
+  private val exportChild =
+    """package p
+      |class E1:
+      |  val svc = new Svc
+      |  export svc.{run, old}
+      |class E2:
+      |  val svc = new Svc
+      |  export svc.{v, w}
+      |class E3:
+      |  val svc = new Svc
+      |  export svc.poly
+      |class E4:
+      |  val svc = new Svc
+      |  export svc.{gv, A}
+      |class E5:
+      |  val svc = new Svc
+      |  export svc.{curried, ext}
+      |""".stripMargin
+
+  private val exportChildClasses = List("E1", "E2", "E3", "E4", "E5")
+
   private def compile(parentPrefix: String): List[Array[Byte]] =
+    compile(parentPrefix, parent, child, childClasses)
+
+  private def compile(parentPrefix: String, parent: String, child: String, childClasses: List[String]): List[Array[Byte]] =
     val dir = Files.createTempDirectory("foreign-positions")
     val src = Files.createDirectory(dir.resolve("src"))
     val out = Files.createDirectory(dir.resolve("out"))
@@ -71,4 +112,11 @@ class ForeignPositionsPicklingTest {
     val after = compile("// a comment\n\n")
     for (c, b, a) <- childClasses.lazyZip(before).lazyZip(after) do
       assertArrayEquals(s"$c.tasty", b, a)
+
+  @Test def parentLayoutDoesNotAffectExportForwarderTasty(): Unit =
+    val before = compile("", exportParent, exportChild, exportChildClasses)
+    val after = compile("// a comment\n\n", exportParent, exportChild, exportChildClasses)
+    val differing = for (c, b, a) <- exportChildClasses.lazyZip(before).lazyZip(after).toList
+                        if !java.util.Arrays.equals(b, a) yield c
+    assertTrue(s"TASTy depends on the layout of P.scala for: ${differing.mkString(", ")}", differing.isEmpty)
 }
