@@ -613,6 +613,7 @@ object SpaceEngine {
             // After all, there's nothing strictly "wrong" with unassigned type vars,
             // it just fails TreeChecker's linting.
             maximizeType(unapplyArgType, Spans.NoSpan)
+          ctx.typerState.gc()
           mt
     }
 
