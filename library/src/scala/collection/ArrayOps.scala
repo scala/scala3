@@ -296,7 +296,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   /** Method mirroring [[SeqOps.sizeIs]] for consistency, except it returns an `Int`
    *  because `size` is known and comparison is constant-time.
    *
-   *  These operations are equivalent to [[sizeCompare(Int) `sizeCompare(Int)`]], and
+   *  These operations are equivalent to [[sizeCompare(Int)]], and
    *  allow the following more readable usages:
    *
    *  ```
@@ -315,7 +315,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   /** Method mirroring [[SeqOps.lengthIs]] for consistency, except it returns an `Int`
    *  because `length` is known and comparison is constant-time.
    *
-   *  These operations are equivalent to [[lengthCompare(Int) `lengthCompare(Int)`]], and
+   *  These operations are equivalent to [[lengthCompare(Int)]], and
    *  allow the following more readable usages:
    *
    *  ```
