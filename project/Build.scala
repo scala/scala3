@@ -387,6 +387,13 @@ object Build {
     },
   ) ++ scaladocDerivedInstanceSettings
 
+  // StringContext's `macro ???` stubs make Zinc treat it as a macro definition, so every upstream
+  // change recompiled it and then all its users: a comment edit rebuilt the whole library.
+  // Trade-off: callers of a library macro aren't recompiled when its implementation changes.
+  lazy val noRecompileOnMacroDefSettings = Def.settings(
+    incOptions ~= (_.withRecompileOnMacroDef(false)),
+  )
+
   lazy val commonMiMaSettings = Def.settings(
     mimaPreviousArtifacts ++= {
       val thisProjectID = projectID.value
@@ -1013,6 +1020,7 @@ object Build {
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
+      noRecompileOnMacroDefSettings,
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1103,6 +1111,7 @@ object Build {
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
+      noRecompileOnMacroDefSettings,
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
