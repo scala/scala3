@@ -33,8 +33,10 @@ permissions:
 #   - scala3-tasty-inspector
 #   - scala3-sbt-bridge-bootstrapped
 #
+# Compiles with scoverage (no Ycheck):
+#   - scala3-compiler-bootstrapped
+#
 # Compiles with scoverage (no Ycheck, -Werror disabled):
-#   - scala3-compiler-nonbootstrapped
 #   - scaladoc
 #
 # Coverage test suite:
@@ -178,7 +180,7 @@ jobs:
           scala3-sbt-bridge-bootstrapped/compile'
 
   # Projects that compile with coverage but without Ycheck
-  scala3-compiler-nonbootstrapped-coverage:
+  scala3-compiler-bootstrapped-coverage:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
@@ -189,16 +191,17 @@ jobs:
           java-version: 17
           cache: 'sbt'
       - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      # sbt first builds the compiler from this checkout without coverage, then uses it here.
       - name: Compile with coverage
         run: |
           ./project/scripts/sbt '
-          set `scala3-compiler-nonbootstrapped` / Compile / compile / scalacOptions ~= (_.filterNot(_ == "-Werror"));
-          set `scala3-compiler-nonbootstrapped` / Compile / compile / scalacOptions ++= Seq(
-            "-coverage-out", "compiler/target/scala3-compiler-nonbootstrapped/coverage",
+          set `scala3-compiler-bootstrapped` / Compile / compile / scalacOptions ++= Seq(
+            "-coverage-out", "compiler/target/scala3-compiler-bootstrapped/coverage",
             "-sourceroot", "${{ github.workspace }}"
           );
-          scala3-compiler-nonbootstrapped/clean;
-          scala3-compiler-nonbootstrapped/compile'
+          scala3-compiler-bootstrapped/clean;
+          scala3-compiler-bootstrapped/compile'
+          test -s compiler/target/scala3-compiler-bootstrapped/coverage/scoverage.coverage
 
   scaladoc-coverage:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
