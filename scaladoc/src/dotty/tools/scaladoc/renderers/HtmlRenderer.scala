@@ -262,7 +262,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     div(id := "")(
       div(id := "header", cls := "body-small")(
         div(cls := "header-container-left")(
-          a(href := pathToRoot(link.dri), cls := "logo-container")(
+          // `index.html` rather than its directory, which `file://` URLs show as a listing
+          a(href := resolveRoot(link.dri, "index.html"), cls := "logo-container")(
             projectLogoElem.toSeq,
             darkProjectLogoElem.toSeq,
             span(cls := "project-name h300")(args.name)
