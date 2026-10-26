@@ -17,7 +17,7 @@ import FileUtils.*
  * It allows us to e.g. reduce significantly memory used by PresentationCompilers in Scala IDE
  * when there are a lot of projects having a lot of common dependencies.
  */
-sealed trait ZipAndJarFileLookupFactory {
+private[classpath] sealed trait ZipAndJarFileLookupFactory {
   private val cache = new FileBasedCache[ClassPath]
 
   def create(zipFile: AbstractFile)(using Context): ClassPath =
@@ -36,7 +36,7 @@ sealed trait ZipAndJarFileLookupFactory {
  * Manages creation of classpath for class files placed in zip and jar files.
  * It should be the only way of creating them as it provides caching.
  */
-object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
+private[classpath] object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
   private class ZipArchiveClassPath(protected override val zipFile: File, protected override val release: String)
     extends ZipArchiveFileLookup[BinaryFileEntry] {
 
@@ -60,7 +60,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
  * Manages creation of classpath for source files placed in zip and jar files.
  * It should be the only way of creating them as it provides caching.
  */
-object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
+private[classpath] object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
   private class ZipArchiveSourcePath(protected override val zipFile: File, protected override val release: String) extends ZipArchiveFileLookup[SourceFileEntry] {
     override def sources(inPackage: String): Iterable[SourceFileEntry] = files(inPackage)
 
@@ -73,7 +73,7 @@ object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
     ZipArchiveSourcePath(jFile, release)
 }
 
-final class FileBasedCache[T] {
+private[classpath] final class FileBasedCache[T] {
   private case class Stamp(lastModified: FileTime, fileKey: Object)
   private val cache = collection.mutable.Map.empty[java.nio.file.Path, (Stamp, T)]
 

@@ -14,7 +14,7 @@ import FileUtils.*
  * It provides common logic for classes handling class and source files.
  * It's aware of things like e.g. META-INF directory which is correctly skipped.
  */
-trait ZipArchiveFileLookup[FileEntryType] extends ClassPath {
+private[classpath] trait ZipArchiveFileLookup[FileEntryType] extends ClassPath {
   protected val zipFile: File
   protected val release: String
 

@@ -35,6 +35,35 @@ trait ClassPath {
 object ClassPath {
   val RootPackage: String = ""
 
+  /** Aggregates the given classpaths. */
+  def aggregate(classPaths: List[ClassPath]): ClassPath =
+    AggregateClassPath(classPaths)
+
+  /** Attempts to create a classpath for the Java libraries of the given Java release. */
+  def jrt(release: Option[String]): Option[ClassPath] =
+    JrtClassPath(release)
+
+  /** Replaces ct.sym with jrt in the given classpath. */
+  def replaceCtSymWithJrt(classPath: ClassPath): ClassPath =
+    classPath match
+      case AggregateClassPath((_: CtSymClassPath) :: rest) =>
+        JrtClassPath(release = None) match
+          case Some(jrt) => AggregateClassPath(jrt :: rest)
+          case None => classPath
+      case _ => classPath
+
+  /** Update classpath with a substituted subentry */
+  def replace(classPath: ClassPath, subst: Map[ClassPath, ClassPath]): ClassPath =
+    classPath match
+      case AggregateClassPath(entries) => AggregateClassPath(entries.map(e => subst.getOrElse(e, e)))
+      case cp =>subst.getOrElse(cp, cp)
+
+  /** Adds the two given classpaths. */
+  def add(classPath: ClassPath, newClassPath: ClassPath): ClassPath =
+    classPath match
+      case AggregateClassPath(entries) => AggregateClassPath(entries :+ newClassPath)
+      case cp => AggregateClassPath(cp :: newClassPath :: Nil)
+
   /** Expand single path entry */
   private def expandS(pattern: String): List[String] = {
     val wildSuffix = File.separator + "*"
@@ -63,6 +92,21 @@ object ClassPath {
   def expandPath(path: String, expandStar: Boolean = true): List[String] =
     if (expandStar) split(path).flatMap(expandS)
     else split(path)
+
+  /** Transforms a .class file name to a .tasty file name, for use in finding .tasty files. */
+  def classNameToTasty(fileName: String): String =
+    val classOrModuleName = fileName.stripSuffix(".class")
+    val className =
+      if classOrModuleName.endsWith("$")
+        && classOrModuleName != "Null$" // scala.runtime.Null$
+        && classOrModuleName != "Nothing$" // scala.runtime.Nothing$
+        // Special case for `object $` in Amonite.
+        // This is an ad-hoc workaround for Amonite `object $`. See issue #19702
+        // This definition is not valid Scala.
+        && classOrModuleName != "$"
+      then classOrModuleName.stripSuffix("$")
+      else classOrModuleName
+    className + ".tasty"
 
   /** Pair classfile/TASTy entries with source entries of the same name.
    *

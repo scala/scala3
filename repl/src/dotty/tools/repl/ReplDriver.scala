@@ -38,7 +38,6 @@ import dotc.config.{CompilerCommand, Feature}
 import dotty.tools.io
 import dotty.tools.io.*
 import dotty.tools.io.PlainFile.toPlainFile
-import dotty.tools.dotc.classpath.FileUtils.isClassContainer
 import dotty.tools.repl.ScalaClassLoader.*
 
 import org.jline.reader.*
@@ -716,7 +715,7 @@ class ReplDriver(settings: Array[String],
         state
       else
         def flatten(f: AbstractFile): Iterator[AbstractFile] =
-          if (f.isClassContainer) f.iterator.flatMap(flatten)
+          if (f.isDirectory || f.ext.isJarOrZip) f.iterator.flatMap(flatten)
           else Iterator(f)
 
         def tryClassLoad(classFile: AbstractFile): Option[String] = {

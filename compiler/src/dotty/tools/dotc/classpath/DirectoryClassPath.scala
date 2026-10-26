@@ -21,7 +21,7 @@ import scala.collection.mutable
  * when we have a name of a package.
  * It abstracts over the file representation to work with both JFile and AbstractFile.
  */
-trait DirectoryLookup[FileEntryType] extends ClassPath {
+private[classpath] trait DirectoryLookup[FileEntryType] extends ClassPath {
   type F
 
   protected val dir: F
@@ -60,7 +60,7 @@ trait DirectoryLookup[FileEntryType] extends ClassPath {
   }
 }
 
-trait JFileDirectoryLookup[FileEntryType] extends DirectoryLookup[FileEntryType] {
+private[classpath] trait JFileDirectoryLookup[FileEntryType] extends DirectoryLookup[FileEntryType] {
   type F = JFile
 
   protected def getSubDir(packageDirName: String): Option[JFile] = {
@@ -103,7 +103,7 @@ trait JFileDirectoryLookup[FileEntryType] extends DirectoryLookup[FileEntryType]
       case d => Iterable(d)
 }
 
-object JrtClassPath {
+private[classpath] object JrtClassPath {
   import java.nio.file.*, java.net.URI, scala.util.Properties
   def apply(release: Option[String]): Option[ClassPath] =
     // Longer term we'd like an official API for this in the JDK
@@ -129,7 +129,7 @@ object JrtClassPath {
   *
   * The implementation assumes that no classes exist in the empty package.
   */
-final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
+private[classpath] final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
   import java.nio.file.Path
   private val dir: Path = fs.getPath("/packages")
   // Right now the compiler always asks for those at the root package anyway (inPackage == ""),
@@ -203,7 +203,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
 /**
   * Implementation `ClassPath` based on the \$JAVA_HOME/lib/ct.sym backing http://openjdk.java.net/jeps/247
   */
-final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends ClassPath {
+private[classpath] final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends ClassPath {
   import java.nio.file.Path, java.nio.file.*
 
   private val fileSystem: FileSystem = FileSystems.newFileSystem(ctSym, null: ClassLoader | Null)
@@ -258,7 +258,7 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
     Iterable.empty // not necessary to include CT in there
 }
 
-class DirectoryClassPath(protected override val dir: JFile) extends JFileDirectoryLookup[BinaryFileEntry] {
+private[classpath] class DirectoryClassPath(protected override val dir: JFile) extends JFileDirectoryLookup[BinaryFileEntry] {
 
   override def findClassFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className)
@@ -276,7 +276,7 @@ class DirectoryClassPath(protected override val dir: JFile) extends JFileDirecto
   override def classes(inPackage: String): Iterable[BinaryFileEntry] = files(inPackage)
 }
 
-class DirectorySourcePath(protected override val dir: JFile) extends JFileDirectoryLookup[SourceFileEntry] {
+private[classpath] class DirectorySourcePath(protected override val dir: JFile) extends JFileDirectoryLookup[SourceFileEntry] {
   protected def createFileEntry(file: AbstractFile): SourceFileEntry = SourceFileEntry(file)
   protected def isMatchingFile(f: JFile): Boolean = endsSourceExtension(f.getName)
 

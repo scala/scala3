@@ -8,10 +8,12 @@ import dotty.tools.tasty.UnpickleException
 import Contexts.*, Symbols.*, Types.*, Names.*, StdNames.*, NameOps.*, Scopes.*, Decorators.*
 import SymDenotations.*, unpickleScala2.Scala2Unpickler.*, Constants.*, Annotations.*, util.Spans.*
 import Phases.*
-import ast.{ tpd, untpd }
-import ast.tpd.*, util.*
-import java.io.IOException
+import ast.{tpd, untpd}
+import ast.tpd.*
+import dotty.tools.dotc.classpath.ClassPath
+import util.*
 
+import java.io.IOException
 import java.lang.Integer.toHexString
 
 import scala.collection.immutable
@@ -20,7 +22,6 @@ import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
 import io.AbstractFile
-import dotty.tools.dotc.classpath.FileUtils.hasSiblingTasty
 import dotty.tools.dotc.config.Printers
 
 import scala.compiletime.uninitialized
@@ -1222,7 +1223,7 @@ final class ClassfileParser(
 
       if (scan(tpnme.TASTYATTR)) {
         val hint =
-          if classfile.hasSiblingTasty then "This is likely a bug in the compiler. Please report."
+          if classfile.resolveSibling(ClassPath.classNameToTasty(classfile.name)) != null then "This is likely a bug in the compiler. Please report."
           else "This `.tasty` file is missing. Try cleaning the project to fix this issue."
         report.error(s"Loading Scala 3 binary from $classfile. It should have been loaded from `.tasty` file. $hint", NoSourcePosition)
         return None

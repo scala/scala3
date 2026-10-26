@@ -4,7 +4,7 @@ package config
 
 import WrappedProperties.AccessControl
 import io.{Directory, Path}
-import classpath.{AggregateClassPath, ClassPath, ClassPathFactory, JrtClassPath}
+import classpath.{ClassPath, ClassPathFactory}
 import PartialFunction.condOpt
 import core.Contexts.*
 import Settings.*
@@ -146,11 +146,7 @@ object PathResolver {
       }
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))
       println("RESIDUAL: 'scala %s'\n".format(rest.mkString(" ")))
-
-      pr.result match {
-        case cp: AggregateClassPath =>
-          println(s"ClassPath has ${cp.aggregates.size} entries and results in:\n${cp.searchLocations.map(_.path).mkString("\n")}")
-      }
+      println(pr.result)
     }
 }
 
@@ -207,7 +203,7 @@ class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(usi
       val release = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
 
       List(
-        JrtClassPath(release),                        // 1. The Java 9+ classpath (backed by the jrt:/ virtual system, if available)
+        ClassPath.jrt(release),                       // 1. The Java 9+ classpath (backed by the jrt:/ virtual system, if available)
         classesInPath(javaBootClassPath),             // 2. The Java bootstrap class path.
         contentsOfDirsInPath(javaExtDirs),            // 3. The Java extension class path.
         classesInExpandedPath(javaUserClassPath),     // 4. The Java application class path.
@@ -240,7 +236,7 @@ class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(usi
   }
 
   lazy val result: ClassPath = {
-    val cp = AggregateClassPath(Calculated.containers)
+    val cp = ClassPath.aggregate(Calculated.containers)
 
     if (settings.YlogClasspath.value) {
       Console.println("Classpath built from " + settings.toConciseString(ctx.settingsState))
