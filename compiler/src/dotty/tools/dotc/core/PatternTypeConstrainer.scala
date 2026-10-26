@@ -208,9 +208,11 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  Essentially, we say that `D[B] extends C[B]` s.t. refines parameter `A` of `trait C[A]` invariantly if
    *  when `c: C[T]` and `c` is instance of `D`, then necessarily `c: D[T]`. This is violated if `A` is variant:
    *
+   *     ```
    *     trait C[+A]
    *     trait D[+B](val b: B) extends C[B]
    *     trait E extends D[Any](0) with C[String]
+   *     ```
    *
    *  `E` is a counter-example to the above - if `e: E`, then `e: C[String]` and `e` is instance of `D`, but
    *  it is false that `e: D[String]`! This is a problem if we're constraining a pattern like the below:

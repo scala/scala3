@@ -272,7 +272,7 @@ object language {
 
     /** Experimental support for specialized traits
      * 
-     * @see [[docs/_docs/internals/specialized-traits.md]]
+     * @see [[https://nightly.scala-lang.org/docs/reference/experimental/specialized-traits]]
      */
     @compileTimeOnly("`specializedTraits` can only be used at compile time in import statements")
     object specializedTraits
