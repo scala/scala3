@@ -18,9 +18,6 @@ object ScaladocOptions {
       // Reflect doesn't expect to see it as a standalone definition
       // and therefore it's easier just not to document it
       "-skip-by-id:scala.runtime.MatchCase",
-      "-skip-by-id:dotty.tools.tasty",
-      "-skip-by-id:dotty.tools.tasty.util",
-      "-skip-by-id:dotty.tools.tasty.besteffort",
       "-project-footer", s"Copyright (c) 2002-$currentYear, LAMP/EPFL",
       "-author",
       "-groups",
