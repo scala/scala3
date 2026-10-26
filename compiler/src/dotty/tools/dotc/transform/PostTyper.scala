@@ -17,6 +17,7 @@ import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import config.Feature
 import util.{SrcPos, Stats}
+import util.Spans.NoSpan
 import reporting.*
 import NameKinds.{WildcardParamName, TempResultName}
 import typer.Applications.{spread, HasSpreads}
@@ -121,13 +122,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
   override def initContext(ctx: FreshContext): Unit =
     initContextCalled = true
     compilingScala2StdLib = Feature.shouldBehaveAsScala2(using ctx)
-
-  /** The anonymous function symbols that need an explicified result type
-   *  if their right hand side is also a closure. This is the case if
-   *  the closure's type forms part of the type of a valdef or defdef
-   *  that has a polymorphic closure type.
-   */
-  private val closuresNeedingExplicify = mutable.Set.empty[Symbol]
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
@@ -399,22 +393,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       if !tree.symbol.is(Package) then tree
       else errorTree(tree, em"${tree.symbol} cannot be used as a type")
 
-    /** Make result types of ValDefs and DefDefs that override some other definitions
-     *  declared types rather than InferredTypes. This is necessary since we otherwise
-     *  clean retains annotations from such types. But for an overriding symbol the
-     *  retains annotations come from the explicitly declared parent types, so should
-     *  be kept.
-     *  TODO: If the overridden type is an InferredType, we should probably clean retains
-     *  from both types as well.
-     */
-    private def makeOverrideTypeDeclared(symbol: Symbol, tpt: Tree)(using Context): Tree =
-      tpt match
-        case tpt: InferredTypeTree
-        if Feature.ccEnabled && symbol.allOverriddenSymbols.hasNext =>
-          TypeTree(tpt.tpe, inferred = false).withSpan(tpt.span).withAttachmentsFrom(tpt)
-        case _ =>
-          tpt
-
     /** Under ccEnabled, If the (return-) type of the ValDef or DefDef is an InferredType,
      *  make (some parts of) it non-inferred types so that embedded retains annotations
      *  are kept. Specifically:
@@ -426,55 +404,120 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *       non-inferred by adding `@caps.declared` annotations.
      *       In this case we need to keep references to bound capset variables in retains
      *       clauses of subsequent parameters.
-     *   (3) If the definition is a closure that is a curried result of the
-     *       right hand side of a defininition meeting condition (2), also make
-     *       its parameter types non-inferred as specified by (2).
+     *   (3) Otherwise, if the definition is not a closure, is exempt from explicit
+     *       type checks, and its right hand side has a single source of function types,
+     *       such as the closure in `val f = Box([C^] => ...)` or the reference in
+     *       `val g = Box(p)`, make the parameter types of the function types in its type
+     *       non-inferred as in (2), except for some capture sets (see `DeclareFormals`).
+     *       With several sources, typer may have merged their types, keeping the capture
+     *       sets of only one of them. Definitions that are not exempt can be seen from
+     *       other compilation units, which see their types with all inferred capture
+     *       sets dropped.
      */
     private def explicifyTpt(tree: ValOrDefDef)(using Context): Tree = tree.tpt match
       case tpt: InferredTypeTree if Feature.ccEnabled =>
-        if tree.symbol.allOverriddenSymbols.hasNext then // (1)
+        val sym = tree.symbol
+        if sym.allOverriddenSymbols.hasNext then // (1)
           tpd.cpy.TypeTree(tpt)(inferred = false)
-        else tree.rhs match
-          case closureDef(mdef)
-          if !tree.symbol.isAnonymousFunction // (2)
-            || closuresNeedingExplicify.remove(tree.symbol) // (3)
-          =>
-            val tpe1 = makeFormalsDeclared(tpt.tpe, tree.rhs)
-            if tpe1 `ne` tpt.tpe
-            then TypeTree(tpe1, inferred = true).withSpan(tree.span).withAttachmentsFrom(tpt)
-            else tpt
-          case _ => tpt
+        else
+          val tpe1 =
+            if sym.isAnonymousFunction then tpt.tpe
+            else tree.rhs match
+              case closureDef(_) => // (2)
+                makeFormalsDeclared(tpt.tpe, tree.rhs)
+              case _ if sym.isExemptFromExplicitChecks => // (3)
+                val declared = DeclareFormals(sym)(tpt.tpe)
+                if (declared `ne` tpt.tpe) && hasSingleFunctionSource(tree.rhs) then declared
+                else tpt.tpe
+              case _ =>
+                tpt.tpe
+          if tpe1 `ne` tpt.tpe
+          then TypeTree(tpe1, inferred = true).withSpan(tree.span).withAttachmentsFrom(tpt)
+          else tpt
       case tpt =>
         tpt
 
-    /** Insert a `@caps.declared` annotation on all parameter infos
-     *  of a function type `tp` corresponding to a closure `rhs` that contain
-     *  a "retains" annotation. TypeBound infos of type parameters get
-     *  a `@caps.declared` on each bound that contains a "retains" annotation.
+    /** `formal` with a `@caps.declared` annotation if it contains a "retains"
+     *  annotation. TypeBound infos of type parameters get a `@caps.declared`
+     *  on each bound that contains a "retains" annotation.
+     */
+    private def makeFormalDeclared(formal: Type)(using Context): Type = formal match
+      case formal @ TypeBounds(lo, hi) =>
+        formal.derivedTypeBounds(makeFormalDeclared(lo), makeFormalDeclared(hi))
+      case _ =>
+        val cleanup = CleanupRetains()
+        cleanup(formal) // only used for setting cleanup.retainsFound as a side effect
+        if cleanup.retainsFound && !formal.hasAnnotation(defn.DeclaredAnnot)
+        then AnnotatedType(formal, Annotation(defn.DeclaredAnnot, NoSpan))
+        else formal
+
+    /** Make declared the parameter infos of a function type `tp` corresponding to
+     *  a closure `rhs`, and those of its curried results corresponding to closures
+     *  nested in `rhs`, also when they are the result of a block.
      */
     private def makeFormalsDeclared(tp: Type, rhs: Tree)(using Context): Type = rhs match
       case closureDef(mdef) =>
-        closuresNeedingExplicify += mdef.symbol
-
-        def makeFormalDeclared(formal: Type)(using Context): Type = formal match
-          case formal @ TypeBounds(lo, hi) =>
-            formal.derivedTypeBounds(makeFormalDeclared(lo), makeFormalDeclared(hi))
-          case _ =>
-            val cleanup = CleanupRetains()
-            cleanup(formal) // only used for setting cleanup.retainsFound as a side effect
-            if cleanup.retainsFound && !formal.hasAnnotation(defn.DeclaredAnnot)
-            then AnnotatedType(formal, Annotation(defn.DeclaredAnnot, rhs.span))
-            else formal
-
         tp match
           case FunctionOrMethod(formals, res) =>
-            val rhs1 = formals match
-              case (_: TypeBounds) :: _ => rhs
-              case _ => mdef.rhs
             val formals1 = formals.mapConserve(makeFormalDeclared)
-            tp.derivedFunctionOrMethod(formals1, makeFormalsDeclared(res, rhs1))
+            tp.derivedFunctionOrMethod(formals1, makeFormalsDeclared(res, mdef.rhs))
           case _ => tp
+      case Block(_, expr) => makeFormalsDeclared(tp, expr)
       case _ => tp
+
+    /** Does `tree` have exactly one part that contributes a function type to its type,
+     *  i.e. a closure, a reference, or an explicitly written type that mentions one?
+     */
+    private def hasSingleFunctionSource(tree: Tree)(using Context): Boolean =
+      val countSources = new TreeAccumulator[Int]:
+        def apply(n: Int, t: Tree)(using Context): Int = t match
+          case _: InferredTypeTree => n
+          case closureDef(_) | _: RefTree | _: TypTree
+          if t.tpe.widen.existsPart(defn.isFunctionType) => n + 1
+          case _ => if n > 1 then n else foldOver(n, t)
+      countSources(0, tree) == 1
+
+    /** A map that makes declared the parameter types of the function types in a type,
+     *  as described in (3) of `explicifyTpt`. Bounds are declared as in (2). In other
+     *  parameter types, capture sets that refer to a local definition of the right hand
+     *  side of `sym` or to a root capability are left to inference. A declared root would
+     *  become a root of the definition, which differs from the root of the closure.
+     *  A root is kept in the capture set of a parameter of stateful type, where inferring
+     *  a smaller capture set would turn an exclusive parameter into one that accepts
+     *  read-only references.
+     */
+    private class DeclareFormals(sym: Symbol)(using Context) extends TypeMap:
+      def apply(tp: Type): Type = tp match
+        case tp: MethodOrPoly => // a method of a structural refinement, not a function
+          mapOver(tp)
+        case FunctionOrMethod(formals, res) =>
+          val formals1 = formals.mapConserve:
+            case formal: TypeBounds => makeFormalDeclared(formal)
+            case formal => DeclareCaptureSets(formal)(formal)
+          tp.derivedFunctionOrMethod(formals1, apply(res))
+        case _ =>
+          mapOver(tp)
+
+      /** A map over the parameter type `formal` that makes declared its outermost
+       *  capturing types whose capture sets qualify, including their parents.
+       */
+      private class DeclareCaptureSets(formal: Type) extends TypeMap:
+        def apply(tp: Type): Type = tp match
+          case AnnotatedType(_, ann) if ann.symbol == defn.DeclaredAnnot =>
+            tp
+          case AnnotatedType(parent, ann: RetainingAnnotation)
+          if !ann.retainedType.existsPart(isLocalRef)
+              && (!ann.retainedType.existsPart(isRoot) || (tp eq formal) && parent.derivesFromStateful) =>
+            AnnotatedType(tp, Annotation(defn.DeclaredAnnot, NoSpan))
+          case _ =>
+            mapOver(tp)
+
+      private def isRoot(tp: Type): Boolean = tp.isCapsAnyRef || tp.isCapsFreshRef
+
+      private def isLocalRef(tp: Type): Boolean = tp match
+        case ref: NamedType =>
+          ref.symbol.isContainedIn(sym) && !(ref.symbol.is(Param) && ref.symbol.owner == sym)
+        case _ => false
 
     /** If one of `trees` is a spread of an expression that is not idempotent, lift out all
      *  non-idempotent expressions (not just the spreads) and apply `within` to the resulting
