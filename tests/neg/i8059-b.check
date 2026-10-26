@@ -1,0 +1,8 @@
+-- [E049] Reference Error: tests/neg/i8059-b/Test.scala:12:34 ----------------------------------------------------------
+12 |      def f = implicitly[ClassTag[X]] // error
+   |                                  ^
+   |                                  Reference to X is ambiguous.
+   |                                  It is both defined in package p
+   |                                  and imported by name subsequently by import p.r.X
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,26 +1,24 @@
-/*
- * Copyright (c) 2014 Contributor. All rights reserved.
- */
 package dotty.tools.dotc.classpath
 
 import dotty.tools.dotc
 import dotty.tools.io.File.pathSeparator
 import dotty.tools.io.{AbstractFile, Directory, File, FileExtension}
 
-import java.net.URL
 import java.util.regex.PatternSyntaxException
 
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable
 
 /**
  * A representation of the compiler's class- or sourcepath.
  */
 trait ClassPath {
-  def asURLs: Iterable[URL] = Seq.empty
   def hasPackage(pkg: String): Boolean = false
   def packages(inPackage: String): Iterable[String] = Seq.empty
   def classes(inPackage: String): Iterable[BinaryFileEntry] = Seq.empty
   def sources(inPackage: String): Iterable[SourceFileEntry] = Seq.empty
+
+  /** Which locations are searched by this classpath. Used to create a class loader from it. */
+  def searchLocations: Iterable[AbstractFile]
 
   /**
    * Returns *only* the classfile for an external name, e.g., "java.lang.String". This method does not
@@ -81,8 +79,8 @@ object ClassPath {
     if sources.isEmpty then return classes
     if classes.isEmpty then return sources
 
-    val indices = dotc.util.HashMap[String, Int]()
-    val merged = new ArrayBuffer[ClassRepresentation](classes.size + sources.size)
+    val indices = mutable.Map.empty[String, Int]
+    val merged = new mutable.ArrayBuffer[ClassRepresentation](classes.size + sources.size)
     var count = 0
     for entry <- classes do
       if !indices.contains(entry.name) then

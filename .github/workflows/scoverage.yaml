@@ -33,8 +33,10 @@ permissions:
 #   - scala3-tasty-inspector
 #   - scala3-sbt-bridge-bootstrapped
 #
+# Compiles with scoverage (no Ycheck):
+#   - scala3-compiler-bootstrapped
+#
 # Compiles with scoverage (no Ycheck, -Werror disabled):
-#   - scala3-compiler-nonbootstrapped
 #   - scaladoc
 #
 # Coverage test suite:
@@ -50,12 +52,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -72,12 +74,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -94,12 +96,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -116,12 +118,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -138,12 +140,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -160,12 +162,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -178,39 +180,40 @@ jobs:
           scala3-sbt-bridge-bootstrapped/compile'
 
   # Projects that compile with coverage but without Ycheck
-  scala3-compiler-nonbootstrapped-coverage:
+  scala3-compiler-bootstrapped-coverage:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      # sbt first builds the compiler from this checkout without coverage, then uses it here.
       - name: Compile with coverage
         run: |
           ./project/scripts/sbt '
-          set `scala3-compiler-nonbootstrapped` / Compile / compile / scalacOptions ~= (_.filterNot(_ == "-Werror"));
-          set `scala3-compiler-nonbootstrapped` / Compile / compile / scalacOptions ++= Seq(
-            "-coverage-out", "compiler/target/scala3-compiler-nonbootstrapped/coverage",
+          set `scala3-compiler-bootstrapped` / Compile / compile / scalacOptions ++= Seq(
+            "-coverage-out", "compiler/target/scala3-compiler-bootstrapped/coverage",
             "-sourceroot", "${{ github.workspace }}"
           );
-          scala3-compiler-nonbootstrapped/clean;
-          scala3-compiler-nonbootstrapped/compile'
+          scala3-compiler-bootstrapped/clean;
+          scala3-compiler-bootstrapped/compile'
+          test -s compiler/target/scala3-compiler-bootstrapped/coverage/scoverage.coverage
 
   scaladoc-coverage:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Compile with coverage
         run: |
           ./project/scripts/sbt '
@@ -227,11 +230,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Run coverage compilation tests
         run: ./project/scripts/sbt 'scala3-bootstrapped/testCompilation --enable-coverage-phase'

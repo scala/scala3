@@ -156,14 +156,14 @@ abstract class Reporter extends interfaces.ReporterResult {
     errorCount > initial
   }
 
-  private var reportedFeaturesUseSites = Set[Symbol]()
+  private var reportedFeaturesUseSites = Set.empty[Symbol]
 
   def isReportedFeatureUseSite(featureTrait: Symbol): Boolean =
     featureTrait.ne(NoSymbol) && reportedFeaturesUseSites.contains(featureTrait)
 
   def reportNewFeatureUseSite(featureTrait: Symbol): Unit = reportedFeaturesUseSites += featureTrait
 
-  var unreportedWarnings: Map[String, Int] = Map.empty
+  private var unreportedWarnings: Map[String, Int] = Map.empty
 
   def addUnreported(key: String, n: Int): Unit =
     val count = unreportedWarnings.getOrElse(key, 0)

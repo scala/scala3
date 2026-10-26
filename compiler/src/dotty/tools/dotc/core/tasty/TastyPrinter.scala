@@ -164,7 +164,7 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
               printName(); printTrees()
             case REFINEDtype | TERMREFin | TYPEREFin | SELECTin =>
               printName(); printTree(); printTrees()
-            case RETURN | HOLE =>
+            case RETURN | HOLE | SELECTouter =>
               printNat(); printTrees()
             case METHODtype | POLYtype | TYPELAMBDAtype =>
               printTree()

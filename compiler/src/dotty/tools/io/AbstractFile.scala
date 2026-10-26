@@ -9,7 +9,6 @@ import java.io.{
   IOException, InputStream, OutputStream, BufferedOutputStream,
   ByteArrayOutputStream
 }
-import java.net.URL
 import java.nio.file.{FileAlreadyExistsException, Files, Paths}
 
 /**
@@ -115,9 +114,6 @@ abstract class AbstractFile extends dotty.tools.dotc.interfaces.AbstractFile {
 
   /** Returns an output stream for writing the file */
   def output: OutputStream
-
-  /** URL of the file if available. */
-  def toURL: Option[URL]
 
   /** Returns contents of file (if applicable) in a byte array. */
   @throws(classOf[IOException])

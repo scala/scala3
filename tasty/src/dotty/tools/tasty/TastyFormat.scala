@@ -772,6 +772,9 @@ object TastyFormat {
     case PARAMalias => "PARAMalias"
     case EMPTYCLAUSE => "EMPTYCLAUSE"
     case SPLITCLAUSE => "SPLITCLAUSE"
+    case TRACKED => "TRACKED"
+    case SUBMATCH => "SUBMATCH"
+    case INTO => "INTO"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"

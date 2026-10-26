@@ -49,7 +49,7 @@ import SpaceEngine.*
  */
 
 /** A key to be used in a context property that caches the results of isSubspace checks */
-private val IsSubspaceCacheKey = new Property.Key[mutable.HashMap[(Space, Space), Boolean]]
+private val IsSubspaceCacheKey = new Property.Key[mutable.Map[(Space, Space), Boolean]]
 
 /** A key to track which case classes are currently being expanded in simplify, to prevent infinite recursion */
 private val ExpandingCaseClassesKey = new Property.Key[mutable.Set[Symbol]]
@@ -1172,7 +1172,9 @@ object SpaceEngine {
 
   /** Returns `true` if the match is definitely exhaustive. */
   def checkMatch(m: Match)(using Context): Boolean =
-    inContext(ctx.withProperty(IsSubspaceCacheKey, Some(mutable.HashMap.empty))) {
+    // `maximizeType` adds pattern-bound symbols to the GADT state of its context:
+    // keep them local to this match rather than the phase (and run) context.
+    inContext(ctx.fresh.setFreshGADTBounds.setProperty(IsSubspaceCacheKey, mutable.Map.empty)) {
       val isExhaustive = exhaustivityCheckable(m.selector) &&
         inContext(ctx.withProperty(ExpandingCaseClassesKey, Some(mutable.Set.empty))) {
           checkExhaustivity(m)

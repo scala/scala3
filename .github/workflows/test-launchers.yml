@@ -15,12 +15,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up JDK 17
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -34,12 +34,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up JDK 17
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -53,12 +53,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up JDK 17
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -72,12 +72,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up JDK 17
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -91,14 +91,48 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up JDK 17
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       - name: Build the launcher command
         run: sbt "dist-win-x86_64/Universal/stage"
       - name: Run the launcher command tests
         run: './project/scripts/native-integration/winTests.bat'
+        shell: cmd
+
+  win-aarch64:
+    name: Deploy and Test on Windows ARM64 architecture
+    runs-on: windows-11-arm
+    if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]') ) ||
+        (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3' )
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up JDK 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          java-version: '17'
+          # Temurin has no GA JDK 17 build for Windows ARM64
+          distribution: 'zulu'
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - name: Build the launcher command
+        run: sbt "dist/Universal/stage"
+      - name: Run the launcher command tests
+        run: './project/scripts/native-integration/winTests.bat'
+        shell: cmd
+        env:
+          LAUNCHER_PREFIX: 'dist\target\universal\stage'
+      - name: Build the x86_64 launcher command
+        run: sbt "dist-win-x86_64/Universal/stage"
+      - name: Run the launcher command tests with the x86_64 launcher
+        run: './project/scripts/native-integration/winTests.bat'
+        shell: cmd
+      # TODO: enable after bumping Scala CLI to a version whose Bloop includes scalacenter/bloop#3107,
+      # Bloop fails to load its x64-only JNI library on an ARM64 JVM until then
+      - name: Run the launcher command with the Bloop compilation server
+        if: false
+        run: 'dist\target\universal\stage\bin\scala.bat run tests\pos\HelloWorld.scala | findstr /C:"hello world"'
         shell: cmd

@@ -15,6 +15,7 @@ import java.io.IOException
 import java.lang.Integer.toHexString
 
 import scala.collection.immutable
+import scala.collection.mutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
@@ -278,7 +279,7 @@ final class ClassfileParser(
   private var pool: ConstantPool = uninitialized        // the classfile's constant pool
 
   private var currentClassName: SimpleName = uninitialized // JVM name of the current class
-  private var classTParams: Map[Name, Symbol] = Map()
+  private var classTParams: Map[Name, Symbol] = Map.empty
 
   // descriptors of the constructors with the ACC_VARARGS flag, see `tpnme.RecordATTR`
   private var varargsConstructors: Set[String] = Set.empty
@@ -1306,15 +1307,29 @@ final class ClassfileParser(
       CompilationUnitInfo(classfile),
     )
 
-  private object innerClasses extends util.HashMap[String, InnerClassEntry] {
+  private object innerClasses {
+    private val map = mutable.Map.empty[String, InnerClassEntry]
+
+    def get(str: String): Option[InnerClassEntry] =
+      map.get(str)
+
+    def apply(str: String): InnerClassEntry =
+      map(str)
+
+    def update(str: String, entry: InnerClassEntry): Unit =
+      map(str) = entry
+
+    def valuesIterator: Iterator[InnerClassEntry] =
+      map.valuesIterator
+
     /** Return the Symbol of the top level class enclosing `name`,
      *  or 'name's symbol if no entry found for `name`.
      */
     def topLevelClass(name: String)(using Context): Symbol = {
-      val tlName = if (contains(name)) {
-        var entry = this(name)
-        while (contains(entry.outerName))
-          entry = this(entry.outerName)
+      val tlName = if (map.contains(name)) {
+        var entry = map(name)
+        while (map.contains(entry.outerName))
+          entry = map(entry.outerName)
         entry.outerName
       }
       else

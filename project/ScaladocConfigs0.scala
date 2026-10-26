@@ -124,6 +124,7 @@ object ScaladocConfigs0 {
       "-no-snippet-names-for", "_docs/reference",
       "-siteroot", "docs",
       "-Yapi-subdirectory:true",
+      "-dynamic-side-menu",
     // targets:
     ) ++ libraryProducts
   }

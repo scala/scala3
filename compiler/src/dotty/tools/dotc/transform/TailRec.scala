@@ -268,7 +268,7 @@ class TailRec extends MiniPhase {
       }
 
     /** Symbols of Labeled blocks that are in tail position. */
-    private var tailPositionLabeledSyms = immutable.HashSet.empty[Symbol]
+    private var tailPositionLabeledSyms = immutable.Set.empty[Symbol]
 
     private var inTailPosition = true
 

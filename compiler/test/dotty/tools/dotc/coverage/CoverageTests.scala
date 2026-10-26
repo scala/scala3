@@ -136,6 +136,47 @@ class CoverageTests:
   }
 
   @Test
+  def checkConstructorOnly(): Unit =
+    val target = Files.createTempDirectory("coverage-constructor-only")
+    val sourceFile = target.resolve("Test.scala")
+    val source = """class Repro(using @scala.annotation.constructorOnly ctx: String):
+                   |  val values = List(1).map(i => i -> ctx).toMap
+                   |  val unrelated = List(2).map(_ + 1)
+                   |  def branch(b: Boolean) = if b then 1 else 2
+                   |
+                   |class Nested(@scala.annotation.constructorOnly ctx: String):
+                   |  def keep[A](value: A): A = value
+                   |  val values = keep(List(1).map(i => i -> ctx).toMap)
+                   |  List(1).map(i => i -> ctx).toMap
+                   |
+                   |class Parent(val values: Map[Int, String])
+                   |class Child(@scala.annotation.constructorOnly ctx: String)
+                   |  extends Parent(List(1).map(i => i -> ctx).toMap)
+                   |
+                   |object Test:
+                   |  def main(args: Array[String]): Unit =
+                   |    val repro = new Repro(using "value")
+                   |    assert(repro.values == Map(1 -> "value"))
+                   |    assert(repro.unrelated == List(3))
+                   |    assert(repro.branch(true) == 1 && repro.branch(false) == 2)
+                   |    assert(new Nested("nested").values == Map(1 -> "nested"))
+                   |    assert(new Child("child").values == Map(1 -> "child"))
+                   |    for cls <- List(classOf[Repro], classOf[Nested], classOf[Child]) do
+                   |      assert(!cls.getDeclaredFields.exists(_.getName == "ctx"))
+                   |""".stripMargin
+    Files.writeString(sourceFile, source)
+    compileFile(sourceFile.toString, defaultOptions).checkRuns()
+
+    val coverageOut = target.resolve("coverage-out")
+    val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", coverageOut.toString, "-sourceroot", target.toString)
+    compileFile(sourceFile.toString, options).checkRuns()
+    val statements = Serializer.deserialize(coverageOut.resolve("scoverage.coverage")).statements
+    val excludedLines = Set(2, 8, 9, 13)
+    assertFalse("constructor-only expressions must not be instrumented", statements.exists(s => excludedLines(s.line)))
+    assertTrue("unrelated initializers must remain instrumented", statements.exists(_.line == 3))
+    assertTrue("unrelated branches must remain instrumented", statements.exists(s => s.line == 4 && s.branch))
+
+  @Test
   def checkIncrementalCoverage(): Unit =
     val target = Files.createTempDirectory("coverage")
     val sourceRoot = target.resolve("src")

@@ -4,6 +4,7 @@ import java.nio.file.Paths
 import java.nio.file.Path
 import java.nio.file.Files
 import scala.sys.process._
+import scala.util.control.NonFatal
 
 import CommunityBuildRunner.run
 
@@ -30,7 +31,7 @@ object Main:
     val (failed, completed) = names.flatMap(projectMap.apply).partitionMap( o =>
       try
         Right(op(o))
-      catch case e: Throwable =>
+      catch case NonFatal(e) =>
         e.printStackTrace()
         Left(o)
     )
