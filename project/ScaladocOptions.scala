@@ -25,8 +25,6 @@ object ScaladocOptions {
       "-author",
       "-groups",
       "-default-template", "static-site-main",
-      // Without this, every page embeds the full navigation tree, making the
-      // output size quadratic in the number of pages.
       "-dynamic-side-menu"
     ) ++ extMap
   }
