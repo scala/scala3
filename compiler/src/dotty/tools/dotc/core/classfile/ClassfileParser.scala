@@ -978,7 +978,8 @@ final class ClassfileParser(
           pt.derivedLambdaType(pt.paramNames, pt.paramInfos, fillInParamNames(pt.resultType))
         case _ => t
 
-      typeAnnotations.foldLeft(cook.apply(fillInParamNames(newType)))((tp, annot) => annot.addTo(tp))
+      val cookedType = cook.apply(fillInParamNames(newType))
+      typeAnnotations.foldLeft(cookedType)((tp, annot) => annot.addTo(tp))
     }
   }
 
