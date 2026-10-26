@@ -24,7 +24,8 @@ object ScaladocOptions {
       "-project-footer", s"Copyright (c) 2002-$currentYear, LAMP/EPFL",
       "-author",
       "-groups",
-      "-default-template", "static-site-main"
+      "-default-template", "static-site-main",
+      "-dynamic-side-menu"
     ) ++ extMap
   }
 
