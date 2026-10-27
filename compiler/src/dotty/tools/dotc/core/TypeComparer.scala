@@ -61,6 +61,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     errorNotes = Nil
     undoLog.clear()
     frozenConstraint = false
+    declaredIgnored = false
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: mutable.Set[(Type, Type)] | Null = null
@@ -409,6 +410,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case CapturingType(_, _) =>
         secondTry
       case tp2: AnnotatedType if !tp2.isRefining =>
+        noteIgnored(tp2)
         recur(tp1, tp2.parent)
       case tp2: ThisType =>
         def compareThis = {
@@ -496,7 +498,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case tp2a: TypeParamRef => constraint.isLess(tp1, tp2a)
               case tp2a: AndType => recur(tp1, tp2a)
               case _ => false
-          || isSubTypeWhenFrozen(bounds(tp1).hi.boxed, tp2)
+          || impliedByBound(isSubTypeWhenFrozen(bounds(tp1).hi.boxed, tp2)):
+              canConstrain(tp1) && !approx.high && addConstraint(tp1, tp2, fromBelow = false)
           || (if canConstrain(tp1) && !approx.high then
                 addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
               else thirdTry)
@@ -601,6 +604,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           else thirdTry
         compareCapturing
       case tp1: AnnotatedType if !tp1.isRefining =>
+        noteIgnored(tp1)
         recur(tp1.parent, tp2)
       case tp1: MatchType =>
         val reduced = tp1.reduced
@@ -666,7 +670,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def compareTypeParamRef(tp2: TypeParamRef): Boolean =
       assumedTrue(tp2)
       || {
-        val alwaysTrue =
+        val alwaysTrue = impliedByBound(
           // The following condition is carefully formulated to catch all cases
           // where the subtype relation is true without needing to add a constraint
           // It's tricky because we might need to either approximate tp2 by its
@@ -676,6 +680,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // widening in `fourthTry` before adding to the constraint.
           if (frozenConstraint) recur(tp1, bounds(tp2).lo.boxed)
           else isSubTypeWhenFrozen(tp1, tp2)
+        ):
+          canConstrain(tp2) && !approx.low && addConstraint(tp2, tp1.widenExpr, fromBelow = true)
         alwaysTrue
         || tp1.dealias.match
             case tp1a: OrType => recur(tp1a, tp2)
@@ -2517,6 +2523,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             val formal2a = formal2.subst(tp2, tp1)
             val paramsMatch =
               if frozen then isSubTypeWhenFrozen(formal2a, formal1)
+              else if formal1.hiBound.derivesFromCapSet then
+                // A root in the bound of a capture set parameter does not stand for
+                // a capability, it means that the bound does not restrict the parameter.
+                CCState.withGlobalCapAsRoot(isSubType(formal2a, formal1))
               else isSubType(formal2a, formal1)
             paramsMatch && loop(rest1, rest2)
           case nil =>
@@ -2634,11 +2644,47 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case _ => andType(tp1, tp2)
       end mergedGlb
 
-      mergedGlb(dropExpr(tp1.stripLazyRef), dropExpr(tp2.stripLazyRef))
+      checkingDeclared(mergedGlb(dropExpr(tp1.stripLazyRef), dropExpr(tp2.stripLazyRef)))(_.dropDeclared)
   end glb
 
   def widenInUnions(using Context): Boolean =
     migrateTo3 || ctx.erasedTypes
+
+  /** Set when a `@caps.internal.declared` annotation was ignored in a comparison */
+  private var declaredIgnored: Boolean = false
+
+  private def noteIgnored(tp: AnnotatedType): Unit =
+    if config.Feature.ccEnabledSomewhere && tp.annot.symbol == defn.DeclaredAnnot then
+      declaredIgnored = true
+
+  /** The result of `implied`, which tests whether a bound of a type parameter
+   *  is implied by its existing bounds. If the test ignored a declared annotation,
+   *  the bound is added anyway with `addBound`, so that it is merged with the
+   *  existing bound, see `checkingDeclared`.
+   */
+  private inline def impliedByBound(inline implied: Boolean)(inline addBound: Boolean): Boolean =
+    val saved = declaredIgnored
+    declaredIgnored = false
+    try
+      val result = implied
+      if result && declaredIgnored && !frozenConstraint then
+        val savedConstraint = constraint
+        if !addBound then constraint = savedConstraint
+      result
+    finally declaredIgnored = saved || declaredIgnored
+
+  /** Perform a merge of types `op`. Merges decide based on subtype tests that ignore
+   *  capture sets. So if a test ignored a declared part, the merge might have confused
+   *  different declared parts. In that case, the parts of the result are no longer
+   *  declared, which means that their capture sets will be inferred.
+   */
+  private inline def checkingDeclared[T](inline op: T)(inline dropDeclared: T => T): T =
+    val saved = declaredIgnored
+    declaredIgnored = false
+    try
+      val res = op
+      if declaredIgnored then dropDeclared(res) else res
+    finally declaredIgnored = saved || declaredIgnored
 
   /** The least upper bound of two types
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
@@ -2686,7 +2732,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         recombine(tp1Final, tp2Final, orType(_, _, isSoft = isSoft))
       end mergedLub
 
-      mergedLub(dropExpr(tp1.stripLazyRef), dropExpr(tp2.stripLazyRef))
+      checkingDeclared(mergedLub(dropExpr(tp1.stripLazyRef), dropExpr(tp2.stripLazyRef)))(_.dropDeclared)
   end lub
 
   /** Try to produce joint arguments for a lub `A[T_1, ..., T_n] | A[T_1', ..., T_n']` using
@@ -2697,6 +2743,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *    - otherwise a TypeBounds containing both arguments
    */
   def lubArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo], canConstrain: Boolean = false): List[Type] =
+    checkingDeclared(lubArgsUnchecked(args1, args2, tparams, canConstrain))(_.mapConserve(_.dropDeclared))
+
+  private def lubArgsUnchecked(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo], canConstrain: Boolean): List[Type] =
     tparams match {
       case tparam :: tparamsRest =>
         val arg1 :: args1Rest = args1: @unchecked
@@ -2709,7 +2758,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           else if (v < 0) glb(arg1.loBound, arg2.loBound)
           else TypeBounds(glb(arg1.loBound, arg2.loBound),
                           lub(arg1.hiBound, arg2.hiBound, canConstrain))
-        lubArg :: lubArgs(args1Rest, args2Rest, tparamsRest, canConstrain)
+        lubArg :: lubArgsUnchecked(args1Rest, args2Rest, tparamsRest, canConstrain)
       case nil =>
         Nil
     }
@@ -2729,6 +2778,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  Therefore it is subject to Config option `alignArgsInAnd`.
    */
   def glbArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo]): List[Type] =
+    checkingDeclared(glbArgsUnchecked(args1, args2, tparams))(_.mapConserve(_.dropDeclared))
+
+  private def glbArgsUnchecked(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo]): List[Type] =
     tparams match {
       case tparam :: tparamsRest =>
         val arg1 :: args1Rest = args1: @unchecked
@@ -2744,7 +2796,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                        glb(arg1.hiBound, arg2.hiBound))
           else if (homogenizeArgs && !frozenConstraint && isSameType(arg1, arg2)) arg1
           else NoType
-        glbArg :: glbArgs(args1Rest, args2Rest, tparamsRest)
+        glbArg :: glbArgsUnchecked(args1Rest, args2Rest, tparamsRest)
       case nil =>
         Nil
     }

@@ -1031,7 +1031,9 @@ object CaptureSet:
           .map(GlobalCapToLocal(Origin.Unknown).inverse)    // local -> global
           .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
-        val newElems = approx.elems -- elems
+        // Elements that are not visible where the variable is defined are dropped.
+        // That is sound since the variable is in a contravariant position.
+        val newElems = (approx.elems -- elems).filter(levelOK)
         given VarState()
         if tryInclude(newElems, empty) then
           markSolved(provisional = false)

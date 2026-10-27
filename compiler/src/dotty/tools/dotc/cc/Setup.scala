@@ -400,7 +400,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             addVar(apply(parent), tp)
           case AnnotatedType(parent, annot)
           if annot.symbol == defn.DeclaredAnnot =>
-            transformExplicitType(parent, sym, initialVariance = variance)
+            if ctx.mode.is(Mode.CCPreciseOwner) && hasWellformedCaptureSets(parent) then
+              // A declared parameter type or bound of a lambda in the result type of
+              // a definition reads like the lambda's own parameter: roots in it stay global.
+              transformExplicitType(parent, sym, initialVariance = -1)
+            else
+              // In type arguments and other templates, capture sets stay variables,
+              // so that they can be unified with the templates of other branches. They
+              // are fixed through the result type of the enclosing definition.
+              this(parent)
           case tp @ RefinedType(parent, rname, rinfo) =>
             val saved = refiningNames
             refiningNames += rname
@@ -530,6 +538,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             else if ann.symbol == defn.InferredAnnot then
               transformInferredType(parent, sym, initialVariance = variance)
                 // typeArgFormal is NoType here since we are inferring inside an argument, not at the toplevel
+            else if ann.symbol == defn.DeclaredAnnot then
+              this(parent)
             else
               t.derivedAnnotatedType(this(parent), ann)
           case throwsAlias(res, exc) =>
@@ -583,6 +593,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     if initialVariance < 0 then tp2
     else globalCapToLocal(tp2, Origin.InDecl(sym))
   end transformExplicitType
+
+  /** Do all @retains annotations in `tp` denote capture sets? */
+  private def hasWellformedCaptureSets(tp: Type)(using Context): Boolean =
+    !tp.existsPart:
+      case AnnotatedType(_, ann: RetainingAnnotation) if ann.isStrict =>
+        try { ann.toCaptureSet; false }
+        catch case _: IllegalCaptureRef => true
+      case _ => false
 
   /** Update info of `sym` for CheckCaptures phase only */
   private def updateInfo(sym: Symbol, info: Type, owner: Symbol)(using Context) =

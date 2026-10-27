@@ -419,22 +419,49 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *       non-inferred by adding `@caps.declared` annotations.
      *       In this case we need to keep references to bound capset variables in retains
      *       clauses of subsequent parameters.
+     *   (3) Parts that are declared but refer to skolems or to local definitions
+     *       of the right hand side are no longer declared, see `dropEscapingDeclared`.
      */
     private def explicifyTpt(tree: ValOrDefDef)(using Context): Tree = tree.tpt match
       case tpt: InferredTypeTree if Feature.ccEnabled =>
-        if tree.symbol.allOverriddenSymbols.hasNext then // (1)
+        val sym = tree.symbol
+        if sym.allOverriddenSymbols.hasNext then // (1)
           tpd.cpy.TypeTree(tpt)(inferred = false)
-        else tree.rhs match
-          case closureDef(mdef)
-          if !tree.symbol.isAnonymousFunction // (2)
-          =>
-            val tpe1 = makeFormalsDeclared(tpt.tpe, tree.rhs)
-            if tpe1 `ne` tpt.tpe
-            then TypeTree(tpe1, inferred = true).withSpan(tree.span).withAttachmentsFrom(tpt)
-            else tpt
-          case _ => tpt
+        else
+          val tpe1 = tree.rhs match
+            case closureDef(mdef)
+            if !sym.isAnonymousFunction // (2)
+            =>
+              makeFormalsDeclared(tpt.tpe, tree.rhs)
+            case _ => tpt.tpe
+          val tpe2 = dropEscapingDeclared(tpe1, sym) // (3)
+          if tpe2 `ne` tpt.tpe
+          then TypeTree(tpe2, inferred = true).withSpan(tree.span).withAttachmentsFrom(tpt)
+          else tpt
       case tpt =>
         tpt
+
+    /** Drop the `@caps.internal.declared` annotations of parts of the inferred
+     *  type `tp` of `sym` that refer to skolems, or to definitions in the right
+     *  hand side of `sym` other than its parameters. Such references can be left
+     *  in capture sets, since typer's avoidance does not look into them. The
+     *  capture sets of these parts are inferred instead.
+     */
+    private def dropEscapingDeclared(tp: Type, sym: Symbol)(using Context): Type =
+      def escapes(t: Type): Boolean = t match
+        case AnnotatedType(_, annot: RetainingAnnotation) =>
+          annot.retainedType.retainedElementsRaw.exists(_.existsPart(escapes))
+        case t: NamedType =>
+          t.symbol.isContainedIn(sym) && !(t.symbol.is(Param) && t.symbol.owner == sym)
+        case t: ThisType => t.cls.isContainedIn(sym)
+        case _: SkolemType => true
+        case _ => false
+      val dropEscaping = new TypeMap:
+        def apply(t: Type) = t match
+          case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
+            if parent.existsPart(escapes) then parent else t
+          case _ => mapOver(t)
+      dropEscaping(tp)
 
     /** Insert a `@caps.declared` annotation on all parameter infos
      *  of a function type `tp` corresponding to a closure `rhs` that contain
@@ -443,22 +470,12 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      */
     private def makeFormalsDeclared(tp: Type, rhs: Tree)(using Context): Type = rhs match
       case closureDef(mdef) =>
-        def makeFormalDeclared(formal: Type)(using Context): Type = formal match
-          case formal @ TypeBounds(lo, hi) =>
-            formal.derivedTypeBounds(makeFormalDeclared(lo), makeFormalDeclared(hi))
-          case _ =>
-            val cleanup = CleanupRetains()
-            cleanup(formal) // only used for setting cleanup.retainsFound as a side effect
-            if cleanup.retainsFound && !formal.hasAnnotation(defn.DeclaredAnnot)
-            then AnnotatedType(formal, Annotation(defn.DeclaredAnnot, rhs.span))
-            else formal
-
         tp match
           case FunctionOrMethod(formals, res) =>
             val rhs1 = formals match
               case (_: TypeBounds) :: _ => rhs
               case _ => mdef.rhs
-            val formals1 = formals.mapConserve(makeFormalDeclared)
+            val formals1 = formals.mapConserve(_.markDeclared(allowFresh = true))
             tp.derivedFunctionOrMethod(formals1, makeFormalsDeclared(res, rhs1))
           case _ => tp
       case _ => tp

@@ -427,11 +427,94 @@ extension (tp: Type)
 
   def isArrayUnderStrictMut(using Context): Boolean = tp.classSymbol.isArrayUnderStrictMut
 
-  /** Drop @retains annotations everywhere */
-  def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
+  /** Drop @retains annotations everywhere except in parts marked with
+   *  `@caps.internal.declared`, which other compilation units see as they are.
+   *  `^` annotations in contravariant positions are kept as well, since other
+   *  units see them as well and rely on them for parameter types.
+   */
+  def dropInferredRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
     val tm = new TypeMap:
       def apply(t: Type) = t match
-        case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
+        case AnnotatedType(parent, annot)
+        if annot.symbol.isRetains && (annot.symbol != defn.RetainsCapAnnot || variance >= 0) =>
+          apply(parent)
+        case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
+          parent
+        case _ =>
+          mapOver(t)
+    tm(tp)
+
+  /** The number of parts of this type that can have capture sets: function types
+   *  and @retains annotations.
+   */
+  def capturingPartsCount(using Context): Int =
+    val acc = new TypeAccumulator[Int]:
+      def apply(n: Int, t: Type) = t match
+        case AnnotatedType(_, annot) if annot.symbol.isRetainsLike =>
+          foldOver(n + 1, t)
+        case t: AppliedType if defn.isFunctionSymbol(t.tycon.typeSymbol) =>
+          foldOver(n + 1, t)
+        case t: RefinedType if t.refinedName == nme.apply =>
+          foldOver(n + 1, t)
+        case _ =>
+          foldOver(n, t)
+    acc(0, tp)
+
+  /** Does some part of this type satisfy `p`? Unlike `existsPart`, this also
+   *  looks at the expansions of type aliases.
+   */
+  private def existsPartFollowingAliases(p: Type => Boolean)(using Context): Boolean =
+    val seen = mutable.HashSet[Type]()
+    def loop(t: Type): Boolean = t.existsPart: part =>
+      p(part) || part.match
+        case part: (TypeRef | AppliedType) =>
+          val expanded = part.dealiasKeepAnnots
+          (expanded ne part) && !seen.contains(part) && { seen += part; loop(expanded) }
+        case _ => false
+    loop(tp)
+
+  /** Does this type contain a @retains annotation, possibly in the
+   *  expansion of a type alias such as `=>`?
+   */
+  def containsRetains(using Context): Boolean =
+    tp.existsPartFollowingAliases:
+      case AnnotatedType(_, annot) => annot.symbol.isRetainsLike
+      case _ => false
+
+  /** Mark this type with `@caps.internal.declared` if it contains a capture set.
+   *  The bounds of a type bounds and the result of a by-name type are marked
+   *  separately.
+   *  @param allowFresh  If false, types that mention `caps.fresh` are not marked,
+   *                     since such types cannot be unified with the templates of
+   *                     type arguments.
+   */
+  def markDeclared(allowFresh: Boolean = false)(using Context): Type = tp match
+    case tp: TypeBounds =>
+      tp.derivedTypeBounds(tp.lo.markDeclared(allowFresh), tp.hi.markDeclared(allowFresh))
+    case tp: ExprType =>
+      tp.derivedExprType(tp.resType.markDeclared(allowFresh))
+    case _ =>
+      if tp.hasAnnotation(defn.DeclaredAnnot) || !tp.containsRetains || !allowFresh && tp.mentionsFresh
+      then tp
+      else AnnotatedType(tp, CompactAnnotation(defn.DeclaredAnnot.typeRef))
+
+  /** Does a @retains annotation in this type mention `caps.fresh`? */
+  private def mentionsFresh(using Context): Boolean =
+    def isFresh(elem: Type): Boolean = elem match
+      case AnnotatedType(parent, _) => isFresh(parent) // fresh.rd, fresh.only[K]
+      case elem => elem.isCapsFreshRef
+    tp.existsPartFollowingAliases:
+      case AnnotatedType(_, annot: RetainingAnnotation) =>
+        annot.retainedType.retainedElementsRaw.exists(isFresh)
+      case _ => false
+
+  /** Drop all `@caps.internal.declared` annotations, so that the capture sets
+   *  under them count as inferred.
+   */
+  def dropDeclared(using Context): Type =
+    val tm = new TypeMap:
+      def apply(t: Type) = t match
+        case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
           apply(parent)
         case _ =>
           mapOver(t)
@@ -541,6 +624,21 @@ extension (tp: MethodOrPoly)
   /** A method marks an existential scope unless it is the prefix of a curried method */
   def marksExistentialScope(using Context): Boolean =
     !tp.resType.isInstanceOf[MethodOrPoly]
+
+  /** The method type of a closure, where the types of the parameters that
+   *  have explicit types and the bounds of all type parameters are marked
+   *  with `@caps.internal.declared`, so that capture checking does not infer
+   *  their capture sets anew when the type of the closure ends up in an
+   *  inferred type.
+   *  @param explicit  for each term parameter, whether its type was written
+   */
+  def withDeclaredParams(explicit: List[Boolean])(using Context): MethodOrPoly = tp match
+    case tp: PolyType =>
+      tp.derivedLambdaType(paramInfos = tp.paramInfos.mapConserve(_.markDeclared().bounds))
+    case tp: MethodType =>
+      val paramInfos1 = tp.paramInfos.zipWithConserve(explicit.padTo(tp.paramInfos.length, false)):
+        (info, isExplicit) => if isExplicit then info.markDeclared() else info
+      tp.derivedLambdaType(paramInfos = paramInfos1)
 
 extension (ref: TermRef | ThisType)
   /** Map a local mutable var to its mirror */
@@ -796,6 +894,15 @@ extension (sym: Symbol) {
    *  visible outside the compilation unit where they are defined,
    *  and also for two pragmatic exemptions, explained below.
    */
+  /** Is the capture checked type of this symbol the only type of it that is seen?
+   *  This holds for symbols that are local to their compilation unit and for symbols
+   *  defined in the REPL, since later lines see the capture checked types of earlier
+   *  lines. Other symbols are seen in other compilation units with the inferred
+   *  capture sets in their types dropped.
+   */
+  def isSeenOnlyCaptureChecked(using Context): Boolean =
+    sym.isLocalToCompilationUnit || sym.ownersIterator.exists(_.name.isReplWrapperName)
+
   def isExemptFromExplicitChecks(using Context): Boolean =
     sym.isLocalToCompilationUnit
     || sym.isScalaDocSnippet
@@ -900,13 +1007,12 @@ class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) ext
 /** Drop retains annotations in the inferred type if CC is not enabled
  *  or transform them into retains annotations with Nothing (i.e. empty set) as
  *   argument if CC is enabled (we need to do that to keep by-name status).
+ *  Parts marked with `@caps.internal.declared` are kept as they are.
  */
 class CleanupRetains(using Context) extends TypeMap:
-  var retainsFound: Boolean = false
   def apply(tp: Type): Type = tp match
     case tp @ AnnotatedType(parent, annot: RetainingAnnotation) =>
       if Feature.ccEnabled then
-        retainsFound = true
         if annot.symbol == defn.RetainsCapAnnot then tp
         else AnnotatedType(this(parent), RetainingAnnotation(annot.symbol.asClass, defn.NothingType))
       else this(parent)
