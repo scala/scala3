@@ -10,7 +10,7 @@ import dotty.tools.io.{AbstractFile, FileExtension}
 /**
  * Common methods related to Java files and abstract files used in the context of classpath
  */
-private[classpath] object FileUtils {
+private object FileUtils {
   extension (file: AbstractFile) {
     def isPackage: Boolean = file.isDirectory && mayBeValidPackage(file.name)
 

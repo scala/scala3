@@ -17,7 +17,7 @@ import FileUtils.*
  * It allows us to e.g. reduce significantly memory used by PresentationCompilers in Scala IDE
  * when there are a lot of projects having a lot of common dependencies.
  */
-private[classpath] sealed trait ZipAndJarFileLookupFactory {
+private sealed trait ZipAndJarFileLookupFactory {
   private val cache = new FileBasedCache[ClassPath]
 
   def create(zipFile: AbstractFile)(using Context): ClassPath =
@@ -36,7 +36,7 @@ private[classpath] sealed trait ZipAndJarFileLookupFactory {
  * Manages creation of classpath for class files placed in zip and jar files.
  * It should be the only way of creating them as it provides caching.
  */
-private[classpath] object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
+private object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
   private class ZipArchiveClassPath(protected override val zipFile: File, protected override val release: String)
     extends ZipArchiveFileLookup[BinaryFileEntry] {
 
@@ -60,7 +60,7 @@ private[classpath] object ZipAndJarClassPathFactory extends ZipAndJarFileLookupF
  * Manages creation of classpath for source files placed in zip and jar files.
  * It should be the only way of creating them as it provides caching.
  */
-private[classpath] object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
+private object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
   private class ZipArchiveSourcePath(protected override val zipFile: File, protected override val release: String) extends ZipArchiveFileLookup[SourceFileEntry] {
     override def sources(inPackage: String): Iterable[SourceFileEntry] = files(inPackage)
 
@@ -73,7 +73,7 @@ private[classpath] object ZipAndJarSourcePathFactory extends ZipAndJarFileLookup
     ZipArchiveSourcePath(jFile, release)
 }
 
-private[classpath] final class FileBasedCache[T] {
+private final class FileBasedCache[T] {
   private case class Stamp(lastModified: FileTime, fileKey: Object)
   private val cache = collection.mutable.Map.empty[java.nio.file.Path, (Stamp, T)]
 

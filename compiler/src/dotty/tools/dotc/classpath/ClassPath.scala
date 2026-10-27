@@ -5,8 +5,11 @@ import dotty.tools.io.File.pathSeparator
 import dotty.tools.io.{AbstractFile, Directory, File, FileExtension}
 
 import java.util.regex.PatternSyntaxException
+import java.nio.file.*
+import java.net.URI
 
 import scala.collection.mutable
+import scala.util.Properties
 
 /**
  * A representation of the compiler's class- or sourcepath.
@@ -41,13 +44,24 @@ object ClassPath {
 
   /** Attempts to create a classpath for the Java libraries of the given Java release. */
   def jrt(release: Option[String]): Option[ClassPath] =
-    JrtClassPath(release)
+    // Longer term we'd like an official API for this in the JDK
+    // Discussion: http://mail.openjdk.java.net/pipermail/compiler-dev/2018-March/thread.html#11738
+    release match
+      case Some(v) if v.toInt < Runtime.version().feature() =>
+        try
+          val ctSym = Paths.get(Properties.javaHome).resolve("lib").resolve("ct.sym")
+          if (Files.notExists(ctSym)) None
+          else Some(new CtSymClassPath(ctSym, v.toInt))
+        catch case _: Exception => None
+      case _ =>
+        try Some(new JrtClassPath(FileSystems.getFileSystem(URI.create("jrt:/"))))
+        catch case _: ProviderNotFoundException | _: FileSystemNotFoundException => None
 
   /** Replaces ct.sym with jrt in the given classpath. */
   def replaceCtSymWithJrt(classPath: ClassPath): ClassPath =
     classPath match
       case AggregateClassPath((_: CtSymClassPath) :: rest) =>
-        JrtClassPath(release = None) match
+        jrt(release = None) match
           case Some(jrt) => AggregateClassPath(jrt :: rest)
           case None => classPath
       case _ => classPath

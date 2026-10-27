@@ -16,7 +16,7 @@ import dotty.tools.io.AbstractFile
  *
  * @param aggregates classpath instances containing entries which this class processes
  */
-private[classpath] final case class AggregateClassPath(aggregates: List[ClassPath]) extends ClassPath {
+private final case class AggregateClassPath(aggregates: List[ClassPath]) extends ClassPath {
   // Implementation note:
   // This class is used a lot. It's important to keep it efficient and low-allocation.
 

@@ -6,7 +6,7 @@ package dotty.tools.dotc.classpath
 /**
  * Common methods related to package names represented as String
  */
-private[classpath] object PackageNameUtils {
+private object PackageNameUtils {
 
   /** Like the full version below, when you only need the class name. */
   def separateClassName(fullClassName: String): String =
