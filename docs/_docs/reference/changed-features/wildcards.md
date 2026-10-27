@@ -41,8 +41,6 @@ option `-Xkind-projector` (`-Ykind-projector` in older versions of the Scala 3 c
  2. In Scala 3.11, `λ[x => F[x]]` is deprecated in favor of `[x] =>> F[x]`, and, under `-Xkind-projector:underscores`,
     `*` is deprecated in favor of `_`. Both are errors under `-source future`.
 
-These rules make it possible to cross-build between Scala 2 using the kind projector plugin and Scala 3 using the compiler option `-Xkind-projector`.
-
 Code using kind-projector syntax can be migrated in two steps:
 
  1. `-Xkind-projector -source 3.11-migration -rewrite` rewrites `_` wildcards to `?` and `λ[x => F[x]]` to `[x] =>> F[x]`.
