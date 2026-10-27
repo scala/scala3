@@ -2025,7 +2025,16 @@ object Parsers {
 
       val uscores = ctx.settings.XkindProjector.value == "underscores"
       val newParams = params.mapConserve {
-        case param @ Ident(tpnme.raw.STAR | tpnme.raw.MINUS_STAR | tpnme.raw.PLUS_STAR) => addParam()
+        case param @ Ident(name @ (tpnme.raw.STAR | tpnme.raw.MINUS_STAR | tpnme.raw.PLUS_STAR)) =>
+          // Only suggest `_` if it is a placeholder here, so that rewritten code still compiles
+          if uscores then
+            val replacement = name.toString.replace('*', '_')
+            report.errorOrMigrationWarning(
+              em"`$name` is deprecated as a type parameter placeholder: use `$replacement` instead${rewriteNotice(`3.11-migration`, "-Xkind-projector:underscores")}",
+              source.atSpan(param.span), MigrationVersion.KindProjectorSyntax)
+            if MigrationVersion.KindProjectorSyntax.needsPatch then
+              patch(source, param.span, replacement)
+          addParam()
         case param @ Ident(tpnme.USCOREkw | tpnme.raw.MINUS_USCORE | tpnme.raw.PLUS_USCORE) if uscores => addParam()
         case other => other
       }
@@ -2326,7 +2335,17 @@ object Parsers {
                     case param @ Ident(name) => makeKindProjectorTypeDef(name.toTypeName).withSpan(param.span)
                   }
                   if (typeDefs.length != params.length) fail()
-                  else LambdaTypeTree(typeDefs, body)
+                  else {
+                    val lambdaParams = typeDefs.map(_.name).mkString("[", ", ", "] =>> ")
+                    report.errorOrMigrationWarning(
+                      em"`λ` is deprecated for type lambdas: use `$lambdaParams...` instead${rewriteNotice(`3.11-migration`)}",
+                      source.atSpan(Span(startOffset(t), in.lastOffset)), MigrationVersion.KindProjectorSyntax)
+                    if MigrationVersion.KindProjectorSyntax.needsPatch then
+                      // Patch only around the body, so that it can still be patched itself
+                      patch(source, Span(startOffset(t), body.span.start), lambdaParams)
+                      patch(source, Span(body.span.end, in.lastOffset), "")
+                    LambdaTypeTree(typeDefs, body)
+                  }
                 case _ =>
                   fail()
               }
