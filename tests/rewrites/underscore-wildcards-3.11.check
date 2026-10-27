@@ -1,0 +1,2 @@
+def f(xs: List[?]): Int = xs.length
+val c = classOf[Map[?, ? <: AnyRef]]

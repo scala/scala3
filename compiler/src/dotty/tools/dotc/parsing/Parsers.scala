@@ -1907,7 +1907,7 @@ object Parsers {
               funMods &~= Given
               syntaxError(em"context function types require at least one parameter", paramSpan)
             FunctionWithMods(params, resultType, funMods)
-          else if !ctx.settings.XkindProjector.isDefault then
+          else if kindProjectorPlaceholders then
             val (newParams :+ newResultType, tparams) = replaceKindProjectorPlaceholders(params :+ resultType): @unchecked
             lambdaAbstract(tparams, Function(newParams, newResultType))
           else
@@ -2002,6 +2002,16 @@ object Parsers {
         TypeDef(name, rhs.bounds)
       case other => other
 
+    /** Is kind-projector's `*` a type parameter placeholder (and `λ` a type lambda)? */
+    private def starTypeLambdas: Boolean = !ctx.settings.XkindProjector.isDefault
+
+    /** Is `_` a type parameter placeholder (as opposed to a wildcard type)? */
+    private def underscoreTypeLambdas: Boolean =
+      !ctx.settings.XlegacyWildcards.value
+      && (ctx.settings.XkindProjector.value == "underscores" || sourceVersion.enablesUnderscoreTypeLambdas)
+
+    private def kindProjectorPlaceholders: Boolean = starTypeLambdas || underscoreTypeLambdas
+
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
       val isVarianceAnnotated = name.startsWith("+") || name.startsWith("-")
       // We remove the variance marker from the name without passing along the specified variance at all
@@ -2012,7 +2022,7 @@ object Parsers {
       TypeDef(unannotatedName, WildcardTypeBoundsTree()).withFlags(Param)
     }
 
-    /** Replaces kind-projector's `*` in a list of types arguments with synthetic names,
+    /** Replaces kind-projector's `*` and `_` placeholders in a list of types arguments with synthetic names,
      *  returning the new argument list and the synthetic type definitions.
      */
     private def replaceKindProjectorPlaceholders(params: List[Tree]): (List[Tree], List[TypeDef]) = {
@@ -2023,10 +2033,9 @@ object Parsers {
         Ident(name)
       }
 
-      val uscores = ctx.settings.XkindProjector.value == "underscores"
       val newParams = params.mapConserve {
-        case param @ Ident(tpnme.raw.STAR | tpnme.raw.MINUS_STAR | tpnme.raw.PLUS_STAR) => addParam()
-        case param @ Ident(tpnme.USCOREkw | tpnme.raw.MINUS_USCORE | tpnme.raw.PLUS_USCORE) if uscores => addParam()
+        case param @ Ident(tpnme.raw.STAR | tpnme.raw.MINUS_STAR | tpnme.raw.PLUS_STAR) if starTypeLambdas => addParam()
+        case param @ Ident(tpnme.USCOREkw | tpnme.raw.MINUS_USCORE | tpnme.raw.PLUS_USCORE) if underscoreTypeLambdas => addParam()
         case other => other
       }
 
@@ -2236,7 +2245,7 @@ object Parsers {
       if isSimpleLiteral then
         SingletonTypeTree(simpleLiteral())
       else if in.token == USCORE then
-        if ctx.settings.XkindProjector.value == "underscores" && !inMatchPattern then
+        if underscoreTypeLambdas && !inMatchPattern then
           val start = in.skipToken()
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
@@ -2256,7 +2265,7 @@ object Parsers {
 
       // Allow symbols -_ and +_ through for compatibility with code written using kind-projector in Scala 3 underscore mode.
       // While these signify variant type parameters in Scala 2 + kind-projector, we ignore their variance markers since variance is inferred.
-      else if (isIdent(nme.MINUS) || isIdent(nme.PLUS)) && in.lookahead.token == USCORE && ctx.settings.XkindProjector.value == "underscores" then
+      else if (isIdent(nme.MINUS) || isIdent(nme.PLUS)) && in.lookahead.token == USCORE && underscoreTypeLambdas then
         val identName = in.name.nn.toTypeName ++ nme.USCOREkw
         val start = in.skipToken()
         in.nextToken()
@@ -2309,7 +2318,7 @@ object Parsers {
         val applied = rejectWildcardType(t)
         val args = typeArgs(namedOK = false, wildOK = true)
 
-        if (!ctx.settings.XkindProjector.isDefault) {
+        if (kindProjectorPlaceholders) {
           def fail(): Tree = {
             syntaxError(
               em"λ requires a single argument of the form X => ... or (X, Y) => ...",
@@ -2319,7 +2328,7 @@ object Parsers {
           }
 
           applied match {
-            case Ident(tpnme.raw.LAMBDA) =>
+            case Ident(tpnme.raw.LAMBDA) if starTypeLambdas =>
               args match {
                 case List(Function(params, body)) =>
                   val typeDefs = params.collect {
@@ -2341,7 +2350,7 @@ object Parsers {
         }
       })
       case _ =>
-        if (!ctx.settings.XkindProjector.isDefault) {
+        if (kindProjectorPlaceholders) {
           t match {
             case Tuple(params) =>
               val (newParams, tparams) = replaceKindProjectorPlaceholders(params)
