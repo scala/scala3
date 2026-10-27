@@ -328,15 +328,4 @@ class ScalaSettingsTests:
     assertEquals("Ignoring conflicting value for Boolean flag -Xjava-tasty", conf.warnings.head)
     assert(conf.errors.isEmpty, s"ERROR: ${conf.errors}")
 
-  @Test def `-Xlegacy-wildcards conflicts with -Xkind-projector:underscores`: Unit =
-    val settings = ScalaSettings
-    def errorsFor(args: List[String]) =
-      val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
-      settings.processArguments(argSummary, processAll = true, skipped = Nil).errors
-    val expected = List("option -Xlegacy-wildcards cannot be used together with -Xkind-projector:underscores")
-    assertEquals(expected, errorsFor(List("-Xlegacy-wildcards", "-Xkind-projector:underscores")))
-    assertEquals(expected, errorsFor(List("-Xkind-projector:underscores", "-Xlegacy-wildcards")))
-    assertEquals(Nil, errorsFor(List("-Xlegacy-wildcards", "-Xkind-projector")))
-    assertEquals(Nil, errorsFor(List("-Xkind-projector:underscores")))
-
 end ScalaSettingsTests

@@ -2007,8 +2007,7 @@ object Parsers {
 
     /** Is `_` a type parameter placeholder (as opposed to a wildcard type)? */
     private def underscoreTypeLambdas: Boolean =
-      !ctx.settings.XlegacyWildcards.value
-      && (ctx.settings.XkindProjector.value == "underscores" || sourceVersion.enablesUnderscoreTypeLambdas)
+      ctx.settings.XkindProjector.value == "underscores" || sourceVersion.enablesUnderscoreTypeLambdas
 
     private def kindProjectorPlaceholders: Boolean = starTypeLambdas || underscoreTypeLambdas
 

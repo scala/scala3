@@ -92,12 +92,6 @@ object Settings:
     */
   type SettingDependencies = List[(Setting[?], Any)]
 
-  /** List of setting-value pairs that are incompatible with another setting.
-    * For example, `s = Setting(..., conflicts = List(XkindProjector -> "underscores"))`
-    * means that `s` cannot be set if `XkindProjector` is set to `"underscores"`.
-    */
-  type SettingConflicts = List[(Setting[?], Any)]
-
   case class SettingAlias(name: String, deprecation: Option[Deprecation])
   object SettingAlias:
     given Conversion[String, SettingAlias] = SettingAlias(_, None)
@@ -114,7 +108,6 @@ object Settings:
     prefix: Option[String] = None,
     aliases: List[SettingAlias] = Nil,
     depends: SettingDependencies = Nil,
-    conflicts: SettingConflicts = Nil,
     ignoreInvalidArgs: Boolean = false,
     preferPrevious: Boolean = false,
     propertyClass: Option[Class[?]] = None,
@@ -406,22 +399,14 @@ object Settings:
     def toConciseString(state: SettingsState): String =
       userSetSettings(state).mkString("(", " ", ")")
 
-    /** Checks that the dependencies of all user-set settings are met and that none of them conflict. */
     private def checkDependencies(state: ArgsSummary): ArgsSummary =
-      userSetSettings(state.sstate).foldLeft(state): (s, setting) =>
-        checkConflictsOfSetting(checkDependenciesOfSetting(s, setting), setting)
+      userSetSettings(state.sstate).foldLeft(state)(checkDependenciesOfSetting)
 
     private def checkDependenciesOfSetting(state: ArgsSummary, setting: Setting[?]) =
       setting.depends.foldLeft(state): (s, dep) =>
         val (depSetting, reqValue) = dep
         if (depSetting.valueIn(s.sstate) == reqValue) s
         else s.fail(s"incomplete option ${setting.name} (requires ${depSetting.name})")
-
-    private def checkConflictsOfSetting(state: ArgsSummary, setting: Setting[?]) =
-      setting.conflicts.foldLeft(state): (s, conflict) =>
-        val (conflictSetting, conflictValue) = conflict
-        if (conflictSetting.valueIn(s.sstate) != conflictValue) s
-        else s.fail(s"option ${setting.name} cannot be used together with ${conflictSetting.name}:$conflictValue")
 
     /** Iterates over the arguments applying them to settings where applicable.
      *  Then verifies setting dependencies are met.
@@ -471,8 +456,8 @@ object Settings:
       assert(!name.startsWith("-"), s"Setting $name cannot start with -")
       "-" + name
 
-    def BooleanSetting(category: SettingCategory, name: String, descr: String, initialValue: Boolean = false, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false, conflicts: SettingConflicts = Nil): Setting[Boolean] =
-      publish(Setting(category, prependName(name), descr, initialValue, aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs, conflicts = conflicts))
+    def BooleanSetting(category: SettingCategory, name: String, descr: String, initialValue: Boolean = false, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[Boolean] =
+      publish(Setting(category, prependName(name), descr, initialValue, aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs))
 
     def StringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: String, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None, depends: SettingDependencies = Nil): Setting[String] =
       publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, deprecation = deprecation, depends = depends))
