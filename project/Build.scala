@@ -1738,13 +1738,12 @@ object Build {
       ),
       Test / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       // All the dependencies needed by the doctool
-      libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
+      libraryDependencies ++= Dependencies.liqpDependencyOverrides ++ Dependencies.flexmarkDeps ++ Seq(
         Dependencies.liqp,
         Dependencies.jsoup, // Needed to process .html files for static site
         Dependencies.jacksonDataformatYaml,
         Dependencies.sbtJunitInterface % Test,
       ),
-      dependencyOverrides ++= Dependencies.liqpDependencyOverrides,
       Compile / scalacOptions += "-experimental",
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
