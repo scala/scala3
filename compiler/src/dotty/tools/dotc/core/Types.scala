@@ -3859,7 +3859,7 @@ object Types extends TypeUtils {
     def integrate(tparams: List[ParamInfo], tp: Type)(using Context): Type =
       (tparams: @unchecked) match {
         case LambdaParam(lam, _) :: _ => tp.subst(lam, this) // This is where the precondition is necessary.
-        case params: List[Symbol @unchecked] => IntegrateMap(params, paramRefs)(tp)
+        case params: List[Symbol @unchecked] => IntegrateMap(params)(tp)
       }
 
     /** A map that replaces references to symbols in `params` by the types in
@@ -3883,7 +3883,7 @@ object Types extends TypeUtils {
      *  direction. A plain map would instead share a variable between the two
      *  types if it leaves the current elements unchanged, and freeze it otherwise.
      */
-    private class IntegrateMap(from: List[Symbol], to: List[Type])(using Context) extends BiTypeMap:
+    private class IntegrateMap(params: List[Symbol])(using Context) extends BiTypeMap:
       thisMap =>
 
       override def apply(tp: Type) =
@@ -3892,8 +3892,8 @@ object Types extends TypeUtils {
         tp match
           case tp: NamedType =>
             val sym = tp.symbol
-            var fs = from
-            var ts = to
+            var fs = params
+            var ts = paramRefs
             while (fs.nonEmpty && ts.nonEmpty) {
               if (fs.head eq sym) return ts.head
               fs = fs.tail
@@ -3915,7 +3915,7 @@ object Types extends TypeUtils {
 
       class Inverse extends BiTypeMap:
         def apply(tp: Type): Type = tp match
-          case tp: ParamRef if tp.binder eq self => from(tp.paramNum).namedType
+          case tp: ParamRef if tp.binder eq self => params(tp.paramNum).namedType
           case _ => mapOver(tp)
         def inverse = thisMap
 
