@@ -11,6 +11,7 @@ import java.io.InputStream
 import java.util.Properties
 import scala.util.{Failure, Success, Try}
 import scala.annotation.nowarn
+import scala.collection.mutable
 
 trait PluginPhase extends MiniPhase {
   def runsBefore: Set[String] = Set.empty
@@ -90,9 +91,9 @@ object Plugin {
    */
   private def loaderFor(locations: Seq[Path]): ClassLoader = {
     val compilerLoader = classOf[Plugin].getClassLoader
-    val urls = locations map (_.toURL)
 
-    new java.net.URLClassLoader(urls.toArray, compilerLoader)
+    // we assume plugins don't use multi-release JARs
+    new AbstractFileClassLoader(locations.map(PlainFile(_)), "", compilerLoader)
   }
 
   type AnyClass = Class[?]
@@ -182,7 +183,7 @@ object Plugin {
       case Failure(e)  => Failure(e)
     })
 
-    val seen = util.HashSet[String]()
+    val seen = mutable.Set.empty[String]
     val enabled = (fromPaths ::: fromDirs) map(_.flatMap {
       case (classname, loader) =>
         Plugin.load(classname, loader).flatMap {  clazz =>

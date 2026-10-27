@@ -67,7 +67,7 @@ class Namer { typer: Typer =>
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
    */
-  //lazy val expandedTree = new mutable.HashMap[DefTree, Tree]
+  //lazy val expandedTree = mutable.Map.empty[DefTree, Tree]
   /*{
     override def default(tree: DefTree) = tree // can't have defaults on HashMaps :-(
   }*/
@@ -77,12 +77,12 @@ class Namer { typer: Typer =>
    *  with the same symbol is created (this can be when the symbol is completed
    *  or at the latest when the tree is typechecked.
    */
-  //lazy val symOfTree = new mutable.HashMap[Tree, Symbol]
+  //lazy val symOfTree = mutable.Map.empty[Tree, Symbol]
 
   /** A map from expanded trees to their typed versions.
    *  Populated when trees are typechecked during completion (using method typedAhead).
    */
-  // lazy val typedTree = new mutable.HashMap[Tree, tpd.Tree]
+  // lazy val typedTree = mutable.Map.empty[Tree, tpd.Tree]
 
   /** A map from method symbols to nested typers.
    *  Populated when methods are completed. Emptied when they are typechecked.
@@ -90,7 +90,7 @@ class Namer { typer: Typer =>
    *  one, so that trees that are shared between different DefDefs can be independently
    *  used as indices. It also contains a scope that contains nested parameters.
    */
-  lazy val nestedTyper: mutable.HashMap[Symbol, Typer] = new mutable.HashMap
+  lazy val nestedTyper: mutable.Map[Symbol, Typer] = mutable.Map.empty
 
   /** We are entering symbols coming from a SourceLoader */
   private var lateCompile = false
@@ -592,8 +592,8 @@ class Namer { typer: Typer =>
   def index(stats: List[Tree])(using Context): Context = {
 
     // module name -> (stat, moduleCls | moduleVal)
-    val moduleClsDef = mutable.Map[TypeName, (Tree, TypeDef)]()
-    val moduleValDef = mutable.Map[TermName, (Tree, ValDef)]()
+    val moduleClsDef = mutable.Map.empty[TypeName, (Tree, TypeDef)]
+    val moduleValDef = mutable.Map.empty[TermName, (Tree, ValDef)]
 
     /** Remove the subtree `tree` from the expanded tree of `mdef` */
     def removeInExpanded(mdef: Tree, tree: Tree): Unit = {
@@ -699,8 +699,8 @@ class Namer { typer: Typer =>
         }
     }
 
-    val classDef  = mutable.Map[TypeName, TypeDef]()
-    val moduleDef = mutable.Map[TypeName, TypeDef]()
+    val classDef  = mutable.Map.empty[TypeName, TypeDef]
+    val moduleDef = mutable.Map.empty[TypeName, TypeDef]
 
     /** Create links between companion object and companion class.
      *  Populate `moduleDef` and `classDef` as a side effect.
@@ -1487,7 +1487,7 @@ class Namer { typer: Typer =>
           .foreach(addForwarder(name, _, span)) // ignore if any are not added
 
       def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
-        val nonContextual = mutable.HashSet(seen*)
+        val nonContextual = mutable.Set(seen*)
         val fromCaseClass = pathType.widen.classSymbols.exists(_.is(Case))
         def isCaseClassSynthesized(mbr: Symbol) =
           fromCaseClass && defn.caseClassSynthesized.contains(mbr)
@@ -1777,7 +1777,7 @@ class Namer { typer: Typer =>
        *  as an attachment on the ClassDef tree.
        */
       def enterParentRefinementSyms(refinements: List[(Name, Type)]) =
-        val refinedSyms = mutable.ListBuffer[Symbol]()
+        val refinedSyms = mutable.ListBuffer.empty[Symbol]
         for (name, tp) <- refinements do
           if decls.lookupEntry(name) == null then
             val flags = tp match
@@ -2093,7 +2093,7 @@ class Namer { typer: Typer =>
    */
   def completeTrailingParamss(ddef: DefDef, sym: Symbol, indexingCtor: Boolean)(using Context): Unit =
     // A map from context-bounded type parameters to associated evidence parameter names
-    val witnessNamesOfParam = mutable.Map[TypeDef, List[TermName]]()
+    val witnessNamesOfParam = mutable.Map.empty[TypeDef, List[TermName]]
     if !ddef.name.is(DefaultGetterName) && !sym.is(Synthetic) && (indexingCtor || !sym.isPrimaryConstructor) then
       for params <- ddef.paramss; case tdef: TypeDef <- params do
         for case WitnessNamesAnnot(ws) <- tdef.mods.annotations do

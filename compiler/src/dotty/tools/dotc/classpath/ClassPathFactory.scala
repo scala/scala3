@@ -3,14 +3,14 @@
  */
 package dotty.tools.dotc.classpath
 
-import dotty.tools.io.{AbstractFile, Directory, File, Path, VirtualDirectory}
+import dotty.tools.io.{AbstractFile, Directory, File, Path, PlainFile, VirtualDirectory}
 import dotty.tools.dotc.classpath.FileUtils.isClassContainer
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.LogicalSourcePath
 import dotty.tools.dotc.interactive.LogicalPackage
 
-import java.net.{MalformedURLException, URI, URISyntaxException, URL}
-import java.nio.file.Files
+import java.net.{URI, URISyntaxException}
+import java.util.Locale
 import java.util.jar.{Attributes, JarInputStream}
 
 /**
@@ -71,10 +71,9 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
         for
           file <- files
           a <- expandManifestPath(file.path)
-          path = java.nio.file.Paths.get(a.toURI())
-          if Files.exists(path)
+          if a.exists
         yield
-          ClassPathFactory.newClassPath(AbstractFile.getFile(path).nn) // .nn ok because of Files.exists(path)
+          ClassPathFactory.newClassPath(new PlainFile(a))
       else
         Seq.empty
 
@@ -86,14 +85,19 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
   /** Expand manifest jar classpath entries: these are either urls, or paths
    *  relative to the location of the jar.
    */
-  private def expandManifestPath(jarPath: String): List[URL] =
-    def specToURL(spec: String, basedir: Directory): Option[URL] =
-      try
-        val uri = new URI(spec)
-        if uri.isAbsolute then Some(uri.toURL)
-        else Some(basedir.resolve(Path(spec)).toURL)
-      catch
-        case _: MalformedURLException | _: URISyntaxException => None
+  private def expandManifestPath(jarPath: String): List[Path] =
+    def resolve(entry: String, baseDir: Directory): Option[Path] =
+      // Class-Path may only contain relative URLs, except for the 'file' scheme for compatibility reasons, per
+      // https://docs.oracle.com/en/java/javase/17/docs/specs/jar/jar.html#class-path-attribute
+      val uri =
+        try new URI(entry)
+        catch case _: URISyntaxException => return None
+      if uri.getScheme == null then
+        Some(baseDir.resolve(Path(uri.getPath)))
+      else if uri.getScheme.toLowerCase(Locale.ROOT) == "file" then
+        Some(Path(java.nio.file.Path.of(uri)))
+      else
+        None
 
     val file = File(jarPath)
     if !file.isFile then
@@ -111,7 +115,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
         val attrs = m.getMainAttributes.asInstanceOf[java.util.Map[Attributes.Name, String]]
         attrs.get(Attributes.Name.CLASS_PATH) match
           case cp: String if cp.trim().nonEmpty =>
-            cp.split("\\s+").toList.map(elem => specToURL(elem, baseDir).getOrElse((baseDir / elem).toURL))
+            cp.split("\\s+").toList.flatMap(elem => resolve(elem, baseDir))
           case _ => Nil
 }
 

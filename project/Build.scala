@@ -334,6 +334,9 @@ object Build {
       docScalaInstance
     },
     Compile / doc / scalacOptions ++= ScaladocOptions.scalacOptionsDocSettings(),
+    // `-siteroot` defaults to `./docs`, which sbt resolves against the repo root, so without
+    // this every javadoc JAR would bundle the repo's static site (blog, reference, PDFs).
+    Compile / doc / scalacOptions ++= Seq("-siteroot", (baseDirectory.value / "docs").getPath),
   )
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
@@ -546,7 +549,7 @@ object Build {
            |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [--failed] [--enable-coverage-phase] [<filter>]
            |
            |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
-           |excluding tests tagged with dotty.SlowTests.
+           |excluding "slow" tests.
            |
            |  --help                show this message
            |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
@@ -576,7 +579,7 @@ object Build {
         else if (coverage) "dotty.tools.dotc.coverage.*"
         else if (coverageFlag) compilationTests
         else s"$compilationTests dotty.tools.dotc.coverage.*"
-      val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
+      val cmd = s" $test -- -Ddotty.tests.quick=TRUE " +
         (if (enableCoveragePhase) " --include-categories=dotty.CoverageCompilationTests" else "") +
         (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
         (if (rerunFailed) " -Ddotty.tests.rerunFailed=TRUE" else "") +

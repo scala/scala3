@@ -4,7 +4,6 @@
 package dotty.tools
 package dotc.classpath
 
-import java.net.URL
 import scala.collection.mutable
 
 import dotty.tools.io.AbstractFile
@@ -30,15 +29,13 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
         return file
     None
   }
-  private val packageIndex: collection.mutable.Map[String, Seq[ClassPath]] = collection.mutable.Map()
+  private val packageIndex: collection.mutable.Map[String, Seq[ClassPath]] = collection.mutable.Map.empty
   private def aggregatesForPackage(pkg: String): Seq[ClassPath] = synchronized {
     packageIndex.getOrElseUpdate(pkg, aggregates.filter(_.hasPackage(pkg)))
   }
 
-  override def asURLs: Iterable[URL] = aggregates.flatMap(_.asURLs)
-
   override def packages(inPackage: String): Iterable[String] = {
-    val result = mutable.HashSet[String]()
+    val result = mutable.Set.empty[String]
     for
       classpath <- aggregates
       pkg <- classpath.packages(inPackage)
@@ -55,9 +52,12 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
 
   override def hasPackage(pkg: String): Boolean = aggregates.exists(_.hasPackage(pkg))
 
+  override def searchLocations: Iterable[AbstractFile] =
+    aggregates.flatMap(_.searchLocations)
+
   private inline def getDistinctEntries[EntryType <: ClassRepresentation](inline getEntries: ClassPath => Iterable[EntryType]): Iterable[EntryType] =
-    val seenNames = mutable.HashSet[String]()
-    val result = mutable.ArrayBuffer[EntryType]()
+    val seenNames = mutable.Set.empty[String]
+    val result = mutable.ArrayBuffer.empty[EntryType]
     val iterator = aggregates.iterator
     while iterator.hasNext do
       val entries = getEntries(iterator.next()).iterator

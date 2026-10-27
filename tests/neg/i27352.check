@@ -1,0 +1,6 @@
+-- [E035] Syntax Error: tests/neg/i27352.scala:5:12 --------------------------------------------------------------------
+5 |    xs.map: _ match // error
+  |            ^
+  |            Unbound wildcard type
+  |
+  | longer explanation available when compiling with `-explain`

@@ -1,10 +1,7 @@
 case class A() extends Exception
 
-object Test:
-  def main(args: Array[String]): Unit =
-    try {
-      throw A();
-    } catch {
-      case A() => Console.println("OK");
-      case ex: Exception => Console.println("should not reach here: " + ex);
-    }
+@main def Test: Unit =
+  try throw A()
+  catch
+    case A() => // OK
+    case ex: Exception => throw RuntimeException("should not reach here: " + ex);

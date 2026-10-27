@@ -36,7 +36,8 @@ import dotc.util.{SourceFile, SourcePosition}
 import dotc.{CompilationUnit, Driver}
 import dotc.config.{CompilerCommand, Feature}
 import dotty.tools.io
-import dotty.tools.io.{AbstractFileClassLoader => _, *}
+import dotty.tools.io.*
+import dotty.tools.io.PlainFile.toPlainFile
 import dotty.tools.dotc.classpath.FileUtils.isClassContainer
 import dotty.tools.repl.ScalaClassLoader.*
 
@@ -745,7 +746,7 @@ class ReplDriver(settings: Array[String],
             ctx.platform.addToClassPath(jarClassPath)
             SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
 
-            rendering.addToClasspath(jarClassPath.asURLs)
+            rendering.addToClasspath(jarClassPath.searchLocations)
 
             out.println(s"Added '$path' to classpath.")
         } catch {
@@ -865,7 +866,7 @@ class ReplDriver(settings: Array[String],
       else
         val root = if Files.isDirectory(resource) then resource else stageResourceFile(resource)
         inContext(state.context):
-          rendering.addResource(root.toUri.toURL)
+          rendering.addResource(root.toPlainFile)
         out.println(s"Added '$path' to classpath.")
     catch case NonFatal(e) =>
       out.println(s"Failed to load '$path' to classpath: ${e.getMessage}")
@@ -900,7 +901,7 @@ class ReplDriver(settings: Array[String],
               val classpathState = newRun(state)
               inContext(classpathState.context):
                 DependencyResolver.addToCompilerClasspath(files)
-                rendering.addToClasspath(files.map(_.toURI.toURL))
+                rendering.addToClasspath(files.map(f => f.toPath.toPlainFile))
                 val depsDescription = if deps.size == 1 then "a dependency" else s"${deps.size} dependencies"
                 out.println(s"Resolved $depsDescription (${files.size} JARs)")
               classpathState

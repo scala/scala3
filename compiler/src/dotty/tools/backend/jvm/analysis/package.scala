@@ -171,7 +171,7 @@ package dotty.tools.backend.jvm
  * alias set representation that is used in the current implementation (see class AliasingFrame)
  * makes alias set merging more efficient.
  *
- * [1] https://github.com/scala-opt/scala/blob/opt/rebase/src/compiler/scala/tools/nsc/backend/bcode/NullnessPropagator.java
+ * [1] `NullnessPropagator.java` on the `opt/rebase` branch of the scala-opt/scala fork (no longer online)
  *
  *
  * Complexity and scaling of analysis

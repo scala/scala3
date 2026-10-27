@@ -368,6 +368,7 @@ class Definitions {
    *
    *  1. At the top level:
    *
+   *       ```
    *       // A.java
    *       void meth1(Object arg) {}
    *       <T> void meth2(T arg) {} // T implicitly extends Object
@@ -375,12 +376,14 @@ class Definitions {
    *       // B.scala
    *       meth1(1) // OK
    *       meth2(1) // OK
+   *       ```
    *
    *     This is safe even though Int is not a subtype of Object, because Erasure
    *     will detect the mismatch and box the value type.
    *
    *  2. In a class type parameter:
    *
+   *       ```
    *       // A.java
    *       void meth3(scala.List<Object> arg) {}
    *       <T> void meth4(scala.List<T> arg) {}
@@ -388,11 +391,13 @@ class Definitions {
    *       // B.scala
    *       meth3(List[Int](1)) // OK
    *       meth4(List[Int](1)) // OK
+   *       ```
    *
    *     At erasure, type parameters are removed and value types are boxed.
    *
    *  3. As the type parameter of an array:
    *
+   *       ```
    *       // A.java
    *       void meth5(Object[] arg) {}
    *       <T> void meth6(T[] arg) {}
@@ -400,6 +405,7 @@ class Definitions {
    *       // B.scala
    *       meth5(Array[Int](1)) // error: Array[Int] is not a subtype of Array[Object]
    *       meth6(Array[Int](1)) // error: Array[Int] is not a subtype of Array[T & Object]
+   *       ```
    *
    *
    *     This is a bit more subtle: at erasure, Arrays keep their type parameter,
@@ -413,6 +419,7 @@ class Definitions {
    *
    *  4. As the repeated argument of a varargs method:
    *
+   *       ```
    *       // A.java
    *       void meth7(Object... args) {}
    *       <T> void meth8(T... args) {}
@@ -423,6 +430,7 @@ class Definitions {
    *       val ai = Array[Int](1)
    *       meth7(ai: _*) // OK (will copy the array at Erasure)
    *       meth8(ai*) // OK (will copy the array at Erasure)
+   *       ```
    *
    *     Java repeated arguments are erased to arrays, so it would be safe to treat
    *     them in the same way: add an `& Object` to the parameter type to disallow
@@ -1284,6 +1292,14 @@ class Definitions {
     "io.reactivex.annotations.Nullable" ::
     "io.reactivex.rxjava3.annotations.Nullable" ::
     "org.jspecify.annotations.Nullable" :: Nil)
+
+  // JSpecify declaration annotations that set the nullness default of Java code in their scope,
+  // see `ImplicitNullInterop.isNullMarked`. As with the other null annotations, we don't require
+  // them to be on the class path.
+  @tu lazy val NullMarkedAnnot: Symbol = getClassIfDefined("org.jspecify.annotations.NullMarked")
+  @tu lazy val NullUnmarkedAnnot: Symbol = getClassIfDefined("org.jspecify.annotations.NullUnmarked")
+  // Classes compiled by Kotlin carry this annotation. JSpecify treats them as not null-marked.
+  @tu lazy val KotlinMetadataAnnot: Symbol = getClassIfDefined("kotlin.Metadata")
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
@@ -2147,8 +2163,8 @@ class Definitions {
     ScalaNumericBoxedClasses() `union` Set(BoxedUnitClass, BoxedBooleanClass)
   )
 
-  private val valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()
-  private val typeTags = mutable.Map[TypeName, Name]().withDefaultValue(nme.specializedTypeNames.Object)
+  private val valueTypeEnc = mutable.Map.empty[TypeName, PrimitiveClassEnc]
+  private val typeTags = mutable.Map.empty[TypeName, Name].withDefaultValue(nme.specializedTypeNames.Object)
 
 //  private val unboxedTypeRef = mutable.Map[TypeName, TypeRef]()
 //  private val javaTypeToValueTypeRef = mutable.Map[Class[?], TypeRef]()
@@ -2219,7 +2235,7 @@ class Definitions {
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
   @tu lazy val specialErasure: collection.Map[Symbol, ClassSymbol] =
-    val m = mutable.Map[Symbol, ClassSymbol]()
+    val m = mutable.Map.empty[Symbol, ClassSymbol]
     m(AnyClass) = ObjectClass
     m(MatchableClass) = ObjectClass
     m(PureClass) = ObjectClass
