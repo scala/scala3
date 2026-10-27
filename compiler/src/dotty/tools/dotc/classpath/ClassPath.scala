@@ -100,8 +100,8 @@ object ClassPath {
       if classOrModuleName.endsWith("$")
         && classOrModuleName != "Null$" // scala.runtime.Null$
         && classOrModuleName != "Nothing$" // scala.runtime.Nothing$
-        // Special case for `object $` in Amonite.
-        // This is an ad-hoc workaround for Amonite `object $`. See issue #19702
+        // Special case for `object $` in Ammonite.
+        // This is an ad-hoc workaround for Ammonite `object $`. See issue #19702
         // This definition is not valid Scala.
         && classOrModuleName != "$"
       then classOrModuleName.stripSuffix("$")

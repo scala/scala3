@@ -29,12 +29,10 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
         List(new LogicalSourcePath(path, rootPackage))
       case _ =>
         for
-          file <- expandPath(path, expandStar = false)
+          file <- ClassPath.expandPath(path, expandStar = false)
           dir <- Option(AbstractFile.getDirectory(file, ctx.settings.javaOutputVersion.value))
         yield ClassPathFactory.newSourcePath(dir)
     }
-
-  def expandPath(path: String, expandStar: Boolean = true): List[String] = ClassPath.expandPath(path, expandStar)
 
   /** Expand dir out to contents, a la extdir */
   private def expandDir(extdir: String)(using Context): List[String] =
@@ -44,20 +42,20 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
 
   def contentsOfDirsInPath(path: String)(using Context): List[ClassPath] =
     for {
-      dir <- expandPath(path, expandStar = false)
+      dir <- ClassPath.expandPath(path, expandStar = false)
       name <- expandDir(dir)
       entry <- Option(AbstractFile.getDirectory(name, ctx.settings.javaOutputVersion.value))
     }
     yield ClassPathFactory.newClassPath(entry)
 
   def classesInExpandedPath(path: String)(using Context): IndexedSeq[ClassPath] =
-    classesInPathImpl(path, expand = true).toIndexedSeq
+    classesInPathImpl(path, expandStar = true).toIndexedSeq
 
-  def classesInPath(path: String)(using Context): List[ClassPath] = classesInPathImpl(path, expand = false)
+  def classesInPath(path: String)(using Context): List[ClassPath] = classesInPathImpl(path, expandStar = false)
 
-  private def classesInPathImpl(path: String, expand: Boolean)(using Context): List[ClassPath] =
+  private def classesInPathImpl(path: String, expandStar: Boolean)(using Context): List[ClassPath] =
     val files: List[AbstractFile] = for {
-      file <- expandPath(path, expand)
+      file <- ClassPath.expandPath(path, expandStar)
       dir <- {
         def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file).nn) else None
 

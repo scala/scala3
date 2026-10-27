@@ -375,8 +375,9 @@ object SymbolLoaders {
     // e.g. scala-parallel-collections adds both classes to scala.collection
     // and the new scala.collection.parallel sub-package.
     for p <- jarClasspath.packages(fullPackageName) do
-      val lastDotIndex = p.lastIndexOf('.') // never -1 by the contract of `ClassPath.packages` which return subpackages
-      val subPackageName = p.substring(lastDotIndex).toTermName
+      val subPackageName =
+        if fullPackageName == ClassPath.RootPackage then p.toTermName
+        else p.substring(p.lastIndexOf('.')).toTermName
       val subPackage = packageClass.info.decl(subPackageName).orElse:
         // package does not exist in symbol table, create a new symbol
         enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))
