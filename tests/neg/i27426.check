@@ -1,0 +1,24 @@
+-- [E017] Syntax Error: tests/neg/i27426.scala:4:22 --------------------------------------------------------------------
+4 |  val x = (1, Option((erased y: Int))) // error
+  |                      ^^^^^^^^^^^^^
+  |                      erased cannot be used here
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E017] Syntax Error: tests/neg/i27426.scala:5:14 --------------------------------------------------------------------
+5 |  val y = (1, erased y: Int) // error
+  |              ^^^^^^^^^^^^^
+  |              erased cannot be used here
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E017] Syntax Error: tests/neg/i27426.scala:6:11 --------------------------------------------------------------------
+6 |  val z = (erased y: Int) // error
+  |           ^^^^^^^^^^^^^
+  |           erased cannot be used here
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E017] Syntax Error: tests/neg/i27426.scala:8:28 --------------------------------------------------------------------
+8 |  val x1 = (a: Int, Option((erased y: Int))) => 1 // error
+  |                            ^^^^^^^^^^^^^
+  |                            erased cannot be used here
+  |
+  | longer explanation available when compiling with `-explain`

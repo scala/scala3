@@ -516,15 +516,6 @@ object Parsers {
         case _ =>
           fail()
 
-    /** Checks that tuples don't contain a parameter. */
-    def checkNonParamTuple(t: Tree) = t match
-      case Tuple(ts) => ts.collectFirst {
-        case param: ValDef =>
-          syntaxError(em"invalid parameter definition syntax in tuple value", param.span)
-      }
-      case _ =>
-
-
     /** Convert (qual)ident to type identifier
      */
     def convertToTypeId(tree: Tree): Tree = tree match {
@@ -551,7 +542,10 @@ object Parsers {
       try op
       finally
         placeholderParams match
-          case vd :: _ => syntaxError(UnboundPlaceholderParameter(), vd.span)
+          case vd :: _ =>
+            if vd.mods.is(Erased)
+            then syntaxError(BadErased(), vd.span)
+            else syntaxError(UnboundPlaceholderParameter(), vd.span)
           case _ =>
         placeholderParams = savedPlaceholderParams
         in.languageImportContext = savedLanguageImportContext
@@ -2637,15 +2631,20 @@ object Parsers {
           val saved = placeholderParams
           placeholderParams = Nil
 
-          def wrapPlaceholders(t: Tree) = try
-            if (placeholderParams.isEmpty) t
-            else new WildcardFunction(placeholderParams.reverse, t)
-          finally placeholderParams = saved
+          def wrapPlaceholders(t: Tree) =
+            try
+              val (erasedParams, otherParams) = placeholderParams.partition(_.mods.is(Erased))
+                // erased placeholders come from named definitions created in exprsInParensOrBindings.
+                // They must be followed by a function arrow, so any such placeholders shoing
+                // up here are errors.
+              for p <- erasedParams do syntaxError(BadErased(), p.span)
+              if otherParams.isEmpty then t
+              else new WildcardFunction(otherParams.reverse, t)
+            finally placeholderParams = saved
 
           val t = expr1(location)
           if in.isArrow then
             if in.currentRegion.isInstanceOf[Scanners.InCase] && location == Location.InBlock then
-              checkNonParamTuple(t)
               wrapPlaceholders(t)
             else
               placeholderParams = Nil // don't interpret `_' to the left of `=>` as placeholder
@@ -2654,7 +2653,6 @@ object Parsers {
             placeholderParams = placeholderParams ::: saved
             t
           else
-            checkNonParamTuple(t)
             wrapPlaceholders(t)
     }
 
@@ -2913,7 +2911,7 @@ object Parsers {
 
     /**  Binding           ::= [`erased`] (id | `_') [`:' Type]
      */
-    def binding(mods: Modifiers): Tree =
+    def binding(mods: Modifiers): ValDef =
       atSpan(in.offset) {
         val mods1 = if isErased then addModifier(mods) else mods
         makeParameter(bindingName(), typedOpt(), mods1)
@@ -3150,14 +3148,15 @@ object Parsers {
     def exprsInParensOrBindings(): List[Tree] =
       if in.token == RPAREN then Nil
       else in.currentRegion.withCommasExpected {
-        var isFormalParams = false
         def exprOrBinding() =
-          if isErased then isFormalParams = true
-          if isFormalParams then binding(Modifiers())
+          if isErased then
+            val param = binding(Modifiers())
+            placeholderParams = param :: placeholderParams
+              // Add the binding to placeholderParams, so that we can check for
+              // leakage in checkNoEscapingPlaceholders
+            param
           else
-            val t = maybeNamed(exprInParens)()
-            if t.isInstanceOf[ValDef] then isFormalParams = true
-            t
+            maybeNamed(exprInParens)()
         commaSeparatedRest(exprOrBinding(), exprOrBinding)
       }
 
