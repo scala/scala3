@@ -1,0 +1,39 @@
+//> using options -language:experimental.captureChecking
+scala> import caps.*
+scala> class File { override def toString = "File" }
+// defined class File
+scala> class Box[A](val value: A) { override def toString = "Box" }
+// defined class Box
+scala> val io: File^ = File()
+val io: File^ = File
+scala> val x: File^ = File()
+val x: File^ = File
+scala> lazy val list = List([C^] => (y: File^{C}) => y)
+lazy val list: List[[C^] -> (y: File^{C}) -> File^{y}]
+scala> val r1: File^{x} = list.head[{x}](x)
+val r1: File^{x} = File
+scala> lazy val ps = for i <- List(1, 2) yield [C^] => (y: File^{C}) => y
+lazy val ps: List[[C^] -> (y: File^{C}) -> File^{y}]
+scala> val r2: File^{x} = ps.head[{x}](x)
+val r2: File^{x} = File
+scala> lazy val opt = Option([C^, D^ <: {C}] => (y: File^{D}) => (y: File^{C}))
+lazy val opt: Option[[C^, D^ <: {C}] -> (y: File^{D}) -> File^{C}]
+scala> opt.get[{io}, {x}](x)
+-- [E057] Type Mismatch Error: -------------------------------------------------
+1 |opt.get[{io}, {x}](x)
+  |               ^
+  |Type argument scala.caps.CapSet^{x} does not conform to upper bound scala.caps.CapSet^{io}
+  |
+  | longer explanation available when compiling with `-explain`
+1 error found
+scala> val leak: File = list.head[{x}](x)
+-- [E007] Type Mismatch Error: -------------------------------------------------
+1 |val leak: File = list.head[{x}](x)
+  |                 ^^^^^^^^^^^^^^^^^
+  |                 Found:    File^{x}
+  |                 Required: File
+  |
+  |                 Note that capability `x` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`
+1 error found

@@ -6,21 +6,18 @@ scala> class Box[A](val value: A) { override def toString = "Box" }
 // defined class Box
 scala> val f = Box([C^] => (f: File^{C}) => (h: File^{C}) => (g: File^{C}) => { println(h); (f, h) })
 val f:
-  Box[
-    [C^] ->
-      (f: File^{C}) ->
-        (h: File^{C}) -> (g: File^{C}) ->{h} (File^{f}, File^{h})^{}
-  ]^{} = Box
+  Box[[C^] -> (f: File^{C}) -> (h: File^{C}) ->
+    (g: File^{C}) ->{h} (File^{f}, File^{h})] = Box
 scala> val io: File^ = File()
 val io: File^ = File
 scala> val bounded = Box([C^ <: {io}] => (f: File^{C}) => f)
-val bounded: Box[[C^ <: {io}] -> (f: File^{C}) -> File^{f}]^{} = Box
+val bounded: Box[[C^ <: {io}] -> (f: File^{C}) -> File^{f}] = Box
 scala> val mono = Box((y: File^{io}) => y)
-val mono: Box[(y: File^{io}) -> File^{y}]^{} = Box
+val mono: Box[(y: File^{io}) -> File^{y}] = Box
 scala> def p = [C^] => (y: File^{C}) => y
 def p: [C^] -> (y: File^{C}) -> File^{y}
 scala> val viaVal = Box(p)
-val viaVal: Box[[C^] -> (y: File^{C}) -> File^{y}]^{} = Box
+val viaVal: Box[[C^] -> (y: File^{C}) -> File^{y}] = Box
 scala> val r = viaVal.value[{io}](io)
 val r: File^{io} = File
 scala> def explicitDef: Box[[C^] -> (y: File^{C}) -> Int] = Box([C^] => (y: File^{C}) => 1)
@@ -28,15 +25,14 @@ def explicitDef: Box[[C^] -> (y: File^{C}) -> Int]
 scala> explicitDef.value[{io}](io)
 val res0: Int = 1
 scala> val curried = Box([C^] => (a: File^{C}) => (b: File^{C}) => (a, b))
-val curried:
-  Box[[C^] -> (a: File^{C}) -> (b: File^{C}) -> (File^{a}, File^{b})^{}]^{} = Box
+val curried: Box[[C^] -> (a: File^{C}) -> (b: File^{C}) -> (File^{a}, File^{b})] = Box
 scala> class Ref extends Mutable { var x = 0; update def set(y: Int): Unit = x = y }
 // defined class Ref
 scala> val setter = Box((r: Ref^) => r.set(1))
-val setter: Box[(r: Ref^) -> Unit]^{} = Box
+val setter: Box[(r: Ref^) -> Unit] = Box
 scala> val polySetter = Box([C^] => (r: Ref^{C}) => r.set(1))
-val polySetter: Box[[C^] -> (r: Ref^{C}) -> Unit]^{} = Box
+val polySetter: Box[[C^] -> (r: Ref^{C}) -> Unit] = Box
 scala> class Con extends SharedCapability
 // defined class Con
 scala> val sh = Box([C^ <: {any.only[SharedCapability]}] => (c: Con^{C}) => c)
-val sh: Box[[C^ <: {any.only[SharedCapability]}] -> (c: Con^{C}) -> Con^{c}]^{} = Box
+val sh: Box[[C^ <: {any.only[SharedCapability]}] -> (c: Con^{C}) -> Con^{c}] = Box
