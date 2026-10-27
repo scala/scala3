@@ -774,6 +774,7 @@ object SpaceEngine {
         && cls.isOneOf(AbstractOrTrait) // ignore sealed non-abstract classes
         && !cls.hasAnonymousChild       // can't name anonymous classes as counter-examples
         && cls.children.nonEmpty        // can't decompose without children
+        && cls != defn.PairClass        // `*:` children are Tuple1..Tuple22, not TupleXXL
 
   extension (tref: TypeRef)
     def isUpperBoundedAbstract(using Context): Boolean =
