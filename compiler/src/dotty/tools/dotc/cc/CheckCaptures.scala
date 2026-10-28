@@ -531,7 +531,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           def msg = CannotBeIncluded(
               added, target, realTarget, otherNotes ++ whyNotes, targetOwner, provenance)
           target match
-            case target: CaptureSet.Var if realTarget.isProvisionallySolved =>
+            case target: CaptureSet.Var
+            if realTarget.isProvisionallySolved && ccState.iterationId < ccConfig.maxRuns =>
               report.warning(
                 msg.prepend(i"Another capture checking run needs to be scheduled because\n"),
                 pos)
@@ -539,6 +540,16 @@ class CheckCaptures extends Recheck, SymTransformer:
               added match
                 case added: Capability => target.elems += added
                 case added: CaptureSet => target.elems ++= added.elems
+            case target: CaptureSet.Var if realTarget.isProvisionallySolved =>
+              val definition = realTarget match
+                case cs: CaptureSet.VarInTypeTree if cs.owner.exists => i"${cs.owner}"
+                case _ => "the definition with the inferred type"
+              report.error(
+                msg.append(i"""
+                  |
+                  |The capture set was extended in each of ${ccConfig.maxRuns} capture checking runs.
+                  |To allow this, $definition needs an explicit type."""),
+                pos)
             case _ =>
               report.error(msg, pos)
         case _ =>
