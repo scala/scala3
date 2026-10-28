@@ -1499,7 +1499,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           if !sym.isExemptFromExplicitChecks // Symbols that can't be seen outside the compilation unit can have inferred types
               && !sym.needsResultRefinement  // If we refine the result type anyway, the inferred type does not matter
           then // Symbols that can't be seen outside the compilation unit can have inferred types
-            val expected = tpt.tpe.dropInferredRetains
+            val expected = setup.externallyVisibleType(tpt.tpe, sym)
             todoAtPostCheck += { () =>
               withGlobalCapAsRoot:
                 testAdapted(tp, expected, tree.rhs, addendum(expected) :: Nil)(fail)

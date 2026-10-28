@@ -47,6 +47,11 @@ trait SetupAPI:
    */
   def freezeInfos()(using Context): Unit
 
+  /** The type `tp` of an inferred type tree of `sym` as other compilation units
+   *  see it, see `Setup.externallyVisibleType`.
+   */
+  def externallyVisibleType(tp: Type, sym: Symbol)(using Context): Type
+
   /** Used for error reporting:
    *  Maps mutable variables to the symbols that capture them (in the
    *  CheckCaptures sense, i.e. symbol is referred to from a different method
@@ -633,6 +638,32 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       val denot = atPhase(thisPhase.next)(sym.denot)
       if denot.isCompleted then denot.info = freeze(denot.info)
     updatedMembers.clear()
+
+  /** The type `tp` of an inferred type tree of `sym` as other compilation units see it.
+   *  Capture sets are dropped except in parts marked with `@caps.internal.declared`.
+   *  `^` annotations in contravariant and invariant positions are kept as well, since
+   *  other units see them too and rely on them for parameter types. Declared parts are
+   *  transformed as when Setup keeps them in a result type. Like there, the capture sets
+   *  in declared upper bounds are boxed.
+   */
+  def externallyVisibleType(tp: Type, sym: Symbol)(using Context): Type = // TODO we should drop retains from inferred types before unpickling
+    def isDeclared(t: Type) = t match
+      case AnnotatedType(_, annot) => annot.symbol == defn.DeclaredAnnot
+      case _ => false
+    // After Setup, @retains annotations would be taken for capturing types
+    atPhase(thisPhase):
+      val tm = new TypeMap:
+        def apply(t: Type) = t match
+          case AnnotatedType(parent, annot)
+          if annot.symbol.isRetains && (annot.symbol != defn.RetainsCapAnnot || variance > 0) =>
+            apply(parent)
+          case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
+            transformExplicitType(parent, sym, initialVariance = -1)
+          case t: RealTypeBounds if isDeclared(t.hi) =>
+            t.derivedTypeBounds(atVariance(-variance)(this(t.lo)), this(t.hi).boxDeeply)
+          case _ =>
+            mapOver(t)
+      tm(tp)
 
   /** The info of `sym` at the CheckCaptures phase */
   extension (sym: Symbol) def nextInfo(using Context): Type =

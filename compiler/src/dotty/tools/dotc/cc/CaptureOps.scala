@@ -427,23 +427,6 @@ extension (tp: Type)
 
   def isArrayUnderStrictMut(using Context): Boolean = tp.classSymbol.isArrayUnderStrictMut
 
-  /** Drop @retains annotations everywhere except in parts marked with
-   *  `@caps.internal.declared`, which other compilation units see as they are.
-   *  `^` annotations in contravariant and invariant positions are kept as well,
-   *  since other units see them too and rely on them for parameter types.
-   */
-  def dropInferredRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
-    val tm = new TypeMap:
-      def apply(t: Type) = t match
-        case AnnotatedType(parent, annot)
-        if annot.symbol.isRetains && (annot.symbol != defn.RetainsCapAnnot || variance > 0) =>
-          apply(parent)
-        case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
-          parent
-        case _ =>
-          mapOver(t)
-    tm(tp)
-
   /** The number of parts of this type that can have capture sets: function types
    *  and @retains annotations.
    */
