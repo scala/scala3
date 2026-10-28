@@ -35,16 +35,9 @@ jobs:
       SDKMAN_TOKEN: ${{ secrets.SDKMAN_TOKEN }}
 
     steps:
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Git Checkout
         uses: actions/checkout@v4
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
 
       - name: Publish to SDKMAN
         run: .github/workflows/scripts/publish-sdkman.sh ${{ inputs.version }}
