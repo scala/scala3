@@ -13,24 +13,32 @@ import Decorators.*
 /** This phase inlines calls to methods of value classes.
  *
  *  A value class V after [[ExtensionMethods]] will look like:
+ *    ```
  *    class V[A, B, ...](val underlying: U) extends AnyVal {
  *      def foo[T, S, ...](arg1: A1, arg2: A2, ...) =
  *        V.foo$extension[T, S, ..., A, B, ...](this)(arg1, arg2, ...)
  *
  *       ...
  *    }
+ *    ```
  *
  *  Let e have type V, if e is a stable prefix or if V does not have any class
  *  type parameter, then we can rewrite:
+ *    ```
  *    e.foo[X, Y, ...](args)
+ *    ```
  *  as:
+ *    ```
  *    V.foo$extension[X, Y, ..., A', B', ...](e)(args)
+ *    ```
  *    where A', B', ... are the class type parameters A, B, ... as seen from `e`.
  *  Otherwise, we need to evaluate e first:
+ *    ```
  *    {
  *      val ev = e
  *      V.foo$extension[X, Y, ..., A', B', ...](ev)(args)
  *    }
+ *    ```
  *
  *  This phase needs to be placed after phases which may introduce calls to
  *  value class methods (like [[PatternMatcher]]). This phase uses name mangling

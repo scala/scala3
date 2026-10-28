@@ -21,7 +21,6 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.quoted.Interpreter
 
 import dotty.tools.dotc.util.SrcPos
-import dotty.tools.io.AbstractFileClassLoader
 
 import scala.reflect.ClassTag
 
@@ -114,9 +113,10 @@ object Splicer {
               |Hint: Instead of using `Symbol.primaryConstructor.paramSymss` directly, get the analogous field members with `Symbol.fieldMembers`.
               |"""
             report.error(msg, tree.srcPos)
-          case tree: DefDef =>
-            val last = locals
+          case tree @ DefDef(_, params, _, _) =>
             markDef(tree)
+            val last = locals
+            params.flatten.foreach(markDef)
             traverseOver(last)
           case Block(stats, _) =>
             val last = locals

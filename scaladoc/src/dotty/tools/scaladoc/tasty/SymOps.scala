@@ -248,7 +248,8 @@ class SymOpsWithLinkCache:
             val paramSigs = sym.paramSymss.flatten.map(_.tree).collect {
               case v: ValDef => v.tpt.tpe
             }.map(getJavadocType)
-            "#" + sym.name + paramSigs.mkString("-","-","-")
+            // The anchors of javadoc since JDK 10, e.g. `#subList(int,int)`; JDK 8 used `#subList-int-int-`
+            "#" + sym.name + paramSigs.mkString("(", ",", ")")
           else
             "#" + sym.name
         } else ""
@@ -290,7 +291,9 @@ class SymOpsWithLinkCache:
           (sym.className, sym.anchor)
 
         val location = (sym.packageNameSplitted ++ className).map(escapeFilename)
-        val externalLink = {
+        // Parameters have no page or anchor of their own in external documentation either,
+        // so linking them would point at their owner's page with an anchor that doesn't exist.
+        val externalLink = if sym.flags.is(Flags.Param) || sym.isTypeParam then None else {
           import dotty.tools.dotc
           given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
           val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
@@ -299,7 +302,7 @@ class SymOpsWithLinkCache:
             externalLinkCache.get(file) match
               case Some(s) => s
               case None =>
-                val calculatedLink = Option(file).flatMap { f =>
+                val calculatedLink = Option(file).filterNot(dctx.isInput).flatMap { f =>
                   dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(f.path)))
                 }
                 externalLinkCache += (file -> calculatedLink)

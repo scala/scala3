@@ -1,0 +1,28 @@
+-- [E007] Type Mismatch Error: tests/neg/java-nullness-type-annots/S_1.scala:9:16 --------------------------------------
+9 |  val x1: Int = a // error
+  |                ^
+  |                Found:    (a : String)
+  |                Required: Int
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/java-nullness-type-annots/S_1.scala:10:16 -------------------------------------
+10 |  val x2: Int = b // error
+   |                ^
+   |                Found:    (b : String)
+   |                Required: Int
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/java-nullness-type-annots/S_1.scala:11:16 -------------------------------------
+11 |  val x3: Int = c // error
+   |                ^
+   |                Found:    (c : java.util.List[String])
+   |                Required: Int
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/java-nullness-type-annots/S_1.scala:12:16 -------------------------------------
+12 |  val x4: Int = d // error
+   |                ^
+   |                Found:    (d : String)
+   |                Required: Int
+   |
+   | longer explanation available when compiling with `-explain`

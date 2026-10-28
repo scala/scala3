@@ -12,6 +12,7 @@
 
 package scala.annotation.unchecked
 
+import language.experimental.captureChecking
 import scala.annotation.StaticAnnotation
 import scala.language.`2.13`
 
