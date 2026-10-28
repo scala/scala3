@@ -183,7 +183,7 @@ object Names {
     def underlying: TermName = unsupported("underlying")
 
     @sharable // because of synchronized block in `add`
-    private val derivedNames = mutable.HashMap.empty[NameInfo, DerivedName]
+    private val derivedNames = mutable.Map.empty[NameInfo, DerivedName]
 
     private def add(info: NameInfo): TermName = synchronized {
       derivedNames.get(info) match
@@ -447,7 +447,7 @@ object Names {
 
   /** Hashtable for finding term names quickly. */
   @sharable // because it's only mutated in enterIfNew which is synchronized
-  private val nameTable: mutable.HashMap[String, SimpleName] = new mutable.HashMap[String, SimpleName](initialCapacity = 0x10000, loadFactor = 2.0)
+  private val nameTable: mutable.Map[String, SimpleName] = new mutable.HashMap[String, SimpleName](initialCapacity = 0x10000, loadFactor = 2.0)
   nameTable("") = EmptyTermName
 
   private def enterIfNew(str: String): SimpleName = synchronized {

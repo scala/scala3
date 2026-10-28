@@ -652,7 +652,7 @@ trait ImplicitRunInfo:
     object collectParts extends TypeTraverser:
 
       private var parts: mutable.LinkedHashSet[Type] = uninitialized
-      private val partSeen = util.HashSet[Type]()
+      private val partSeen = mutable.Set.empty[Type]
 
       def traverse(t: Type) = ctx.handleRecursive("collectParts of", t):
         if partSeen.contains(t) then ()
@@ -688,14 +688,14 @@ trait ImplicitRunInfo:
               traverseChildren(t)
 
       def apply(tp: Type): collection.Set[Type] =
-        parts = mutable.LinkedHashSet()
-        partSeen.clear(resetToInitial = false)
+        parts = mutable.LinkedHashSet.empty
+        partSeen.clear()
         traverse(tp)
         parts
     end collectParts
 
-    val seen = util.HashSet[Type]()
-    val incomplete = util.HashSet[Type]()
+    val seen = mutable.Set.empty[Type]
+    val incomplete = mutable.Set.empty[Type]
 
     def collectCompanions(tp: Type, parts: collection.Set[Type]): TermRefSet =
       val companions = new TermRefSet
@@ -826,7 +826,7 @@ trait ImplicitRunInfo:
         record(i"implicitScope")
         val liftToAnchors = new TypeMap:
           override def stopAt = StopAt.Static
-          private val seen = util.HashSet[Type]()
+          private val seen = mutable.Set.empty[Type]
 
           override def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type): Type =
             if lo.exists && hi.exists then super.derivedTypeBounds(tp, lo, hi)
@@ -1329,7 +1329,7 @@ trait Implicits:
       // A map that associates a priority change warning (between -source 3.6 and 3.7)
       // with the candidate refs mentioned in the warning. We report the associated
       // message if one of the critical candidates is part of the result of the implicit search.
-      val priorityChangeWarnings = mutable.ListBuffer[(/*critical:*/ List[TermRef], GivenSearchPriorityWarning)]()
+      val priorityChangeWarnings = mutable.ListBuffer.empty[(/*critical:*/ List[TermRef], GivenSearchPriorityWarning)]
 
       val sv = Feature.sourceVersion
       val isLastOldVersion = sv.stable == SourceVersion.`3.6`

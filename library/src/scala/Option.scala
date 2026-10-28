@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.annotation.publicInBinary
 
@@ -405,7 +406,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  @param p the predicate used to test elements
    *  @return a `WithFilter` that applies `p` to this option before subsequent `map`, `flatMap`, `foreach`, or `withFilter` operations
    */
-  @inline final def withFilter(p: A => Boolean): WithFilter = new WithFilter(p)
+  @inline final def withFilter(p: A -> Boolean): WithFilter = new WithFilter(p)
 
   /** We need a whole WithFilter class to honor the "doesn't create a new
    *  collection" contract even though it seems unlikely to matter much in a
@@ -440,7 +441,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
      *
      *  @param q the additional predicate used to test the option's value
      */
-    def withFilter(q: A => Boolean): WithFilter = new WithFilter(x => p(x) && q(x))
+    def withFilter(q: A => Boolean): WithFilter^{this, q} = new WithFilter(x => p(x) && q(x))
   }
 
   /** Tests whether the option contains a given value as an element.
@@ -546,7 +547,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *
    *  @tparam B the result type of the partial function
    */
-  @inline final def collect[B](pf: PartialFunction[A, B]): Option[B] =
+  @inline final def collect[B](pf: PartialFunction[A, B]^): Option[B] =
     if (!isEmpty) pf.lift(this.get) else None
 
   /** Returns this $option if it is nonempty,

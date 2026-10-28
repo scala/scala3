@@ -9,7 +9,7 @@ import dotty.tools.backend.jvm.SymbolUtils.symExtensions
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.toTermName
-import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, Private, Trait}
+import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, PhantomSymbol, Private, Trait}
 import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.{StdNames, Types}
@@ -312,7 +312,10 @@ final class BTypeLoader(primitives: ScalaPrimitives, val cache: ClassBType.Cache
         Some(single.javaSimpleName + btype.descriptor)
       case _ => None
 
-    def keepMember(sym: Symbol) = sym.is(Method) && !primitives.isPrimitive(sym)
+    // Phantom symbols (e.g. constructor proxy `apply`s) have `NoType` info after erasure and are normally
+    // dropped from the decls when their owner's unit is erased. A class from a unit that was suspended
+    // in this run (e.g. on a macro defined in the same run) hasn't been through erasure, so skip them here.
+    def keepMember(sym: Symbol) = sym.is(Method) && !sym.is(PhantomSymbol) && !primitives.isPrimitive(sym)
 
     val classMethods = classSym.info.decls.iterator.filter(keepMember)
     val methods = if classSym.is(JavaDefined) then
