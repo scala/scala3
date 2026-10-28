@@ -113,6 +113,7 @@ jobs:
       HAS_SIGNING_KEY: ${{ secrets.PGP_SECRET != '' }}
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
       PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
+      SCALA_PGP_FINGERPRINT: ${{ vars.SCALA_PGP_FINGERPRINT }}
       SONATYPE_PW: ${{ secrets.SONATYPE_PW_ORGSCALALANG }}
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 

@@ -96,10 +96,11 @@ jobs:
         if: "steps.not_yet_published.outcome == 'success'"
         run : ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned"
         env:
-          SONATYPE_USER : ${{ secrets.MAVEN_REPOSITORY_USER }}
-          SONATYPE_PW   : ${{ secrets.MAVEN_REPOSITORY_TOKEN }}
-          PGP_PW        : ${{ secrets.PGP_PW }}
-          PGP_SECRET    : ${{ secrets.PGP_SECRET }}
+          SONATYPE_USER        : ${{ secrets.MAVEN_REPOSITORY_USER }}
+          SONATYPE_PW          : ${{ secrets.MAVEN_REPOSITORY_TOKEN }}
+          PGP_PW               : ${{ secrets.PGP_PW }}
+          PGP_SECRET           : ${{ secrets.PGP_SECRET }}
+          SCALA_PGP_FINGERPRINT: ${{ vars.SCALA_PGP_FINGERPRINT }}
 
   release-maven-lts-3-9-artifacts:
     runs-on: ubuntu-latest
