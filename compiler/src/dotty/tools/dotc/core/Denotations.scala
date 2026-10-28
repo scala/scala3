@@ -11,6 +11,7 @@ import Symbols.NoSymbol
 import Symbols.*
 import Types.*
 import Periods.*
+import Phases.DenotTransformerInfo
 import Flags.*
 import DenotTransformers.*
 import Decorators.*
@@ -812,50 +813,67 @@ object Denotations {
         util.Stats.record("current.bringForward")
         if exists then initial.bringForward().current else this
 
-      def goForward =
-        var cur = this
+      /** Brings this denotation forward to the current phase, in one loop over the phase plan. A run of identity
+       *  transformers is skipped in one step: they return the version unchanged, so its validity just extends.
+       */
+      def goForward: SingleDenotation =
+        val targetPhase = currentPeriod.lastPhaseId
+        val nextTransformerAt = ctx.base.nextDenotTransformerId // phase id => first linked transformer at or after it
+        val transformers = ctx.base.denotTransformers           // transformer id => its DenotTransformerInfo
+
+        var cur = coveringOrLatest(this)
+        while cur.validFor.lastPhaseId < targetPhase do
+          val transformerId = nextTransformerAt(cur.validFor.lastPhaseId)
+          cur =
+            if targetPhase <= transformerId then extend(cur, transformerId)
+            else
+              val info = transformers(transformerId)
+              if info.isIdentity then extend(cur, math.min(info.nextNonIdentity, nextTransformerAt(targetPhase)))
+              else transformAt(info, cur)
+          cur = coveringOrLatest(cur)
+        cur
+      end goForward
+
+      /** `start`, if it covers the current phase; else the later version that does, or else the latest version */
+      def coveringOrLatest(start: SingleDenotation): SingleDenotation =
+        val valid = start.validFor
+        if currentPeriod.lastPhaseId <= valid.lastPhaseId then return start
         // search for containing period as long as nextInRun increases.
-        var next = nextInRun
-        while next.validFor > valid && !next.validFor.contains(currentPeriod) do
+        var cur = start
+        var next = cur.nextInRun
+        while next.validFor > valid do
+          if next.validFor.contains(currentPeriod) then return next
           cur = next
           next = next.nextInRun
-        if next.validFor > valid then
-          // in this case, next.validFor contains currentPeriod
-          cur = next
-          cur
+        cur
+
+      /** `d`, now also valid up to `lastPhase` */
+      def extend(d: SingleDenotation, lastPhase: PhaseId): SingleDenotation =
+        d.validFor = d.validFor.withLastPhaseId(lastPhase)
+        d
+
+      /** `d` brought forward over `info.transformer`: its result, installed as the next version if it is new.
+       *
+       *  The transform runs in the context, temporarily updated with the transformer's phase instead of creating a
+       *  new one. This is done for performance. We cut down on about 30% of context
+       *  creations that way, and also avoid phase caches in contexts to get large.
+       *  To work correctly, we need to demand that the context with the new phase
+       *  is not retained in the result.
+       */
+      def transformAt(info: DenotTransformerInfo, d: SingleDenotation): SingleDenotation =
+        val mutCtx = ctx.asInstanceOf[FreshContext]
+        val transformed =
+          try
+            mutCtx.setPeriod(info.transformerPeriod.inRun(currentPeriod.runId))
+            info.transformer.transform(d)
+          finally
+            mutCtx.setPeriod(currentPeriod)
+        if transformed eq d then extend(d, info.lastPhaseId)
         else
-          //println(s"might need new denot for $cur, valid for ${cur.validFor} at $currentPeriod")
-          // not found, cur points to highest existing variant
-          val nextTransformerId = ctx.base.nextDenotTransformerId(cur.validFor.lastPhaseId)
-          if currentPeriod.lastPhaseId <= nextTransformerId then
-            cur.validFor = Period(currentPeriod.runId, cur.validFor.firstPhaseId, nextTransformerId)
-          else
-            var startPid = nextTransformerId + 1
-            val transformer = ctx.base.denotTransformers(nextTransformerId)
-            //println(s"transforming $this with $transformer")
-            val savedPeriod = ctx.period
-            val mutCtx = ctx.asInstanceOf[FreshContext]
-            try
-              mutCtx.setPhase(transformer)
-              next = transformer.transform(cur)
-                // We temporarily update the context with the new phase instead of creating a
-                // new one. This is done for performance. We cut down on about 30% of context
-                // creations that way, and also avoid phase caches in contexts to get large.
-                // To work correctly, we need to demand that the context with the new phase
-                // is not retained in the result.
-            finally
-              mutCtx.setPeriod(savedPeriod)
-            if next eq cur then
-              startPid = cur.validFor.firstPhaseId
-            else
-              assertNotPackage(next, transformer)
-              next.insertAfter(cur)
-              cur = next
-            cur.validFor = Period(currentPeriod.runId, startPid, transformer.lastPhaseId)
-            //printPeriods(cur)
-            //println(s"new denot: $cur, valid for ${cur.validFor}")
-          cur.current // multiple transformations could be required
-      end goForward
+          assertNotPackage(transformed, info.transformer)
+          transformed.insertAfter(d)
+          transformed.validFor = info.resultPeriod.inRun(currentPeriod.runId)
+          transformed
 
       def goBack: SingleDenotation =
         // currentPeriod < end of valid. If a full lap finds no version containing it,
