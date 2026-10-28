@@ -2,17 +2,17 @@
 scala> import caps.*
 scala> class File { override def toString = "File" }
 // defined class File
-scala> class Box[A](val value: A) { override def toString = "Box" }
-// defined class Box
+scala> class Out[+A](val value: A) { override def toString = "Out" }
+// defined class Out
 scala> val io: File^ = File()
 val io: File^ = File
-scala> val w = { val loc: File^ = File(); Box((x: File^{io, loc}) => ()) }
-val w: Box[(x: File^{io}) -> Unit] = Box
+scala> val w = { val loc: File^ = File(); Out((x: File^{io, loc}) => ()) }
+val w: Out[(x: File^{io}) -> Unit] = Out
 scala> val l = List(w)
-val l: List[Box[(x: File^{io}) -> Unit]] = List(Box)
+val l: List[Out[(x: File^{io}) -> Unit]] = List(Out)
 scala> l.head.value(io)
-scala> def mk() = { val loc: File^ = File(); Box((x: File^{io, loc}) => ()) }
-def mk(): Box[(x: File^{io}) -> Unit]
+scala> def mk() = { val loc: File^ = File(); Out((x: File^{io, loc}) => ()) }
+def mk(): Out[(x: File^{io}) -> Unit]
 scala> val l2 = List(mk())
-val l2: List[Box[(x: File^{io}) -> Unit]] = List(Box)
+val l2: List[Out[(x: File^{io}) -> Unit]] = List(Out)
 scala> l2.head.value(io)

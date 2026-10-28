@@ -4,6 +4,8 @@ scala> class File { override def toString = "File" }
 // defined class File
 scala> class Box[A](val value: A) { override def toString = "Box" }
 // defined class Box
+scala> class Out[+A](val value: A) { override def toString = "Out" }
+// defined class Out
 scala> val io: File^ = File()
 val io: File^ = File
 scala> val x: File^ = File()
@@ -26,8 +28,8 @@ scala> opt.get[{io}, {x}](x)
   |
   | longer explanation available when compiling with `-explain`
 1 error found
-scala> val withLocal = { val loc: File^ = File(); Box([C^] => (y: File^{C, loc}) => y) }
-val withLocal: Box[[C^] -> (y: File^{C}) -> File^{y}] = Box
+scala> val withLocal = { val loc: File^ = File(); Out([C^] => (y: File^{C, loc}) => y) }
+val withLocal: Out[[C^] -> (y: File^{C}) -> File^{y}] = Out
 scala> val r3: File^{x} = withLocal.value[{x}](x)
 val r3: File^{x} = File
 scala> var w = Box((y: File^) => y)

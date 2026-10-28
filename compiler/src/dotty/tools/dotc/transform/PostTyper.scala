@@ -444,10 +444,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     /** Avoid references to skolems, and to local definitions that are not visible
      *  where `sym` is defined, in capture sets of declared parts of the inferred type
      *  `tp` of `sym`. Typer's avoidance does not look into capture sets, so such
-     *  references can be left in them. In parameter types and upper bounds, which are
-     *  contravariant relative to the lambda that has them, the references are dropped.
-     *  Elsewhere the part is no longer declared, which means that its capture sets
-     *  are inferred.
+     *  references can be left in them. At contravariant positions of `tp`, such as
+     *  parameter types and upper bounds of a lambda that is not under an invariant type
+     *  argument, the references are dropped. Elsewhere the part is no longer declared,
+     *  which means that its capture sets are inferred.
      */
     private def avoidInDeclared(tp: Type, sym: Symbol)(using Context): Type =
       def invisible(s: Symbol): Boolean =
@@ -494,9 +494,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           val signs = t.tycon.typeParams.map(_.paramVarianceSign).padTo(t.args.length, 0)
           t.derivedAppliedType(t.tycon,
             t.args.zipWithConserve(signs): (arg, sign) =>
-              // Outside declared parts, capture sets are inferred, so an invariant
-              // argument counts as covariant
-              avoid(arg, if sign == 0 && !inDeclared then v else v * sign, inDeclared))
+              avoid(arg, v * sign, inDeclared))
         case t: RefinedType =>
           t.derivedRefinedType(avoid(t.parent, v, inDeclared), t.refinedName,
             avoid(t.refinedInfo, v, inDeclared))

@@ -6,10 +6,9 @@ class File
 class Cell[A](@caps.unsafe.untrackedCaptures var value: A)
 object io extends File, caps.SharedCapability
 
-// A local in a declared upper bound under an invariant type argument is dropped from
-// the bound, so uses in this unit cannot widen the bound beyond what other units see.
-// This file has no other errors, so that a widening would not be hidden by a skipped
-// capture checking run.
+// A local in a declared upper bound under an invariant type argument cannot be dropped,
+// so the bound is inferred. Other units see it as empty, so the use below cannot widen
+// it: `up` needs an explicit type.
 object Lib:
   val up = { val loc: File^ = File(); Cell([C^ <: {io, loc}] => (x: File^{C}) => ()) }
 

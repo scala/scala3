@@ -47,7 +47,10 @@ def narrow(io: File^) =
   val free = Box([C^] => (y: File^{C}) => y)
   val w: [C^ <: {io}] -> (y: File^{C}) -> File^{y} = free.value
 
-// A parameter type that mentions a local of the right hand side
+// A parameter type that mentions a local of the right hand side. Under the invariant
+// Box, the local cannot be dropped, so the type is given explicitly there.
 def withLocal(x: File^) =
-  val wl = { val loc: File^ = File(); Box([C^] => (y: File^{C, loc}) => y) }
-  val _: File^{x} = wl.value[{x}](x)
+  val wl = { val loc: File^ = File(); List([C^] => (y: File^{C, loc}) => y) }
+  val _: File^{x} = wl.head[{x}](x)
+  val wb: Box[[C^] -> (y: File^{C}) -> File^{y}] = { val loc: File^ = File(); Box([C^] => (y: File^{C, loc}) => y) }
+  val _: File^{x} = wb.value[{x}](x)

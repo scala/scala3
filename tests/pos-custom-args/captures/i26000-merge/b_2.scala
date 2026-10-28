@@ -10,4 +10,4 @@ def use(q: File^) =
   Lib.mboth.value[{a}](a)
   Lib.mboth.value[{a, y}](y)
   Lib.ml.head(a)
-  Lib.w.value[{q}](q)
+  Lib.w.head[{q}](q)
