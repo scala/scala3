@@ -350,6 +350,16 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     private def interpolate(tp: Type, sym: Symbol, startingVariance: Int = 1)(using Context): Unit =
 
+      /** Capture sets in invariant positions of a type that is also seen outside this
+       *  unit are solved for good, so that uses in this unit cannot widen them in another
+       *  capture checking run, which the other views would not see.
+       */
+      def isFixed =
+        sym.isSeenOutsideUnit && !sym.is(Synthetic) && !sym.name.is(DefaultGetterName)
+
+      /** Can other units supply values of the type they see, by assigning or overriding? */
+      def isWritten = sym.isWrittenOutsideUnit
+
       object variances extends TypeTraverser:
         variance = startingVariance
         val varianceOfVar = EqHashMap[CaptureSet.Var, Int]()
@@ -372,8 +382,18 @@ class CheckCaptures extends Recheck, SymTransformer:
           case t @ CapturingType(parent, refs) =>
             refs match
               case refs: CaptureSet.Var if !refs.isConst =>
-                if variances.varianceOfVar(refs) < 0 then refs.solve()
-                else refs.markSolved(provisional = !sym.isMutableVar)
+                val v = variances.varianceOfVar(refs)
+                if v < 0 then
+                  if isWritten
+                      && !CCState.withGlobalCapAsRoot(refs.upperApprox(CaptureSet.empty))
+                            .elems.forall(_.isTerminalCapability)
+                  then
+                    // Other units see an inferred set as empty, and they can supply values of
+                    // the type they see, so the set is not widened to its upper approximation.
+                    // A root in the upper approximation comes from a `^`, which they see as well.
+                    refs.markSolved(provisional = false)
+                  else refs.solve()
+                else refs.markSolved(provisional = !sym.isMutableVar && !(v == 0 && isFixed))
               case _ =>
             traverse(parent)
           case t @ defn.RefinedFunctionOf(rinfo) =>

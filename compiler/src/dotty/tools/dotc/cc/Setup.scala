@@ -670,7 +670,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           if variance < 0 then belowContravariant = true
           try t match
             case AnnotatedType(parent, annot)
-            if annot.symbol.isRetains && (annot.symbol != defn.RetainsCapAnnot || variance > 0) =>
+            if annot.symbol.isRetains && (annot.symbol != defn.RetainsCapAnnot || variance > 0)
+                && !parent.derivesFromCapSet =>
               apply(parent)
             case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
               transformDeclared(parent, sym, variance, belowContravariant)

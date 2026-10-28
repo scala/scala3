@@ -883,13 +883,35 @@ extension (sym: Symbol) {
     && sym.owner.is(Package)
     && sym.owner.name.toString.contains("snippet")
 
+  /** Is the type of this symbol also seen outside its compilation unit, in other
+   *  compilation units or in later REPL lines? Other units see it with its inferred
+   *  capture sets dropped, later REPL lines see it as checked in this unit.
+   *  Besides symbols that are not local to their unit, this holds for `protected[C]`
+   *  members of classes that other units can extend, and for `@publicInBinary`
+   *  members, which inline methods can expose.
+   */
+  def isSeenOutsideUnit(using Context): Boolean =
+    sym.exists
+    && (!sym.isLocalToCompilationUnit
+        || sym.is(Protected) && sym.owner.isExtensibleClass && sym.owner.isSeenOutsideUnit
+        || sym.hasAnnotation(defn.PublicInBinaryAnnot))
+
+  /** Can other compilation units supply values of the type of this symbol that they
+   *  see, by assigning to it or by overriding it? Then capture sets in contravariant
+   *  positions of its inferred type are not widened to their upper approximation, so
+   *  that the type in this unit does not accept more than the type other units see.
+   */
+  def isWrittenOutsideUnit(using Context): Boolean =
+    sym.isSeenOutsideUnit && !sym.is(Synthetic) && !sym.name.is(DefaultGetterName)
+    && (sym.isMutableVar || sym.owner.isClass && !sym.isEffectivelyFinal)
+
   /** Is symbol exempt from checking that its type or uses clause must
    *  be given explicitly? This is the case for symbols that are not
    *  visible outside the compilation unit where they are defined,
    *  and also for two pragmatic exemptions, explained below.
    */
   def isExemptFromExplicitChecks(using Context): Boolean =
-    sym.isLocalToCompilationUnit
+    !sym.isSeenOutsideUnit
     || sym.isScalaDocSnippet
     || sym.name.isReplWrapperName
     || sym.isConstructor && sym.owner.name.isReplWrapperName

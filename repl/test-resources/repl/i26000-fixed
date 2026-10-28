@@ -1,0 +1,22 @@
+//> using options -language:experimental.captureChecking
+scala> import caps.*
+scala> class File { override def toString = "File" }
+// defined class File
+scala> class Cell[A](var value: A) { override def toString = "Cell" }
+// defined class Cell
+scala> val io: File^ = File()
+val io: File^ = File
+scala> def flag = true
+def flag: Boolean
+scala> val up = if flag then Cell([C^ <: {io}] => (x: File^{C}) => ()) else Cell([C^ <: {any.rd}] => (x: File^{C}) => ()); def call(q: File^): Unit = up.value[{q}](q)
+-- [E223] CaptureChecking Error: -----------------------------------------------
+1 |val up = if flag then Cell([C^ <: {io}] => (x: File^{C}) => ()) else Cell([C^ <: {any.rd}] => (x: File^{C}) => ()); def call(q: File^): Unit = up.value[{q}](q)
+  |                                                                                                                                                         ^
+  |Reference `q` is not included in the allowed capture set {} of value up.
+  |
+  |The capture set is part of the inferred type of value up, which other compilation
+  |units or later REPL lines see as well. To allow this, value up needs an explicit type.
+1 error found
+scala> val up2 = if flag then Cell([C^ <: {io}] => (x: File^{C}) => ()) else Cell([C^ <: {any.rd}] => (x: File^{C}) => ())
+val up2: Cell[[C^] -> (x: File^{C}) -> Unit] = Cell
+scala> up2.value[{}](File())
