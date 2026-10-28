@@ -66,7 +66,7 @@ class TreeUnpickler(reader: TastyReader,
   import tpd.*
 
   /** A map from addresses of definition entries to the symbols they define */
-  private val symAtAddr  = new mutable.HashMap[Addr, Symbol]
+  private val symAtAddr  = mutable.Map.empty[Addr, Symbol]
 
   private def addrOfSymbol(sym: Symbol): Option[Addr] = symAtAddr.iterator.collectFirst {
     case (addr, s) if s == sym => addr
@@ -81,13 +81,13 @@ class TreeUnpickler(reader: TastyReader,
    *  Used to remember trees of symbols that are created by a completion. Emptied
    *  once the tree is inlined into a larger tree.
    */
-  private val treeAtAddr = new mutable.HashMap[Addr, Tree]
+  private val treeAtAddr = mutable.Map.empty[Addr, Tree]
 
   /** A map from addresses of type entries to the types they define.
    *  Currently only populated for types that might be recursively referenced
    *  from within themselves (i.e. RecTypes, LambdaTypes).
    */
-  private val typeAtAddr = new mutable.HashMap[Addr, Type]
+  private val typeAtAddr = mutable.Map.empty[Addr, Type]
 
   /** If this is a pickled quote, the owner of the quote, otherwise NoSymbol. */
   private var rootOwner: Symbol = NoSymbol
@@ -100,7 +100,7 @@ class TreeUnpickler(reader: TastyReader,
   /** The root symbols that are defined in this Tasty file. This
    *  is a subset of `roots.map(_.symbol)`.
    */
-  private var seenRoots: Set[Symbol] = Set()
+  private var seenRoots: Set[Symbol] = Set.empty
 
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
   private var ownerTree: OwnerTree = uninitialized
@@ -548,6 +548,13 @@ class TreeUnpickler(reader: TastyReader,
     private def localContext(owner: Symbol)(using Context) =
       ctx.fresh.setOwner(owner)
 
+    /** The context for reading trees that are inlined elsewhere: inline method bodies and the stats of
+     *  inline traits. They need positions and the unit's source, which the ambient context may lack.
+     *  ReadPositions comes first, as sourceChangeContext needs it to find the source path.
+     */
+    private def inlinedTreeContext(owner: Symbol)(using Context): Context =
+      sourceChangeContext(Addr(0))(using localContext(owner).addMode(Mode.ReadPositions))
+
     private def normalizeFlags(tag: Int, givenFlags: FlagSet, name: Name, isAbsType: Boolean, rhsIsEmpty: Boolean)(using Context): FlagSet = {
       val lacksDefinition =
         rhsIsEmpty &&
@@ -706,8 +713,7 @@ class TreeUnpickler(reader: TastyReader,
       }
       else if (sym.isInlineMethod && !sym.is(Deferred))
         sym.addAnnotation(LazyBodyAnnotation { (ctx0: Context) ?=>
-          val ctx1 = localContext(sym)(using ctx0).addMode(Mode.ReadPositions)
-          inContext(sourceChangeContext(Addr(0))(using ctx1)) {
+          inContext(inlinedTreeContext(sym)(using ctx0)) {
             // avoids space leaks by not capturing the current context
             forkAt(rhsStart).readTree()
           }
@@ -738,10 +744,8 @@ class TreeUnpickler(reader: TastyReader,
           case PROTECTED => addFlag(Protected)
           case ABSTRACT =>
             readByte()
-            nextByte match {
-              case OVERRIDE => addFlag(AbsOverride)
-              case _ => flags |= Abstract
-            }
+            if currentAddr.index != end.index && nextByte == OVERRIDE then addFlag(AbsOverride)
+            else flags |= Abstract
           case FINAL => addFlag(Final)
           case SEALED => addFlag(Sealed)
           case CASE => addFlag(Case)
@@ -1100,6 +1104,15 @@ class TreeUnpickler(reader: TastyReader,
           case _ => readTpt()
       }
 
+    /** The context in which the template stats of `cls` are read. */
+    private def templateStatsContext(cls: ClassSymbol)(using Context): Context =
+      if cls.isInlineTrait then
+        // The stats of an inline trait are read eagerly (see `strictOrLazyStats`) and inlined into the
+        // classes extending it, so they need the same context as inline method bodies. The reader captures
+        // mode and source when it is created, so they must be set here.
+        inlinedTreeContext(cls)
+      else ctx
+
     private def readTemplate(using Context): Template = {
       val start = currentAddr
       assert(sourcePathAt(start).isEmpty)
@@ -1182,7 +1195,7 @@ class TreeUnpickler(reader: TastyReader,
       val lazyStats = readLater(end, rdr => {
         val stats = rdr.readIndexedStats(localDummy, end)
         tparams ++ vparams ++ stats
-      })
+      })(using templateStatsContext(cls))
       NamerOps.addConstructorProxies(cls)
       NamerOps.addContextBoundCompanions(cls)
 
@@ -1193,8 +1206,7 @@ class TreeUnpickler(reader: TastyReader,
         if cls.isInlineTrait then
           val strictStats = lazyStats.complete
           cls.addAnnotation(LazyBodyAnnotation { (ctx0: Context) ?=>
-            val ctx1 = localContext(cls)(using ctx0).addMode(Mode.ReadPositions)
-            inContext(sourceChangeContext(Addr(0))(using ctx1)) {
+            inContext(inlinedTreeContext(cls)(using ctx0)) {
               // avoids space leaks by not capturing the current context
               val inlinedMembers = strictStats.filter(member => inlines.Inlines.isInlineableFromInlineTrait(cls, member))
               Block(inlinedMembers, unitLiteral).withSpan(cls.span)
@@ -1496,7 +1508,7 @@ class TreeUnpickler(reader: TastyReader,
                 extendOnly(namedArgs)
               else
                 // needs reordering, and possibly fill in holes for default arguments
-                val argsByName = mutable.HashMap.from(namedArgs.map(arg => arg.name -> arg))
+                val argsByName = mutable.Map.from(namedArgs.map(arg => arg.name -> arg))
                 val reconstructedArgs = formalNames.lazyZip(methType.paramInfos).map { (name, tpe) =>
                   argsByName.remove(name).getOrElse(makeDefault(name, tpe))
                 }

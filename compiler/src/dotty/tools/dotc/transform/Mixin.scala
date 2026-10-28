@@ -15,7 +15,7 @@ import StdNames.*
 import Names.*
 import NameKinds.*
 import NameOps.*
-import Phases.erasurePhase
+import Phases.{erasurePhase, mixinPhase}
 import ast.Trees.*
 import dotty.tools.dotc.transform.sjs.JSSymUtils.isJSType
 
@@ -31,6 +31,11 @@ object Mixin {
       .qualifiedToSimple  // TODO: Find out why TraitSetterNames can't be defined over QualifiedNames
       .expandedName(getter.owner, TraitSetterName)
       .asTermName.syntheticSetterName
+
+  /** Does `cls` inherit the getter of a mixed-in trait's concrete val, as seen at phase `mixin`? */
+  def inheritsTraitGetter(cls: Symbol, getter: Symbol)(using Context): Boolean =
+    getter.name.is(ExpandedName)
+    || atPhase(mixinPhase)(cls.info.nonPrivateMember(getter.name).hasAltWith(_.symbol == getter))
 }
 
 /** This phase performs the following transformations:
@@ -305,7 +310,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
            && !wasOneOf(getter, Deferred)
            && !getter.isConstExprFinalVal
       yield
-        if (isInImplementingClass(getter) || getter.name.is(ExpandedName)) {
+        if (Mixin.inheritsTraitGetter(cls, getter)) {
           val rhs =
             if (wasOneOf(getter, ParamAccessor))
               nextArgument()

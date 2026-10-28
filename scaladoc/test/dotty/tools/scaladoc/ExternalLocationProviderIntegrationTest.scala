@@ -9,27 +9,34 @@ import org.junit.Test
 
 class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
   "externalJavadoc",
-  List(".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"),
+  List(".*java.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/java.base/"),
   List(
-    "https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.Builder.html",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/Map.Entry.html",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/Map.html",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#forEach-java.util.function.Consumer-",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#toArray-T:A-",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#subList-int-int-",
-    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#printf-java.lang.String-java.lang.Object...-",
-    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#write-byte:A-int-int-"
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/stream/Stream.Builder.html",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.Entry.html",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Map.html",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#forEach(java.util.function.Consumer)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#toArray(T[])",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#subList(int,int)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#printf(java.lang.String,java.lang.Object...)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#write(byte[],int,int)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#add(E)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Thread.html#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)"
+  ),
+  // parameters have no anchors of their own
+  unexpectedLinks = List(
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#x$0",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#x$0"
   )
 )
 
 class JavadocExplicitNullsExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
   "externalJavadoc",
-  List(".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"),
+  List(".*java.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/java.base/"),
   List(
-    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#forEach-java.util.function.Consumer-",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#subList-int-int-",
-    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#printf-java.lang.String-java.lang.Object...-",
-    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#write-byte:A-int-int-"
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#forEach(java.util.function.Consumer)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/ArrayList.html#subList(int,int)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#printf(java.lang.String,java.lang.Object...)",
+    "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/PrintStream.html#write(byte[],int,int)"
   )
 ):
   override protected def compilerContext =
@@ -72,15 +79,27 @@ class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationP
     "https://nightly.scala-lang.org/api/scala/collection/immutable/Map.html",
     "https://nightly.scala-lang.org/api/scala/Predef$.html#String-0",
     "https://nightly.scala-lang.org/api/scala/util/matching/Regex$$Match.html",
+    "https://nightly.scala-lang.org/api/scala/jdk/StreamConverters$.html",
     "https://external.stubs/api/tests/externalStubs/$div$bslash$.html",
     "https://external.stubs/api/tests/externalStubs/$bslash$div$.html"
-  )
+  ),
+  // the object has no companion class
+  unexpectedLinks = List("https://nightly.scala-lang.org/api/scala/jdk/StreamConverters.html")
+)
+
+// What is documented in this run links to its own page, even if a mapping matches it
+class SelfMappedExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
+  "externalScaladoc3",
+  List(".*externalScaladoc3.*::scaladoc3::https://self.mapped/api/"),
+  List("Test.html"),
+  unexpectedLinks = List("https://self.mapped/api/tests/externalScaladoc3/Test.html")
 )
 
 abstract class ExternalLocationProviderIntegrationTest(
   name: String,
   mappings: Seq[String],
-  expectedLinks: Seq[String]
+  expectedLinks: Seq[String],
+  unexpectedLinks: Seq[String] = Nil
   ) extends ScaladocTest(name):
 
   override def args = super.args.copy(
@@ -107,11 +126,14 @@ abstract class ExternalLocationProviderIntegrationTest(
     IO.foreachFileIn(output, processFile)
     val links = linksBuilder.result()
     val errors = expectedLinks.flatMap(expect => Option.when(!links.contains(expect))(expect))
-    if !errors.isEmpty then {
+    val unexpected = unexpectedLinks.filter(links.contains)
+    if !errors.isEmpty || !unexpected.isEmpty then {
       val reportMessage =
       "External location provider integration test failed.\n" +
       "Missing links:\n"
       + errors.mkString("\n","\n","\n")
+      + "Unexpected links:\n"
+      + unexpected.mkString("\n","\n","\n")
       + "Found links:" + links.mkString("\n","\n","\n")
       reportError(reportMessage)
     }

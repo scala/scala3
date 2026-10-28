@@ -87,7 +87,7 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
 
   /** Reorder statements so that module classes always come after their companion classes */
   private def reorderAndComplete(stats: List[Tree])(using Context): List[Tree] = {
-    val moduleClassDefs, singleClassDefs = mutable.Map[Name, Tree]()
+    val moduleClassDefs, singleClassDefs = mutable.Map.empty[Name, Tree]
 
     /* Returns the result of reordering stats and prepending revPrefix in reverse order to it.
      * The result of reorder is equivalent to reorder(stats, revPrefix) = revPrefix.reverse ::: reorder(stats, Nil).

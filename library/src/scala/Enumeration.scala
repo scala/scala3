@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 import scala.collection.{SpecificIterableFactory, StrictOptimizedIterableOps, View, immutable, mutable}
@@ -87,7 +88,7 @@ import scala.util.matching.Regex
  *                 identify values at run-time.
  */
 @SerialVersionUID(8476000850333817230L)
-abstract class Enumeration (initial: Int) extends Serializable {
+abstract class Enumeration (initial: Int) extends Serializable, caps.Pure {
   thisenum =>
 
   /** Creates an enumeration whose values are identified by integers counting from zero. */
@@ -112,7 +113,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
       .last
 
   /** The mapping from the integer used to identify values to the actual
-   *  values. 
+   *  values.
    */
   private val vmap: mutable.Map[Int, Value] = new mutable.HashMap
 
@@ -121,7 +122,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
   @transient @volatile private var vsetDefined = false
 
   /** The mapping from the integer used to identify values to their
-   *  names. 
+   *  names.
    */
   private val nmap: mutable.Map[Int, String] = new mutable.HashMap
 
@@ -149,12 +150,12 @@ abstract class Enumeration (initial: Int) extends Serializable {
   private var topId = initial
 
   /** The lowest integer amongst those used to identify values in this
-   *  enumeration, but no higher than 0. 
+   *  enumeration, but no higher than 0.
    */
   private var bottomId = if(initial < 0) initial else 0
 
   /** The one higher than the highest integer amongst those used to identify
-   *  values in this enumeration. 
+   *  values in this enumeration.
    */
   final def maxId = topId
 
@@ -238,7 +239,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
 
   /** The type of the enumerated values. */
   @SerialVersionUID(7091335633555234129L)
-  abstract class Value extends Ordered[Value] with Serializable {
+  abstract class Value extends Ordered[Value] with Serializable with caps.Pure {
     /** The id and bit location of this enumeration value. */
     def id: Int
     /** A marker so we can tell whose values belong to whom come reflective-naming time. */
@@ -411,7 +412,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
     /** Returns the name used for this set in its string representation, of the form `Enum.ValueSet`. */
     override def className: String = s"$thisenum.ValueSet"
     /** Creates a bit mask for the zero-adjusted ids in this set as a
-     *  new array of longs 
+     *  new array of longs
      */
     def toBitMask: Array[Long] = nnIds.toBitMask
 
@@ -420,7 +421,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
      *  @param coll the values to include
      *  @return a new `ValueSet` containing the values of `coll`
      */
-    override protected def fromSpecific(coll: IterableOnce[Value]): ValueSet = ValueSet.fromSpecific(coll)
+    override protected def fromSpecific(coll: IterableOnce[Value]^): ValueSet = ValueSet.fromSpecific(coll)
     /** Returns a builder for value sets of this enumeration. */
     override protected def newSpecificBuilder = ValueSet.newBuilder
 
@@ -454,7 +455,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
      *  @param ev the ordering by which the resulting set is sorted
      *  @return a new sorted set holding all elements produced by `f`, with duplicates collapsed
      */
-    override def flatMap[B](f: Value => IterableOnce[B])(implicit @implicitNotFound(ValueSet.ordMsg) ev: Ordering[B]): immutable.SortedSet[B] =
+    override def flatMap[B](f: Value => IterableOnce[B]^)(implicit @implicitNotFound(ValueSet.ordMsg) ev: Ordering[B]): immutable.SortedSet[B] =
       super[SortedSet].flatMap[B](f)
     /** Creates a sorted set of pairs formed from the values of this set and the elements of `that`.
      *
@@ -463,7 +464,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
      *  @param ev the ordering by which the resulting set of pairs is sorted
      *  @return a new sorted set of pairs, holding as many pairs as the shorter of this set and `that`
      */
-    override def zip[B](that: IterableOnce[B])(implicit @implicitNotFound(ValueSet.zipOrdMsg) ev: Ordering[(Value, B)]): immutable.SortedSet[(Value, B)] =
+    override def zip[B](that: IterableOnce[B]^)(implicit @implicitNotFound(ValueSet.zipOrdMsg) ev: Ordering[(Value, B)]): immutable.SortedSet[(Value, B)] =
       super[SortedSet].zip[B](that)
     /** Creates a sorted set by applying `pf` to every value of this set for which it is defined.
      *
@@ -472,7 +473,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
      *  @param ev the ordering by which the resulting set is sorted
      *  @return a new sorted set holding the results of applying `pf`, with duplicates collapsed
      */
-    override def collect[B](pf: PartialFunction[Value, B])(implicit @implicitNotFound(ValueSet.ordMsg) ev: Ordering[B]): immutable.SortedSet[B] =
+    override def collect[B](pf: PartialFunction[Value, B]^)(implicit @implicitNotFound(ValueSet.ordMsg) ev: Ordering[B]): immutable.SortedSet[B] =
       super[SortedSet].collect[B](pf)
 
     @transient private[Enumeration] lazy val byName: Map[String, Value] = iterator.map( v => v.toString -> v).toMap
@@ -487,7 +488,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
     /** The empty value set. */
     val empty: ValueSet = new ValueSet(immutable.BitSet.empty)
     /** A value set containing all the values for the zero-adjusted ids
-     *  corresponding to the bits in an array 
+     *  corresponding to the bits in an array
      *
      *  @param elems an array of `Long` values encoding the bit mask of zero-adjusted value ids
      */
@@ -504,7 +505,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
      *  @param it the values to include
      *  @return a new `ValueSet` containing the values of `it`
      */
-    def fromSpecific(it: IterableOnce[Value]): ValueSet =
+    def fromSpecific(it: IterableOnce[Value]^): ValueSet =
       newBuilder.addAll(it).result()
   }
 }
