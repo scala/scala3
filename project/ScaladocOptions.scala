@@ -1,8 +1,16 @@
+import dotty.tools.sbtplugin.Versions
+
 object ScaladocOptions {
+  // The API docs of each stable release are published under its version, so link the docs
+  // of a release to those rather than to nightly, which moves on. RCs aren't published there.
+  private def stdlibApiUrl: String =
+    if (Versions.isRelease && !Versions.baseVersion.contains('-')) s"https://scala-lang.org/api/${Versions.baseVersion}/"
+    else "https://nightly.scala-lang.org/api/"
+
   def scalacOptionsDocSettings(includeExternalMappings: Boolean = true) = {
     val extMap = Seq("-external-mappings:" +
-        (if (includeExternalMappings) ".*scala/.*::scaladoc3::https://nightly.scala-lang.org/api/," else "") +
-        ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/")
+        (if (includeExternalMappings) s".*scala/.*::scaladoc3::$stdlibApiUrl," else "") +
+        ".*java/.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/java.base/")
     Seq(
       "-skip-by-regex:.+\\.internal($|\\..+)",
       "-skip-by-regex:.+\\.impl($|\\..+)",

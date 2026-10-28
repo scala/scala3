@@ -146,6 +146,8 @@ object Build {
       } yield Credentials("Sonatype Nexus Repository Manager", "central.sonatype.com", username, password)
     ).toList,
     PgpKeys.pgpPassphrase := sys.env.get("PGP_PW").map(_.toCharArray()),
+    // BouncyCastle signs with the primary key by default, but CI has only the signing subkey
+    PgpKeys.pgpSigningKey := sys.env.get("SCALA_PGP_FINGERPRINT").filter(_.nonEmpty),
     PgpKeys.useGpgPinentry := true,
 
     // Do not cut off the bottom of large stack traces (default is 1024)
@@ -1741,13 +1743,12 @@ object Build {
       ),
       Test / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       // All the dependencies needed by the doctool
-      libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
+      libraryDependencies ++= Dependencies.liqpDependencyOverrides ++ Dependencies.flexmarkDeps ++ Seq(
         Dependencies.liqp,
         Dependencies.jsoup, // Needed to process .html files for static site
         Dependencies.jacksonDataformatYaml,
         Dependencies.sbtJunitInterface % Test,
       ),
-      dependencyOverrides ++= Dependencies.liqpDependencyOverrides,
       Compile / scalacOptions += "-experimental",
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,

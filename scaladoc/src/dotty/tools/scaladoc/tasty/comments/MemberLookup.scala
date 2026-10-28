@@ -186,7 +186,9 @@ trait MemberLookup {
             val nameSel = MemberLookup.Selector(methodName, sel.kind)
             val lookedUp = localLookup(nameSel, owner).toSeq
             // note: those flag lookups are necessary b/c for objects we return their classes
-            val typeMatch = lookedUp.find(s => s.isType && !s.flags.is(Flags.Module))
+            // `flags` completes the symbol, after which the class root of an object without a
+            // companion class, entered for its class file, is absent: check after it
+            val typeMatch = lookedUp.find(s => s.isType && !s.flags.is(Flags.Module) && hackIsNotAbsent(s))
             if typeMatch.isDefined then typeMatch
             else {
               val termMatches =
@@ -232,7 +234,7 @@ trait MemberLookup {
         lookedUp.foreach { s =>
           if s.isPackageDef then pk = Some(s)
           else if s.flags.is(Flags.Module) then tm = Some(s)
-          else if s.isClassDef || s.isTypeDef then tp = Some(s)
+          else if (s.isClassDef || s.isTypeDef) && hackIsNotAbsent(s) then tp = Some(s)
         }
         pk.flatMap(downwardLookup(qs, _, neverForce))
         .orElse(tp.flatMap(downwardLookup(qs, _, neverForce)))

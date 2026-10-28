@@ -1076,7 +1076,11 @@ object CaptureSet:
       def descr = getClass.getSimpleName.nn.take(1)
       val trail = this.match
         case dv: DerivedVar =>
-          def summary = if ctx.settings.YccVerbose.value then dv.summarize else descr
+          // A summary can show types with further variables; don't summarize those again
+          def summary =
+            if ctx.settings.YccVerbose.value && ctx.property(InSummary).isEmpty
+            then dv.summarize(using ctx.withProperty(InSummary, Some(())))
+            else descr
           s"$summary${dv.source.ids}"
         case _ => descr
       s"$id$trail"
@@ -1883,6 +1887,9 @@ object CaptureSet:
     ctx.property(AssumedContains).getOrElse(immutable.Map.empty)
 
   private val ShownVars: Property.Key[mutable.Set[Var]] = Property.Key()
+
+  /** Set while printing the summary of a derived variable's map */
+  private val InSummary: Property.Key[Unit] = Property.Key()
 
   /** Perform `op`. Under -Ycc-debug, collect and print info about all variables reachable
    *  via `(_.deps)*` from the variables that were shown in `op`.
