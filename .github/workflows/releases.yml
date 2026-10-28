@@ -40,11 +40,11 @@ jobs:
           git config --global --add safe.directory /__w/dotty/dotty
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
       - name: Git Checkout
         uses: actions/checkout@v4
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
 
       - name: Publish to SDKMAN
         run: .github/workflows/scripts/publish-sdkman.sh ${{ inputs.version }}
@@ -62,23 +62,23 @@ jobs:
           curl -o artifact.zip -L "https://github.com/scala/scala3/releases/download/$VERSION/scala3-$VERSION.zip"
           echo "digest=$(sha256sum artifact.zip | cut -d " " -f 1)" >> "$GITHUB_OUTPUT"
 
-  build-chocolatey:
-    uses: ./.github/workflows/build-chocolatey.yml
-    needs: compute-digest
-    with:
-      version: ${{ inputs.version }}
-      url    : 'https://github.com/scala/scala3/releases/download/${{ inputs.version }}/scala3-${{ inputs.version }}.zip'
-      digest : ${{ needs.compute-digest.outputs.digest }}
-  test-chocolatey:
-    uses: ./.github/workflows/test-chocolatey.yml
-    needs: build-chocolatey
-    with:
-      version     : ${{ inputs.version }}
-      java-version: 8
-  publish-chocolatey:
-    uses: ./.github/workflows/publish-chocolatey.yml
-    needs: [ build-chocolatey, test-chocolatey ]
-    with:
-      version: ${{ inputs.version }}
-    secrets:
-      API-KEY: ${{ secrets.CHOCOLATEY_KEY }}
+  # build-chocolatey:
+  #   uses: ./.github/workflows/build-chocolatey.yml
+  #   needs: compute-digest
+  #   with:
+  #     version: ${{ inputs.version }}
+  #     url    : 'https://github.com/scala/scala3/releases/download/${{ inputs.version }}/scala3-${{ inputs.version }}.zip'
+  #     digest : ${{ needs.compute-digest.outputs.digest }}
+  # test-chocolatey:
+  #   uses: ./.github/workflows/test-chocolatey.yml
+  #   needs: build-chocolatey
+  #   with:
+  #     version     : ${{ inputs.version }}
+  #     java-version: 8
+  # publish-chocolatey:
+  #   uses: ./.github/workflows/publish-chocolatey.yml
+  #   needs: [ build-chocolatey, test-chocolatey ]
+  #   with:
+  #     version: ${{ inputs.version }}
+  #   secrets:
+  #     API-KEY: ${{ secrets.CHOCOLATEY_KEY }}
