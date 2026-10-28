@@ -29,18 +29,6 @@ class DropForMap extends MiniPhase:
 
   import DropForMap.{Converted, Unmapped}
 
-  override def prepareForApply(tree: Apply)(using Context): Context =
-    def loop(tree: Tree): Unit = tree match
-      case Apply(fun, _) =>
-        tree.removeAttachment(TrailingForMap) // expect at xs.map(f), see `Unmapped` extractor and `transformApply`
-        loop(fun)
-      case TypeApply(fun, _) => loop(fun)
-      case _ =>
-    // if map apply was adapted and implicit arg is not stable, ensure map is retained
-    if tree.fun.symbol.name == nme.map && tree.fun.tpe.isImplicitMethod && tree.args.exists(!_.tpe.isStable) then
-      loop(tree)
-    ctx
-
   /** r.map(x => x)(using y) --> r
    *       ^ TrailingForMap
    */
@@ -123,10 +111,10 @@ object DropForMap:
           case MapCall(f, sym, args) => Some((f, sym, args))
           case _ => None
         case _ => None
-      case Apply(fun, _) =>
+      case Apply(fun, args) =>
         fun.tpe match
-        case mt: MethodType if mt.isImplicitMethod => loop(fun)
-        case _ => None
+          case mt: MethodType if mt.isImplicitMethod && args.forall(_.tpe.isStable) => loop(fun)
+          case _ => None
       case TypeApply(fun, _) => loop(fun)
       case _ => None
     end loop
