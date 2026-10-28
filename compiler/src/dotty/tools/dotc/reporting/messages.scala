@@ -656,6 +656,12 @@ extends SyntaxMsg(UnboundPlaceholderParameterID) {
         |"""
 }
 
+class BadErased()(implicit ctx:Context)
+extends SyntaxMsg(BadErasedID):
+  def msg(using Context) = i"${hl("erased")} cannot be used here"
+  def explain(using Context) =
+    i"|${hl("erased")} can be used only as a modifier in definitions or function parameters."
+
 class IllegalStartSimpleExpr(illegalToken: String)(using Context)
 extends SyntaxMsg(IllegalStartSimpleExprID) {
   def msg(using Context) = i"expression expected but ${Red(illegalToken)} found"

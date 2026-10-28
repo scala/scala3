@@ -16,7 +16,7 @@ import dotty.tools.io.AbstractFile
  *
  * @param aggregates classpath instances containing entries which this class processes
  */
-case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
+private final case class AggregateClassPath(aggregates: List[ClassPath]) extends ClassPath {
   // Implementation note:
   // This class is used a lot. It's important to keep it efficient and low-allocation.
 
@@ -66,4 +66,8 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
         if seenNames.add(entry.name) then
           result.addOne(entry)
     result
+
+  // for debugging
+  override def toString: String =
+    s"ClassPath has ${aggregates.size} entries and results in:\n${searchLocations.map(_.path).mkString("\n")}"
 }

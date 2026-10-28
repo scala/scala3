@@ -84,6 +84,10 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Show JDK version
+        run: java -version
+        shell: cmd
+
       - name: Test
         run: sbt ";scala3-bootstrapped/compile ;scala3-compiler-bootstrapped/test"
         shell: cmd
@@ -109,6 +113,7 @@ jobs:
       HAS_SIGNING_KEY: ${{ secrets.PGP_SECRET != '' }}
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
       PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
+      SCALA_PGP_FINGERPRINT: ${{ vars.SCALA_PGP_FINGERPRINT }}
       SONATYPE_PW: ${{ secrets.SONATYPE_PW_ORGSCALALANG }}
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
@@ -122,7 +127,7 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
-          distribution: 'temurin'
+          distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
 
@@ -330,7 +335,7 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
-          distribution: 'temurin'
+          distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
 

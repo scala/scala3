@@ -3,7 +3,7 @@ package dotty.tools.dotc.classpath
 import dotty.tools.io.{AbstractFile, FileExtension}
 import FileUtils.*
 
-class VirtualDirectoryClassPath(protected override val dir: AbstractFile) extends ClassPath with DirectoryLookup[BinaryFileEntry] {
+private class VirtualDirectoryClassPath(protected override val dir: AbstractFile) extends ClassPath with DirectoryLookup[BinaryFileEntry] {
   type F = AbstractFile
 
   protected def getSubDir(packageDirName: String): Option[AbstractFile] =
