@@ -52,10 +52,7 @@ object ClassPathFactory {
     val files: List[AbstractFile] =
       for
         file <- ClassPath.expandPath(path, expandStar)
-        dir <- {
-          def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file).nn) else None
-          Option(AbstractFile.getDirectory(file, ctx.settings.javaOutputVersion.value)).orElse(asImage)
-        }
+        dir <- Option(AbstractFile.getDirectory(file, ctx.settings.javaOutputVersion.value))
       yield dir
     val expanded =
       if scala.util.Properties.propOrFalse("scala.expandjavacp") then
