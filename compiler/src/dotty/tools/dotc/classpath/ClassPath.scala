@@ -70,7 +70,7 @@ object ClassPath {
   def replace(classPath: ClassPath, subst: Map[ClassPath, ClassPath]): ClassPath =
     classPath match
       case AggregateClassPath(entries) => AggregateClassPath(entries.map(e => subst.getOrElse(e, e)))
-      case cp =>subst.getOrElse(cp, cp)
+      case cp => subst.getOrElse(cp, cp)
 
   /** Adds the two given classpaths. */
   def add(classPath: ClassPath, newClassPath: ClassPath): ClassPath =
