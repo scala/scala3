@@ -12,16 +12,17 @@
 
 package scala.ref
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.annotation.nowarn
 
-@nowarn("cat=deprecation")
 /** Implements the Scala [[scala.ref.Reference]] interface by delegating to an
  *  underlying `java.lang.ref.Reference`.
  *
  *  @tparam T the type of the referenced object, constrained to `AnyRef` (i.e., non-primitive types)
  */
-trait ReferenceWrapper[+T <: AnyRef] extends Reference[T] with Proxy {
+@nowarn("cat=deprecation")
+trait ReferenceWrapper[+T <: AnyRef] extends Reference[T] with Proxy with caps.Pure {
   val underlying: java.lang.ref.Reference[? <: T]
   /** Returns `Some(value)` wrapping `underlying.get` if it is non-null, or
    *  `None` otherwise. For phantom references, `underlying.get` always returns

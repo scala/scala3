@@ -16,6 +16,7 @@ import dotty.tools.initialize
 import ast.tpd.*
 
 import scala.annotation.threadUnsafe
+import scala.collection.mutable
 
 /** This phase translates variables that are captured in closures to
  *  heap-allocated refs.
@@ -27,7 +28,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
 
   override def description: String = CapturedVars.description
 
-  private val captured = util.HashSet[Symbol]()
+  private val captured = mutable.Set.empty[Symbol]
 
   private class RefInfo(using Context) {
     /** The classes for which a Ref type exists. */
@@ -109,7 +110,7 @@ object CapturedVars:
   val name: String = "capturedVars"
   val description: String = "represent vars captured by closures as heap objects"
 
-  def collect(captured: util.HashSet[Symbol]): TreeTraverser = new:
+  def collect(captured: mutable.Set[Symbol]): TreeTraverser = new:
     def traverse(tree: Tree)(using Context) = tree match
       case id: Ident =>
         val sym = id.symbol

@@ -25,8 +25,8 @@ object GenericHashMap:
  *                           However, a table of size up to DenseLimit will be re-sized only
  *                           once the number of elements reaches the table's size.
  */
-abstract class GenericHashMap[Key, Value]
-    (initialCapacity: Int, capacityMultiple: Int) extends MutableMap[Key, Value]:
+abstract class GenericHashMap[Key, Value](initialCapacity: Int, capacityMultiple: Int)
+  extends ReadOnlyMap[Key, Value]:
   import GenericHashMap.DenseLimit
 
   protected var used: Int = uninitialized
@@ -43,8 +43,12 @@ abstract class GenericHashMap[Key, Value]
     else if Integer.bitCount(n) == 1 then n
     else 1 << (32 - Integer.numberOfLeadingZeros(n))
 
-  /** Remove all elements from this table and set back to initial configuration */
-  def clear(resetToInitial: Boolean): Unit =
+  /** Remove all bindings from this map.
+   *
+   * @param resetToInitial If true, set back to initial configuration, which includes
+   *                       reallocating tables.
+   */
+  def clear(resetToInitial: Boolean = true): Unit =
     used = 0
     if resetToInitial then allocate(roundToPower(initialCapacity))
     else java.util.Arrays.fill(table, null)
@@ -200,4 +204,8 @@ abstract class GenericHashMap[Key, Value]
     val prefix = if isDense then "HashMap(dense)." else "HashMap."
     val suffix = getClass.getSimpleName
     s"$prefix$op $suffix"
+
+  def -=(k: Key): this.type =
+    remove(k)
+    this
 end GenericHashMap

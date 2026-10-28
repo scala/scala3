@@ -919,7 +919,7 @@ trait Applications extends Compatibility {
                 addTyped(arg)
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
-                val typedVarArgs = util.HashSet[TypedArg]()
+                val typedVarArgs = mutable.Set.empty[TypedArg]
                 val typedArgs = harmonic(harmonizeArgs, elemFormal):
                   args.map: arg =>
                     if isVarArg(arg) then
@@ -1366,7 +1366,12 @@ trait Applications extends Compatibility {
             val resultType =
               if !originalResultType.isRef(defn.ObjectClass) then originalResultType
               else AvoidWildcardsMap()(proto.resultType.deepenProtoTrans) match
-                case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _, _) => resTp
+                case SelectionProto(nme.asInstanceOf_, PolyProto(_, castPt), _, _, _)
+                if !Feature.sourceVersion.isAtLeast(SourceVersion.future) =>
+                  // The spec says the call's expected type sets the result type. As the receiver of a cast,
+                  // the call has none, but so far the expected type of the cast was used. Deprecated in
+                  // CrossVersionChecks.checkSignaturePolymorphicCast.
+                  castPt
                 case resTp if isFullyDefined(resTp, ForceDegree.all) => resTp
                 case _ => defn.ObjectType
             val methType = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)

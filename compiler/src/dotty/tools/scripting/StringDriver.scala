@@ -33,7 +33,7 @@ class StringDriver(compilerArgs: Array[String], scalaSource: String) extends Dri
             val classpath = s"${ctx.settings.classpath.value}${pathsep}${sys.props("java.class.path")}"
             val classpathEntries: Seq[Path] = ClassPath.expandPath(classpath, expandStar=true).map { Paths.get(_) }
             sys.props("java.class.path") = classpathEntries.map(_.toString).mkString(pathsep)
-            detectMainClassAndMethod(outDir, classpathEntries, scalaSource) match
+            detectMainClassAndMethod(outDir, ctx.settings.javaOutputVersion.value, classpathEntries, scalaSource) match
               case Right((mainClass, mainMethod)) =>
                 mainMethod.invoke(null, Array.empty[String])
                 None

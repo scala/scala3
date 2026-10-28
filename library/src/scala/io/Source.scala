@@ -17,6 +17,7 @@ import scala.collection.{AbstractIterator, BufferedIterator}
 import java.io.{Closeable, FileInputStream, FileNotFoundException, InputStream, PrintStream, File => JFile}
 import java.net.{URI, URL}
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.annotation.nowarn
 
@@ -225,6 +226,10 @@ object Source {
   /** Reads data from inputStream with a buffered reader, using the encoding
    *  in implicit parameter codec.
    *
+   *  Capture-checking notes: `reset` and `close` are internally stored by a BufferedSource, and hence its capture set cannot be extended later,
+   *  without proper capture variables.
+   *  For compatibility, this means the safe choice is to make `reset` and `close` pure.
+   *
    *  @param  inputStream  the input stream from which to read
    *  @param  bufferSize   buffer size (defaults to Source.DefaultBufSize)
    *  @param  reset        a () => Source which resets the stream (if unset, reset() will throw an Exception)
@@ -235,8 +240,8 @@ object Source {
   def createBufferedSource(
     inputStream: InputStream,
     bufferSize: Int = DefaultBufSize,
-    reset: (() => Source) | Null = null,
-    close: (() => Unit) | Null = null
+    reset: (() -> Source) | Null = null,
+    close: (() -> Unit) | Null = null
   )(implicit codec: Codec): BufferedSource = {
     // workaround for default arguments being unable to refer to other parameters
     val resetFn = if (reset == null) () => createBufferedSource(inputStream, bufferSize, reset, close)(using codec) else reset
@@ -296,7 +301,7 @@ object Source {
  */
 abstract class Source extends Iterator[Char] with Closeable {
   /** The actual iterator. */
-  protected val iter: Iterator[Char]
+  protected val iter: Iterator[Char]^{this}
 
   // ------ public values
 
@@ -310,10 +315,10 @@ abstract class Source extends Iterator[Char] with Closeable {
   /** An iterator over the lines of this source, excluding any line separator
    *  characters.
    */
-  class LineIterator extends AbstractIterator[String] with Iterator[String] {
+  class LineIterator extends AbstractIterator[String] with Iterator[String] uses Source.this.iter {
     private val sb = new StringBuilder
 
-    lazy val iter: BufferedIterator[Char] = Source.this.iter.buffered
+    lazy val iter: BufferedIterator[Char]^{Source.this.iter} = Source.this.iter.buffered
     /** Returns `true` if `ch` is a carriage return or line feed character.
      *
      *  @param ch the character to test
@@ -350,7 +355,7 @@ abstract class Source extends Iterator[Char] with Closeable {
    *  Treats any of \r\n, \r, or \n as a line separator (longest match).
    *  If you need more specific behavior, subclass Source#LineIterator directly.
    */
-  def getLines(): Iterator[String] = new LineIterator()
+  def getLines(): Iterator[String]^{this} = new LineIterator()
 
   /** Returns `**true**` if this source has more characters. */
   def hasNext: Boolean = iter.hasNext
@@ -358,13 +363,13 @@ abstract class Source extends Iterator[Char] with Closeable {
   /** Returns next character. */
   def next(): Char = positioner.next()
 
-  @nowarn("cat=deprecation")
   /** Mutable object that tracks the line and column position of each character as it is read from
    *  this source.
    *
    *  @param encoder the `Position` used to encode line and column numbers into a single position value
    */
-  class Positioner(encoder: Position) {
+  @nowarn("cat=deprecation")
+  class Positioner(encoder: Position) uses Source.this.iter, Source.this initially {
     /** Creates a `Positioner` that encodes positions using `RelaxedPosition`.
      */
     def this() = this(RelaxedPosition)
@@ -411,8 +416,8 @@ abstract class Source extends Iterator[Char] with Closeable {
      */
     def checkInput(line: Int, column: Int): Unit = ()
   }
-  object RelaxedPositioner extends Positioner(RelaxedPosition) { }
-  object NoPositioner extends Positioner(Position) {
+  object RelaxedPositioner extends Positioner(RelaxedPosition) uses Source.this { }
+  object NoPositioner extends Positioner(Position) uses Source.this {
     /** Returns the next character from the underlying iterator without tracking
      *  its position.
      */
@@ -471,10 +476,10 @@ abstract class Source extends Iterator[Char] with Closeable {
   }
 
   @annotation.stableNull
-  private var resetFunction: (() => Source) | Null = null
+  private var resetFunction: (() -> Source) | Null = null
   @annotation.stableNull
-  private var closeFunction: (() => Unit) | Null = null
-  private var positioner: Positioner = RelaxedPositioner
+  private var closeFunction: (() -> Unit) | Null = null
+  private var positioner: Positioner^{this} = RelaxedPositioner
 
   /** Sets the function that [[reset]] uses to produce a fresh copy of this
    *  source.
@@ -482,7 +487,7 @@ abstract class Source extends Iterator[Char] with Closeable {
    *  @param f a `() => Source` that produces a fresh copy of this source, or `null` to leave [[reset]] throwing
    *  @return this source
    */
-  def withReset(f: (() => Source) | Null): this.type = {
+  def withReset(f: (() -> Source) | Null): this.type = {
     resetFunction = f
     this
   }
@@ -491,7 +496,7 @@ abstract class Source extends Iterator[Char] with Closeable {
    *  @param f a `() => Unit` that closes the underlying resource, or `null` to make [[close]] a no-op
    *  @return this source
    */
-  def withClose(f: (() => Unit) | Null): this.type = {
+  def withClose(f: (() -> Unit) | Null): this.type = {
     closeFunction = f
     this
   }

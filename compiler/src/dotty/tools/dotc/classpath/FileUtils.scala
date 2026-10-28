@@ -10,7 +10,7 @@ import dotty.tools.io.{AbstractFile, FileExtension}
 /**
  * Common methods related to Java files and abstract files used in the context of classpath
  */
-object FileUtils {
+private object FileUtils {
   extension (file: AbstractFile) {
     def isPackage: Boolean = file.isDirectory && mayBeValidPackage(file.name)
 
@@ -22,7 +22,7 @@ object FileUtils {
      */
     def hasSiblingTasty: Boolean =
       assert(file.ext.isClass, s"non-class: $file")
-      file.resolveSibling(classNameToTasty(file.name)) != null
+      file.resolveSibling(ClassPath.classNameToTasty(file.name)) != null
   }
 
   extension (file: JFile) {
@@ -43,7 +43,7 @@ object FileUtils {
     def hasSiblingTasty: Boolean =
       assert(file.hasClassExtension, s"non-class: $file")
       val path = file.toPath
-      val tastyPath = path.resolveSibling(classNameToTasty(file.getName))
+      val tastyPath = path.resolveSibling(ClassPath.classNameToTasty(file.getName))
       java.nio.file.Files.exists(tastyPath)
 
   }
@@ -67,18 +67,4 @@ object FileUtils {
   def mayBeValidPackage(dirName: String): Boolean =
     (dirName != "META-INF") && (dirName != "") && (dirName.charAt(0) != '.')
 
-  /** Transforms a .class file name to a .tasty file name */
-  private def classNameToTasty(fileName: String): String =
-    val classOrModuleName = fileName.stripSuffix(".class")
-    val className =
-      if classOrModuleName.endsWith("$")
-        && classOrModuleName != "Null$" // scala.runtime.Null$
-        && classOrModuleName != "Nothing$" // scala.runtime.Nothing$
-        // Special case for `object $` in Amonite.
-        // This is an ad-hoc workaround for Amonite `object $`. See issue #19702
-        // This definition is not valid Scala.
-        && classOrModuleName != "$"
-      then classOrModuleName.stripSuffix("$")
-      else classOrModuleName
-    className + FileExtension.Tasty.withDot
 }

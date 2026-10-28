@@ -12,6 +12,7 @@
 
 package scala.ref
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A queue onto which registered references are appended by the garbage
