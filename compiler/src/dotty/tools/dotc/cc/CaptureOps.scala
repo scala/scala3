@@ -429,14 +429,14 @@ extension (tp: Type)
 
   /** Drop @retains annotations everywhere except in parts marked with
    *  `@caps.internal.declared`, which other compilation units see as they are.
-   *  `^` annotations in contravariant positions are kept as well, since other
-   *  units see them as well and rely on them for parameter types.
+   *  `^` annotations in contravariant and invariant positions are kept as well,
+   *  since other units see them too and rely on them for parameter types.
    */
   def dropInferredRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
     val tm = new TypeMap:
       def apply(t: Type) = t match
         case AnnotatedType(parent, annot)
-        if annot.symbol.isRetains && (annot.symbol != defn.RetainsCapAnnot || variance >= 0) =>
+        if annot.symbol.isRetains && (annot.symbol != defn.RetainsCapAnnot || variance > 0) =>
           apply(parent)
         case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
           parent
@@ -515,6 +515,17 @@ extension (tp: Type)
     val tm = new TypeMap:
       def apply(t: Type) = t match
         case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
+          apply(parent)
+        case _ =>
+          mapOver(t)
+    tm(tp)
+
+  /** This type without @retains and `@caps.internal.declared` annotations */
+  def dropCaptureAnnotations(using Context): Type =
+    val tm = new TypeMap:
+      def apply(t: Type) = t match
+        case AnnotatedType(parent, annot)
+        if annot.symbol.isRetainsLike || annot.symbol == defn.DeclaredAnnot =>
           apply(parent)
         case _ =>
           mapOver(t)
@@ -1004,6 +1015,148 @@ extension (clss: List[ClassSymbol])
 /** A prototype that indicates selection */
 class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) extends typer.ProtoTypes.WildcardSelectionProto
 
+/** A @retains annotation with retained elements `elems`, of the same kind as `like` */
+def retainingAnnotation(elems: List[Type], like: RetainingAnnotation)(using Context): RetainingAnnotation =
+  val cls = if like.symbol == defn.RetainsCapAnnot then defn.RetainsAnnot else like.symbol.asClass
+  if elems.isEmpty then RetainingAnnotation(cls, defn.NothingType)
+  else if like.symbol == defn.RetainsCapAnnot && elems.length == 1 && elems.head.isCapsAnyRef then like
+  else RetainingAnnotation(cls, elems.reduceLeft(OrType(_, _, soft = false)))
+
+/** Is `elem`, an element of a retained set, the root `caps.any` or `caps.fresh`,
+ *  possibly restricted as in `any.rd` or `any.only[K]`?
+ */
+private def isRootElem(elem: Type)(using Context): Boolean = elem match
+  case AnnotatedType(parent, _) => isRootElem(parent)
+  case _ => elem.isCapsAnyRef || elem.isCapsFreshRef
+
+/** Are `e1` and `e2`, elements of retained sets, the same capability? */
+private def sameElem(e1: Type, e2: Type)(using Context): Boolean = (e1, e2) match
+  case (AnnotatedType(p1, a1), AnnotatedType(p2, a2)) => // .rd, .only[K], .except[K]
+    a1.symbol == a2.symbol && a1.tree.tpe == a2.tree.tpe && sameElem(p1, p2)
+  case _ =>
+    e1 == e2
+
+/** The declared parts of `tp` are no longer declared, so their capture sets are
+ *  inferred. Since other compilation units see inferred capture sets as empty,
+ *  `^` annotations in these parts are cleaned as well.
+ */
+def inferDeclared(tp: Type)(using Context): Type =
+  val clean = new TypeMap:
+    def apply(t: Type) = t match
+      case t @ AnnotatedType(parent, annot) if annot.symbol == defn.RetainsCapAnnot =>
+        AnnotatedType(this(parent), RetainingAnnotation(defn.RetainsAnnot, defn.NothingType))
+      case _ => mapOver(t)
+  val tm = new TypeMap:
+    def apply(t: Type) = t match
+      case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot => clean(parent)
+      case _ => mapOver(t)
+  tm(tp)
+
+/** Merge the parts of `kept` that are marked with `@caps.internal.declared` with the
+ *  corresponding parts of `other`. Here, `kept` is the result of a lub (if `isLub`) or
+ *  a glb of `kept` and `other` that ignored declared parts, since typer does not compare
+ *  capture sets. In a lub, capture sets in contravariant positions are intersected and
+ *  capture sets in covariant positions are united; in a glb it is the other way around.
+ *  Capture sets in invariant positions must be the same, and so must capture sets with
+ *  roots, since typer cannot tell how roots relate to other capabilities. If the two types
+ *  differ in other ways than capture sets, all declared parts of `kept` are inferred
+ *  instead. So is a declared part that has no declared counterpart or cannot be merged.
+ *  @param variance  the variance of `kept` and `other` in the merged type
+ */
+def mergeDeclared(kept: Type, other: Type, isLub: Boolean, variance: Int = 1)(using Context): Type =
+  var failed = false      // the current declared part cannot be merged
+  var mismatched = false  // the types differ in other ways than capture sets
+
+  def mismatch(inDeclared: Boolean): Unit =
+    if inDeclared then failed = true else mismatched = true
+
+  def contains(elems: List[Type], elem: Type) = elems.exists(sameElem(_, elem))
+
+  def mergeElems(ks: List[Type], os: List[Type], v: Int): List[Type] =
+    if ks.forall(contains(os, _)) && os.forall(contains(ks, _)) then ks
+    else if v == 0 || (ks ++ os).exists(isRootElem) then
+      failed = true
+      ks
+    else if isLub == (v > 0) then ks ++ os.filterNot(contains(ks, _))
+    else ks.filter(contains(os, _))
+
+  def merge(k: Type, o: Type, v: Int, inDeclared: Boolean): Type = (k, o) match
+    case (ka @ AnnotatedType(kp, kann), AnnotatedType(op, oann))
+    if kann.symbol == defn.DeclaredAnnot && oann.symbol == defn.DeclaredAnnot =>
+      val saved = failed
+      failed = false
+      val kp1 = merge(kp, op, v, inDeclared = true)
+      val ok = !failed
+      failed = saved
+      if ok then ka.derivedAnnotatedType(kp1, kann) else inferDeclared(ka)
+    case (ka @ AnnotatedType(kp, kann), _) if kann.symbol == defn.DeclaredAnnot =>
+      merge(kp, o, v, inDeclared) // there is no declared counterpart
+      inferDeclared(ka)
+    case (ka @ AnnotatedType(kp, kann: RetainingAnnotation), AnnotatedType(op, oann: RetainingAnnotation))
+    if inDeclared =>
+      if (kann.symbol == defn.RetainsByNameAnnot) != (oann.symbol == defn.RetainsByNameAnnot) then
+        failed = true
+      val ks = kann.retainedType.retainedElementsRaw
+      val elems = mergeElems(ks, oann.retainedType.retainedElementsRaw, v)
+      ka.derivedAnnotatedType(merge(kp, op, v, inDeclared),
+        if elems eq ks then kann else retainingAnnotation(elems, kann))
+    case (ka @ AnnotatedType(kp, kann), _) =>
+      if kann.symbol.isRetainsLike then
+        if inDeclared then failed = true // there is no counterpart
+        ka.derivedAnnotatedType(merge(kp, o, v, inDeclared), kann)
+      else o match
+        case AnnotatedType(op, oann) if oann.symbol == kann.symbol =>
+          ka.derivedAnnotatedType(merge(kp, op, v, inDeclared), kann)
+        case _ =>
+          mismatch(inDeclared)
+          k
+    case (_, AnnotatedType(op, oann)) =>
+      if oann.symbol.isRetainsLike then
+        if inDeclared then failed = true // there is no counterpart
+        merge(k, op, v, inDeclared)
+      else
+        mismatch(inDeclared)
+        k
+    case (k: TypeVar, _) if k.isInstantiated =>
+      merge(k.instanceOpt, o, v, inDeclared)
+    case (_, o: TypeVar) if o.isInstantiated =>
+      merge(k, o.instanceOpt, v, inDeclared)
+    case (k: AppliedType, o: AppliedType) if k.tycon == o.tycon && k.args.length == o.args.length =>
+      val signs = k.tycon.typeParams.map(_.paramVarianceSign).padTo(k.args.length, 0)
+      k.derivedAppliedType(k.tycon,
+        k.args.zipWithConserve(o.args.lazyZip(signs).toList): (karg, osign) =>
+          merge(karg, osign._1, v * osign._2, inDeclared))
+    case (k: RefinedType, o: RefinedType) if k.refinedName == o.refinedName =>
+      k.derivedRefinedType(merge(k.parent, o.parent, v, inDeclared), k.refinedName,
+        merge(k.refinedInfo, o.refinedInfo, v, inDeclared))
+    case (k: LambdaType, o: LambdaType)
+    if k.companion == o.companion && k.paramNames.length == o.paramNames.length =>
+      val paramInfos1 = k.paramInfos.zipWithConserve(o.paramInfos): (kinfo, oinfo) =>
+        merge(kinfo, oinfo.subst(o, k), -v, inDeclared).asInstanceOf[k.PInfo]
+      k.derivedLambdaType(
+        paramInfos = paramInfos1,
+        resType = merge(k.resType, o.resType.subst(o, k), v, inDeclared))
+    case (k: AliasingBounds, o: AliasingBounds) =>
+      k.derivedAlias(merge(k.alias, o.alias, 0, inDeclared))
+    case (k: TypeBounds, o: TypeBounds) if !k.isInstanceOf[AliasingBounds] && !o.isInstanceOf[AliasingBounds] =>
+      k.derivedTypeBounds(merge(k.lo, o.lo, -v, inDeclared), merge(k.hi, o.hi, v, inDeclared))
+    case (k: ExprType, o: ExprType) =>
+      k.derivedExprType(merge(k.resType, o.resType, v, inDeclared))
+    case (k: AndType, o: AndType) =>
+      k.derivedAndType(merge(k.tp1, o.tp1, v, inDeclared), merge(k.tp2, o.tp2, v, inDeclared))
+    case (k: OrType, o: OrType) =>
+      k.derivedOrType(merge(k.tp1, o.tp1, v, inDeclared), merge(k.tp2, o.tp2, v, inDeclared))
+    case _ =>
+      if k.dropCaptureAnnotations != o.dropCaptureAnnotations then mismatch(inDeclared)
+      k
+
+  if kept.isSingleton then kept
+  else
+    val other1 = if other.isSingleton then other.widen else other
+    val merged = merge(kept, other1, variance, inDeclared = false)
+    if mismatched then inferDeclared(kept) else merged
+end mergeDeclared
+
 /** Drop retains annotations in the inferred type if CC is not enabled
  *  or transform them into retains annotations with Nothing (i.e. empty set) as
  *   argument if CC is enabled (we need to do that to keep by-name status).
@@ -1013,7 +1166,7 @@ class CleanupRetains(using Context) extends TypeMap:
   def apply(tp: Type): Type = tp match
     case tp @ AnnotatedType(parent, annot: RetainingAnnotation) =>
       if Feature.ccEnabled then
-        if annot.symbol == defn.RetainsCapAnnot then tp
+        if annot.symbol == defn.RetainsCapAnnot then tp.derivedAnnotatedType(this(parent), annot)
         else AnnotatedType(this(parent), RetainingAnnotation(annot.symbol.asClass, defn.NothingType))
       else this(parent)
     case tp @ AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>

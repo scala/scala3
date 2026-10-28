@@ -2644,7 +2644,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case _ => andType(tp1, tp2)
       end mergedGlb
 
-      checkingDeclared(mergedGlb(dropExpr(tp1.stripLazyRef), dropExpr(tp2.stripLazyRef)))(_.dropDeclared)
+      val tp1a = dropExpr(tp1.stripLazyRef)
+      val tp2a = dropExpr(tp2.stripLazyRef)
+      checkingDeclared(mergedGlb(tp1a, tp2a))(mergeDeclaredResult(_, tp1a, tp2a, isLub = false))
   end glb
 
   def widenInUnions(using Context): Boolean =
@@ -2675,16 +2677,39 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Perform a merge of types `op`. Merges decide based on subtype tests that ignore
    *  capture sets. So if a test ignored a declared part, the merge might have confused
-   *  different declared parts. In that case, the parts of the result are no longer
-   *  declared, which means that their capture sets will be inferred.
+   *  different declared parts. In that case, the declared parts of the result are merged
+   *  with `merged`, see `mergeDeclared`.
    */
-  private inline def checkingDeclared[T](inline op: T)(inline dropDeclared: T => T): T =
+  private inline def checkingDeclared[T](inline op: T)(inline merged: T => T): T =
     val saved = declaredIgnored
     declaredIgnored = false
     try
       val res = op
-      if declaredIgnored then dropDeclared(res) else res
+      if declaredIgnored then merged(res) else res
     finally declaredIgnored = saved || declaredIgnored
+
+  /** The result `res` of a lub or glb of `tp1` and `tp2`, with declared parts merged */
+  private def mergeDeclaredResult(res: Type, tp1: Type, tp2: Type, isLub: Boolean): Type =
+    if res eq tp1 then mergeDeclared(tp1, tp2, isLub)
+    else if res eq tp2 then mergeDeclared(tp2, tp1, isLub)
+    else res match
+      case res: AndOrType
+      if (res.tp1 eq tp1) && (res.tp2 eq tp2) || (res.tp1 eq tp2) && (res.tp2 eq tp1) =>
+        res // both inputs are kept as they are
+      case _ =>
+        inferDeclared(res)
+
+  /** The results `res` of `lubArgs` or `glbArgs`, with declared parts merged.
+   *  Results other than one of the arguments come from nested lubs or glbs,
+   *  which merge declared parts themselves.
+   */
+  private def mergeDeclaredArgs(res: List[Type], args1: List[Type], args2: List[Type],
+      tparams: List[TypeParamInfo], isLub: Boolean): List[Type] =
+    res.lazyZip(args1).lazyZip(args2).lazyZip(tparams).map: (r, arg1, arg2, tparam) =>
+      val v = tparam.paramVarianceSign
+      if r eq arg1 then mergeDeclared(arg1, arg2, isLub, v)
+      else if r eq arg2 then mergeDeclared(arg2, arg1, isLub, v)
+      else r
 
   /** The least upper bound of two types
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
@@ -2732,7 +2757,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         recombine(tp1Final, tp2Final, orType(_, _, isSoft = isSoft))
       end mergedLub
 
-      checkingDeclared(mergedLub(dropExpr(tp1.stripLazyRef), dropExpr(tp2.stripLazyRef)))(_.dropDeclared)
+      val tp1a = dropExpr(tp1.stripLazyRef)
+      val tp2a = dropExpr(tp2.stripLazyRef)
+      checkingDeclared(mergedLub(tp1a, tp2a))(mergeDeclaredResult(_, tp1a, tp2a, isLub = true))
   end lub
 
   /** Try to produce joint arguments for a lub `A[T_1, ..., T_n] | A[T_1', ..., T_n']` using
@@ -2743,7 +2770,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *    - otherwise a TypeBounds containing both arguments
    */
   def lubArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo], canConstrain: Boolean = false): List[Type] =
-    checkingDeclared(lubArgsUnchecked(args1, args2, tparams, canConstrain))(_.mapConserve(_.dropDeclared))
+    checkingDeclared(lubArgsUnchecked(args1, args2, tparams, canConstrain)):
+      mergeDeclaredArgs(_, args1, args2, tparams, isLub = true)
 
   private def lubArgsUnchecked(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo], canConstrain: Boolean): List[Type] =
     tparams match {
@@ -2778,7 +2806,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  Therefore it is subject to Config option `alignArgsInAnd`.
    */
   def glbArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo]): List[Type] =
-    checkingDeclared(glbArgsUnchecked(args1, args2, tparams))(_.mapConserve(_.dropDeclared))
+    checkingDeclared(glbArgsUnchecked(args1, args2, tparams)):
+      mergeDeclaredArgs(_, args1, args2, tparams, isLub = false)
 
   private def glbArgsUnchecked(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo]): List[Type] =
     tparams match {

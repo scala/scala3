@@ -419,8 +419,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *       non-inferred by adding `@caps.declared` annotations.
      *       In this case we need to keep references to bound capset variables in retains
      *       clauses of subsequent parameters.
-     *   (3) Parts that are declared but refer to skolems or to local definitions
-     *       of the right hand side are no longer declared, see `dropEscapingDeclared`.
+     *   (3) References to skolems or to local definitions of the right hand side
+     *       in capture sets of declared parts are avoided, see `avoidInDeclared`.
      */
     private def explicifyTpt(tree: ValOrDefDef)(using Context): Tree = tree.tpt match
       case tpt: InferredTypeTree if Feature.ccEnabled =>
@@ -434,34 +434,95 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             =>
               makeFormalsDeclared(tpt.tpe, tree.rhs)
             case _ => tpt.tpe
-          val tpe2 = dropEscapingDeclared(tpe1, sym) // (3)
+          val tpe2 = avoidInDeclared(tpe1, sym) // (3)
           if tpe2 `ne` tpt.tpe
           then TypeTree(tpe2, inferred = true).withSpan(tree.span).withAttachmentsFrom(tpt)
           else tpt
       case tpt =>
         tpt
 
-    /** Drop the `@caps.internal.declared` annotations of parts of the inferred
-     *  type `tp` of `sym` that refer to skolems, or to definitions in the right
-     *  hand side of `sym` other than its parameters. Such references can be left
-     *  in capture sets, since typer's avoidance does not look into them. The
-     *  capture sets of these parts are inferred instead.
+    /** Avoid references to skolems, and to local definitions that are not visible
+     *  where `sym` is defined, in capture sets of declared parts of the inferred type
+     *  `tp` of `sym`. Typer's avoidance does not look into capture sets, so such
+     *  references can be left in them. In parameter types and upper bounds, which are
+     *  contravariant relative to the lambda that has them, the references are dropped.
+     *  Elsewhere the part is no longer declared, which means that its capture sets
+     *  are inferred.
      */
-    private def dropEscapingDeclared(tp: Type, sym: Symbol)(using Context): Type =
+    private def avoidInDeclared(tp: Type, sym: Symbol)(using Context): Type =
+      def invisible(s: Symbol): Boolean =
+        s.exists && s.owner.isTerm
+        && !(s.is(Param) && s.owner == sym)
+        && !sym.owner.isContainedIn(s.owner)
       def escapes(t: Type): Boolean = t match
         case AnnotatedType(_, annot: RetainingAnnotation) =>
           annot.retainedType.retainedElementsRaw.exists(_.existsPart(escapes))
-        case t: NamedType =>
-          t.symbol.isContainedIn(sym) && !(t.symbol.is(Param) && t.symbol.owner == sym)
-        case t: ThisType => t.cls.isContainedIn(sym)
+        case t: NamedType => invisible(t.symbol)
+        case t: ThisType => t.cls.owner.isTerm && !sym.isContainedIn(t.cls)
         case _: SkolemType => true
         case _ => false
-      val dropEscaping = new TypeMap:
+
+      /** Infer all declared parts of `t` that contain escaping references */
+      val inferEscaping = new TypeMap:
         def apply(t: Type) = t match
           case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
-            if parent.existsPart(escapes) then parent else t
+            if parent.existsPart(escapes) then inferDeclared(t) else t
           case _ => mapOver(t)
-      dropEscaping(tp)
+
+      var failed = false
+
+      def avoid(t: Type, v: Int, inDeclared: Boolean): Type = t match
+        case t @ AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
+          val saved = failed
+          failed = false
+          val parent1 = avoid(parent, v, inDeclared = true)
+          val ok = !failed
+          failed = saved
+          if ok then t.derivedAnnotatedType(parent1, annot) else inferDeclared(t)
+        case t @ AnnotatedType(parent, annot: RetainingAnnotation) if inDeclared =>
+          val (escaping, others) = annot.retainedType.retainedElementsRaw.partition(_.existsPart(escapes))
+          val annot1 =
+            if escaping.isEmpty then annot
+            else if v < 0 then retainingAnnotation(others, annot)
+            else
+              failed = true
+              annot
+          t.derivedAnnotatedType(avoid(parent, v, inDeclared), annot1)
+        case t @ AnnotatedType(parent, annot) =>
+          t.derivedAnnotatedType(avoid(parent, v, inDeclared), annot)
+        case t: AppliedType =>
+          val signs = t.tycon.typeParams.map(_.paramVarianceSign).padTo(t.args.length, 0)
+          t.derivedAppliedType(t.tycon,
+            t.args.zipWithConserve(signs): (arg, sign) =>
+              // Outside declared parts, capture sets are inferred, so an invariant
+              // argument counts as covariant
+              avoid(arg, if sign == 0 && !inDeclared then v else v * sign, inDeclared))
+        case t: RefinedType =>
+          t.derivedRefinedType(avoid(t.parent, v, inDeclared), t.refinedName,
+            avoid(t.refinedInfo, v, inDeclared))
+        case t: LambdaType =>
+          t.derivedLambdaType(
+            paramInfos = t.paramInfos.mapConserve(avoid(_, -v, inDeclared)).asInstanceOf[List[t.PInfo]],
+            resType = avoid(t.resType, v, inDeclared))
+        case t: AliasingBounds =>
+          t.derivedAlias(avoid(t.alias, 0, inDeclared))
+        case t: TypeBounds =>
+          t.derivedTypeBounds(avoid(t.lo, -v, inDeclared), avoid(t.hi, v, inDeclared))
+        case t: ExprType =>
+          t.derivedExprType(avoid(t.resType, v, inDeclared))
+        case t: AndOrType =>
+          t.derivedAndOrType(avoid(t.tp1, v, inDeclared), avoid(t.tp2, v, inDeclared))
+        case t: TypeVar if t.isInstantiated =>
+          val inst = t.instanceOpt
+          val inst1 = avoid(inst, v, inDeclared)
+          if inst1 eq inst then t else inst1
+        case _ =>
+          if inDeclared then
+            if t.existsPart(escapes) then failed = true
+            t
+          else inferEscaping(t)
+
+      avoid(tp, 1, inDeclared = false)
 
     /** Insert a `@caps.declared` annotation on all parameter infos
      *  of a function type `tp` corresponding to a closure `rhs` that contain
