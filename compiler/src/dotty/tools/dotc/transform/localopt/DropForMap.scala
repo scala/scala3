@@ -14,10 +14,12 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 /** Drop unused trailing map calls in for comprehensions.
  *
  *  We can drop the map call if:
- *  - it won't change the type of the expression, and
- *  - the function is an identity function or a const function to unit.
+ *  - the function is an identity function or a const function to Unit value
+ *  - it won't change the type of the expression
+ *  - it won't lose side effects from computing implicit args
  *
- *  The latter condition is checked in [[Desugar.scala#makeFor]]
+ *  The first condition is checked in [[Desugar.scala#makeFor]].
+ *  It means the user wrote `for x <- xs yield x`.
  */
 class DropForMap extends MiniPhase:
 
@@ -27,15 +29,28 @@ class DropForMap extends MiniPhase:
 
   import DropForMap.{Converted, Unmapped}
 
+  override def prepareForApply(tree: Apply)(using Context): Context =
+    def loop(tree: Tree): Unit = tree match
+      case Apply(fun, _) =>
+        tree.removeAttachment(TrailingForMap) // expect at xs.map(f), see `Unmapped` extractor and `transformApply`
+        loop(fun)
+      case TypeApply(fun, _) => loop(fun)
+      case _ =>
+    // if map apply was adapted and implicit arg is not stable, ensure map is retained
+    if tree.fun.symbol.name == nme.map && tree.fun.tpe.isImplicitMethod && tree.args.exists(!_.tpe.isStable) then
+      loop(tree)
+    ctx
+
   /** r.map(x => x)(using y) --> r
    *       ^ TrailingForMap
    */
   override def transformApply(tree: Apply)(using Context): Tree =
+    def stripApplies(tree: Tree): Tree = tree match
+      case Apply(fun, _)     => stripApplies(fun)
+      case TypeApply(fun, _) => stripApplies(fun)
+      case tree => tree
+
     tree.removeAttachment(TuplingMigrationForMap).foreach: _ =>
-      def stripApplies(tree: Tree): Tree = tree match
-        case Apply(fun, _)     => stripApplies(fun)
-        case TypeApply(fun, _) => stripApplies(fun)
-        case tree => tree
       stripApplies(tree) match
       case Select(coll, _) =>
         val m = coll.tpe.nonPrivateMember(nme.map)
