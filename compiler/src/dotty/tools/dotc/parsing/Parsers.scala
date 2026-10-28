@@ -2635,7 +2635,7 @@ object Parsers {
             try
               val (erasedParams, otherParams) = placeholderParams.partition(_.mods.is(Erased))
                 // erased placeholders come from named definitions created in exprsInParensOrBindings.
-                // They must be followed by a function arrow, so any such placeholders shoing
+                // They must be followed by a function arrow, so any such placeholders showing
                 // up here are errors.
               for p <- erasedParams do syntaxError(BadErased(), p.span)
               if otherParams.isEmpty then t
