@@ -1,4 +1,6 @@
-def escape(y: File^): File =
+package i26000d
+
+def misuse(y: File^): File =
   Lib.mk(y).value((x: File) => x) // error
-def escape2(y: File^): File =
+def misuse2(y: File^): File =
   Lib.mk2(y).value[{}]((x: File) => x) // error

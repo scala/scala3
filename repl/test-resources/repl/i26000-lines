@@ -43,7 +43,7 @@ scala> w = Box((y: File^{io}) => y)
   |
   |    Note that capability `any` cannot flow into capture set {io}.
   |
-  |    where:    any is the root capability caps.any
+  |    where:    any is a root capability in the type of variable w
   |
   | longer explanation available when compiling with `-explain`
 1 error found

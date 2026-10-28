@@ -203,16 +203,6 @@ object CheckCaptures:
             traverse(parent)
           case defn.RefinedFunctionOf(mt) =>
             traverse(mt)
-          case t @ AppliedType(tycon, args) =>
-            // An invariant argument is treated as covariant, so that roots in
-            // parameter types of function types in it count as contravariant.
-            // They are inputs of these functions, not captured by them.
-            traverse(tycon)
-            val tparams = tycon.typeParams
-            args.lazyZip(tparams).foreach: (arg, tparam) =>
-              val sign = tparam.paramVarianceSign
-              atVariance(if sign == 0 then variance else variance * sign)(traverse(arg))
-            args.drop(tparams.length).foreach(traverse)
           case t: PolyType =>
             // Roots in capture set bounds are not capabilities (see GlobalCapToLocal)
             atVariance(-variance):
@@ -374,19 +364,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             traverse(parent)
           case t @ defn.RefinedFunctionOf(rinfo) =>
             traverse(rinfo)
-          case AppliedType(tycon, args) if !sym.exists || sym.isSeenOnlyCaptureChecked =>
-            // An invariant argument is treated as covariant, so that capture sets
-            // in its contravariant positions get their upper approximation. Not done
-            // for definitions that are visible in other compilation units, which
-            // see their types with all inferred capture sets dropped. Their view
-            // must agree with the view in this unit, since an invariant argument
-            // can be written to.
-            traverse(tycon)
-            val tparams = tycon.typeParams
-            args.lazyZip(tparams).foreach: (arg, tparam) =>
-              val sign = tparam.paramVarianceSign
-              atVariance(if sign == 0 then variance else variance * sign)(traverse(arg))
-            args.drop(tparams.length).foreach(traverse)
           case _ =>
             traverseChildren(t)
 

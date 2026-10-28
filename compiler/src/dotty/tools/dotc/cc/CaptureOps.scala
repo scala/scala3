@@ -888,15 +888,6 @@ extension (sym: Symbol) {
    *  visible outside the compilation unit where they are defined,
    *  and also for two pragmatic exemptions, explained below.
    */
-  /** Is the capture checked type of this symbol the only type of it that is seen?
-   *  This holds for symbols that are local to their compilation unit and for symbols
-   *  defined in the REPL, since later lines see the capture checked types of earlier
-   *  lines. Other symbols are seen in other compilation units with the inferred
-   *  capture sets in their types dropped.
-   */
-  def isSeenOnlyCaptureChecked(using Context): Boolean =
-    sym.isLocalToCompilationUnit || sym.ownersIterator.exists(_.name.isReplWrapperName)
-
   def isExemptFromExplicitChecks(using Context): Boolean =
     sym.isLocalToCompilationUnit
     || sym.isScalaDocSnippet
@@ -1131,17 +1122,20 @@ def mergeDeclared(kept: Type, other: Type, isLub: Boolean, variance: Int = 1)(us
       k.derivedAlias(merge(k.alias, o.alias, 0, inDeclared))
     case (k: TypeBounds, o: TypeBounds) if !k.isInstanceOf[AliasingBounds] && !o.isInstanceOf[AliasingBounds] =>
       val capSetBounds = k.hi.derivesFromCapSet && o.hi.derivesFromCapSet
-      def isBareCapSet(lo: Type) = lo match
-        case lo: TypeRef => lo.symbol == defn.Caps_CapSet
-        case _ => false
-      // A capture set parameter without a lower bound has the empty set as lower bound.
-      // It is declared if the other lower bound is, and not inside a declared part.
+      // The elements of a lower bound that is not written as a capture set: the empty
+      // set if the lower bound is left out, and `{D}` if it is another capture set parameter `D`.
+      def lowerElems(lo: Type): Type = lo match
+        case lo: TypeRef if lo.symbol == defn.Caps_CapSet => defn.NothingType
+        case lo: (TypeRef | TypeParamRef) if lo.derivesFromCapSet => lo
+        case _ => NoType
+      // Such a lower bound is declared if the other lower bound is, and not inside a declared part.
       def lower(lo: Type, other: Type) =
-        if capSetBounds && isBareCapSet(lo) && other.containsRetains
+        val elems = if capSetBounds then lowerElems(lo) else NoType
+        if elems.exists && other.containsRetains
             && (inDeclared || other.hasAnnotation(defn.DeclaredAnnot))
         then
-          val empty = AnnotatedType(lo, RetainingAnnotation(defn.RetainsAnnot, defn.NothingType))
-          if inDeclared then empty else empty.markDeclared()
+          val set = AnnotatedType(defn.Caps_CapSet.typeRef, RetainingAnnotation(defn.RetainsAnnot, elems))
+          if inDeclared then set else set.markDeclared()
         else lo
       val lo1 = merge(lower(k.lo, o.lo), lower(o.lo, k.lo), -v, inDeclared)
       val saved = inCapSetUpper

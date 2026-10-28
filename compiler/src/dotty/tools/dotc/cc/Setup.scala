@@ -262,6 +262,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   private trait SetupTypeMap extends FollowAliasesMap:
     private var isTopLevel = true
 
+    /** Is the current position at or below a contravariant position? */
+    protected def belowContravariant: Boolean = !isTopLevel
+
     protected def innerApply(tp: Type): Type
 
     final def apply(tp: Type) =
@@ -406,9 +409,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case AnnotatedType(parent, annot)
           if annot.symbol == defn.DeclaredAnnot =>
             if ctx.mode.is(Mode.CCPreciseOwner) && hasWellformedCaptureSets(parent) then
-              // A declared parameter type or bound of a lambda in the result type of
-              // a definition reads like the lambda's own parameter: roots in it stay global.
-              transformExplicitType(parent, sym, initialVariance = -1)
+              transformDeclared(parent, sym, variance, belowContravariant)
             else
               // In type arguments and other templates, capture sets stay variables,
               // so that they can be unified with the templates of other branches. They
@@ -596,8 +597,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             |following a function arrow such as `=>` or `->`.""")
 
     if initialVariance < 0 then tp2
-    else globalCapToLocal(tp2, Origin.InDecl(sym))
+    else globalCapToLocal(tp2, Origin.InDecl(sym), initialVariance)
   end transformExplicitType
+
+  /** A declared part `tp` at variance `variance` of an inferred type of `sym`, transformed
+   *  like an explicit type in the same position. Roots in capture set bounds stay global,
+   *  as they do in explicit types, since they only bound the instances of a capture set
+   *  parameter. So do roots at or below a contravariant position, which GlobalCapToLocal
+   *  does not map in explicit types.
+   */
+  private def transformDeclared(tp: Type, sym: Symbol, variance: Int, belowContravariant: Boolean)(using Context): Type =
+    if tp.derivesFromCapSet || belowContravariant then transformExplicitType(tp, sym, initialVariance = -1)
+    else transformExplicitType(tp, sym, initialVariance = variance)
 
   /** Do all @retains annotations in `tp` denote capture sets? */
   private def hasWellformedCaptureSets(tp: Type)(using Context): Boolean =
@@ -653,16 +664,21 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     // After Setup, @retains annotations would be taken for capturing types
     atPhase(thisPhase):
       val tm = new TypeMap:
-        def apply(t: Type) = t match
-          case AnnotatedType(parent, annot)
-          if annot.symbol.isRetains && (annot.symbol != defn.RetainsCapAnnot || variance > 0) =>
-            apply(parent)
-          case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
-            transformExplicitType(parent, sym, initialVariance = -1)
-          case t: RealTypeBounds if isDeclared(t.hi) =>
-            t.derivedTypeBounds(atVariance(-variance)(this(t.lo)), this(t.hi).boxDeeply)
-          case _ =>
-            mapOver(t)
+        var belowContravariant = false
+        def apply(t: Type) =
+          val saved = belowContravariant
+          if variance < 0 then belowContravariant = true
+          try t match
+            case AnnotatedType(parent, annot)
+            if annot.symbol.isRetains && (annot.symbol != defn.RetainsCapAnnot || variance > 0) =>
+              apply(parent)
+            case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
+              transformDeclared(parent, sym, variance, belowContravariant)
+            case t: RealTypeBounds if isDeclared(t.hi) =>
+              t.derivedTypeBounds(atVariance(-variance)(this(t.lo)), this(t.hi).boxDeeply)
+            case _ =>
+              mapOver(t)
+          finally belowContravariant = saved
       tm(tp)
 
   /** The info of `sym` at the CheckCaptures phase */

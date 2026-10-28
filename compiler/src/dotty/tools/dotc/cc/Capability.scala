@@ -1293,9 +1293,11 @@ object Capabilities:
    *  tests elsewhere. We therefore use `withNoVarsMapped` to prevent
    *  the map being installed for future use.
    */
-  def globalCapToLocal(tp: Type, origin: Origin)(using Context): Type =
+  def globalCapToLocal(tp: Type, origin: Origin, initialVariance: Int = 1)(using Context): Type =
     ccState.withNoVarsMapped:
-      GlobalCapToLocal(origin)(tp)
+      val tm = GlobalCapToLocal(origin)
+      tm.variance = initialVariance
+      tm(tp)
 
   /** Maps LocalCap instances created within `param`'s method to `caps.any`.
    *  LocalCaps adopted from the environment are kept, so that inferred
