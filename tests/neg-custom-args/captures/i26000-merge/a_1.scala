@@ -14,4 +14,5 @@ object Lib:
   val mp = Box(if flag then [C^] => (x: File^{C, a, y}) => () else [C^] => (x: File^{C, a, z}) => ())
   val mhi = Box(if flag then [C^ <: {a}] => (x: File^{C}) => () else [C^ <: {a, y}] => (x: File^{C}) => ())
   val mlo = Box(if flag then [C^ >: {a}] => (x: File^{C}) => () else [C^ >: {y}] => (x: File^{C}) => ())
+  val mboth = Box(if flag then [C^ >: {a}] => (x: File^{C}) => () else [C^ <: {a, y}] => (x: File^{C}) => ())
   val w = { val loc: File^ = File(); Box([C^] => (x: File^{C, loc}) => 1) }

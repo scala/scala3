@@ -7,4 +7,6 @@ def misuse(q: File^) =
   Lib.mp.value[{q}](y) // error
   Lib.mhi.value[{y}](y) // error
   Lib.mlo.value[{a}](a) // error
+  Lib.mboth.value[{}](File()) // error
+  Lib.mboth.value[{a, z}](a) // error
   Lib.w.value[{}](q) // error

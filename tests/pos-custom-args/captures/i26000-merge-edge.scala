@@ -42,3 +42,15 @@ object Readers:
   def classified(l: Label^) =
     val q = List([C^] => (b: Object^{C.only[Control]}) => 1, [C^] => (b: Object^{C.only[Control]}) => 2)
     q.head[{l}](l)
+
+// Lower bounds of capture set parameters that are another parameter, or that are
+// left out in a poly function type inside a parameter type
+object Bounds uses a:
+  def param[D^](d: File^{D}) =
+    val m = Box(if Lib.flag then [C^ >: {a}] => (x: File^{C}) => () else [C^ >: D] => (x: File^{C}) => ())
+    m.value[{a, D}](d)
+  def nested() =
+    val m = Box(
+      if Lib.flag then (h: ([C^] -> (x: File^{C}) -> Unit) -> Unit) => ()
+      else (h: ([C^ >: {a}] -> (x: File^{C}) -> Unit) -> Unit) => ())
+    m.value((p: [C^ >: {a}] -> (x: File^{C}) -> Unit) => p[{a}](File()))

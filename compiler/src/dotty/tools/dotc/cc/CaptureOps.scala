@@ -1049,18 +1049,26 @@ def inferDeclared(tp: Type)(using Context): Type =
 def mergeDeclared(kept: Type, other: Type, isLub: Boolean, variance: Int = 1)(using Context): Type =
   var failed = false      // the current declared part cannot be merged
   var mismatched = false  // the types differ in other ways than capture sets
+  var inCapSetUpper = false // merging the upper bounds of capture set parameters
 
   def mismatch(inDeclared: Boolean): Unit =
     if inDeclared then failed = true else mismatched = true
 
   def contains(elems: List[Type], elem: Type) = elems.exists(sameElem(_, elem))
 
+  def isTop(elems: List[Type]) = elems.exists(_.isCapsAnyRef)
+
   def mergeElems(ks: List[Type], os: List[Type], v: Int): List[Type] =
+    val isUnion = isLub == (v > 0)
     if ks.forall(contains(os, _)) && os.forall(contains(ks, _)) then ks
+    else if inCapSetUpper && v != 0 && (isTop(ks) || isTop(os)) then
+      // In the upper bound of a capture set parameter, `any` does not stand for
+      // a capability, it means that the bound does not restrict the parameter.
+      if isUnion == isTop(ks) then ks else os
     else if v == 0 || (ks ++ os).exists(isRootElem) then
       failed = true
       ks
-    else if isLub == (v > 0) then ks ++ os.filterNot(contains(ks, _))
+    else if isUnion then ks ++ os.filterNot(contains(ks, _))
     else ks.filter(contains(os, _))
 
   def merge(k: Type, o: Type, v: Int, inDeclared: Boolean): Type = (k, o) match
@@ -1122,7 +1130,24 @@ def mergeDeclared(kept: Type, other: Type, isLub: Boolean, variance: Int = 1)(us
     case (k: AliasingBounds, o: AliasingBounds) =>
       k.derivedAlias(merge(k.alias, o.alias, 0, inDeclared))
     case (k: TypeBounds, o: TypeBounds) if !k.isInstanceOf[AliasingBounds] && !o.isInstanceOf[AliasingBounds] =>
-      k.derivedTypeBounds(merge(k.lo, o.lo, -v, inDeclared), merge(k.hi, o.hi, v, inDeclared))
+      val capSetBounds = k.hi.derivesFromCapSet && o.hi.derivesFromCapSet
+      def isBareCapSet(lo: Type) = lo match
+        case lo: TypeRef => lo.symbol == defn.Caps_CapSet
+        case _ => false
+      // A capture set parameter without a lower bound has the empty set as lower bound.
+      // It is declared if the other lower bound is, and not inside a declared part.
+      def lower(lo: Type, other: Type) =
+        if capSetBounds && isBareCapSet(lo) && other.containsRetains
+            && (inDeclared || other.hasAnnotation(defn.DeclaredAnnot))
+        then
+          val empty = AnnotatedType(lo, RetainingAnnotation(defn.RetainsAnnot, defn.NothingType))
+          if inDeclared then empty else empty.markDeclared()
+        else lo
+      val lo1 = merge(lower(k.lo, o.lo), lower(o.lo, k.lo), -v, inDeclared)
+      val saved = inCapSetUpper
+      inCapSetUpper = capSetBounds
+      val hi1 = try merge(k.hi, o.hi, v, inDeclared) finally inCapSetUpper = saved
+      k.derivedTypeBounds(lo1, hi1)
     case (k: ExprType, o: ExprType) =>
       k.derivedExprType(merge(k.resType, o.resType, v, inDeclared))
     case (k: AndType, o: AndType) =>
@@ -1130,7 +1155,12 @@ def mergeDeclared(kept: Type, other: Type, isLub: Boolean, variance: Int = 1)(us
     case (k: OrType, o: OrType) =>
       k.derivedOrType(merge(k.tp1, o.tp1, v, inDeclared), merge(k.tp2, o.tp2, v, inDeclared))
     case _ =>
-      if k.dropCaptureAnnotations != o.dropCaptureAnnotations then mismatch(inDeclared)
+      // Two references to the same class can be the same type without being equal,
+      // for instance if they have different prefixes
+      def sameClass = (k, o) match
+        case (k: TypeRef, o: TypeRef) => k.symbol.isClass && k.symbol == o.symbol && k.frozen_=:=(o)
+        case _ => false
+      if k.dropCaptureAnnotations != o.dropCaptureAnnotations && !sameClass then mismatch(inDeclared)
       k
 
   if kept.isSingleton then kept
