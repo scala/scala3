@@ -524,6 +524,31 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
       avoid(tp, 1, inDeclared = false)
 
+    /** Infer the declared parts of `tp`, a type at the current owner, whose capture sets
+     *  refer to local definitions that are not visible there. Typer copies such parts
+     *  from the infos of other definitions, in whose own types `explicifyTpt` avoids
+     *  these references. The copies would otherwise refer to definitions of another
+     *  right hand side, possibly in another top-level class or REPL line.
+     */
+    private def inferInvisibleDeclared(tp: Type)(using Context): Type =
+      if !Feature.ccEnabled then tp
+      else
+        def invisible(t: Type): Boolean = t match
+          case t: NamedType =>
+            val s = t.symbol
+            s.exists && s.owner.isTerm && !ctx.owner.isContainedIn(s.owner)
+          case _ => false
+        def refersToInvisible(t: Type): Boolean = t.existsPart:
+          case AnnotatedType(_, annot: RetainingAnnotation) =>
+            annot.retainedType.retainedElementsRaw.exists(_.existsPart(invisible))
+          case _ => false
+        val tm = new TypeMap:
+          def apply(t: Type) = t match
+            case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
+              if refersToInvisible(parent) then inferDeclared(t) else t
+            case _ => mapOver(t)
+        tm(tp)
+
     /** Insert a `@caps.declared` annotation on all parameter infos
      *  of a function type `tp` corresponding to a closure `rhs` that contain
      *  a "retains" annotation. TypeBound infos of type parameters get
@@ -685,7 +710,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           val tree1 = cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
           // The pickling of UnApply trees uses the tpe of the tree,
           // so we need to clean retains from it here
-          tree1.withType(transformAnnotsIn(CleanupRetains()(tree1.tpe)))
+          tree1.withType(transformAnnotsIn(CleanupRetains()(inferInvisibleDeclared(tree1.tpe))))
         case tree: TypeApply =>
           if tree.symbol == defn.QuotedTypeModule_of then
             ctx.compilationUnit.needsStaging = true
@@ -791,7 +816,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           if sym.isType && !sym.name.is(WildcardParamName) then
             Checking.checkGoodBounds(sym)
           // Cleanup retains from the info of the Bind symbol
-          sym.copySymDenotation(info = transformAnnotsIn(CleanupRetains()(sym.info))).installAfter(thisPhase)
+          sym.copySymDenotation(info = transformAnnotsIn(CleanupRetains()(inferInvisibleDeclared(sym.info)))).installAfter(thisPhase)
           super.transform(tree)
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.tpe, tree.srcPos)
@@ -824,7 +849,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               report.error(em"type ${alias.tpe} outside bounds $bounds", tree.srcPos)
           super.transform(tree)
         case tree: TypeTree =>
-          val tpe = if tree.isInferred then CleanupRetains()(tree.tpe) else tree.tpe
+          val tpe = if tree.isInferred then CleanupRetains()(inferInvisibleDeclared(tree.tpe)) else tree.tpe
           tree.withType(transformAnnotsIn(tpe))
         case Typed(Ident(nme.WILDCARD), _) =>
           withMode(Mode.Pattern)(super.transform(tree))
