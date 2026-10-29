@@ -1429,7 +1429,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case _ =>
               false
           }
-          loop(tycon1, args1)
+          ctx.handleRecursive("check for a matching apply", tp1):
+            loop(tycon1, args1)
         case _ =>
           false
       }
