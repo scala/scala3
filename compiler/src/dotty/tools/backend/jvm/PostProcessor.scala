@@ -79,6 +79,8 @@ class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(usin
 
   private def serializeClass(classNode: ClassNode): Array[Byte] = {
     val cw = new ClassWriterWithBTypeLub(asm.ClassWriter.COMPUTE_MAXS | asm.ClassWriter.COMPUTE_FRAMES)
+    // Use 10x the default limits, we can encounter very large methods (e.g., in `tests/pos/t10387b.scala`)
+    cw.setComputeLimits(100 * 1024 * 1024, 1_000_000_000)
     classNode.accept(cw)
     cw.toByteArray.nn
   }
