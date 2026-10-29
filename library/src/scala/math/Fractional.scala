@@ -22,11 +22,11 @@ trait Fractional[T] extends Numeric[T] {
 
   extension (lhs: T) def /(rhs: T): T = div(lhs, rhs)
 
-  @deprecated("use the extension methods available instead", since = "3.10.0")
+  @deprecated("use the extension methods available instead", since = "3.12.0")
   class FractionalOps(lhs: T) extends NumericOps(lhs) {
     def /(rhs: T) = div(lhs, rhs)
   }
-  @deprecated("use the extension methods available instead", since = "3.10.0")
+  @deprecated("use the extension methods available instead", since = "3.12.0")
   override def mkNumericOps(lhs: T): FractionalOps =
     new FractionalOps(lhs)
 }
@@ -35,7 +35,7 @@ object Fractional {
   @inline def apply[T](implicit frac: Fractional[T]): Fractional[T] = frac
 
   trait ExtraImplicits {
-    @deprecated("use the extension methods available instead", since = "3.10.0")
+    @deprecated("use the extension methods available instead", since = "3.12.0")
     def infixFractionalOps[T](x: T)(implicit num: Fractional[T]): Fractional[T]#FractionalOps = new num.FractionalOps(x)
   }
   object Implicits extends ExtraImplicits

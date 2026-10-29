@@ -29,13 +29,13 @@ trait Integral[T] extends Numeric[T] {
     def /%(rhs: T): (T, T) = (quot(lhs, rhs), rem(lhs, rhs))
   }
   
-  @deprecated("use the extension methods available instead", since = "3.10.0")
+  @deprecated("use the extension methods available instead", since = "3.12.0")
   class IntegralOps(lhs: T) extends NumericOps(lhs) {
     def /(rhs: T) = quot(lhs, rhs)
     def %(rhs: T) = rem(lhs, rhs)
     def /%(rhs: T) = (quot(lhs, rhs), rem(lhs, rhs))
   }
-  @deprecated("use the extension methods available instead", since = "3.10.0")
+  @deprecated("use the extension methods available instead", since = "3.12.0")
   override def mkNumericOps(lhs: T): IntegralOps = new IntegralOps(lhs)
 }
 
@@ -52,7 +52,7 @@ object Integral {
      *  @param num the implicit `Integral` instance for type `T`
      *  @return an `IntegralOps` instance providing integral operators on `x`
      */
-    @deprecated("use the extension methods available instead", since = "3.10.0")
+    @deprecated("use the extension methods available instead", since = "3.12.0")
     def infixIntegralOps[T](x: T)(implicit num: Integral[T]): Integral[T]#IntegralOps = new num.IntegralOps(x)
   }
   object Implicits extends ExtraImplicits

@@ -37,7 +37,7 @@ object Numeric {
      *
      *  @return a `NumericOps` wrapper around `x` that exposes infix arithmetic operators and numeric conversion methods
      */
-    @deprecated("use the extension methods available instead", since = "3.10.0")
+    @deprecated("use the extension methods available instead", since = "3.12.0")
     def infixNumericOps[T](x: T)(implicit num: Numeric[T]): Numeric[T]#NumericOps = new num.NumericOps(x)
   }
   object Implicits extends ExtraImplicits { }
@@ -282,7 +282,7 @@ trait Numeric[T] extends Ordering[T] {
     def toDouble: Double
   }
 
-  @deprecated("use the extension methods available instead", since = "3.10.0")
+  @deprecated("use the extension methods available instead", since = "3.12.0")
   class NumericOps(lhs: T) {
     def +(rhs: T) = plus(lhs, rhs)
     def -(rhs: T) = minus(lhs, rhs)
@@ -296,6 +296,6 @@ trait Numeric[T] extends Ordering[T] {
     def toFloat: Float = Numeric.this.toFloat(lhs)
     def toDouble: Double = Numeric.this.toDouble(lhs)
   }
-  @deprecated("use the extension methods available instead", since = "3.10.0")
+  @deprecated("use the extension methods available instead", since = "3.12.0")
   def mkNumericOps(lhs: T): NumericOps = new NumericOps(lhs)
 }
