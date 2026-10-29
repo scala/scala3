@@ -88,7 +88,7 @@ object Message:
    */
   private class Seen(disambiguate: Disambiguation):
 
-    private val seen = new collection.mutable.HashMap[SeenKey, List[Recorded]].withDefaultValue(Nil)
+    private val seen = collection.mutable.Map.empty[SeenKey, List[Recorded]].withDefaultValue(Nil)
 
     var nonSensical = false
 

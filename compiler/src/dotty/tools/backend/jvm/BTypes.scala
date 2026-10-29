@@ -773,7 +773,7 @@ final case class ClassBType private(internalName: String) extends RefBType {
    * Finding the least upper bound in agreement with the bytecode verifier
    * Background:
    *   http://gallium.inria.fr/~xleroy/publi/bytecode-verification-JAR.pdf
-   *   http://comments.gmane.org/gmane.comp.java.vm.languages/2293
+   *   the jvm-languages thread gmane.comp.java.vm.languages/2293 (no longer online)
    *   https://issues.scala-lang.org/browse/SI-3872
    */
   def jvmWiseLUB(other: ClassBType, objectRef: ClassBType): ClassBType = {

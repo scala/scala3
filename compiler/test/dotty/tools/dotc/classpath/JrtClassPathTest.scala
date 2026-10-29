@@ -9,7 +9,7 @@ import org.objectweb.asm.tree.ClassNode
 class JrtClassPathTest {
 
   @Test def lookupJavaClasses(): Unit = {
-    val cp: ClassPath = JrtClassPath(None).get
+    val cp: ClassPath = ClassPath.jrt(None).get
 
     assertTrue(cp.classes("").isEmpty)
     assertTrue(cp.packages("java").toString, cp.packages("java").exists(_ == "java.lang"))

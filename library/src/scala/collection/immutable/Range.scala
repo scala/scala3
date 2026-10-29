@@ -239,8 +239,7 @@ sealed abstract class Range(
     if (numRangeElements <= 0 && !isEmpty)
       fail()
   }
-  private def description = s"$start ${if (isInclusive) "to" else "until"} $end by $step"
-  private def fail() = throw new IllegalArgumentException(description + ": seqs cannot contain more than Int.MaxValue elements.")
+  private def fail() = Range.fail(start, end, step, isInclusive)
 
   @throws[IndexOutOfBoundsException]
   final def apply(idx: Int): Int = {
@@ -593,6 +592,13 @@ sealed abstract class Range(
 
 /** Companion object for ranges. */
 object Range {
+
+  private def description(start: Int, end: Int, step: Int, isInclusive: Boolean): String =
+    s"$start ${if (isInclusive) "to" else "until"} $end by $step"
+
+  private def fail(start: Int, end: Int, step: Int, isInclusive: Boolean): Nothing =
+    throw new IllegalArgumentException(description(start, end, step, isInclusive) +
+        ": seqs cannot contain more than Int.MaxValue elements.")
 
   /** Counts the number of range elements.
    *  precondition:  step != 0

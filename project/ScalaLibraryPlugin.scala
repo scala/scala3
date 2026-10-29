@@ -45,6 +45,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
       val stream = streams.value
       val log = stream.log
       val classDir = (Compile / classDirectory).value
+      val converter = fileConverter.value
 
       // Fetch classfiles and sjsir files
       val patches: Seq[(Set[File], File)] = scala2LibraryClasspath.value.map(fetch(stream, _))
@@ -64,13 +65,12 @@ object ScalaLibraryPlugin extends AutoPlugin {
         path = id.toString().replace("\\", "/").stripSuffix(".class").stripSuffix(".sjsir")
         if ScalaLibraryFilesToCopy.filesToCopy.exists(s => path == s || path.startsWith(s + '$')) // Only Override Some Very Specific Files
         dest = classDir / (id.toString)
-        ref <- dest.relativeTo((LocalRootProject / baseDirectory).value)
       } {
         log.debug(s"Replacing generated .class file with Scala 2.13 patch: ${id}")
         StripScala2Annotations.patchFile(input = file, output = dest, classDirectory = classDir)
         // Update the timestamp in the analysis
         stamps = stamps.markProduct(
-          VirtualFileRef.of(s"$${BASE}/$ref"),
+          converter.toVirtualFile(dest.toPath()),
           Stamper.forFarmHashP(dest.toPath()))
       }
 

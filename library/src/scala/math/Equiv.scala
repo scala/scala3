@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import java.util.Comparator
 import scala.annotation.migration
@@ -95,7 +96,7 @@ object Equiv extends LowPriorityEquiv {
    *  @param cmp the function used to compare values
    *  @return an `Equiv[T]` that uses `cmp(x, y)` to determine equivalence
    */
-  def fromFunction[T](cmp: (T, T) => Boolean): Equiv[T] = {
+  def fromFunction[T](cmp: (T, T) -> Boolean): Equiv[T] = {
     (x, y) => cmp(x, y)
   }
   /** Creates an `Equiv` instance that compares values of type `T` by first applying a function `f` to them.
@@ -105,7 +106,7 @@ object Equiv extends LowPriorityEquiv {
    *  @param f the function applied to values before comparison
    *  @return an `Equiv[T]` that compares values by applying `f` and then using the `Equiv[S]` instance
    */
-  def by[T, S: Equiv](f: T => S): Equiv[T] =
+  def by[T, S: Equiv](f: T -> S): Equiv[T] =
     ((x, y) => implicitly[Equiv[S]].equiv(f(x), f(y)))
 
   /** Returns the implicit `Equiv` instance for type `T`.
@@ -120,7 +121,7 @@ object Equiv extends LowPriorityEquiv {
   private final val optionSeed   = 43
   private final val iterableSeed = 47
 
-  private final class IterableEquiv[CC[X] <: Iterable[X], T](private val eqv: Equiv[T]) extends Equiv[CC[T]] {
+  private final class IterableEquiv[CC[X] <: Iterable[X]^, T](private val eqv: Equiv[T]) extends Equiv[CC[T]] {
     /** Returns `true` if the two iterables `x` and `y` are equivalent.
      *
      *  @param x the first iterable to compare
