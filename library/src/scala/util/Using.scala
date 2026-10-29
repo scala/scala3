@@ -217,6 +217,39 @@ object Using {
       resources = new Resource(resource) :: resources
     }
 
+    /** Closes this manager, releasing its resources in reverse order of acquisition.
+     *
+     *  All resources are released, even if releasing one of them throws an exception.
+     *  If one or more exceptions are thrown, they are combined and re-thrown as described
+     *  in the main doc for [[Using `Using`]].
+     *
+     *  Once closed, a manager no longer accepts new resources; calling `close` again has
+     *  no effect.
+     *
+     *  This method only needs to be called for managers created with
+     *  [[Manager$.allocate `Manager.allocate`]]; managers provided by
+     *  [[Manager$.apply `Manager.apply`]] are closed automatically.
+     */
+    def close(): Unit = release(null)
+
+    private def release(primary: Throwable | Null): Unit = {
+      var toThrow = primary
+      closed = true
+      var rs = resources
+      resources = nullForGC[List[Resource[?]]] // allow GC, in case something is holding a reference to `this`
+      while (rs != null && rs.nonEmpty) {
+        val resource = rs.head
+        rs = rs.tail
+        try resource.release()
+        catch {
+          case t: Throwable =>
+            if (toThrow == null) toThrow = t
+            else toThrow = preferentiallySuppress(toThrow, t)
+        }
+      }
+      if (toThrow != null) throw toThrow
+    }
+
     private def manage[A](op: Manager => A): A = {
       var toThrow: Throwable | Null = null
       try {
@@ -225,22 +258,7 @@ object Using {
         case t: Throwable =>
           toThrow = t
           null.asInstanceOf[A] // compiler doesn't know `finally` will throw
-      } finally {
-        closed = true
-        var rs = resources
-        resources = nullForGC[List[Resource[?]]] // allow GC, in case something is holding a reference to `this`
-        while (rs != null && rs.nonEmpty) {
-          val resource = rs.head
-          rs = rs.tail
-          try resource.release()
-          catch {
-            case t: Throwable =>
-              if (toThrow == null) toThrow = t
-              else toThrow = preferentiallySuppress(toThrow, t)
-          }
-        }
-        if (toThrow != null) throw toThrow
-      }
+      } finally release(toThrow)
     }
   }
 
@@ -274,6 +292,44 @@ object Using {
      *         or the result of the operation if no exceptions were thrown
      */
     def apply[A](op: Manager => A): Try[A] = Try { (new Manager).manage(op) }
+
+    /** Performs an operation using a new `Manager`, and returns the `Manager` together
+     *  with the result of the operation, *without* closing the `Manager`.
+     *
+     *  If the operation throws an exception, the `Manager` is closed, releasing the
+     *  resources acquired so far (in reverse order of acquisition), and the exception
+     *  is re-thrown. Otherwise, the caller is responsible for eventually calling
+     *  [[Manager.close `close`]] on the returned `Manager`; its resources are not
+     *  released otherwise. Prefer [[Manager$.apply `Manager.apply`]] whenever the
+     *  resources are only needed within a single block of code.
+     *
+     *  This is useful when resources need to be managed across lifecycle callbacks,
+     *  e.g. acquired in a `beforeAll` hook of a test framework and released in `afterAll`,
+     *  or released when an asynchronous computation completes.
+     *
+     *  Example:
+     *  ```
+     *  val (manager, reader) = Using.Manager.allocate { use =>
+     *   use(new BufferedReader(new FileReader("file.txt")))
+     *  }
+     *  Future(reader.readLine()).andThen(_ => manager.close())
+     *  ```
+     *
+     *  $suppressionBehavior
+     *
+     *  @tparam A the return type of the operation
+     *  @param op the operation to perform using the manager
+     *  @return the open `Manager` and the result of the operation
+     */
+    def allocate[A](op: Manager => A): (Manager, A) = {
+      val manager = new Manager
+      try (manager, op(manager))
+      catch {
+        case t: Throwable =>
+          manager.release(t)
+          throw t // unreachable, `release` always throws
+      }
+    }
 
     private final class Resource[R](resource: R)(implicit releasable: Releasable[R]) {
       def release(): Unit = releasable.release(resource)

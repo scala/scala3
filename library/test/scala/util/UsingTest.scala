@@ -705,6 +705,84 @@ class UsingTest {
     group.assertAllClosed()
   }
 
+  /* `Using.Manager.allocate` */
+
+  @Test
+  def allocatedManagerReleasesOnClose(): Unit = {
+    val group = new ResourceGroup
+    val (m, (r1, r2)) = Using.Manager.allocate { m =>
+      (m(group.newResource()), m(group.newResource()))
+    }
+    assertEquals(r1.identity(1) + r2.identity(1), 2)
+    m.close()
+    group.assertAllClosed()
+  }
+
+  @Test
+  def allocateReleasesOnException(): Unit = {
+    val group = new ResourceGroup
+    val ex = catchThrowable {
+      Using.Manager.allocate { m =>
+        m(group.newResource())
+        m(group.newResource())
+        throw new UsingException("allocating")
+      }
+    }
+    assertThrowableClass[UsingException](ex)
+    assertNoSuppressed(ex)
+    group.assertAllClosed()
+  }
+
+  @Test
+  def allocateSuppressesCloseExceptions(): Unit = {
+    val ex = catchThrowable {
+      Using.Manager.allocate { m =>
+        m(new ExceptionResource)
+        throw new UsingException("allocating")
+      }
+    }
+    assertThrowableClass[UsingException](ex)
+    assertSingleSuppressed[ClosingException](ex)
+  }
+
+  @Test
+  def allocatedManagerCloseIsIdempotent(): Unit = {
+    val (m, _) = Using.Manager.allocate(_(new ExceptionResource))
+    assertThrowableClass[ClosingException](catchThrowable(m.close()))
+    m.close()
+  }
+
+  @Test
+  def allocatedManagerRejectsResourcesAfterClose(): Unit = {
+    val (m, _) = Using.Manager.allocate(_ => ())
+    m.close()
+    assertThrowableClass[IllegalStateException](catchThrowable(m(new NoOpResource)))
+  }
+
+  @Test
+  def allocatedManagerSuppressesCloseExceptions(): Unit = {
+    val (m, _) = Using.Manager.allocate { m =>
+      m(new ExceptionResource)
+      m(new ErrorResource)
+      m(new NoOpResource)
+    }
+    val ex = catchThrowable(m.close())
+    assertThrowableClass[ClosingError](ex)
+    assertSingleSuppressed[ClosingException](ex)
+  }
+
+  @Test
+  def managerClosedWithinApply(): Unit = {
+    val group = new ResourceGroup
+    val res = Using.Manager { m =>
+      m(group.newResource())
+      m.close()
+      group.assertAllClosed()
+      m(new NoOpResource)
+    }
+    assertThrowableClass[IllegalStateException](res.failed.get)
+  }
+
   /* misc */
 
   @Test
