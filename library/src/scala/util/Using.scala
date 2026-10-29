@@ -186,7 +186,7 @@ object Using {
    *       }
    *       ```
    */
-  final class Manager private {
+  final class Manager private extends AutoCloseable {
     import Manager._
 
     private var closed = false

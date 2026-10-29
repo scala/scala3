@@ -21,6 +21,7 @@ object MiMaFilters {
         // `Using.Manager`s whose lifetime is not tied to a lexical scope
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Using#Manager.close"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Using#Manager.allocate"),
+        ProblemFilters.exclude[MissingTypesProblem]("scala.util.Using$Manager"),
       ),
 
       // Additions since last LTS

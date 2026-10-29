@@ -772,6 +772,18 @@ class UsingTest {
   }
 
   @Test
+  def allocatedManagerIsAutoCloseable(): Unit = {
+    val group = new ResourceGroup
+    val res = Using.Manager { outer =>
+      val (inner, r) = Using.Manager.allocate(_(group.newResource()))
+      outer(inner)
+      r.identity(1)
+    }
+    assertEquals(res, scala.util.Success(1))
+    group.assertAllClosed()
+  }
+
+  @Test
   def managerClosedWithinApply(): Unit = {
     val group = new ResourceGroup
     val res = Using.Manager { m =>
