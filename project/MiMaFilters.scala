@@ -22,6 +22,7 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Using#Manager.close"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Using#Manager.allocate"),
         ProblemFilters.exclude[MissingTypesProblem]("scala.util.Using$Manager"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Using.managed"),
       ),
 
       // Additions since last LTS

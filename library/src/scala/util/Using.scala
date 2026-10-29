@@ -186,7 +186,7 @@ object Using {
    *       }
    *       ```
    */
-  final class Manager private extends AutoCloseable {
+  final class Manager private[Using] extends AutoCloseable {
     import Manager._
 
     private var closed = false
@@ -250,7 +250,7 @@ object Using {
       if (toThrow != null) throw toThrow
     }
 
-    private def manage[A](op: Manager => A): A = {
+    private[Using] def manage[A](op: Manager => A): A = {
       var toThrow: Throwable | Null = null
       try {
         op(this)
@@ -341,6 +341,32 @@ object Using {
       def release(): Unit = releasable.release(resource)
     }
   }
+
+  /** Performs an operation using a `Manager`, then closes the `Manager`,
+   *  releasing its resources (in reverse order of acquisition).
+   *
+   *  Unlike [[Manager$.apply `Manager.apply`]], the `Manager` is passed to the operation
+   *  as a context parameter, so that it can be picked up by resources which require a
+   *  `Manager` (see the note on [[Manager]]), and exceptions are thrown rather than
+   *  wrapped in a [[Try]]. Other resources can be registered with `summon[Using.Manager]`.
+   *
+   *  Example:
+   *  ```
+   *  Using.managed {
+   *   val reader = new SafeFileReader("in.txt") // registers itself with the given `Manager`
+   *   val writer = summon[Using.Manager](new FileWriter("out.txt"))
+   *   writer.write(reader.readLine())
+   *  }
+   *  ```
+   *
+   *  $suppressionBehavior
+   *
+   *  @tparam A the return type of the operation
+   *  @param op the operation to perform using the manager
+   *  @return the result of the operation, if neither the operation nor
+   *         releasing the resources throws
+   */
+  def managed[A](op: Manager ?=> A): A = (new Manager).manage(op(using _))
 
   private def preferentiallySuppress(primary: Throwable, secondary: Throwable): Throwable = {
     @annotation.nowarn("cat=deprecation")  // avoid warning on mention of ThreadDeath

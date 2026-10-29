@@ -793,6 +793,39 @@ class UsingTest {
     group.assertAllClosed()
   }
 
+  /* `Using.managed` */
+
+  @Test
+  def managedReleasesResources(): Unit = {
+    val group = new ResourceGroup
+    val res = Using.managed {
+      acquire(group.newResource()).identity(1) + acquire(group.newResource()).identity(1)
+    }
+    assertEquals(res, 2)
+    group.assertAllClosed()
+  }
+
+  @Test
+  def managedProvidesGivenManager(): Unit = {
+    val r = Using.managed(new SelfRegisteringResource)
+    assertTrue(r.closed)
+  }
+
+  @Test
+  def managedThrows(): Unit = {
+    val group = new ResourceGroup
+    val ex = catchThrowable {
+      Using.managed {
+        acquire(group.newResource())
+        acquire(new ExceptionResource)
+        throw new UsingException("using")
+      }
+    }
+    assertThrowableClass[UsingException](ex)
+    assertSingleSuppressed[ClosingException](ex)
+    group.assertAllClosed()
+  }
+
   @Test
   def managerClosedWithinApply(): Unit = {
     val group = new ResourceGroup
