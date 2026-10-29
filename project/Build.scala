@@ -1015,8 +1015,8 @@ object Build {
       Compile / unmanagedResourceDirectories := Seq(baseDirectory.value / "resources"),
       Compile / compile / scalacOptions ++= Seq(
         "-opt", "-opt-inline:**,!java.**",
-        // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
-        "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
+        // Needed so that package `scala` exists when `dotty.tools.dotc.core.Definitions#init` is called, see library/sourcepath-stub/scala/README.md
+        "-sourcepath", (baseDirectory.value / "sourcepath-stub").getCanonicalPath,
       ),
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
@@ -1105,8 +1105,8 @@ object Build {
       Compile / unmanagedResourceDirectories := Seq(baseDirectory.value / "resources"),
       Compile / compile / scalacOptions ++= Seq(
         "-opt", "-opt-inline:**,!java.**",
-        // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
-        "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
+        // Needed so that package `scala` exists when `dotty.tools.dotc.core.Definitions#init` is called, see library/sourcepath-stub/scala/README.md
+        "-sourcepath", (baseDirectory.value / "sourcepath-stub").getCanonicalPath,
       ),
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
