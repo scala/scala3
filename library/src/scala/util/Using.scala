@@ -307,12 +307,18 @@ object Using {
      *  e.g. acquired in a `beforeAll` hook of a test framework and released in `afterAll`,
      *  or released when an asynchronous computation completes.
      *
+     *  The `Manager` is passed to the operation as a context parameter, so that it can be
+     *  picked up by resources which require a `Manager` (see the note on [[Manager]]).
+     *  Other resources can be registered with `summon[Using.Manager]`.
+     *
      *  Example:
      *  ```
-     *  val (manager, reader) = Using.Manager.allocate { use =>
-     *   use(new BufferedReader(new FileReader("file.txt")))
+     *  val (manager, (reader, writer)) = Using.Manager.allocate {
+     *   val reader = new SafeFileReader("in.txt") // registers itself with the given `Manager`
+     *   val writer = summon[Using.Manager](new FileWriter("out.txt"))
+     *   (reader, writer)
      *  }
-     *  Future(reader.readLine()).andThen(_ => manager.close())
+     *  Future(writer.write(reader.readLine())).andThen(_ => manager.close())
      *  ```
      *
      *  $suppressionBehavior
@@ -321,9 +327,9 @@ object Using {
      *  @param op the operation to perform using the manager
      *  @return the open `Manager` and the result of the operation
      */
-    def allocate[A](op: Manager => A): (Manager, A) = {
+    def allocate[A](op: Manager ?=> A): (Manager, A) = {
       val manager = new Manager
-      try (manager, op(manager))
+      try (manager, op(using manager))
       catch {
         case t: Throwable =>
           manager.release(t)

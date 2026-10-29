@@ -707,11 +707,13 @@ class UsingTest {
 
   /* `Using.Manager.allocate` */
 
+  private def acquire[R: Using.Releasable](resource: R)(using m: Using.Manager): resource.type = m(resource)
+
   @Test
   def allocatedManagerReleasesOnClose(): Unit = {
     val group = new ResourceGroup
-    val (m, (r1, r2)) = Using.Manager.allocate { m =>
-      (m(group.newResource()), m(group.newResource()))
+    val (m, (r1, r2)) = Using.Manager.allocate {
+      (acquire(group.newResource()), acquire(group.newResource()))
     }
     assertEquals(r1.identity(1) + r2.identity(1), 2)
     m.close()
@@ -719,12 +721,20 @@ class UsingTest {
   }
 
   @Test
+  def allocateProvidesGivenManager(): Unit = {
+    val (m, r) = Using.Manager.allocate(new SelfRegisteringResource)
+    assertFalse(r.closed)
+    m.close()
+    assertTrue(r.closed)
+  }
+
+  @Test
   def allocateReleasesOnException(): Unit = {
     val group = new ResourceGroup
     val ex = catchThrowable {
-      Using.Manager.allocate { m =>
-        m(group.newResource())
-        m(group.newResource())
+      Using.Manager.allocate {
+        acquire(group.newResource())
+        acquire(group.newResource())
         throw new UsingException("allocating")
       }
     }
@@ -736,8 +746,8 @@ class UsingTest {
   @Test
   def allocateSuppressesCloseExceptions(): Unit = {
     val ex = catchThrowable {
-      Using.Manager.allocate { m =>
-        m(new ExceptionResource)
+      Using.Manager.allocate {
+        acquire(new ExceptionResource)
         throw new UsingException("allocating")
       }
     }
@@ -747,24 +757,24 @@ class UsingTest {
 
   @Test
   def allocatedManagerCloseIsIdempotent(): Unit = {
-    val (m, _) = Using.Manager.allocate(_(new ExceptionResource))
+    val (m, _) = Using.Manager.allocate(acquire(new ExceptionResource))
     assertThrowableClass[ClosingException](catchThrowable(m.close()))
     m.close()
   }
 
   @Test
   def allocatedManagerRejectsResourcesAfterClose(): Unit = {
-    val (m, _) = Using.Manager.allocate(_ => ())
+    val (m, _) = Using.Manager.allocate(())
     m.close()
     assertThrowableClass[IllegalStateException](catchThrowable(m(new NoOpResource)))
   }
 
   @Test
   def allocatedManagerSuppressesCloseExceptions(): Unit = {
-    val (m, _) = Using.Manager.allocate { m =>
-      m(new ExceptionResource)
-      m(new ErrorResource)
-      m(new NoOpResource)
+    val (m, _) = Using.Manager.allocate {
+      acquire(new ExceptionResource)
+      acquire(new ErrorResource)
+      acquire(new NoOpResource)
     }
     val ex = catchThrowable(m.close())
     assertThrowableClass[ClosingError](ex)
@@ -775,7 +785,7 @@ class UsingTest {
   def allocatedManagerIsAutoCloseable(): Unit = {
     val group = new ResourceGroup
     val res = Using.Manager { outer =>
-      val (inner, r) = Using.Manager.allocate(_(group.newResource()))
+      val (inner, r) = Using.Manager.allocate(acquire(group.newResource()))
       outer(inner)
       r.identity(1)
     }
@@ -835,6 +845,12 @@ object UsingTest {
 
   final class NoOpResource extends BaseResource {
     override def close(): Unit = ()
+  }
+
+  final class SelfRegisteringResource(using m: Using.Manager) extends BaseResource {
+    var closed = false
+    override def close(): Unit = closed = true
+    m.acquire(this)
   }
 
   abstract class CustomResource[T <: Throwable](t: String => T) extends BaseResource {
