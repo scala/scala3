@@ -1,0 +1,12 @@
+testBufferUsesArrayDeque passed
+testRemoveHead passed
+testRemoveLast passed
+testRemoveHeadOption passed
+testRemoveLastOption passed
+testRemoveAll passed
+testRemoveAllReverse passed
+testRemoveHeadWhile passed
+testRemoveLastWhile passed
+testRemoveFirst passed
+testRemoveAllPredicate passed
+All tests passed!

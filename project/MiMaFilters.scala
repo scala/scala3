@@ -18,6 +18,29 @@ object MiMaFilters {
         // new experimental language feature: method block end markers (SIP-77)
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$methodBlockEndMarkers$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$methodBlockEndMarkers$"),
+        // New ArrayDeque-style methods added to Buffer trait
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeHead"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeHeadOption"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeLast"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeLastOption"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeAll"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeAllReverse"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeHeadWhile"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeLastWhile"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeFirst"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeFirst$default$2"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeFirst$default$2$"),
+        // Forwarders in AbstractBuffer
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeHead"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeHeadOption"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeLast"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeLastOption"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeAll"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeAllReverse"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeHeadWhile"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeLastWhile"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeFirst"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeFirst$default$2"),
       ),
 
       // Additions since last LTS
