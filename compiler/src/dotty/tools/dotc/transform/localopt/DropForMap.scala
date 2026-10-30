@@ -14,10 +14,12 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 /** Drop unused trailing map calls in for comprehensions.
  *
  *  We can drop the map call if:
- *  - it won't change the type of the expression, and
- *  - the function is an identity function or a const function to unit.
+ *  - the function is an identity function or a const function to Unit value
+ *  - it won't change the type of the expression
+ *  - it won't lose side effects from computing implicit args
  *
- *  The latter condition is checked in [[Desugar.scala#makeFor]]
+ *  The first condition is checked in [[Desugar.scala#makeFor]].
+ *  It means the user wrote `for x <- xs yield x`.
  */
 class DropForMap extends MiniPhase:
 
@@ -31,11 +33,12 @@ class DropForMap extends MiniPhase:
    *       ^ TrailingForMap
    */
   override def transformApply(tree: Apply)(using Context): Tree =
+    def stripApplies(tree: Tree): Tree = tree match
+      case Apply(fun, _)     => stripApplies(fun)
+      case TypeApply(fun, _) => stripApplies(fun)
+      case tree => tree
+
     tree.removeAttachment(TuplingMigrationForMap).foreach: _ =>
-      def stripApplies(tree: Tree): Tree = tree match
-        case Apply(fun, _)     => stripApplies(fun)
-        case TypeApply(fun, _) => stripApplies(fun)
-        case tree => tree
       stripApplies(tree) match
       case Select(coll, _) =>
         val m = coll.tpe.nonPrivateMember(nme.map)
@@ -108,10 +111,10 @@ object DropForMap:
           case MapCall(f, sym, args) => Some((f, sym, args))
           case _ => None
         case _ => None
-      case Apply(fun, _) =>
+      case Apply(fun, args) =>
         fun.tpe match
-        case mt: MethodType if mt.isImplicitMethod => loop(fun)
-        case _ => None
+          case mt: MethodType if mt.isImplicitMethod && args.forall(_.tpe.isStable) => loop(fun)
+          case _ => None
       case TypeApply(fun, _) => loop(fun)
       case _ => None
     end loop
