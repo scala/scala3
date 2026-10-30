@@ -20,9 +20,14 @@ class DebugTests:
     CompilationTest.aggregateTests(
       compileFile("tests/debug-custom-args/eval-explicit-nulls.scala", TestConfiguration.explicitNullsOptions),
       compileFile("tests/debug-custom-args/eval-syntax.scala", TestConfiguration.oldSyntax),
-      compileFile("tests/debug-custom-args/eval-syntax.scala", TestConfiguration.newSyntax),
       compileFilesInDir("tests/debug", TestConfiguration.defaultOptions),
     ).checkDebug()
+
+  // Separate group: compileFile derives the output directory from the group and file name,
+  // so compiling eval-syntax.scala twice in the same group makes the parallel runs clash.
+  @Test def debugNewSyntax: Unit =
+    given TestGroup = TestGroup("debugNewSyntax")
+    compileFile("tests/debug-custom-args/eval-syntax.scala", TestConfiguration.newSyntax).checkDebug()
 
 object DebugTests extends ParallelTesting:
   override def debugMode = true

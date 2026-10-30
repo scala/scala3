@@ -8,8 +8,8 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
  * PLEASE KEEP ALPHABETIZED!
  */
 object Dependencies {
-  val asmUtil = "org.ow2.asm" % "asm-util" % "9.10.1"
-  val asmCommons = "org.ow2.asm" % "asm-commons" % "9.10.1"
+  val asmUtil = "org.ow2.asm" % "asm-util" % "9.11.1"
+  val asmCommons = "org.ow2.asm" % "asm-commons" % "9.11.1"
 
   /** Version of Coursier to use + download for initializing the local maven repo of Scala command */
   val coursierJarVersion = "2.1.26"
@@ -35,9 +35,9 @@ object Dependencies {
 
   val guava = "com.google.guava" % "guava" % "33.7.2-jre"
 
-  val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % "3.2.3"
+  val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % "3.2.4"
 
-  private val jlineVersion = "4.4.6"
+  private val jlineVersion = "4.4.8"
   val jlineReader = "org.jline" % "jline-reader" % jlineVersion
   val jlineTerminal = "org.jline" % "jline-terminal" % jlineVersion
   val jlineTerminalJni = "org.jline" % "jline-terminal-jni" % jlineVersion
@@ -48,12 +48,12 @@ object Dependencies {
   // otherwise the jackson versions are ancient, with known vulnerabilities
   val liqpDependencyOverrides = Seq(
     "com.fasterxml.jackson.core" % "jackson-annotations" % "2.22",
-    "com.fasterxml.jackson.core" % "jackson-core" % "2.22.3",
-    "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.3",
-    "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % "2.22.3"
+    "com.fasterxml.jackson.core" % "jackson-core" % "2.22.4",
+    "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.4",
+    "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % "2.22.4"
   )
 
-  val lz4 = "at.yawk.lz4" % "lz4-java" % "1.12.0"
+  val lz4 = "at.yawk.lz4" % "lz4-java" % "1.12.1"
 
   private val mtagsVersion = "1.6.9"
   val mtagsInterfaces = "org.scalameta" % "mtags-interfaces" % mtagsVersion
@@ -66,7 +66,7 @@ object Dependencies {
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.20.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.17.1"
+  val scalaCliLauncherVersion = "1.18.0"
 
   val scalaJsDomVersion = "2.8.1" // needs %%% which isn't usable within a val here
   val scalaJsEnvNodeJs = "org.scala-js" %% "scalajs-env-nodejs" % "1.6.0"

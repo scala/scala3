@@ -1,26 +1,27 @@
-/*
- * Copyright (c) 2014 Contributor. All rights reserved.
- */
 package dotty.tools.dotc.classpath
 
 import dotty.tools.dotc
 import dotty.tools.io.File.pathSeparator
 import dotty.tools.io.{AbstractFile, Directory, File, FileExtension}
 
-import java.net.URL
 import java.util.regex.PatternSyntaxException
+import java.nio.file.*
+import java.net.URI
 
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable
+import scala.util.Properties
 
 /**
  * A representation of the compiler's class- or sourcepath.
  */
 trait ClassPath {
-  def asURLs: Iterable[URL] = Seq.empty
   def hasPackage(pkg: String): Boolean = false
   def packages(inPackage: String): Iterable[String] = Seq.empty
   def classes(inPackage: String): Iterable[BinaryFileEntry] = Seq.empty
   def sources(inPackage: String): Iterable[SourceFileEntry] = Seq.empty
+
+  /** Which locations are searched by this classpath. Used to create a class loader from it. */
+  def searchLocations: Iterable[AbstractFile]
 
   /**
    * Returns *only* the classfile for an external name, e.g., "java.lang.String". This method does not
@@ -36,6 +37,46 @@ trait ClassPath {
 
 object ClassPath {
   val RootPackage: String = ""
+
+  /** Aggregates the given classpaths. */
+  def aggregate(classPaths: List[ClassPath]): ClassPath =
+    AggregateClassPath(classPaths)
+
+  /** Attempts to create a classpath for the Java libraries of the given Java release. */
+  def jrt(release: Option[String]): Option[ClassPath] =
+    // Longer term we'd like an official API for this in the JDK
+    // Discussion: http://mail.openjdk.java.net/pipermail/compiler-dev/2018-March/thread.html#11738
+    release match
+      case Some(v) if v.toInt < Runtime.version().feature() =>
+        try
+          val ctSym = Paths.get(Properties.javaHome).resolve("lib").resolve("ct.sym")
+          if (Files.notExists(ctSym)) None
+          else Some(new CtSymClassPath(ctSym, v.toInt))
+        catch case _: Exception => None
+      case _ =>
+        try Some(new JrtClassPath(FileSystems.getFileSystem(URI.create("jrt:/"))))
+        catch case _: ProviderNotFoundException | _: FileSystemNotFoundException => None
+
+  /** Replaces ct.sym with jrt in the given classpath. */
+  def replaceCtSymWithJrt(classPath: ClassPath): ClassPath =
+    classPath match
+      case AggregateClassPath((_: CtSymClassPath) :: rest) =>
+        jrt(release = None) match
+          case Some(jrt) => AggregateClassPath(jrt :: rest)
+          case None => classPath
+      case _ => classPath
+
+  /** Update classpath with a substituted subentry */
+  def replace(classPath: ClassPath, subst: Map[ClassPath, ClassPath]): ClassPath =
+    classPath match
+      case AggregateClassPath(entries) => AggregateClassPath(entries.map(e => subst.getOrElse(e, e)))
+      case cp => subst.getOrElse(cp, cp)
+
+  /** Adds the two given classpaths. */
+  def add(classPath: ClassPath, newClassPath: ClassPath): ClassPath =
+    classPath match
+      case AggregateClassPath(entries) => AggregateClassPath(entries :+ newClassPath)
+      case cp => AggregateClassPath(cp :: newClassPath :: Nil)
 
   /** Expand single path entry */
   private def expandS(pattern: String): List[String] = {
@@ -66,6 +107,21 @@ object ClassPath {
     if (expandStar) split(path).flatMap(expandS)
     else split(path)
 
+  /** Transforms a .class file name to a .tasty file name, for use in finding .tasty files. */
+  def classNameToTasty(fileName: String): String =
+    val classOrModuleName = fileName.stripSuffix(".class")
+    val className =
+      if classOrModuleName.endsWith("$")
+        && classOrModuleName != "Null$" // scala.runtime.Null$
+        && classOrModuleName != "Nothing$" // scala.runtime.Nothing$
+        // Special case for `object $` in Ammonite.
+        // This is an ad-hoc workaround for Ammonite `object $`. See issue #19702
+        // This definition is not valid Scala.
+        && classOrModuleName != "$"
+      then classOrModuleName.stripSuffix("$")
+      else classOrModuleName
+    className + ".tasty"
+
   /** Pair classfile/TASTy entries with source entries of the same name.
    *
    *  `classes` and `sources` are listed independently on the classpath. Without
@@ -81,8 +137,8 @@ object ClassPath {
     if sources.isEmpty then return classes
     if classes.isEmpty then return sources
 
-    val indices = dotc.util.HashMap[String, Int]()
-    val merged = new ArrayBuffer[ClassRepresentation](classes.size + sources.size)
+    val indices = mutable.Map.empty[String, Int]
+    val merged = new mutable.ArrayBuffer[ClassRepresentation](classes.size + sources.size)
     var count = 0
     for entry <- classes do
       if !indices.contains(entry.name) then

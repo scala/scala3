@@ -1785,6 +1785,8 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *  The sort is stable. That is, elements that are equal (as determined by
    *  `lt`) appear in the same order in the sorted sequence as in the original.
    *
+   *  **Capture Checking notes**: `lt` defaults to allowing only pure functions. See [[scala.math.Ordering]].
+   *
    *  @param  lt  the comparison function which tests whether
    *              its first argument precedes its second argument in
    *              the desired ordering.
@@ -1792,13 +1794,15 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *              sorted according to the comparison function `lt`.
    *  @note       $unicodeunaware
    */
-  def sortWith(lt: (Char, Char) => Boolean): String = new WrappedString(s).sortWith(lt).unwrap
+  def sortWith(lt: (Char, Char) -> Boolean): String = new WrappedString(s).sortWith(lt).unwrap
 
   /** Sorts this string according to the Ordering which results from transforming
    *  an implicitly given Ordering with a transformation function.
    *
    *  The sort is stable. That is, elements that are equal (as determined by
    *  `ord.compare`) appear in the same order in the sorted sequence as in the original.
+   *
+   *  **Capture Checking notes**: `f` defaults to allowing only pure functions. See [[scala.math.Ordering]].
    *
    *  @see [[scala.math.Ordering]]
    *  @tparam  B the target type of the transformation `f`, and the type where
@@ -1811,7 +1815,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *           `ord.lt(f(x), f(y))`.
    *  @note    $unicodeunaware
    */
-  def sortBy[B](f: Char => B)(implicit ord: Ordering[B]): String = new WrappedString(s).sortBy(f)(using ord).unwrap
+  def sortBy[B](f: Char -> B)(implicit ord: Ordering[B]): String = new WrappedString(s).sortBy(f)(using ord).unwrap
 
   /** Partitions this string into a map of strings according to some discriminator function.
    *

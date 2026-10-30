@@ -656,6 +656,12 @@ extends SyntaxMsg(UnboundPlaceholderParameterID) {
         |"""
 }
 
+class BadErased()(implicit ctx:Context)
+extends SyntaxMsg(BadErasedID):
+  def msg(using Context) = i"${hl("erased")} cannot be used here"
+  def explain(using Context) =
+    i"|${hl("erased")} can be used only as a modifier in definitions or function parameters."
+
 class IllegalStartSimpleExpr(illegalToken: String)(using Context)
 extends SyntaxMsg(IllegalStartSimpleExprID) {
   def msg(using Context) = i"expression expected but ${Red(illegalToken)} found"
@@ -980,7 +986,7 @@ class UncheckedTypePattern(argType: Type, whyNot: String)(using Context)
         |"""
 }
 
-class MatchCaseUnreachable(why: String = "")(using Context)
+class MatchCaseUnreachable(why: => String = "")(using Context)
 extends Message(MatchCaseUnreachableID) {
   def kind = MessageKind.MatchCaseUnreachable
   override protected def msg(using Context) = "Unreachable case"

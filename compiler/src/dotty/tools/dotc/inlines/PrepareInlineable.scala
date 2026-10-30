@@ -122,7 +122,12 @@ object PrepareInlineable {
             val accessor = useAccessor(tree)
             if tree != accessor then
               checkUnstableAccessor(tree, accessor.symbol)
-            accessor
+              // Keep the member's path-dependent type (e.g. `ctx.T`). The receiver of a private inline
+              // method is always typed as its owner class (see the upcast in Inliner), so the path is valid.
+              if inlineSym.is(Private) && tree.symbol.isStableMember && !tree.symbol.is(Method) then
+                accessor.ensureConforms(tree.tpe)
+              else accessor
+            else accessor
         case _ =>
           tree
       }

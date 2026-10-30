@@ -660,7 +660,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *  @return     an array consisting of the elements of this array
    *              sorted according to the ordering `ord`.
    */
-  def sorted[B >: A](implicit ord: Ordering[B]^): Array[A] = {
+  def sorted[B >: A](implicit ord: Ordering[B]): Array[A] = {
     val len = xs.length
     def boxed = if(len < ArrayOps.MaxStableSortLength) {
       val a = xs.clone()
@@ -702,16 +702,20 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *  The sort is stable. That is, elements that are equal (as determined by
    *  `lt`) appear in the same order in the sorted sequence as in the original.
    *
+   *  **Capture Checking notes**: `lt` defaults to allowing only pure functions. See [[scala.math.Ordering]].
+   *
    *  @param  lt  the comparison function which tests whether
    *              its first argument precedes its second argument in
    *              the desired ordering.
    *  @return     an array consisting of the elements of this array
    *              sorted according to the comparison function `lt`.
    */
-  def sortWith(lt: (A, A) => Boolean): Array[A] = sorted(using Ordering.fromLessThan(lt))
+  def sortWith(lt: (A, A) -> Boolean): Array[A] = sorted(using Ordering.fromLessThan(lt))
 
   /** Sorts this array according to the Ordering which results from transforming
    *  an implicitly given Ordering with a transformation function.
+   *
+   *  **Capture Checking notes**: `f` defaults to allowing only pure functions. See [[scala.math.Ordering]].
    *
    *  @see [[scala.math.Ordering]]
    *  @tparam  B the target type of the transformation `f`, and the type where
@@ -723,7 +727,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *           sorted according to the ordering where `x < y` if
    *           `ord.lt(f(x), f(y))`.
    */
-  def sortBy[B](f: A => B)(implicit ord: Ordering[B]): Array[A] = sorted(using ord.on(f))
+  def sortBy[B](f: A -> B)(implicit ord: Ordering[B]): Array[A] = sorted(using ord.on(f))
 
   /** Creates a non-strict filter of this array.
    *

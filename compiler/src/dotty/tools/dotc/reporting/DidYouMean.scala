@@ -38,7 +38,7 @@ object DidYouMean:
    *  kind as the missing member.
    */
   def inScopeCandidates(isType: Boolean, isApplied: Boolean, rootImportOK: Boolean)(using Context): collection.Set[Binding] =
-    val acc = collection.mutable.HashSet[Binding]()
+    val acc = collection.mutable.Set[Binding]()
     def nextInteresting(ctx: Context): Context =
       if ctx.outer.isImportContext
         || ctx.outer.scope != ctx.scope
