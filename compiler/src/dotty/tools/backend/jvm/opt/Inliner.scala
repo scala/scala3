@@ -793,6 +793,39 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
    *     error occurred
    */
   private def findIllegalAccess(instructions: InsnList, calleeDeclarationClass: ClassBType, destinationClass: ClassBType): Either[(AbstractInsnNode, OptimizerWarning), List[AbstractInsnNode]] = {
+    def isAccessibleField(owner: String, name: String, desc: String): Either[OptimizerWarning, Boolean] =
+      for {
+        fieldRefClass <- bTypesFromClassfile.classBTypeFromParsedClassfile(owner)
+        (fieldNode, fieldDeclClassNode) <- byteCodeRepository.fieldNode(fieldRefClass.internalName, name, desc)
+        fieldDeclClass <- bTypesFromClassfile.classBTypeFromParsedClassfile(fieldDeclClassNode)
+      } yield {
+        val res = Inliner.memberIsAccessible(fieldNode.access, fieldDeclClass, fieldRefClass, destinationClass)
+        if res then
+          // ensure the result ClassBType is cached (for stack map frame calculation)
+          bTypesFromClassfile.bTypeForDescriptorFromClassfile(desc)
+        res
+      }
+    def isAccessibleMethod(owner: String, name: String, desc: String, descToLoad: => String | Null = null, methodOpcode: Int | Null = null): Either[OptimizerWarning, Boolean] =
+      for {
+        methodRefClass <- bTypesFromClassfile.classBTypeFromParsedClassfile(owner)
+        (methodNode, methodDeclClassNode) <- byteCodeRepository.methodNode(methodRefClass.internalName, name, desc)
+        methodDeclClass <- bTypesFromClassfile.classBTypeFromParsedClassfile(methodDeclClassNode)
+      } yield {
+        val res = methodOpcode match {
+          case INVOKESPECIAL if name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME =>
+            // invokespecial is used for private method calls, super calls and instance constructor calls.
+            // private method and super calls can only be inlined into the same class.
+            destinationClass == calleeDeclarationClass
+          case _ => // INVOKEVIRTUAL, INVOKESTATIC, INVOKEINTERFACE and INVOKESPECIAL of constructors
+            Inliner.memberIsAccessible(methodNode.access, methodDeclClass, methodRefClass, destinationClass)
+        }
+        if res then
+          // ensure the result ClassBType is cached (for stack map frame calculation)
+          val toLoad = descToLoad
+          if toLoad != null then bTypesFromClassfile.bTypeForDescriptorFromClassfile(toLoad)
+        res
+      }
+
     /*
      * Check if `instruction` can be transplanted to `destinationClass`.
      *
@@ -819,17 +852,7 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
         isInternal(fi.owner) match
           case Left(l) => Left(l)
           case Right(true) => Right(false)
-          case Right(false) =>
-            for {
-              fieldRefClass                   <- bTypesFromClassfile.classBTypeFromParsedClassfile(fi.owner)
-              (fieldNode, fieldDeclClassNode) <- byteCodeRepository.fieldNode(fieldRefClass.internalName, fi.name, fi.desc): Either[OptimizerWarning, (FieldNode, InternalName)]
-              fieldDeclClass                  <- bTypesFromClassfile.classBTypeFromParsedClassfile(fieldDeclClassNode)
-            } yield {
-              val res = Inliner.memberIsAccessible(fieldNode.access, fieldDeclClass, fieldRefClass, destinationClass)
-              // ensure the result ClassBType is cached (for stack map frame calculation)
-              if (res) bTypesFromClassfile.bTypeForDescriptorFromClassfile(fi.desc)
-              res
-            }
+          case Right(false) => isAccessibleField(fi.owner, fi.name, fi.desc)
 
       case mi: MethodInsnNode =>
         isInternal(mi.owner) match
@@ -842,28 +865,7 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
               // array methods are accessible
               Right(true)
             } else {
-              def canInlineCall(opcode: Int, methodFlags: Int, methodDeclClass: ClassBType, methodRefClass: ClassBType): Boolean = {
-                opcode match {
-                  case INVOKESPECIAL if mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME =>
-                    // invokespecial is used for private method calls, super calls and instance constructor calls.
-                    // private method and super calls can only be inlined into the same class.
-                    destinationClass == calleeDeclarationClass
-
-                  case _ => // INVOKEVIRTUAL, INVOKESTATIC, INVOKEINTERFACE and INVOKESPECIAL of constructors
-                    Inliner.memberIsAccessible(methodFlags, methodDeclClass, methodRefClass, destinationClass)
-                }
-              }
-
-              for {
-                methodRefClass                    <- bTypesFromClassfile.classBTypeFromParsedClassfile(mi.owner)
-                (methodNode, methodDeclClassNode) <- byteCodeRepository.methodNode(methodRefClass.internalName, mi.name, mi.desc): Either[OptimizerWarning, (MethodNode, InternalName)]
-                methodDeclClass                   <- bTypesFromClassfile.classBTypeFromParsedClassfile(methodDeclClassNode)
-              } yield {
-                val res = canInlineCall(mi.getOpcode, methodNode.access, methodDeclClass, methodRefClass)
-                // ensure the result ClassBType is cached (for stack map frame calculation)
-                if (res) bTypesFromClassfile.bTypeForDescriptorFromClassfile(Type.getReturnType(mi.desc).getDescriptor)
-                res
-              }
+              isAccessibleMethod(mi.owner, mi.name, mi.desc, Type.getReturnType(mi.desc).getDescriptor, mi.getOpcode)
             }
 
       case _: InvokeDynamicInsnNode if destinationClass == calleeDeclarationClass =>
@@ -918,23 +920,14 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
         // In the case of indyLambda, it depends on the visibility of the implMethod handle. If
         // the implMethod is public, lambdaMetaFactory doesn't use the Lookup object's extended
         // capability, and we can safely inline the instruction into a different class.
-
-        for {
-          methodRefClass                    <- bTypesFromClassfile.classBTypeFromParsedClassfile(implMethod.getOwner)
-          (methodNode, methodDeclClassNode) <- byteCodeRepository.methodNode(methodRefClass.internalName, implMethod.getName, implMethod.getDesc): Either[OptimizerWarning, (MethodNode, InternalName)]
-          methodDeclClass                   <- bTypesFromClassfile.classBTypeFromParsedClassfile(methodDeclClassNode)
-        } yield {
-          val res = Inliner.memberIsAccessible(methodNode.access, methodDeclClass, methodRefClass, destinationClass)
-          // ensure the result ClassBType is cached (for stack map frame calculation)
-          if (res) bTypesFromClassfile.bTypeForDescriptorFromClassfile(Type.getReturnType(indy.desc).getDescriptor)
-          res
-        }
+        isAccessibleMethod(implMethod.getOwner, implMethod.getName, implMethod.getDesc, Type.getReturnType(indy.desc).getDescriptor)
 
       case _: InvokeDynamicInsnNode => Left(UnknownInvokeDynamicInstruction)
 
       case ci: LdcInsnNode => ci.cst match {
         case t: asm.Type => bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(t.getInternalName).map(Inliner.classIsAccessible(_, destinationClass))
-        // TODO: method handle -- check if method accessible?
+        case h: asm.Handle => isAccessibleMethod(h.getOwner, h.getName, h.getDesc)
+        case d: asm.ConstantDynamic => isAccessibleMethod(d.getBootstrapMethod.getOwner, d.getBootstrapMethod.getName, d.getBootstrapMethod.getDesc)
         case _ => Right(true)
       }
 
