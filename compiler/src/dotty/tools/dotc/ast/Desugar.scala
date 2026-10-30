@@ -1823,11 +1823,10 @@ object desugar {
         TypeTree(defn.throwsAlias.typeRef).withSpan(op.span), tpt :: excepts :: Nil)
 
   def checkWellFormedTupleElems(elems: List[Tree])(using Context): List[Tree] =
-    val seen = mutable.Set[Name]()
+    val seen = mutable.Set.empty[Name]
     for case arg @ NamedArg(name, _) <- elems do
-      if seen.contains(name) then
+      if !seen.add(name) then
         report.error(em"Duplicate tuple element name", arg.srcPos)
-      seen += name
       if name.startsWith("_") && name.toString.tail.toIntOption.isDefined then
         report.error(
             em"$name cannot be used as the name of a tuple element because it is a regular tuple selector",

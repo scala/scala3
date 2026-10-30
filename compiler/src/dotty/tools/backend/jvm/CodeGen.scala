@@ -246,6 +246,8 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
     addInnerClasses(declared, referred)
     // Finally, convert the class node to bytes
     val writer = new ClassWriterWithBTypeLub(gen.classBTypeCache())
+    // Use 10x the default limits, we can encounter very large methods (e.g., in `tests/pos/t10387b.scala`)
+    writer.setComputeLimits(100 * 1024 * 1024, 1_000_000_000)
     classNode.accept(writer)
     writer.toByteArray
   }
@@ -282,7 +284,7 @@ private final class ClassNodeMetadata(val fullName: String, val isLocal: Boolean
  * It's what ASM needs to know in order to compute stack map frames, http://asm.ow2.org/doc/developer-guide.html#controlflow
  * Background:
  * http://gallium.inria.fr/~xleroy/publi/bytecode-verification-JAR.pdf
- * http://comments.gmane.org/gmane.comp.java.vm.languages/2293
+ * the jvm-languages thread gmane.comp.java.vm.languages/2293 (no longer online)
  * https://github.com/scala/bug/issues/3872
  */
 private final class ClassWriterWithBTypeLub(cache: ClassBType.Cache) extends ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES) {

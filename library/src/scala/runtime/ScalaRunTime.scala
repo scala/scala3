@@ -13,6 +13,7 @@
 package scala
 package runtime
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.annotation.unused
 import scala.collection.{AbstractIterator, AnyConstr, SortedOps, StrictOptimizedIterableOps, StringOps, StringView, View}
@@ -91,7 +92,7 @@ object ScalaRunTime {
    *  @param idx the index of the element to retrieve
    *  @return the element at position `idx` in the array
    */
-  def array_apply(xs: AnyRef, idx: Int): Any = {
+  def array_apply(xs: AnyRef^, idx: Int): Any = {
     (xs: @unchecked) match {
       case x: Array[AnyRef]  => x(idx).asInstanceOf[Any]
       case x: Array[Int]     => x(idx).asInstanceOf[Any]
@@ -112,7 +113,7 @@ object ScalaRunTime {
    *  @param idx the index of the element to set
    *  @param value the value to store at the given index
    */
-  def array_update(xs: AnyRef, idx: Int, value: Any): Unit = {
+  def array_update(xs: AnyRef^, idx: Int, value: Any): Unit = {
     (xs: @unchecked) match {
       case x: Array[AnyRef]  => x(idx) = value.asInstanceOf[AnyRef]
       case x: Array[Int]     => x(idx) = value.asInstanceOf[Int]
@@ -132,7 +133,7 @@ object ScalaRunTime {
    *  @param xs the array to measure, as an `AnyRef`
    *  @return the number of elements in the array
    */
-  @inline def array_length(xs: AnyRef): Int = java.lang.reflect.Array.getLength(xs)
+  @inline def array_length(xs: AnyRef^): Int = java.lang.reflect.Array.getLength(xs)
 
   // TODO: bytecode Object.clone() will in fact work here and avoids
   // the type switch. See Array_clone comment in BCodeBodyBuilder.
@@ -144,7 +145,7 @@ object ScalaRunTime {
    *  @return a shallow copy of `xs`, with the same element type and length
    *  @throws NullPointerException if `xs` is `null`
    */
-  def array_clone(xs: AnyRef): AnyRef = (xs: @unchecked) match {
+  def array_clone(xs: AnyRef^): AnyRef = (xs: @unchecked) match {
     case x: Array[AnyRef]  => x.clone()
     case x: Array[Int]     => x.clone()
     case x: Array[Double]  => x.clone()
@@ -164,7 +165,7 @@ object ScalaRunTime {
    *  @param src the source array to convert, which may be a primitive array
    *  @return an `Array[Object]` containing the (boxed) elements of `src`
    */
-  def toObjectArray(src: AnyRef): Array[Object] = {
+  def toObjectArray(src: AnyRef^): Array[Object] = {
     def copy[@specialized T <: AnyVal](src: Array[T]): Array[Object] = {
       val length = src.length
       if (length == 0) Array.emptyObjectArray

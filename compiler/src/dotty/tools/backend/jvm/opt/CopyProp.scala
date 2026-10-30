@@ -146,9 +146,9 @@ class CopyProp(callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes,
    *
    * Returns (staleStoreRemoved, intrinsicRewritten, callInlined).
    */
-  def eliminateStaleStoresAndRewriteSomeIntrinsics(method: MethodNode, owner: InternalName): (Boolean, Boolean, Boolean) = {
+  def eliminateStaleStoresAndRewriteSomeIntrinsics(method: MethodNode, owner: InternalName, budget: AnalysisBudget): (Boolean, Boolean, Boolean) = {
     if (!Limits.sizeOKForSourceValue(method)) (false, false, false) else {
-      val prodCons = new ProdConsAnalyzer(method, owner)
+      val prodCons = budget.prodConsAnalyzer(method, owner)
       def hasNoCons(varIns: AbstractInsnNode, slot: Int) = prodCons.consumersOfValueAt(varIns.getNext, slot).isEmpty
 
       def popFor(vi: VarInsnNode): AbstractInsnNode = getPop(if (isSize2LoadOrStore(vi.getOpcode)) 2 else 1)
@@ -297,7 +297,7 @@ class CopyProp(callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes,
    *
    * Returns (pushPopChanged, castAdded, nullCheckAdded)
    */
-  def eliminatePushPop(method: MethodNode, owner: InternalName): (Boolean, Boolean, Boolean) = {
+  def eliminatePushPop(method: MethodNode, owner: InternalName, budget: AnalysisBudget): (Boolean, Boolean, Boolean) = {
     if (!Limits.sizeOKForSourceValue(method)) (false, false, false) else {
       // A queue of instructions producing a value that has to be eliminated. If possible, the
       // instruction (and its inputs) will be removed, otherwise a POP is inserted after
@@ -316,7 +316,7 @@ class CopyProp(callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes,
       var castAdded = false
       var nullCheckAdded = false
 
-      val prodCons = new ProdConsAnalyzer(method, owner)
+      val prodCons = budget.prodConsAnalyzer(method, owner)
 
       /*
        * Returns the producers for the stack value `inputSlot` consumed by `cons`, if the consumer

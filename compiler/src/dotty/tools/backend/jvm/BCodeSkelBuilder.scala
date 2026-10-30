@@ -143,7 +143,7 @@ trait BCodeSkelBuilder(val bTypes: KnownBTypes) extends BCodeHelpers {
     private var isCZStaticModule    = false
 
     // keep track of interfaces that are used in super calls, as they need to be directly inherited even if they are also indirectly inherited
-    val superCallTargets = mutable.LinkedHashSet[ClassBType]()
+    val superCallTargets = mutable.LinkedHashSet.empty[ClassBType]
 
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
@@ -589,7 +589,7 @@ trait BCodeSkelBuilder(val bTypes: KnownBTypes) extends BCodeHelpers {
      */
     object locals {
 
-      private val slots = mutable.HashMap.empty[Symbol, Local] // (local-or-param-sym -> Local(BType, name, idx, isSynth))
+      private val slots = mutable.Map.empty[Symbol, Local] // (local-or-param-sym -> Local(BType, name, idx, isSynth))
 
       private var nxtIdx = -1 // next available index for local-var
 

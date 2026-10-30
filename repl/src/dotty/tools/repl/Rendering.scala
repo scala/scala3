@@ -7,6 +7,7 @@ import printing.ReplPrinter
 import printing.SyntaxHighlighting
 import reporting.Diagnostic
 import StackTraceOps.*
+import io.AbstractFile
 
 import scala.annotation.nowarn
 import scala.compiletime.uninitialized
@@ -33,8 +34,10 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   import Rendering.*
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
+  // Used to notice when the output directory is changed within a REPL session
+  var myClassLoaderRoot: AbstractFile = uninitialized
 
-  private var myClasspathClassLoader: ClasspathClassLoader = uninitialized
+  private var myClasspathClassLoader: io.AbstractFileClassLoader = uninitialized
 
   // Temporary fix until `pprint` special-cases these.
   // (We cannot use, e.g., `isInstanceOf[LazyList]` because we're not in the same classloader)
@@ -220,13 +223,13 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
-    if (myClassLoader != null && myClassLoader.root == ctx.settings.outputDir.value) myClassLoader
+    if (myClassLoader != null && myClassLoaderRoot == ctx.settings.outputDir.value) myClassLoader
     else {
       val parent = Option(myClassLoader).getOrElse {
         myClasspathClassLoader = parentClassLoader match
-          case Some(given_) => ClasspathClassLoader(Array.empty, given_)
+          case Some(given_) => io.AbstractFileClassLoader(Seq.empty, ctx.settings.javaOutputVersion.value, given_)
           case None =>
-            val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
+            val compilerClasspath = ctx.platform.classPath(using ctx).searchLocations.toSeq
             // We can't use the system classloader as a parent because it would
             // pollute the user classpath with everything passed to the JVM
             // `-classpath`. We can't use `null` as a parent either because on Java
@@ -234,23 +237,25 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
             // like `java.sql`, so we use the parent of the system classloader,
             // which should correspond to the platform classloader on Java 9+.
             val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
-            ClasspathClassLoader(compilerClasspath.toArray, baseClassLoader)
+            io.AbstractFileClassLoader(compilerClasspath, ctx.settings.javaOutputVersion.value, baseClassLoader)
         myClasspathClassLoader
       }
 
+      myClassLoaderRoot = ctx.settings.outputDir.value
       myClassLoader = new AbstractFileClassLoader(
-        ctx.settings.outputDir.value,
+        myClassLoaderRoot,
+        ctx.settings.javaOutputVersion.value,
         parent,
         AbstractFileClassLoader.InterruptInstrumentation.fromString(ctx.settings.XreplInterruptInstrumentation.value)
       )
       myClassLoader
     }
 
-  private[repl] def addToClasspath(urls: Iterable[URL])(using Context): Unit =
+  private[repl] def addToClasspath(dirs: Iterable[AbstractFile])(using Context): Unit =
     classLoader()
-    urls.foreach(myClasspathClassLoader.add)
+    dirs.foreach(myClasspathClassLoader.add)
 
-  private[repl] def addResource(url: URL)(using Context): Unit = addToClasspath(Seq(url))
+  private[repl] def addResource(dir: AbstractFile)(using Context): Unit = addToClasspath(Seq(dir))
 
   private[repl] def truncate(str: String, maxPrintCharacters: Int)(using ctx: Context): String =
     val ncp = str.codePointCount(0, str.length) // to not cut inside code point
@@ -385,7 +390,3 @@ object Rendering:
         if x.getCause != null =>
       rootCause(x.getCause)
     case _ => x
-
-private class ClasspathClassLoader(urls: Array[URL], parent: ClassLoader)
-  extends URLClassLoader(urls, parent):
-  def add(url: URL): Unit = addURL(url)

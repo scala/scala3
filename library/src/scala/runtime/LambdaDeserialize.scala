@@ -19,6 +19,7 @@ import scala.annotation.unused
 import scala.annotation.varargs
 import scala.collection.immutable
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** The per-class state behind the synthetic `$deserializeLambda$` method of

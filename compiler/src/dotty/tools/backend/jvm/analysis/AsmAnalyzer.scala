@@ -27,8 +27,12 @@ abstract class AsmAnalyzer[V <: Value](methodNode: MethodNode, classInternalName
   // (This is much easier to than remembering to always pass analyzers by name)
   private var loaded: Boolean = false
 
+  /** Called once, before the analysis runs. */
+  protected def analysisStarting(): Unit = ()
+
   def frameAt(instruction: AbstractInsnNode): Frame[V] = {
     if !loaded then
+      analysisStarting()
       try analyzer.analyze(classInternalName, methodNode)
       catch case ae: AnalyzerException => throw new AnalyzerException(null, "While processing " + classInternalName + "." + methodNode.name, ae)
       loaded = true

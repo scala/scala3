@@ -954,7 +954,7 @@ object Trees {
     def rhs(using Context): Tree[T] = { forceFields(); preRhs.asInstanceOf[Tree[T]] }
   }
 
-  /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
+  /** `mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs` */
   case class DefDef[+T <: Untyped] private[ast] (name: TermName,
       paramss: List[ParamClause[T]], tpt: Tree[T], private var preRhs: LazyTree[T])(implicit @constructorOnly src: SourceFile)
     extends ValOrDefDef[T] {
@@ -1871,6 +1871,26 @@ object Trees {
         case Nil => Some(Nil)
         case (x: ValDef) :: _ => Some(xs.asInstanceOf[List[ValDef]])
         case _ => None
+
+    object DisjointUnion:
+      def unapply(tpt: Tree)(using Context): Option[List[Type]] = {
+        tpt.tpe match
+          case t @ OrType(_,_) =>
+            val types = collectAltTypes(t)
+            if isDisjoint(types) then Some(types)
+            else None
+          case _ => None
+      }
+      def isDisjoint(types: List[Type])(using Context): Boolean =
+        types.combinations(2).forall {
+          case one :: another :: Nil => !(one <:< another) && !(another <:< one)
+          case _ => false
+        }
+      private def collectAltTypes(t: Type)(using Context): List[Type] = t match {
+        case OrType(tp1,tp2) =>
+          (collectAltTypes(tp1) ::: collectAltTypes(tp2))
+        case _ => List(t)
+      }
 
     def termParamssIn(paramss: List[ParamClause]): List[List[ValDef]] = paramss match
       case ValDefs(vparams) :: paramss1 =>
