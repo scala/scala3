@@ -256,7 +256,10 @@ object Inlines:
     val tree1 = liftBindings(tree0, identity)
     val tree2  =
       if bindings.nonEmpty then
-        cpy.Block(tree0)(bindings.toList, inlineCall(tree1))
+        val expansion = inlineCall(tree1)
+        val cleaned = dropUnusedLiftedBindings(bindings.toList, expansion)
+        if cleaned.isEmpty then expansion
+        else cpy.Block(tree0)(cleaned, expansion)
       else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
         val body =
           try bodyToInline(symbol0) // can typecheck the tree and thereby produce errors
@@ -285,6 +288,45 @@ object Inlines:
         // reset so that further inline calls can be expanded
     tree3
   end inlineCall
+
+  /** Drop lifted bindings with a pure rhs that are unreferenced in `expansion`.
+   *  Bindings lifted out of an inlined receiver by `liftBindings` can be left
+   *  orphaned once the enclosing inline call is reduced, which then hides the
+   *  constant nature of the expansion from `Expr#value`. See i15830.
+   *  Iterated to a fixpoint, since dropping a binding can in turn make the
+   *  bindings it referred to unused.
+   */
+  private def dropUnusedLiftedBindings(bindings: List[Tree], expansion: Tree)(using Context): List[Tree] =
+    def isElideable(binding: Tree): Boolean = binding match
+      case vdef: ValDef => Inliner.isElideableExpr(vdef.rhs)
+      case ddef: DefDef if ddef.paramss.isEmpty => Inliner.isElideableExpr(ddef.rhs)
+      case _ => false
+
+    def countRefs(tree: Tree, refCount: MutableSymbolMap[Int]): Unit =
+      // A binding mentioned in a type cannot be dropped, so pin it down.
+      def pinTermRefs(t: Tree) =
+        t.typeOpt.foreachPart:
+          case ref: TermRef => if refCount.contains(ref.symbol) then refCount(ref.symbol) = 1
+          case _ =>
+      tree.foreachSubTree:
+        case t: RefTree =>
+          if refCount.contains(t.symbol) then refCount(t.symbol) = refCount(t.symbol) + 1
+          pinTermRefs(t)
+        case t @ (_: New | _: TypeTree) => pinTermRefs(t)
+        case _ =>
+
+    var retained = bindings
+    var progress = true
+    while progress do
+      val refCount = MutableSymbolMap[Int]()
+      for binding <- retained if isElideable(binding) do refCount(binding.symbol) = 0
+      countRefs(expansion, refCount)
+      for binding <- retained do countRefs(binding, refCount)
+      val remaining = retained.filterConserve(binding => refCount.get(binding.symbol) != Some(0))
+      progress = remaining ne retained
+      retained = remaining
+    retained
+  end dropUnusedLiftedBindings
 
   private def updateFlagsFromInlinedParent(child: FlagSet, parent: FlagSet): FlagSet = 
     var updatedFlags = child
