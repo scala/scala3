@@ -111,6 +111,14 @@ object PositionPickler:
       case _ => false
     }
 
+    // Annotations are shared by types and by symbols, so an annotation tree can come from another
+    // source file, e.g. an inherited result type, the inferred type of a selection, or the member
+    // forwarded by an `export`. Pickling its positions would make this TASTy depend on the layout
+    // of that file, and would differ from the result of compiling against that file's TASTy,
+    // where such trees come back without positions.
+    def ownedBy(annots: List[tpd.Tree], owner: SourceFile): List[tpd.Tree] =
+      if annots.isEmpty then annots else annots.filter(_.source == owner)
+
     def traverse(x: Any, current: SourceFile): Unit = x match {
       case x: untpd.Tree =>
         if (x.span.exists) {
@@ -129,7 +137,7 @@ object PositionPickler:
           }
         }
         x match
-          case x: untpd.MemberDef => traverse(treeAnnots(x), x.source)
+          case x: untpd.MemberDef => traverse(ownedBy(treeAnnots(x), x.source), x.source)
           case _ =>
         val limit = x.productArity
         var n = 0
@@ -145,7 +153,7 @@ object PositionPickler:
     for (root <- roots)
       traverse(root, NoSource)
 
-    for annotTree <- typeAnnots do
+    for annotTree <- ownedBy(typeAnnots, source) do
       traverse(annotTree, NoSource)
   end picklePositions
 end PositionPickler
