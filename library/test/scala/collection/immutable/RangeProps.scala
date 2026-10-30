@@ -155,10 +155,12 @@ abstract class RangeProps(kind: String) extends Properties("Range "+kind) {
         def minus(x: Int, y: Int): Int = ???
         def negate(x: Int): Int = ???
         def times(x: Int, y: Int): Int = ???
-        def toDouble(x: Int): Double = ???
-        def toFloat(x: Int): Float = ???
-        def toInt(x: Int): Int = ((x % mod) + mod * 2) % mod
-        def toLong(x: Int): Long = ???
+        extension (x: Int) {
+          override def toDouble: Double = ???
+          override def toFloat: Float = ???
+          override def toInt: Int = ((x % mod) + mod * 2) % mod
+          override def toLong: Long = ???
+        }
         def compare(x: Int, y: Int): Int = ???
       }
 

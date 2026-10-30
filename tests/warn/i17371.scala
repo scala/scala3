@@ -9,10 +9,10 @@ def Test() =
   val a: A = ???
   val b: B = ???
 
-  import ordA.given
+  import ordA.>
   val _ = a > a
 
-  import ordB.given
+  import ordB.<
   val _ = b < b
 
 // unminimized OP
@@ -21,10 +21,8 @@ trait Turns[C: Circular, T] extends Ordering[T]: // warn Circular is not a marke
   extension (turns: T) def extract: C
 
 def f[K, T](start: T, end: T)(using circular: Circular[K], turns: Turns[K, T]): Boolean =
-  import turns.given
   if start > end then throw new IllegalArgumentException("start must be <= end")
 
-  import circular.given
   start.extract < end.extract
 
 // -Wunused:implicits warns for unused implicit evidence unless it is an empty interface (only universal members).
