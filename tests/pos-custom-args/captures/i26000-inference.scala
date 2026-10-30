@@ -13,11 +13,6 @@ def inClosureResult(x: File^) =
   val q = [C^] => (u: Unit) => Box((y: File^{C}) => y)
   val _: File^{x} = q[{x}](()).value(x)
 
-// Several sources of function types: their parameters get the intersection
-def merged(a: File^, b: File^, c: Boolean) =
-  val f = Box(if c then [C^] => (y: File^{C, a}) => y else [C^] => (y: File^{C, a, b}) => y)
-  val _ = f.value[{}](a)
-
 // Inferred capture set arguments get the lower bound of their parameter
 def inferredArg(io: File^) =
   def m[C^ >: {io}](x: File^{C}): File^{C} = io

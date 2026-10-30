@@ -34,46 +34,8 @@ class RetainingAnnotation(tpe: Type) extends CompactAnnotation(tpe) {
     case _ =>
       tp
 
-  /** Map the retained type with `tm`. If the result is no longer a set of
-   *  capabilities, which happens when `tm` approximates, `tm.capturesApproximated`
-   *  is set.
-   */
   override def mapWith(tm: TypeMap)(using Context): Annotation =
-    if Feature.ccEnabledSomewhere then
-      val annot1 = mapWithCtd(tm)
-      if annot1 ne this then
-        annot1 match
-          case annot1: RetainingAnnotation
-          if !retainsCapabilities(retainedType) || retainsCapabilities(annot1.retainedType) =>
-          case _ => tm.capturesApproximated = true
-      annot1
-    else EmptyAnnotation
-
-  /** Is every element of retained type `tp` a capability or a capture set?
-   *  This is false if an element was approximated by a type map, for instance
-   *  to a non-singleton type, a skolem, or type bounds, or if a capture set
-   *  parameter was replaced by a bare `CapSet`, which is how typer instantiates
-   *  a capture set parameter it knows nothing about.
-   */
-  private def retainsCapabilities(tp: Type)(using Context): Boolean = tp match
-    case OrType(tp1, tp2) =>
-      retainsCapabilities(tp1) && retainsCapabilities(tp2)
-    case AnnotatedType(parent, ann: RetainingAnnotation) =>
-      parent.typeSymbol == defn.Caps_CapSet && retainsCapabilities(ann.retainedType)
-    case AnnotatedType(parent, _) => // .rd, .only, .except, reach
-      isCoreCapability(parent)
-    case tp =>
-      isCoreCapability(tp) || tp.isRef(defn.NothingClass)
-
-  private def isCoreCapability(tp: Type)(using Context): Boolean = tp match
-    case tp: TermRef =>
-      !tp.prefix.existsPart(_.isInstanceOf[SkolemType], forceLazy = false)
-    case _: (ThisType | TermParamRef | TypeParamRef) =>
-      true
-    case tp: TypeRef =>
-      !tp.symbol.isClass
-    case _ =>
-      false
+    if Feature.ccEnabledSomewhere then mapWithCtd(tm) else EmptyAnnotation
 
   def isStrict(using Context): Boolean = symbol.isRetains
 

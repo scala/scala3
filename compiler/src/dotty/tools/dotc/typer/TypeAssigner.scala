@@ -14,7 +14,6 @@ import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import util.Property
 import transform.Splicer
 import config.Feature
-import cc.withDeclaredParams
 
 trait TypeAssigner {
   import tpd.*
@@ -451,10 +450,7 @@ trait TypeAssigner {
             mt.derivedLambdaType(paramNames, paramInfos)
           case pt: PolyType =>
             pt.derivedLambdaType(resType = methTypeWithoutEnv(pt.resType))
-        val methodicType = (if tree.env.isEmpty then meth.tpe.widen else methTypeWithoutEnv(meth.tpe.widen)) match
-          case mt: MethodOrPoly if tree.hasAttachment(Typer.ExplicitParamTypes) =>
-            mt.withDeclaredParams(tree.attachment(Typer.ExplicitParamTypes))
-          case mt => mt
+        val methodicType = if tree.env.isEmpty then meth.tpe.widen else methTypeWithoutEnv(meth.tpe.widen)
         // Gross hack to support bootstrapping with 3.8.4:
         // PickleQuotes expected a quote closure to be of FunctionN form.
         // This is now fixed, but 3.8.4 still has the old behavior. So we cannot

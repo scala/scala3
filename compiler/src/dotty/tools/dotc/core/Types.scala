@@ -30,7 +30,6 @@ import Hashable.*
 import Uniques.*
 import collection.mutable
 import config.Config
-import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion
 import annotation.{tailrec, constructorOnly}
@@ -6258,31 +6257,6 @@ object Types extends TypeUtils {
 
     def isRange(tp: Type): Boolean = tp.isInstanceOf[Range]
 
-    /** Set when a capture set in a @retains annotation could not be mapped exactly,
-     *  see `RetainingAnnotation.mapWith`.
-     */
-    var capturesApproximated: Boolean = false
-
-    /** Map a type marked with `@caps.internal.declared`. The result is no longer
-     *  marked, which means that its capture sets will be inferred, if a capture set
-     *  in it could not be mapped exactly, or if the map brought in parts that typer
-     *  inferred: type variables, or parts with capture sets such as function types
-     *  in the instance of a type parameter. Typer does not know the capture sets of
-     *  such parts.
-     */
-    protected def mapDeclared(tp: AnnotatedType): Type =
-      def hasTypeVar(t: Type) = t.existsPart(_.isInstanceOf[TypeVar], forceLazy = false)
-      val saved = capturesApproximated
-      capturesApproximated = false
-      val parent1 = this(tp.parent)
-      val exact =
-        !capturesApproximated && !isRange(parent1)
-        && ((parent1 eq tp.parent)
-            || parent1.capturingPartsCount <= tp.parent.capturingPartsCount
-               && (!hasTypeVar(parent1) || hasTypeVar(tp.parent)))
-      capturesApproximated = saved || capturesApproximated
-      if exact then derivedAnnotatedType(tp, parent1, tp.annot) else parent1
-
     protected def mapCapturingType(tp: Type, parent: Type, refs: CaptureSet, v: Int): Type =
       val saved = variance
       variance = v
@@ -6399,8 +6373,7 @@ object Types extends TypeUtils {
           mapCapturingType(tp, parent, refs, variance)
 
         case tp @ AnnotatedType(underlying, annot) =>
-          if Feature.ccEnabledSomewhere && annot.symbol == defn.DeclaredAnnot then mapDeclared(tp)
-          else derivedAnnotatedType(tp, this(underlying), annot.mapWith(this))
+          derivedAnnotatedType(tp, this(underlying), annot.mapWith(this))
 
         case _: ThisType
           | _: BoundType

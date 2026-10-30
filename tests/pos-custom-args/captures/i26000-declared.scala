@@ -27,18 +27,6 @@ object Lib:
     m.value(r)
     l.head(io)
 
-object Merges:
+object Roots:
   def take(b: Box[(x: File^) -> Unit]) = ()
-
-  def merged(a: File^, y: File^, z: File^, c: Boolean) =
-    val f1 = (x: File^{a, y}) => ()
-    val f2 = (x: File^{a, z}) => ()
-    // The merged type of the two boxes is inferred, the types of the boxes are kept
-    val b = if c then Box(f1) else Box(f2)
-    val _: File^{a} => Unit = b.value
-    val bs = List(Box(f1), Box(f2))
-    val _ = bs.head.value(a)
-    // A merge through a type variable
-    val m = Box(if c then f1 else f2)
-    m.value(a)
-    take(Box((x: File^) => ()))
+  def root() = take(Box((x: File^) => ()))

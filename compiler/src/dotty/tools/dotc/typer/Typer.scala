@@ -84,14 +84,6 @@ object Typer {
   /** Indicates that a definition was copied over from the parent refinements */
   val RefinementFromParent = new Property.StickyKey[Unit]
 
-  /** An attachment on a closure under capture checking. It indicates for each
-   *  parameter of the closure whether its type was written explicitly, or is Nil
-   *  for a polymorphic closure. The capture sets in such parameter types and in
-   *  the bounds of type parameters of the closure are declared in the closure's
-   *  type, see `withDeclaredParams`.
-   */
-  val ExplicitParamTypes = new Property.StickyKey[List[Boolean]]
-
   /** Indicates that an expression is explicitly ascribed to [[Unit]] type. */
   val AscribedToUnit = new Property.StickyKey[Unit]
 
@@ -2149,14 +2141,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               )
             cpy.ValDef(param)(tpt = paramTpt).withAddedFlags(param.mods.flags & Erased)
       desugared = desugar.makeClosure(inferredParams, fnBody, resultTpt, tree.span)
-      if Feature.ccEnabled then
-        // Parameter types of eta-expansions are spliced in, not written
-        val explicit = params.map(param => !param.tpt.isEmpty && !param.tpt.isInstanceOf[untpd.TypedSplice])
-        if explicit.contains(true) then
-          desugared match
-            case untpd.Block(_, closure: untpd.Closure) =>
-              closure.putAttachment(ExplicitParamTypes, explicit)
-            case _ =>
 
     typed(desugared, pt)
       .showing(i"desugared fun $tree --> $desugared with pt = $pt", typr)
@@ -2188,13 +2172,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           poly.resultType.substParams(poly, tsyms.map(_.typeRef)))
       case _ =>
         untpd.TypeTree()
-    val desugared = desugar.makeClosure(tparams, fun, resultTpt, tree.span)
-    if Feature.ccEnabled then
-      desugared match
-        case untpd.Block(_, closure: untpd.Closure) =>
-          closure.putAttachment(ExplicitParamTypes, Nil)
-        case _ =>
-    typed(desugared, pt)
+    typed(desugar.makeClosure(tparams, fun, resultTpt, tree.span), pt)
 
   def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree = {
     val env1 = tree.env.mapconserve(typed(_))

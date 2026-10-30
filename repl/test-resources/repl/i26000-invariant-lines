@@ -1,0 +1,17 @@
+//> using options -language:experimental.captureChecking
+scala> class File
+// defined class File
+scala> class Box[A](val value: A) { override def toString = "Box" }
+// defined class Box
+scala> object io extends File, caps.SharedCapability
+// defined object io
+scala> def g = (x: File^{io}) => 1
+def g: (x: File^{io}) -> Int
+scala> val b = Box(g)
+val b: Box[(x: File^{io}) -> Int] = Box
+scala> b.value(io)
+val res0: Int = 1
+scala> val bb = Box(b.value)
+val bb: Box[(x: File^{io}) -> Int] = Box
+scala> bb.value(io)
+val res1: Int = 1
