@@ -334,11 +334,15 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     private var needAnotherRun = false
 
+    /** The definitions for which `checkInferredResult` reported that they need an explicit type */
+    private val needExplicitType = mutable.Set.empty[Symbol]
+
     def resetIteration()(using Context): Unit =
       needAnotherRun = false
       resetNuTypes()
       todoAtPostCheck.clear()
       completed.clear()
+      needExplicitType.clear()
 
     extension [T <: Tree](tree: T)
       def needsSepCheck: Boolean = sepCheckFormals.contains(tree)
@@ -347,8 +351,10 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Instantiate capture set variables appearing contra-variantly to their
      *  upper approximation.
+     *  @return  the capabilities that capture sets of `tp` leave out since they are
+     *           solved for good at their current elements, see `leftOut`
      */
-    private def interpolate(tp: Type, sym: Symbol, startingVariance: Int = 1)(using Context): Unit =
+    private def interpolate(tp: Type, sym: Symbol, startingVariance: Int = 1)(using Context): CaptureSet.Refs =
 
       /** Capture sets in invariant positions of a type that is also seen outside this
        *  unit are solved for good, so that uses in this unit cannot widen them in another
@@ -359,6 +365,22 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       /** Can other units supply values of the type they see, by assigning or overriding? */
       def isWritten = sym.isWrittenOutsideUnit
+
+      /** The upper approximation of `refs`, treating `caps.any` as a root as `solve` does */
+      def upperApproxOf(refs: CaptureSet.Var): CaptureSet =
+        CCState.withGlobalCapAsRoot(refs.upperApprox(CaptureSet.empty))
+
+      /** The capabilities in the upper approximation `approx` of `refs` that `refs` leaves
+       *  out if it is solved at its current elements, although the right hand side allows
+       *  them. Roots do not count, since a root in the upper approximation either comes
+       *  from a `^`, which other units see as well, or stands for a set without an upper
+       *  bound. Neither do capabilities that are not visible where `refs` is defined.
+       */
+      def leftOut(refs: CaptureSet.Var, approx: CaptureSet): CaptureSet.Refs =
+        approx.elems.filter: elem =>
+          !elem.isTerminalCapability && refs.levelOK(elem) && !refs.mightAccountFor(elem)
+
+      var leftOutElems = CaptureSet.emptyRefs
 
       object variances extends TypeTraverser:
         variance = startingVariance
@@ -384,16 +406,17 @@ class CheckCaptures extends Recheck, SymTransformer:
               case refs: CaptureSet.Var if !refs.isConst =>
                 val v = variances.varianceOfVar(refs)
                 if v < 0 then
-                  if isWritten
-                      && !CCState.withGlobalCapAsRoot(refs.upperApprox(CaptureSet.empty))
-                            .elems.forall(_.isTerminalCapability)
-                  then
+                  lazy val approx = upperApproxOf(refs)
+                  if isWritten && !approx.elems.forall(_.isTerminalCapability) then
                     // Other units see an inferred set as empty, and they can supply values of
                     // the type they see, so the set is not widened to its upper approximation.
                     // A root in the upper approximation comes from a `^`, which they see as well.
+                    leftOutElems ++= leftOut(refs, approx)
                     refs.markSolved(provisional = false)
                   else refs.solve()
-                else refs.markSolved(provisional = !sym.isMutableVar && !(v == 0 && isFixed))
+                else
+                  if v == 0 && isFixed then leftOutElems ++= leftOut(refs, upperApproxOf(refs))
+                  refs.markSolved(provisional = !sym.isMutableVar && !(v == 0 && isFixed))
               case _ =>
             traverse(parent)
           case t @ defn.RefinedFunctionOf(rinfo) =>
@@ -403,6 +426,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       variances.traverse(tp)
       interpolator.traverse(tp)
+      leftOutElems
     end interpolate
 
     /*  Also set any previously unset owners of toplevel LocalCap instances to improve
@@ -430,13 +454,15 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** If `tpt` is an inferred type, interpolate capture set variables appearing contra-
      *  variantly in it. Also, drop skolem refinements and anchor LocalCap instances.
+     *  Warn if capture sets that are solved for good leave out capabilities that the
+     *  right hand side allows. Only an explicit type can keep them.
      *  Note: module vals don't have inferred types but still hold capture set variables.
      *  These capture set variables are interpolated after the associated module class
      *  has been rechecked.
      */
     private def interpolateIfInferred(tpt: Tree, sym: Symbol)(using Context): Unit =
       if tpt.isInstanceOf[InferredTypeTree] then
-        interpolate(tpt.nuType, sym)
+        val leftOutElems = interpolate(tpt.nuType, sym)
           .showing(i"solved vars for $sym in ${tpt.nuType}", capt)
         val stripped = dropSkolemRefinements(tpt.nuType)
         if stripped ne tpt.nuType then
@@ -446,6 +472,24 @@ class CheckCaptures extends Recheck, SymTransformer:
         for msg <- ccState.approxWarnings do
           report.warning(msg, tpt.srcPos)
         ccState.approxWarnings.clear()
+        // The value of an expression in the REPL is a synthesized `res` val, which the
+        // user cannot give a type
+        def isReplResult =
+          sym.owner.name.isReplWrapperName && sym.name.toString.startsWith(str.REPL_RES_PREFIX)
+        if !leftOutElems.isEmpty && !isReplResult then
+          todoAtPostCheck += { () => // so that only the last capture checking run warns
+            if !needExplicitType.contains(sym) then // `checkInferredResult` reported it already
+              def result = if sym.is(Method) then " result" else ""
+              val elems = leftOutElems.toList.map(elem => i"`${elem.showAsCapability}`")
+              val capabilities = if elems.length == 1 then "capability" else "capabilities"
+              report.warning(
+                em"""$sym should be given an explicit$result type because the inferred type leaves out
+                    |$capabilities ${elems.mkString(", ")}, which the right hand side would allow.
+                    |Other compilation units and later REPL lines see the type as it is inferred here.
+                    |
+                    | Inferred type: ${tpt.nuType}""",
+                tpt.srcPos)
+          }
 
     /** Drop all capture refinements (added by addCaptureRefinements) of `tp` whose
      *  refined info contains a capability with a skolem prefix unless the skolem's
@@ -1488,6 +1532,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       def fail(tree: Tree, expected: Type, notes: List[Note]): Unit =
         def maybeResult = if sym.is(Method) then " result" else ""
+        needExplicitType += sym
         report.error(
           em"""$sym needs an explicit$maybeResult type because the inferred type does not conform to
               |the type that is externally visible in other compilation units.

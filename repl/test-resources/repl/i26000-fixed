@@ -16,7 +16,39 @@ scala> val up = if flag then Cell([C^ <: {io}] => (x: File^{C}) => ()) else Cell
   |
   |The capture set is part of the inferred type of value up, which other compilation
   |units or later REPL lines see as well. To allow this, value up needs an explicit type.
-1 error found
+-- [E007] Type Mismatch Error: -------------------------------------------------
+1 |val up = if flag then Cell([C^ <: {io}] => (x: File^{C}) => ()) else Cell([C^ <: {any.rd}] => (x: File^{C}) => ()); def call(q: File^): Unit = up.value[{q}](q)
+  |                                                                                                                                                             ^
+  |Found:    (q : File^)
+  |Required: File^{}
+  |
+  |Note that capability `q` cannot flow into capture set {} of value up.
+  |
+  |The capture set is part of the inferred type of value up, which other compilation
+  |units or later REPL lines see as well. To allow this, value up needs an explicit type.
+  |
+  |where:    ^ refers to a root capability in the type of parameter q
+  |
+  | longer explanation available when compiling with `-explain`
+-- Warning: --------------------------------------------------------------------
+1 |val up = if flag then Cell([C^ <: {io}] => (x: File^{C}) => ()) else Cell([C^ <: {any.rd}] => (x: File^{C}) => ()); def call(q: File^): Unit = up.value[{q}](q)
+  |      ^
+  |value up should be given an explicit type because the inferred type leaves out
+  |capability `C`, which the right hand side would allow.
+  |Other compilation units and later REPL lines see the type as it is inferred here.
+  |
+  | Inferred type: Cell[[C^ <: {}] -> (x: File^{}) -> Unit]^{}
+1 warning found
+2 errors found
 scala> val up2 = if flag then Cell([C^ <: {io}] => (x: File^{C}) => ()) else Cell([C^ <: {any.rd}] => (x: File^{C}) => ())
-val up2: Cell[[C^] -> (x: File^{C}) -> Unit] = Cell
+1 warning found
+-- Warning: --------------------------------------------------------------------
+1 |val up2 = if flag then Cell([C^ <: {io}] => (x: File^{C}) => ()) else Cell([C^ <: {any.rd}] => (x: File^{C}) => ())
+  |       ^
+  |value up2 should be given an explicit type because the inferred type leaves out
+  |capability `C`, which the right hand side would allow.
+  |Other compilation units and later REPL lines see the type as it is inferred here.
+  |
+  | Inferred type: Cell[[C^ <: {}] -> (x: File^{}) -> Unit]^{}
+val up2: Cell[[C^] -> (x: File) -> Unit] = Cell
 scala> up2.value[{}](File())

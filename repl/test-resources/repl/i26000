@@ -17,9 +17,34 @@ val mono: Box[(y: File^{io}) -> File^{y}] = Box
 scala> def p = [C^] => (y: File^{C}) => y
 def p: [C^] -> (y: File^{C}) -> File^{y}
 scala> val viaVal = Box(p)
-val viaVal: Box[[C^] -> (y: File^{C}) -> File^{y}] = Box
+1 warning found
+-- Warning: --------------------------------------------------------------------
+1 |val viaVal = Box(p)
+  |^^^^^^^^^^^^^^^^^^^
+  |value viaVal should be given an explicit type because the inferred type leaves out
+  |capability `C`, which the right hand side would allow.
+  |Other compilation units and later REPL lines see the type as it is inferred here.
+  |
+  | Inferred type: Box[[C^ <: {}] -> (y: File^{}) -> File^{y}]^{}
+val viaVal: Box[[C^] -> (y: File) -> File^{y}] = Box
 scala> val r = viaVal.value[{io}](io)
-val r: File^{io} = File
+-- [E223] CaptureChecking Error: -----------------------------------------------
+1 |val r = viaVal.value[{io}](io)
+  |                      ^^
+  |              Reference `io` is not included in the allowed capture set {}
+  |              of the type parameter bound scala.caps.CapSet.
+-- [E007] Type Mismatch Error: -------------------------------------------------
+1 |val r = viaVal.value[{io}](io)
+  |                           ^^
+  |               Found:    (io : File^{any})
+  |               Required: File
+  |
+  |               Note that capability `any` cannot flow into capture set {}.
+  |
+  |               where:    any is a root capability in the type of value io
+  |
+  | longer explanation available when compiling with `-explain`
+2 errors found
 scala> def explicitDef: Box[[C^] -> (y: File^{C}) -> Int] = Box([C^] => (y: File^{C}) => 1)
 def explicitDef: Box[[C^] -> (y: File^{C}) -> Int]
 scala> explicitDef.value[{io}](io)
