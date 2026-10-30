@@ -233,8 +233,15 @@ sealed abstract class CaptureSet extends Showable:
   protected def toReader()(using Context): Boolean
 
   protected def addIfHiddenOrFail(elem: Capability)(using ctx: Context, vs: VarState): Boolean =
-    elems.exists(_.maxSubsumes(elem, canAddHidden = true))
+    def hides(r: Capability, c: Capability) = r.maxSubsumes(c, canAddHidden = true)
+    def hidden(c: Capability) = elems.exists(hides(_, c))
+    hidden(elem)
     || elem.isKnownEmpty
+    // Split across roots, if this set has one. Otherwise `accountsFor` has already
+    // tried the same split.
+    || !elem.core.isInstanceOf[GlobalCap | ResultCap]
+       && containsTerminalCapability
+       && coveredByProjections(elem, hides)(hidden)
     || failWith(IncludeFailure(this, elem))
 
   /** If this is a variable, add `cs` as a dependent set */
@@ -250,29 +257,57 @@ sealed abstract class CaptureSet extends Showable:
    *  `.rd` or `?` takes part only if `x` has that wrapper too. Subtract the projections
    *  from `x` in turn. `x` is covered if nothing remains, if what remains lies outside
    *  the classifiers of the base, or if `coversPiece` covers each remaining piece, for
-   *  instance by widening it. A root base is not asked for its classifiers, since a
-   *  local root that is not yet classified would cache an answer that can still change.
+   *  instance by widening it. A root base is not asked for its classifiers, since those
+   *  of a local root can still change.
+   *
+   *  If `hides` is given, projections of other local and global roots take part as well,
+   *  after those of the base. The part of a piece under such a projection `p` of an
+   *  element `elem` is subtracted if `hides(elem, part)` adds it to the hidden set of the
+   *  root, as if the root were instantiated with `x`. Result roots do not take part since
+   *  they unify one-to-one. Callers do not pass a global or result root `x`, since no root
+   *  subsumes it whole either.
    */
-  private def coveredByProjections(x: Capability)(coversPiece: Capability => Boolean)(using Context): Boolean =
+  private def coveredByProjections(x: Capability, hides: ((Capability, Capability) => Boolean) | Null = null)
+      (coversPiece: Capability => Boolean)(using Context): Boolean =
     val base = x.core
     def isReadOnly(c: Capability) = c.stripMaybe.isInstanceOf[ReadOnly]
-    def peer(elem: Capability): Classified | Null = elem.stripMaybe.stripReadOnly match
+    def projection(elem: Capability): Classified | Null = elem.stripMaybe.stripReadOnly match
       case p: Classified
-      if (p.underlying eq base) && p.only != defn.NothingClass
+      if p.only != defn.NothingClass
           && (x.isMaybe || !elem.isMaybe)
           && (isReadOnly(x) || !isReadOnly(elem)) => p
       case _ => null
+    def peer(elem: Capability): Classified | Null = projection(elem) match
+      case p: Classified if p.underlying eq base => p
+      case _ => null
+    def rootPeer(elem: Capability): Classified | Null = projection(elem) match
+      case p @ Classified(_: (LocalCap | GlobalCap), _, _) if p.underlying ne base => p
+      case _ => null
     def emptyUnderBase(rest: List[Capability]) =
-      !x.isTerminalCapability && (base.transClassifiers match
-        case ClassifiedAs(cs) => rest.forall(r => cs.forall(r.isProjectionDisjointFrom(_)))
-        case _ => false)
-    elems.exists(peer(_) != null) && {
-      val rest = elems.toList.foldLeft(x :: Nil): (rest, elem) =>
+      !x.isTerminalCapability && rest.forall(_.transClassifiers == ClassifiedAs(Nil))
+    def subtractPeers(rest: List[Capability]) =
+      elems.toList.foldLeft(rest): (rest, elem) =>
         peer(elem) match
           case p: Classified => rest.flatMap(_.remainderAfter(p))
           case null => rest
+    def subtractRoots(rest: List[Capability], hides: (Capability, Capability) => Boolean) =
+      elems.toList.foldLeft(rest): (rest, elem) =>
+        rootPeer(elem) match
+          case p: Classified =>
+            rest.flatMap: r =>
+              val part = r.partUnder(p)
+              if part.isEmptyProjection || emptyUnderBase(part :: Nil) || !hides(elem, part)
+              then r :: Nil
+              else r.remainderAfter(p)
+          case null => rest
+    def covered(rest: List[Capability]) =
       rest.isEmpty || emptyUnderBase(rest) || rest.forall(coversPiece)
-    }
+    if hides == null then
+      elems.exists(peer(_) != null) && covered(subtractPeers(x :: Nil))
+    else
+      // Pieces may be added to hidden sets, so this needs to be atomic
+      elems.exists(elem => peer(elem) != null || rootPeer(elem) != null)
+      && TypeComparer.atomicOp(covered(subtractRoots(subtractPeers(x :: Nil), hides)))
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
@@ -287,9 +322,11 @@ sealed abstract class CaptureSet extends Showable:
 
     // Even though subsumes already follows captureSetOfInfo, this is not enough.
     // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
+    // A capture set parameter is not widened to its bound, but a projection of one is:
+    // with `X <: {y, z}`, `X.except[C]` widens to `{y.except[C], z.except[C]}`.
     def widened(y: Capability) =
       !y.isTerminalCapability
-      && !y.coreType.derivesFromCapSet
+      && (!y.coreType.derivesFromCapSet || y.stripMaybe.stripReadOnly.isInstanceOf[Classified])
       && !(vs.isSeparating && y.captureSetOfInfo.containsTerminalCapability)
         // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
         // and might therefore insert an element that is too unspecific.
@@ -1220,12 +1257,17 @@ object CaptureSet:
         accountsFor(mappedElem) || addNewElem(mappedElem)
       else if accountsFor(elem) then
         true
-      else
-        // Propagate backwards to source. The element will be added then by another
-        // forward propagation from source that hits the first branch `if origin eq source then`.
-        printOnAssertionError(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}"):
-          reporting.trace(i"prop backwards $elem from $this # $id to $source # ${source.id} via $summarize"):
-            source.tryInclude(bimap.inverse.mapCapability(elem), this)
+      else bimap match
+        case bimap: ClassifierMap if !bimap.keeps(elem) =>
+          // The projection drops parts of `elem`, so no instance of `source` makes
+          // this set account for `elem`.
+          failWith(IncludeFailure(this, elem))
+        case _ =>
+          // Propagate backwards to source. The element will be added then by another
+          // forward propagation from source that hits the first branch `if origin eq source then`.
+          printOnAssertionError(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}"):
+            reporting.trace(i"prop backwards $elem from $this # $id to $source # ${source.id} via $summarize"):
+              source.tryInclude(bimap.inverse.mapCapability(elem), this)
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
      *  the source via the inverse type mapping and vice versa. That is, if
@@ -1752,16 +1794,38 @@ object CaptureSet:
     override def mapCapability(c: Capability) = c.readOnly
     override def toString = "ReadOnly"
 
-  private class RestrictMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
+  /** A narrowing map that projects capabilities by a classifier. Its identity
+   *  inverse is exact only for capabilities that the projection keeps whole:
+   *  {c} <: f(cs) holds iff {c} <: cs and {c} <: {f(c)}.
+   */
+  private abstract class ClassifierMap(using Context) extends NarrowingCapabilityMap:
+
+    /** Does the projection keep all of `c`, i.e. {c} <: {f(c)}? Subclasses decide the
+     *  common cases from the classifiers of `c` before running this full check.
+     */
+    def keeps(c: Capability)(using Context): Boolean =
+      mapCapability(c).singletonCaptureSet.accountsFor(c)
+
+  /** Maps `x` to `x.only[cls]` */
+  private class RestrictMap(val cls: ClassSymbol)(using Context) extends ClassifierMap:
     override def mapCapability(c: Capability) = c.restrict(cls)
+    override def keeps(c: Capability)(using Context): Boolean = c.transClassifiers match
+      case ClassifiedAs(cs) if cs.forall(_.isSubClass(cls)) => true
+      case Unclassified => false // a part of `c` has no classifier
+      case _ => super.keeps(c)
     override def toString = "Restrict"
     override def isSameMap(other: BiTypeMap) = other match
       case other: RestrictMap => cls == other.cls
       case _ => false
 
   /** Maps `x` to `x.except[cls]` */
-  private class ExceptMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
+  private class ExceptMap(val cls: ClassSymbol)(using Context) extends ClassifierMap:
     override def mapCapability(c: Capability) = c.exclude(cls)
+    override def keeps(c: Capability)(using Context): Boolean = c.transClassifiers match
+      // Not for roots, whose classifier `super.keeps` sees only once it is frozen
+      case ClassifiedAs(cs)
+      if cs.forall(leastClassifier(_, cls) == defn.NothingClass) && !c.isTerminalCapability => true
+      case _ => super.keeps(c)
     override def toString = "Except"
     // TODO: once except carries a list of classes, fuse except[A] ∘ except[B] into one map;
     // distinct-cls excepts don't fuse today (sound, just unoptimized).
