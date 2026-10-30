@@ -633,7 +633,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
           val args1 =
-            if Feature.ccEnabled && fn.symbol.isInlineMethod
+            if Feature.ccEnabled && (fn.symbol.isInlineMethod || Inlines.inInlineMethod)
             then transform(args).mapConserve(markInferred)
             else transform(args)
           val fn1 = fn match
