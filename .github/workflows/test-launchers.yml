@@ -118,15 +118,15 @@ jobs:
           distribution: 'zulu'
           cache: 'sbt'
       - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
-      - name: Build the launcher command
-        run: sbt "dist/Universal/stage"
+      # Build both launchers in a single sbt invocation: a second sbt run on this runner
+      # intermittently fails to create its boot server pipe lock (Windows error 1336)
+      - name: Build the launcher commands
+        run: sbt "dist/Universal/stage" "dist-win-x86_64/Universal/stage"
       - name: Run the launcher command tests
         run: './project/scripts/native-integration/winTests.bat'
         shell: cmd
         env:
           LAUNCHER_PREFIX: 'dist\target\universal\stage'
-      - name: Build the x86_64 launcher command
-        run: sbt "dist-win-x86_64/Universal/stage"
       - name: Run the launcher command tests with the x86_64 launcher
         run: './project/scripts/native-integration/winTests.bat'
         shell: cmd
