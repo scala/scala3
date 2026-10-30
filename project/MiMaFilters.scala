@@ -46,6 +46,29 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingTypesProblem]("scala.util.hashing.MurmurHash3$"),
         // MurmurHash3 is now compiled by Scala 3 instead of copied from Scala 2.13, so it has a default value for a method that is no longer final
         ProblemFilters.exclude[FinalMethodProblem]("scala.util.hashing.MurmurHash3.productHash$default$3()Boolean"),
+        // New ArrayDeque-style methods added to Buffer trait
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeHead"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeHeadOption"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeLast"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeLastOption"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeAll"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeAllReverse"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeHeadWhile"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeLastWhile"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeFirst"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeFirst$default$2"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.Buffer.removeFirst$default$2$"),
+        // Forwarders in AbstractBuffer
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeHead"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeHeadOption"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeLast"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeLastOption"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeAll"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeAllReverse"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeHeadWhile"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeLastWhile"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeFirst"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.AbstractBuffer.removeFirst$default$2"),
       ) ++ (0 to 22).flatMap { n =>
         // `applyUsing` for arity `n` is defined in the companion object of `FunctionN`,
         // which is a new object for all arities except 1
