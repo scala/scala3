@@ -10,4 +10,5 @@ import language.experimental.captureChecking
  *  @param message a description explaining the experimental status, or an empty string if no message is needed
  */
 final class experimental(message: String) extends StaticAnnotation:
+  /** Creates an `experimental` annotation with no explanatory message. */
   def this() = this("")
