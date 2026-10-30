@@ -45,10 +45,9 @@ class CompletionErrorSuite extends BaseCompletionSuite {
           |}
           |""".stripMargin,
       """|age: Int
-         |applyToContext(using tf: TupledFunction[Person, Tuple => Any]): Any
          |asInstanceOf[X0]: X0
          |""".stripMargin,
-      topLines = Option(3)
+      topLines = Option(2)
     )
 
   @Test def `broken-string-before` =

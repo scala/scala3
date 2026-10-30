@@ -18,8 +18,8 @@ object MiMaFilters {
         // new experimental language feature: method block end markers (SIP-77)
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$methodBlockEndMarkers$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$methodBlockEndMarkers$"),
-        // new extension methods `applyToContext` on function types
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Predef.applyToContext"),
+        // new extension methods `applyUsing` on function types
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Function.applyUsing"),
       ),
 
       // Additions since last LTS

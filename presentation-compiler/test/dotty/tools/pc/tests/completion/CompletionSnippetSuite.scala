@@ -15,7 +15,6 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
         |}
         |""".stripMargin,
       """|apply($0)
-         |applyToContext
          |apply($0)
          |unapplySeq($0)
          |""".stripMargin

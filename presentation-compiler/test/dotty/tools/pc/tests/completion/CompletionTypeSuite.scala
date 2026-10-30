@@ -32,7 +32,6 @@ class CompletionTypeSuite extends BaseCompletionSuite:
           |toArray: Array[Object]
           |toIArray: IArray[Object]
           |toList: List[Int]
-          |applyToContext(using tf: TupledFunction[(Int, Int), Tuple => Any]): Any
           |productIterator: Iterator[Any]
           |asInstanceOf[X0]: X0
           |isInstanceOf[X0]: Boolean

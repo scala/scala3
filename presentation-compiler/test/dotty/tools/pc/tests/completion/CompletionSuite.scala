@@ -120,7 +120,6 @@ class CompletionSuite extends BaseCompletionSuite:
          |unapplySeq[A](x: List[A] @uncheckedVariance): UnapplySeqWrapper[A]
          |unfold[A, S](init: S)(f: S => Option[(A, S)]): List[A]
          |->[B](inline that: B): (List.type, B)
-         |applyToContext(using tf: TupledFunction[List.type, Tuple => Any]): Any
          |fromSpecific(from: Any)(it: IterableOnce[Nothing]): List[Nothing]
          |fromSpecific(it: IterableOnce[Nothing]): List[Nothing]
          |newBuilder(from: Any): Builder[Nothing, List[Nothing]]
