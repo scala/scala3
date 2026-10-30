@@ -289,13 +289,13 @@ object Using {
    *  Unlike [[Manager$.apply `Manager.apply`]], the `Manager` is passed to the operation
    *  as a context parameter, so that it can be picked up by resources which require a
    *  `Manager` (see the note on [[Manager]]), and exceptions are thrown rather than
-   *  wrapped in a [[Try]]. Other resources can be registered with [[use `Using.use`]].
+   *  wrapped in a [[Try]]. Other resources can be registered with [[track `Using.track`]].
    *
    *  Example:
    *  ```
    *  Using.managed {
    *   val reader = new SafeFileReader("in.txt") // registers itself with the given `Manager`
-   *   val writer = Using.use(new FileWriter("out.txt"))
+   *   val writer = Using.track(new FileWriter("out.txt"))
    *   writer.write(reader.readLine())
    *  }
    *  ```
@@ -327,13 +327,13 @@ object Using {
    *
    *  The `Manager` is passed to the operation as a context parameter, so that it can be
    *  picked up by resources which require a `Manager` (see the note on [[Manager]]).
-   *  Other resources can be registered with [[use `Using.use`]].
+   *  Other resources can be registered with [[track `Using.track`]].
    *
    *  Example:
    *  ```
    *  val (resources, (reader, writer)) = Using.unmanaged {
    *   val reader = new SafeFileReader("in.txt") // registers itself with the given `Manager`
-   *   val writer = Using.use(new FileWriter("out.txt"))
+   *   val writer = Using.track(new FileWriter("out.txt"))
    *   (reader, writer)
    *  }
    *  Future(writer.write(reader.readLine())).andThen(_ => resources.close())
@@ -355,25 +355,27 @@ object Using {
     }
   }
 
-  /** Returns the given `Manager`.
+  /** Registers the specified resource with the given `Manager`, so that the resource is
+   *  released when the manager is closed, and then returns the (unmodified) resource.
    *
-   *  This is a shorthand for `summon[Using.Manager]` within [[managed `Using.managed`]] and
-   *  [[unmanaged `Using.unmanaged`]], which makes it convenient to register resources that
-   *  don't require a `Manager` themselves:
+   *  This makes it convenient to register resources that don't require a `Manager`
+   *  themselves within [[managed `Using.managed`]] and [[unmanaged `Using.unmanaged`]]:
    *
    *  ```
-   *  import Using.use
+   *  import Using.track
    *
    *  Using.managed {
-   *   val reader = use(new BufferedReader(new FileReader("file.txt")))
+   *   val reader = track(new BufferedReader(new FileReader("file.txt")))
    *   reader.readLine()
    *  }
    *  ```
    *
+   *  @tparam R the type of the resource, which must have a `Releasable` instance
+   *  @param resource the resource to register with the given manager
    *  @param m the given `Manager`
-   *  @return `m`
+   *  @return the same `resource`, unmodified, to allow fluent use at the call site
    */
-  def use(using m: Manager): Manager = m
+  def track[R: Releasable](resource: R)(using m: Manager): resource.type = m(resource)
 
   private def preferentiallySuppress(primary: Throwable, secondary: Throwable): Throwable = {
     @annotation.nowarn("cat=deprecation")  // avoid warning on mention of ThreadDeath

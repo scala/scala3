@@ -826,13 +826,13 @@ class UsingTest {
     group.assertAllClosed()
   }
 
-  /* `Using.use` */
+  /* `Using.track` */
 
   @Test
-  def useRegistersWithGivenManager(): Unit = {
+  def trackRegistersWithGivenManager(): Unit = {
     val group = new ResourceGroup
     val res = Using.managed {
-      Using.use(group.newResource()).identity(1) + Using.use(group.newResource()).identity(1)
+      Using.track(group.newResource()).identity(1) + Using.track(group.newResource()).identity(1)
     }
     assertEquals(res, 2)
     group.assertAllClosed()
