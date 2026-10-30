@@ -122,13 +122,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     initContextCalled = true
     compilingScala2StdLib = Feature.shouldBehaveAsScala2(using ctx)
 
-  /** The anonymous function symbols that need an explicified result type
-   *  if their right hand side is also a closure. This is the case if
-   *  the closure's type forms part of the type of a valdef or defdef
-   *  that has a polymorphic closure type.
-   */
-  private val closuresNeedingExplicify = mutable.Set.empty[Symbol]
-
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
   val beanProps: BeanProperties = new BeanProperties(thisPhase)
@@ -426,9 +419,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *       non-inferred by adding `@caps.declared` annotations.
      *       In this case we need to keep references to bound capset variables in retains
      *       clauses of subsequent parameters.
-     *   (3) If the definition is a closure that is a curried result of the
-     *       right hand side of a defininition meeting condition (2), also make
-     *       its parameter types non-inferred as specified by (2).
      */
     private def explicifyTpt(tree: ValOrDefDef)(using Context): Tree = tree.tpt match
       case tpt: InferredTypeTree if Feature.ccEnabled =>
@@ -437,7 +427,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         else tree.rhs match
           case closureDef(mdef)
           if !tree.symbol.isAnonymousFunction // (2)
-            || closuresNeedingExplicify.remove(tree.symbol) // (3)
           =>
             val tpe1 = makeFormalsDeclared(tpt.tpe, tree.rhs)
             if tpe1 `ne` tpt.tpe
@@ -454,8 +443,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      */
     private def makeFormalsDeclared(tp: Type, rhs: Tree)(using Context): Type = rhs match
       case closureDef(mdef) =>
-        closuresNeedingExplicify += mdef.symbol
-
         def makeFormalDeclared(formal: Type)(using Context): Type = formal match
           case formal @ TypeBounds(lo, hi) =>
             formal.derivedTypeBounds(makeFormalDeclared(lo), makeFormalDeclared(hi))

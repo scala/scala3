@@ -922,7 +922,9 @@ object CaptureSet:
         addIfHiddenOrFail(elem)
       else if !levelOK(elem) then
         failWith(IncludeFailure(this, elem, levelError = true))    // or `elem` is not visible at the level of the set.
-      else if !elem.tryClassifyAs(classifier) then
+      else if !elem.coreType.derivesFromCapSet && !elem.tryClassifyAs(classifier) then
+        // A capture set parameter is not classified, as in constant capture sets,
+        // since it stands for capture sets that are known only after instantiation
         //println(i"cannot classify $elem as $classifier, ${elem.asInstanceOf[CoreCapability].classifier}")
         failWith(IncludeFailure(this, elem))
       else
@@ -965,7 +967,9 @@ object CaptureSet:
       case _: GlobalCap =>
         rootLimit == null
       case core: ParamRef =>
-        isPartOf(core.binder.resType)
+        // A parameter is also in scope in the parameter infos of its binder,
+        // as in the bound of `D` in `[C^, D^ >: {C}]`
+        isPartOf(core.binder)
       case _ =>
         if owner.exists then
           val elemVis = elem.visibility

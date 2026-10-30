@@ -704,14 +704,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           if isCaptureCheckingOrSetup then
 
             // A relaxed version of subtyping for dependent functions where method types
-            // are treated as contravariant.
+            // are treated as contravariant. Bounds of polymorphic functions are compared
+            // without freezing, so that capture set variables in them are constrained.
             // TODO: Merge with isSubInfo in hasMatchingMember. Currently, we can't since
             // the isSubinfo of hasMatchingMember has problems dealing with PolyTypes
             // (---> orphan params during pickling)
             def isSubInfo(info1: Type, info2: Type): Boolean = printOnAssertionError(i"error while subinfo $info1 <:< $info2"):
               (info1, info2) match
                 case (info1: PolyType, info2: PolyType) =>
-                  info1.paramNames.hasSameLengthAs(info2.paramNames)
+                  matchingPolyParams(info1, info2, frozen = false)
                   && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
                 case (info1: MethodType, info2: MethodType) =>
                   matchingMethodParams(info1, info2, precise = false)
@@ -2506,15 +2507,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Do the parameter types of `tp1` and `tp2` match in a way that allows `tp1`
    *  to override `tp2` ? This is the case if they're pairwise >:>.
+   *  If `frozen` is false, the bounds are compared without freezing the constraint,
+   *  so that capture set variables in them can be constrained.
    */
-  def matchingPolyParams(tp1: PolyType, tp2: PolyType): Boolean = {
+  def matchingPolyParams(tp1: PolyType, tp2: PolyType, frozen: Boolean = true): Boolean = {
     def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
       case formal1 :: rest1 =>
         formals2 match {
           case formal2 :: rest2 =>
             val formal2a = formal2.subst(tp2, tp1)
-            isSubTypeWhenFrozen(formal2a, formal1) &&
-            loop(rest1, rest2)
+            val paramsMatch =
+              if frozen then isSubTypeWhenFrozen(formal2a, formal1)
+              else isSubType(formal2a, formal1)
+            paramsMatch && loop(rest1, rest2)
           case nil =>
             false
         }

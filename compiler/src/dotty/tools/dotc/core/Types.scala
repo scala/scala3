@@ -3860,7 +3860,7 @@ object Types extends TypeUtils {
     def integrate(tparams: List[ParamInfo], tp: Type)(using Context): Type =
       (tparams: @unchecked) match {
         case LambdaParam(lam, _) :: _ => tp.subst(lam, this) // This is where the precondition is necessary.
-        case params: List[Symbol @unchecked] => IntegrateMap(params, paramRefs)(tp)
+        case params: List[Symbol @unchecked] => IntegrateMap(params)(tp)
       }
 
     /** A map that replaces references to symbols in `params` by the types in
@@ -3876,16 +3876,25 @@ object Types extends TypeUtils {
      *  involving such [[TermParamRef]]s in [[NamedType#withPrefix]] could then
      *  result in a [[NoDenotation]], which would make later disambiguation of
      *  overloads impossible. See `tests/pos/annot-17242.scala` for example.
+     *
+     *  The map is a bijection: its inverse maps `paramRefs` back to references
+     *  to the symbols in `params`. Under capture checking, capture set variables
+     *  of the integrated type therefore become BiMapped views of the variables
+     *  of the symbol-based type, which translate elements added later in either
+     *  direction. A plain map would instead share a variable between the two
+     *  types if it leaves the current elements unchanged, and freeze it otherwise.
      */
-    private class IntegrateMap(from: List[Symbol], to: List[Type])(using Context) extends TypeMap:
+    private class IntegrateMap(params: List[Symbol])(using Context) extends BiTypeMap:
+      thisMap =>
+
       override def apply(tp: Type) =
         // Same implementation as in `SubstMap`, except the `derivedSelect` in
         // the `NamedType` case, and the default case that just calls `mapOver`.
         tp match
           case tp: NamedType =>
             val sym = tp.symbol
-            var fs = from
-            var ts = to
+            var fs = params
+            var ts = paramRefs
             while (fs.nonEmpty && ts.nonEmpty) {
               if (fs.head eq sym) return ts.head
               fs = fs.tail
@@ -3904,6 +3913,14 @@ object Types extends TypeUtils {
               NamedType(pre, tp.name, tp.denot.asSeenFrom(pre))
             case _ =>
               tp.derivedSelect(pre)
+
+      class Inverse extends BiTypeMap:
+        def apply(tp: Type): Type = tp match
+          case tp: ParamRef if tp.binder eq self => params(tp.paramNum).namedType
+          case _ => mapOver(tp)
+        def inverse = thisMap
+
+      lazy val inverse = Inverse()
 
     final def derivedLambdaType(paramNames: List[ThisName] = this.paramNames,
                           paramInfos: List[PInfo] = this.paramInfos,

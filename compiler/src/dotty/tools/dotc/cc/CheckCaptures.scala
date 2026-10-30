@@ -203,6 +203,12 @@ object CheckCaptures:
             traverse(parent)
           case defn.RefinedFunctionOf(mt) =>
             traverse(mt)
+          case t: PolyType =>
+            // Roots in capture set bounds are not capabilities (see GlobalCapToLocal)
+            atVariance(-variance):
+              t.paramInfos.foreach: bounds =>
+                if !bounds.hi.derivesFromCapSet then traverse(bounds)
+            traverse(t.resType)
           case t: MethodType if t.marksExistentialScope =>
             atVariance(-variance):
               t.paramInfos.foreach(traverse)
@@ -358,6 +364,17 @@ class CheckCaptures extends Recheck, SymTransformer:
             traverse(parent)
           case t @ defn.RefinedFunctionOf(rinfo) =>
             traverse(rinfo)
+          case AppliedType(tycon, args) if !sym.exists || sym.isExemptFromExplicitChecks =>
+            // An invariant argument is treated as covariant, so that capture sets
+            // in its contravariant positions get their upper approximation. Not done
+            // for definitions that are visible in other compilation units, which
+            // see their types with all inferred capture sets dropped.
+            traverse(tycon)
+            val tparams = tycon.typeParams
+            args.lazyZip(tparams).foreach: (arg, tparam) =>
+              val sign = tparam.paramVarianceSign
+              atVariance(if sign == 0 then variance else variance * sign)(traverse(arg))
+            args.drop(tparams.length).foreach(traverse)
           case _ =>
             traverseChildren(t)
 
@@ -1096,6 +1113,14 @@ class CheckCaptures extends Recheck, SymTransformer:
         capt.println(i"constrain $arg: ${argType} with $hiBound: $boundRefs")
         checkSubset(argRefs, boundRefs, arg.srcPos,
           provenance = i"\nof the type parameter bound ${formal.bounds.hi}")
+      if arg.isInstanceOf[InferredTypeTree] then
+        // Typer inferred the argument ignoring capture sets, so it does not include
+        // the capture set of the lower bound. Violations are reported in postCheck.
+        val loRefs = formal.bounds.lo.captureSet
+        val isFBounded = loRefs.elems.exists:
+          case ref: TypeParamRef => ref.binder == binder
+          case _ => false
+        if !isFBounded then loRefs.subCaptures(argRefs)
       argType
 
     /** Faced with a tree of form `caps.contansImpl[CS, r.type]`, check that `R` is a tracked
@@ -1150,7 +1175,8 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       /** Use the capture sets of `tp2` in matching capture set variables in `tp1`.
        *  This is done by copying the elements from `tp2` sets to `tp1` sets
-       *  and marking the `tp1` sets as solved.
+       *  and marking the `tp1` sets as solved. Lambda types are matched
+       *  parameter by parameter, including the bounds of type parameters.
        */
       def adoptCaptures(tp1: Type, tp2: Type)(using Context): Unit = (tp1.dealias, tp2.dealias) match
         case (CapturingType(parent1, refs1), CapturingType(parent2, refs2)) =>
@@ -1164,6 +1190,16 @@ class CheckCaptures extends Recheck, SymTransformer:
           adoptCaptures(parent1, tp2)
         case (tp1, CapturingType(parent2, _)) =>
           adoptCaptures(tp1, parent2)
+        case (defn.RefinedFunctionOf(mt1), defn.RefinedFunctionOf(mt2)) =>
+          adoptCaptures(mt1, mt2)
+        case (mt1: MethodOrPoly, mt2: MethodOrPoly)
+        if mt1.isTermLambda == mt2.isTermLambda && mt1.paramNames.hasSameLengthAs(mt2.paramNames) =>
+          // References to parameters of `mt2` become references to parameters of `mt1`
+          mt1.paramInfos.lazyZip(mt2.instantiateParamInfos(mt1.paramRefs)).foreach(adoptCaptures)
+          adoptCaptures(mt1.resType, mt2.instantiate(mt1.paramRefs))
+        case (TypeBounds(lo1, hi1), TypeBounds(lo2, hi2)) =>
+          adoptCaptures(lo1, lo2)
+          adoptCaptures(hi1, hi2)
         case (FunctionOrMethod(args1, res1), FunctionOrMethod(args2, res2)) =>
           args1.lazyZip(args2).foreach(adoptCaptures)
           adoptCaptures(res1, res2)
