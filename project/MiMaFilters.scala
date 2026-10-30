@@ -18,6 +18,10 @@ object MiMaFilters {
         // new experimental language feature: method block end markers (SIP-77)
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$methodBlockEndMarkers$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$methodBlockEndMarkers$"),
+        // `Using.Manager`s whose lifetime is not tied to a lexical scope
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Using.unmanaged"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Using.managed"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Using.track"),
       ),
 
       // Additions since last LTS
