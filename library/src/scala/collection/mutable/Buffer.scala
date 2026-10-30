@@ -246,33 +246,45 @@ trait Buffer[A]
 
   // === ArrayDeque-style methods with default implementations ===
 
-  /** Optionally removes and returns the first element.
+  /** Optionally removes and returns the first element of this $coll.
    *
-   *  @return  `Some(firstElement)` if the buffer is non-empty, `None` otherwise
+   *  Runs in constant time on the default `Buffer` implementation, `ArrayDeque`.
+   *  In general it costs as much as `remove(0)`.
+   *
+   *  @return the removed first element if this $coll is nonempty, `None` if it is empty.
    */
   def removeHeadOption(): Option[A] =
     if (isEmpty) None else Some(removeHead())
 
-  /** Removes and returns the first element.
+  /** Removes and returns the first element of this $coll.
    *
-   *  @return  the removed first element
-   *  @throws NoSuchElementException if the buffer is empty
+   *  Runs in constant time on the default `Buffer` implementation, `ArrayDeque`.
+   *  In general it costs as much as `remove(0)`.
+   *
+   *  @return the removed first element.
+   *  @throws NoSuchElementException if this $coll is empty.
    */
   def removeHead(): A =
     if (isEmpty) throw new NoSuchElementException("empty collection")
     else remove(0)
 
-  /** Optionally removes and returns the last element.
+  /** Optionally removes and returns the last element of this $coll.
    *
-   *  @return  `Some(lastElement)` if the buffer is non-empty, `None` otherwise
+   *  Runs in constant time on the default `Buffer` implementation, `ArrayDeque`.
+   *  In general it costs as much as `remove(length - 1)`.
+   *
+   *  @return the removed last element if this $coll is nonempty, `None` if it is empty.
    */
   def removeLastOption(): Option[A] =
     if (isEmpty) None else Some(removeLast())
 
-  /** Removes and returns the last element.
+  /** Removes and returns the last element of this $coll.
    *
-   *  @return  the removed last element
-   *  @throws NoSuchElementException if the buffer is empty
+   *  Runs in constant time on the default `Buffer` implementation, `ArrayDeque`.
+   *  In general it costs as much as `remove(length - 1)`.
+   *
+   *  @return the removed last element.
+   *  @throws NoSuchElementException if this $coll is empty.
    */
   def removeLast(): A =
     if (isEmpty) throw new NoSuchElementException("empty collection")
@@ -280,34 +292,36 @@ trait Buffer[A]
 
   /** Removes all elements from this $coll and returns them.
    *
-   *  @return a sequence containing all removed elements
+   *  Runs in `O(n)` time, where `n` is the length of this $coll.
+   *
+   *  @return the removed elements, in their original order.
    */
   def removeAll(): scala.collection.immutable.Seq[A] = {
-    val elems = scala.collection.immutable.Seq.newBuilder[A]
-    elems.sizeHint(length)
-    while (nonEmpty) {
-      elems += removeHead()
-    }
-    elems.result()
+    val elems = scala.collection.immutable.Seq.from(this)
+    clear()
+    elems
   }
 
   /** Removes all elements from this $coll and returns them in reverse order.
    *
-   *  @return a sequence containing all removed elements in reverse order
+   *  Runs in `O(n)` time, where `n` is the length of this $coll.
+   *
+   *  @return the removed elements, last element first.
    */
   def removeAllReverse(): scala.collection.immutable.Seq[A] = {
-    val elems = scala.collection.immutable.Seq.newBuilder[A]
-    elems.sizeHint(length)
-    while (nonEmpty) {
-      elems += removeLast()
-    }
-    elems.result()
+    val elems = scala.collection.immutable.Seq.from(reverseIterator)
+    clear()
+    elems
   }
 
-  /** Removes and returns elements from the head of this $coll while they satisfy the predicate.
+  /** Removes elements from the front of this $coll for as long as they satisfy a predicate,
+   *  and returns them.
    *
-   *  @param f  the predicate used for choosing elements
-   *  @return   a sequence containing all removed elements
+   *  Runs in `O(k)` time on the default `Buffer` implementation, `ArrayDeque`, where `k` is the
+   *  number of removed elements. In general it costs as much as calling `removeHead()` `k` times.
+   *
+   *  @param f the predicate used to test elements.
+   *  @return  the removed elements, in their original order.
    */
   def removeHeadWhile(f: A => Boolean): scala.collection.immutable.Seq[A] = {
     val elems = scala.collection.immutable.Seq.newBuilder[A]
@@ -317,10 +331,14 @@ trait Buffer[A]
     elems.result()
   }
 
-  /** Removes and returns elements from the tail of this $coll while they satisfy the predicate.
+  /** Removes elements from the end of this $coll for as long as they satisfy a predicate,
+   *  and returns them.
    *
-   *  @param f  the predicate used for choosing elements
-   *  @return   a sequence containing all removed elements
+   *  Runs in `O(k)` time on the default `Buffer` implementation, `ArrayDeque`, where `k` is the
+   *  number of removed elements. In general it costs as much as calling `removeLast()` `k` times.
+   *
+   *  @param f the predicate used to test elements.
+   *  @return  the removed elements, last element first.
    */
   def removeLastWhile(f: A => Boolean): scala.collection.immutable.Seq[A] = {
     val elems = scala.collection.immutable.Seq.newBuilder[A]
@@ -330,34 +348,37 @@ trait Buffer[A]
     elems.result()
   }
 
-  /** Finds and removes the first element satisfying a predicate.
+  /** Removes and returns the first element at or after a given index that satisfies a predicate.
    *
-   *  @param p    the predicate used for choosing the first element
-   *  @param from the start index
-   *  @return the first element for which p yields true, or None if no such element exists
+   *  Runs in `O(n)` time on the default `Buffer` implementation, `ArrayDeque`, where `n` is the
+   *  length of this $coll. In general it costs as much as `indexWhere(p, from)` followed by `remove`.
+   *
+   *  @param p    the predicate used to test elements.
+   *  @param from the index at which to start searching.
+   *  @return     the removed element, or `None` if no element at or after `from` satisfies `p`.
    */
   def removeFirst(p: A => Boolean, from: Int = 0): Option[A] = {
     val i = indexWhere(p, from)
     if (i < 0) None else Some(remove(i))
   }
 
-  /** Removes and returns all elements satisfying the given predicate.
+  /** Removes all elements of this $coll that satisfy a predicate, and returns them.
    *
-   *  @param p  the predicate used for choosing elements
-   *  @return   a sequence of all removed elements
+   *  Runs in `O(n)` time, where `n` is the length of this $coll.
+   *
+   *  @param p the predicate used to test elements.
+   *  @return  the removed elements, in their original order.
    */
   def removeAll(p: A => Boolean): scala.collection.immutable.Seq[A] = {
-    val res = scala.collection.immutable.Seq.newBuilder[A]
-    var i = 0
-    while (i < size) {
-      if (p(this(i))) {
-        res += remove(i)
-        // don't increment i since remove shifts elements
-      } else {
-        i += 1
-      }
+    val removed = scala.collection.immutable.Seq.newBuilder[A]
+    val kept = scala.collection.immutable.Seq.newBuilder[A]
+    foreach(elem => if (p(elem)) removed += elem else kept += elem)
+    val res = removed.result()
+    if (res.nonEmpty) {
+      clear()
+      addAll(kept.result())
     }
-    res.result()
+    res
   }
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
