@@ -42,6 +42,11 @@ trait SetupAPI:
   /** Check to do after the capture checking traversal */
   def postCheck()(using Context): Unit
 
+  /** Replace the capture set variables in the infos of members updated by Setup
+   *  with constant capture sets, see `Setup.freezeInfos`.
+   */
+  def freezeInfos()(using Context): Unit
+
   /** Used for error reporting:
    *  Maps mutable variables to the symbols that capture them (in the
    *  CheckCaptures sense, i.e. symbol is referred to from a different method
@@ -584,6 +589,32 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     toBeUpdated += sym
     sym.updateInfo(thisPhase, info, newFlagsFor(sym), owner)
     toBeUpdated -= sym
+    if owner.isClass then updatedMembers += sym
+
+  /** The class members whose infos were updated in the current compilation unit */
+  private val updatedMembers = mutable.LinkedHashSet[Symbol]()
+
+  /** Once a compilation unit is checked, replace the capture set variables in the
+   *  infos of its members updated by Setup with constant capture sets of their
+   *  elements. These infos are seen when checking later compilation units, and in
+   *  later runs of the REPL, which bring forward the denotations of earlier lines.
+   *  These checks must not add elements to the variables, nor see variables of
+   *  an earlier run.
+   */
+  def freezeInfos()(using Context): Unit =
+    val freeze = new TypeMap:
+      def apply(t: Type) = t match
+        case t @ CapturingType(parent, refs) =>
+          val refs1 = refs match
+            case refs: CaptureSet.Const => refs
+            case _ => CaptureSet(refs.elems).withDescription(refs.description)
+          t.derivedCapturingType(this(parent), refs1)
+        case _ =>
+          mapOver(t)
+    for sym <- updatedMembers do
+      val denot = atPhase(thisPhase.next)(sym.denot)
+      if denot.isCompleted then denot.info = freeze(denot.info)
+    updatedMembers.clear()
 
   /** The info of `sym` at the CheckCaptures phase */
   extension (sym: Symbol) def nextInfo(using Context): Type =

@@ -2290,6 +2290,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         postCheck(unit.tpdTree)
         checkSelfTypes(unit.tpdTree)
         postCheckWF(unit.tpdTree)
+        setup.freezeInfos()
         if ctx.settings.YccDebug.value then
           show(unit.tpdTree) // this does not print tree, but makes its variables visible for dependency printing
     end checkUnit
