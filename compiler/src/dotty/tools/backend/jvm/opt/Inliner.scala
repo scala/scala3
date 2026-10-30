@@ -31,6 +31,9 @@ abstract class Inliner {
   def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit
 }
 
+// Invariant: any type that may be referenced by the optimized bytecode must be in `classBTypeCache` after optimization.
+// (For instance, if inlining brings references to types that weren't in the original bytecode,
+//  even if these types are otherwise not used, the optimizer must explicitly load them.)
 final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
                             heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
                             settings: OptimizerSettings) extends Inliner {
@@ -925,8 +928,11 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
           methodDeclClass                   <- bTypesFromClassfile.classBTypeFromParsedClassfile(methodDeclClassNode)
         } yield {
           val res = Inliner.memberIsAccessible(methodNode.access, methodDeclClass, methodRefClass, destinationClass)
-          // ensure the result ClassBType is cached (for stack map frame calculation)
-          if (res) bTypesFromClassfile.bTypeForDescriptorFromClassfile(Type.getReturnType(indy.desc).getDescriptor)
+          // ensure the types are cached (for stack map frame calculation)
+          if res then
+            bTypesFromClassfile.bTypeForDescriptorFromClassfile(Type.getReturnType(indy.desc).getDescriptor)
+            Type.getArgumentTypes(indy.bsm.getDesc).foreach(t => bTypesFromClassfile.bTypeForDescriptorFromClassfile(t.getDescriptor))
+            bTypesFromClassfile.bTypeForDescriptorFromClassfile(Type.getReturnType(indy.bsm.getDesc).getDescriptor)
           res
         }
 
