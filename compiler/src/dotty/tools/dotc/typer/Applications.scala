@@ -821,7 +821,7 @@ trait Applications extends Compatibility {
 
 
     /** Is `sym` a constructor of an annotation class, and are we in an
-     *  annotation? If so, we don't lift arguments. See [[Mode.InAnnotation]].
+     *  annotation? If so, we don't lift arguments. See `Mode.InAnnotation`.
      */
     protected final def isAnnotConstr(sym: Symbol): Boolean =
       ctx.mode.is(Mode.InAnnotation) && sym.isConstructor && sym.owner.isAnnotation

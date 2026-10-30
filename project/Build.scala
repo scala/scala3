@@ -1544,9 +1544,7 @@ object Build {
           val sjsSources = (trgDir ** "*.scala").get().toSet
           sjsSources.foreach(f => {
             val lines = IO.readLines(f)
-            val linesWithPackage = Shading.replacePackage(lines) {
-              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
-            }
+            val linesWithPackage = Shading.replacePackage(lines, "org.scalajs.ir", "dotty.tools.sjs.ir")
             IO.writeLines(f, linesWithPackage)
           })
           sjsSources
@@ -1673,9 +1671,7 @@ object Build {
           val sjsSources = (trgDir ** "*.scala").get().toSet
           sjsSources.foreach(f => {
             val lines = IO.readLines(f)
-            val linesWithPackage = Shading.replacePackage(lines) {
-              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
-            }
+            val linesWithPackage = Shading.replacePackage(lines, "org.scalajs.ir", "dotty.tools.sjs.ir")
             IO.writeLines(f, linesWithPackage)
           })
           sjsSources

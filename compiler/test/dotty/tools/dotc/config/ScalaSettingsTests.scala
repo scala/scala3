@@ -135,10 +135,10 @@ class ScalaSettingsTests:
     for
       test <- tests
       (old: Setting[?], fwd: Setting[?]) = test.take(2): @unchecked
-      SettingAlias(alias, _) <- old.aliases
+      alias <- old.allFullNames
     do
-      assert(old.deprecation.isDefined)
-      val argString = if test.size > 2 then s"$alias:${test(2)}" else alias
+      assert(old.deprecationMessage != "")
+      val argString = if test.size > 2 then s"$alias${test(2)}" else alias
       val argSummary = ArgsSummary(settings.defaultState, arguments = argString :: Nil, errors = Nil, warnings = Nil)
       val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
       def problem = s"Setting alias $argString was not forwarded to ${fwd.name}"
