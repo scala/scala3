@@ -1013,12 +1013,13 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           MethodType(Nil, Nil,
             eraseResult(rt.translateFromRepeated(toArray = sourceLanguage.isJava)))
       case tp1: PolyType =>
-        if sym.isAnonymousFunction then
-          val defn.FunctionTypeOfMethod(mt) = tp1.resType.dealias.runtimeChecked
-          this(mt)
-        else eraseResult(tp1.resType) match
-          case rt: MethodType => rt
-          case rt => MethodType(Nil, Nil, rt)
+        // The method `def $anonfun[Ts]: R` of a polymorphic closure erases like the value
+        // parameter closure it returns if `R` is a function type, otherwise as usual.
+        (if sym.isAnonymousFunction then tp1.resType.dealias else NoType) match
+          case defn.FunctionTypeOfMethod(mt) => this(mt)
+          case _ => eraseResult(tp1.resType) match
+            case rt: MethodType => rt
+            case rt => MethodType(Nil, Nil, rt)
       case tp1 =>
         this(tp1)
 
