@@ -31,6 +31,13 @@ object ccConfig:
    */
   inline val alwaysRepeatRun = false
 
+  /** The maximal number of capture checking runs of a compilation unit. Another run
+   *  is scheduled if a use set is extended after a capture set that depends on it was
+   *  solved provisionally. An extension that would need another run after the last
+   *  one is an error.
+   */
+  inline val maxRuns = 4
+
   /** After capture checking, check that no capture set contains ParamRefs that are outside
    *  its scope. This used to occur and was fixed by healTypeParam. It should no longer
    *  occur now.

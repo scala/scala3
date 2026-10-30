@@ -46,3 +46,11 @@ trait Signatures:
 
   // A capture set on a polymorphic function type is shown on the whole function, not its result type
   val polyCapturing: ([A] -> A -> Int)^
+
+class Box[A](val value: A)
+object fsGlobal extends FS
+
+// The parameter types and bounds of lambdas in inferred types are shown as written
+object Lambdas:
+  val boxed = Box((x: AnyRef^{fsGlobal}) => 1) //expected: val boxed: Box[AnyRef^{fsGlobal} -> Int]
+  val bounded = Box([C^ <: {fsGlobal}] => (x: AnyRef^{C}) => 1) //expected: val bounded: Box[[C^ <: {fsGlobal}] -> AnyRef^{C} -> Int]

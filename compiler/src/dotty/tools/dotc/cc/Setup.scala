@@ -42,6 +42,16 @@ trait SetupAPI:
   /** Check to do after the capture checking traversal */
   def postCheck()(using Context): Unit
 
+  /** Replace the capture set variables in the infos of members updated by Setup
+   *  with constant capture sets, see `Setup.freezeInfos`.
+   */
+  def freezeInfos()(using Context): Unit
+
+  /** The type `tp` of an inferred type tree of `sym` as other compilation units
+   *  see it, see `Setup.externallyVisibleType`.
+   */
+  def externallyVisibleType(tp: Type, sym: Symbol)(using Context): Type
+
   /** Used for error reporting:
    *  Maps mutable variables to the symbols that capture them (in the
    *  CheckCaptures sense, i.e. symbol is referred to from a different method
@@ -252,6 +262,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   private trait SetupTypeMap extends FollowAliasesMap:
     private var isTopLevel = true
 
+    /** Is the current position at or below a contravariant position? */
+    protected def belowContravariant: Boolean = !isTopLevel
+
     protected def innerApply(tp: Type): Type
 
     final def apply(tp: Type) =
@@ -395,7 +408,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             addVar(apply(parent), tp)
           case AnnotatedType(parent, annot)
           if annot.symbol == defn.DeclaredAnnot =>
-            transformExplicitType(parent, sym, initialVariance = variance)
+            if ctx.mode.is(Mode.CCPreciseOwner) && hasWellformedCaptureSets(parent) then
+              transformDeclared(parent, sym, variance, belowContravariant)
+            else
+              // In type arguments and other templates, capture sets stay variables,
+              // so that they can be unified with the templates of other branches. They
+              // are fixed through the result type of the enclosing definition.
+              this(parent)
           case tp @ RefinedType(parent, rname, rinfo) =>
             val saved = refiningNames
             refiningNames += rname
@@ -525,6 +544,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             else if ann.symbol == defn.InferredAnnot then
               transformInferredType(parent, sym, initialVariance = variance)
                 // typeArgFormal is NoType here since we are inferring inside an argument, not at the toplevel
+            else if ann.symbol == defn.DeclaredAnnot then
+              this(parent)
             else
               t.derivedAnnotatedType(this(parent), ann)
           case throwsAlias(res, exc) =>
@@ -576,14 +597,90 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             |following a function arrow such as `=>` or `->`.""")
 
     if initialVariance < 0 then tp2
-    else globalCapToLocal(tp2, Origin.InDecl(sym))
+    else globalCapToLocal(tp2, Origin.InDecl(sym), initialVariance)
   end transformExplicitType
+
+  /** A declared part `tp` at variance `variance` of an inferred type of `sym`, transformed
+   *  like an explicit type in the same position. Roots in capture set bounds stay global,
+   *  as they do in explicit types, since they only bound the instances of a capture set
+   *  parameter. So do roots at or below a contravariant position, which GlobalCapToLocal
+   *  does not map in explicit types.
+   */
+  private def transformDeclared(tp: Type, sym: Symbol, variance: Int, belowContravariant: Boolean)(using Context): Type =
+    if tp.derivesFromCapSet || belowContravariant then transformExplicitType(tp, sym, initialVariance = -1)
+    else transformExplicitType(tp, sym, initialVariance = variance)
+
+  /** Do all @retains annotations in `tp` denote capture sets? */
+  private def hasWellformedCaptureSets(tp: Type)(using Context): Boolean =
+    !tp.existsPart:
+      case AnnotatedType(_, ann: RetainingAnnotation) if ann.isStrict =>
+        try { ann.toCaptureSet; false }
+        catch case _: IllegalCaptureRef => true
+      case _ => false
 
   /** Update info of `sym` for CheckCaptures phase only */
   private def updateInfo(sym: Symbol, info: Type, owner: Symbol)(using Context) =
     toBeUpdated += sym
     sym.updateInfo(thisPhase, info, newFlagsFor(sym), owner)
     toBeUpdated -= sym
+    if owner.isClass then updatedMembers += sym
+
+  /** The class members whose infos were updated in the current compilation unit */
+  private val updatedMembers = mutable.LinkedHashSet[Symbol]()
+
+  /** Once a compilation unit is checked, replace the capture set variables in the
+   *  infos of its members updated by Setup with constant capture sets of their
+   *  elements. These infos are seen when checking later compilation units, and in
+   *  later runs of the REPL, which bring forward the denotations of earlier lines.
+   *  These checks must not add elements to the variables, nor see variables of
+   *  an earlier run.
+   */
+  def freezeInfos()(using Context): Unit =
+    val freeze = new TypeMap:
+      def apply(t: Type) = t match
+        case t @ CapturingType(parent, refs) =>
+          val refs1 = refs match
+            case refs: CaptureSet.Const => refs
+            case _ => CaptureSet(refs.elems).withDescription(refs.description)
+          t.derivedCapturingType(this(parent), refs1)
+        case _ =>
+          mapOver(t)
+    for sym <- updatedMembers do
+      val denot = atPhase(thisPhase.next)(sym.denot)
+      if denot.isCompleted then denot.info = freeze(denot.info)
+    updatedMembers.clear()
+
+  /** The type `tp` of an inferred type tree of `sym` as other compilation units see it.
+   *  Capture sets are dropped except in parts marked with `@caps.internal.declared`.
+   *  `^` annotations in contravariant and invariant positions are kept as well, since
+   *  other units see them too and rely on them for parameter types. Declared parts are
+   *  transformed as when Setup keeps them in a result type. Like there, the capture sets
+   *  in declared upper bounds are boxed.
+   */
+  def externallyVisibleType(tp: Type, sym: Symbol)(using Context): Type = // TODO we should drop retains from inferred types before unpickling
+    def isDeclared(t: Type) = t match
+      case AnnotatedType(_, annot) => annot.symbol == defn.DeclaredAnnot
+      case _ => false
+    // After Setup, @retains annotations would be taken for capturing types
+    atPhase(thisPhase):
+      val tm = new TypeMap:
+        var belowContravariant = false
+        def apply(t: Type) =
+          val saved = belowContravariant
+          if variance < 0 then belowContravariant = true
+          try t match
+            case AnnotatedType(parent, annot)
+            if annot.symbol.isRetains && (annot.symbol != defn.RetainsCapAnnot || variance > 0)
+                && !parent.derivesFromCapSet =>
+              apply(parent)
+            case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
+              transformDeclared(parent, sym, variance, belowContravariant)
+            case t: RealTypeBounds if isDeclared(t.hi) =>
+              t.derivedTypeBounds(atVariance(-variance)(this(t.lo)), this(t.hi).boxDeeply)
+            case _ =>
+              mapOver(t)
+          finally belowContravariant = saved
+      tm(tp)
 
   /** The info of `sym` at the CheckCaptures phase */
   extension (sym: Symbol) def nextInfo(using Context): Type =
@@ -759,7 +856,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   psymss.head.lazyZip(mt.paramInfos).map(localCapToGlobal),
                 resType = paramsToCap(psymss.tail, mt.resType))
           case mt: PolyType =>
-            mt.derivedLambdaType(resType = paramsToCap(psymss.tail, mt.resType))
+            // As in declared polymorphic types, roots in bounds are global, not
+            // local roots of the type parameters' own declarations (see transformSym)
+            mt.derivedLambdaType(
+              paramInfos =
+                mt.paramInfos.zipWithConserve(psymss.head)((bounds, tparam) =>
+                  localCapToGlobal(tparam, bounds).bounds),
+              resType = paramsToCap(psymss.tail, mt.resType))
           case _ => mt
 
         // If there's a change in the signature or owner, update the info of `sym`

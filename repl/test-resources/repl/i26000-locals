@@ -1,0 +1,18 @@
+//> using options -language:experimental.captureChecking
+scala> import caps.*
+scala> class File { override def toString = "File" }
+// defined class File
+scala> class Out[+A](val value: A) { override def toString = "Out" }
+// defined class Out
+scala> val io: File^ = File()
+val io: File^ = File
+scala> val w = { val loc: File^ = File(); Out((x: File^{io, loc}) => ()) }
+val w: Out[(x: File^{io}) -> Unit] = Out
+scala> val l = List(w)
+val l: List[Out[(x: File^{io}) -> Unit]] = List(Out)
+scala> l.head.value(io)
+scala> def mk() = { val loc: File^ = File(); Out((x: File^{io, loc}) => ()) }
+def mk(): Out[(x: File^{io}) -> Unit]
+scala> val l2 = List(mk())
+val l2: List[Out[(x: File^{io}) -> Unit]] = List(Out)
+scala> l2.head.value(io)

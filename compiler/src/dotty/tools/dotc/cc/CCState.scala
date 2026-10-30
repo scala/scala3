@@ -112,6 +112,11 @@ class CCState:
   /* A cache for CaptureOps.useSet */
   private[cc] val useSetCache: EqHashMap[Symbol, CaptureSet] = EqHashMap()
 
+  /** Is `cs` the use set of its owner? Use sets are kept from one capture checking
+   *  run to the next, whereas Setup creates the capture sets of types anew in each run.
+   */
+  def isUseSet(cs: CaptureSet): Boolean = useSetCache.lookup(cs.owner) eq cs
+
   /** A cache that stores for each class the classifiers of all LocalCap instances
    *  in the types of its fields and the fields that contribute such LocalCap instances.
    */

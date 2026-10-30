@@ -427,15 +427,53 @@ extension (tp: Type)
 
   def isArrayUnderStrictMut(using Context): Boolean = tp.classSymbol.isArrayUnderStrictMut
 
-  /** Drop @retains annotations everywhere */
-  def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
-    val tm = new TypeMap:
-      def apply(t: Type) = t match
-        case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
-          apply(parent)
-        case _ =>
-          mapOver(t)
-    tm(tp)
+  /** Does some part of this type satisfy `p`? Unlike `existsPart`, this also
+   *  looks at the expansions of type aliases.
+   */
+  private def existsPartFollowingAliases(p: Type => Boolean)(using Context): Boolean =
+    val seen = mutable.HashSet[Type]()
+    def loop(t: Type): Boolean = t.existsPart: part =>
+      p(part) || part.match
+        case part: (TypeRef | AppliedType) =>
+          val expanded = part.dealiasKeepAnnots
+          (expanded ne part) && !seen.contains(part) && { seen += part; loop(expanded) }
+        case _ => false
+    loop(tp)
+
+  /** Does this type contain a @retains annotation, possibly in the
+   *  expansion of a type alias such as `=>`?
+   */
+  def containsRetains(using Context): Boolean =
+    tp.existsPartFollowingAliases:
+      case AnnotatedType(_, annot) => annot.symbol.isRetainsLike
+      case _ => false
+
+  /** Mark this type with `@caps.internal.declared` if it contains a capture set.
+   *  The bounds of a type bounds and the result of a by-name type are marked
+   *  separately.
+   *  @param allowFresh  If false, types that mention `caps.fresh` are not marked,
+   *                     since such types cannot be unified with the templates of
+   *                     type arguments.
+   */
+  def markDeclared(allowFresh: Boolean = false)(using Context): Type = tp match
+    case tp: TypeBounds =>
+      tp.derivedTypeBounds(tp.lo.markDeclared(allowFresh), tp.hi.markDeclared(allowFresh))
+    case tp: ExprType =>
+      tp.derivedExprType(tp.resType.markDeclared(allowFresh))
+    case _ =>
+      if tp.hasAnnotation(defn.DeclaredAnnot) || !tp.containsRetains || !allowFresh && tp.mentionsFresh
+      then tp
+      else AnnotatedType(tp, CompactAnnotation(defn.DeclaredAnnot.typeRef))
+
+  /** Does a @retains annotation in this type mention `caps.fresh`? */
+  private def mentionsFresh(using Context): Boolean =
+    def isFresh(elem: Type): Boolean = elem match
+      case AnnotatedType(parent, _) => isFresh(parent) // fresh.rd, fresh.only[K]
+      case elem => elem.isCapsFreshRef
+    tp.existsPartFollowingAliases:
+      case AnnotatedType(_, annot: RetainingAnnotation) =>
+        annot.retainedType.retainedElementsRaw.exists(isFresh)
+      case _ => false
 
   private def containsGlobal(c: GlobalCap, directly: Boolean)(using Context): Boolean =
     val search = new TypeAccumulator[Boolean]:
@@ -791,13 +829,35 @@ extension (sym: Symbol) {
     && sym.owner.is(Package)
     && sym.owner.name.toString.contains("snippet")
 
+  /** Is the type of this symbol also seen outside its compilation unit, in other
+   *  compilation units or in later REPL lines? Other units see it with its inferred
+   *  capture sets dropped, later REPL lines see it as checked in this unit.
+   *  Besides symbols that are not local to their unit, this holds for `protected[C]`
+   *  members of classes that other units can extend, and for `@publicInBinary`
+   *  members, which inline methods can expose.
+   */
+  def isSeenOutsideUnit(using Context): Boolean =
+    sym.exists
+    && (!sym.isLocalToCompilationUnit
+        || sym.is(Protected) && sym.owner.isExtensibleClass && sym.owner.isSeenOutsideUnit
+        || sym.hasAnnotation(defn.PublicInBinaryAnnot))
+
+  /** Can other compilation units supply values of the type of this symbol that they
+   *  see, by assigning to it or by overriding it? Then capture sets in contravariant
+   *  positions of its inferred type are not widened to their upper approximation, so
+   *  that the type in this unit does not accept more than the type other units see.
+   */
+  def isWrittenOutsideUnit(using Context): Boolean =
+    sym.isSeenOutsideUnit && !sym.is(Synthetic) && !sym.name.is(DefaultGetterName)
+    && (sym.isMutableVar || sym.owner.isClass && !sym.isEffectivelyFinal)
+
   /** Is symbol exempt from checking that its type or uses clause must
    *  be given explicitly? This is the case for symbols that are not
    *  visible outside the compilation unit where they are defined,
    *  and also for two pragmatic exemptions, explained below.
    */
   def isExemptFromExplicitChecks(using Context): Boolean =
-    sym.isLocalToCompilationUnit
+    !sym.isSeenOutsideUnit
     || sym.isScalaDocSnippet
     || sym.name.isReplWrapperName
     || sym.isConstructor && sym.owner.name.isReplWrapperName
@@ -897,17 +957,39 @@ extension (clss: List[ClassSymbol])
 /** A prototype that indicates selection */
 class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) extends typer.ProtoTypes.WildcardSelectionProto
 
+/** A @retains annotation with retained elements `elems`, of the same kind as `like` */
+def retainingAnnotation(elems: List[Type], like: RetainingAnnotation)(using Context): RetainingAnnotation =
+  val cls = if like.symbol == defn.RetainsCapAnnot then defn.RetainsAnnot else like.symbol.asClass
+  if elems.isEmpty then RetainingAnnotation(cls, defn.NothingType)
+  else if like.symbol == defn.RetainsCapAnnot && elems.length == 1 && elems.head.isCapsAnyRef then like
+  else RetainingAnnotation(cls, elems.reduceLeft(OrType(_, _, soft = false)))
+
+/** The declared parts of `tp` are no longer declared, so their capture sets are
+ *  inferred. Since other compilation units see inferred capture sets as empty,
+ *  `^` annotations in these parts are cleaned as well.
+ */
+def inferDeclared(tp: Type)(using Context): Type =
+  val clean = new TypeMap:
+    def apply(t: Type) = t match
+      case t @ AnnotatedType(parent, annot) if annot.symbol == defn.RetainsCapAnnot =>
+        AnnotatedType(this(parent), RetainingAnnotation(defn.RetainsAnnot, defn.NothingType))
+      case _ => mapOver(t)
+  val tm = new TypeMap:
+    def apply(t: Type) = t match
+      case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot => clean(parent)
+      case _ => mapOver(t)
+  tm(tp)
+
 /** Drop retains annotations in the inferred type if CC is not enabled
  *  or transform them into retains annotations with Nothing (i.e. empty set) as
  *   argument if CC is enabled (we need to do that to keep by-name status).
+ *  Parts marked with `@caps.internal.declared` are kept as they are.
  */
 class CleanupRetains(using Context) extends TypeMap:
-  var retainsFound: Boolean = false
   def apply(tp: Type): Type = tp match
     case tp @ AnnotatedType(parent, annot: RetainingAnnotation) =>
       if Feature.ccEnabled then
-        retainsFound = true
-        if annot.symbol == defn.RetainsCapAnnot then tp
+        if annot.symbol == defn.RetainsCapAnnot then tp.derivedAnnotatedType(this(parent), annot)
         else AnnotatedType(this(parent), RetainingAnnotation(annot.symbol.asClass, defn.NothingType))
       else this(parent)
     case tp @ AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>

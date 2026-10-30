@@ -235,7 +235,10 @@ sealed abstract class CaptureSet extends Showable:
   protected def addIfHiddenOrFail(elem: Capability)(using ctx: Context, vs: VarState): Boolean =
     elems.exists(_.maxSubsumes(elem, canAddHidden = true))
     || elem.isKnownEmpty
-    || failWith(IncludeFailure(this, elem))
+    || {
+      ExplicitTypeNeeded.forSet(this).foreach(TypeComparer.addErrorNote)
+      failWith(IncludeFailure(this, elem))
+    }
 
   /** If this is a variable, add `cs` as a dependent set */
   protected def addDependent(cs: CaptureSet)(using Context, VarState): Boolean
@@ -922,7 +925,9 @@ object CaptureSet:
         addIfHiddenOrFail(elem)
       else if !levelOK(elem) then
         failWith(IncludeFailure(this, elem, levelError = true))    // or `elem` is not visible at the level of the set.
-      else if !elem.tryClassifyAs(classifier) then
+      else if !elem.coreType.derivesFromCapSet && !elem.tryClassifyAs(classifier) then
+        // A capture set parameter is not classified, as in constant capture sets,
+        // since it stands for capture sets that are known only after instantiation
         //println(i"cannot classify $elem as $classifier, ${elem.asInstanceOf[CoreCapability].classifier}")
         failWith(IncludeFailure(this, elem))
       else
@@ -965,7 +970,9 @@ object CaptureSet:
       case _: GlobalCap =>
         rootLimit == null
       case core: ParamRef =>
-        isPartOf(core.binder.resType)
+        // A parameter is also in scope in the parameter infos of its binder,
+        // as in the bound of `D` in `[C^, D^ >: {C}]`
+        isPartOf(core.binder)
       case _ =>
         if owner.exists then
           val elemVis = elem.visibility
@@ -1027,7 +1034,9 @@ object CaptureSet:
           .map(GlobalCapToLocal(Origin.Unknown).inverse)    // local -> global
           .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
-        val newElems = approx.elems -- elems
+        // Elements that are not visible where the variable is defined are dropped.
+        // That is sound since the variable is in a contravariant position.
+        val newElems = (approx.elems -- elems).filter(levelOK)
         given VarState()
         if tryInclude(newElems, empty) then
           markSolved(provisional = false)
@@ -1431,6 +1440,29 @@ object CaptureSet:
 
   /** A TypeMap that is the identity on capabilities */
   trait IdentityCaptRefMap extends TypeMap
+
+  /** A note that `sym` needs an explicit type, since a capability cannot be included
+   *  in a capture set of its inferred type. Capture sets in the inferred types of
+   *  definitions that other compilation units or later REPL lines see are solved for good.
+   */
+  case class ExplicitTypeNeeded(sym: Symbol) extends Note:
+    def render(using Context) =
+      i"""
+         |
+         |The capture set is part of the inferred type of $sym, which other compilation
+         |units or later REPL lines see as well. To allow this, $sym needs an explicit type."""
+    override def covers(other: Note)(using Context) = other match
+      case other: ExplicitTypeNeeded => other.sym == sym
+      case _ => false
+
+  object ExplicitTypeNeeded:
+    /** The note for `cs`, if `cs` is a solved capture set in such an inferred type */
+    def forSet(cs: CaptureSet)(using Context): Option[ExplicitTypeNeeded] = cs match
+      case cs: VarInTypeTree
+      if cs.isConst && !cs.isProvisionallySolved && cs.owner.isTerm && !cs.owner.isAnonymousFunction
+          && cs.owner.isSeenOutsideUnit =>
+        Some(ExplicitTypeNeeded(cs.owner))
+      case _ => None
 
   /** Failure indicating that `elem` cannot be included in `cs` */
   case class IncludeFailure(cs: CaptureSet, elem: Capability, levelError: Boolean = false)
