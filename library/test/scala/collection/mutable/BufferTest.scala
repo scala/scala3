@@ -110,4 +110,25 @@ class BufferTest {
     assertEquals(Seq(2, 4, 6), allMatch.removeAll(_ % 2 == 0))
     assertTrue(allMatch.isEmpty)
   }
+
+  // `ArrayDeque` overrides these, so test the default implementations on other buffers
+  @Test
+  def removeAllDefaults: Unit =
+    for (mk <- Seq[Seq[Int] => Buffer[Int]](ArrayBuffer.from, ListBuffer.from)) {
+      val all = mk(Seq(1, 2, 3))
+      assertEquals(Seq(1, 2, 3), all.removeAll())
+      assertTrue(all.isEmpty)
+
+      val reversed = mk(Seq(1, 2, 3))
+      assertEquals(Seq(3, 2, 1), reversed.removeAllReverse())
+      assertTrue(reversed.isEmpty)
+
+      val matching = mk(Seq(1, 2, 3, 4, 5))
+      assertEquals(Seq(2, 4), matching.removeAll(_ % 2 == 0))
+      assertEquals(Seq(1, 3, 5), matching)
+
+      val noneMatch = mk(Seq(1, 3, 5))
+      assertEquals(Seq(), noneMatch.removeAll(_ % 2 == 0))
+      assertEquals(Seq(1, 3, 5), noneMatch)
+    }
 }

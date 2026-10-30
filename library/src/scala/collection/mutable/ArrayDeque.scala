@@ -287,21 +287,25 @@ class ArrayDeque[A] protected (
     this
   }
 
-  /**
+  /** Optionally removes and returns the first element of this $coll.
     *
-    * @param resizeInternalRepr If this is set, resize the internal representation to reclaim space once in a while
-    * @return
+    *  Runs in constant time, unless `resizeInternalRepr` is set.
+    *
+    *  @param resizeInternalRepr if `true`, shrinks the internal array when it is less than half full,
+    *                            which copies the remaining elements when it happens.
+    *  @return the removed first element if this $coll is nonempty, `None` if it is empty.
     */
   def removeHeadOption(resizeInternalRepr: Boolean = false): Option[A] =
     if (isEmpty) None else Some(removeHeadAssumingNonEmpty(resizeInternalRepr))
 
-  /**
-    * Unsafely remove the first element (throws exception when empty)
-    * See also removeHeadOption()
+  /** Removes and returns the first element of this $coll.
     *
-    * @param resizeInternalRepr If this is set, resize the internal representation to reclaim space once in a while
-    * @throws NoSuchElementException when empty
-    * @return
+    *  Runs in constant time, unless `resizeInternalRepr` is set. See also `removeHeadOption`.
+    *
+    *  @param resizeInternalRepr if `true`, shrinks the internal array when it is less than half full,
+    *                            which copies the remaining elements when it happens.
+    *  @return the removed first element.
+    *  @throws NoSuchElementException if this $coll is empty.
     */
   def removeHead(resizeInternalRepr: Boolean = false): A =
     if (isEmpty) throw new NoSuchElementException(s"empty collection") else removeHeadAssumingNonEmpty(resizeInternalRepr)
@@ -314,21 +318,25 @@ class ArrayDeque[A] protected (
     elem.asInstanceOf[A]
   }
 
-  /**
+  /** Optionally removes and returns the last element of this $coll.
     *
-    * @param resizeInternalRepr If this is set, resize the internal representation to reclaim space once in a while
-    * @return
+    *  Runs in constant time, unless `resizeInternalRepr` is set.
+    *
+    *  @param resizeInternalRepr if `true`, shrinks the internal array when it is less than half full,
+    *                            which copies the remaining elements when it happens.
+    *  @return the removed last element if this $coll is nonempty, `None` if it is empty.
     */
   def removeLastOption(resizeInternalRepr: Boolean = false): Option[A] =
     if (isEmpty) None else Some(removeLastAssumingNonEmpty(resizeInternalRepr))
 
-  /**
-    * Unsafely remove the last element (throws exception when empty)
-    * See also removeLastOption()
+  /** Removes and returns the last element of this $coll.
     *
-    * @param resizeInternalRepr If this is set, resize the internal representation to reclaim space once in a while
-    * @throws NoSuchElementException when empty
-    * @return
+    *  Runs in constant time, unless `resizeInternalRepr` is set. See also `removeLastOption`.
+    *
+    *  @param resizeInternalRepr if `true`, shrinks the internal array when it is less than half full,
+    *                            which copies the remaining elements when it happens.
+    *  @return the removed last element.
+    *  @throws NoSuchElementException if this $coll is empty.
     */
   def removeLast(resizeInternalRepr: Boolean = false): A =
     if (isEmpty) throw new NoSuchElementException(s"empty collection") else removeLastAssumingNonEmpty(resizeInternalRepr)
@@ -341,9 +349,11 @@ class ArrayDeque[A] protected (
     elem.asInstanceOf[A]
   }
 
-  /**
-    * Removes all elements from this collection and returns the elements while emptying this data structure.
-    * @return
+  /** Removes all elements from this $coll and returns them.
+    *
+    *  Runs in `O(n)` time, where `n` is the length of this $coll.
+    *
+    *  @return the removed elements, in their original order.
     */
   override def removeAll(): scala.collection.immutable.Seq[A] = {
     val elems = scala.collection.immutable.Seq.newBuilder[A]
@@ -354,9 +364,11 @@ class ArrayDeque[A] protected (
     elems.result()
   }
 
-  /**
-    * Removes all elements from this collection and returns the elements in reverse while emptying this data structure.
-    * @return
+  /** Removes all elements from this $coll and returns them in reverse order.
+    *
+    *  Runs in `O(n)` time, where `n` is the length of this $coll.
+    *
+    *  @return the removed elements, last element first.
     */
   override def removeAllReverse(): scala.collection.immutable.Seq[A] = {
     val elems = scala.collection.immutable.Seq.newBuilder[A]
@@ -367,11 +379,13 @@ class ArrayDeque[A] protected (
     elems.result()
   }
 
-  /**
-    * Returns and removes all elements from the left of this queue which satisfy the given predicate
+  /** Removes elements from the front of this $coll for as long as they satisfy a predicate,
+    *  and returns them.
     *
-    *  @param f   the predicate used for choosing elements
-    *  @return
+    *  Runs in `O(k)` time, where `k` is the number of removed elements.
+    *
+    *  @param f the predicate used to test elements.
+    *  @return  the removed elements, in their original order.
     */
   override def removeHeadWhile(f: A => Boolean): scala.collection.immutable.Seq[A] = {
     val elems = scala.collection.immutable.Seq.newBuilder[A]
@@ -381,11 +395,13 @@ class ArrayDeque[A] protected (
     elems.result()
   }
 
-  /**
-    * Returns and removes all elements from the right of this queue which satisfy the given predicate
+  /** Removes elements from the end of this $coll for as long as they satisfy a predicate,
+    *  and returns them.
     *
-    *  @param f   the predicate used for choosing elements
-    *  @return
+    *  Runs in `O(k)` time, where `k` is the number of removed elements.
+    *
+    *  @param f the predicate used to test elements.
+    *  @return  the removed elements, last element first.
     */
   override def removeLastWhile(f: A => Boolean): scala.collection.immutable.Seq[A] = {
     val elems = scala.collection.immutable.Seq.newBuilder[A]
@@ -395,24 +411,27 @@ class ArrayDeque[A] protected (
     elems.result()
   }
 
-  /** Returns the first element which satisfies the given predicate after or at some start index
-    * and removes this element from the collections
+  /** Removes and returns the first element at or after a given index that satisfies a predicate.
     *
-    *  @param p   the predicate used for choosing the first element
-    *  @param from the start index
-    *  @return the first element of the queue for which p yields true
+    *  Runs in `O(n)` time, where `n` is the length of this $coll: finding the element at index `i`
+    *  takes `O(i)` time and removing it takes `O(min(i, n - i))` time.
+    *
+    *  @param p    the predicate used to test elements.
+    *  @param from the index at which to start searching.
+    *  @return     the removed element, or `None` if no element at or after `from` satisfies `p`.
     */
   override def removeFirst(p: A => Boolean, from: Int = 0): Option[A] = {
     val i = indexWhere(p, from)
     if (i < 0) None else Some(remove(i))
   }
 
-  /** Returns all elements in this collection which satisfy the given predicate
-    * and removes those elements from this collections.
+  /** Removes all elements of this $coll that satisfy a predicate, and returns them.
     *
-    *  @param p   the predicate used for choosing elements
-    *  @return    a sequence of all elements in the queue for which
-    *             p yields true.
+    *  Runs in `O(n)` time, where `n` is the length of this $coll, using a single pass
+    *  that compacts the remaining elements in place.
+    *
+    *  @param p the predicate used to test elements.
+    *  @return  the removed elements, in their original order.
     */
   override def removeAll(p: A => Boolean): scala.collection.immutable.Seq[A] = {
     val res = scala.collection.immutable.Seq.newBuilder[A]
