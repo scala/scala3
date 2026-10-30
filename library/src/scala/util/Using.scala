@@ -217,7 +217,7 @@ object Using {
       resources = new Resource(resource) :: resources
     }
 
-    private def release(primary: Throwable | Null): Unit = {
+    private[Using] def release(primary: Throwable | Null): Unit = {
       var toThrow = primary
       closed = true
       var rs = resources
@@ -278,52 +278,6 @@ object Using {
      */
     def apply[A](op: Manager => A): Try[A] = Try { (new Manager).manage(op) }
 
-    /** Performs an operation using a new `Manager`, *without* closing the `Manager`
-     *  afterwards, and returns an `AutoCloseable` which closes it, together with the
-     *  result of the operation.
-     *
-     *  If the operation throws an exception, the `Manager` is closed, releasing the
-     *  resources acquired so far (in reverse order of acquisition), and the exception
-     *  is re-thrown. Otherwise, the caller is responsible for eventually calling `close`
-     *  on the returned `AutoCloseable`, which releases the resources (in reverse order
-     *  of acquisition); they are not released otherwise. Calling `close` again has no
-     *  effect. Prefer [[Using.managed `Using.managed`]] or [[Manager$.apply `Manager.apply`]]
-     *  whenever the resources are only needed within a single block of code.
-     *
-     *  This is useful when resources need to be managed across lifecycle callbacks,
-     *  e.g. acquired in a `beforeAll` hook of a test framework and released in `afterAll`,
-     *  or released when an asynchronous computation completes.
-     *
-     *  The `Manager` is passed to the operation as a context parameter, so that it can be
-     *  picked up by resources which require a `Manager` (see the note on [[Manager]]).
-     *  Other resources can be registered with `summon[Using.Manager]`.
-     *
-     *  Example:
-     *  ```
-     *  val (resources, (reader, writer)) = Using.Manager.allocate {
-     *   val reader = new SafeFileReader("in.txt") // registers itself with the given `Manager`
-     *   val writer = summon[Using.Manager](new FileWriter("out.txt"))
-     *   (reader, writer)
-     *  }
-     *  Future(writer.write(reader.readLine())).andThen(_ => resources.close())
-     *  ```
-     *
-     *  $suppressionBehavior
-     *
-     *  @tparam A the return type of the operation
-     *  @param op the operation to perform using the manager
-     *  @return an `AutoCloseable` which closes the `Manager`, and the result of the operation
-     */
-    def allocate[A](op: Manager ?=> A): (AutoCloseable, A) = {
-      val manager = new Manager
-      try ((() => manager.release(null)): AutoCloseable, op(using manager))
-      catch {
-        case t: Throwable =>
-          manager.release(t)
-          throw t // unreachable, `release` always throws
-      }
-    }
-
     private final class Resource[R](resource: R)(implicit releasable: Releasable[R]) {
       def release(): Unit = releasable.release(resource)
     }
@@ -354,6 +308,52 @@ object Using {
    *         releasing the resources throws
    */
   def managed[A](op: Manager ?=> A): A = (new Manager).manage(op(using _))
+
+  /** Performs an operation using a new `Manager`, *without* closing the `Manager`
+   *  afterwards, and returns an `AutoCloseable` which closes it, together with the
+   *  result of the operation.
+   *
+   *  If the operation throws an exception, the `Manager` is closed, releasing the
+   *  resources acquired so far (in reverse order of acquisition), and the exception
+   *  is re-thrown. Otherwise, the caller is responsible for eventually calling `close`
+   *  on the returned `AutoCloseable`, which releases the resources (in reverse order
+   *  of acquisition); they are not released otherwise. Calling `close` again has no
+   *  effect. Prefer [[managed `Using.managed`]] or [[Manager$.apply `Manager.apply`]]
+   *  whenever the resources are only needed within a single block of code.
+   *
+   *  This is useful when resources need to be managed across lifecycle callbacks,
+   *  e.g. acquired in a `beforeAll` hook of a test framework and released in `afterAll`,
+   *  or released when an asynchronous computation completes.
+   *
+   *  The `Manager` is passed to the operation as a context parameter, so that it can be
+   *  picked up by resources which require a `Manager` (see the note on [[Manager]]).
+   *  Other resources can be registered with `summon[Using.Manager]`.
+   *
+   *  Example:
+   *  ```
+   *  val (resources, (reader, writer)) = Using.unmanaged {
+   *   val reader = new SafeFileReader("in.txt") // registers itself with the given `Manager`
+   *   val writer = summon[Using.Manager](new FileWriter("out.txt"))
+   *   (reader, writer)
+   *  }
+   *  Future(writer.write(reader.readLine())).andThen(_ => resources.close())
+   *  ```
+   *
+   *  $suppressionBehavior
+   *
+   *  @tparam A the return type of the operation
+   *  @param op the operation to perform using the manager
+   *  @return an `AutoCloseable` which closes the `Manager`, and the result of the operation
+   */
+  def unmanaged[A](op: Manager ?=> A): (AutoCloseable, A) = {
+    val manager = new Manager
+    try ((() => manager.release(null)): AutoCloseable, op(using manager))
+    catch {
+      case t: Throwable =>
+        manager.release(t)
+        throw t // unreachable, `release` always throws
+    }
+  }
 
   private def preferentiallySuppress(primary: Throwable, secondary: Throwable): Throwable = {
     @annotation.nowarn("cat=deprecation")  // avoid warning on mention of ThreadDeath

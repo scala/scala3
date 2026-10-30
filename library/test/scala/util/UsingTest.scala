@@ -705,14 +705,14 @@ class UsingTest {
     group.assertAllClosed()
   }
 
-  /* `Using.Manager.allocate` */
+  /* `Using.unmanaged` */
 
   private def acquire[R: Using.Releasable](resource: R)(using m: Using.Manager): resource.type = m(resource)
 
   @Test
-  def allocateReleasesOnClose(): Unit = {
+  def unmanagedReleasesOnClose(): Unit = {
     val group = new ResourceGroup
-    val (closer, (r1, r2)) = Using.Manager.allocate {
+    val (closer, (r1, r2)) = Using.unmanaged {
       (acquire(group.newResource()), acquire(group.newResource()))
     }
     assertEquals(r1.identity(1) + r2.identity(1), 2)
@@ -721,18 +721,18 @@ class UsingTest {
   }
 
   @Test
-  def allocateProvidesGivenManager(): Unit = {
-    val (closer, r) = Using.Manager.allocate(new SelfRegisteringResource)
+  def unmanagedProvidesGivenManager(): Unit = {
+    val (closer, r) = Using.unmanaged(new SelfRegisteringResource)
     assertFalse(r.closed)
     closer.close()
     assertTrue(r.closed)
   }
 
   @Test
-  def allocateReleasesOnException(): Unit = {
+  def unmanagedReleasesOnException(): Unit = {
     val group = new ResourceGroup
     val ex = catchThrowable {
-      Using.Manager.allocate {
+      Using.unmanaged {
         acquire(group.newResource())
         acquire(group.newResource())
         throw new UsingException("allocating")
@@ -744,9 +744,9 @@ class UsingTest {
   }
 
   @Test
-  def allocateSuppressesCloseExceptions(): Unit = {
+  def unmanagedSuppressesCloseExceptions(): Unit = {
     val ex = catchThrowable {
-      Using.Manager.allocate {
+      Using.unmanaged {
         acquire(new ExceptionResource)
         throw new UsingException("allocating")
       }
@@ -756,22 +756,22 @@ class UsingTest {
   }
 
   @Test
-  def allocateCloseIsIdempotent(): Unit = {
-    val (closer, _) = Using.Manager.allocate(acquire(new ExceptionResource))
+  def unmanagedCloseIsIdempotent(): Unit = {
+    val (closer, _) = Using.unmanaged(acquire(new ExceptionResource))
     assertThrowableClass[ClosingException](catchThrowable(closer.close()))
     closer.close()
   }
 
   @Test
-  def allocatedManagerRejectsResourcesAfterClose(): Unit = {
-    val (closer, m) = Using.Manager.allocate(summon[Using.Manager])
+  def unmanagedManagerRejectsResourcesAfterClose(): Unit = {
+    val (closer, m) = Using.unmanaged(summon[Using.Manager])
     closer.close()
     assertThrowableClass[IllegalStateException](catchThrowable(m(new NoOpResource)))
   }
 
   @Test
-  def allocateCloseSuppressesExceptions(): Unit = {
-    val (closer, _) = Using.Manager.allocate {
+  def unmanagedCloseSuppressesExceptions(): Unit = {
+    val (closer, _) = Using.unmanaged {
       acquire(new ExceptionResource)
       acquire(new ErrorResource)
       acquire(new NoOpResource)
@@ -782,10 +782,10 @@ class UsingTest {
   }
 
   @Test
-  def allocateCloserIsReleasable(): Unit = {
+  def unmanagedCloserIsReleasable(): Unit = {
     val group = new ResourceGroup
     val res = Using.Manager { outer =>
-      val (inner, r) = Using.Manager.allocate(acquire(group.newResource()))
+      val (inner, r) = Using.unmanaged(acquire(group.newResource()))
       outer(inner)
       r.identity(1)
     }
