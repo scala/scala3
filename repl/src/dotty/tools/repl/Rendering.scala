@@ -1,13 +1,20 @@
 package dotty.tools
 package repl
 
-import dotc.*, core.*
-import Contexts.*, Decorators.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
+import dotc.*
+import core.*
+import Contexts.*
+import Decorators.*
+import Denotations.*
+import Flags.*
+import NameOps.*
+import StdNames.*
+import Symbols.*
 import printing.ReplPrinter
 import printing.SyntaxHighlighting
 import reporting.Diagnostic
 import StackTraceOps.*
-import io.AbstractFile
+import dotty.tools.nio.FileContainer
 
 import scala.annotation.nowarn
 import scala.compiletime.uninitialized
@@ -15,10 +22,10 @@ import scala.jdk.CollectionConverters.*
 import org.objectweb.asm.*
 import org.objectweb.asm.Opcodes.*
 import org.objectweb.asm.tree.*
+
 import scala.util.control.NonFatal
 import java.net.{URL, URLClassLoader}
 import java.util.function.Predicate
-
 import dotty.vendored.fansi
 
 /** This rendering object uses `ClassLoader`s to accomplish crossing the 4th
@@ -35,9 +42,9 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
   // Used to notice when the output directory is changed within a REPL session
-  var myClassLoaderRoot: AbstractFile = uninitialized
+  var myClassLoaderRoot: FileContainer = uninitialized
 
-  private var myClasspathClassLoader: io.AbstractFileClassLoader = uninitialized
+  private var myClasspathClassLoader: nio.AbstractFileClassLoader = uninitialized
 
   // Temporary fix until `pprint` special-cases these.
   // (We cannot use, e.g., `isInstanceOf[LazyList]` because we're not in the same classloader)
@@ -227,7 +234,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     else {
       val parent = Option(myClassLoader).getOrElse {
         myClasspathClassLoader = parentClassLoader match
-          case Some(given_) => io.AbstractFileClassLoader(Seq.empty, ctx.settings.javaOutputVersion.value, given_)
+          case Some(given_) => nio.AbstractFileClassLoader(Seq.empty, ctx.settings.javaOutputVersion.value, given_)
           case None =>
             val compilerClasspath = ctx.platform.classPath(using ctx).searchLocations.toSeq
             // We can't use the system classloader as a parent because it would
@@ -237,7 +244,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
             // like `java.sql`, so we use the parent of the system classloader,
             // which should correspond to the platform classloader on Java 9+.
             val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
-            io.AbstractFileClassLoader(compilerClasspath, ctx.settings.javaOutputVersion.value, baseClassLoader)
+            nio.AbstractFileClassLoader(compilerClasspath, ctx.settings.javaOutputVersion.value, baseClassLoader)
         myClasspathClassLoader
       }
 
@@ -251,11 +258,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       myClassLoader
     }
 
-  private[repl] def addToClasspath(dirs: Iterable[AbstractFile])(using Context): Unit =
+  private[repl] def addToClasspath(dirs: Iterable[String])(using Context): Unit =
     classLoader()
     dirs.foreach(myClasspathClassLoader.add)
 
-  private[repl] def addResource(dir: AbstractFile)(using Context): Unit = addToClasspath(Seq(dir))
+  private[repl] def addResource(dir: String)(using Context): Unit = addToClasspath(Seq(dir))
 
   private[repl] def truncate(str: String, maxPrintCharacters: Int)(using ctx: Context): String =
     val ncp = str.codePointCount(0, str.length) // to not cut inside code point

@@ -17,7 +17,6 @@ import dotty.tools.dotc.{CompilationUnit, report}
 import dotty.tools.dotc.sbt.ExtractDependencies
 import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.io.FileWriters
 import org.objectweb.asm.{ClassTooLargeException, ClassWriter, MethodTooLargeException}
 import org.objectweb.asm.tree.ClassNode
 
@@ -34,13 +33,10 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
   private val incrementalCallback = initctx.incCallback
   // Keep track of written class names so we can report (potential) conflicts
   private val caseInsensitiveClassNames = new java.util.HashMap[String, (String, SourcePosition)]
-  // Create the classfile writer now to avoid having to capture a Context
-  private val classfileWriter = FileWriters.ClassfileWriter(
-    initctx.settings.outputDir.value,
-    initctx.settings.XmainClass.valueSetByUser,
-    initctx.settings.XjarCompressionLevel.value,
-    initctx.settings.Xdumpclasses.value
-  )
+  // Fetch these now to avoid having to capture a Context
+  private val mainClass = initctx.settings.XmainClass.valueSetByUser
+  private val outputLocation = initctx.settings.outputDir.value
+  private val dumpClassesLocation = initctx.settings.Xdumpclasses.value
   // Let the profiler create an executor in the multithreaded case, since individual threads need to be profiled
   private val executor: Executor = initctx.settings.YbackendParallelism.value match
     case 1 => _.run()
@@ -116,13 +112,12 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
     if compilerCallback != null then allUnits.foreach(u => compilerCallback.onSourceCompiled(u.source))
   }
 
-  /* Frees resources used by the code generation. Only call once per instance. */
-  def close(): Unit = {
-    classfileWriter.close()
+  /* Frees resources used by the code generation. Only call once per instance. Returns true iff closing the output location did. */
+  def close(): Boolean =
     executor match
       case pool: ExecutorService => pool.shutdownNow()
       case _ => ()
-  }
+    outputLocation.close()
 
   // This method MUST NOT take a Context, since it schedules work for concurrent execution
   private def schedule(classNodes: Iterable[(ClassNode, ClassNodeMetadata)]): Unit = {
@@ -256,21 +251,23 @@ final class CodeGen(ownerPhase: Phase, gen: BCode, localOpt: Option[LocalOptimiz
   private def writeSerializedClassNode(classNode: ClassNode, metadata: ClassNodeMetadata, serialized: Array[Byte]): Unit = {
     TraceUtils.traceSerializedClassIfRequested(classNode.name, serialized)
 
-    val dottedName = dotted(classNode.name)
-    val writtenClassFile = classfileWriter.writeClass(dottedName, serialized)
-    metadata.serializedTasty.foreach(classfileWriter.writeTasty(classNode.name, _))
+    val writtenClassFile = outputLocation.getOrCreateFile(classNode.name, "class", separator = '/')
+    writtenClassFile.writeBytes(serialized)
+    dumpClassesLocation.foreach(l => l.getOrCreateFile(classNode.name, "class", separator = '/').writeBytes(serialized))
+    metadata.serializedTasty.foreach(t => outputLocation.getOrCreateFile(classNode.name, "tasty", separator = '/').writeBytes(t))
 
-    compilerCallback match
+    // TODO?
+    /*compilerCallback match
       case null => ()
-      case cb => cb.onClassGenerated(metadata.position.source, writtenClassFile, dottedName)
+      case cb => cb.onClassGenerated(metadata.position.source, writtenClassFile, dotted(classNode.name))
 
     incrementalCallback match
       case null => ()
       case cb if metadata.isLocal => cb.generatedLocalClass(metadata.position.source, writtenClassFile.jpath)
       case cb if !cb.enabled() =>
         // callback is not enabled, so nonLocalClasses were not reported in ExtractAPI
-        cb.generatedNonLocalClass(metadata.position.source, writtenClassFile.jpath, dottedName, metadata.fullName)
-      case cb => ()
+        cb.generatedNonLocalClass(metadata.position.source, writtenClassFile.jpath, dotted(classNode.name), metadata.fullName)
+      case cb => ()*/
   }
 
   private def dotted(name: String): String =

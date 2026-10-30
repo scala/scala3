@@ -7,12 +7,10 @@ import Contexts.*
 import Symbols.*
 import Flags.*
 import SymDenotations.*
-
 import Decorators.*
 import MegaPhase.*
-import java.io.File.separatorChar
-
 import ValueClasses.*
+import dotty.tools.nio.FileSystemEntry
 
 /** Make private term members that are accessed from another class
  *  non-private by resetting the Private flag and expanding their name.
@@ -78,12 +76,12 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
       def isSimilar(p1: String, p2: String): Boolean = {
         var i = p1.length - 1
         var j = p2.length - 1
-        while (i >= 0 && j >= 0 && p1(i) == p2(j) && p1(i) != separatorChar) {
+        while (i >= 0 && j >= 0 && p1(i) == p2(j) && p1(i) != FileSystemEntry.separator) {
           i -= 1
           j -= 1
         }
-        (i < 0 || p1(i) == separatorChar) &&
-        (j < 0 || p2(j) == separatorChar)
+        (i < 0 || p1(i) == FileSystemEntry.separator) &&
+        (j < 0 || p2(j) == FileSystemEntry.separator)
       }
 
       val accessOK =

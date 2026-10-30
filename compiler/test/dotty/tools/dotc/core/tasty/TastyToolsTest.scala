@@ -1,58 +1,57 @@
 package dotty.tools.dotc.core.tasty
 
-import java.io.{File => JFile}
-import java.nio.file.{Files, Path}
-
 import scala.jdk.CollectionConverters.*
-
 import org.junit.Test
 import org.junit.Assert.{assertFalse, assertTrue}
-
 import dotty.tools.dotc.Main
+import dotty.tools.dotc.classpath.ClassPath
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
-import dotty.tools.io.Directory
+import dotty.tools.nio.*
 import dotty.tools.vulpix.TestConfiguration
+
+import scala.io.Codec
 
 /** Runs the tools that read TASTy back on freshly compiled code. */
 class TastyToolsTest:
 
   /** Compile `source` with `options` and return the output directory. */
-  private def compile(name: String, source: String, options: String*): Path =
-    val dir = Path.of(s"out/testTastyTools/$name")
-    Directory(dir).deleteRecursively()
-    val classes = Files.createDirectories(dir.resolve("classes"))
-    val src = dir.resolve(s"$name.scala")
-    Files.writeString(src, source)
-    val flags = TestConfiguration.defaultOptions.and(options*).and("-d", classes.toString, src.toString)
+  private def compile(name: String, source: String, options: String*): FileContainer =
+    val dirPath = s"out/testTastyTools/$name"
+    FileContainer.getOnDisk(dirPath).foreach(_.deleteRecursively())
+    val dir = FileContainer.getOrCreateOnDisk(dirPath)
+    val classes = dir.getOrCreateContainer("classes")
+    val src = dir.getOrCreateFile(s"$name.scala")
+    src.writeText(source, Codec.UTF8)
+    val flags = TestConfiguration.defaultOptions.and(options*).and("-d", classes.path, src.path)
     val reporter = Main.process(flags.all, TestReporter.reporter(System.out, logLevel = ERROR))
     assertFalse(s"Compilation of $name failed.", reporter.hasErrors)
     classes
 
-  private def tastyFiles(classes: Path): List[Path] =
-    Files.walk(classes).iterator.asScala.filter(_.toString.endsWith(".tasty")).toList
+  private def tastyFiles(classes: FileContainer): List[File] =
+    classes.recursiveEntries.collect{ case f: File if f.extension.isTasty => f }.toList
 
-  private def classpath(classes: Path): String =
-    s"${TestConfiguration.basicClasspath}${JFile.pathSeparator}$classes"
+  private def classpath(classes: FileContainer): String =
+    s"${TestConfiguration.basicClasspath}${ClassPath.pathSeparator}${classes.path}"
 
-  private def fromTasty(classes: Path): Unit =
-    val out = Files.createDirectories(classes.resolveSibling("from-tasty"))
-    val args = Array("-from-tasty", "-color:never", "-d", out.toString, "-classpath", classpath(classes))
-      ++ tastyFiles(classes).map(_.toString)
+  private def fromTasty(classes: FileContainer): Unit =
+    val out = classes.getOrCreateContainer("from-tasty")
+    val args = Array("-from-tasty", "-color:never", "-d", out.path, "-classpath", classpath(classes))
+      ++ tastyFiles(classes).map(_.path)
     val reporter = Main.process(args, TestReporter.reporter(System.out, logLevel = ERROR))
     assertFalse("-from-tasty failed.", reporter.hasErrors)
 
   /** Decompile the TASTy in `classes` and return the decompiled source. */
-  private def decompile(classes: Path): String =
-    val out = Files.createDirectories(classes.resolveSibling("decompiled"))
-    val args = Array("-color:never", "-d", out.toString, "-classpath", classpath(classes))
-      ++ tastyFiles(classes).map(_.toString)
+  private def decompile(classes: FileContainer): String =
+    val out = classes.getOrCreateContainer("decompiled")
+    val args = Array("-color:never", "-d", out.path, "-classpath", classpath(classes))
+      ++ tastyFiles(classes).map(_.path)
     val reporter = dotty.tools.dotc.decompiler.Main.process(args, TestReporter.reporter(System.out, logLevel = ERROR))
     assertFalse("Decompilation failed.", reporter.hasErrors)
-    Files.readString(out.resolve("decompiled.scala"))
+    out.getOrCreateFile("decompiled.scala").readText(Codec.UTF8)
 
-  private def printTasty(classes: Path): String =
-    tastyFiles(classes).map(f => TastyPrinter.showContents(Files.readAllBytes(f), noColor = true, isBestEffortTasty = false)).mkString
+  private def printTasty(classes: FileContainer): String =
+    tastyFiles(classes).map(f => TastyPrinter.showContents(f.readBytes(), noColor = true, isBestEffortTasty = false)).mkString
 
   @Test def printSelectOuter(): Unit =
     // the inline body refers to the outer `this` through the self alias, pickled as SELECTouter

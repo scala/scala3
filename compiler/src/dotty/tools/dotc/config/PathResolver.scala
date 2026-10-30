@@ -3,13 +3,12 @@ package dotc
 package config
 
 import WrappedProperties.AccessControl
-import io.Directory
 import classpath.{ClassPath, ClassPathFactory}
 import PartialFunction.condOpt
 import core.Contexts.*
 import Settings.*
-import dotty.tools.io.File
 import dotty.tools.dotc.interactive.LogicalPackage
+import dotty.tools.nio.*
 
 object PathResolver {
 
@@ -76,54 +75,34 @@ object PathResolver {
     def javaExtDirs: String        = Environment.javaExtDirs
     def useJavaClassPath: Boolean  = Environment.useJavaClassPath
 
-    def scalaHome: String          = Environment.scalaHome
-    def scalaHomeDir: Directory    = Directory(scalaHome)
-    def scalaHomeExists: Boolean   = scalaHomeDir.isDirectory
-    def scalaLibDir: Directory     = (scalaHomeDir / "lib").toDirectory
-    def scalaClassesDir: Directory = (scalaHomeDir / "classes").toDirectory
+    def scalaHome       = Environment.scalaHome
+    def scalaHomeDir    = FileContainer.getOnDisk(scalaHome)
+    def scalaLibDir     = scalaHomeDir.flatMap(_.getContainer("lib"))
+    def scalaClassesDir = scalaHomeDir.flatMap(_.getContainer("classes"))
 
-    def scalaLibAsJar: File        = (scalaLibDir / "scala-library.jar").toFile
-    def scalaLibAsDir: Directory   = (scalaClassesDir / "library").toDirectory
+    def scalaLibAsJar = scalaLibDir.flatMap(_.getFile("scala-library.jar"))
+    def scalaLibAsDir = scalaClassesDir.flatMap(_.getFile("library"))
 
-    def scalaLibDirFound: Option[Directory] =
-      if (scalaLibAsJar.isFile) Some(scalaLibDir)
-      else if (scalaLibAsDir.isDirectory) Some(scalaClassesDir)
-      else None
+    def scalaExtDirs: String = Environment.scalaExtDirs
 
-    def scalaLibFound: String =
-      if (scalaLibAsJar.isFile) scalaLibAsJar.path
-      else if (scalaLibAsDir.isDirectory) scalaLibAsDir.path
-      else ""
+    def scalaPluginPath: String = Environment.scalaHome + "/misc/scala-devel/plugins".replace('/', FileSystemEntry.separator)
 
     // XXX It must be time for someone to figure out what all these things
     // are intended to do.  This is disabled here because it was causing all
     // the scala jars to end up on the classpath twice: one on the boot
     // classpath as set up by the runner (or regular classpath under -nobootcp)
     // and then again here.
-    def scalaBootClassPath: String  = ""
-    // scalaLibDirFound match {
-    //   case Some(dir) if scalaHomeExists =>
-    //     val paths = ClassPath expandDir dir.path
-    //     join(paths*)
-    //   case _                            => ""
-    // }
-
-    def scalaExtDirs: String = Environment.scalaExtDirs
-
-    def scalaPluginPath: String = (scalaHomeDir / "misc" / "scala-devel" / "plugins").path
+    def scalaBootClassPath = ""
 
     override def toString: String = """
       |object Defaults {
       |  scalaHome            = %s
       |  javaBootClassPath    = %s
-      |  scalaLibDirFound     = %s
-      |  scalaLibFound        = %s
       |  scalaBootClassPath   = %s
       |  scalaPluginPath      = %s
       |}""".trim.stripMargin.format(
         scalaHome,
         ppcp(javaBootClassPath),
-        scalaLibDirFound, scalaLibFound,
         ppcp(scalaBootClassPath), ppcp(scalaPluginPath)
       )
   }

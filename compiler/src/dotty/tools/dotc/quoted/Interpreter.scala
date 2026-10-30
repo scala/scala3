@@ -25,8 +25,8 @@ import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.typer.ImportInfo.withRootImports
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.reporting.Message
-import dotty.tools.io.AbstractFileClassLoader
 import dotty.tools.dotc.core.CyclicReference
+import dotty.tools.nio.AbstractFileClassLoader
 
 /** Tree interpreter for metaprogramming constructs */
 class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
@@ -387,7 +387,7 @@ object Interpreter:
               |  A possible cause is if the origin of this symbol was built with pipelined compilation;
               |  in which case, this problem may go away by disabling pipelining for that origin.
               |
-              |  $sym is defined in file ${sym.associatedFile}""", pos)
+              |  $sym is defined in file ${sym.associatedFile.nn.path}""", pos)
     else if ctx.settings.YnoSuspendedUnits.value then
       throw StopInterpretation(em"suspension triggered by a dependency on missing ${sym.showLocated} not allowed with -Yno-suspended-units", pos)
     else

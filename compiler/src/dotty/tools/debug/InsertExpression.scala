@@ -12,9 +12,6 @@ import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SrcPos
-import dotty.tools.io.VirtualFile
-
-import java.nio.charset.StandardCharsets
 
 /**
   * This phase inserts the expression being evaluated at the line of the breakpoint

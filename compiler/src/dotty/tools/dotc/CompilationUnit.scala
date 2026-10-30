@@ -187,27 +187,10 @@ object CompilationUnit {
   }
 
   /** Create a compilation unit corresponding to `source`.
-   *  If `mustExistIfNotNull` is true, this will fail if `source` is not null but does not exist.
    */
-  def apply(source: SourceFile, mustExistIfNotNull: Boolean = true)(using Context): CompilationUnit = {
-    val file = source.file
-    val src =
-      if (!mustExistIfNotNull)
-        source
-      else if (file == null) {
-        source
-      }
-      else if (file.isDirectory) {
-        report.error(em"expected file, received directory '${source.path}'")
-        NoSource
-      }
-      else if(!file.exists) {
-        report.error(em"source file not found: ${source.path}")
-        NoSource
-      }
-      else source
-    val info = if src.exists then CompilationUnitInfo(src.file) else null
-    new CompilationUnit(src, info)
+  def apply(source: SourceFile)(using Context): CompilationUnit = {
+    val info = if source.exists then CompilationUnitInfo(source.file) else null
+    new CompilationUnit(source, info)
   }
 
   /** Force the tree to be loaded */

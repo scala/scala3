@@ -1,12 +1,9 @@
 package dotty.tools.dotc.classpath
 
-import dotty.tools.dotc
-import dotty.tools.io.File.pathSeparator
-import dotty.tools.io.{AbstractFile, Directory, File, FileExtension}
+import dotty.tools.nio.*
+import dotty.tools.dotc.util
 
 import java.util.regex.PatternSyntaxException
-import java.nio.file.*
-import java.net.URI
 
 import scala.collection.mutable
 import scala.util.Properties
@@ -20,8 +17,13 @@ trait ClassPath {
   def classes(inPackage: String): Iterable[BinaryFileEntry] = Seq.empty
   def sources(inPackage: String): Iterable[SourceFileEntry] = Seq.empty
 
-  /** Which locations are searched by this classpath. Used to create a class loader from it. */
-  def searchLocations: Iterable[AbstractFile]
+  /**
+   * DO NOT UNLESS YOU KNOW WHAT YOU ARE DOING!
+   * Which paths are searched by this classpath.
+   * Used to create a class loader from it.
+   * This shouldn't be necessary.
+   */
+  def searchLocations: Iterable[String]
 
   /**
    * Returns *only* the classfile for an external name, e.g., "java.lang.String". This method does not
@@ -32,11 +34,12 @@ trait ClassPath {
    * It is also used in the backend, by the inliner, to obtain the bytecode when inlining from the
    * classpath. It's also used by scalap.
    */
-  def findClassFile(className: String): Option[AbstractFile] = None
+  def findClassFile(className: String): Option[File] = None
 }
 
 object ClassPath {
   val RootPackage: String = ""
+  val pathSeparator: String = java.io.File.pathSeparator
 
   /** Aggregates the given classpaths. */
   def aggregate(classPaths: List[ClassPath]): ClassPath =
@@ -48,14 +51,9 @@ object ClassPath {
     // Discussion: http://mail.openjdk.java.net/pipermail/compiler-dev/2018-March/thread.html#11738
     release match
       case Some(v) if v.toInt < Runtime.version().feature() =>
-        try
-          val ctSym = Paths.get(Properties.javaHome).resolve("lib").resolve("ct.sym")
-          if (Files.notExists(ctSym)) None
-          else Some(new CtSymClassPath(ctSym, v.toInt))
-        catch case _: Exception => None
+        FileContainer.getJavaCtSym("/").map(new CtSymClassPath(_, v.toInt))
       case _ =>
-        try Some(new JrtClassPath(FileSystems.getFileSystem(URI.create("jrt:/"))))
-        catch case _: ProviderNotFoundException | _: FileSystemNotFoundException => None
+        FileContainer.getJavaJrt("/packages").map(new JrtClassPath(_))
 
   /** Update classpath with a substituted subentry */
   def replace(classPath: ClassPath, subst: Map[ClassPath, ClassPath]): ClassPath =
@@ -71,19 +69,22 @@ object ClassPath {
 
   /** Expand single path entry */
   private def expandS(pattern: String): List[String] = {
-    val wildSuffix = File.separator + "*"
+    val wildSuffix = s"${FileSystemEntry.separator}*"
 
     /* Get all subdirectories, jars, zips out of a directory. */
-    def lsDir(dir: Directory, filt: String => Boolean = _ => true) =
-      dir.list.filter(x => filt(x.name) && (x.isDirectory || x.ext.isJarOrZip)).map(_.path).toList
+    def lsDir(dir: FileContainer, filt: String => Boolean = _ => true) =
+      dir.entries.filter(e => filt(e.name)).collect {
+        case c: FileContainer => c.path
+        case f: File if f.extension.isJar || f.extension.isZip => f.path
+      }.toList
 
-    if (pattern == "*") lsDir(Directory("."))
+    if (pattern == "*") lsDir(FileContainer.workingDirectory())
     // On Windows the JDK supports forward slash or backslash in classpath entries
-    else if (pattern.endsWith(wildSuffix) || pattern.endsWith("/*")) lsDir(Directory(pattern dropRight 2))
+    else if (pattern.endsWith(wildSuffix) || pattern.endsWith("/*")) FileContainer.getOnDisk(pattern dropRight 2).map(d => lsDir(d)).getOrElse(List(pattern))
     else if (pattern.contains('*')) {
       try {
         val regexp = ("^" + pattern.replace("""\*""", """.*""") + "$").r
-        lsDir(Directory(pattern).parent, regexp.findFirstIn(_).isDefined)
+        FileContainer.getOnDisk(pattern).map(d => lsDir(d.parent, regexp.findFirstIn(_).isDefined)).getOrElse(List(pattern))
       }
       catch { case _: PatternSyntaxException => List(pattern) }
     }
@@ -153,23 +154,23 @@ object ClassPath {
 trait ClassRepresentation {
   def fileName: String
   def name: String
-  def binary: Option[AbstractFile]
-  def source: Option[AbstractFile]
+  def binary: Option[File]
+  def source: Option[File]
 }
 
 /** A TASTy file or classfile */
-private[dotty] final case class BinaryFileEntry(file: AbstractFile) extends ClassRepresentation {
+private[dotty] final case class BinaryFileEntry(file: File) extends ClassRepresentation {
   def fileName: String = file.name
-  def name: String = FileUtils.stripExtension(file.name) // class name
-  def binary: Option[AbstractFile] = Some(file)
-  def source: Option[AbstractFile] = None
+  def name: String = file.nameWithoutExtension // class name
+  def binary: Option[File] = Some(file)
+  def source: Option[File] = None
 }
 
-private[dotty] final case class SourceFileEntry(file: AbstractFile) extends ClassRepresentation {
+private[dotty] final case class SourceFileEntry(file: File) extends ClassRepresentation {
   def fileName: String = file.name
-  def name: String = FileUtils.stripSourceExtension(file.name)
-  def binary: Option[AbstractFile] = None
-  def source: Option[AbstractFile] = Some(file)
+  def name: String = file.nameWithoutExtension
+  def binary: Option[File] = None
+  def source: Option[File] = Some(file)
 }
 
 /** A class that exists both as a classfile/TASTy and as a source file. */
@@ -179,6 +180,6 @@ private[dotty] final case class BinaryAndSourceFilesEntry(
 ) extends ClassRepresentation {
   def fileName: String = binaryEntry.fileName
   def name: String = binaryEntry.name
-  def binary: Option[AbstractFile] = binaryEntry.binary
-  def source: Option[AbstractFile] = sourceEntry.source
+  def binary: Option[File] = binaryEntry.binary
+  def source: Option[File] = sourceEntry.source
 }

@@ -21,7 +21,7 @@ import scala.collection.mutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
-import io.AbstractFile
+import nio.File
 import dotty.tools.dotc.config.Printers
 
 import scala.compiletime.uninitialized
@@ -78,17 +78,17 @@ object ClassfileParser {
     }
   }
 
-  private[classfile] def parseHeader(classfile: AbstractFile)(using in: DataReader): Header.Version = {
+  private[classfile] def parseHeader(classfile: File)(using in: DataReader): Header.Version = {
     val magic = in.nextInt
     if (magic != JAVA_MAGIC)
-      throw new IOException(s"class file '${classfile}' has wrong magic number 0x${toHexString(magic)}, should be 0x${toHexString(JAVA_MAGIC)}")
+      throw new IOException(s"class file '${classfile.path}' has wrong magic number 0x${toHexString(magic)}, should be 0x${toHexString(JAVA_MAGIC)}")
     val minorVersion = in.nextChar.toInt
     val majorVersion = in.nextChar.toInt
     if ((majorVersion < JAVA_MAJOR_VERSION) ||
         ((majorVersion == JAVA_MAJOR_VERSION) &&
          (minorVersion < JAVA_MINOR_VERSION)))
       throw new IOException(
-        s"class file '${classfile}' has unknown version $majorVersion.$minorVersion, should be at least $JAVA_MAJOR_VERSION.$JAVA_MINOR_VERSION")
+        s"class file '${classfile.path}' has unknown version $majorVersion.$minorVersion, should be at least $JAVA_MAJOR_VERSION.$JAVA_MINOR_VERSION")
     Header.Version(majorVersion, minorVersion)
   }
 
@@ -266,7 +266,7 @@ object ClassfileParser {
 }
 
 final class ClassfileParser(
-    classfile: AbstractFile,
+    classfile: File,
     classRoot: ClassDenotation,
     moduleRoot: ClassDenotation)(ictx: Context) {
 
@@ -895,7 +895,7 @@ final class ClassfileParser(
         else
           // Silently ignore missing annotation classes like javac
           if ctx.debug then
-            report.warning(em"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
+            report.warning(em"Error while parsing annotations in ${classfile.path}: annotation class $tp not present on classpath")
           None
       case _ =>
         if (hasError || skip) None
@@ -910,7 +910,7 @@ final class ClassfileParser(
       // the classpath would *not* end up here. A class not found is signaled
       // with a `FatalError` exception, handled above. Here you'd end up after a NPE (for example),
       // and that should never be swallowed silently.
-      report.warning(em"Caught: $ex while parsing annotations in $classfile")
+      report.warning(em"Caught: $ex while parsing annotations in ${classfile.path}")
       if (ctx.debug) ex.printStackTrace()
 
       None // ignore malformed annotations
@@ -1062,7 +1062,7 @@ final class ClassfileParser(
         case tpnme.ConstantValueATTR =>
           val c = pool.getConstant(in.nextChar)
           if (c ne null) res.constant = c
-          else report.warning(em"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
+          else report.warning(em"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile.path}")
 
         case tpnme.MethodParametersATTR =>
           val paramCount = in.nextByte
@@ -1223,7 +1223,7 @@ final class ClassfileParser(
    *  and implicitly current class' superclasses.
    */
   private def enterOwnInnerClasses()(using Context): Unit = {
-    def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) =
+    def enterClassAndModule(entry: InnerClassEntry, file: File, jflags: Int) =
       SymbolLoaders.enterClassAndModule(
         getOwner(jflags),
         entry.originalName,
@@ -1280,7 +1280,7 @@ final class ClassfileParser(
 
         if (allowed != "always") {
           failUnless(allowed != "never")
-          val allowedList = allowed.split(java.io.File.pathSeparator).toList
+          val allowedList = allowed.split(ClassPath.pathSeparator).toList
           val file = classRoot.symbol.associatedFile
           // Using `.toString.contains` isn't great, but it's good enough for a debug flag.
           failUnless(file == null || allowedList.exists(path => file.toString.contains(path)))
@@ -1312,7 +1312,7 @@ final class ClassfileParser(
 
       if (scan(tpnme.TASTYATTR)) {
         val hint =
-          if classfile.resolveSibling(ClassPath.classNameToTasty(classfile.name)) != null then "This is likely a bug in the compiler. Please report."
+          if classfile.parent.getFile(ClassPath.classNameToTasty(classfile.name)).nonEmpty then "This is likely a bug in the compiler. Please report."
           else "This `.tasty` file is missing. Try cleaning the project to fix this issue."
         report.error(s"Loading Scala 3 binary from $classfile. It should have been loaded from `.tasty` file. $hint", NoSourcePosition)
         return None

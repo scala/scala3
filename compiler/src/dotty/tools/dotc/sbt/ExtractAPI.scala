@@ -18,9 +18,9 @@ import NameOps.*
 import inlines.Inlines
 import transform.ValueClasses
 import transform.Pickler
-import dotty.tools.io.{File, FileExtension}
+import dotty.tools.nio.*
 import util.{Property, SourceFile}
-import java.io.PrintWriter
+import scala.io.Codec
 
 import ExtractAPI.NonLocalClassSymbolsInCurrentUnits
 
@@ -92,20 +92,19 @@ class ExtractAPI extends Phase {
 
   private def recordNonLocalClass(cls: Symbol, sourceFile: SourceFile, cb: interfaces.IncrementalCallback)(using Context): Unit =
     def registerProductNames(fullClassName: String, binaryClassName: String) =
-      val pathToClassFile = s"${binaryClassName.replace('.', java.io.File.separatorChar)}.class"
-
       val outDir = ctx.settings.outputDir.value
-      val classFile = {
-        if outDir.ext.isJar then
-            // important detail here, even on Windows, Zinc expects the separator within the jar
-            // to be the system default, (even if in the actual jar file the entry always uses '/').
-            // see https://github.com/sbt/zinc/blob/dcddc1f9cfe542d738582c43f4840e17c053ce81/internal/compiler-bridge/src/main/scala/xsbt/JarUtils.scala#L47
-            new java.io.File(s"${outDir.path}!$pathToClassFile")
+      val classFile = outDir.getOrCreateFile(binaryClassName, FileExtension("class"), separator = '.')
+      val classFilePath = classFile.path
+      // important detail here, even on Windows, Zinc expects the separator within the jar
+      // to be the system default, (even if in the actual jar file the entry always uses '/').
+      // see https://github.com/sbt/zinc/blob/dcddc1f9cfe542d738582c43f4840e17c053ce81/internal/compiler-bridge/src/main/scala/xsbt/JarUtils.scala#L47
+      val classFilePathForZinc =
+        if classFilePath.contains('!') then
+          outDir.path + "!" + classFile.pathRelativeTo(outDir).replace('/', FileSystemEntry.separator)
         else
-            new java.io.File(outDir.file, pathToClassFile)
-      }
+          classFilePath
 
-      cb.generatedNonLocalClass(sourceFile, classFile.toPath(), binaryClassName, fullClassName)
+      cb.generatedNonLocalClass(sourceFile, java.nio.file.Path.of(classFilePathForZinc), binaryClassName, fullClassName)
     end registerProductNames
 
     val fullClassName = atPhase(sbtExtractDependenciesPhase) {
@@ -134,13 +133,8 @@ class ExtractAPI extends Phase {
 
     if (ctx.settings.YdumpSbtInc.value) {
       // Append to existing file that should have been created by ExtractDependencies
-      val sourceFileJPath = sourceFile.jfile
-      assert(sourceFileJPath.isPresent, s"unexpected null jpath for $sourceFile")
-      val pw = new PrintWriter(File(sourceFileJPath.get().toPath).changeExtension(FileExtension.Inc).toFile
-        .bufferedWriter(append = true), true)
-      try {
-        classes.foreach(source => pw.println(DefaultShowAPI(source)))
-      } finally pw.close()
+      assert(sourceFile.file != null, s"unexpected null file for $sourceFile")
+      sourceFile.file.getOrCreateSiblingWithExtension("inc").writeLines(classes.map(c => DefaultShowAPI(c)), Codec.UTF8, append = true)
     }
 
     ctx.withIncCallback: cb =>

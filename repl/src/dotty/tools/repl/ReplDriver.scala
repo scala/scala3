@@ -2,12 +2,9 @@ package dotty.tools
 package repl
 
 import scala.util.control.NonFatal
-
-import java.io.{File => JFile, PrintStream}
+import java.io.PrintStream
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
 import java.util.regex.Pattern
-
 import dotc.ast.Trees.*
 import dotc.ast.{tpd, untpd}
 import dotc.classpath.{ClassPath, ClassPathFactory}
@@ -15,7 +12,7 @@ import dotc.config.CommandLineParser.tokenize
 import dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotc.core.Contexts.*
 import dotc.core.Decorators.*
-import dotc.core.Phases.{unfusedPhases, typerPhase, checkCapturesPhase}
+import dotc.core.Phases.{checkCapturesPhase, typerPhase, unfusedPhases}
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags.*
 import dotc.core.Mode
@@ -35,13 +32,9 @@ import dotc.util.Spans.Span
 import dotc.util.{SourceFile, SourcePosition}
 import dotc.{CompilationUnit, Driver}
 import dotc.config.{CompilerCommand, Feature}
-import dotty.tools.io
-import dotty.tools.io.*
-import dotty.tools.io.PlainFile.toPlainFile
+import dotty.tools.nio.*
 import dotty.tools.repl.ScalaClassLoader.*
-
 import org.jline.reader.*
-
 import Rendering.showUser
 
 import scala.annotation.tailrec
@@ -49,6 +42,8 @@ import scala.collection.mutable
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
 import org.objectweb.asm.ClassReader
+
+import scala.io.Codec
 import scala.util.Using
 import scala.util.control.NonFatal
 
@@ -166,7 +161,7 @@ class ReplDriver(settings: Array[String],
     rootCtx = initialCtx(settings)
     if (rootCtx.settings.outputDir.isDefault(using rootCtx))
       rootCtx = rootCtx.fresh
-        .setSetting(rootCtx.settings.outputDir, io.virtualDirectory("<REPL compilation output>"))
+        .setSetting(rootCtx.settings.outputDir, FileContainer.createInMemory("<REPL compilation output>"))
     compiler = new ReplCompiler
     rendering = new Rendering(classLoader)
   }
@@ -684,23 +679,22 @@ class ReplDriver(settings: Array[String],
         try
           val body = state.pastInputs.reverse.map(entry => s"${Save.entrySeparator}\n$entry").mkString("\n")
           val content = s"${Save.sessionHeader}\n$body"
-          Files.writeString(new JFile(path).toPath, content, StandardCharsets.UTF_8)
+          File.getOrCreateOnDisk(path).writeText(content, Codec.UTF8)
         catch case NonFatal(e) =>
           out.println(s"""Couldn't save session to "$path": ${e.getMessage}""")
       state
 
     case Load(path) =>
-      val file = new JFile(path)
-      if (file.exists) {
-        val contents = Using(scala.io.Source.fromFile(file, StandardCharsets.UTF_8.name))(_.mkString).get
-        val loaded =
-          if contents.linesIterator.nextOption().contains(Save.sessionHeader) then loadSavedEntries(contents, state)
-          else run(contents)(using state)
-        loaded.copy(pastInputs = state.pastInputs)
-      }
-      else {
-        out.println(s"""Couldn't find file "${file.getCanonicalPath}"""")
-        state
+      File.getOnDisk(path) match {
+        case Some(file) =>
+          val contents = file.readText(Codec.UTF8)
+          val loaded =
+            if contents.linesIterator.nextOption().contains(Save.sessionHeader) then loadSavedEntries(contents, state)
+            else run(contents)(using state)
+          loaded.copy(pastInputs = state.pastInputs)
+        case None =>
+          out.println(s"""Couldn't find file "${path}"""")
+          state
       }
 
     case Require(path) =>
@@ -708,50 +702,44 @@ class ReplDriver(settings: Array[String],
       state
 
     case JarCmd(path) =>
-      val jarFile = AbstractFile.getDirectory(path, state.context.settings.javaOutputVersion.value(using state.context))
-      if (jarFile == null)
-        out.println(s"""Cannot add "$path" to classpath.""")
-        state
-      else
-        def flatten(f: AbstractFile): Iterator[AbstractFile] =
-          if (f.isDirectory || f.ext.isJarOrZip) f.iterator.flatMap(flatten)
-          else Iterator(f)
-
-        def tryClassLoad(classFile: AbstractFile): Option[String] = {
-          val input = classFile.input
-          try {
-            val reader = new ClassReader(input)
-            val clsName = reader.getClassName.replace('/', '.')
-            rendering.myClassLoader.loadClass(clsName)
-            Some(clsName)
-          } catch
-            case _: ClassNotFoundException => None
-          finally {
-            input.close()
+      File.getOnDisk(path) match
+        case None =>
+          out.println(s"""Cannot add "$path" to classpath.""")
+          state
+        case Some(f) =>
+          val jarFile = FileContainer.getFromFile(f, state.context.settings.javaOutputVersion.value(using state.context), state.context.settings.XjarCompressionLevel.value(using state.context)).get
+          def tryClassLoad(classFile: File): Option[String] = {
+            val input = classFile.input()
+            try
+              val reader = new ClassReader(input)
+              val clsName = reader.getClassName.replace('/', '.')
+              rendering.myClassLoader.loadClass(clsName)
+              Some(clsName)
+            catch
+              case _: ClassNotFoundException => None
+            finally
+              input.close()
           }
-        }
 
-        try {
-          val entries = flatten(jarFile)
+          try {
+            val existingClass = jarFile.recursiveEntries.collect { case f: File if f.extension.isClass => f }.find(tryClassLoad(_).isDefined)
+            if (existingClass.nonEmpty)
+              out.println(s"The path '$path' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
+            else inContext(state.context):
+              val jarClassPath = ClassPathFactory.newClassPath(jarFile)
 
-          val existingClass = entries.filter(_.ext.isClass).find(tryClassLoad(_).isDefined)
-          if (existingClass.nonEmpty)
-            out.println(s"The path '$path' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
-          else inContext(state.context):
-            val jarClassPath = ClassPathFactory.newClassPath(jarFile)
+              // add to compiler class path
+              ctx.platform.addToClassPath(jarClassPath)
+              SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
 
-            // add to compiler class path
-            ctx.platform.addToClassPath(jarClassPath)
-            SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
+              rendering.addToClasspath(jarClassPath.searchLocations)
 
-            rendering.addToClasspath(jarClassPath.searchLocations)
-
-            out.println(s"Added '$path' to classpath.")
-        } catch {
-          case NonFatal(e) =>
-            out.println(s"Failed to load '$path' to classpath: ${e.getMessage}")
-        }
-        state
+              out.println(s"Added '$path' to classpath.")
+          } catch {
+            case NonFatal(e) =>
+              out.println(s"Failed to load '$path' to classpath: ${e.getMessage}")
+          }
+          state
 
     case ResourceCmd(path) => addResource(path)
 
@@ -858,23 +846,25 @@ class ReplDriver(settings: Array[String],
 
   private def addResource(path: String)(using state: State): State =
     try
-      val resource = Path.of(path)
-      if !Files.exists(resource) then
-        out.println(s"Cannot add '$path' to classpath, it does not exist.")
-      else
-        val root = if Files.isDirectory(resource) then resource else stageResourceFile(resource)
-        inContext(state.context):
-          rendering.addResource(root.toPlainFile)
-        out.println(s"Added '$path' to classpath.")
+      File.getOnDisk(path).orElse(FileContainer.getOnDisk(path)) match
+        case Some(e) =>
+          val root = e match
+            case f: File => stageResourceFile(f)
+            case fc: FileContainer => fc
+          inContext(state.context):
+            rendering.addResource(root.path)
+          out.println(s"Added '$path' to classpath.")
+        case None =>
+          out.println(s"Cannot add '$path' to classpath, it does not exist.")
     catch case NonFatal(e) =>
       out.println(s"Failed to load '$path' to classpath: ${e.getMessage}")
     state
 
-  private def stageResourceFile(resource: Path): Path =
-    val staging = Files.createTempDirectory("repl_resource")
-    staging.toFile.deleteOnExit()
-    val staged = Files.copy(resource, staging.resolve(resource.getFileName))
-    staged.toFile.deleteOnExit()
+  private def stageResourceFile(resource: File): FileContainer =
+    val staging = FileContainer.createTemporaryOnDisk("repl_resource")
+    val staged = staging.getOrCreateFile(resource.name)
+    resource.copyTo(staged)
+    // TODO: delete `staging` recursively on exit
     staging
 
   private def addRepositories(repositoryStrings: List[String])(using state: State): State =
@@ -899,7 +889,7 @@ class ReplDriver(settings: Array[String],
               val classpathState = newRun(state)
               inContext(classpathState.context):
                 DependencyResolver.addToCompilerClasspath(files)
-                rendering.addToClasspath(files.map(f => f.toPath.toPlainFile))
+                rendering.addToClasspath(files.map(f => f.path))
                 val depsDescription = if deps.size == 1 then "a dependency" else s"${deps.size} dependencies"
                 out.println(s"Resolved $depsDescription (${files.size} JARs)")
               classpathState
