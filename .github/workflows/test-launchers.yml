@@ -117,7 +117,7 @@ jobs:
           # Temurin has no GA JDK 17 build for Windows ARM64
           distribution: 'zulu'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
       # Build both launchers in a single sbt invocation: a second sbt run on this runner
       # intermittently fails to create its boot server pipe lock (Windows error 1336)
       - name: Build the launcher commands
