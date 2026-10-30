@@ -39,6 +39,10 @@ import scala.reflect.ClassTag
   *  @define willNotTerminateInf
   */
 class ArrayDeque[A] protected (
+    /** The underlying circular buffer. Its length is always a power of two; the
+     *  elements occupy the slots from `start` (inclusive) to `end` (exclusive),
+     *  wrapping around the end of the buffer, and all unused slots are `null`.
+     */
     protected var array: Array[AnyRef | Null],
     private[ArrayDeque] var start: Int,
     private[ArrayDeque] var end: Int
@@ -62,28 +66,70 @@ class ArrayDeque[A] protected (
     this.end = end
   }
 
+  /** Creates an empty array deque that can hold at least `initialSize` elements
+   *  before its internal buffer needs to grow.
+   *
+   *  @param initialSize the initial capacity hint; the buffer allocated is the
+   *                     next power of two above this value, at least 16
+   *  @throws IllegalArgumentException if `initialSize` is negative or too large to
+   *          allocate, since `ArrayDeque.alloc` rejects it
+   */
   def this(initialSize: Int = ArrayDeque.DefaultInitialSize) = this(ArrayDeque.alloc(initialSize), start = 0, end = 0)
 
+  /** Returns the number of elements in this array deque; the size is always known. */
   override def knownSize: Int = super[IndexedSeqOps].knownSize
 
   // No-Op override to allow for more efficient stepper in a minor release.
+  /** Returns a stepper for the elements of this array deque.
+   *
+   *  Steppers enable creating a Java stream to operate on the elements.
+   *
+   *  @tparam S the type of the stepper, determined by `shape`
+   *  @param shape implicit evidence selecting the stepper type for the element type `A`
+   *  @return a stepper over the elements, supporting efficient splitting for
+   *          parallel processing
+   */
   override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = super.stepper(using shape)
 
+  /** Returns the element at the given index, in constant time.
+   *
+   *  @param idx the zero-based index of the element
+   *  @return the element at index `idx`
+   *  @throws IndexOutOfBoundsException if `idx` is negative or not less than `length`
+   */
   def apply(idx: Int): A = {
     requireBounds(idx)
     _get(idx)
   }
 
+  /** Replaces the element at the given index, in constant time.
+   *
+   *  @param idx the zero-based index of the element to replace
+   *  @param elem the new value
+   *  @throws IndexOutOfBoundsException if `idx` is negative or not less than `length`
+   */
   def update(idx: Int, elem: A): Unit = {
     requireBounds(idx)
     _set(idx, elem)
   }
 
+  /** Appends an element to the end of this array deque, growing the internal
+   *  buffer if it is full. Takes amortized constant time.
+   *
+   *  @param elem the element to append
+   *  @return this array deque
+   */
   def addOne(elem: A): this.type = {
     ensureSize(length + 1)
     appendAssumingCapacity(elem)
   }
 
+  /** Prepends an element to the front of this array deque, growing the internal
+   *  buffer if it is full. Takes amortized constant time.
+   *
+   *  @param elem the element to prepend
+   *  @return this array deque
+   */
   def prepend(elem: A): this.type = {
     ensureSize(length + 1)
     prependAssumingCapacity(elem)
@@ -101,6 +147,15 @@ class ArrayDeque[A] protected (
     this
   }
 
+  /** Prepends all elements of a collection to the front of this array deque.
+   *
+   *  The prepended elements keep their order: after the call, the first element
+   *  of `elems` is the first element of this array deque. The internal buffer is
+   *  resized at most once and `elems` is traversed at most twice.
+   *
+   *  @param elems the elements to prepend
+   *  @return this array deque
+   */
   override def prependAll(elems: IterableOnce[A]^): this.type = {
     val it = elems.iterator
     if (it.nonEmpty) {
@@ -133,6 +188,14 @@ class ArrayDeque[A] protected (
     this
   }
 
+  /** Appends all elements of a collection to the end of this array deque.
+   *
+   *  If the size of `elems` is known, the internal buffer is resized at most
+   *  once before the elements are appended.
+   *
+   *  @param elems the elements to append
+   *  @return this array deque
+   */
   override def addAll(elems: IterableOnce[A]^): this.type = {
     elems.knownSize match {
       case srcLength if srcLength > 0 =>
@@ -143,6 +206,15 @@ class ArrayDeque[A] protected (
     this
   }
 
+  /** Inserts an element at a given index, shifting the shorter of the prefix
+   *  before `idx` and the suffix from `idx` onwards; the elements previously at
+   *  `idx` and beyond follow the inserted element. Takes O(min(idx, length - idx))
+   *  time, or O(length) when the buffer is full and has to grow first.
+   *
+   *  @param idx the index at which to insert, from `0` to `length` inclusive
+   *  @param elem the element to insert
+   *  @throws IndexOutOfBoundsException if `idx` is negative or greater than `length`
+   */
   def insert(idx: Int, elem: A): Unit = {
     requireBounds(idx, length+1)
     val n = length
@@ -179,6 +251,17 @@ class ArrayDeque[A] protected (
     }
   }
 
+  /** Inserts all elements of a collection at a given index, keeping their
+   *  order; the elements previously at `idx` and beyond follow the inserted
+   *  elements. Shifts the shorter of the prefix before `idx` and the suffix
+   *  from `idx` onwards. The buffer is resized at most once, except when inserting at
+   *  the end from a collection of unknown size, which appends one element at a time
+   *  and may resize repeatedly.
+   *
+   *  @param idx the index at which to insert, from `0` to `length` inclusive
+   *  @param elems the elements to insert
+   *  @throws IndexOutOfBoundsException if `idx` is negative or greater than `length`
+   */
   def insertAll(idx: Int, elems: IterableOnce[A]^): Unit = {
     requireBounds(idx, length+1)
     val n = length
@@ -233,6 +316,19 @@ class ArrayDeque[A] protected (
     }
   }
 
+  /** Removes `count` elements starting at index `idx`.
+   *
+   *  If fewer than `count` elements exist from `idx` to the end, all elements
+   *  from `idx` onwards are removed. If `count` is zero, does nothing; `idx` is
+   *  not validated in that case. The internal buffer may shrink when a large
+   *  buffer becomes mostly empty.
+   *
+   *  @param idx the index of the first element to remove
+   *  @param count the number of elements to remove
+   *  @throws IndexOutOfBoundsException if `count` is positive and `idx` is
+   *          negative or not less than `length`
+   *  @throws IllegalArgumentException if `count` is negative
+   */
   def remove(idx: Int, count: Int): Unit = {
     if (count > 0) {
       requireBounds(idx)
@@ -275,12 +371,24 @@ class ArrayDeque[A] protected (
     }
   }
 
+  /** Removes the element at a given index and returns it.
+   *
+   *  @param idx the index of the element to remove
+   *  @return the removed element
+   *  @throws IndexOutOfBoundsException if `idx` is negative or not less than `length`
+   */
   def remove(idx: Int): A = {
     val elem = this(idx)
     remove(idx, 1)
     elem
   }
 
+  /** Removes the first occurrence of the given element from this array deque,
+   *  if present; otherwise does nothing.
+   *
+   *  @param elem the element to remove
+   *  @return this array deque
+   */
   override def subtractOne(elem: A): this.type = {
     val idx = indexOf(elem)
     if (idx >= 0) remove(idx, 1) //TODO: SeqOps should be fluent API
@@ -432,14 +540,28 @@ class ArrayDeque[A] protected (
     res.result()
   }
 
+  /** Grows the internal buffer, if necessary, so that this array deque can hold
+   *  at least `hint` elements without further resizing. Does nothing if `hint`
+   *  is not greater than the current length or the buffer is already large enough.
+   *
+   *  @param hint the number of elements to reserve capacity for
+   */
   @inline def ensureSize(hint: Int) = if (hint > length && mustGrow(hint)) resize(hint)
 
+  /** Returns the number of elements in this array deque. */
   def length = end_-(start)
 
+  /** Returns `true` if this array deque contains no elements, in constant time. */
   override def isEmpty = start == end
 
+  /** Returns a copy of this array deque, backed by a clone of the internal
+   *  buffer. The elements themselves are not copied.
+   */
   override protected def klone(): ArrayDeque[A] = new ArrayDeque(array.clone(), start = start, end = end)
 
+  /** Returns the companion object [[ArrayDeque]], the factory used to build new
+   *  collections of this type.
+   */
   override def iterableFactory: SeqFactory[ArrayDeque] = ArrayDeque
 
   /**
@@ -470,9 +592,35 @@ class ArrayDeque[A] protected (
     this
   }
 
+  /** Returns a new `ArrayDeque` backed directly by the given array (not a
+   *  copy), containing its first `end` elements.
+   *
+   *  @param array the array to use as the internal buffer; its length must be a
+   *               power of two
+   *  @param end the number of elements, from the start of `array`, that the result
+   *             contains; it must be less than the array's length, since the circular
+   *             buffer always leaves one slot free
+   *  @return a new `ArrayDeque` over the first `end` elements of `array`
+   */
   protected def ofArray(array: Array[AnyRef | Null], end: Int): ArrayDeque[A] =
     new ArrayDeque[A](array, start = 0, end)
 
+  /** Copies elements of this array deque to another array, beginning at index
+   *  `destStart` of `dest`.
+   *
+   *  The number of elements copied is the minimum of `len`, the length of this
+   *  array deque, and the remaining capacity of `dest` from `destStart`; if
+   *  that minimum is not positive, nothing is copied.
+   *
+   *  @tparam B the element type of the destination array, a supertype of `A`
+   *  @param dest the destination array
+   *  @param destStart the index of `dest` at which to write the first element; it must
+   *                   be within `dest` whenever there is anything to copy
+   *  @param len the maximum number of elements to copy
+   *  @return the number of elements actually copied
+   *  @throws IndexOutOfBoundsException if there are elements to copy and `destStart` is
+   *          not a valid index of `dest`
+   */
   override def copyToArray[B >: A](dest: Array[B], destStart: Int, len: Int): Int = {
     val copied = IterableOnce.elemsToCopyToArray(length, dest.length, destStart, len)
     if (copied > 0) {
@@ -481,6 +629,13 @@ class ArrayDeque[A] protected (
     copied
   }
 
+  /** Returns a new array containing all elements of this array deque in order.
+   *
+   *  The result does not share storage with this array deque.
+   *
+   *  @tparam B the element type of the result array, a supertype of `A`
+   *  @return a new array with the elements of this array deque
+   */
   override def toArray[B >: A: ClassTag]: Array[B] =
     copySliceToArray(srcStart = 0, dest = new Array[B](length), destStart = 0, maxItems = length)
 
@@ -490,6 +645,9 @@ class ArrayDeque[A] protected (
   def trimToSize(): Unit = resize(length)
 
   // Utils for common modular arithmetic:
+  /** Returns the physical index into the internal buffer of the slot `idx`
+   *  places after `start`, wrapping around the power-of-two buffer length.
+   */
   @inline protected def start_+(idx: Int) = (start + idx) & (array.length - 1)
   @inline private def start_-(idx: Int) = (start - idx) & (array.length - 1)
   @inline private def end_+(idx: Int) = (end + idx) & (array.length - 1)
@@ -524,6 +682,7 @@ class ArrayDeque[A] protected (
     reset(array = array2, start = 0, end = n)
   }
 
+  /** Returns `"ArrayDeque"`, the name of this collection type used in `toString` output. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "ArrayDeque"
 }
@@ -536,6 +695,17 @@ class ArrayDeque[A] protected (
 @SerialVersionUID(3L)
 object ArrayDeque extends StrictOptimizedSeqFactory[ArrayDeque] {
 
+  /** Builds a new `ArrayDeque` containing the elements of the given collection.
+   *
+   *  If the size of `coll` is known, the elements are copied directly into a
+   *  buffer of sufficient capacity; otherwise they are appended one by one.
+   *
+   *  @tparam B the element type
+   *  @param coll the collection whose elements are copied
+   *  @return a new `ArrayDeque` with the elements of `coll`
+   *  @throws IllegalStateException if `coll` reports a known size that differs
+   *          from the number of elements its iterator yields
+   */
   def from[B](coll: collection.IterableOnce[B]^): ArrayDeque[B] = {
     val s = coll.knownSize
     if (s >= 0) {
@@ -546,6 +716,14 @@ object ArrayDeque extends StrictOptimizedSeqFactory[ArrayDeque] {
     } else new ArrayDeque[B]() ++= coll
   }
 
+  /** Returns a new builder for an `ArrayDeque`.
+   *
+   *  The builder appends elements to a deque that becomes the result; a size
+   *  hint pre-allocates buffer capacity.
+   *
+   *  @tparam A the element type
+   *  @return a builder producing an `ArrayDeque`
+   */
   def newBuilder[A]: Builder[A, ArrayDeque[A]] =
     new GrowableBuilder[A, ArrayDeque[A]](empty) {
       override def sizeHint(size: Int): Unit = {
@@ -553,8 +731,17 @@ object ArrayDeque extends StrictOptimizedSeqFactory[ArrayDeque] {
       }
     }
 
+  /** Returns a new, empty `ArrayDeque` with the default initial capacity.
+   *
+   *  @tparam A the element type
+   *  @return a new, empty `ArrayDeque`
+   */
   def empty[A]: ArrayDeque[A] = new ArrayDeque[A]()
 
+  /** The default initial size hint, 16: an `ArrayDeque` created without an
+   *  explicit initial size can hold at least this many elements before its
+   *  internal buffer grows.
+   */
   final val DefaultInitialSize = 16
 
   /**
@@ -578,16 +765,42 @@ object ArrayDeque extends StrictOptimizedSeqFactory[ArrayDeque] {
 }
 
 transparent trait ArrayDequeOps[A, +CC[_] <: caps.Pure, +C <: AnyRef] extends StrictOptimizedSeqOps[A, CC, C] {
+  /** The underlying circular buffer. Its length is always a power of two. */
   protected def array: Array[AnyRef | Null]
 
+  /** Returns a copy of this collection, as produced by `klone()`. */
   final override def clone(): C = klone()
 
+  /** Returns a copy of this collection; called by `clone()`. Implementations
+   *  copy the internal buffer so that the copy does not share storage with the
+   *  original; the elements themselves are not copied.
+   */
   protected def klone(): C
 
+  /** Returns a new collection backed directly by the given array (not a copy),
+   *  containing its first `end` elements. Subclasses must override this method
+   *  to return the most specific collection type.
+   *
+   *  @param array the array to use as the internal buffer; its length must be a
+   *               power of two
+   *  @param end the number of elements, from the start of `array`, that the
+   *             result contains
+   *  @return a new collection over the first `end` elements of `array`
+   */
   protected def ofArray(array: Array[AnyRef | Null], end: Int): C
 
+  /** Returns the physical index into the internal buffer of the slot `idx`
+   *  places after the first element, wrapping around the power-of-two buffer
+   *  length.
+   */
   protected def start_+(idx: Int): Int
 
+  /** Checks that `idx` is a valid index, throwing if it is not.
+   *
+   *  @param idx the index to validate
+   *  @param until the exclusive upper bound for `idx`; defaults to `length`
+   *  @throws IndexOutOfBoundsException if `idx` is negative or not less than `until`
+   */
   @inline protected final def requireBounds(idx: Int, until: Int = length): Unit =
     if (idx < 0 || idx >= until)
       throw CommonErrors.indexOutOfBounds(index = idx, max = until - 1)
@@ -616,6 +829,9 @@ transparent trait ArrayDequeOps[A, +CC[_] <: caps.Pure, +C <: AnyRef] extends St
     dest
   }
 
+  /** Returns a new collection with the elements of this collection in reverse
+   *  order. This collection is not modified.
+   */
   override def reverse: C = {
     val n = length
     val arr = ArrayDeque.alloc(n)
@@ -627,6 +843,17 @@ transparent trait ArrayDequeOps[A, +CC[_] <: caps.Pure, +C <: AnyRef] extends St
     ofArray(arr, n)
   }
 
+  /** Returns a new collection containing the elements from index `from`
+   *  (inclusive) to index `until` (exclusive). This collection is not modified.
+   *
+   *  Both indices are clamped to the range `0` to `length`: if the clamped
+   *  range is empty, returns an empty collection; if it covers every element,
+   *  returns a copy of this collection.
+   *
+   *  @param from the index of the first element to include
+   *  @param until the index one past the last element to include
+   *  @return a new collection with the selected elements
+   */
   override def slice(from: Int, until: Int): C = {
     val n = length
     val left = Math.max(0, Math.min(n, from))
@@ -642,8 +869,28 @@ transparent trait ArrayDequeOps[A, +CC[_] <: caps.Pure, +C <: AnyRef] extends St
     }
   }
 
+  /** Groups elements in fixed size blocks by passing a "sliding window" over
+   *  them, moving the window `step` elements at a time.
+   *
+   *  @param size the number of elements per group
+   *  @param step the distance between the first elements of successive groups
+   *  @return an iterator producing collections of `size` elements each, except
+   *          the last group, which may be smaller
+   *  @throws IllegalArgumentException if `size` or `step` is not positive
+   *  @throws java.util.ConcurrentModificationException from the returned iterator if the
+   *          length of this collection changes while it is being consumed
+   */
   override def sliding(@deprecatedName("window") size: Int, step: Int): Iterator[C] =
     super.sliding(size = size, step = step)
 
+  /** Partitions the elements into fixed size groups.
+   *
+   *  @param n the number of elements per group
+   *  @return an iterator producing collections of `n` elements each, except the
+   *          last group, which may be smaller
+   *  @throws IllegalArgumentException if `n` is not positive
+   *  @throws java.util.ConcurrentModificationException from the returned iterator if the
+   *          length of this collection changes while it is being consumed
+   */
   override def grouped(n: Int): Iterator[C] = sliding(n, n)
 }
