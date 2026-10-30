@@ -336,16 +336,14 @@ object Settings:
 
       if matches then
         given ArgsSummary = state0
-        deprecation match
-        case _ =>
-          prefix match
+        prefix match
           case Some(prefix) =>
             val value = arg.drop(prefix.length)
             if value.isEmpty then
               state.warn(s"Option $name requires a suffix: $arg", args)
             else
               doSet(value, useArg = true)
-          case none =>
+          case None =>
             val split = arg.split(":", 2)
             if split.length == 1 then
               doSet("", useArg = false)
