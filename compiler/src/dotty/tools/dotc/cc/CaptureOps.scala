@@ -11,6 +11,7 @@ import config.Printers.capt
 import util.Property.Key
 import tpd.*
 import Annotations.Annotation
+import scala.util.control.NonFatal
 import CaptureSet.VarState
 import Capabilities.*
 import Mutability.isStatefulType
@@ -641,6 +642,22 @@ extension (cls: ClassSymbol) {
     (impliedSet, contributing)
   }
 
+  /** Is `cls` a class read from a capture-checked TASTy file that was exempt
+   *  from explicit type and uses checks when it was compiled? No inferred
+   *  capture information is pickled for such classes, since the capture checker
+   *  runs after the pickler; their use sets are reconstructed from the pickled
+   *  member bodies instead, see `usesFromTasty`.
+   *  Exemption is decided from the symbol alone: classes in the empty package
+   *  (unless under `@assumeSafe`) and REPL wrappers. This also excludes the
+   *  standard library, whose classes all live under named packages.
+   */
+  def isBinaryExemptClass(using Context): Boolean =
+    cls.isDefinedInBinary
+    && cls.is(CaptureChecked)
+    && (cls.enclosingPackageClass.isEmptyPackage || cls.name.isReplWrapperName)
+    && !cls.ownersIterator.takeWhile(!_.is(Package))
+        .exists(_.hasAnnotation(defn.AssumeSafeAnnot))
+
   def creationCapset(using Context)(core: Type = cls.appliedRef): CaptureSet =
     if cls.derivesFromCapability
     then LocalCap(Origin.NewInstance(core, Nil)).singletonCaptureSet
@@ -667,6 +684,76 @@ extension (cls: ClassSymbol) {
         sym.is(ParamAccessor) && sym.isConsume
       .symbol
 }
+
+/** Reconstruct the use set of a class read from TASTy by walking its pickled
+ *  member bodies. Use sets are inferred by the capture checker, which runs
+ *  after the pickler, so they are not recorded in TASTy; without reconstruction
+ *  an exempt class would silently become pure under separate compilation.
+ *  Only top-level classes have a root tree, but that suffices: uses inside
+ *  nested classes are walked as part of the enclosing top-level class's body,
+ *  and accesses to nested entities from other compilation units go through a
+ *  path rooted in the top-level entity, which is charged at the use site.
+ *  Returns `None` if no reconstruction is possible or no uses were found.
+ */
+private def usesFromTasty(cls: ClassSymbol)(using Context): Option[CaptureSet] =
+  if !cls.isBinaryExemptClass
+      || ccState.tastyUsesInProgress.contains(cls) // break cycles between mutually referring classes
+  then None
+  else
+    ccState.tastyUsesInProgress += cls
+    try
+      val tree = cls.rootTree // EmptyTree if `cls` is not top-level or its tree was not retained
+      if tree.isEmpty then None
+      else
+        val uses = usesInTree(tree)
+        if uses.isEmpty then None else Some(CaptureSet(uses*))
+    catch case NonFatal(_) => None // best-effort reconstruction: never crash the checker
+    finally
+      ccState.tastyUsesInProgress -= cls
+
+/** The tracked references used in `tree`, the pickled body of a top-level
+ *  class: for each reference to a term defined outside the class, the
+ *  outermost tracked capability on its path. Paths are taken from the pickled
+ *  types, which spell out the full prefix chain even for bare `Ident`s of
+ *  imported members. References inside imports and exports are skipped, and so
+ *  are paths rooted in a non-package `this`: these refer to the class's own
+ *  members, whose capabilities are accounted for by `capturesImpliedByFields`.
+ */
+private def usesInTree(tree: tpd.Tree)(using Context): List[Capability] =
+  var refs: List[Capability] = Nil
+
+  def isSelfRooted(tp: Type): Boolean = tp match
+    case tp: TermRef => isSelfRooted(tp.prefix)
+    case tp: ThisType => !tp.cls.is(Package)
+    case _ => false
+
+  /** The outermost capability on the path `tp` that is tracked and visible
+   *  outside the compilation unit that defined it, if any.
+   */
+  def outermostTracked(tp: Type): Option[Capability] = tp match
+    case tp: TermRef =>
+      outermostTracked(tp.prefix).orElse:
+        if tp.symbol.isTerm && !tp.symbol.is(Method)
+            && !tp.symbol.isLocalToCompilationUnit
+            && tp.isTracked
+        then Some(tp)
+        else None
+    case _ => None
+
+  val traverser = new TreeTraverser:
+    def traverse(t: tpd.Tree)(using Context): Unit = t match
+      case _: Import | _: Export =>
+      case _: (Ident | Select) =>
+        t.tpe match
+          case tp: TermRef if !isSelfRooted(tp) =>
+            for ref <- outermostTracked(tp) do
+              if !refs.contains(ref) then refs = ref :: refs
+          case _ =>
+        traverseChildren(t)
+      case _ =>
+        traverseChildren(t)
+  traverser.traverse(tree)
+  refs
 
 extension (sym: Symbol) {
 
@@ -818,25 +905,39 @@ extension (sym: Symbol) {
    *  representing the captured references of the environment associated with `sym`.
    */
   def useSet(using Context): CaptureSet =
-    ccState.useSetCache.getOrElseUpdate(sym,
-      sym.getAnnotation(defn.RetainsAnnot) match
-        case Some(ann) =>
-          // If we read from Tasty, the annotation is not a RetainingAnnotation but is
-          // instead a regular annotation of type TreeUnpickler#DeferredSymAndTree.
-          // Map it to a RetainingAnnotation now.
-          try RetainingAnnotation.fromAnnotation(ann).toCaptureSet
-          catch case ex: IllegalCaptureRef =>
-            report.error(em"Illegal capture reference: ${ex.getMessage}", sym.srcPos)
-            CaptureSet.empty
-        case _ =>
-          if sym.is(Package)
-            || (sym.isClass || sym.isConstructor) && !sym.isExemptFromExplicitChecks
-            // If `sym` does not have a `uses` clause, set its capture set to the empty set,
-            // unless it is local to the current compilation unit.
-            // For local classes and constructors we infer their use set.
-          then CaptureSet.empty
-          else CaptureSet.Var(sym, nestedOK = false)
-    )
+    // Don't use `getOrElseUpdate`: `usesFromTasty` can reentrantly add other
+    // symbols' use sets to the cache while this use set is being computed.
+    val cached = ccState.useSetCache.lookup(sym)
+    if cached != null then cached
+    else
+      val computed = computeUseSet
+      ccState.useSetCache(sym) = computed
+      computed
+
+  private def computeUseSet(using Context): CaptureSet =
+    sym.getAnnotation(defn.RetainsAnnot) match
+      case Some(ann) =>
+        // If we read from Tasty, the annotation is not a RetainingAnnotation but is
+        // instead a regular annotation of type TreeUnpickler#DeferredSymAndTree.
+        // Map it to a RetainingAnnotation now.
+        try RetainingAnnotation.fromAnnotation(ann).toCaptureSet
+        catch case ex: IllegalCaptureRef =>
+          report.error(em"Illegal capture reference: ${ex.getMessage}", sym.srcPos)
+          CaptureSet.empty
+      case _ =>
+        val reconstructed = sym match
+          case cls: ClassSymbol => usesFromTasty(cls)
+          case _ => None
+        reconstructed match
+          case Some(cs) => cs
+          case None =>
+            if sym.is(Package)
+              || (sym.isClass || sym.isConstructor) && !sym.isExemptFromExplicitChecks
+              // If `sym` does not have a `uses` clause, set its capture set to the empty set,
+              // unless it is local to the current compilation unit.
+              // For local classes and constructors we infer their use set.
+            then CaptureSet.empty
+            else CaptureSet.Var(sym, nestedOK = false)
 
   def varMirror(using Context): Symbol =
     ccState.varMirrors.getOrElseUpdate(sym,
