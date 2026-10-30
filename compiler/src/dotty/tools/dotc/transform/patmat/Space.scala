@@ -613,6 +613,9 @@ object SpaceEngine {
             // After all, there's nothing strictly "wrong" with unassigned type vars,
             // it just fails TreeChecker's linting.
             maximizeType(unapplyArgType, Spans.NoSpan)
+          // `gc()` here keeps the constraint from growing by one binder per pattern, each
+          // of which makes every later lookup linear in their number - so a file full of
+          // such patterns goes quadratic (i27301).
           ctx.typerState.gc()
           mt
     }
