@@ -917,6 +917,9 @@ object SourceCode {
       case Wildcard() =>
         this += "_"
 
+      case Ident("_*") =>
+        this += "_*"
+
       case Bind(name, Wildcard()) =>
         this += name
 
@@ -1451,7 +1454,7 @@ object SourceCode {
     private val namesIndex = mutable.Map.empty[String, Int]
 
     private def splicedName(sym: Symbol): Option[String] = {
-      if sym.owner.isClassDef then None
+      if sym.isNoSymbol || sym.owner.isClassDef then None
       else names.get(sym).orElse {
         val name0 = sym.name
         val index = namesIndex.getOrElse(name0, 1)
@@ -1484,6 +1487,7 @@ object SourceCode {
         case New(annot) => Some((annot, Nil))
         case Apply(Select(New(annot), "<init>"), args) => Some((annot, args))
         case Apply(TypeApply(Select(New(annot), "<init>"), targs), args) => Some((annot, args))
+        case annot: TypeTree => Some((annot, Nil)) // e.g. capture checking's `retains` annotations
         case _ => None
       }
     }

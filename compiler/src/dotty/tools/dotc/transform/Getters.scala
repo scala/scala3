@@ -10,8 +10,9 @@ import Types.*
 import Symbols.*
 import MegaPhase.*
 import Flags.*
-
 import NameOps.*
+
+import scala.collection.mutable
 
 
 /** Performs the following rewritings for fields of a class:
@@ -93,7 +94,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
 
   private val NoGetterNeededFlags = Method | Param | JavaDefined | JavaStatic | PhantomSymbol | Erased
 
-  val newSetters = util.HashSet[Symbol]()
+  val newSetters = mutable.Set.empty[Symbol]
 
   def ensureSetter(sym: TermSymbol)(using Context): Symbol =
     val setter = sym.setter

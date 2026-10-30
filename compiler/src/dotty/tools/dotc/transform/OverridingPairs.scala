@@ -11,6 +11,7 @@ import scala.annotation.tailrec
 import cc.{isCaptureChecking, CCState}
 
 import scala.compiletime.uninitialized
+import scala.collection.mutable
 
 /** A module that can produce a kind of iterator (`Cursor`),
  *  which yields all pairs of overriding/overridden symbols
@@ -112,7 +113,7 @@ object OverridingPairs:
      *  (maybe excluded because of already handled by a parent).
      *  These will not appear as overriding
      */
-    private val visited = util.HashSet[Symbol]()
+    private val visited = mutable.Set.empty[Symbol]
 
     /** The current entry candidate for overriding
      */

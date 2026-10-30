@@ -20,7 +20,7 @@ import language.experimental.captureChecking
 import java.io.{ObjectInputStream, ObjectOutputStream}
 import java.lang.{StringBuilder => JStringBuilder}
 
-import scala.annotation.tailrec
+import scala.annotation.{nowarn, tailrec}
 import scala.collection.generic.SerializeEnd
 import scala.collection.immutable.LazyListIterableBase.InRace
 import scala.collection.mutable.{Builder, ReusableBuilder, StringBuilder}
@@ -300,6 +300,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
 
   @inline private def isEvaluated: Boolean = _head.asInstanceOf[AnyRef] ne Uninitialized
 
+  @nowarn("msg=Catching Throwable can lead to unexpected behavior") // a failed thunk must release its waiters
   private def initState(): Unit = {
     def selfRef(): Nothing =
       // if it's already mid-evaluation, we're stuck in an infinite self-referential loop (also it's empty)
@@ -324,14 +325,14 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
           // this way, there is no allocation in the common case where there's no race.
           // if multiple threads attempt to initialize a LazyList, an `InRace` instance is created to coordinate.
           if (_tailUpdater.compareAndSet(this, fun, Thread.currentThread)) {
-            var ex: Exception | Null = null
+            var ex: Throwable | Null = null
             // `fun` returns a LazyList that represents the state (head/tail) of `this`. We call `evaluated` to ensure
             // the result is initialized, to prevent races when reading `rawTail` / `rawHead` below.
             // Often, lazy lists are created with `newLL(eagerCons(...))` so `l` is already initialized, but `newLL`
             // also accepts non-evaluated lazy lists.
             val l = try fun.asInstanceOf[() ->{this} LazyListIterable[A]^{this}].apply().evaluated catch {
-              case e: Exception =>
-                ex = e
+              case t: Throwable =>
+                ex = t
                 null
             }
             // update `_tail` before `_head`, because `_head` is used to test `isEvaluated`

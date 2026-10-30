@@ -1569,7 +1569,7 @@ Diagnostics:
 Synthetics:
 [49:27..49:33):Refl() => Refl.apply[T](*)
 [52:9..52:13):Refl => *.unapply[Option[B]]
-[52:31..52:50):identity[Option[B]] => *[Function1[A, Option[B]]]
+[52:31..52:50):identity[Option[B]] => *[ImpureFunction1[A, Option[B]]]
 [54:14..54:18):Some => *.apply[Some[Int]]
 [54:14..54:27):Some(Some(1)) => Some.apply[Some[Int]](*)
 [54:14..54:34):Some(Some(1)).unwrap => *(given_<:<_T_T[Option[Int]])

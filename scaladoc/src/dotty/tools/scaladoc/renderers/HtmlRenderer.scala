@@ -75,7 +75,9 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     rootNode.set("docs", rootDocsPage.map(serializePage).orNull)
     rootNode.set("api", rootApiPage.map(serializePage).orNull)
     val jsonString = mapper.writer().writeValueAsString(rootNode);
-    renderResource(Resource.Text("dynamicSideMenu.json", jsonString))
+    // A script rather than plain JSON so that it can be loaded with a <script> tag,
+    // which unlike `fetch` also works when browsing the docs from `file://` URLs.
+    renderResource(Resource.Text("scripts/dynamicSideMenu.js", s"dynamicSideMenuData = $jsonString;"))
 
   private def renderResources(): Seq[String] =
     import scala.util.Using
@@ -262,7 +264,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     div(id := "")(
       div(id := "header", cls := "body-small")(
         div(cls := "header-container-left")(
-          a(href := pathToRoot(link.dri), cls := "logo-container")(
+          // `index.html` rather than its directory, which `file://` URLs show as a listing
+          a(href := resolveRoot(link.dri, "index.html"), cls := "logo-container")(
             projectLogoElem.toSeq,
             darkProjectLogoElem.toSeq,
             span(cls := "project-name h300")(args.name)
