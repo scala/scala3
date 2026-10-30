@@ -50,6 +50,10 @@ enum SourceVersion:
   /** See PR #23441 and tests/neg/i23435-min */
   def enablesDistributeAnd = !isAtLeast(`future`)
   def enablesCompactAnnotation = isAtLeast(`3.9`) && this != `2.13`
+  /** `_` is a type parameter placeholder instead of a wildcard type.
+   *  Not under `-migration`, so that `-rewrite` can still replace `_` wildcards with `?`.
+   */
+  def enablesUnderscoreTypeLambdas = isAtLeast(`3.11`) && !isMigrating
 
   def requiresNewSyntax = isAtLeast(future)
 

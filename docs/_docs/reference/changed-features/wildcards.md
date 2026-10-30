@@ -31,8 +31,8 @@ A step-by-step migration is made possible with the following measures:
  1. In earlier versions of Scala 3, both `_` and `?` are legal names for wildcards.
  2. In Scala 3.4, `_` will be deprecated in favor of `?` as a name for wildcards. A `-rewrite` option is
     available to rewrite one to the other.
- 3. At some later point in the future, the meaning of `_` will change from wildcard to placeholder for type parameters.
- 4. Some deprecation warnings are already available under the `-source future` setting.
+ 3. In Scala 3.11, the meaning of `_` changes from wildcard to placeholder for type parameters.
+    Code using `_` as a wildcard can be rewritten with `-source 3.11-migration -rewrite`.
 
 To smooth the transition for codebases that use kind-projector, we adopt the following measures under the command line
 option `-Xkind-projector` (`-Ykind-projector` in older versions of the Scala 3 compiler):
@@ -45,6 +45,7 @@ option `-Xkind-projector` (`-Ykind-projector` in older versions of the Scala 3 c
 These rules make it possible to cross-build between Scala 2 using the kind projector plugin and Scala 3.0 - 3.2 using the compiler option `-Xkind-projector`.
 
 There is also a migration path for users that want a one-time transition to syntax with `_` as a type parameter placeholder.
-With option `-Xkind-projector:underscores` Scala 3 will regard `_` as a type parameter placeholder, leaving `?` as the only syntax for wildcards.
+With option `-Xkind-projector:underscores` Scala 3 will regard `_` as a type parameter placeholder, leaving `?` as the only syntax for wildcards,
+regardless of the source version.
 
 To cross-compile with old Scala 2 sources, while using `_` a placeholder, you must use options `-Xsource:3 -P:kind-projector:underscore-placeholders` together with a recent version of kind-projector (`0.13` and higher) and most recent versions of Scala 2 (`2.13.5` and higher and `2.12.14` and higher)
