@@ -186,7 +186,7 @@ object Using {
    *       }
    *       ```
    */
-  final class Manager private[Using] extends AutoCloseable {
+  final class Manager private[Using] {
     import Manager._
 
     private var closed = false
@@ -216,21 +216,6 @@ object Using {
       if (closed) throw new IllegalStateException("Manager has already been closed")
       resources = new Resource(resource) :: resources
     }
-
-    /** Closes this manager, releasing its resources in reverse order of acquisition.
-     *
-     *  All resources are released, even if releasing one of them throws an exception.
-     *  If one or more exceptions are thrown, they are combined and re-thrown as described
-     *  in the main doc for [[Using `Using`]].
-     *
-     *  Once closed, a manager no longer accepts new resources; calling `close` again has
-     *  no effect.
-     *
-     *  This method only needs to be called for managers created with
-     *  [[Manager$.allocate `Manager.allocate`]]; managers provided by
-     *  [[Manager$.apply `Manager.apply`]] are closed automatically.
-     */
-    def close(): Unit = release(null)
 
     private def release(primary: Throwable | Null): Unit = {
       var toThrow = primary
@@ -293,15 +278,17 @@ object Using {
      */
     def apply[A](op: Manager => A): Try[A] = Try { (new Manager).manage(op) }
 
-    /** Performs an operation using a new `Manager`, and returns the `Manager` together
-     *  with the result of the operation, *without* closing the `Manager`.
+    /** Performs an operation using a new `Manager`, *without* closing the `Manager`
+     *  afterwards, and returns an `AutoCloseable` which closes it, together with the
+     *  result of the operation.
      *
      *  If the operation throws an exception, the `Manager` is closed, releasing the
      *  resources acquired so far (in reverse order of acquisition), and the exception
-     *  is re-thrown. Otherwise, the caller is responsible for eventually calling
-     *  [[Manager.close `close`]] on the returned `Manager`; its resources are not
-     *  released otherwise. Prefer [[Manager$.apply `Manager.apply`]] whenever the
-     *  resources are only needed within a single block of code.
+     *  is re-thrown. Otherwise, the caller is responsible for eventually calling `close`
+     *  on the returned `AutoCloseable`, which releases the resources (in reverse order
+     *  of acquisition); they are not released otherwise. Calling `close` again has no
+     *  effect. Prefer [[Using.managed `Using.managed`]] or [[Manager$.apply `Manager.apply`]]
+     *  whenever the resources are only needed within a single block of code.
      *
      *  This is useful when resources need to be managed across lifecycle callbacks,
      *  e.g. acquired in a `beforeAll` hook of a test framework and released in `afterAll`,
@@ -313,23 +300,23 @@ object Using {
      *
      *  Example:
      *  ```
-     *  val (manager, (reader, writer)) = Using.Manager.allocate {
+     *  val (resources, (reader, writer)) = Using.Manager.allocate {
      *   val reader = new SafeFileReader("in.txt") // registers itself with the given `Manager`
      *   val writer = summon[Using.Manager](new FileWriter("out.txt"))
      *   (reader, writer)
      *  }
-     *  Future(writer.write(reader.readLine())).andThen(_ => manager.close())
+     *  Future(writer.write(reader.readLine())).andThen(_ => resources.close())
      *  ```
      *
      *  $suppressionBehavior
      *
      *  @tparam A the return type of the operation
      *  @param op the operation to perform using the manager
-     *  @return the open `Manager` and the result of the operation
+     *  @return an `AutoCloseable` which closes the `Manager`, and the result of the operation
      */
-    def allocate[A](op: Manager ?=> A): (Manager, A) = {
+    def allocate[A](op: Manager ?=> A): (AutoCloseable, A) = {
       val manager = new Manager
-      try (manager, op(using manager))
+      try ((() => manager.release(null)): AutoCloseable, op(using manager))
       catch {
         case t: Throwable =>
           manager.release(t)
