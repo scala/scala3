@@ -627,4 +627,6 @@ object Flags {
   val SyntheticParam: FlagSet                = Synthetic | Param
   val SyntheticTermParam: FlagSet            = Synthetic | TermParam
   val SyntheticTypeParam: FlagSet            = Synthetic | TypeParam
+
+  val NonAllowedLocalModifier: FlagSet       = Private | Abstract  //| Final | Sealed | Implicit | Lazy
 }
