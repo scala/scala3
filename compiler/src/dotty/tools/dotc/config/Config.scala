@@ -188,7 +188,6 @@ object Config {
   inline val tracingEnabled = false
 
   /** Initial capacity of the uniques HashMap.
-   *  Note: This should be a power of two to work with util.HashSet
    */
   inline val initialUniquesCapacity = 0x8000
 

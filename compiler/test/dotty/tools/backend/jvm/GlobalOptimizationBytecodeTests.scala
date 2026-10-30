@@ -162,6 +162,14 @@ class GlobalOptimizationBytecodeTests extends OptimizationBytecodeTest {
       params = List("x: Int")
     )
 
+  // A primitive box created with its (deprecated) constructor rather than `valueOf`
+  @Test def inlineBoxUnboxJavaConstructor =
+    assertEquivalence(
+      "x",
+      "val a = new java.lang.Integer(x): @annotation.nowarn; a.intValue",
+      params = List("x: Int")
+    )
+
   @Test def inlineBoxUnboxJavaBranch =
     assertEquivalence(
       "10",

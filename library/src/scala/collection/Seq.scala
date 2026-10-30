@@ -737,6 +737,8 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *  (`lt` returns false for both directions of comparison)
    *  appear in the same order in the sorted sequence as in the original.
    *
+   *  **Capture Checking notes**: `lt` defaults to allowing only pure functions. See [[scala.math.Ordering]].
+   *
    *  @param  lt  a predicate that is true if
    *              its first argument strictly precedes its second argument in
    *              the desired ordering.
@@ -747,7 +749,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *    // List("Bobby", "Bob", "John", "Steve", "Tom")
    *  ```
    */
-  def sortWith(lt: (A, A) => Boolean): C^{this} = sorted(using Ordering.fromLessThan(lt))
+  def sortWith(lt: (A, A) -> Boolean): C^{this} = sorted(using Ordering.fromLessThan(lt))
 
   /** Sorts this $coll according to the Ordering which results from transforming
    *  an implicitly given Ordering with a transformation function.
@@ -756,6 +758,8 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *
    *  The sort is stable. That is, elements that are equal (as determined by
    *  `ord.compare`) appear in the same order in the sorted sequence as in the original.
+   *
+   *  **Capture Checking notes**: `f` defaults to allowing only pure functions. See [[scala.math.Ordering]].
    *
    *  @see [[scala.math.Ordering]]
    *  @tparam  B the target type of the transformation `f`, and the type where
@@ -774,7 +778,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *    // sorted: Array[String] = Array(The, dog, fox, the, lazy, over, brown, quick, jumped)
    *  ```
    */
-  def sortBy[B](f: A => B)(implicit ord: Ordering[B]): C^{this} = sorted(using ord.on(f))
+  def sortBy[B](f: A -> B)(implicit ord: Ordering[B]): C^{this} = sorted(using ord.on(f))
 
   /** Produces the range of all indices of this sequence.
    *  $willForceEvaluation
