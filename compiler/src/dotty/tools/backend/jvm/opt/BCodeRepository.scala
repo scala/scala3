@@ -17,7 +17,7 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.backend.jvm.ClassNode1
 import dotty.tools.backend.jvm.analysis.AnalysisUtils.LambdaMetaFactoryCall
-import dotty.tools.dotc.classpath.{AggregateClassPath, ClassPath, CtSymClassPath, JrtClassPath}
+import dotty.tools.dotc.classpath.ClassPath
 import dotty.tools.io
 
 import scala.collection.{concurrent, mutable}
@@ -275,23 +275,10 @@ class BCodeRepository(classPath: ClassPath) {
     }
   }
 
-  /* Create a class path for the backend, based on the given class path.
-   * Used to make classes available to the inliner's bytecode repository.
-   * In particular, if ct.sym is used for compilation, replace it with jrt.
-   */
-  private lazy val optimizerClassPath = classPath match {
-    case cp@AggregateClassPath(entries) if entries.head.isInstanceOf[CtSymClassPath] =>
-      JrtClassPath(release = None) match {
-        case Some(jrt) => AggregateClassPath(entries.drop(1).prepended(jrt))
-        case _ => cp
-      }
-    case cp => cp
-  }
-
   private def parseClass(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
     try
       val fullName = internalName.replace('/', '.')
-      optimizerClassPath.findClassFile(fullName) match
+      classPath.findClassFile(fullName) match
         case Some(classFile) =>
           val classNode = new ClassNode1
           val classReader = new ClassReader(classFile.toByteArray)
@@ -309,7 +296,7 @@ class BCodeRepository(classPath: ClassPath) {
           //   https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.7.11
           //   https://jcp.org/aboutJava/communityprocess/final/jsr045/index.html
           removeLineNumbers(classNode)
-          val moduleNode = optimizerClassPath.findClassFile("module-info.class").map(f =>
+          val moduleNode = classPath.findClassFile("module-info.class").map(f =>
             val node = new ClassNode1
             val moduleReader = new ClassReader(f.toByteArray)
             moduleReader.accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES)

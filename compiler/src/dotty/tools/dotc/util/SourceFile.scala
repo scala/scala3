@@ -37,31 +37,26 @@ object WrappedSourceFile:
       case _ => sourceFile.atSpan(span)
 
   private def lookupMagicHeader(sourceFile: SourceFile)(using Context): MagicHeaderInfo =
-    val cache = ctx.base.magicHeaderCache
-    cache.lookup(sourceFile) match
-      case null =>
-        val magicHeader = ctx.settings.YmagicOffsetHeader.value
-        val result =
-          if magicHeader.isEmpty then NoHeader
-          else
-            val text = sourceFile.textContent()
-            val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
-            val regex = s"(?m)^$headerQuoted:(.+)$$".r
-            regex.findFirstMatchIn(text) match
-              case Some(m) =>
-                val sourceStartOffset = sourceFile.nextLine(m.start)
-                val name = m.group(1).nn
-                val src = ctx.getSource(name)
-                val file = src.file
-                if file != null && file.exists then
-                  HasHeader(sourceStartOffset, src)
-                else
-                  report.warning(em"original source file not found: $name")
-                  NoHeader
-              case None => NoHeader
-        cache(sourceFile) = result
-        result
-      case result => result
+    ctx.base.magicHeaderCache.getOrElseUpdate(sourceFile, {
+      val magicHeader = ctx.settings.YmagicOffsetHeader.value
+      if magicHeader.isEmpty then NoHeader
+      else
+        val text = sourceFile.textContent()
+        val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
+        val regex = s"(?m)^$headerQuoted:(.+)$$".r
+        regex.findFirstMatchIn(text) match
+          case Some(m) =>
+            val sourceStartOffset = sourceFile.nextLine(m.start)
+            val name = m.group(1).nn
+            val src = ctx.getSource(name)
+            val file = src.file
+            if file != null && file.exists then
+              HasHeader(sourceStartOffset, src)
+            else
+              report.warning(em"original source file not found: $name")
+              NoHeader
+          case None => NoHeader
+    })
 
 class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec: Codec) extends interfaces.SourceFile {
   private var myContent: String | Null = null
@@ -215,7 +210,10 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
 
   /** The content of the line containing position `offset` */
   def lineContent(offset: Int): String =
-    textContent.substring(startOfLine(offset), nextLine(offset))
+    if textContent.isEmpty then
+      ""
+    else
+      textContent.substring(startOfLine(offset), nextLine(offset))
 
   /** The column corresponding to `offset`, starting at 0 */
   def column(offset: Int): Int = {

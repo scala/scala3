@@ -8,8 +8,8 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
  * PLEASE KEEP ALPHABETIZED!
  */
 object Dependencies {
-  val asmUtil = "org.ow2.asm" % "asm-util" % "9.10.1"
-  val asmCommons = "org.ow2.asm" % "asm-commons" % "9.10.1"
+  val asmUtil = "org.ow2.asm" % "asm-util" % "9.11.1"
+  val asmCommons = "org.ow2.asm" % "asm-commons" % "9.11.1"
 
   /** Version of Coursier to use + download for initializing the local maven repo of Scala command */
   val coursierJarVersion = "2.1.26"
@@ -35,9 +35,9 @@ object Dependencies {
 
   val guava = "com.google.guava" % "guava" % "33.7.2-jre"
 
-  val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % "3.2.3"
+  val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % "3.2.4"
 
-  private val jlineVersion = "4.4.6"
+  private val jlineVersion = "4.4.8"
   val jlineReader = "org.jline" % "jline-reader" % jlineVersion
   val jlineTerminal = "org.jline" % "jline-terminal" % jlineVersion
   val jlineTerminalJni = "org.jline" % "jline-terminal-jni" % jlineVersion
@@ -48,18 +48,20 @@ object Dependencies {
   // otherwise the jackson versions are ancient, with known vulnerabilities
   val liqpDependencyOverrides = Seq(
     "com.fasterxml.jackson.core" % "jackson-annotations" % "2.22",
-    "com.fasterxml.jackson.core" % "jackson-core" % "2.22.3",
-    "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.3",
-    "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % "2.22.3"
+    "com.fasterxml.jackson.core" % "jackson-core" % "2.22.4",
+    "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.4",
+    "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % "2.22.4"
   )
 
-  val lz4 = "at.yawk.lz4" % "lz4-java" % "1.12.0"
+  val lz4 = "at.yawk.lz4" % "lz4-java" % "1.12.1"
 
   private val mtagsVersion = "1.6.9"
   val mtagsInterfaces = "org.scalameta" % "mtags-interfaces" % mtagsVersion
   val mtagsShared = "org.scalameta" % s"mtags-shared_${Versions.scala2Version}" % mtagsVersion
 
-  val sbtCompilerInterface = "org.scala-sbt" % "compiler-interface" % "1.12.1"
+  /** Overridable so that CI also checks the sbt bridge against compiler-interface 2.x */
+  private val sbtCompilerInterfaceVersion = sys.env.getOrElse("SBT_COMPILER_INTERFACE_VERSION", "1.12.1")
+  val sbtCompilerInterface = "org.scala-sbt" % "compiler-interface" % sbtCompilerInterfaceVersion
   val sbtJunitInterface = "com.github.sbt" % "junit-interface" % "0.13.3"
   val sbtZincApiInfo = "org.scala-sbt" %% "zinc-apiinfo" % "1.12.1"
 

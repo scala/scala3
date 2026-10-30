@@ -146,6 +146,8 @@ object Build {
       } yield Credentials("Sonatype Nexus Repository Manager", "central.sonatype.com", username, password)
     ).toList,
     PgpKeys.pgpPassphrase := sys.env.get("PGP_PW").map(_.toCharArray()),
+    // BouncyCastle signs with the primary key by default, but CI has only the signing subkey
+    PgpKeys.pgpSigningKey := sys.env.get("SCALA_PGP_FINGERPRINT").filter(_.nonEmpty),
     PgpKeys.useGpgPinentry := true,
 
     // Do not cut off the bottom of large stack traces (default is 1024)
@@ -334,6 +336,9 @@ object Build {
       docScalaInstance
     },
     Compile / doc / scalacOptions ++= ScaladocOptions.scalacOptionsDocSettings(),
+    // `-siteroot` defaults to `./docs`, which sbt resolves against the repo root, so without
+    // this every javadoc JAR would bundle the repo's static site (blog, reference, PDFs).
+    Compile / doc / scalacOptions ++= Seq("-siteroot", (baseDirectory.value / "docs").getPath),
   )
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
@@ -546,7 +551,7 @@ object Build {
            |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [--failed] [--enable-coverage-phase] [<filter>]
            |
            |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
-           |excluding tests tagged with dotty.SlowTests.
+           |excluding "slow" tests.
            |
            |  --help                show this message
            |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
@@ -576,7 +581,7 @@ object Build {
         else if (coverage) "dotty.tools.dotc.coverage.*"
         else if (coverageFlag) compilationTests
         else s"$compilationTests dotty.tools.dotc.coverage.*"
-      val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
+      val cmd = s" $test -- -Ddotty.tests.quick=TRUE " +
         (if (enableCoveragePhase) " --include-categories=dotty.CoverageCompilationTests" else "") +
         (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
         (if (rerunFailed) " -Ddotty.tests.rerunFailed=TRUE" else "") +
@@ -1009,7 +1014,7 @@ object Build {
       Compile / unmanagedSourceDirectories   += baseDirectory.value / "src-non-bootstrapped",
       Compile / unmanagedResourceDirectories := Seq(baseDirectory.value / "resources"),
       Compile / compile / scalacOptions ++= Seq(
-        "-opt", "-opt-inline:**,!java.**",
+        "-opt",
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
@@ -1738,13 +1743,12 @@ object Build {
       ),
       Test / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       // All the dependencies needed by the doctool
-      libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
+      libraryDependencies ++= Dependencies.liqpDependencyOverrides ++ Dependencies.flexmarkDeps ++ Seq(
         Dependencies.liqp,
         Dependencies.jsoup, // Needed to process .html files for static site
         Dependencies.jacksonDataformatYaml,
         Dependencies.sbtJunitInterface % Test,
       ),
-      dependencyOverrides ++= Dependencies.liqpDependencyOverrides,
       Compile / scalacOptions += "-experimental",
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,

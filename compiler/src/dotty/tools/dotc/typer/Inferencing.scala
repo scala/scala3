@@ -78,7 +78,7 @@ object Inferencing {
           foldOver(tvars, tp)
       }
     }
-    val depVars = dependentVars(Set(), tp)
+    val depVars = dependentVars(Set.empty, tp)
     if (depVars.nonEmpty) instantiateSelected(tp, depVars.toList)
   }
 

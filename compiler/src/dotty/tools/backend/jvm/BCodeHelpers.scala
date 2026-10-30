@@ -387,15 +387,13 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     /** The members of this type that have all of `required` flags but none of `excluded` flags set.
      *  The members are sorted by name and signature to guarantee a stable ordering.
      */
-    private def sortedMembersBasedOnFlags(tp: Type, required: Flag, excluded: FlagSet)(using Context): List[Symbol] = {
+    private def sortedMembersBasedOnFlags(tp: Type, required: Flag, excluded: FlagSet)(using Context): Seq[Symbol] = {
       // The output of `memberNames` is a Set, sort it to guarantee a stable ordering.
       val names = tp.memberNames(takeAllFilter).toSeq.sorted
-      val buffer = mutable.ListBuffer[Symbol]()
-      names.foreach { name =>
-        buffer ++= tp.memberBasedOnFlags(name, required, excluded)
+      names.flatMap { name =>
+        tp.memberBasedOnFlags(name, required, excluded)
           .alternatives.sortBy(_.signature)(using Signature.lexicographicOrdering).map(_.symbol)
       }
-      buffer.toList
     }
 
     /*

@@ -49,7 +49,7 @@ import SpaceEngine.*
  */
 
 /** A key to be used in a context property that caches the results of isSubspace checks */
-private val IsSubspaceCacheKey = new Property.Key[mutable.HashMap[(Space, Space), Boolean]]
+private val IsSubspaceCacheKey = new Property.Key[mutable.Map[(Space, Space), Boolean]]
 
 /** A key to track which case classes are currently being expanded in simplify, to prevent infinite recursion */
 private val ExpandingCaseClassesKey = new Property.Key[mutable.Set[Symbol]]
@@ -613,6 +613,10 @@ object SpaceEngine {
             // After all, there's nothing strictly "wrong" with unassigned type vars,
             // it just fails TreeChecker's linting.
             maximizeType(unapplyArgType, Spans.NoSpan)
+          // `gc()` here keeps the constraint from growing by one binder per pattern, each
+          // of which makes every later lookup linear in their number - so a file full of
+          // such patterns goes quadratic (i27301).
+          ctx.typerState.gc()
           mt
     }
 
@@ -774,6 +778,7 @@ object SpaceEngine {
         && cls.isOneOf(AbstractOrTrait) // ignore sealed non-abstract classes
         && !cls.hasAnonymousChild       // can't name anonymous classes as counter-examples
         && cls.children.nonEmpty        // can't decompose without children
+        && cls != defn.PairClass        // `*:` children are Tuple1..Tuple22, not TupleXXL
 
   extension (tref: TypeRef)
     def isUpperBoundedAbstract(using Context): Boolean =
@@ -1171,7 +1176,9 @@ object SpaceEngine {
 
   /** Returns `true` if the match is definitely exhaustive. */
   def checkMatch(m: Match)(using Context): Boolean =
-    inContext(ctx.withProperty(IsSubspaceCacheKey, Some(mutable.HashMap.empty))) {
+    // `maximizeType` adds pattern-bound symbols to the GADT state of its context:
+    // keep them local to this match rather than the phase (and run) context.
+    inContext(ctx.fresh.setFreshGADTBounds.setProperty(IsSubspaceCacheKey, mutable.Map.empty)) {
       val isExhaustive = exhaustivityCheckable(m.selector) &&
         inContext(ctx.withProperty(ExpandingCaseClassesKey, Some(mutable.Set.empty))) {
           checkExhaustivity(m)

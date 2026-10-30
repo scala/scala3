@@ -1195,7 +1195,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     def collectSubTrees[A](f: PartialFunction[Tree, A])(using Context): List[A] =
-      val buf = mutable.ListBuffer[A]()
+      val buf = mutable.ListBuffer.empty[A]
       foreachSubTree(f.runWith(buf += _)(_))
       buf.toList
 
@@ -1677,6 +1677,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   def repeated(trees: List[Tree], tpt: Tree)(using Context): Tree =
     ctx.typeAssigner.arrayToRepeated(JavaSeqLiteral(trees, tpt))
+
+  /** Convert a list of trees to a vararg-compatible tree represented as SeqLiteral.
+   */
+  def repeatedSeq(trees: List[Tree], tpt: Tree)(using Context): Tree =
+    ctx.typeAssigner.seqToRepeated(SeqLiteral(trees, tpt))
 
   /** Create a tree representing a list containing all
    *  the elements of the argument list. A "list of tree to

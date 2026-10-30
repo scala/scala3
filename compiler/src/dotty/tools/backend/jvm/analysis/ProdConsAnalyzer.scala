@@ -415,8 +415,8 @@ class ProdConsAnalyzer private[analysis] (methodNode: MethodNode, classInternalN
     res
   }
 
-  private val _initialProducersCache:  mutable.HashMap[(AbstractInsnNode, Int), Set[AbstractInsnNode]] = mutable.HashMap.empty
-  private val _ultimateConsumersCache: mutable.HashMap[(AbstractInsnNode, Int), Set[AbstractInsnNode]] = mutable.HashMap.empty
+  private val _initialProducersCache = mutable.Map.empty[(AbstractInsnNode, Int), Set[AbstractInsnNode]]
+  private val _ultimateConsumersCache = mutable.Map.empty[(AbstractInsnNode, Int), Set[AbstractInsnNode]]
 }
 
 /**

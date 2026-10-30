@@ -52,7 +52,7 @@ class DropOuterAccessors extends MiniPhase with IdentityDenotTransformer:
       case _ =>
         false
 
-    val droppedParamAccessors = mutable.Set[Symbol]()
+    val droppedParamAccessors = mutable.Set.empty[Symbol]
 
     def dropOuterParamAccessor(stat: Tree): Boolean = stat match
       case stat: ValDef
