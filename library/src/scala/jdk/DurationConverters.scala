@@ -23,11 +23,21 @@ import scala.concurrent.duration.FiniteDuration
   * [[javaapi.DurationConverters]] instead.
   */
 object DurationConverters {
+  /** Adds a `toScala` extension method to `java.time.Duration` for converting it to a
+   *  [[scala.concurrent.duration.FiniteDuration]].
+   *
+   *  @param duration the Java duration the extension method converts
+   */
   implicit class JavaDurationOps(private val duration: JDuration) extends AnyVal {
     /** Converts a Java duration to a Scala duration, see [[javaapi.DurationConverters.toScala]]. */
     def toScala: FiniteDuration = javaapi.DurationConverters.toScala(duration)
   }
 
+  /** Adds a `toJava` extension method to [[scala.concurrent.duration.FiniteDuration]] for
+   *  converting it to a `java.time.Duration`.
+   *
+   *  @param duration the Scala duration the extension method converts
+   */
   implicit final class ScalaDurationOps(private val duration: FiniteDuration) extends AnyVal {
     /** Converts a Scala duration to a Java duration, see [[javaapi.DurationConverters.toJava]]. */
     def toJava: JDuration = javaapi.DurationConverters.toJava(duration)

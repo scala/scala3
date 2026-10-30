@@ -294,8 +294,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
 
-    /** Returns the `Term` representation this expression. */
     extension (expr: Expr[Any])
+      /** Returns the `Term` tree representing this expression.
+       *
+       *  The term can be inspected and transformed with the `quotes.reflect` API
+       *  and converted back with `Term.asExpr` or `Term.asExprOf`.
+       */
       def asTerm: Term
 
     ///////////////
@@ -334,8 +338,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def asExpr: Expr[Any]
       end extension
 
-      /** Converts this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws. */
       extension (self: Tree)
+        /** Converts this tree to an `quoted.Expr[T]` if the tree is a valid expression of type `T` or throws.
+         *
+         *  @tparam T the expected type of the expression
+         *  @return this tree as an `Expr[T]`
+         */
         def asExprOf[T](using Type[T]): Expr[T]
 
       extension [ThisTree <: Tree](self: ThisTree)
@@ -560,7 +568,22 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       // TODO add selfOpt: Option[ValDef]?
       // ^ if a use-case shows up, we add this via an overloaded method
       def apply(cls: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): ClassDef
+      /** Copies a class definition tree.
+       *
+       *  @param original the original tree being copied
+       *  @param name the name of the class
+       *  @param constr the primary constructor definition
+       *  @param parents the parent classes or traits: `TypeTree`s if they take no term parameters, `Term`s otherwise
+       *  @param selfOpt the self-type `ValDef` if one is declared, or `None`
+       *  @param body the list of statements within the class body
+       *  @return a copy of `original` with the given name, constructor, parents, self-type and body
+       */
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
+      /** Matches a class definition and extracts its components.
+       *
+       *  @param cdef the class definition tree to match against
+       *  @return a tuple of the class name, primary constructor, parents, optional self-type and body statements
+       */
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement])
 
 
@@ -679,7 +702,21 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @return a new `DefDef` tree for the given method symbol
        */
       def apply(symbol: Symbol, rhsFn: List[List[Tree]] => Option[Term]): DefDef
+      /** Copies a method definition tree.
+       *
+       *  @param original the original tree being copied
+       *  @param name the name of the method
+       *  @param paramss the type and term parameter clauses
+       *  @param tpt the return type tree
+       *  @param rhs `Some` containing the method body, or `None` if the method has no implementation
+       *  @return a copy of `original` with the given name, parameter clauses, return type and right-hand side
+       */
       def copy(original: Tree)(name: String, paramss: List[ParamClause], tpt: TypeTree, rhs: Option[Term]): DefDef
+      /** Matches a method definition and extracts its components.
+       *
+       *  @param ddef the method definition tree to match against
+       *  @return a tuple of the method name, parameter clauses, return type tree and optional body
+       */
       def unapply(ddef: DefDef): (String, List[ParamClause], TypeTree, Option[Term])
     }
 
@@ -764,7 +801,20 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @return a new `ValDef` tree for the given symbol
        */
       def apply(symbol: Symbol, rhs: Option[Term]): ValDef
+      /** Copies a value definition tree.
+       *
+       *  @param original the original tree being copied
+       *  @param name the name of the value
+       *  @param tpt the type tree of the value
+       *  @param rhs `Some` containing the right-hand side term, or `None` if the value has no right-hand side
+       *  @return a copy of `original` with the given name, type tree and right-hand side
+       */
       def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef
+      /** Matches a value definition and extracts its components.
+       *
+       *  @param vdef the value definition tree to match against
+       *  @return a tuple of the value name, its type tree and its optional right-hand side
+       */
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term])
 
       /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }`
@@ -869,8 +919,25 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeDef`. */
     trait TypeDefModule { this: TypeDef.type =>
+      /** Creates a type definition `type T ...` with the right-hand side defined in the symbol.
+       *
+       *  @param symbol the type symbol (created using `Symbol.newTypeAlias` or `Symbol.newBoundedType`)
+       *  @return a new `TypeDef` tree for the given symbol
+       */
       def apply(symbol: Symbol): TypeDef
+      /** Copies a type definition tree.
+       *
+       *  @param original the original tree being copied
+       *  @param name the name of the type
+       *  @param rhs the right-hand side: a `TypeTree` for a type alias, or a `TypeBoundsTree` for an abstract type
+       *  @return a copy of `original` with the given name and right-hand side
+       */
       def copy(original: Tree)(name: String, rhs: Tree): TypeDef
+      /** Matches a type definition and extracts its name and right-hand side.
+       *
+       *  @param tdef the type definition tree to match against
+       *  @return a tuple of the type name and its right-hand side tree
+       */
       def unapply(tdef: TypeDef): (String, Tree)
     }
 
@@ -1108,8 +1175,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Ident`. */
     trait IdentModule { this: Ident.type =>
+      /** Creates a term reference tree from a term reference type.
+       *
+       *  @param tmref the term reference type to create a reference for
+       *  @return a term referring to `tmref`; depending on the prefix of `tmref` it may not be an `Ident`
+       */
       def apply(tmref: TermRef): Term
 
+      /** Copies an `Ident` with the given name.
+       *
+       *  @param original the original tree being copied
+       *  @param name the name of the referenced definition
+       *  @return a copy of `original` with the given `name`
+       */
       def copy(original: Tree)(name: String): Ident
 
       /** Matches a term identifier and returns its name.
@@ -1204,6 +1282,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term
 
+      /** Copies a `Select` with the given qualifier and name.
+       *
+       *  @param original the original tree being copied
+       *  @param qualifier the term on which the member is selected
+       *  @param name the name of the selected member
+       *  @return a copy of `original` representing `qualifier.name`
+       */
       def copy(original: Tree)(qualifier: Term, name: String): Select
 
       /** Matches `<qualifier: Term>.<name: String>`.
@@ -1248,6 +1333,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(constant: Constant): Literal
 
+      /** Copies a `Literal` with the given constant.
+       *
+       *  @param original the original tree being copied
+       *  @param constant the constant value for the literal
+       *  @return a copy of `original` wrapping `constant`
+       */
       def copy(original: Tree)(constant: Constant): Literal
 
       /** Matches a literal constant.
@@ -1288,6 +1379,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(cls: Symbol): This
 
+      /** Copies a `This` with the given qualifier.
+       *
+       *  @param original the original tree being copied
+       *  @param qual `Some` containing the name of the qualifying class for `qual.this`, or `None` for an unqualified `this`
+       *  @return a copy of `original` with the given qualifier
+       */
       def copy(original: Tree)(qual: Option[String]): This
 
       /** Matches `this` or `qual.this` and returns the name of `qual`.
@@ -1333,6 +1430,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(tpt: TypeTree): New
 
+      /** Copies a `New` with the given type tree.
+       *
+       *  @param original the original tree being copied
+       *  @param tpt the type tree of the class to instantiate
+       *  @return a copy of `original` representing `new tpt`
+       */
       def copy(original: Tree)(tpt: TypeTree): New
 
       /** Matches `new <tpt: TypeTree>`.
@@ -1374,6 +1477,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(name: String, arg: Term): NamedArg
 
+      /** Copies a `NamedArg` with the given name and argument.
+       *
+       *  @param original the original tree being copied
+       *  @param name the argument name
+       *  @param arg the argument value
+       *  @return a copy of `original` representing `name = arg`
+       */
       def copy(original: Tree)(name: String, arg: Term): NamedArg
 
       /** Matches a named argument `<name: String> = <value: Term>`.
@@ -1419,6 +1529,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(fun: Term, args: List[Term]): Apply
 
+      /** Copies an `Apply` with the given function and arguments.
+       *
+       *  @param original the original tree being copied
+       *  @param fun the function being applied
+       *  @param args the term arguments
+       *  @return a copy of `original` representing `fun(args)`
+       */
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply
 
       /** Matches a function application `<fun: Term>(<args: List[Term]>)`.
@@ -1484,6 +1601,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(fun: Term, args: List[TypeTree]): TypeApply
 
+      /** Copies a `TypeApply` with the given function and type arguments.
+       *
+       *  @param original the original tree being copied
+       *  @param fun the function being applied
+       *  @param args the type argument trees
+       *  @return a copy of `original` representing `fun[args]`
+       */
       def copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply
 
       /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]`.
@@ -1563,6 +1687,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(qual: Term, mix: Option[String]): Super
 
+      /** Copies a `Super` with the given qualifier and mixin name.
+       *
+       *  @param original the original tree being copied
+       *  @param qual the qualifier term
+       *  @param mix the optional mixin class name for `super[mix]`
+       *  @return a copy of `original` representing `qual.super[mix]`
+       */
       def copy(original: Tree)(qual: Term, mix: Option[String]): Super
 
       /** Matches a `<qualifier: Term>.super[<id: Option[Id]>`.
@@ -1579,8 +1710,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Super`. */
     trait SuperMethods:
       extension (self: Super)
+        /** The qualifier part of `qual.super[mix]`. */
         def qualifier: Term
+        /** The mixin name of `super[mix]`, or `None` if there is no mixin qualifier. */
         def id: Option[String]
+        /** Position of the mixin name `mix` in `qual.super[mix]`. */
         def idPos: Position
       end extension
     end SuperMethods
@@ -1609,6 +1743,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(expr: Term, tpt: TypeTree): Typed
 
+      /** Copies a `Typed` with the given expression and type tree.
+       *
+       *  @param original the original tree being copied
+       *  @param expr the expression being ascribed
+       *  @param tpt the type tree for the ascription
+       *  @return a copy of `original` representing `expr: tpt`
+       */
       def copy(original: Tree)(expr: Term, tpt: TypeTree): Typed
 
       /** Matches `<expr: Term>: <tpt: TypeTree>`.
@@ -1625,7 +1766,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Typed`. */
     trait TypedMethods:
       extension (self: Typed)
+        /** The expression part of `expr: tpt`. */
         def expr: Term
+        /** The type tree part of `expr: tpt`. */
         def tpt: TypeTree
       end extension
     end TypedMethods
@@ -1650,6 +1793,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(lhs: Term, rhs: Term): Assign
 
+      /** Copies an `Assign` with the given left-hand and right-hand sides.
+       *
+       *  @param original the original tree being copied
+       *  @param lhs the left-hand side of the assignment
+       *  @param rhs the right-hand side of the assignment
+       *  @return a copy of `original` representing `lhs = rhs`
+       */
       def copy(original: Tree)(lhs: Term, rhs: Term): Assign
 
       /** Matches an assignment `<lhs: Term> = <rhs: Term>`.
@@ -1666,7 +1816,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Assign`. */
     trait AssignMethods:
       extension (self: Assign)
+        /** The left-hand side of `lhs = rhs`. */
         def lhs: Term
+        /** The right-hand side of `lhs = rhs`. */
         def rhs: Term
       end extension
     end AssignMethods
@@ -1691,6 +1843,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(stats: List[Statement], expr: Term): Block
 
+      /** Copies a `Block` with the given statements and result expression.
+       *
+       *  @param original the original tree being copied
+       *  @param stats the list of statements
+       *  @param expr the result expression of the block
+       *  @return a copy of `original` with statements `stats` and result expression `expr`
+       */
       def copy(original: Tree)(stats: List[Statement], expr: Term): Block
 
       /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }`.
@@ -1707,7 +1866,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Block`. */
     trait BlockMethods:
       extension (self: Block)
+        /** The statements of this block, not including the result expression. */
         def statements: List[Statement]
+        /** The result expression of this block. */
         def expr: Term
       end extension
     end BlockMethods
@@ -1731,10 +1892,29 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val Closure`. */
     trait ClosureModule { this: Closure.type =>
 
+      /** Creates a closure of the method `meth`.
+       *
+       *  @param meth a reference to the method of the closure; expected to refer to an anonymous
+       *              function, which is only checked under `-Xcheck-macros`
+       *  @param tpe `Some` containing the SAM type of the closure, or `None` if the closure has a function type
+       *  @return a `Closure` tree for `meth`
+       */
       def apply(meth: Term, tpe: Option[TypeRepr]): Closure
 
+      /** Copies a `Closure` with the given method reference and type.
+       *
+       *  @param original the original tree being copied
+       *  @param meth a reference to the method of the closure
+       *  @param tpe `Some` containing the SAM type of the closure, or `None` if the closure has a function type
+       *  @return a copy of `original` with the given `meth` and `tpe`
+       */
       def copy(original: Tree)(meth: Tree, tpe: Option[TypeRepr]): Closure
 
+      /** Matches a closure and extracts the method reference and closure type.
+       *
+       *  @param x the `Closure` to match against
+       *  @return a tuple of the method reference and the optional SAM type of the closure
+       */
       def unapply(x: Closure): (Term, Option[TypeRepr])
     }
 
@@ -1744,7 +1924,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Closure`. */
     trait ClosureMethods:
       extension (self: Closure)
+        /** The reference to the method of this closure. */
         def meth: Term
+        /** The SAM type of this closure, or `None` if the closure has a function type. */
         def tpeOpt: Option[TypeRepr]
       end extension
     end ClosureMethods
@@ -1834,6 +2016,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(cond: Term, thenp: Term, elsep: Term): If
 
+      /** Copies an `If` with the given condition and branches.
+       *
+       *  @param original the original tree being copied
+       *  @param cond the condition expression
+       *  @param thenp the then branch expression
+       *  @param elsep the else branch expression
+       *  @return a copy of `original` representing `if (cond) thenp else elsep`
+       */
       def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term): If
 
       /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>`.
@@ -1850,9 +2040,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `If`. */
     trait IfMethods:
       extension (self: If)
+        /** The condition of this `if`, the `cond` in `if (cond) thenp else elsep`. */
         def cond: Term
+        /** The then branch of this `if`, the `thenp` in `if (cond) thenp else elsep`. */
         def thenp: Term
+        /** The else branch of this `if`, the `elsep` in `if (cond) thenp else elsep`. */
         def elsep: Term
+        /** Is this an `inline if`? */
         def isInline: Boolean
       end extension
     end IfMethods
@@ -1877,6 +2071,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(selector: Term, cases: List[CaseDef]): Match
 
+      /** Copies a `Match` with the given scrutinee and cases.
+       *
+       *  @param original the original tree being copied
+       *  @param selector the scrutinee expression being matched
+       *  @param cases the list of case definitions
+       *  @return a copy of `original` representing `selector match { cases }`
+       */
       def copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match
 
       /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }`.
@@ -1893,8 +2094,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Match`. */
     trait MatchMethods:
       extension (self: Match)
+        /** The expression being pattern matched, the `x` in `x match { ... }`. */
         def scrutinee: Term
+        /** The cases of this match expression. */
         def cases: List[CaseDef]
+        /** Is this an `inline match`? */
         def isInline: Boolean
       end extension
     end MatchMethods
@@ -1918,6 +2122,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(cases: List[CaseDef]): SummonFrom
 
+      /** Copies a `SummonFrom` with the given cases.
+       *
+       *  @param original the original tree being copied
+       *  @param cases the list of match cases for the given match
+       *  @return a copy of `original` containing the given `cases`
+       */
       def copy(original: Tree)(cases: List[CaseDef]): SummonFrom
 
       /** Matches a pattern match `given match { <cases: List[CaseDef]> }`.
@@ -1934,6 +2144,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `SummonFrom`. */
     trait SummonFromMethods:
       extension (self: SummonFrom)
+        /** The cases of this `summonFrom` expression. */
         def cases: List[CaseDef]
       end extension
     end SummonFromMethods
@@ -1959,6 +2170,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
 
+      /** Copies a `Try` with the given body, cases and finalizer.
+       *
+       *  @param original the original tree being copied
+       *  @param expr the body expression of the try block
+       *  @param cases the list of catch case definitions
+       *  @param finalizer the optional finally block expression
+       *  @return a copy of `original` representing `try expr catch { cases } finally finalizer`
+       */
       def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
 
       /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>`.
@@ -1975,8 +2194,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Try`. */
     trait TryMethods:
       extension (self: Try)
+        /** The body of the try block, the `x` in `try x catch { ... }`. */
         def body: Term
+        /** The catch cases of this try expression. */
         def cases: List[CaseDef]
+        /** The expression of the `finally` clause, or `None` if there is no `finally` clause. */
         def finalizer: Option[Term]
       end extension
     end TryMethods
@@ -2001,6 +2223,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(expr: Term, from: Symbol): Return
 
+      /** Copies a `Return` with the given expression and method symbol.
+       *
+       *  @param original the original tree being copied
+       *  @param expr the expression being returned
+       *  @param from the symbol of the enclosing method
+       *  @return a copy of `original` representing `return expr` from method `from`
+       */
       def copy(original: Tree)(expr: Term, from: Symbol): Return
 
       /** Matches `return <expr: Term>` and extracts the expression and symbol of the method.
@@ -2017,7 +2246,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Return`. */
     trait ReturnMethods:
       extension (self: Return)
+        /** The expression returned by this `return`. */
         def expr: Term
+        /** The symbol of the method this `return` returns from. */
         def from: Symbol
       end extension
     end ReturnMethods
@@ -2086,7 +2317,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Repeated`. */
     trait RepeatedMethods:
       extension (self: Repeated)
+        /** The element terms of this sequence of varargs. */
         def elems: List[Term]
+        /** The element type tree of this sequence of varargs. */
         def elemtpt: TypeTree
       end extension
     end RepeatedMethods
@@ -2102,8 +2335,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Inlined`. */
     trait InlinedModule { this: Inlined.type =>
+      /** Creates an `Inlined` tree representing inlined code.
+       *
+       *  The full inlined code is equivalent to `{ bindings; expansion }`.
+       *
+       *  @param call the call that was inlined, or `None` if no call is recorded
+       *  @param bindings bindings for proxies used in the inlined code
+       *  @param expansion the inlined code, minus the bindings
+       *  @return a new `Inlined` tree
+       */
       def apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
+      /** Copies an `Inlined` tree.
+       *
+       *  @param original the original tree being copied; must be an `Inlined`
+       *  @param call the call that was inlined, or `None` if no call is recorded
+       *  @param bindings bindings for proxies used in the inlined code
+       *  @param expansion the inlined code, minus the bindings
+       *  @return a copy of `original` with the given call, bindings and expansion
+       *  @throws IllegalArgumentException if `original` is not an `Inlined`
+       */
       def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
+      /** Matches an `Inlined` tree and extracts the call, bindings and expansion.
+       *
+       *  @param x the `Inlined` to match against
+       *  @return a tuple of the optional inlined call, the proxy bindings and the inlined body
+       */
       def unapply(x: Inlined): (Option[Tree /* Term | TypeTree */], List[Definition], Term)
     }
 
@@ -2113,8 +2369,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Inlined`. */
     trait InlinedMethods:
       extension (self: Inlined)
+        /** The call that was inlined, or `None` if no call is recorded. */
         def call: Option[Tree /* Term | TypeTree */]
+        /** Bindings for proxies used in the inlined code. */
         def bindings: List[Definition]
+        /** The inlined code, minus the bindings. The full inlined code is equivalent to `{ bindings; body }`. */
         def body: Term
       end extension
     end InlinedMethods
@@ -2130,8 +2389,28 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val SelectOuter`. */
     trait SelectOuterModule { this: SelectOuter.type =>
+      /** Creates a `SelectOuter` tree selecting `name` on `qualifier` through the given number of nested scopes.
+       *
+       *  @param qualifier the prefix term the selection is made on
+       *  @param name the name of the selected definition
+       *  @param levels the number of outer-path hops from the qualifier to the intended owner
+       *  @return a new `SelectOuter` tree
+       */
       def apply(qualifier: Term, name: String, levels: Int): SelectOuter
+      /** Copies a `SelectOuter` tree.
+       *
+       *  @param original the original tree being copied
+       *  @param qualifier the prefix term the selection is made on
+       *  @param name the name of the selected definition
+       *  @param levels the number of outer-path hops from the qualifier to the intended owner
+       *  @return a copy of `original` with the given `qualifier`, `name` and `levels`
+       */
       def copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter
+      /** Matches a `SelectOuter` tree and extracts its qualifier, name, and number of levels.
+       *
+       *  @param x the `SelectOuter` to match against
+       *  @return a tuple of the prefix term, the selected name, and the number of nested scopes traversed
+       */
       def unapply(x: SelectOuter): (Term, String, Int)
     }
 
@@ -2141,8 +2420,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `SelectOuter`. */
     trait SelectOuterMethods:
       extension (self: SelectOuter)
+        /** The prefix term this selection is made on. */
         def qualifier: Term
+        /** The name of the selected definition. */
         def name: String
+        /** The number of nested scopes of inlined trees traversed to resolve this selection. */
         def level: Int
       end extension
     end SelectOuterMethods
@@ -2167,6 +2449,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(cond: Term, body: Term): While
 
+      /** Copies a while loop `while (<cond>) <body>`.
+       *
+       *  @param original the original tree being copied
+       *  @param cond the condition expression
+       *  @param body the loop body expression
+       *  @return a copy of `original` with the given `cond` and `body`
+       */
       def copy(original: Tree)(cond: Term, body: Term): While
 
       /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>).
@@ -2183,7 +2472,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `While`. */
     trait WhileMethods:
       extension (self: While)
+        /** The condition of this while loop, i.e. the `cond` of `while (cond) body`. */
         def cond: Term
+        /** The body of this while loop, i.e. the `body` of `while (cond) body`. */
         def body: Term
       end extension
     end WhileMethods
@@ -2208,6 +2499,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(expr: Tree, tpt: TypeTree): TypedOrTest
 
+      /** Copies a `TypedOrTest` tree.
+       *
+       *  @param original the original tree being copied
+       *  @param expr the tree being ascribed
+       *  @param tpt the type tree for the ascription
+       *  @return a copy of `original` with the given `expr` and `tpt`
+       */
       def copy(original: Tree)(expr: Tree, tpt: TypeTree): TypedOrTest
 
       /** Matches `<expr: Tree>: <tpt: TypeTree>`.
@@ -2224,7 +2522,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypedOrTest`. */
     trait TypedOrTestMethods:
       extension (self: TypedOrTest)
+        /** The term or pattern being ascribed or tested, i.e. the `x` of `x: T`. */
         def tree: Tree
+        /** The type tree of the ascription or type test, i.e. the `T` of `x: T`. */
         def tpt: TypeTree
       end extension
     end TypedOrTestMethods
@@ -2277,6 +2577,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Inferred`. */
     trait InferredModule { this: Inferred.type =>
+      /** Creates a type tree of the given type, with no explicit source representation.
+       *
+       *  @param tpe the type the created type tree represents
+       *  @return a new `Inferred` type tree of type `tpe`
+       */
       def apply(tpe: TypeRepr): Inferred
       /** Matches a TypeTree containing an inferred type.
        *
@@ -2297,8 +2602,24 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeIdent`. */
     trait TypeIdentModule { this: TypeIdent.type =>
+      /** Creates a type tree reference to the given type symbol.
+       *
+       *  @param sym the type symbol to reference; must be a type symbol
+       *  @return a type tree referring to `sym`; depending on the prefix of `sym` it may not be a `TypeIdent`
+       */
       def apply(sym: Symbol): TypeTree
+      /** Copies a `TypeIdent` tree.
+       *
+       *  @param original the original tree being copied
+       *  @param name the name of the referenced type definition
+       *  @return a copy of `original` with the given `name`
+       */
       def copy(original: Tree)(name: String): TypeIdent
+      /** Matches a `TypeIdent` and extracts its name.
+       *
+       *  @param x the `TypeIdent` to match against
+       *  @return `Some` containing the name of the referenced type definition (the match always succeeds)
+       */
       def unapply(x: TypeIdent): Some[String]
     }
 
@@ -2308,6 +2629,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeIdent`. */
     trait TypeIdentMethods:
       extension (self: TypeIdent)
+        /** The name of the type definition referenced by this type identifier. */
         def name: String
       end extension
     end TypeIdentMethods
@@ -2323,8 +2645,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeSelect`. */
     trait TypeSelectModule { this: TypeSelect.type =>
+      /** Creates a type selection `qualifier.name`, where `qualifier` is a term.
+       *
+       *  @param qualifier the term prefix the type is selected on
+       *  @param name the name of the selected type
+       *  @return a new `TypeSelect` tree
+       */
       def apply(qualifier: Term, name: String): TypeSelect
+      /** Copies a type selection `qualifier.name`.
+       *
+       *  @param original the original tree being copied
+       *  @param qualifier the term prefix the type is selected on
+       *  @param name the name of the selected type
+       *  @return a copy of `original` with the given `qualifier` and `name`
+       */
       def copy(original: Tree)(qualifier: Term, name: String): TypeSelect
+      /** Matches a type selection `qualifier.name` and extracts the qualifier and name.
+       *
+       *  @param x the `TypeSelect` to match against
+       *  @return a tuple of the term prefix and the selected type name
+       */
       def unapply(x: TypeSelect): (Term, String)
     }
 
@@ -2334,7 +2674,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeSelect`. */
     trait TypeSelectMethods:
       extension (self: TypeSelect)
+        /** The term prefix of this type selection, i.e. the `qualifier` of `qualifier.name`. */
         def qualifier: Term
+        /** The name of the selected type, i.e. the `name` of `qualifier.name`. */
         def name: String
       end extension
     end TypeSelectMethods
@@ -2350,8 +2692,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeProjection`. */
     trait TypeProjectionModule { this: TypeProjection.type =>
+      /** Creates a type projection `qualifier#name`, where `qualifier` is a type.
+       *
+       *  @param qualifier the type prefix the type is projected on
+       *  @param name the name of the projected type
+       *  @return a new `TypeProjection` tree
+       */
       def apply(qualifier: TypeTree, name: String): TypeProjection
+      /** Copies a type projection `qualifier#name`.
+       *
+       *  @param original the original tree being copied
+       *  @param qualifier the type prefix the type is projected on
+       *  @param name the name of the projected type
+       *  @return a copy of `original` with the given `qualifier` and `name`
+       */
       def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection
+      /** Matches a type projection `qualifier#name` and extracts the qualifier and name.
+       *
+       *  @param x the `TypeProjection` to match against
+       *  @return a tuple of the type prefix and the projected type name
+       */
       def unapply(x: TypeProjection): (TypeTree, String)
     }
 
@@ -2361,7 +2721,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeProjection`. */
     trait TypeProjectionMethods:
       extension (self: TypeProjection)
+        /** The type prefix of this projection, i.e. the `qualifier` of `qualifier#name`. */
         def qualifier: TypeTree
+        /** The name of the projected type, i.e. the `name` of `qualifier#name`. */
         def name: String
       end extension
     end TypeProjectionMethods
@@ -2377,8 +2739,24 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Singleton`. */
     trait SingletonModule { this: Singleton.type =>
+      /** Creates a singleton type tree `ref.type`.
+       *
+       *  @param ref the term the singleton type refers to
+       *  @return a new `Singleton` type tree
+       */
       def apply(ref: Term): Singleton
+      /** Copies a singleton type tree `ref.type`.
+       *
+       *  @param original the original tree being copied
+       *  @param ref the term the singleton type refers to
+       *  @return a copy of `original` with the given `ref`
+       */
       def copy(original: Tree)(ref: Term): Singleton
+      /** Matches a singleton type tree `ref.type` and extracts its reference.
+       *
+       *  @param x the `Singleton` to match against
+       *  @return `Some` containing the term the singleton type refers to (the match always succeeds)
+       */
       def unapply(x: Singleton): Some[Term]
     }
 
@@ -2388,6 +2766,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Singleton`. */
     trait SingletonMethods:
       extension (self: Singleton)
+        /** The term this singleton type refers to, i.e. the `ref` of `ref.type`. */
         def ref: Term
       end extension
     end SingletonMethods
@@ -2410,7 +2789,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @return
        */
       def apply(tpt: TypeTree, refinements: List[Definition], refineCls: Symbol): Refined
+      /** Copies a refinement type tree.
+       *
+       *  @param original the original tree being copied
+       *  @param tpt the parent type being refined
+       *  @param refinements the definitions representing the refinements
+       *  @return a copy of `original` with the given `tpt` and `refinements`
+       */
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined
+      /** Matches a refinement type tree `tpt { refinements }` and extracts the parent and refinements.
+       *
+       *  @param x the `Refined` to match against
+       *  @return a tuple of the parent type tree and the refinement definitions
+       */
       def unapply(x: Refined): (TypeTree, List[Definition])
     }
 
@@ -2420,7 +2811,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Refined`. */
     trait RefinedMethods:
       extension (self: Refined)
+        /** The parent type being refined, i.e. the `tpt` of `tpt { refinements }`. */
         def tpt: TypeTree
+        /** The definitions representing the refinements, i.e. the `refinements` of `tpt { refinements }`. */
         def refinements: List[Definition]
       end extension
     end RefinedMethods
@@ -2436,8 +2829,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Applied`. */
     trait AppliedModule { this: Applied.type =>
+      /** Creates an applied type tree `tpt[args]`.
+       *
+       *  @param tpt the type constructor tree being applied
+       *  @param args the type argument trees; each is a `TypeTree` or a `TypeBoundsTree`
+       *  @return a new `Applied` type tree
+       */
       def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
+      /** Copies an applied type tree `tpt[args]`.
+       *
+       *  @param original the original tree being copied
+       *  @param tpt the type constructor tree being applied
+       *  @param args the type argument trees; each is a `TypeTree` or a `TypeBoundsTree`
+       *  @return a copy of `original` with the given `tpt` and `args`
+       */
       def copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
+      /** Matches an applied type tree `tpt[args]` and extracts the constructor and arguments.
+       *
+       *  @param x the `Applied` to match against
+       *  @return a tuple of the type constructor tree and the type argument trees
+       */
       def unapply(x: Applied): (TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])
     }
 
@@ -2447,7 +2858,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Applied`. */
     trait AppliedMethods:
       extension (self: Applied)
+        /** The type constructor tree of this applied type, i.e. the `tpt` of `tpt[args]`. */
         def tpt: TypeTree
+        /** The type argument trees of this applied type; each is a `TypeTree` or a `TypeBoundsTree`. */
         def args: List[Tree /*TypeTree | TypeBoundsTree*/]
       end extension
     end AppliedMethods
@@ -2463,8 +2876,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Annotated`. */
     trait AnnotatedModule { this: Annotated.type =>
+      /** Creates an annotated type tree `arg @annotation`.
+       *
+       *  @param arg the type tree being annotated
+       *  @param annotation the constructor call term for the annotation
+       *  @return a new `Annotated` type tree
+       */
       def apply(arg: TypeTree, annotation: Term): Annotated
+      /** Copies an annotated type tree `arg @annotation`.
+       *
+       *  @param original the original tree being copied
+       *  @param arg the type tree being annotated
+       *  @param annotation the constructor call term for the annotation
+       *  @return a copy of `original` with the given `arg` and `annotation`
+       */
       def copy(original: Tree)(arg: TypeTree, annotation: Term): Annotated
+      /** Matches an annotated type tree `arg @annotation` and extracts the type and annotation.
+       *
+       *  @param x the `Annotated` to match against
+       *  @return a tuple of the annotated type tree and the annotation's constructor call term
+       */
       def unapply(x: Annotated): (TypeTree, Term)
     }
 
@@ -2474,7 +2905,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Annotated`. */
     trait AnnotatedMethods:
       extension (self: Annotated)
+        /** The type tree being annotated, i.e. the `arg` of `arg @annotation`. */
         def arg: TypeTree
+        /** The annotation of this annotated type, as a constructor call term. */
         def annotation: Term
       end extension
     end AnnotatedMethods
@@ -2490,8 +2923,28 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val MatchTypeTree`. */
     trait MatchTypeTreeModule { this: MatchTypeTree.type =>
+      /** Creates a match type tree `selector match { cases }`.
+       *
+       *  @param bound the upper bound of the match type, or `None` if it has none
+       *  @param selector the type tree being matched on
+       *  @param cases the type case clauses of the match type
+       *  @return a new `MatchTypeTree`
+       */
       def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
+      /** Copies a match type tree `selector match { cases }`.
+       *
+       *  @param original the original tree being copied
+       *  @param bound the upper bound of the match type, or `None` if it has none
+       *  @param selector the type tree being matched on
+       *  @param cases the type case clauses of the match type
+       *  @return a copy of `original` with the given `bound`, `selector` and `cases`
+       */
       def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
+      /** Matches a match type tree `selector match { cases }` and extracts the bound, selector and cases.
+       *
+       *  @param x the `MatchTypeTree` to match against
+       *  @return a tuple of the optional upper bound, the type tree being matched on, and the type case clauses
+       */
       def unapply(x: MatchTypeTree): (Option[TypeTree], TypeTree, List[TypeCaseDef])
     }
 
@@ -2501,8 +2954,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `MatchTypeTree`. */
     trait MatchTypeTreeMethods:
       extension (self: MatchTypeTree)
+        /** The upper bound of this match type, or `None` if it has none. */
         def bound: Option[TypeTree]
+        /** The type tree being matched on, i.e. the `selector` of `selector match { cases }`. */
         def selector: TypeTree
+        /** The type case clauses of this match type, i.e. the `cases` of `selector match { cases }`. */
         def cases: List[TypeCaseDef]
       end extension
     end MatchTypeTreeMethods
@@ -2518,8 +2974,24 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val ByName`. */
     trait ByNameModule { this: ByName.type =>
+      /** Creates a by-name type tree `=> result`.
+       *
+       *  @param result the type tree of the underlying result type
+       *  @return a new `ByName` type tree
+       */
       def apply(result: TypeTree): ByName
+      /** Copies a by-name type tree `=> result`.
+       *
+       *  @param original the original tree being copied
+       *  @param result the type tree of the underlying result type
+       *  @return a copy of `original` with the given `result`
+       */
       def copy(original: Tree)(result: TypeTree): ByName
+      /** Matches a by-name type tree `=> result` and extracts its result type tree.
+       *
+       *  @param x the `ByName` to match against
+       *  @return `Some` containing the underlying result type tree (the match always succeeds)
+       */
       def unapply(x: ByName): Some[TypeTree]
     }
 
@@ -2529,6 +3001,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `ByName`. */
     trait ByNameMethods:
       extension (self: ByName)
+        /** The underlying result type tree of this by-name type, i.e. the `T` of `=> T`. */
         def result: TypeTree
       end extension
     end ByNameMethods
@@ -2544,8 +3017,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val LambdaTypeTree`. */
     trait LambdaTypeTreeModule { this: LambdaTypeTree.type =>
+      /** Creates a type lambda tree `[tparams] =>> body`.
+       *
+       *  @param tparams the type parameter definitions of the lambda
+       *  @param body the body of the lambda; a `TypeTree` or a `TypeBoundsTree`
+       *  @return a new `LambdaTypeTree`
+       */
       def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
+      /** Copies a type lambda tree `[tparams] =>> body`.
+       *
+       *  @param original the original tree being copied
+       *  @param tparams the type parameter definitions of the lambda
+       *  @param body the body of the lambda; a `TypeTree` or a `TypeBoundsTree`
+       *  @return a copy of `original` with the given `tparams` and `body`
+       */
       def copy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
+      /** Matches a type lambda tree `[tparams] =>> body` and extracts the parameters and body.
+       *
+       *  @param tree the `LambdaTypeTree` to match against
+       *  @return a tuple of the type parameter definitions and the lambda body
+       */
       def unapply(tree: LambdaTypeTree): (List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)
     }
 
@@ -2555,7 +3046,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `LambdaTypeTree`. */
     trait LambdaTypeTreeMethods:
       extension (self: LambdaTypeTree)
+        /** The type parameter definitions of this type lambda, i.e. the `tparams` of `[tparams] =>> body`. */
         def tparams: List[TypeDef]
+        /** The body of this type lambda; a `TypeTree` or a `TypeBoundsTree`. */
         def body: Tree /*TypeTree | TypeBoundsTree*/
       end extension
     end LambdaTypeTreeMethods
@@ -2571,7 +3064,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeBind`. */
     trait TypeBindModule { this: TypeBind.type =>
+      /** Copies a type binding, such as the binding of `t` in the type pattern of `case _: List[t] =>`.
+       *
+       *  @param original the original tree being copied
+       *  @param name the name of the bound type variable
+       *  @param tpt the tree the type variable is bound to; a `TypeTree` or a `TypeBoundsTree`
+       *  @return a copy of `original` with the given `name` and `tpt`
+       */
       def copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/): TypeBind
+      /** Matches a type binding and extracts the name and the bound tree.
+       *
+       *  @param x the `TypeBind` to match against
+       *  @return a tuple of the bound type variable's name and the tree it is bound to
+       */
       def unapply(x: TypeBind): (String, Tree /*TypeTree | TypeBoundsTree*/)
     }
 
@@ -2581,7 +3086,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeBind`. */
     trait TypeBindMethods:
       extension (self: TypeBind)
+        /** The name of the type variable bound by this binding. */
         def name: String
+        /** The tree this type variable is bound to; a `TypeTree` or a `TypeBoundsTree`. */
         def body: Tree /*TypeTree | TypeBoundsTree*/
       end extension
     end TypeBindMethods
@@ -2597,8 +3104,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeBlock`. */
     trait TypeBlockModule { this: TypeBlock.type =>
+      /** Creates a type block `{ aliases; tpt }`, e.g. `{ type U = Int; List[U] }`.
+       *
+       *  @param aliases the type alias definitions of the block
+       *  @param tpt the resulting type tree of the block
+       *  @return a new `TypeBlock` tree
+       */
       def apply(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
+      /** Copies a type block `{ aliases; tpt }`.
+       *
+       *  @param original the original tree being copied
+       *  @param aliases the type alias definitions of the block
+       *  @param tpt the resulting type tree of the block
+       *  @return a copy of `original` with the given `aliases` and `tpt`
+       */
       def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
+      /** Matches a type block `{ aliases; tpt }` and extracts the aliases and result.
+       *
+       *  @param x the `TypeBlock` to match against
+       *  @return a tuple of the type alias definitions and the resulting type tree
+       */
       def unapply(x: TypeBlock): (List[TypeDef], TypeTree)
     }
 
@@ -2608,7 +3133,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeBlock`. */
     trait TypeBlockMethods:
       extension (self: TypeBlock)
+        /** The type alias definitions of this type block, i.e. the `aliases` of `{ aliases; tpt }`. */
         def aliases: List[TypeDef]
+        /** The resulting type tree of this type block, i.e. the `tpt` of `{ aliases; tpt }`. */
         def tpt: TypeTree
       end extension
     end TypeBlockMethods
@@ -2626,8 +3153,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeBoundsTree`. */
     trait TypeBoundsTreeModule { this: TypeBoundsTree.type =>
+      /** Creates a type-bounds tree `>: <low: TypeTree> <: <hi: TypeTree>`.
+       *
+       *  @param low the lower bound type tree
+       *  @param hi the upper bound type tree
+       *  @return a new `TypeBoundsTree` with the given bounds
+       */
       def apply(low: TypeTree, hi: TypeTree): TypeBoundsTree
+      /** Copies a type-bounds tree `>: <low: TypeTree> <: <hi: TypeTree>`.
+       *
+       *  @param original the original tree being copied
+       *  @param low the lower bound type tree
+       *  @param hi the upper bound type tree
+       *  @return a copy of `original` with the given `low` and `hi` bounds
+       */
       def copy(original: Tree)(low: TypeTree, hi: TypeTree): TypeBoundsTree
+      /** Matches a type-bounds tree `>: <low: TypeTree> <: <hi: TypeTree>` and extracts its bounds.
+       *
+       *  @param x the `TypeBoundsTree` to match against
+       *  @return a tuple of the lower and upper bound type trees
+       */
       def unapply(x: TypeBoundsTree): (TypeTree, TypeTree)
     }
 
@@ -2637,8 +3182,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeBoundsTree`. */
     trait TypeBoundsTreeMethods:
       extension (self: TypeBoundsTree)
+        /** The type of this tree, as a `TypeBounds`. */
         def tpe: TypeBounds
+        /** The lower bound type tree, i.e. the `low` of `>: low <: hi`. */
         def low: TypeTree
+        /** The upper bound type tree, i.e. the `hi` of `>: low <: hi`. */
         def hi: TypeTree
       end extension
     end TypeBoundsTreeMethods
@@ -2657,6 +3205,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val WildcardTypeTree`. */
     trait WildcardTypeTreeModule { this: WildcardTypeTree.type =>
+      /** Creates a wildcard type tree `_` with the given type.
+       *
+       *  @param tpe the type of the wildcard; typically a `TypeBounds`
+       *  @return a new `WildcardTypeTree` of type `tpe`
+       */
       def apply(tpe: TypeRepr): WildcardTypeTree
       /** Matches a TypeBoundsTree containing wildcard type bounds.
        *
@@ -2672,6 +3225,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `WildcardTypeTree`. */
     trait WildcardTypeTreeMethods:
       extension (self: WildcardTypeTree)
+        /** The type of this wildcard; typically a `TypeBounds`. */
         def tpe: TypeRepr
       end extension
     end WildcardTypeTreeMethods
@@ -2689,8 +3243,28 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val CaseDef`. */
     trait CaseDefModule { this: CaseDef.type =>
+      /** Creates a pattern match branch `case <pattern: Tree> if <guard: Option[Term]> => <rhs: Term>`.
+       *
+       *  @param pattern the pattern of the case
+       *  @param guard the optional guard condition; `None` if the case has no guard
+       *  @param rhs the body of the case
+       *  @return a new `CaseDef` tree
+       */
       def apply(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef
+      /** Copies a pattern match branch `case <pattern: Tree> if <guard: Option[Term]> => <rhs: Term>`.
+       *
+       *  @param original the original tree being copied
+       *  @param pattern the pattern of the case
+       *  @param guard the optional guard condition; `None` if the case has no guard
+       *  @param rhs the body of the case
+       *  @return a copy of `original` with the given `pattern`, `guard`, and `rhs`
+       */
       def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef
+      /** Matches a pattern match branch `case <pattern> if <guard> => <rhs>` and extracts its parts.
+       *
+       *  @param x the `CaseDef` to match against
+       *  @return a tuple of the pattern, the optional guard, and the body
+       */
       def unapply(x: CaseDef): (Tree, Option[Term], Term)
     }
 
@@ -2700,8 +3274,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `CaseDef`. */
     trait CaseDefMethods:
       extension (self: CaseDef)
+        /** The pattern of this case, i.e. the `pattern` of `case pattern if guard => rhs`. */
         def pattern: Tree
+        /** The guard condition of this case, i.e. the `guard` of `case pattern if guard => rhs`; `None` if the case has no guard. */
         def guard: Option[Term]
+        /** The body of this case, i.e. the `rhs` of `case pattern if guard => rhs`. */
         def rhs: Term
       end extension
     end CaseDefMethods
@@ -2717,8 +3294,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeCaseDef`. */
     trait TypeCaseDefModule { this: TypeCaseDef.type =>
+      /** Creates a type pattern match branch `case <pattern: TypeTree> => <rhs: TypeTree>`, as in a match type.
+       *
+       *  @param pattern the type pattern of the case
+       *  @param rhs the result type of the case
+       *  @return a new `TypeCaseDef` tree
+       */
       def apply(pattern: TypeTree, rhs: TypeTree): TypeCaseDef
+      /** Copies a type pattern match branch `case <pattern: TypeTree> => <rhs: TypeTree>`.
+       *
+       *  @param original the original tree being copied
+       *  @param pattern the type pattern of the case
+       *  @param rhs the result type of the case
+       *  @return a copy of `original` with the given `pattern` and `rhs`
+       */
       def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree): TypeCaseDef
+      /** Matches a type pattern match branch `case <pattern> => <rhs>` and extracts its parts.
+       *
+       *  @param tree the `TypeCaseDef` to match against
+       *  @return a tuple of the type pattern and the result type
+       */
       def unapply(tree: TypeCaseDef): (TypeTree, TypeTree)
     }
 
@@ -2728,7 +3323,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeCaseDef`. */
     trait TypeCaseDefMethods:
       extension (self: TypeCaseDef)
+        /** The type pattern of this case, i.e. the `pattern` of `case pattern => rhs`. */
         def pattern: TypeTree
+        /** The result type of this case, i.e. the `rhs` of `case pattern => rhs`. */
         def rhs: TypeTree
       end extension
     end TypeCaseDefMethods
@@ -2746,8 +3343,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Bind`. */
     trait BindModule { this: Bind.type =>
+      /** Creates a pattern binding `<sym.name> @ <pattern: Tree>`.
+       *
+       *  @param sym the symbol of the bound variable; must be a bind symbol, as created with `Symbol.newBind`
+       *  @param pattern the pattern the variable is bound to
+       *  @return a new `Bind` tree
+       */
       def apply(sym: Symbol, pattern: Tree): Bind
+      /** Copies a pattern binding `<name> @ <pattern: Tree>`.
+       *
+       *  @param original the original tree being copied
+       *  @param name the name of the bound variable
+       *  @param pattern the pattern the variable is bound to
+       *  @return a copy of `original` with the given `name` and `pattern`
+       */
       def copy(original: Tree)(name: String, pattern: Tree): Bind
+      /** Matches a pattern binding `<name> @ <pattern>` and extracts the name and the pattern.
+       *
+       *  @param pattern the `Bind` to match against
+       *  @return a tuple of the bound variable's name and the pattern it is bound to
+       */
       def unapply(pattern: Bind): (String, Tree)
     }
 
@@ -2757,7 +3372,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Bind`. */
     trait BindMethods:
       extension (self: Bind)
+        /** The name of the bound variable, i.e. the `name` of `name @ pattern`. */
         def name: String
+        /** The pattern the variable is bound to, i.e. the `pattern` of `name @ pattern`. */
         def pattern: Tree
       end extension
     end BindMethods
@@ -2830,8 +3447,24 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Alternatives`. */
     trait AlternativesModule { this: Alternatives.type =>
+      /** Creates a pattern alternative `<pattern1> | ... | <patternN>`.
+       *
+       *  @param patterns the alternative patterns
+       *  @return a new `Alternatives` tree
+       */
       def apply(patterns: List[Tree]): Alternatives
+      /** Copies a pattern alternative `<pattern1> | ... | <patternN>`.
+       *
+       *  @param original the original tree being copied
+       *  @param patterns the alternative patterns
+       *  @return a copy of `original` with the given `patterns`
+       */
       def copy(original: Tree)(patterns: List[Tree]): Alternatives
+      /** Matches a pattern alternative `pattern1 | ... | patternN` and extracts its patterns.
+       *
+       *  @param x the `Alternatives` to match against
+       *  @return `Some` containing the alternative patterns (the match always succeeds)
+       */
       def unapply(x: Alternatives): Some[List[Tree]]
     }
 
@@ -2841,6 +3474,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Alternatives`. */
     trait AlternativesMethods:
       extension (self: Alternatives)
+        /** The alternative patterns, i.e. `pattern1`, ..., `patternN` of `pattern1 | ... | patternN`. */
         def patterns: List[Tree]
       end extension
     end AlternativesMethods
@@ -2897,7 +3531,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TermParamClause`. */
     trait TermParamClauseModule { this: TermParamClause.type =>
+      /** Creates a term parameter clause `(<params: List[ValDef]>)`.
+       *
+       *  @param params the parameter definitions of the clause; expected to be either all implicit
+       *                or all non-implicit, which is only checked under `-Xcheck-macros`
+       *  @return a new `TermParamClause` with the given parameters
+       */
       def apply(params: List[ValDef]): TermParamClause
+      /** Matches a term parameter clause and extracts its parameters.
+       *
+       *  @param x the `TermParamClause` to match against
+       *  @return `Some` containing the parameter definitions (the match always succeeds)
+       */
       def unapply(x: TermParamClause): Some[List[ValDef]]
     }
 
@@ -2935,7 +3580,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeParamClause`. */
     trait TypeParamClauseModule { this: TypeParamClause.type =>
+      /** Creates a type parameter clause `[<params: List[TypeDef]>]`.
+       *
+       *  @param params the type parameter definitions of the clause; must be non-empty
+       *  @return a new `TypeParamClause` with the given parameters
+       *  @throws IllegalArgumentException if `params` is empty
+       */
       def apply(params: List[TypeDef]): TypeParamClause
+      /** Matches a type parameter clause and extracts its parameters.
+       *
+       *  @param x the `TypeParamClause` to match against
+       *  @return `Some` containing the type parameter definitions (the match always succeeds)
+       */
       def unapply(x: TypeParamClause): Some[List[TypeDef]]
     }
 
@@ -2978,7 +3634,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val SimpleSelector`. */
     trait SimpleSelectorModule { this: SimpleSelector.type =>
+      /** Creates a simple selector `<name>`, as `.bar` in `import foo.bar`.
+       *
+       *  @param name the name of the imported member
+       *  @return a new `SimpleSelector` for the given name
+       */
       @experimental def apply(name: String): SimpleSelector
+      /** Matches a simple selector and extracts its name.
+       *
+       *  @param x the `SimpleSelector` to match against
+       *  @return `Some` containing the name of the imported member (the match always succeeds)
+       */
       def unapply(x: SimpleSelector): Some[String]
     }
 
@@ -2988,7 +3654,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `SimpleSelector`. */
     trait SimpleSelectorMethods:
       extension (self: SimpleSelector)
+        /** The name of the imported member, e.g. `bar` in `import foo.bar`. */
         def name: String
+        /** The position of the name within this selector. */
         def namePos: Position
       end extension
     end SimpleSelectorMethods
@@ -3004,7 +3672,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val RenameSelector`. */
     trait RenameSelectorModule { this: RenameSelector.type =>
+      /** Creates a rename selector `<fromName> => <toName>`, as `.{bar => baz}` in `import foo.{bar => baz}`.
+       *
+       *  @param fromName the name of the member being renamed
+       *  @param toName the name the member is renamed to
+       *  @return a new `RenameSelector` renaming `fromName` to `toName`
+       */
       @experimental def apply(fromName: String, toName: String): RenameSelector
+      /** Matches a rename selector `fromName => toName` and extracts the two names.
+       *
+       *  @param x the `RenameSelector` to match against
+       *  @return a tuple of the original name and the new name
+       */
       def unapply(x: RenameSelector): (String, String)
     }
 
@@ -3014,9 +3693,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `RenameSelector`. */
     trait RenameSelectorMethods:
       extension (self: RenameSelector)
+        /** The name of the renamed member, e.g. `bar` in `import foo.{bar => baz}`. */
         def fromName: String
+        /** The position of the original name `fromName` within this selector. */
         def fromPos: Position
+        /** The name the member is renamed to, e.g. `baz` in `import foo.{bar => baz}`. */
         def toName: String
+        /** The position of the new name `toName` within this selector. */
         def toPos: Position
       end extension
     end RenameSelectorMethods
@@ -3032,7 +3715,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val OmitSelector`. */
     trait OmitSelectorModule { this: OmitSelector.type =>
+      /** Creates an omit selector `<name> => _`, as `.{bar => _}` in `import foo.{bar => _}`.
+       *
+       *  @param name the name of the member being omitted
+       *  @return a new `OmitSelector` for the given name
+       */
       @experimental def apply(name: String): OmitSelector
+      /** Matches an omit selector `name => _` and extracts the omitted name.
+       *
+       *  @param x the `OmitSelector` to match against
+       *  @return `Some` containing the name of the omitted member (the match always succeeds)
+       */
       def unapply(x: OmitSelector): Some[String]
     }
 
@@ -3042,7 +3735,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `OmitSelector`. */
     trait OmitSelectorMethods:
       extension (self: OmitSelector)
+        /** The name of the omitted member, e.g. `bar` in `import foo.{bar => _}`.
+         */
         def name: String
+        /** The position of the omitted member's name within this selector. */
         def namePos: Position
     end OmitSelectorMethods
 
@@ -3057,7 +3753,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val GivenSelector`. */
     trait GivenSelectorModule { this: GivenSelector.type =>
+      /** Creates a given selector, as `.given` in `import foo.given` or `.{given T}` in `import foo.{given T}`.
+       *
+       *  @param bound the type bound `T` of the selector, or `None` for an unbounded `given`
+       *  @return a new `GivenSelector` with the given bound
+       */
       @experimental def apply(bound: Option[TypeTree]): GivenSelector
+      /** Matches a given selector and extracts its optional type bound.
+       *
+       *  @param x the `GivenSelector` to match against
+       *  @return `Some` containing the optional type bound (the match always succeeds)
+       */
       def unapply(x: GivenSelector): Some[Option[TypeTree]]
     }
 
@@ -3067,6 +3773,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `GivenSelector`. */
     trait GivenSelectorMethods:
       extension (self: GivenSelector)
+        /** The type bound of this given selector, i.e. `T` in `import foo.{given T}`; `None` for an unbounded `given`. */
         def bound: Option[TypeTree]
     end GivenSelectorMethods
 
@@ -3170,9 +3877,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          */
         def simplified: TypeRepr
 
+        /** The class symbol of this type: the least class or trait of which this type
+         *  is a subtype or parameterized instance, or `None` if none exists.
+         */
         def classSymbol: Option[Symbol]
+        /** The type symbol associated with this type; `Symbol.noSymbol` if none exists. */
         def typeSymbol: Symbol
+        /** The term symbol associated with this type; `Symbol.noSymbol` if none exists. */
         def termSymbol: Symbol
+        /** Is this type a (possibly aliased) singleton type? */
         def isSingleton: Boolean
 
        /** The type of `member` as seen from prefix `self`.
@@ -3288,7 +4001,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Type`. */
     trait ConstantTypeModule { this: ConstantType.type =>
+      /** Creates the singleton type of the given constant, e.g. the literal type `1` for `IntConstant(1)`.
+       *
+       *  @param x the constant value
+       *  @return the `ConstantType` of `x`
+       */
       def apply(x : Constant): ConstantType
+      /** Matches a constant type and extracts its constant.
+       *
+       *  @param x the `ConstantType` to match against
+       *  @return `Some` containing the constant value (the match always succeeds)
+       */
       def unapply(x: ConstantType): Some[Constant]
     }
 
@@ -3298,6 +4021,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `ConstantType`. */
     trait ConstantTypeMethods:
       extension (self: ConstantType)
+        /** The constant value of this constant type, e.g. `IntConstant(1)` for the literal type `1`. */
         def constant: Constant
       end extension
     end ConstantTypeMethods
@@ -3314,7 +4038,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `NamedType`. */
     trait NamedTypeMethods:
       extension (self: NamedType)
+        /** The type of the qualifier of this reference, e.g. the type of `p` in a reference `p.X`. */
         def qualifier: TypeRepr
+        /** The name of the referenced term or type, e.g. `X` in a reference `p.X`. */
         def name: String
       end extension
     end NamedTypeMethods
@@ -3330,7 +4056,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TermRef`. */
     trait TermRefModule { this: TermRef.type =>
+      /** Creates a reference to the term member `name` of the type `qual`, i.e. the type of `qual.name`.
+       *
+       *  @param qual the type of the qualifier
+       *  @param name the name of the referenced term member
+       *  @return a new `TermRef` selecting `name` from `qual`
+       */
       def apply(qual: TypeRepr, name: String): TermRef
+      /** Matches a term reference and extracts the qualifier type and the name.
+       *
+       *  @param x the `TermRef` to match against
+       *  @return a tuple of the qualifier type and the referenced term's name
+       */
       def unapply(x: TermRef): (TypeRepr, String)
     }
 
@@ -3345,6 +4082,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeRef`. */
     trait TypeRefModule { this: TypeRef.type =>
+      /** Matches a type reference and extracts the qualifier type and the name.
+       *
+       *  @param x the `TypeRef` to match against
+       *  @return a tuple of the qualifier type and the referenced type's name
+       */
       def unapply(x: TypeRef): (TypeRepr, String)
     }
 
@@ -3354,7 +4096,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeRef`. */
     trait TypeRefMethods:
       extension (self: TypeRef)
+        /** Is this a reference to an opaque type alias? */
         def isOpaqueAlias: Boolean
+        /** The supertype of this reference, with opaque type aliases treated as
+         *  transparent aliases: for a reference to an opaque type alias, the aliased
+         *  type as seen from the reference's prefix; for a reference to a type alias,
+         *  the aliased type; otherwise the upper bound of the referenced type.
+         */
         def translucentSuperType: TypeRepr
       end extension
     end TypeRefMethods
@@ -3370,7 +4118,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val SuperType`. */
     trait SuperTypeModule { this: SuperType.type =>
+      /** Creates the type of a `super` reference, as in `C.super.x`.
+       *
+       *  @param thistpe the type of `this` at the point of the reference
+       *  @param supertpe the type of the value referenced by `super`
+       *  @return a new `SuperType` with the given `this` type and super type
+       */
       def apply(thistpe: TypeRepr, supertpe: TypeRepr): SuperType
+      /** Matches a super type and extracts the `this` type and the super type.
+       *
+       *  @param x the `SuperType` to match against
+       *  @return a tuple of the type of `this` and the type of the value referenced by `super`
+       */
       def unapply(x: SuperType): (TypeRepr, TypeRepr)
     }
 
@@ -3380,7 +4139,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `SuperType`. */
     trait SuperTypeMethods { this: SuperTypeMethods =>
       extension (self: SuperType)
+        /** The type of `this` at this `super` reference. */
         def thistpe: TypeRepr
+        /** The type of the value referenced by `super`. */
         def supertpe: TypeRepr
       end extension
     }
@@ -3396,7 +4157,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Refinement`. */
     trait RefinementModule { this: Refinement.type =>
+      /** Creates a refinement of `parent` with a single refined member, e.g. `T { def x: Int }` or `T { type U <: S }`.
+       *
+       *  @param parent the type being refined
+       *  @param name the name of the refined member; taken as a type name if `info` is a `TypeBounds`, as a term name otherwise
+       *  @param info the type of the refined member
+       *  @return a new `Refinement` of `parent` refining `name` to `info`
+       */
       def apply(parent: TypeRepr, name: String, info: TypeRepr): Refinement
+      /** Matches a refinement type and extracts the parent, the refined member's name, and its type.
+       *
+       *  @param x the `Refinement` to match against
+       *  @return a tuple of the refined parent type, the refined member's name, and the member's type
+       */
       def unapply(x: Refinement): (TypeRepr, String, TypeRepr)
     }
 
@@ -3406,8 +4179,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Refinement`. */
     trait RefinementMethods:
       extension (self: Refinement)
+        /** The type being refined, i.e. `T` in `T { type U }`. */
         def parent: TypeRepr
+        /** The name of the refined member, e.g. `U` in `T { type U }`. */
         def name: String
+        /** The type of the refined member; a `TypeBounds` for a refined type member. */
         def info: TypeRepr
       end extension
     end RefinementMethods
@@ -3430,6 +4206,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @return the `AppliedType` `tycon[args]`
        */
       def apply(tycon: TypeRepr, args: List[TypeRepr]): AppliedType
+      /** Matches an applied type `T[T_1,..,T_n]` and extracts the type constructor and its type arguments.
+       *
+       *  @param x the `AppliedType` to match against
+       *  @return a tuple of the type constructor and the list of type arguments
+       */
       def unapply(x: AppliedType): (TypeRepr, List[TypeRepr])
     }
 
@@ -3439,7 +4220,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `AppliedType`. */
     trait AppliedTypeMethods:
       extension (self: AppliedType)
+        /** The type constructor, i.e. `T` in `T[T_1,..,T_n]`. */
         def tycon: TypeRepr
+        /** The type arguments, i.e. `T_1,..,T_n` in `T[T_1,..,T_n]`. */
         def args: List[TypeRepr]
       end extension
     end AppliedTypeMethods
@@ -3455,7 +4238,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val AnnotatedType`. */
     trait AnnotatedTypeModule { this: AnnotatedType.type =>
+      /** Creates an annotated type `T @foo`.
+       *
+       *  @param underlying the type being annotated, i.e. `T`
+       *  @param annot the annotation as a term, i.e. an application of an annotation class constructor
+       *  @return a new `AnnotatedType` of `underlying` annotated with `annot`
+       */
       def apply(underlying: TypeRepr, annot: Term): AnnotatedType
+      /** Matches an annotated type `T @foo` and extracts the underlying type and the annotation.
+       *
+       *  @param x the `AnnotatedType` to match against
+       *  @return a tuple of the underlying type and the annotation term
+       */
       def unapply(x: AnnotatedType): (TypeRepr, Term)
     }
 
@@ -3465,7 +4259,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `AnnotatedType`. */
     trait AnnotatedTypeMethods:
       extension (self: AnnotatedType)
+        /** The type being annotated, i.e. `T` in `T @foo`. */
         def underlying: TypeRepr
+        /** The annotation as a term, i.e. an application of an annotation class constructor. */
         def annotation: Term
       end extension
     end AnnotatedTypeMethods
@@ -3483,7 +4279,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `AndOrType`. */
     trait AndOrTypeMethods:
       extension (self: AndOrType)
+        /** The left operand, i.e. `T` in `T & U` or `T | U`. */
         def left: TypeRepr
+        /** The right operand, i.e. `U` in `T & U` or `T | U`. */
         def right: TypeRepr
       end extension
     end AndOrTypeMethods
@@ -3499,7 +4297,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val AndType`. */
     trait AndTypeModule { this: AndType.type =>
+      /** Creates an intersection type `T & U`.
+       *
+       *  @param lhs the left operand `T`
+       *  @param rhs the right operand `U`
+       *  @return the `AndType` `lhs & rhs`
+       */
       def apply(lhs: TypeRepr, rhs: TypeRepr): AndType
+      /** Matches an intersection type `T & U` and extracts its operands.
+       *
+       *  @param x the `AndType` to match against
+       *  @return a tuple of the left and right operands
+       */
       def unapply(x: AndType): (TypeRepr, TypeRepr)
     }
 
@@ -3514,7 +4323,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val OrType`. */
     trait OrTypeModule { this: OrType.type =>
+      /** Creates a union type `T | U`.
+       *
+       *  @param lhs the left operand `T`
+       *  @param rhs the right operand `U`
+       *  @return the `OrType` `lhs | rhs`
+       */
       def apply(lhs: TypeRepr, rhs: TypeRepr): OrType
+      /** Matches a union type `T | U` and extracts its operands.
+       *
+       *  @param x the `OrType` to match against
+       *  @return a tuple of the left and right operands
+       */
       def unapply(x: OrType): (TypeRepr, TypeRepr)
     }
 
@@ -3529,7 +4349,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val MatchType`. */
     trait MatchTypeModule { this: MatchType.type =>
+      /** Creates a match type `S match { case P1 => R1; ... }`.
+       *
+       *  @param bound the upper bound of the match type; any reduction of the match type conforms to it
+       *  @param scrutinee the type being matched, i.e. `S`
+       *  @param cases the cases of the match type, each a `MatchCase`
+       *  @return a new `MatchType`
+       */
       def apply(bound: TypeRepr, scrutinee: TypeRepr, cases: List[TypeRepr]): MatchType
+      /** Matches a match type and extracts its bound, scrutinee, and cases.
+       *
+       *  @param x the `MatchType` to match against
+       *  @return a tuple of the upper bound, the scrutinee type, and the list of cases
+       */
       def unapply(x: MatchType): (TypeRepr, TypeRepr, List[TypeRepr])
     }
 
@@ -3539,8 +4371,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `MatchType`. */
     trait MatchTypeMethods:
       extension (self: MatchType)
+        /** The upper bound of this match type; any reduction of this match type conforms to it. */
         def bound: TypeRepr
+        /** The type being matched, i.e. `S` in `S match { case P => R }`. */
         def scrutinee: TypeRepr
+        /** The cases of this match type, each a `MatchCase` (possibly nested in a `TypeLambda` when the case has type bindings). */
         def cases: List[TypeRepr]
       end extension
     end MatchTypeMethods
@@ -3570,7 +4405,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val ByNameType`. */
     trait ByNameTypeModule { this: ByNameType.type =>
+      /** Creates a by-name type `=> T`.
+       *
+       *  @param underlying the result type `T`
+       *  @return the by-name type of `underlying`
+       */
       def apply(underlying: TypeRepr): TypeRepr
+      /** Matches a by-name type `=> T` and extracts the underlying type.
+       *
+       *  @param x the `ByNameType` to match against
+       *  @return a `Some` containing the underlying result type `T`
+       */
       def unapply(x: ByNameType): Some[TypeRepr]
     }
 
@@ -3580,6 +4425,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `ByNameType`. */
     trait ByNameTypeMethods:
       extension (self: ByNameType)
+        /** The result type, i.e. `T` in `=> T`. */
         def underlying: TypeRepr
       end extension
     end ByNameTypeMethods
@@ -3595,6 +4441,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val ParamRef`. */
     trait ParamRefModule { this: ParamRef.type =>
+      /** Matches a parameter reference and extracts its binder and parameter index.
+       *
+       *  @param x the `ParamRef` to match against
+       *  @return a tuple of the binding lambda type and the zero-based index of the parameter in its parameter list
+       */
       def unapply(x: ParamRef): (TypeRepr, Int)
     }
 
@@ -3604,7 +4455,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `ParamRef`. */
     trait ParamRefMethods:
       extension (self: ParamRef)
+        /** The lambda type binding this parameter, such as a `MethodType`, `PolyType`, or `TypeLambda`. */
         def binder: TypeRepr
+        /** The zero-based index of the referenced parameter in the parameter list of the binder. */
         def paramNum: Int
       end extension
     end ParamRefMethods
@@ -3620,6 +4473,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val ThisType`. */
     trait ThisTypeModule { this: ThisType.type =>
+      /** Matches a `this` type and extracts the reference to the class of the `this`.
+       *
+       *  @param x the `ThisType` to match against
+       *  @return a `Some` containing the type reference to the class, i.e. `C` for the type of `C.this`
+       */
       def unapply(x: ThisType): Some[TypeRepr]
     }
 
@@ -3629,6 +4487,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `ThisType`. */
     trait ThisTypeMethods:
       extension (self: ThisType)
+        /** The type reference to the class of this `this` type, i.e. `C` for the type of `C.this`. */
         def tref: TypeRepr
       end extension
     end ThisTypeMethods
@@ -3644,6 +4503,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val RecursiveThis`. */
     trait RecursiveThisModule { this: RecursiveThis.type =>
+      /** Matches a recursive `this` and extracts the recursive type it refers to.
+       *
+       *  @param x the `RecursiveThis` to match against
+       *  @return a `Some` containing the `RecursiveType` that binds this recursive `this`
+       */
       def unapply(x: RecursiveThis): Some[RecursiveType]
     }
 
@@ -3653,6 +4517,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `RecursiveThis`. */
     trait RecursiveThisMethods:
       extension (self: RecursiveThis)
+        /** The `RecursiveType` that binds this recursive `this` reference. */
         def binder: RecursiveType
       end extension
     end RecursiveThisMethods
@@ -3682,6 +4547,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def apply(parentExp: RecursiveType => TypeRepr): RecursiveType
 
+      /** Matches a recursive type and extracts its underlying type.
+       *
+       *  @param x the `RecursiveType` to match against
+       *  @return a `Some` containing the underlying type
+       */
       def unapply(x: RecursiveType): Some[TypeRepr]
     }
 
@@ -3691,7 +4561,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `RecursiveType`. */
     trait RecursiveTypeMethods:
       extension (self: RecursiveType)
+        /** The underlying type of this recursive type, in which `recThis` refers back to the recursive type itself. */
         def underlying: TypeRepr
+        /** The recursive `this` reference that refers to this recursive type from within its underlying type. */
         def recThis: RecursiveThis
       end extension
     end RecursiveTypeMethods
@@ -3708,8 +4580,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `LambdaType`. */
     trait LambdaTypeMethods:
       extension (self: LambdaType)
+        /** The names of the parameters of this lambda type. */
         def paramNames: List[String]
+        /** The types of the parameters of this lambda type: the declared types of term parameters, or the bounds of type parameters. */
         def paramTypes: List[TypeRepr]
+        /** The result type of this lambda type. */
         def resType: TypeRepr
       end extension
     end LambdaTypeMethods
@@ -3740,8 +4615,28 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val MethodType`. */
     trait MethodTypeModule { this: MethodType.type =>
+      /** Creates a method type `(x1: X1, ..., xn: Xn)R` with a plain parameter clause.
+       *
+       *  @param paramNames the names of the parameters
+       *  @param paramInfosExp a function that returns the parameter types, given the method type under construction; use `param` on it to reference earlier parameters
+       *  @param resultTypeExp a function that returns the result type, given the method type under construction
+       *  @return a new `MethodType`
+       */
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType
+      /** Creates a method type with a parameter clause of the given kind: plain, implicit, or contextual.
+       *
+       *  @param kind the kind of the parameter clause
+       *  @param paramNames the names of the parameters
+       *  @param paramInfosExp a function that returns the parameter types, given the method type under construction; use `param` on it to reference earlier parameters
+       *  @param resultTypeExp a function that returns the result type, given the method type under construction
+       *  @return a new `MethodType`
+       */
       def apply(kind: MethodTypeKind)(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType
+      /** Matches a method type and extracts the parameter names, parameter types, and result type.
+       *
+       *  @param x the `MethodType` to match against
+       *  @return a tuple of the parameter names, the parameter types, and the result type
+       */
       def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr)
     }
 
@@ -3766,6 +4661,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Whether the clause has any erased parameters. */
         @experimental
         def hasErasedParams: Boolean
+        /** Reference to the i-th parameter.
+         *
+         *  @param idx the zero-based index of the parameter
+         *  @return a `TypeRepr` referencing the parameter at position `idx`
+         */
         def param(idx: Int): TypeRepr
       end extension
     end MethodTypeMethods
@@ -3781,7 +4681,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val PolyType`. */
     trait PolyTypeModule { this: PolyType.type =>
+      /** Creates a polymorphic method type `[T_1 >: L_1 <: U_1, ...]R`.
+       *
+       *  @param paramNames the names of the type parameters
+       *  @param paramBoundsExp a function that returns the type parameter bounds, given the polymorphic type under construction; use `param` on it to reference earlier parameters
+       *  @param resultTypeExp a function that returns the result type, given the polymorphic type under construction
+       *  @return a new `PolyType`
+       */
       def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => TypeRepr): PolyType
+      /** Matches a polymorphic method type and extracts the type parameter names, their bounds, and the result type.
+       *
+       *  @param x the `PolyType` to match against
+       *  @return a tuple of the type parameter names, the type parameter bounds, and the result type
+       */
       def unapply(x: PolyType): (List[String], List[TypeBounds], TypeRepr)
     }
 
@@ -3791,7 +4703,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `PolyType`. */
     trait PolyTypeMethods:
       extension (self: PolyType)
+        /** Reference to the i-th parameter.
+         *
+         *  @param idx the zero-based index of the parameter
+         *  @return a `TypeRepr` referencing the parameter at position `idx`
+         */
         def param(idx: Int): TypeRepr
+        /** The bounds of the type parameters of this polymorphic type. */
         def paramBounds: List[TypeBounds]
       end extension
     end PolyTypeMethods
@@ -3807,7 +4725,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeLambda`. */
     trait TypeLambdaModule { this: TypeLambda.type =>
+      /** Creates a type lambda `[T_1 >: L_1 <: U_1, ...] =>> R`.
+       *
+       *  @param paramNames the names of the type parameters
+       *  @param boundsFn a function that returns the type parameter bounds, given the type lambda under construction; use `param` on it to reference earlier parameters
+       *  @param bodyFn a function that returns the body of the lambda, given the type lambda under construction
+       *  @return a new `TypeLambda`
+       */
       def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => TypeRepr): TypeLambda
+      /** Matches a type lambda and extracts the type parameter names, their bounds, and the body.
+       *
+       *  @param x the `TypeLambda` to match against
+       *  @return a tuple of the type parameter names, the type parameter bounds, and the body of the lambda
+       */
       def unapply(x: TypeLambda): (List[String], List[TypeBounds], TypeRepr)
     }
 
@@ -3850,8 +4780,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val MatchCase`. */
     trait MatchCaseModule { this: MatchCase.type =>
       /* Create match type case `case <pattern> => <rhs>` */
+      /** Creates a match type case `case P => R`.
+       *
+       *  @param pattern the pattern type `P`
+       *  @param rhs the result type `R`
+       *  @return a new `MatchCase`
+       */
       def apply(pattern: TypeRepr, rhs: TypeRepr): MatchCase
       /* Matches a match type case `case <pattern> => <rhs>` */
+      /** Matches a match type case `case P => R` and extracts its pattern and result types.
+       *
+       *  @param x the `MatchCase` to match against
+       *  @return a tuple of the pattern type and the result type
+       */
       def unapply(x: MatchCase): (TypeRepr, TypeRepr)
     }
 
@@ -3882,10 +4823,32 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeBounds`. */
     trait TypeBoundsModule { this: TypeBounds.type =>
+      /** Creates type bounds `>: low <: hi`.
+       *
+       *  @param low the lower bound
+       *  @param hi the upper bound
+       *  @return a `TypeBounds` with lower bound `low` and upper bound `hi`
+       */
       def apply(low: TypeRepr, hi: TypeRepr): TypeBounds
+      /** Matches type bounds and extracts the lower and upper bounds.
+       *
+       *  @param x the `TypeBounds` to match against
+       *  @return a tuple of the lower bound and the upper bound
+       */
       def unapply(x: TypeBounds): (TypeRepr, TypeRepr)
+      /** Returns unconstrained type bounds `>: Nothing <: Any`. */
       def empty: TypeBounds
+      /** Creates type bounds with only an upper bound, i.e. `>: Nothing <: hi`.
+       *
+       *  @param hi the upper bound
+       *  @return a `TypeBounds` with lower bound `Nothing` and upper bound `hi`
+       */
       def upper(hi: TypeRepr): TypeBounds
+      /** Creates type bounds with only a lower bound, i.e. `>: lo <: Any`.
+       *
+       *  @param lo the lower bound
+       *  @return a `TypeBounds` with lower bound `lo` and upper bound `Any`
+       */
       def lower(lo: TypeRepr): TypeBounds
     }
 
@@ -3895,7 +4858,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeBounds`. */
     trait TypeBoundsMethods:
       extension (self: TypeBounds)
+        /** The lower bound of this type bounds. */
         def low: TypeRepr
+        /** The upper bound of this type bounds. */
         def hi: TypeRepr
       end extension
     end TypeBoundsMethods
@@ -3913,6 +4878,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val NoPrefix`. */
     trait NoPrefixModule { this: NoPrefix.type =>
+      /** Matches the `NoPrefix` of a type selection without a prefix.
+       *
+       *  @param x the `NoPrefix` to match against; never used
+       *  @return always `true`
+       */
       def unapply(x: NoPrefix): true
     }
 
@@ -3929,7 +4899,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val FlexibleType`. */
     trait FlexibleTypeModule { this: FlexibleType.type =>
+      /** Creates a flexible type from the given type `T`, with upper bound `T` and lower bound `T | Null`.
+       *
+       *  @param tp the underlying type `T`; if `tp` is already a `FlexibleType`, it is returned unchanged
+       *  @return the flexible type of `tp`
+       */
       def apply(tp: TypeRepr): FlexibleType
+      /** Matches a flexible type and extracts its underlying type.
+       *
+       *  @param x the `FlexibleType` to match against
+       *  @return a `Some` containing the underlying type, i.e. the upper bound
+       */
       def unapply(x: FlexibleType): Option[TypeRepr]
     }
 
@@ -3939,8 +4919,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `FlexibleType`. */
     trait FlexibleTypeMethods:
       extension (self: FlexibleType)
+        /** The underlying type of this flexible type; the same as `hi`. */
         def underlying: TypeRepr
+        /** The lower bound of this flexible type, i.e. `T | Null` for the flexible type of `T`. */
         def lo: TypeRepr
+        /** The upper bound of this flexible type, the underlying type `T`. Nothing forces it to be
+         *  non-nullable: `FlexibleType.apply` uses whatever value type it is given.
+         */
         def hi: TypeRepr
       end extension
     end FlexibleTypeMethods
@@ -4312,6 +5297,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `ImplicitSearchSuccess`. */
     trait ImplicitSearchSuccessMethods:
       extension (self: ImplicitSearchSuccess)
+        /** The term that refers to or constructs the found given instance. */
         def tree: Term
       end extension
     end ImplicitSearchSuccessMethods
@@ -4327,6 +5313,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `ImplicitSearchFailure`. */
     trait ImplicitSearchFailureMethods:
       extension (self: ImplicitSearchFailure)
+        /** A message explaining why the search failed, suitable for inclusion in error messages. */
         def explanation: String
       end extension
     end ImplicitSearchFailureMethods
@@ -5815,10 +6802,41 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait TreeAccumulator[X]:
 
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
+      /** Combines the accumulated value with `tree`.
+       *
+       *  Implementations decide how `tree` contributes to the accumulated value,
+       *  and call `foldOverTree(x, tree)(owner)` to accumulate over the subtrees of `tree`.
+       *
+       *  @param x the value accumulated so far
+       *  @param tree the tree to fold over
+       *  @param owner the symbol of the definition enclosing `tree`
+       *  @return the value accumulated after visiting `tree`
+       */
       def foldTree(x: X, tree: Tree)(owner: Symbol): X
 
+      /** Folds `foldTree` over the given trees from left to right, threading the accumulated value.
+       *
+       *  @param x the initial accumulated value
+       *  @param trees the trees to fold over
+       *  @param owner the symbol of the definition enclosing the trees
+       *  @return the value accumulated after visiting all trees
+       */
       def foldTrees(x: X, trees: Iterable[Tree])(owner: Symbol): X = trees.foldLeft(x)((acc, y) => foldTree(acc, y)(owner))
 
+      /** Folds `foldTree` over the subtrees of `tree`, from left to right.
+       *
+       *  Not every `Tree` component is visited: the `call` of an `Inlined`, which records the
+       *  call that was inlined rather than part of the expansion, is skipped.
+       *
+       *  For a definition tree, the subtrees are folded with the symbol of the definition
+       *  itself as their owner.
+       *
+       *  @param x the value accumulated so far
+       *  @param tree the tree whose subtrees are folded over
+       *  @param owner the symbol of the definition enclosing `tree`
+       *  @return the value accumulated after visiting the subtrees of `tree`
+       *  @throws MatchError if `tree` is of an unknown kind
+       */
       def foldOverTree(x: X, tree: Tree)(owner: Symbol): X = {
         tree match {
           case Ident(_) =>
@@ -5927,10 +6945,27 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     trait TreeTraverser extends TreeAccumulator[Unit]:
 
+      /** Traverses `tree`. By default traverses its children; override to inspect the tree,
+       *  calling `traverseTreeChildren(tree)(owner)` to continue the traversal into the children.
+       *
+       *  @param tree the tree to traverse
+       *  @param owner the symbol of the definition enclosing `tree`
+       */
       def traverseTree(tree: Tree)(owner: Symbol): Unit = traverseTreeChildren(tree)(owner)
 
+      /** Traverses `tree` by delegating to `traverseTree`.
+       *
+       *  @param x the accumulated `Unit` value; never used
+       *  @param tree the tree to traverse
+       *  @param owner the symbol of the definition enclosing `tree`
+       */
       def foldTree(@unused x: Unit, tree: Tree)(owner: Symbol): Unit = traverseTree(tree)(owner)
 
+      /** Traverses the direct children of `tree`.
+       *
+       *  @param tree the tree whose children are traversed
+       *  @param owner the symbol of the definition enclosing `tree`
+       */
       protected def traverseTreeChildren(tree: Tree)(owner: Symbol): Unit = foldOverTree((), tree)(owner)
 
     end TreeTraverser
@@ -5955,6 +6990,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     trait TreeMap:
 
+      /** Transforms `tree` by dispatching on its kind to the more specific `transformX` methods
+       *  and rebuilding the tree from its transformed subtrees.
+       *
+       *  Some components are deliberately left as they are rather than transformed: an `Export`
+       *  is returned unchanged, as are the `pattern` of a `Bind` and the `call` of an `Inlined`.
+       *
+       *  @param tree the tree to transform
+       *  @param owner the symbol of the definition enclosing `tree`
+       *  @return the transformed tree
+       *  @throws MatchError if `tree` is of an unknown kind
+       */
       def transformTree(tree: Tree)(owner: Symbol): Tree = {
         tree match {
           case tree: PackageClause =>
@@ -5986,6 +7032,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         }
       }
 
+      /** Transforms the statement `tree` by transforming its subtrees.
+       *
+       *  For a definition (`ValDef`, `DefDef`, `TypeDef`, or `ClassDef`), the subtrees are
+       *  transformed with the symbol of the definition itself as their owner.
+       *
+       *  @param tree the statement to transform
+       *  @param owner the symbol of the definition enclosing `tree`
+       *  @return the transformed statement
+       *  @throws MatchError if `tree` is of an unknown kind
+       */
       def transformStatement(tree: Statement)(owner: Symbol): Statement = {
         tree match {
           case tree: Term =>
@@ -6023,6 +7079,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         }
       }
 
+      /** Transforms the term `tree` by transforming its subterms and type trees.
+       *
+       *  @param tree the term to transform
+       *  @param owner the symbol of the definition enclosing `tree`
+       *  @return the transformed term
+       *  @throws MatchError if `tree` is of an unknown kind
+       */
       def transformTerm(tree: Term)(owner: Symbol): Term = {
         tree match {
           case Ident(name) =>
@@ -6072,6 +7135,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         }
       }
 
+      /** Transforms the type tree `tree` by transforming its subtrees.
+       *
+       *  @param tree the type tree to transform
+       *  @param owner the symbol of the definition enclosing `tree`
+       *  @return the transformed type tree
+       *  @throws MatchError if `tree` is of an unknown kind
+       */
       def transformTypeTree(tree: TypeTree)(owner: Symbol): TypeTree = tree match {
         case Inferred() => tree
         case tree: TypeIdent => tree
@@ -6101,32 +7171,90 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           throw MatchError(tree.show(using Printer.TreeStructure))
       }
 
+      /** Transforms the case clause `tree` by transforming its pattern, guard, and body.
+       *
+       *  @param tree the case clause to transform
+       *  @param owner the symbol of the definition enclosing `tree`
+       *  @return the transformed case clause
+       */
       def transformCaseDef(tree: CaseDef)(owner: Symbol): CaseDef = {
         CaseDef.copy(tree)(transformTree(tree.pattern)(owner), tree.guard.map(x => transformTerm(x)(owner)), transformTerm(tree.rhs)(owner))
       }
 
+      /** Transforms the type case clause `tree` of a match type by transforming its pattern and result type trees.
+       *
+       *  @param tree the type case clause to transform
+       *  @param owner the symbol of the definition enclosing `tree`
+       *  @return the transformed type case clause
+       */
       def transformTypeCaseDef(tree: TypeCaseDef)(owner: Symbol): TypeCaseDef = {
         TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern)(owner), transformTypeTree(tree.rhs)(owner))
       }
 
+      /** Transforms each statement with `transformStatement`.
+       *
+       *  @param trees the statements to transform
+       *  @param owner the symbol of the definition enclosing the statements
+       *  @return the transformed statements; the original list if no statement changed
+       */
       def transformStats(trees: List[Statement])(owner: Symbol): List[Statement] =
         trees mapConserve (x => transformStatement(x)(owner))
 
+      /** Transforms each tree with `transformTree`.
+       *
+       *  @param trees the trees to transform
+       *  @param owner the symbol of the definition enclosing the trees
+       *  @return the transformed trees; the original list if no tree changed
+       */
       def transformTrees(trees: List[Tree])(owner: Symbol): List[Tree] =
         trees mapConserve (x => transformTree(x)(owner))
 
+      /** Transforms each term with `transformTerm`.
+       *
+       *  @param trees the terms to transform
+       *  @param owner the symbol of the definition enclosing the terms
+       *  @return the transformed terms; the original list if no term changed
+       */
       def transformTerms(trees: List[Term])(owner: Symbol): List[Term] =
         trees mapConserve (x => transformTerm(x)(owner))
 
+      /** Transforms each type tree with `transformTypeTree`.
+       *
+       *  @param trees the type trees to transform
+       *  @param owner the symbol of the definition enclosing the type trees
+       *  @return the transformed type trees; the original list if no type tree changed
+       */
       def transformTypeTrees(trees: List[TypeTree])(owner: Symbol): List[TypeTree] =
         trees mapConserve (x => transformTypeTree(x)(owner))
 
+      /** Transforms each case clause with `transformCaseDef`.
+       *
+       *  @param trees the case clauses to transform
+       *  @param owner the symbol of the definition enclosing the case clauses
+       *  @return the transformed case clauses; the original list if no case clause changed
+       */
       def transformCaseDefs(trees: List[CaseDef])(owner: Symbol): List[CaseDef] =
         trees mapConserve (x => transformCaseDef(x)(owner))
 
+      /** Transforms each type case clause with `transformTypeCaseDef`.
+       *
+       *  @param trees the type case clauses to transform
+       *  @param owner the symbol of the definition enclosing the type case clauses
+       *  @return the transformed type case clauses; the original list if no type case clause changed
+       */
       def transformTypeCaseDefs(trees: List[TypeCaseDef])(owner: Symbol): List[TypeCaseDef] =
         trees mapConserve (x => transformTypeCaseDef(x)(owner))
 
+      /** Transforms each tree with `transformTree`, keeping the static element type of the list.
+       *
+       *  The transformation must map each tree to a tree of the same type `Tr`; the result is
+       *  cast, not checked.
+       *
+       *  @tparam Tr the type of the trees
+       *  @param trees the trees to transform
+       *  @param owner the symbol of the definition enclosing the trees
+       *  @return the transformed trees; the original list if no tree changed
+       */
       def transformSubTrees[Tr <: Tree](trees: List[Tr])(owner: Symbol): List[Tr] =
         transformTrees(trees)(owner).asInstanceOf[List[Tr]]
 
