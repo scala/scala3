@@ -954,11 +954,22 @@ object TypeOps:
     // variance. As this logic is only needed in exhaustivity check,
     // we manually patch subtyping check instead of changing TypeComparer.
     // See tests/patmat/i3645b.scala
-    def parentQualify(tp1: Type, tp2: Type) = tp1.classSymbol.info.parents.exists { parent =>
-      parent.argInfos.nonEmpty && approximateParent(parent) <:< tp2
-    }
+    def parentQualify(tp1: Type, tp2: Type) =
+      // This doesn't do what we want when a subclass inherits from a raw version of the superclass,
+      // e.g., `class X<T>` having `A<String> extends X<String>` and `B extends X` as children.
+      // Detect this and use the type anyway. See tests/warn/patmat-raw.
+      def looksLikeRawType(t: Type): Boolean = t match
+        case AppliedType(_, args) => args.forall {
+          case b: TypeBounds => b.lo == defn.NothingType && b.hi == defn.AnyType
+          case _ => false
+        }
+        case _ => t.typeParams.nonEmpty
+      tp1.classSymbol.info.parents.exists { parent =>
+        (parent.argInfos.nonEmpty && approximateParent(parent) <:< tp2) || (looksLikeRawType(parent) && tp2 <:< parent)
+      }
 
     def instantiate(): Type = {
+      // This bizarre loop fixes tests/pos/i16539.scala
       for tp <- mixins.reverseIterator do
         protoTp1 <:< tp
       maximizeType(protoTp1, NoSpan)
