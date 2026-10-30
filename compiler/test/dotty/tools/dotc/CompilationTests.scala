@@ -103,6 +103,8 @@ class CompilationTests {
       compileFile("tests/rewrites/app-to-main-skip.scala", defaultOptions.and("-rewrite", "-Yapp-to-main")),
       compileFile("tests/rewrites/i22792.scala", defaultOptions.and("-rewrite")),
       compileFile("tests/rewrites/i23449.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
+      compileFile("tests/rewrites/kind-projector-3.11.scala", defaultOptions.and("-rewrite", "-source:3.11-migration", "-Xkind-projector")),
+      compileFile("tests/rewrites/kind-projector-underscores-3.11.scala", defaultOptions.and("-rewrite", "-source:3.11-migration", "-Xkind-projector:underscores")),
       compileFile("tests/rewrites/i24103.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
       compileFile("tests/rewrites/i24103b.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
       compileFile("tests/rewrites/i24213.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
