@@ -23,7 +23,7 @@ jobs:
           - jdk: 17
             command: scala3-bootstrapped/scripted
           - jdk: 25
-            command: scala3-bootstrapped/scripted sbt-bridge/main-discovery sbt-bridge/main-discovery-scalajs
+            command: scala3-bootstrapped/scripted sbt-bridge/main-discovery sbt-bridge/main-discovery-scalajs java-compat/i27460
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

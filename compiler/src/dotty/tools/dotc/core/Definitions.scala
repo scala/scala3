@@ -1214,7 +1214,7 @@ class Definitions {
   @tu lazy val JdkInternalValueBasedAnnot: Symbol = getClassIfDefined("jdk.internal.ValueBased").orElse {
     val pkg = getPackageClassIfDefined("jdk.internal")
     if pkg.exists then
-      val flags = JavaDefined | JavaAnnotation | PureInterfaceCreationFlags | Abstract
+      val flags = JavaDefined | JavaAnnotation | PureInterfaceCreationFlags | Abstract | Permanent
       completeClass(newCompleteClassSymbol(pkg, "ValueBased".toTypeName, flags, List(ObjectType, JavaAnnotationClass.typeRef), newScope))
     else NoSymbol
   }
