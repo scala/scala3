@@ -13,6 +13,7 @@
 package scala
 package runtime
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import java.lang.reflect.{ Method => JMethod }
 import java.lang.{ Class => JClass }

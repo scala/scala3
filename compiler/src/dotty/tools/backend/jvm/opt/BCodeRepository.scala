@@ -17,7 +17,7 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.backend.jvm.ClassNode1
 import dotty.tools.backend.jvm.analysis.AnalysisUtils.LambdaMetaFactoryCall
-import dotty.tools.dotc.classpath.{AggregateClassPath, ClassPath, CtSymClassPath, JrtClassPath}
+import dotty.tools.dotc.classpath.ClassPath
 import dotty.tools.io
 
 import scala.collection.{concurrent, mutable}
@@ -279,14 +279,7 @@ class BCodeRepository(classPath: ClassPath) {
    * Used to make classes available to the inliner's bytecode repository.
    * In particular, if ct.sym is used for compilation, replace it with jrt.
    */
-  private lazy val optimizerClassPath = classPath match {
-    case cp@AggregateClassPath(entries) if entries.head.isInstanceOf[CtSymClassPath] =>
-      JrtClassPath(release = None) match {
-        case Some(jrt) => AggregateClassPath(entries.drop(1).prepended(jrt))
-        case _ => cp
-      }
-    case cp => cp
-  }
+  private lazy val optimizerClassPath = ClassPath.replaceCtSymWithJrt(classPath)
 
   private def parseClass(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
     try

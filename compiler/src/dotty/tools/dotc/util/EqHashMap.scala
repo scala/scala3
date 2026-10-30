@@ -3,17 +3,17 @@ package dotty.tools.dotc.util
 /** A specialized implementation of GenericHashMap with identity hash and `eq`
  *  as comparison.
  */
-class EqHashMap[Key, Value]
+final class EqHashMap[Key, Value]
     (initialCapacity: Int = 8, capacityMultiple: Int = 2)
 extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
 
   /** Hashcode is identityHashCode left-shifted by 1, so lowest bit is not lost
    *  when taking the index.
    */
-  final def hash(x: Key): Int = System.identityHashCode(x) << 1
+  def hash(x: Key): Int = System.identityHashCode(x) << 1
 
   /** Equality, by default `eq`,  but can be overridden */
-  final def isEqual(x: Key, y: Key): Boolean = x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
+  def isEqual(x: Key, y: Key): Boolean = x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
 
   // The following methods are duplicated from GenericHashMap
   // to avoid polymorphic dispatches.

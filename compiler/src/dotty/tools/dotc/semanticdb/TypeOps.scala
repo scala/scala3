@@ -19,11 +19,13 @@ import dotty.tools.dotc.util.chaining.*
 private[semanticdb] class TypeOps:
   import SymbolScopeOps.*
   import Scala3.given
-  private val paramRefSymtab = mutable.Map[(LambdaType, Name), Symbol]()
-  private val refinementSymtab = mutable.Map[(RefinedType, Name), Symbol]()
+  private val paramRefSymtab = mutable.Map.empty[(LambdaType, Name), Symbol]
+  private val refinementSymtab = mutable.Map.empty[(RefinedType, Name), Symbol]
 
-  // save generated fake symbols so we can insert them into symbols section of SemanticDB
-  val fakeSymbols = mutable.Set[FakeSymbol]()
+  // save generated fake symbols so we can insert them into symbols section of SemanticDB.
+  // Insertion ordered: their hash codes depend on identity hash codes of names, and the
+  // iteration order decides the numbering of local symbols.
+  val fakeSymbols = mutable.LinkedHashSet.empty[FakeSymbol]
   given typeOps: TypeOps = this
 
   extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), Symbol])

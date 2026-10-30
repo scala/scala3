@@ -8,10 +8,9 @@
 
 package dotty.tools.io
 
-import java.io.{File => JavaIoFile, _}
-import java.nio.file.{Files, Paths}
+import java.io.{File as JavaIoFile, *}
+import java.nio.file.{Files, LinkOption, Paths}
 import java.nio.file.StandardOpenOption.*
-
 import scala.io.Codec
 /**
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
@@ -49,8 +48,8 @@ class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) {
 
   /** Obtains a OutputStream. */
   def outputStream(append: Boolean = false): OutputStream =
-    if (append) Files.newOutputStream(jpath, CREATE, APPEND)
-    else Files.newOutputStream(jpath, CREATE, TRUNCATE_EXISTING)
+    if (append) Files.newOutputStream(jpath, CREATE, APPEND, LinkOption.NOFOLLOW_LINKS)
+    else Files.newOutputStream(jpath, CREATE, TRUNCATE_EXISTING, LinkOption.NOFOLLOW_LINKS)
 
   /** Obtains an OutputStreamWriter wrapped around a FileOutputStream.
    *  This should behave like a less broken version of java.io.FileWriter,

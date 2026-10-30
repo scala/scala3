@@ -84,6 +84,10 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Show JDK version
+        run: java -version
+        shell: cmd
+
       - name: Test
         run: sbt ";scala3-bootstrapped/compile ;scala3-compiler-bootstrapped/test"
         shell: cmd
@@ -109,6 +113,7 @@ jobs:
       HAS_SIGNING_KEY: ${{ secrets.PGP_SECRET != '' }}
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
       PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
+      SCALA_PGP_FINGERPRINT: ${{ vars.SCALA_PGP_FINGERPRINT }}
       SONATYPE_PW: ${{ secrets.SONATYPE_PW_ORGSCALALANG }}
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
@@ -120,13 +125,13 @@ jobs:
       ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
       ##############################################################################################
       - name: Set up JDK 17
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
-          distribution: 'temurin'
+          distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
 
       # Extract the release tag
       - name: Extract the release tag
@@ -177,7 +182,7 @@ jobs:
           prepareSDK "-x86_64-pc-win32"      "dist-win-x86_64"    "./dist/win-x86_64/"
 
       - name: Download MSI package
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: scala.msi
           path: .
@@ -189,7 +194,7 @@ jobs:
           sha256sum "${msiInstaller}" > "${msiInstaller}.sha256"
 
       - name: Download deb package
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: scala.deb
           path: .
@@ -201,7 +206,7 @@ jobs:
           sha256sum "${debInstaller}" > "${debInstaller}.sha256"
 
       - name: Download rpm package
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: scala.rpm
           path: .
@@ -274,7 +279,7 @@ jobs:
 
       - name: Upload staged bundle (org.scala-lang, fork only)
         if: env.IS_ORIGIN != 'true' && env.HAS_SIGNING_KEY == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sona-staging-org-scala-lang
           path: target/sona-staging/
@@ -292,7 +297,7 @@ jobs:
 
       - name: Upload staged bundle (org.scala-js, fork only)
         if: env.IS_ORIGIN != 'true' && env.HAS_SIGNING_KEY == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sona-staging-org-scala-js
           path: target/sona-staging/
@@ -328,13 +333,13 @@ jobs:
           persist-credentials: false
 
       - name: Set up JDK 17
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
-          distribution: 'temurin'
+          distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
 
       # The dependency submission action would also submit the snapshot to
       # GitHub, the plugin is loaded directly to only generate it. The plugin
@@ -371,7 +376,7 @@ jobs:
         run: gh release upload "${RELEASE_TAG}" "scala3-${RELEASE_TAG}.spdx3.json" --clobber
 
       - name: Upload the SBOM attestation
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sbom-attestation
           path: sbom.bundle.json
@@ -427,7 +432,7 @@ jobs:
           output: attestations.intoto.jsonl
 
       - name: Download the SBOM attestation
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: sbom-attestation
           path: sbom-attestation
@@ -523,8 +528,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: coursier/cache-action@95e5b1029b6b86e7bac033ee44a0697d8a527d2d # v8.1.1
-      - uses: VirtusLab/scala-cli-setup@c33dfbf1a5f16ee60efff453b7f9a987d2b6955b # v1.17.1
+      - uses: coursier/cache-action@057d08c2f9a2c4e7a4d33df3aae657b7db88b8cc # v8.2.0
+      - uses: VirtusLab/scala-cli-setup@3f5bf11a33bb88343238780c18257c8fa43789e1 # v1.18.0
       - name: Check formatting
         run: |
           if ! scala-cli format --check; then

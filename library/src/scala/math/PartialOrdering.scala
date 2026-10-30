@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A trait for representing partial orderings.  It is important to
@@ -42,7 +43,7 @@ import scala.language.`2.13`
  *  @tparam T the type of elements being ordered
  */
 
-trait PartialOrdering[T] extends Equiv[T] {
+trait PartialOrdering[T] extends Equiv[T], caps.Pure {
   outer =>
 
   /** Result of comparing `x` with operand `y`.
