@@ -192,10 +192,11 @@ sealed abstract class CaptureSet extends Showable:
    *
    *  If the element itself cannot be added to the set for some reason, and the
    *  element is not the root capability, try instead to include its underlying
-   *  capture set.
+   *  capture set. With `widen = false` this fallback is skipped: the caller,
+   *  a union, performs it itself against the whole union.
    */
-  protected def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean = reporting.trace(i"try include $elem in $this # ${maybeId}"):
-    accountsFor(elem) || addNewElem(elem)
+  protected def tryInclude(elem: Capability, origin: CaptureSet, widen: Boolean = true)(using Context, VarState): Boolean = reporting.trace(i"try include $elem in $this # ${maybeId}"):
+    accountsFor(elem) || addNewElem(elem, widen)
 
   /** Try to include all elements in `refs` to this capture set. */
   protected final def tryInclude(newElems: Refs, origin: CaptureSet)(using Context, VarState): Boolean =
@@ -211,11 +212,12 @@ sealed abstract class CaptureSet extends Showable:
    *
    *  If the element itself cannot be added to the set for some reason, and the
    *  element is not the root capability, try instead to include its underlying
-   *  capture set.
+   *  capture set, unless `widen` is false.
    */
-  protected final def addNewElem(elem: Capability)(using ctx: Context, vs: VarState): Boolean =
+  protected final def addNewElem(elem: Capability, widen: Boolean = true)(using ctx: Context, vs: VarState): Boolean =
     addThisElem(elem)
-    || !elem.isTerminalCapability
+    || widen
+        && !elem.isTerminalCapability
         && vs.isOpen
         && {
           val underlying = elem.captureSetOfInfo
@@ -934,9 +936,12 @@ object CaptureSet:
         newElemAddedHandlers.foreach(_(elem))
         val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
-        val res = deps.forall: dep =>
-          reporting.trace(i"forward $normElem from $this # $id to $dep # ${dep.maybeId} of class ${dep.getClass.toString}"):
-            dep.tryInclude(normElem, this)
+        // Forward to all dependents, rollback if any fails: if one dependent rejects
+        // the element, undo its inclusion in the dependents that accepted it.
+        val res = TypeComparer.atomicOp:
+          deps.forall: dep =>
+            reporting.trace(i"forward $normElem from $this # $id to $dep # ${dep.maybeId} of class ${dep.getClass.toString}"):
+              dep.tryInclude(normElem, this)
         if ccConfig.checkSkippedMaps && res then checkSkippedMaps(elem)
         if !res then
           elems -= elem
@@ -1214,10 +1219,10 @@ object CaptureSet:
     if debugVars && id == debugTarget then
       println(i"variable $id is derived from $source")
 
-    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
+    override def tryInclude(elem: Capability, origin: CaptureSet, widen: Boolean)(using Context, VarState): Boolean =
       if origin eq source then
         val mappedElem = bimap.mapCapability(elem)
-        accountsFor(mappedElem) || addNewElem(mappedElem)
+        accountsFor(mappedElem) || addNewElem(mappedElem, widen)
       else if accountsFor(elem) then
         true
       else
@@ -1225,7 +1230,7 @@ object CaptureSet:
         // forward propagation from source that hits the first branch `if origin eq source then`.
         printOnAssertionError(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}"):
           reporting.trace(i"prop backwards $elem from $this # $id to $source # ${source.id} via $summarize"):
-            source.tryInclude(bimap.inverse.mapCapability(elem), this)
+            source.tryInclude(bimap.inverse.mapCapability(elem), this, widen)
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
      *  the source via the inverse type mapping and vice versa. That is, if
@@ -1250,15 +1255,15 @@ object CaptureSet:
     (val source: Var, val p: Context ?=> Capability => Boolean)(using @constructorOnly ctx: Context)
   extends DerivedVar(source.owner, source.elems.filter(p)):
 
-    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
+    override def tryInclude(elem: Capability, origin: CaptureSet, widen: Boolean)(using Context, VarState): Boolean =
       if accountsFor(elem) then
         true
       else if origin eq source then
-        !p(elem) || addNewElem(elem)
+        !p(elem) || addNewElem(elem, widen)
       else
         // Filtered elements have to be back-propagated to source.
         // Elements that don't satisfy `p` are not allowed.
-        if p(elem) then source.tryInclude(elem, this)
+        if p(elem) then source.tryInclude(elem, this, widen)
         else failWith(IncludeFailure(this, elem))
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
@@ -1282,13 +1287,26 @@ object CaptureSet:
     addAsDependentTo(cs2)
     mutability = cs1.mutability | cs2.mutability
 
-    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
+    /** Widen `elem` first, and push to the union. */
+    private def tryWiden(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
+      !elem.isTerminalCapability && varState.isOpen && {
+        val underlying = elem.captureSetOfInfo
+        TypeComparer.atomicOp:
+          ifNotTried(elem)(tryInclude(underlying.elems, origin)) && underlying.addDependent(this)
+      }
+
+    override def tryInclude(elem: Capability, origin: CaptureSet, widen: Boolean)(using Context, VarState): Boolean =
       if accountsFor(elem) then true
       else if (origin eq cs1) || (origin eq cs2) then
-        super.tryInclude(elem, origin)
+        super.tryInclude(elem, origin, widen)
       else
-           !cs1.isConst && cs1.tryInclude(elem, origin)
-        || !cs2.isConst && cs2.tryInclude(elem, origin)
+        // Allowing widening when pushing to the two operands only when
+        // `elem` is terminal, or its context capture set is stable.
+        // Otherwise, try widening here against the union first.
+        val widenInOperand = widen && (elem.isTerminalCapability || elem.captureSetOfInfo.isConst)
+        !cs1.isConst && cs1.tryInclude(elem, origin, widenInOperand)
+        || !cs2.isConst && cs2.tryInclude(elem, origin, widenInOperand)
+        || widen && tryWiden(elem, origin)
         || addIfHiddenOrFail(elem)
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
@@ -1312,7 +1330,7 @@ object CaptureSet:
     deps += cs2
     mutability = cs1.mutability & cs2.mutability
 
-    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
+    override def tryInclude(elem: Capability, origin: CaptureSet, widen: Boolean)(using Context, VarState): Boolean =
       val inIntersection =
         if origin eq cs1 then cs2.accountsFor(elem)
         else if origin eq cs2 then cs1.accountsFor(elem)
@@ -1320,9 +1338,9 @@ object CaptureSet:
       !inIntersection
       || accountsFor(elem)
       || TypeComparer.atomicOp:
-            addNewElem(elem)
-            && ((origin eq cs1) || cs1.tryInclude(elem, this))
-            && ((origin eq cs2) || cs2.tryInclude(elem, this))
+            addNewElem(elem, widen)
+            && ((origin eq cs1) || cs1.tryInclude(elem, this, widen))
+            && ((origin eq cs2) || cs2.tryInclude(elem, this, widen))
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)
