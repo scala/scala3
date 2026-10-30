@@ -563,18 +563,26 @@ object TypeOps:
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(tp: NamedType) = forbidden.contains(tp.symbol)
 
+      private var pendingTypeVars: List[TypeVar] = Nil
+
       override def apply(tp: Type): Type = tp match
         case tp: TermRef if toAvoid(tp) =>
           replacements.get(tp.symbol) match
             case Some(replacement) => replacement
             case None => super.apply(tp)
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
-          val lo = TypeComparer.instanceType(
-            tp.origin,
-            fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound,
-            tp.widenPolicy)(using mapCtx)
-          val lo1 = apply(lo)
-          if (lo1 ne lo) lo1 else tp
+          if pendingTypeVars.exists(_ eq tp) then tp
+          else
+            pendingTypeVars = tp :: pendingTypeVars
+            try
+              val lo = TypeComparer.instanceType(
+                tp.origin,
+                fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound,
+                tp.widenPolicy)(using mapCtx)
+              val lo1 = apply(lo)
+              if (lo1 ne lo) lo1 else tp
+            finally
+              pendingTypeVars = pendingTypeVars.tail
         case _ =>
           super.apply(tp)
       end apply
