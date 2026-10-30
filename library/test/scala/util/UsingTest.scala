@@ -826,6 +826,18 @@ class UsingTest {
     group.assertAllClosed()
   }
 
+  /* `Using.use` */
+
+  @Test
+  def useRegistersWithGivenManager(): Unit = {
+    val group = new ResourceGroup
+    val res = Using.managed {
+      Using.use(group.newResource()).identity(1) + Using.use(group.newResource()).identity(1)
+    }
+    assertEquals(res, 2)
+    group.assertAllClosed()
+  }
+
   /* misc */
 
   @Test

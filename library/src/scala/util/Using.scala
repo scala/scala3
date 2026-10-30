@@ -289,13 +289,13 @@ object Using {
    *  Unlike [[Manager$.apply `Manager.apply`]], the `Manager` is passed to the operation
    *  as a context parameter, so that it can be picked up by resources which require a
    *  `Manager` (see the note on [[Manager]]), and exceptions are thrown rather than
-   *  wrapped in a [[Try]]. Other resources can be registered with `summon[Using.Manager]`.
+   *  wrapped in a [[Try]]. Other resources can be registered with [[use `Using.use`]].
    *
    *  Example:
    *  ```
    *  Using.managed {
    *   val reader = new SafeFileReader("in.txt") // registers itself with the given `Manager`
-   *   val writer = summon[Using.Manager](new FileWriter("out.txt"))
+   *   val writer = Using.use(new FileWriter("out.txt"))
    *   writer.write(reader.readLine())
    *  }
    *  ```
@@ -327,13 +327,13 @@ object Using {
    *
    *  The `Manager` is passed to the operation as a context parameter, so that it can be
    *  picked up by resources which require a `Manager` (see the note on [[Manager]]).
-   *  Other resources can be registered with `summon[Using.Manager]`.
+   *  Other resources can be registered with [[use `Using.use`]].
    *
    *  Example:
    *  ```
    *  val (resources, (reader, writer)) = Using.unmanaged {
    *   val reader = new SafeFileReader("in.txt") // registers itself with the given `Manager`
-   *   val writer = summon[Using.Manager](new FileWriter("out.txt"))
+   *   val writer = Using.use(new FileWriter("out.txt"))
    *   (reader, writer)
    *  }
    *  Future(writer.write(reader.readLine())).andThen(_ => resources.close())
@@ -354,6 +354,26 @@ object Using {
         throw t // unreachable, `release` always throws
     }
   }
+
+  /** Returns the given `Manager`.
+   *
+   *  This is a shorthand for `summon[Using.Manager]` within [[managed `Using.managed`]] and
+   *  [[unmanaged `Using.unmanaged`]], which makes it convenient to register resources that
+   *  don't require a `Manager` themselves:
+   *
+   *  ```
+   *  import Using.use
+   *
+   *  Using.managed {
+   *   val reader = use(new BufferedReader(new FileReader("file.txt")))
+   *   reader.readLine()
+   *  }
+   *  ```
+   *
+   *  @param m the given `Manager`
+   *  @return `m`
+   */
+  def use(using m: Manager): Manager = m
 
   private def preferentiallySuppress(primary: Throwable, secondary: Throwable): Throwable = {
     @annotation.nowarn("cat=deprecation")  // avoid warning on mention of ThreadDeath
