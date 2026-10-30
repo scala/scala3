@@ -257,7 +257,7 @@ object Checking {
   class CheckNonCyclicMap(sym: Symbol, reportErrors: Boolean)(using Context) extends TypeMap {
 
     /** Set of type references whose info is currently checked */
-    private val locked = mutable.Set[TypeRef]()
+    private val locked = mutable.Set.empty[TypeRef]
 
     /** Are cycles allowed within nested refinedInfos of currently checked type? */
     private var nestedCycleOK = false
@@ -1351,7 +1351,7 @@ trait Checking {
 
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit =
-    val seen = new mutable.HashMap[Name, List[Symbol]].withDefaultValue(Nil)
+    val seen = mutable.Map.empty[Name, List[Symbol]].withDefaultValue(Nil)
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit =
@@ -1710,7 +1710,7 @@ trait Checking {
 
   /** Check that symbol's external name does not clash with symbols defined in the same scope */
   def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit =
-    var seen = Set[Name]()
+    var seen = Set.empty[Name]
     for stat <- stats do
       val sym = stat.symbol
       val tname = sym.targetName

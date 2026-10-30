@@ -21,6 +21,7 @@ class BisectOptionsTest extends munit.FunSuite:
     assertEquals(o.withBloop, false)
     assertEquals(o.withCleaning, false)
     assertEquals(o.withCleaningExplicit, None)
+    assertEquals(o.temporaryWorktree, true)
     assertEquals(o.validationCommand, Compile(Seq("foo.scala")))
   }
 
@@ -91,6 +92,14 @@ class BisectOptionsTest extends munit.FunSuite:
     assertEquals(o.withCleaningExplicit, Some(true))
   }
 
+  test("bare --temporary-worktree") {
+    assertEquals(parse("--temporary-worktree", "compile", "foo.scala").temporaryWorktree, true)
+  }
+
+  test("--temporary-worktree=false") {
+    assertEquals(parse("--temporary-worktree=false", "compile", "foo.scala").temporaryWorktree, false)
+  }
+
   test("combined flags") {
     val o = parse("--dry-run", "--bootstrapped=true", "--should-fail=false", "--with-bloop", "compile", "foo.scala")
     assertEquals(o.dryRun, true)
@@ -153,13 +162,26 @@ class CommitBisectScriptTest extends munit.FunSuite:
   import BuildFailureAction.*
 
   private val validationScriptPath = "/tmp/validate-bisect.sh"
+  private val validationDir = "/tmp/bisect-repro"
 
   def script(
       shouldFail: Boolean = false,
       bootstrapped: Boolean = false,
       onBuildFailure: BuildFailureAction = SkipCommit
   ): String =
-    CommitBisectScripts.buildAndValidateScript(validationScriptPath, shouldFail, bootstrapped, onBuildFailure)
+    CommitBisectScripts.buildAndValidateScript(validationScriptPath, validationDir, shouldFail, bootstrapped, onBuildFailure)
+
+  /** Runs the sbt project selection against a `project/Build.scala` with the given content. */
+  def selectedSbtProjects(bootstrapped: Boolean, buildScala: String): String =
+    val dir = java.nio.file.Files.createTempDirectory("bisect-test-")
+    try
+      java.nio.file.Files.createDirectories(dir.resolve("project"))
+      java.nio.file.Files.writeString(dir.resolve("project/Build.scala"), buildScala)
+      val selection = CommitBisectScripts.selectSbtProjectsScript(bootstrapped)
+      val command = s"""$selection\necho "$$scala3CompilerProject|$$publishRecipe""""
+      scala.sys.process.Process(Seq("sh", "-c", command), dir.toFile).!!.trim
+    finally
+      scala.sys.process.Process(Seq("rm", "-rf", dir.toString)).!
 
   test("build failure skips the commit instead of running git bisect skip") {
     val body = script(onBuildFailure = SkipCommit)
@@ -197,9 +219,44 @@ class CommitBisectScriptTest extends munit.FunSuite:
     assert(body.contains("""echo "Testing commit $commit""""), body)
   }
 
-  test("prints the version of the project matching the bootstrapping") {
-    assert(script(bootstrapped = false).contains("print scala3-compiler/version"))
-    assert(script(bootstrapped = true).contains("print scala3-compiler-bootstrapped/version"))
+  test("prints the version of the selected compiler project") {
+    assert(script().contains("""print $scala3CompilerProject/version"""))
+  }
+
+  // Excerpts of the project definitions in `project/Build.scala` before and after the rename in 3.8.0
+  private val legacyBuildScala =
+    """|  lazy val scala3 = project.in(file(".")).asDottyRoot(NonBootstrapped)
+       |  lazy val `scala3-compiler` = project.in(file("compiler")).asDottyCompiler(NonBootstrapped)
+       |""".stripMargin
+  private val renamedBuildScala =
+    """|  lazy val `scala3-nonbootstrapped` = project.in(file("."))
+       |  lazy val `scala3-compiler-nonbootstrapped` = project.in(file("compiler"))
+       |""".stripMargin
+
+  test("selects the renamed nonbootstrapped projects") {
+    val selected = selectedSbtProjects(bootstrapped = false, renamedBuildScala)
+    assert(selected.startsWith("scala3-compiler-nonbootstrapped|"), selected)
+    assert(selected.endsWith("; scala3-nonbootstrapped/publishLocal"), selected)
+  }
+
+  test("selects the legacy nonbootstrapped projects on old commits") {
+    val selected = selectedSbtProjects(bootstrapped = false, legacyBuildScala)
+    assert(selected.startsWith("scala3-compiler|"), selected)
+    assert(selected.endsWith("; scala3/publishLocal"), selected)
+  }
+
+  test("selects the bootstrapped projects regardless of the build layout") {
+    for buildScala <- Seq(legacyBuildScala, renamedBuildScala) do
+      val selected = selectedSbtProjects(bootstrapped = true, buildScala)
+      assert(selected.startsWith("scala3-compiler-bootstrapped|"), selected)
+      assert(selected.endsWith("; scala3-bootstrapped/publishLocal"), selected)
+  }
+
+  test("runs the validation command from the validation directory") {
+    val body = script()
+    val cdIdx = body.indexOf(s"cd '$validationDir'")
+    assert(cdIdx >= 0, body)
+    assert(cdIdx < body.indexOf(validationScriptPath), body)
   }
 
   test("shouldFail inverts the validation command status") {
@@ -209,12 +266,14 @@ class CommitBisectScriptTest extends munit.FunSuite:
     assert(body.contains(s"""$validationScriptPath "$$scalaVersion""""), body)
   }
 
-  test("publish recipe targets the project matching the bootstrapping") {
-    val nonbootstrapped = CommitBisectScripts.sbtPublishRecipe(bootstrapped = false)
-    assert(nonbootstrapped.contains("scala3/publishLocal"), nonbootstrapped)
-    assert(!nonbootstrapped.contains("scala3-bootstrapped"), nonbootstrapped)
-    val bootstrapped = CommitBisectScripts.sbtPublishRecipe(bootstrapped = true)
-    assert(bootstrapped.contains("scala3-bootstrapped/publishLocal"), bootstrapped)
+  test("publish recipe targets its own projects") {
+    import CommitBisectScripts.*
+    for projects <- Seq(nonBootstrappedProjects, legacyNonBootstrappedProjects, bootstrappedProjects) do
+      val recipe = projects.publishRecipe
+      assert(recipe.endsWith(s"; ${projects.scala3}/publishLocal"), recipe)
+      // `set` cannot refer to the root project by its `build.sbt` name
+      assert(recipe.contains(s"""LocalProject("${projects.scala3}")"""), recipe)
+      assert(!recipe.contains("`"), recipe)
   }
 
 class BisectReleasesTest extends munit.FunSuite:

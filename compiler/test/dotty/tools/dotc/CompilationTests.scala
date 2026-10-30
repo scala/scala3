@@ -2,14 +2,12 @@ package dotty
 package tools
 package dotc
 
-import org.junit.{Test, AfterClass}
+import org.junit.Test
 import org.junit.Assume.*
 import org.junit.experimental.categories.Category
 
 import java.nio.file.*
-import scala.concurrent.duration.*
 
-import dotty.tools.dotc.reporting.TestReporter
 import dotty.tools.vulpix.*
 
 class CompilationTests {
@@ -21,30 +19,48 @@ class CompilationTests {
   // Positive tests ------------------------------------------------------------
 
   @Category(Array(classOf[CoverageCompilationTests])) @Test def pos: Unit = {
-    given TestGroup = TestGroup("pos")
-    val tests = List(
-      compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
-      compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
-      compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
-      compileFilesInDir("tests/pos-special/sourcepath/outer", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
-      compileFile("tests/pos-special/sourcepath/outer/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
-      compileFilesInDir("tests/pos-scala2", defaultOptions.and("-source", "3.0-migration")),
-      compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking")),
-      compileFile("tests/pos-special/utf8encoded.scala", defaultOptions.and("-encoding", "UTF8")),
-      compileFile("tests/pos-special/utf16encoded.scala", defaultOptions.and("-encoding", "UTF16")),
-      compileDir("tests/pos-special/i18589", defaultOptions.and("-Wsafe-init").without("-Ycheck:all")),
-      compileDir("tests/pos-special/i24547", defaultOptions.without("-Ycheck:all")),
-      compileDir("tests/pos-special/i24719", defaultOptions.without("-Ycheck:all")),
-      // Run tests for legacy lazy vals
-      compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
-      compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
-    ) ::: (
-      // TODO create a folder for capture checking tests with the stdlib, or use tests/pos-custom-args/captures under this mode?
-      if Properties.usingScalaLibraryCCTasty then List(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
-      else Nil
-    )
+    def makeTests(using TestGroup) =
+      List(
+        compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
+        compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
+        compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
+        compileFilesInDir("tests/pos-special/sourcepath/outer", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
+        compileFile("tests/pos-special/sourcepath/outer/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
+        compileFilesInDir("tests/pos-scala2", defaultOptions.and("-source", "3.0-migration")),
+        compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking")),
+        compileFile("tests/pos-special/utf8encoded.scala", defaultOptions.and("-encoding", "UTF8")),
+        compileFile("tests/pos-special/utf16encoded.scala", defaultOptions.and("-encoding", "UTF16")),
+        compileDir("tests/pos-special/i18589", defaultOptions.and("-Wsafe-init").without("-Ycheck:all")),
+        compileDir("tests/pos-special/i24547", defaultOptions.without("-Ycheck:all")),
+        compileDir("tests/pos-special/i24719", defaultOptions.without("-Ycheck:all")),
+        // -Xsemanticdb reads positions from TASTy, which can hide missing positions
+        compileFilesInDir("tests/pos-special/no-semanticdb", defaultOptions.without("-Xsemanticdb")),
+        // Run tests for legacy lazy vals
+        compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
+        compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
+      ) ::: (
+        // TODO create a folder for capture checking tests with the stdlib, or use tests/pos-custom-args/captures under this mode?
+        if Properties.usingScalaLibraryCCTasty then List(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
+        else Nil
+      )
+    // Always run these tests, but if we're doing a slow run, keep the outputs...
+    val tests0 = makeTests(using TestGroup("pos"))
+    val tests =
+      if Properties.isQuick then tests0
+      else tests0.map(_.keepOutput)
     val compilationTest = withCoverage(aggregateTests(tests*))
     runWithCoverageOrFallback[PosTestWithCoverage](compilationTest)
+
+    if !Properties.isQuick then
+      // ...so that we can run the tests a second time.
+      // (This avoids having to run them 3 times total if we had a separate "idempotency test")
+      val secondRunTests = makeTests(using TestGroup("posIdempotency")).map(_.keepOutput)
+      runWithCoverageOrFallback[PosTestWithCoverage](aggregateTests(secondRunTests*))
+      // Then, compare their output to ensure it's exactly the same
+      IdempotencyCheck.checkIdempotency("out/pos", "out/posIdempotency")
+      // Finally, clean up
+      tests.foreach(_.delete())
+      secondRunTests.foreach(_.delete())
   }
 
   @Category(Array(classOf[CoverageCompilationTests])) @Test def rewrites: Unit = {
@@ -52,6 +68,7 @@ class CompilationTests {
 
     withCoverage(aggregateTests(
       compileFile("tests/rewrites/rewrites.scala", defaultOptions.and("-source", "3.0-migration").and("-rewrite", "-indent")),
+      compileFile("tests/rewrites/do-while-indent.scala", defaultOptions.and("-source", "3.0-migration").and("-rewrite", "-indent")),
       compileFile("tests/rewrites/rewrites3x.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/rewrites3x-fatal-warnings.scala", defaultOptions.and("-rewrite", "-source", "future-migration", "-Werror")),
       compileFile("tests/rewrites/i21394.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
@@ -207,6 +224,14 @@ class CompilationTests {
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
     ))
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
+  }
+
+  // Fusing miniphases into a MegaPhase should not change the output, so each test runs
+  // fused and unfused against the same checkfile.
+  // No -Ycheck in the unfused run: it is incompatible with this mode, as invariants only hold at MegaPhase boundaries.
+  @Test def runFusion: Unit = {
+    compileFilesInDir("tests/run-fusion", defaultOptions)(using TestGroup("runFusion")).checkRuns()
+    compileFilesInDir("tests/run-fusion", noYcheckOptions.and(NoFusionPlugin.option))(using TestGroup("runFusionUnfused")).checkRuns()
   }
 
   @Test def runSpecial(): Unit = {

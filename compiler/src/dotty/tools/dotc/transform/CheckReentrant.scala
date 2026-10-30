@@ -33,8 +33,8 @@ class CheckReentrant extends MiniPhase {
 
   override def description: String = CheckReentrant.description
 
-  private var shared: Set[Symbol] = Set()
-  private var seen: Set[ClassSymbol] = Set()
+  private var shared: Set[Symbol] = Set.empty
+  private var seen: Set[ClassSymbol] = Set.empty
   private var indent: Int = 0
 
   private val sharableAnnot = new CtxLazy(
