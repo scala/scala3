@@ -532,7 +532,10 @@ class CheckCaptures extends Recheck, SymTransformer:
               added, target, realTarget, otherNotes ++ whyNotes, targetOwner, provenance)
           target match
             case target: CaptureSet.Var
-            if realTarget.isProvisionallySolved && ccState.iterationId < ccConfig.maxRuns =>
+            if realTarget.isProvisionallySolved && ccState.isUseSet(target)
+                && ccState.iterationId < ccConfig.maxRuns =>
+              // The next run starts with the extended use set, and checks the added
+              // elements against the sets that depend on it.
               report.warning(
                 msg.prepend(i"Another capture checking run needs to be scheduled because\n"),
                 pos)
@@ -544,10 +547,18 @@ class CheckCaptures extends Recheck, SymTransformer:
               val definition = realTarget match
                 case cs: CaptureSet.VarInTypeTree if cs.owner.exists => i"${cs.owner}"
                 case _ => "the definition with the inferred type"
+              val reason =
+                if ccState.isUseSet(target) then
+                  i"The capture set was extended in each of ${ccConfig.maxRuns} capture checking runs."
+                else
+                  // Other sets, such as the capture sets of inferred types, are created anew
+                  // in the next run, which would fail in the same way. Extending them here
+                  // would bypass the sets that depend on them.
+                  "Later uses cannot extend the capture sets of inferred types."
               report.error(
                 msg.append(i"""
                   |
-                  |The capture set was extended in each of ${ccConfig.maxRuns} capture checking runs.
+                  |$reason
                   |To allow this, $definition needs an explicit type."""),
                 pos)
             case _ =>

@@ -10,9 +10,8 @@ object Lib:
   val ioSink: Cell[File^{io}] = Cell(io)
   val upE: Cell[[C^ <: {io}] => (x: File^{C}) -> Unit] = Cell([C^ <: {io}] => (x: File^{C}) => ())
 
-// A later use extends a provisionally solved capture set in the inferred type of a local
-// definition. Each capture checking run starts with new capture sets, so the use extends
-// the set again in the next run. After the last run, this is an error.
+// A later use cannot extend a provisionally solved capture set in the inferred type of a
+// local definition, since another capture checking run would create the set anew.
 object Use uses io:
   def alias(r: File^): File^{io} =
     val c = Lib.upE

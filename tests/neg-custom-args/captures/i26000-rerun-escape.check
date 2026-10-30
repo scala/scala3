@@ -1,0 +1,32 @@
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i26000-rerun-escape.scala:24:13 ------------------------
+24 |    tb.value[File^{f}](f) // error
+   |             ^^^^^^^^
+   |             Reference `f` is not included in the previously estimated
+   |             capture set {} of value tb.
+   |
+   |             Later uses cannot extend the capture sets of inferred types.
+   |             To allow this, value tb needs an explicit type.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i26000-rerun-escape.scala:31:13 ------------------------
+31 |    tb.value[File^{f}](f) // error
+   |             ^^^^^^^^
+   |             Reference `f` is not included in the previously estimated
+   |             capture set {} of value tb.
+   |
+   |             Later uses cannot extend the capture sets of inferred types.
+   |             To allow this, value tb needs an explicit type.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i26000-rerun-escape.scala:38:18 ------------------------
+38 |    tb.value.head[File^{f}](f) // error
+   |                  ^^^^^^^^
+   |                  Reference `f` is not included in the previously estimated
+   |                  capture set {} of value tb.
+   |
+   |                  Later uses cannot extend the capture sets of inferred types.
+   |                  To allow this, value tb needs an explicit type.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i26000-rerun-escape.scala:47:11 ------------------------
+47 |  g.value[{s}](0) // error
+   |           ^
+   |           Reference `s` is not included in the previously estimated
+   |           capture set {} of value g.
+   |
+   |           Later uses cannot extend the capture sets of inferred types.
+   |           To allow this, value g needs an explicit type.
