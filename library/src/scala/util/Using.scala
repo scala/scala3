@@ -24,7 +24,7 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  ## Usage
  *
  *  There are multiple ways to automatically manage resources with `Using`. If you only need
- *  to manage a single resource, the [[Using.apply `apply`]] method is easiest; it wraps the
+ *  to manage a single resource, the [[Using.apply apply]] method is easiest; it wraps the
  *  resource opening, operation, and resource releasing in a `Try`.
  *
  *  Example:
@@ -38,7 +38,7 @@ import scala.runtime.ScalaRunTime.nullForGC
  *   }
  *  ```
  *
- *  If you need to manage multiple resources, [[Using.Manager$.apply `Using.Manager`]] should
+ *  If you need to manage multiple resources, [[Using.Manager$.apply Using.Manager]] should
  *  be used. It allows the managing of arbitrarily many resources, whose creation, use, and
  *  release are all wrapped in a `Try`.
  *
@@ -102,7 +102,7 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  ```
  *
  *  If you wish to avoid wrapping management and operations in a `Try`, you can use
- *  [[Using.resource `Using.resource`]], which throws any exceptions that occur.
+ *  [[Using.resource]], which throws any exceptions that occur.
  *
  *  Example:
  *  ```scala sc:compile
@@ -124,9 +124,9 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  severity is re-thrown, and the one of a lower severity is added to it as a suppressed
  *  exception. If the two exceptions are of the same severity, the one thrown first is
  *  re-thrown, and the one thrown second is added to it as a suppressed exception.
- *  If an exception is a [[scala.util.control.ControlThrowable `ControlThrowable`]], or
+ *  If an exception is a [[scala.util.control.ControlThrowable ControlThrowable]], or
  *  if it does not support suppression (see
- *  [[java.lang.Throwable `Throwable`'s constructor with an `enableSuppression` parameter]]),
+ *  [[java.lang.Throwable Throwable's constructor with an enableSuppression parameter]]),
  *  an exception that would have been suppressed is instead discarded.
  *
  *  Exceptions are ranked from highest to lowest severity as follows:
@@ -141,7 +141,7 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  re-thrown as described above, and each successive exception thrown is combined
  *  as it is thrown.
  *
- *  @define suppressionBehavior See the main doc for [[Using `Using`]] for full details of
+ *  @define suppressionBehavior See the main doc for [[Using]] for full details of
  *                             suppression behavior.
  */
 @nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
@@ -162,7 +162,7 @@ object Using {
 
   /** A resource manager.
    *
-   *  Resources can be registered with the manager by calling [[acquire `acquire`]];
+   *  Resources can be registered with the manager by calling [[acquire]];
    *  such resources will be released in reverse order of their acquisition
    *  when the manager is closed, regardless of any exceptions thrown
    *  during use.
@@ -266,7 +266,7 @@ object Using {
      *  }
      *  ```
      *
-     *  See the main doc for [[Using `Using`]] for full details of suppression behavior.
+     *  See the main doc for [[Using]] for full details of suppression behavior.
      *
      *  @tparam A the return type of the operation
      *  @param op the operation to perform using the manager
@@ -432,7 +432,7 @@ object Using {
    *  the stream after it is finished being used.
    *
    *  An instance of `Releasable` is needed in order to automatically manage a resource
-   *  with [[Using `Using`]]. An implicit instance is provided for all types extending
+   *  with [[Using]]. An implicit instance is provided for all types extending
    *  [[java.lang.AutoCloseable]].
    *
    *  @tparam R the type of the resource
@@ -448,7 +448,7 @@ object Using {
   object Releasable {
     // prefer explicit types 2.14
     //implicit val AutoCloseableIsReleasable: Releasable[AutoCloseable] = new Releasable[AutoCloseable] {}
-    /** An implicit `Releasable` for [[java.lang.AutoCloseable `AutoCloseable`s]]. */
+    /** An implicit `Releasable` for [[java.lang.AutoCloseable AutoCloseables]]. */
     implicit object AutoCloseableIsReleasable extends Releasable[AutoCloseable] {
       def release(resource: AutoCloseable): Unit = resource.close()
     }

@@ -313,7 +313,7 @@ abstract class Source extends Iterator[Char] with Closeable {
    */
   def getLines(): Iterator[String]^{this} = new LineIterator()
 
-  /** Returns `**true**` if this source has more characters. */
+  /** Returns `true` if this source has more characters. */
   def hasNext: Boolean = iter.hasNext
 
   /** Returns next character. */
