@@ -1,3 +1,5 @@
+package i26000
+
 import caps.fresh
 
 class File

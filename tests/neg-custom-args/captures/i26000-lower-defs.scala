@@ -1,3 +1,5 @@
+package i26000lowerdefs
+
 import language.experimental.captureChecking
 
 class File
@@ -15,9 +17,3 @@ def viaDefParam(io: File^, x: File^) =
   mk(io).value[{}](File()) // error
   mk(io).value[{x}](File()) // error
   val r: File^{io} = mk(io).value[{io}](io)
-
-// A top-level def (exempt since it is in the empty package)
-def topLevel(io: File^) = Box([C^ >: {io}] => (y: File^{C}) => { val z: File^{C} = io; z })
-def useTopLevel(io: File^) =
-  topLevel(io).value[{}](File()) // error
-  val r: File^{io} = topLevel(io).value[{io}](File())

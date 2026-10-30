@@ -1,3 +1,5 @@
+package i26000subtyping
+
 class File
 
 // Polymorphic functions are not subtypes of types with wider bounds

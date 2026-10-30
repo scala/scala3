@@ -1,3 +1,5 @@
+package i26000inference
+
 class File
 class Box[A](val value: A)
 

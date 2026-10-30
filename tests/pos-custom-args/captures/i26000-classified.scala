@@ -1,3 +1,5 @@
+package i26000classified
+
 import caps.*
 
 trait IOCap extends SharedCapability, Classifier

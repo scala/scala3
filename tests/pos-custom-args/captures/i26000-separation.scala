@@ -1,3 +1,5 @@
+package i26000separation
+
 import caps.*
 
 class Ref(init: Int) extends Mutable:

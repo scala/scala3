@@ -1,3 +1,5 @@
+package i26000
+
 class File
 class Box[A](val value: A)
 

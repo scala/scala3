@@ -1,3 +1,5 @@
+package i26000inference
+
 import caps.*
 
 class File

@@ -1,3 +1,5 @@
+package i26000bounds
+
 class File
 class Box[A](val value: A)
 

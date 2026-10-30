@@ -1,3 +1,5 @@
+package i26000edge
+
 import language.experimental.captureChecking
 import caps.*
 
@@ -23,7 +25,7 @@ def projections(r: Ref^, con: Console^, l: Label^) =
   val _: Object^{l} = f.value[{con, l}](con)(l)
 
 // A capture set parameter that typer instantiates without knowing its instance
-def inferredCapSet(lab: Label^) =
+def inferredCapSet(lab: Label^): Object^{lab} =
   class Holder[C^](val l: Object^{C}):
     def mk = Box((k: Object^{C}) => k)
   Holder(lab).mk.value(lab)
