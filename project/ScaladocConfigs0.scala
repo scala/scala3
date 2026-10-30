@@ -14,7 +14,7 @@ object ScaladocConfigs0 {
   def defaultSourceLinks(version: String, allowGitSHA: Boolean = true): String = {
     def dottySrcLink(v: String) = sys.env.get("GITHUB_SHA") match {
       case Some(sha) if allowGitSHA => s"github://scala/scala3/$sha"
-      case None => s"github://scala/scala3/$v"
+      case _ => s"github://scala/scala3/$v"
     }
     s"-source-links:${dottySrcLink(version)},docs=github://scala/scala3/main#docs"
   }
