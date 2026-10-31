@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Scoped Capabilities"
+redirectFrom: /experimental/capture-checking/scoped-caps.html
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/scoped-capabilities.html
 ---
 
