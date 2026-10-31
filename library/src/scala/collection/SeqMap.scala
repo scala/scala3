@@ -33,9 +33,15 @@ import scala.annotation.nowarn
 trait SeqMap[K, +V] extends Map[K, V]
   with MapOps[K, V, SeqMap, SeqMap[K, V]]
   with MapFactoryDefaults[K, V, SeqMap, Iterable] {
+  /** Returns `"SeqMap"`, the prefix used by `toString` via `className`, whose default
+   *  implementation returns this value.
+   *
+   *  Overriding `stringPrefix` is deprecated since 2.13.0; override `className` instead.
+   */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix: String = "SeqMap"
 
+  /** Returns the `SeqMap` companion object as the factory for maps of this kind. */
   override def mapFactory: MapFactory[SeqMap] = SeqMap
 }
 
