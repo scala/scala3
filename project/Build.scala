@@ -1014,7 +1014,7 @@ object Build {
       Compile / unmanagedSourceDirectories   += baseDirectory.value / "src-non-bootstrapped",
       Compile / unmanagedResourceDirectories := Seq(baseDirectory.value / "resources"),
       Compile / compile / scalacOptions ++= Seq(
-        "-opt", "-opt-inline:**,!java.**",
+        "-opt",
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
@@ -1544,9 +1544,7 @@ object Build {
           val sjsSources = (trgDir ** "*.scala").get().toSet
           sjsSources.foreach(f => {
             val lines = IO.readLines(f)
-            val linesWithPackage = Shading.replacePackage(lines) {
-              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
-            }
+            val linesWithPackage = Shading.replacePackage(lines, "org.scalajs.ir", "dotty.tools.sjs.ir")
             IO.writeLines(f, linesWithPackage)
           })
           sjsSources
@@ -1673,9 +1671,7 @@ object Build {
           val sjsSources = (trgDir ** "*.scala").get().toSet
           sjsSources.foreach(f => {
             val lines = IO.readLines(f)
-            val linesWithPackage = Shading.replacePackage(lines) {
-              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
-            }
+            val linesWithPackage = Shading.replacePackage(lines, "org.scalajs.ir", "dotty.tools.sjs.ir")
             IO.writeLines(f, linesWithPackage)
           })
           sjsSources

@@ -185,9 +185,9 @@ object Mode {
 
   /** Are we typing the argument of an annotation?
    *
-   *  This mode is used through [[Applications.isAnnotConstr]] to avoid lifting
+   *  This mode is used through `Applications.isAnnotConstr` to avoid lifting
    *  arguments of annotation constructors. This mode is disabled in nested
-   *  applications (from [[ProtoTypes.typedArg]]) and in "explicit" annotation
+   *  applications (from `ProtoTypes.typedArg`) and in "explicit" annotation
    *  constructors applications (annotation classes constructed with `new`).
    *
    *  In the following example:
