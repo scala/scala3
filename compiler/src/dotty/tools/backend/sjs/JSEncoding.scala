@@ -44,7 +44,7 @@ object JSEncoding {
    *  to ensure that it is properly captured.
    *
    *  Using this identifier is only allowed if it was reserved in the current
-   *  local name scope using [[reserveLocalName]]. Otherwise, this name can
+   *  local name scope using `reserveLocalName`. Otherwise, this name can
    *  clash with another local identifier.
    */
   final val JSSuperClassParamName = LocalName("superClass$")
