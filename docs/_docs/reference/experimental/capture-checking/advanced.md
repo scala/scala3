@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Capability Polymorphism"
+redirectFrom: /experimental/cc-advanced.html
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/advanced.html
 ---
 
