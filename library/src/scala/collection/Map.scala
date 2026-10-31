@@ -62,8 +62,8 @@ trait Map[K, +V]
    *  (used for lookup in `HashMap`).
    *
    *  ```scala sc:compile
-   *   import scala.collection.immutable._
-   *   val ord: Ordering[String] = _ compareToIgnoreCase _
+   *   import scala.collection.immutable.*
+   *   val ord: Ordering[String] = _.compareToIgnoreCase(_)
    *   val result1 = TreeMap("A" -> 1)(using ord) == HashMap("a" -> 1) // false
    *   val result2 = HashMap("a" -> 1) == TreeMap("A" -> 1)(using ord) // true
    *  ```

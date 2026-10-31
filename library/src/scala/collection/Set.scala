@@ -58,7 +58,7 @@ trait Set[A]
    *
    *  ```scala sc:compile
    *   import scala.collection.immutable._
-   *   val ord: Ordering[String] = _ compareToIgnoreCase _
+   *   val ord: Ordering[String] = _.compareToIgnoreCase(_)
    *   val result1 = TreeSet("A")(using ord) == HashSet("a") // false
    *   val result2 = HashSet("a") == TreeSet("A")(using ord) // true
    *  ```

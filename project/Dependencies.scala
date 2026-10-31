@@ -59,7 +59,9 @@ object Dependencies {
   val mtagsInterfaces = "org.scalameta" % "mtags-interfaces" % mtagsVersion
   val mtagsShared = "org.scalameta" % s"mtags-shared_${Versions.scala2Version}" % mtagsVersion
 
-  val sbtCompilerInterface = "org.scala-sbt" % "compiler-interface" % "1.12.1"
+  /** Overridable so that CI also checks the sbt bridge against compiler-interface 2.x */
+  private val sbtCompilerInterfaceVersion = sys.env.getOrElse("SBT_COMPILER_INTERFACE_VERSION", "1.12.1")
+  val sbtCompilerInterface = "org.scala-sbt" % "compiler-interface" % sbtCompilerInterfaceVersion
   val sbtJunitInterface = "com.github.sbt" % "junit-interface" % "0.13.3"
   val sbtZincApiInfo = "org.scala-sbt" %% "zinc-apiinfo" % "1.12.1"
 
