@@ -965,7 +965,7 @@ object CaptureSet:
       case _: GlobalCap =>
         rootLimit == null
       case core: ParamRef =>
-        isPartOf(core.binder.resType)
+        isPartOf(core.binder.resType) || core.binder.paramInfos.exists(isPartOf)
       case _ =>
         if owner.exists then
           val elemVis = elem.visibility

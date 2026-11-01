@@ -39,7 +39,7 @@ scala> val r2: File^{x} = ps.head[{x}](x)
   | longer explanation available when compiling with `-explain`
 1 error found
 scala> lazy val opt = Option([C^, D^ <: {C}] => (y: File^{D}) => (y: File^{C}))
-lazy val opt: Option[[C^, D^] -> (y: File) -> File^{C}]
+lazy val opt: Option[[C^, D^ <: {C}] -> (y: File) -> File^{C}]
 scala> opt.get[{io}, {x}](x)
 -- [E007] Type Mismatch Error: -------------------------------------------------
 1 |opt.get[{io}, {x}](x)
@@ -52,7 +52,13 @@ scala> opt.get[{io}, {x}](x)
   |               where:    any is a root capability in the type of value x
   |
   | longer explanation available when compiling with `-explain`
-1 error found
+-- [E057] Type Mismatch Error: -------------------------------------------------
+1 |opt.get[{io}, {x}](x)
+  |               ^
+  |Type argument scala.caps.CapSet^{x} does not conform to upper bound scala.caps.CapSet^{io}
+  |
+  | longer explanation available when compiling with `-explain`
+2 errors found
 scala> val leak: File = list.head[{x}](x)
 -- [E007] Type Mismatch Error: -------------------------------------------------
 1 |val leak: File = list.head[{x}](x)
