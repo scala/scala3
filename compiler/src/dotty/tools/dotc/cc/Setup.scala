@@ -387,7 +387,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, orig))),
           CaptureSet.VarInTypeTree(ctx.owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining = inCaptureRefinement),
           transformExplicitType(_, sym, initialVariance = variance),
-          typeArgFormal)
+          if orig eq tp then typeArgFormal else NoType) // the formal bounds only the type argument itself
 
       override def mapRefinedFunction(tp: Type, rinfo: MethodType): Type =
         addVar(super.mapRefinedFunction(tp, rinfo), tp)
