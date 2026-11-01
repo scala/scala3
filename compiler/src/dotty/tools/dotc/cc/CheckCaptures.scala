@@ -1114,8 +1114,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           case ref => ref.isTerminalCapability // GlobalCaps cannot constrain arguments
       if canCheck then
         capt.println(i"constrain $arg: ${argType} with $hiBound: $boundRefs")
+        val capSetParam =
+          if hiBound.derivesFromCapSet then binder.paramInfos.indexWhere(_ eq formal) else -1
         checkSubset(argRefs, boundRefs, arg.srcPos,
-          provenance = i"\nof the type parameter bound ${formal.bounds.hi}")
+          provenance =
+            if capSetParam >= 0 then i"\nof capture set parameter ${binder.paramNames(capSetParam)}"
+            else i"\nof the type parameter bound ${formal.bounds.hi}")
       argType
 
     /** Faced with a tree of form `caps.contansImpl[CS, r.type]`, check that `R` is a tracked
