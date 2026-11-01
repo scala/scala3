@@ -22,7 +22,7 @@ scala> opt.get[{io}, {x}](x)
 -- [E057] Type Mismatch Error: -------------------------------------------------
 1 |opt.get[{io}, {x}](x)
   |               ^
-  |Type argument scala.caps.CapSet^{x} does not conform to upper bound scala.caps.CapSet^{io}
+  |          Capture set argument {x} is not included in its upper bound {io}
   |
   | longer explanation available when compiling with `-explain`
 1 error found
