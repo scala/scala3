@@ -764,7 +764,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   psymss.head.lazyZip(mt.paramInfos).map(localCapToGlobal),
                 resType = paramsToCap(psymss.tail, mt.resType))
           case mt: PolyType =>
-            mt.derivedLambdaType(resType = paramsToCap(psymss.tail, mt.resType))
+            mt.derivedLambdaType(
+              paramInfos = psymss.head.lazyZip(mt.paramInfos).map(localCapToGlobal(_, _).bounds),
+              resType = paramsToCap(psymss.tail, mt.resType))
           case _ => mt
 
         // If there's a change in the signature or owner, update the info of `sym`
