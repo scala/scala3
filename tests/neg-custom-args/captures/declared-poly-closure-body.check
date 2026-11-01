@@ -1,6 +1,6 @@
 -- [E057] Type Mismatch Error: tests/neg-custom-args/captures/declared-poly-closure-body.scala:12:13 -------------------
 12 |    f[{}](())[{}](()) // error
    |             ^
-   |             Type argument scala.caps.CapSet does not conform to lower bound scala.caps.CapSet^{a}
+   |             Capture set argument {} does not include its lower bound {a} of value f
    |
    | longer explanation available when compiling with `-explain`

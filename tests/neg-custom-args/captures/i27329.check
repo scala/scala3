@@ -2,7 +2,7 @@
 9 |  pf[{b}](b) // error
   |      ^
   |      Reference `b` is not included in the allowed capture set {a}
-  |      of the type parameter bound scala.caps.CapSet^{a}.
+  |      of capture set parameter C.
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i27329.scala:12:6 --------------------------------------
 12 |  l1[{b}](b) // error
    |      ^
@@ -48,7 +48,7 @@
 48 |  val r2 = withFile(f => h[{f}](f)) // error
    |                            ^
    |                            Reference `f` is not included in the allowed capture set {any}
-   |                            of the type parameter bound scala.caps.CapSet^{a}.
+   |                            of capture set parameter D.
    |
    |                            where:    any is a root capability created in value h
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27329.scala:51:61 ---------------------------------------
@@ -68,6 +68,6 @@
 -- [E057] Type Mismatch Error: tests/neg-custom-args/captures/i27329.scala:37:10 ---------------------------------------
 37 |  h[{x}, {y}](x, y) // error
    |          ^
-   |          Type argument scala.caps.CapSet^{y} does not conform to upper bound scala.caps.CapSet^{x}
+   |          Capture set argument {y} is not included in its upper bound {x}
    |
    | longer explanation available when compiling with `-explain`
