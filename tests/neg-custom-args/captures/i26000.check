@@ -1,0 +1,51 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i26000.scala:10:28 ---------------------------------------
+10 |  val l: File = f.value[{x}](x) // error
+   |                ^^^^^^^^^^^^^^^
+   |                Found:    p.File^{x}
+   |                Required: p.File
+   |
+   |                Note that capability `x` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i26000.scala:14:34 ---------------------------------------
+14 |  val g: File^{x} -> File^{y} = b.value // error
+   |                                ^^^^^^^
+   |                                Found:    (f: p.File^{x}) ->{y} p.File^{y}
+   |                                Required: p.File^{x} -> p.File^{y}
+   |
+   |                                Note that capability `y` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i26000.scala:18:10 ---------------------------------------
+18 |  b.value(y) // error
+   |          ^
+   |          Found:    (y : p.File^)
+   |          Required: p.File^{x}
+   |
+   |          Note that capability `y` cannot flow into capture set {x} of value b.
+   |
+   |          where:    ^ refers to a root capability in the type of parameter y
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i26000.scala:23:29 -------------------------------------
+23 |  val r: File^{a} = f.value[{b}](b) // error
+   |                             ^
+   |                             Reference `b` is not included in the allowed capture set {a}
+   |                             of the type parameter bound scala.caps.CapSet^{a}.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i26000.scala:31:28 -------------------------------------
+31 |  val r: File^{a} = f.value[File^{b}](b) // error
+   |                            ^^^^^^^^
+   |                            Reference `b` is not included in the allowed capture set {a}
+   |                            of the type parameter bound p.File^{a}.
+-- [E057] Type Mismatch Error: tests/neg-custom-args/captures/i26000.scala:27:23 ---------------------------------------
+27 |  val r: File = f.value[{}](a) // error
+   |                       ^
+   |                       Type argument scala.caps.CapSet does not conform to lower bound scala.caps.CapSet^{a}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E057] Type Mismatch Error: tests/neg-custom-args/captures/i26000.scala:36:31 ---------------------------------------
+36 |  val r: File = f.value[{x}](x)[{}](()) // error
+   |                               ^
+   |                           Type argument scala.caps.CapSet does not conform to lower bound scala.caps.CapSet^{x}
+   |
+   | longer explanation available when compiling with `-explain`

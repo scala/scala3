@@ -447,6 +447,92 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       case tpt =>
         tpt
 
+    /** For a definition like `val b = Box([C^] => (f: File^{C}) => f)`, where a closure
+     *  argument `e` determines an inferred type argument `T`, make the formals of `T`
+     *  declared as in `makeFormalsDeclared`, taking them from `e`. Otherwise capture
+     *  checking infers them as capture set variables, which stay empty since `T` is used
+     *  invariantly. Also make the bounds of polymorphic function types in the type of the
+     *  definition declared, since inferred bounds do not box the capturing types nested in
+     *  them, as the type of `e` does in a bound such as `T <: () -> File^{a}`.
+     *
+     *  This is done only if `T` comes from `e` alone, and only for definitions with inferred
+     *  types that are not visible in other compilation units, since pickled types do not keep
+     *  the capture sets of the formals. Returns the new type and right hand side, if any.
+     */
+    private def explicifyClosureTypeArgs(tree: ValOrDefDef)(using Context): Option[(Tree, Tree)] =
+      val sym = tree.symbol
+      // Is the right hand side typed against an expected type, so that `T` could come
+      // from it instead of from `e`? See `Namer.inferredType`.
+      def rhsHasExpectedType =
+        sym.is(Synthetic)                   // anonymous functions, lifted arguments
+        || sym.allOverriddenSymbols.hasNext // the type of the overridden member
+        || sym.name.is(DefaultGetterName)   // the type of the parameter
+      tree.rhs match
+        case app @ Apply(fn @ TypeApply(fn0, targs), args)
+        if Feature.ccEnabled
+            && tree.tpt.isInstanceOf[InferredTypeTree]
+            && sym.isExemptFromExplicitChecks
+            && !rhsHasExpectedType
+            && app.tpe.widen =:= tree.tpt.tpe => // the type of the definition is replaced below
+          fn0.tpe.widen match
+            case poly @ PolyType(_, mt: MethodType) if args.hasSameLengthAs(mt.paramInfos) =>
+              def mentions(tp: Type, prefs: List[TypeParamRef]) = tp.existsPart(prefs.contains)
+
+              def hasExplicitParams(tree: Tree): Boolean = tree match
+                case closureDef(mdef) =>
+                  mdef.termParamss.forall(_.forall(!_.tpt.isInstanceOf[InferredTypeTree]))
+                  && hasExplicitParams(mdef.rhs)
+                case _ => true
+
+              /** The closure argument whose formal parameter type is `pref`, `pref | Null` or
+               *  `pref*` with a single argument, provided that no other formal parameter type
+               *  mentions `pref`, that the result type mentions `pref`, and that no bound relates
+               *  `pref` to a type parameter. EmptyTree otherwise. If the result type does not
+               *  mention `pref`, as in `def indexOf[B >: A](elem: B): Int`, the type of the
+               *  definition does not keep the formals of `T`.
+               */
+              def closureArgFor(pref: TypeParamRef): Tree =
+                val i = mt.paramInfos.indexWhere(mentions(_, pref :: Nil))
+                if i < 0
+                    || mt.paramInfos.drop(i + 1).exists(mentions(_, pref :: Nil))
+                    || !mentions(mt.resultType, pref :: Nil)
+                    || poly.paramInfos.exists(mentions(_, pref :: Nil))
+                    || mentions(poly.paramInfos(pref.paramNum), poly.paramRefs)
+                then EmptyTree
+                else (mt.paramInfos(i), args(i)) match
+                  case (`pref` | SimpleOrNull(`pref`), arg @ closureDef(_)) => arg
+                  case (formal, Typed(SeqLiteral((arg @ closureDef(_)) :: Nil, _), _))
+                  if formal.isRepeatedParam && formal.argTypes == pref :: Nil => arg
+                  case _ => EmptyTree
+
+              val targs1 = targs.zipWithConserve(poly.paramRefs): (targ, pref) =>
+                val closure = closureArgFor(pref)
+                // `T` is the type of the closure, whose parameter types are not inferred either
+                if targ.isInstanceOf[InferredTypeTree] && !closure.isEmpty
+                    && closure.tpe.widen =:= targ.tpe && hasExplicitParams(closure)
+                then
+                  val ctpe = closure.tpe.widen
+                  val tpe1 = makeFormalsDeclared(ctpe, closure)
+                  if tpe1 ne ctpe
+                  then TypeTree(tpe1, inferred = true).withSpan(targ.span).withAttachmentsFrom(targ)
+                  else targ
+                else targ
+
+              val declaredBoundsOnly = new TypeMap:
+                def apply(t: Type) = t match
+                  case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot => apply(parent)
+                  case t: PolyType => t.derivedLambdaType(resType = apply(t.resType))
+                  case _ => mapOver(t)
+
+              if targs1 eq targs then None
+              else
+                val rhs1 = cpy.Apply(app)(cpy.TypeApply(fn)(fn0, targs1), args)
+                val tpt1 = TypeTree(declaredBoundsOnly(rhs1.tpe.widen), inferred = true)
+                  .withSpan(tree.tpt.span).withAttachmentsFrom(tree.tpt)
+                Some((tpt1, rhs1))
+            case _ => None
+        case _ => None
+
     /** Insert a `@caps.declared` annotation on all parameter infos
      *  of a function type `tp` corresponding to a closure `rhs` that contain
      *  a "retains" annotation. TypeBound infos of type parameters get
@@ -671,14 +757,16 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree: ValDef =>
           annotateExperimentalCompanion(tree.symbol)
           registerIfHasMacroAnnotations(tree)
-          val tree1 = cpy.ValDef(tree)(tpt = explicifyTpt(tree))
+          val (tpt1, rhs1) = explicifyClosureTypeArgs(tree).getOrElse((explicifyTpt(tree), tree.rhs))
+          val tree1 = cpy.ValDef(tree)(tpt = tpt1, rhs = rhs1)
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
           registerIfHasMacroAnnotations(tree)
           annotateContextResults(tree)
-          val tree1 = cpy.DefDef(tree)(tpt = explicifyTpt(tree))
+          val (tpt1, rhs1) = explicifyClosureTypeArgs(tree).getOrElse((explicifyTpt(tree), tree.rhs))
+          val tree1 = cpy.DefDef(tree)(tpt = tpt1, rhs = rhs1)
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
           val sym = tree.symbol
