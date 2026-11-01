@@ -468,11 +468,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
         tp match
           case FunctionOrMethod(formals, res) =>
-            val rhs1 = formals match
-              case (_: TypeBounds) :: _ => rhs
-              case _ => mdef.rhs
+            // A polymorphic closure `[X] => (x: A) => b` is an anonymous function with
+            // type parameters `X` whose right hand side is the closure `(x: A) => b`,
+            // so the result type `res` always corresponds to `mdef.rhs`.
             val formals1 = formals.mapConserve(makeFormalDeclared)
-            tp.derivedFunctionOrMethod(formals1, makeFormalsDeclared(res, rhs1))
+            tp.derivedFunctionOrMethod(formals1, makeFormalsDeclared(res, mdef.rhs))
           case _ => tp
       case _ => tp
 
