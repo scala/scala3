@@ -52,4 +52,12 @@ object ScalaLibraryFilesToCopy {
     "scala/util/Sorting",
     "scala/util/hashing/MurmurHash3",
   )
+
+  /** Files that match `filesToCopy` but must keep the version compiled by Scala 3.
+   *  `scala/Function1$` is the companion object of `Function1`. It is not specialized and it
+   *  defines Scala 3 extension methods (`applyUsing`) that the Scala 2.13 version does not have.
+   */
+  lazy val filesToKeep = Set(
+    "scala/Function1$",
+  )
 }

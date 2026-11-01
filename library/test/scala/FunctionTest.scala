@@ -3,8 +3,6 @@ package scala
 import org.junit.Assert.*
 import org.junit.Test
 
-import scala.Function.applyUsing
-
 class FunctionTest {
 
   case class Config(name: String)

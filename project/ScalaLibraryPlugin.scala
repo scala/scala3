@@ -63,6 +63,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
         id <- file.relativeTo(reference)
         path = id.toString().replace("\\", "/").stripSuffix(".class").stripSuffix(".sjsir")
         if ScalaLibraryFilesToCopy.filesToCopy.exists(s => path == s || path.startsWith(s + '$')) // Only Override Some Very Specific Files
+        if !ScalaLibraryFilesToCopy.filesToKeep.contains(path)
         dest = classDir / (id.toString)
         ref <- dest.relativeTo((LocalRootProject / baseDirectory).value)
       } {

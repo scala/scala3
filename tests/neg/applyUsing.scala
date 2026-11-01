@@ -1,5 +1,3 @@
-import scala.Function.applyUsing
-
 class Config
 class Logger
 class Service(config: Config, logger: Logger)
