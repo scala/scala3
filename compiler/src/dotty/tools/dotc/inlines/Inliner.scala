@@ -190,9 +190,9 @@ object Inliner:
 
   end OpaqueProxy
 
-  /** A more powerful version of [[constToLiteral]] that also can "see through"
-   *  [[Block]], [[Inlined]] and [[Typed]] trees that are elidable (see
-   *  [[isElideableExpr]]).
+  /** A more powerful version of `constToLiteral` that also can "see through"
+   *  `Block`, `Inlined` and `Typed` trees that are elidable (see
+   *  `isElideableExpr`).
    */
   def inlinedConstToLiteral(rootTree: Tree)(using Context): Tree =
     trace(i"inlinedConstToLiteral($rootTree)", inlining):

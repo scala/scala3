@@ -117,22 +117,21 @@ jobs:
           # Temurin has no GA JDK 17 build for Windows ARM64
           distribution: 'zulu'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
-      - name: Build the launcher command
-        run: sbt "dist/Universal/stage"
+      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      # Build both launchers in a single sbt invocation: a second sbt run on this runner
+      # intermittently fails to create its boot server pipe lock (Windows error 1336)
+      - name: Build the launcher commands
+        run: sbt "dist/Universal/stage" "dist-win-x86_64/Universal/stage"
       - name: Run the launcher command tests
         run: './project/scripts/native-integration/winTests.bat'
         shell: cmd
         env:
           LAUNCHER_PREFIX: 'dist\target\universal\stage'
-      - name: Build the x86_64 launcher command
-        run: sbt "dist-win-x86_64/Universal/stage"
       - name: Run the launcher command tests with the x86_64 launcher
         run: './project/scripts/native-integration/winTests.bat'
         shell: cmd
-      # TODO: enable after bumping Scala CLI to a version whose Bloop includes scalacenter/bloop#3107,
-      # Bloop fails to load its x64-only JNI library on an ARM64 JVM until then
+      # TODO: drop the `--bloop-version` override after bumping to Scala CLI v1.19.0 or later.
+      # Bloop versions before 2.1.3 (lacking scalacenter/bloop#3107) fail to load their x64-only JNI library on an ARM64 JVM
       - name: Run the launcher command with the Bloop compilation server
-        if: false
-        run: 'dist\target\universal\stage\bin\scala.bat run tests\pos\HelloWorld.scala | findstr /C:"hello world"'
+        run: 'dist\target\universal\stage\bin\scala.bat run --bloop-version 2.1.3 tests\pos\HelloWorld.scala | findstr /C:"hello world"'
         shell: cmd

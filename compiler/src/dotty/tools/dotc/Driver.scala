@@ -89,7 +89,7 @@ class Driver {
    */
   def setup(args: Array[String], rootCtx: Context): Option[(List[AbstractFile], Context)] = {
     val ictx = rootCtx.fresh
-    val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
+    val summary = command.distill(args, ictx.settings)(ictx.settingsState)
     ictx.setSettings(summary.sstate)
 
     inContext(ictx):
@@ -130,7 +130,7 @@ class Driver {
                   report.error(em"Could not load classname from: ${file.path}")
                   None
             case _ =>
-              report.error(em"File extension is not `tasty` or `jar`: ${file.path}")
+              report.error(em"File extension used with -from-tasty is not `tasty` or `jar`: ${file.path}")
               None
         }
         .distinct

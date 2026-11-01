@@ -358,7 +358,6 @@ object Duration {
  *  import scala.concurrent.duration.*
  *  import scala.language.postfixOps
  *  val d = Duration("1.2 µs")
- *  val Duration(length, unit) = 5 millis
  *  val d2 = d * 2.5
  *  val d3 = d2 + 1.millisecond
  *  ```

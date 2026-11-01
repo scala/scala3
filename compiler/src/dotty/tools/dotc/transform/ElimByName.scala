@@ -84,7 +84,10 @@ class ElimByName extends MiniPhase, InfoTransformer:
         case ExprType(rt) =>
           if rt.hasAnnotation(defn.ErasedParamAnnot) then
             report.error(em"By-name parameter cannot be erased: $name", sym.srcPos)
-          defn.ByNameFunction(rt)
+          // `@consume` belongs to the parameter, so it goes on the function type
+          rt.getAnnotation(defn.ConsumeAnnot) match
+            case Some(annot) => AnnotatedType(defn.ByNameFunction(rt.dropAnnot(defn.ConsumeAnnot)), annot)
+            case None => defn.ByNameFunction(rt)
         case tp => tp
       tp.derivedLambdaType(
         paramInfos = tp.paramInfos.zipWithConserve(tp.paramNames)(exprToFun),

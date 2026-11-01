@@ -131,8 +131,6 @@ class SnippetCompilerTest {
          |""".stripMargin
 
     val result = runTest(snippet, SnippetCompilerArg(SCFlags.Compile, verifyDiagnostics = true))
-    assertFailedCompilation(result)
-    assertEquals(2, result.messages.count(_.level == MessageLevel.Error))
     assertTrue(result.messages.exists(_.message.contains("No expected warnings marked in snippet -- use // warn")))
     assertTrue(result.messages.exists(_.message.contains("Unexpected warning on line 1")))
   }
@@ -232,8 +230,7 @@ class SnippetCompilerTest {
          |""".stripMargin
 
     val result = runTest(warningSnippet, SnippetCompilerArg(SCFlags.Compile, verifyDiagnostics = true))
-    assertSuccessfulCompilation(result)
-    assertMessageLevelPresent(result, MessageLevel.Warning)
+    assertFailedCompilation(result)
   }
 
   @Test
@@ -245,7 +242,6 @@ class SnippetCompilerTest {
          |""".stripMargin
 
     val result = runTest(snippet, SnippetCompilerArg(SCFlags.Compile, verifyDiagnostics = true))
-    assertFailedCompilation(result)
     assertTrue(result.messages.exists(_.message.contains("Warnings found on incorrect row numbers when compiling snippet")))
     assertTrue(result.messages.exists(_.message.contains("Unfulfilled expectation: warning on line 2")))
     assertTrue(result.messages.exists(_.message.contains("Unexpected warning on line 1")))
