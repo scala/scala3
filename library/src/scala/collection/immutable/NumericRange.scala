@@ -384,7 +384,7 @@ sealed class NumericRange[T](
    *  order: an inclusive range from `last` to `start` with step `-step`.
    *  Returns this range itself if it is empty.
    *
-   *  @throws ArithmeticException if this range is non-empty and negating its step
+   *  @throws java.lang.ArithmeticException if this range is non-empty and negating its step
    *          does not change the step's sign: because the step is zero, because the
    *          element type is unsigned, or because the step is the minimum value of
    *          a signed fixed-width type

@@ -1278,6 +1278,8 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
 /** $factoryInfo
  *  @define coll lazy list
  *  @define Coll `LazyListIterable`
+ *  @define initiallyLazy This method does not evaluate anything until an operation is performed
+ *                        on the result (e.g. calling `head` or `tail`, or checking if it is empty).
  */
 @SerialVersionUID(4L)
 object LazyListIterable extends IterableFactory[LazyListIterable] {

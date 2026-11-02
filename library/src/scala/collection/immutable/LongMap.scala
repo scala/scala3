@@ -622,7 +622,7 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
 
   /** Returns the lowest key of this map in unsigned order.
    *
-   *  @throws IllegalStateException if this map is empty
+   *  @throws java.lang.IllegalStateException if this map is empty
    */
   @tailrec
   final def firstKey: Long = this match {
@@ -633,7 +633,7 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
 
   /** Returns the highest key of this map in unsigned order.
    *
-   *  @throws IllegalStateException if this map is empty
+   *  @throws java.lang.IllegalStateException if this map is empty
    */
   @tailrec
   final def lastKey: Long = this match {
