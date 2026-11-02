@@ -179,6 +179,7 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
    */
   private def methodOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
     if (method.instructions.size == 0) return false // fast path for abstract methods
+    if (!Limits.sizeOKForLocalOpt(method)) return false
 
     // unreachable-code also removes unused local variable nodes and empty exception handlers.
     // This is required for correctness, for example:
@@ -388,107 +389,105 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
    *   - scala.runtime.BoxesRunTime.unboxToX(null) is rewritten to a zero-value load
    */
   private def nullnessOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
-    Limits.sizeOKForNullness(method) && {
-      val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, ts.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
+    val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, ts.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
 
-      // When running nullness optimizations the method may still have unreachable code. Analyzer
-      // frames of unreachable instructions are `null`.
-      def frameAt(insn: AbstractInsnNode): Option[Frame[NullnessValue]] = Option(nullnessAnalyzer.frameAt(insn))
+    // When running nullness optimizations the method may still have unreachable code. Analyzer
+    // frames of unreachable instructions are `null`.
+    def frameAt(insn: AbstractInsnNode): Option[Frame[NullnessValue]] = Option(nullnessAnalyzer.frameAt(insn))
 
-      def nullness(insn: AbstractInsnNode, slot: Int): Option[NullnessValue] = {
-        frameAt(insn).map(_.getValue(slot))
-      }
+    def nullness(insn: AbstractInsnNode, slot: Int): Option[NullnessValue] = {
+      frameAt(insn).map(_.getValue(slot))
+    }
 
-      def isNull(insn: AbstractInsnNode, slot: Int) = nullness(insn, slot).contains(NullValue)
+    def isNull(insn: AbstractInsnNode, slot: Int) = nullness(insn, slot).contains(NullValue)
 
-      // cannot change instructions while iterating, it gets the analysis out of synch (indexed by instructions)
-      val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
+    // cannot change instructions while iterating, it gets the analysis out of synch (indexed by instructions)
+    val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
 
-      val it = method.instructions.iterator
-      while (it.hasNext) it.next() match {
-        case vi: VarInsnNode if isNull(vi, vi.`var`) =>
-          if (vi.getOpcode == ALOAD)
-            toReplace(vi) = List(new InsnNode(ACONST_NULL))
-          else if (vi.getOpcode == ASTORE)
-            for (frame <- frameAt(vi) if frame.peekStack(0) == NullValue)
-              toReplace(vi) = List(getPop(1))
+    val it = method.instructions.iterator
+    while (it.hasNext) it.next() match {
+      case vi: VarInsnNode if isNull(vi, vi.`var`) =>
+        if (vi.getOpcode == ALOAD)
+          toReplace(vi) = List(new InsnNode(ACONST_NULL))
+        else if (vi.getOpcode == ASTORE)
+          for (frame <- frameAt(vi) if frame.peekStack(0) == NullValue)
+            toReplace(vi) = List(getPop(1))
 
-        case ji: JumpInsnNode =>
-          val isIfNull = ji.getOpcode == IFNULL
-          val isIfNonNull = ji.getOpcode == IFNONNULL
-          if (isIfNull || isIfNonNull) for (frame <- frameAt(ji)) {
-            val nullness = frame.peekStack(0)
-            val taken = nullness == NullValue && isIfNull || nullness == NotNullValue && isIfNonNull
-            val avoided = nullness == NotNullValue && isIfNull || nullness == NullValue && isIfNonNull
+      case ji: JumpInsnNode =>
+        val isIfNull = ji.getOpcode == IFNULL
+        val isIfNonNull = ji.getOpcode == IFNONNULL
+        if (isIfNull || isIfNonNull) for (frame <- frameAt(ji)) {
+          val nullness = frame.peekStack(0)
+          val taken = nullness == NullValue && isIfNull || nullness == NotNullValue && isIfNonNull
+          val avoided = nullness == NotNullValue && isIfNull || nullness == NullValue && isIfNonNull
+          if (taken || avoided) {
+            val jump = if (taken) List(new JumpInsnNode(GOTO, ji.label)) else Nil
+            toReplace(ji) = getPop(1) :: jump
+          }
+        } else {
+          val isIfEq = ji.getOpcode == IF_ACMPEQ
+          val isIfNe = ji.getOpcode == IF_ACMPNE
+          if (isIfEq || isIfNe) for (frame <- frameAt(ji)) {
+            val aNullness = frame.peekStack(1)
+            val bNullness = frame.peekStack(0)
+            val eq = aNullness == NullValue && bNullness == NullValue
+            val ne = aNullness == NullValue && bNullness == NotNullValue || aNullness == NotNullValue && bNullness == NullValue
+            val taken = isIfEq && eq || isIfNe && ne
+            val avoided = isIfEq && ne || isIfNe && eq
             if (taken || avoided) {
               val jump = if (taken) List(new JumpInsnNode(GOTO, ji.label)) else Nil
-              toReplace(ji) = getPop(1) :: jump
-            }
-          } else {
-            val isIfEq = ji.getOpcode == IF_ACMPEQ
-            val isIfNe = ji.getOpcode == IF_ACMPNE
-            if (isIfEq || isIfNe) for (frame <- frameAt(ji)) {
-              val aNullness = frame.peekStack(1)
-              val bNullness = frame.peekStack(0)
-              val eq = aNullness == NullValue && bNullness == NullValue
-              val ne = aNullness == NullValue && bNullness == NotNullValue || aNullness == NotNullValue && bNullness == NullValue
-              val taken = isIfEq && eq || isIfNe && ne
-              val avoided = isIfEq && ne || isIfNe && eq
-              if (taken || avoided) {
-                val jump = if (taken) List(new JumpInsnNode(GOTO, ji.label)) else Nil
-                toReplace(ji) = getPop(1) :: getPop(1) :: jump
-              }
+              toReplace(ji) = getPop(1) :: getPop(1) :: jump
             }
           }
+        }
 
-        case ti: TypeInsnNode =>
-          if (ti.getOpcode == INSTANCEOF) for (frame <- frameAt(ti) if frame.peekStack(0) == NullValue) {
-            toReplace(ti) = List(getPop(1), new InsnNode(ICONST_0))
-          }
+      case ti: TypeInsnNode =>
+        if (ti.getOpcode == INSTANCEOF) for (frame <- frameAt(ti) if frame.peekStack(0) == NullValue) {
+          toReplace(ti) = List(getPop(1), new InsnNode(ICONST_0))
+        }
 
-        case mi: MethodInsnNode =>
-          if (ts.isScalaUnbox(mi)) for (frame <- frameAt(mi) if frame.peekStack(0) == NullValue) {
-            toReplace(mi) = List(
-              getPop(1),
-              loadZeroForTypeSort(Type.getReturnType(mi.desc).getSort))
-          }
-          // Explicitly check for `x.equals(null)` when x is known nonnull
-          else if mi.owner == "java/lang/Object" && mi.name == "equals" && mi.desc == "(Ljava/lang/Object;)Z" then
-            frameAt(mi).foreach(frame =>
-              val thisNullness = frame.peekStack(1)
-              val otherNullness = frame.peekStack(0)
-              if thisNullness == NotNullValue && otherNullness == NullValue then
-                toReplace(mi) = List(getPop(1), getPop(1), new InsnNode(ICONST_0))
-            )
-          // As well as `Objects.equals` (which in Scala can be `x == y`) with `(null, null)`, `(null, nonnull)`, and `(nonnull, null)`
-          else if mi.owner == "java/util/Objects" && mi.name == "equals" && mi.desc == "(Ljava/lang/Object;Ljava/lang/Object;)Z" then
-            frameAt(mi).foreach(frame =>
-              val thisNullness = frame.peekStack(1)
-              val otherNullness = frame.peekStack(0)
-              if thisNullness == NullValue && otherNullness == NullValue then
-                toReplace(mi) = List(getPop(1), getPop(1), new InsnNode(ICONST_1))
-              else if (thisNullness == NullValue && otherNullness == NotNullValue) || (thisNullness == NotNullValue && otherNullness == NullValue) then
-                toReplace(mi) = List(getPop(1), getPop(1), new InsnNode(ICONST_0))
-            )
+      case mi: MethodInsnNode =>
+        if (ts.isScalaUnbox(mi)) for (frame <- frameAt(mi) if frame.peekStack(0) == NullValue) {
+          toReplace(mi) = List(
+            getPop(1),
+            loadZeroForTypeSort(Type.getReturnType(mi.desc).getSort))
+        }
+        // Explicitly check for `x.equals(null)` when x is known nonnull
+        else if mi.owner == "java/lang/Object" && mi.name == "equals" && mi.desc == "(Ljava/lang/Object;)Z" then
+          frameAt(mi).foreach(frame =>
+            val thisNullness = frame.peekStack(1)
+            val otherNullness = frame.peekStack(0)
+            if thisNullness == NotNullValue && otherNullness == NullValue then
+              toReplace(mi) = List(getPop(1), getPop(1), new InsnNode(ICONST_0))
+          )
+        // As well as `Objects.equals` (which in Scala can be `x == y`) with `(null, null)`, `(null, nonnull)`, and `(nonnull, null)`
+        else if mi.owner == "java/util/Objects" && mi.name == "equals" && mi.desc == "(Ljava/lang/Object;Ljava/lang/Object;)Z" then
+          frameAt(mi).foreach(frame =>
+            val thisNullness = frame.peekStack(1)
+            val otherNullness = frame.peekStack(0)
+            if thisNullness == NullValue && otherNullness == NullValue then
+              toReplace(mi) = List(getPop(1), getPop(1), new InsnNode(ICONST_1))
+            else if (thisNullness == NullValue && otherNullness == NotNullValue) || (thisNullness == NotNullValue && otherNullness == NullValue) then
+              toReplace(mi) = List(getPop(1), getPop(1), new InsnNode(ICONST_0))
+          )
 
-        case _ =>
-      }
-
-      // We don't need to worry about CallGraph.closureInstantiations, the removed instructions are not IndyLambdas
-      def removeFromCallGraph(insn: AbstractInsnNode): Unit = insn match {
-        case mi: MethodInsnNode => callGraph.removeCallsite(mi, method)
-        case _ =>
-      }
-
-      for ((oldOp, newOps) <- toReplace) {
-        for (newOp <- newOps) method.instructions.insertBefore(oldOp, newOp)
-        method.instructions.remove(oldOp)
-        removeFromCallGraph(oldOp)
-      }
-
-      val changed = toReplace.nonEmpty
-      changed
+      case _ =>
     }
+
+    // We don't need to worry about CallGraph.closureInstantiations, the removed instructions are not IndyLambdas
+    def removeFromCallGraph(insn: AbstractInsnNode): Unit = insn match {
+      case mi: MethodInsnNode => callGraph.removeCallsite(mi, method)
+      case _ =>
+    }
+
+    for ((oldOp, newOps) <- toReplace) {
+      for (newOp <- newOps) method.instructions.insertBefore(oldOp, newOp)
+      method.instructions.remove(oldOp)
+      removeFromCallGraph(oldOp)
+    }
+
+    val changed = toReplace.nonEmpty
+    changed
   }
 
   // Check for an Array.getLength(x) call where x is statically known to be of array type
@@ -532,7 +531,7 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
    *
    * Returns two booleans (typeInsnChanged, intrinsicRewritten)
    */
-  private def eliminateRedundantCastsAndRewriteSomeIntrinsics(method: MethodNode, owner: InternalName): (Boolean, Boolean) = if (!Limits.sizeOKForNullness(method)) (false, false) else {
+  private def eliminateRedundantCastsAndRewriteSomeIntrinsics(method: MethodNode, owner: InternalName): (Boolean, Boolean) = {
     def isSubType(aDescOrIntN: String, bDescOrIntN: String): Boolean = {
       // Neither a nor b may be descriptors for primitive types. INSTANCEOF and CHECKCAST require
       //   - "objectref must be of type reference" and
