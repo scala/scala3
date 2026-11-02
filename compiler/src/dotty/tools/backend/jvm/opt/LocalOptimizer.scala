@@ -294,7 +294,7 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
       traceIfChanged("storeLoadPairs")
 
       // STALE HANDLERS
-      val removeHandlersResult = if (runDCE) removeEmptyExceptionHandlers(method) else RemoveHandlersResult.NoneRemoved
+      val removeHandlersResult = if (runDCE) removeEmptyExceptionHandlers(method, bTypesFromClassfile) else RemoveHandlersResult.NoneRemoved
       traceIfChanged("staleHandlers")
 
       // SIMPLIFY JUMPS
@@ -658,7 +658,7 @@ object LocalOptImpls {
    *
    * @return A set containing the eliminated instructions
    */
-  def minimalRemoveUnreachableCode(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph): Boolean = {
+  def minimalRemoveUnreachableCode(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph, bTypesFromClassfile: BTypesFromClassfile): Boolean = {
     // In principle, for the inliner, a single removeUnreachableCodeImpl would be enough. But that
     // would potentially leave behind stale handlers (empty try block) which is not legal in the
     // classfile. So we run both removeUnreachableCodeImpl and removeEmptyExceptionHandlers.
@@ -671,7 +671,7 @@ object LocalOptImpls {
     def removalRound(): Boolean = {
       val insnsRemoved = removeUnreachableCodeImpl(method, ownerClassName, callGraph)
       if (insnsRemoved) {
-        val removeHandlersResult = removeEmptyExceptionHandlers(method)
+        val removeHandlersResult = removeEmptyExceptionHandlers(method, bTypesFromClassfile)
         if (removeHandlersResult.liveHandlerRemoved) removalRound()
       }
       // Note that `removeUnreachableCodeImpl` adds `LABEL_REACHABLE_STATUS` to label.status fields. We don't clean up
@@ -840,6 +840,9 @@ object LocalOptImpls {
    * basically says that a VirtualMachineError may be thrown at any time:
    *   https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.3
    *
+   * Thus, we can only remove nonempty try-catch blocks if the catches cannot possibly catch VirtualMachineError
+   * and the body cannot possibly throw anything else.
+   *
    * Note that no instructions are eliminated.
    *
    * Returns a pair of booleans (handlerRemoved, liveHandlerRemoved)
@@ -847,13 +850,15 @@ object LocalOptImpls {
    * The `liveHandlerRemoved` result depends on `removeUnreachableCode` being executed
    * before, so that `OptimizerUtils.isLabelReachable` gives a correct answer.
    */
-  def removeEmptyExceptionHandlers(method: MethodNode): RemoveHandlersResult = {
+  def removeEmptyExceptionHandlers(method: MethodNode, bTypes: BTypesFromClassfile): RemoveHandlersResult = {
     /* True if there exists code between start and end. */
     @tailrec
-    def containsExecutableCode(start: AbstractInsnNode, end: LabelNode): Boolean = {
+    def containsExecutableCode(start: AbstractInsnNode, end: LabelNode, mayHandleVMError: Boolean): Boolean = {
       start != end && ((start.getOpcode: @switch) match {
         // FrameNode, LabelNode and LineNumberNode have opcode == -1.
-        case -1 | GOTO => containsExecutableCode(start.getNext, end)
+        case -1 | GOTO => containsExecutableCode(start.getNext, end, mayHandleVMError)
+        case ICONST_M1 | ICONST_0 | ICONST_1 | ICONST_2 | ICONST_3 | ICONST_4 | ICONST_5 | BIPUSH | SIPUSH =>
+          mayHandleVMError || containsExecutableCode(start.getNext, end, mayHandleVMError)
         case _ => true
       })
     }
@@ -863,12 +868,19 @@ object LocalOptImpls {
     val handlersIter = method.tryCatchBlocks.iterator
     while (handlersIter.hasNext) {
       val handler = handlersIter.next()
-      if (!containsExecutableCode(handler.start, handler.end)) {
+      val mayHandleVMError =
+        if handler.`type` == null then true
+        else
+          def inheritsFromException(bt: ClassBType): Boolean =
+            bt.internalName == "java/lang/Exception" || bt.info.superClass.exists(inheritsFromException)
+          bTypes.bTypeForDescriptorFromClassfile("L" + handler.`type` + ";") match
+            case Left(_) => true
+            case Right(bt) => !inheritsFromException(bt.asClassBType)
+      if !containsExecutableCode(handler.start, handler.end, mayHandleVMError) then
         if (!result.handlerRemoved) result = RemoveHandlersResult.HandlerRemoved
         if (!result.liveHandlerRemoved && OptimizerUtils.isLabelReachable(handler.start))
           result = RemoveHandlersResult.LiveHandlerRemoved
         handlersIter.remove()
-      }
     }
 
     result

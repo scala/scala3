@@ -393,7 +393,7 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
     //   def g = f; println() // println is unreachable after inlining f
     // If we have an inline request for a call to g, and f has been already inlined into g, we
     // need to run DCE on g's body before inlining g.
-    LocalOptImpls.minimalRemoveUnreachableCode(callee, calleeDeclarationClass.internalName, callGraph)
+    LocalOptImpls.minimalRemoveUnreachableCode(callee, calleeDeclarationClass.internalName, callGraph, bTypesFromClassfile)
 
     // If the callsite was eliminated by DCE, do nothing.
     if (!callGraph.containsCallsite(callsite)) return Map.empty
