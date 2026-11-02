@@ -6034,20 +6034,16 @@ object Types extends TypeUtils {
       def samClass(tp: Type)(using Context): Symbol = tp match {
         case tp: ClassInfo =>
           val cls = tp.cls
-
           def takesNoArgs(tp: Type) =
             !tp.classSymbol.primaryConstructor.exists
               // e.g. `ContextFunctionN` does not have constructors
               || tp.applicableConstructors(argTypes = Nil, adaptVarargs = true).lengthCompare(1) == 0
-
           // we require a unique constructor so that SAM expansion is deterministic
           val noArgsNeeded: Boolean =
             takesNoArgs(tp)
               && (!cls.is(Trait) || takesNoArgs(tp.parents.head))
-
           def isInstantiable =
             (ignoreFinalOrSealed || !cls.isOneOf(FinalOrSealed)) && (tp.appliedRef <:< tp.selfType)
-
           if noArgsNeeded && isInstantiable then cls
           else NoSymbol
         case tp: AppliedType =>
