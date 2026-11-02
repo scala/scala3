@@ -805,20 +805,19 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
           bTypesFromClassfile.bTypeForDescriptorFromClassfile(desc)
         res
       }
-    def isAccessibleMethod(owner: String, name: String, desc: String, descToLoad: => String | Null = null, methodOpcode: Int | Null = null): Either[OptimizerWarning, Boolean] =
+    def isAccessibleMethod(owner: String, name: String, desc: String, descToLoad: => String | Null = null, isInvokeSpecial: Boolean = false): Either[OptimizerWarning, Boolean] =
       for {
         methodRefClass <- bTypesFromClassfile.classBTypeFromParsedClassfile(owner)
         (methodNode, methodDeclClassNode) <- byteCodeRepository.methodNode(methodRefClass.internalName, name, desc)
         methodDeclClass <- bTypesFromClassfile.classBTypeFromParsedClassfile(methodDeclClassNode)
       } yield {
-        val res = methodOpcode match {
-          case INVOKESPECIAL if name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME =>
+        val res =
+          if isInvokeSpecial && name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME then
             // invokespecial is used for private method calls, super calls and instance constructor calls.
             // private method and super calls can only be inlined into the same class.
             destinationClass == calleeDeclarationClass
-          case _ => // INVOKEVIRTUAL, INVOKESTATIC, INVOKEINTERFACE and INVOKESPECIAL of constructors
+          else // INVOKEVIRTUAL, INVOKESTATIC, INVOKEINTERFACE and INVOKESPECIAL of constructors
             Inliner.memberIsAccessible(methodNode.access, methodDeclClass, methodRefClass, destinationClass)
-        }
         if res then
           // ensure the result ClassBType is cached (for stack map frame calculation)
           val toLoad = descToLoad
@@ -865,7 +864,7 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
               // array methods are accessible
               Right(true)
             } else {
-              isAccessibleMethod(mi.owner, mi.name, mi.desc, Type.getReturnType(mi.desc).getDescriptor, mi.getOpcode)
+              isAccessibleMethod(mi.owner, mi.name, mi.desc, Type.getReturnType(mi.desc).getDescriptor, mi.getOpcode == Opcodes.INVOKESPECIAL)
             }
 
       case _: InvokeDynamicInsnNode if destinationClass == calleeDeclarationClass =>
@@ -925,10 +924,20 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
       case _: InvokeDynamicInsnNode => Left(UnknownInvokeDynamicInstruction)
 
       case ci: LdcInsnNode => ci.cst match {
-        case t: asm.Type => bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(t.getInternalName).map(Inliner.classIsAccessible(_, destinationClass))
-        case h: asm.Handle => isAccessibleMethod(h.getOwner, h.getName, h.getDesc)
-        case d: asm.ConstantDynamic => isAccessibleMethod(d.getBootstrapMethod.getOwner, d.getBootstrapMethod.getName, d.getBootstrapMethod.getDesc)
-        case _ => Right(true)
+        case t: asm.Type =>
+          bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(t.getInternalName).map(Inliner.classIsAccessible(_, destinationClass))
+        case h: asm.Handle =>
+          if h.getTag == Opcodes.H_GETFIELD || h.getTag == Opcodes.H_GETSTATIC || h.getTag == Opcodes.H_PUTFIELD || h.getTag == Opcodes.H_PUTSTATIC then
+            isAccessibleField(h.getOwner, h.getName, h.getDesc)
+          else
+            isAccessibleMethod(h.getOwner, h.getName, h.getDesc, isInvokeSpecial = h.getTag == Opcodes.H_INVOKESPECIAL)
+        case d: asm.ConstantDynamic =>
+          if destinationClass == calleeDeclarationClass then // same condition as for INDYs above
+            isAccessibleMethod(d.getBootstrapMethod.getOwner, d.getBootstrapMethod.getName, d.getBootstrapMethod.getDesc)
+          else
+            Right(false)
+        case _ =>
+          Right(true)
       }
 
       case _ => Right(true)
