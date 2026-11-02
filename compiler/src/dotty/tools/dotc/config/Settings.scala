@@ -243,13 +243,13 @@ object Settings:
 
       def setString(argValue: String, args: List[String])(using ArgsSummary) =
         choices match
-        case Some(choices) if !choices.contains(argValue) =>
-          state.fail(s"$argValue is not a valid choice for $name.\nExpected a $helpArg.\nAvailable choices: ${choices.mkString(", ")}", args)
-        case _ =>
-          if changed && argValue != valueIn(sstate).asInstanceOf[String] then
-            update(argValue, argValue, args).warn(s"Option $name was updated")
-          else
-            update(argValue, argValue, args)
+          case Some(choices) if !choices.contains(argValue) =>
+            state.fail(s"$argValue is not a valid choice for $name.\nExpected a $helpArg.\nAvailable choices: ${choices.mkString(", ")}", args)
+          case _ =>
+            if changed && argValue != valueIn(sstate) then
+              update(argValue, argValue, args).warn(s"Option $name was updated")
+            else
+              update(argValue, argValue, args)
 
       def setInt(argValue: String, args: List[String])(using ArgsSummary) =
         argValue.toIntOption.map: intValue =>
