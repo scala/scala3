@@ -932,10 +932,7 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
           else
             isAccessibleMethod(h.getOwner, h.getName, h.getDesc, isInvokeSpecial = h.getTag == Opcodes.H_INVOKESPECIAL)
         case d: asm.ConstantDynamic =>
-          if destinationClass == calleeDeclarationClass then // same condition as for INDYs above
-            isAccessibleMethod(d.getBootstrapMethod.getOwner, d.getBootstrapMethod.getName, d.getBootstrapMethod.getDesc)
-          else
-            Right(false)
+          Right(destinationClass == calleeDeclarationClass) // same condition as for INDYs above
         case _ =>
           Right(true)
       }
