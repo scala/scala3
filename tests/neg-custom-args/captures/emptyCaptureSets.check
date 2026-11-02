@@ -1,0 +1,50 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/emptyCaptureSets.scala:15:21 -----------------------------
+15 |  val c: Box[File] = b // error, the empty capture set of the pure class `Box` is not shown
+   |                     ^
+   |                     Found:    (b : p.Box[p.File^{x}])
+   |                     Required: p.Box[p.File]
+   |
+   |                     Note that capability `x` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/emptyCaptureSets.scala:17:33 -----------------------------
+17 |def capability(fs: FS^): FS^{} = fs // error, `FS` would stand for `FS^`
+   |                                 ^^
+   |                                 Found:    (fs : p.FS)
+   |                                 Required: p.FS^{}
+   |
+   |                                 Note that capability `fs` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/emptyCaptureSets.scala:20:19 -----------------------------
+20 |  val r1: Ref^{} = r // error, `Ref^{}` does not allow calls of update methods
+   |                   ^
+   |                   Found:    p.Ref^{r.rd}
+   |                   Required: p.Ref^{}
+   |
+   |                   Note that capability `r.rd` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/emptyCaptureSets.scala:23:41 ---------------------------
+23 |def useBound(x: File^): File^{x} = bound[File^{x}](x) // error, `Any` as a bound admits capturing types
+   |                                         ^^^^^^^^
+   |                                         Reference `x` is not included in the allowed capture set {}
+   |                                         of the type parameter bound Any^{}.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/emptyCaptureSets.scala:28:16 -----------------------------
+28 |  v = if b then c1 else Pure() // error, `FS | Pure` would stand for `(FS | Pure)^`
+   |                ^^
+   |                Found:    (c1 : p.FS)
+   |                Required: (p.FS | p.Pure)^{}
+   |
+   |                Note that capability `c1` cannot flow into capture set {} of variable v.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/emptyCaptureSets.scala:34:24 -----------------------------
+34 |  val g: File -> Unit = f // error, the parameter type of `f` admits all capture sets
+   |                        ^
+   |                        Found:    (f : (x: p.File^<fluid>) ->{s} Unit)
+   |                        Required: p.File -> Unit
+   |
+   |                        Note that capability `f` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
