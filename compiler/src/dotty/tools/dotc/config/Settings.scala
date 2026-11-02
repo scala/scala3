@@ -290,7 +290,7 @@ object Settings:
         else lazyLoader match
           case Some(loader) =>
             loader.check(arg1, helpArg) match
-              case Some(err) => state.fail(err)
+              case Some(err) => state.fail(err, args1)
               case None => setString(arg1, args1)
           case None =>
             ct match
