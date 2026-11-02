@@ -25,8 +25,10 @@ enum ScalaSettingCategories(val prefixLetter: String) extends SettingCategory:
   // Verbose settings, a category to configure the verbosity of the compiler
   case VerboseSetting extends ScalaSettingCategories("V")
 
+object ScalaSettings extends AllScalaSettings
 type ScalaSettings = ScalaSettings.type
-object ScalaSettings extends SettingGroup, CommonScalaSettings, PluginSettings, VerboseSettings, OptimizerSettings, WarningSettings, XSettings, YSettings:
+
+trait AllScalaSettings extends SettingGroup, CommonScalaSettings, PluginSettings, VerboseSettings, OptimizerSettings, WarningSettings, XSettings, YSettings:
   /* Path related settings */
   val semanticdbTarget: Setting[String] = PathSetting(RootSetting, "semanticdb-target", "Specify an alternative output directory for SemanticDB files.", "")
   val semanticdbText: Setting[Boolean] = BooleanSetting(RootSetting, "semanticdb-text", "Specifies whether to include source code in SemanticDB files or not.")
@@ -59,7 +61,7 @@ object ScalaSettings extends SettingGroup, CommonScalaSettings, PluginSettings, 
   val wikiSyntax: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xwiki-syntax", "Retains the Scala2 behavior of using Wiki Syntax in Scaladoc.")
   val jvmargs: Setting[List[String]] = PrefixSetting(RootSetting, "J<flag>", "Pass -J<flag> directly to the runtime system.")
   val defines: Setting[List[String]] = PrefixSetting(RootSetting, "D<property=value>", "Pass -D<property=value> directly to the runtime system.")
-end ScalaSettings
+end AllScalaSettings
 
 /** Settings shared by compiler and scaladoc */
 trait CommonScalaSettings extends SettingGroup:
