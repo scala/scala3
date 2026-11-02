@@ -375,9 +375,26 @@ class ReplDriver(settings: Array[String],
     state0: State,
     displayLoadingErrors: String => Unit
   ): List[Completion] =
+    completionsWithOffset(cursor, expr, state0, displayLoadingErrors)._2
+
+  /** Extract possible completions at the index of `cursor` in `expr`, together
+   *  with the offset in `expr` at which the completed word starts, i.e. the
+   *  part of `expr` before the offset is kept and the rest is replaced by the
+   *  completion label.
+   */
+  protected final def completionsWithOffset(cursor: Int, expr: String, state0: State): (Int, List[Completion]) =
+    completionsWithOffset(cursor, expr, state0, out.println(_))
+
+  private def completionsWithOffset(
+    cursor: Int,
+    expr: String,
+    state0: State,
+    displayLoadingErrors: String => Unit
+  ): (Int, List[Completion]) =
     if expr.startsWith(":") then
-      ReplCommands.names.collect:
+      val comps = ReplCommands.names.collect:
         case command if command.startsWith(expr) => Completion(command, "", List())
+      (0, comps)
     else
       val typecheckReporter = newStoreReporter
       given state: State = newRun(state0)
@@ -391,11 +408,11 @@ class ReplDriver(settings: Array[String],
           given Context = state.context.fresh.setCompilationUnit(unit)
           val srcPos = SourcePosition(file, Span(cursor))
           try
-            Completion.completions(srcPos)._2
+            Completion.completions(srcPos)
           catch case NonFatal(_) =>
-            List(Completion("<Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues>", "", Nil))
+            (cursor, List(Completion("<Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues>", "", Nil)))
         }
-        .getOrElse(Nil)
+        .getOrElse((cursor, Nil))
       // Candidate discovery can load symbols unrelated to the qualifier. Discard its
       // diagnostics; failed loads are retained and reported if the symbol is requested later.
       state.context.reporter.removeBufferedMessages
@@ -405,7 +422,7 @@ class ReplDriver(settings: Array[String],
         given Context = state.context
         displayLoadingErrors(loadingErrors.map(ReplConsoleReporter.messageAndPos).mkString("\n"))
       result
-  end completions
+  end completionsWithOffset
 
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
@@ -789,6 +806,14 @@ class ReplDriver(settings: Array[String],
           catch case NonFatal(ex) =>
             out.println(s"Error: ${ex.getMessage}")
           queryState
+
+    case Completions(expr) =>
+      val (offset, comps) = completionsWithOffset(expr.length, expr, state)
+      val lines = comps.map(c => s"[completions] ${expr.take(offset)}${c.label}").distinct.sorted
+      // Editors (e.g. emacs-sbt-mode) collect the output of a single command, so the
+      // candidates are echoed in one go rather than one `println` per candidate.
+      if lines.nonEmpty then out.println(lines.mkString("\n"))
+      state
 
     case Sh(expr) =>
       out.println(s"""The :sh command is deprecated. Use `import scala.sys.process._` and `"command".!` instead.""")

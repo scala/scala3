@@ -115,6 +115,7 @@ class JLineTerminal(providedTerminal: org.jline.terminal.Terminal | Null = null)
       .highlighter(new Highlighter)
       .parser(new Parser)
       .variable(HISTORY_FILE, s"$userHome/.dotty_history") // Save history to file
+      .variable(HISTORY_IGNORE, s"${Completions.command}*") // Don't record editor completion queries
       .variable(SECONDARY_PROMPT_PATTERN, "%M") // A short word explaining what is "missing",
                                                 // this is supplied from the EOFError.getMissing() method
       .variable(LIST_MAX, 400)                  // Ask user when number of completions exceed this limit (default is 100).
