@@ -35,8 +35,12 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  that has no end:
  *
  *  ```scala sc:compile
- *  val naturals: Stream[Int] = Stream.from(0)
- *  naturals.take(3).force // Stream(0, 1, 2)
+ *  @annotation.nowarn("cat=deprecation")
+ *  def example(): Stream[Int] = {
+ *    val naturals: Stream[Int] = Stream.from(0) // warn
+ *    naturals.take(3).force // Stream(0, 1, 2)
+ *  }
+ *  example()
  *  ```
  *
  *  Because the head is strict, an operation that produces a stream computes the first
