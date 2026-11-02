@@ -506,18 +506,32 @@ class CopyProp(callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes,
             }
 
           case NEW =>
-            if (ts.isNewForSideEffectFreeConstructor(prod)) toRemove += prod
+            if (ts.isSideEffectFreeConstructor(prod.asInstanceOf[TypeInsnNode])) toRemove += prod
+            else popAfterProd()
+
+          case NEWARRAY =>
+            // NEWARRAY is only for primitives, unlike ANEWARRAY, so we know there can't be a static constructor to run
+            // for the element type
+            toRemove += prod
+            handleInputs(prod, 1)
+
+          case ANEWARRAY =>
+            // We only elide arrays of arrays of primitives, ensuring we don't elide the need for a static constructor call.
+            // This can be checked as 'starts with [ and doesn't contain L' because any array of arrays of nonprimitive contains "L...;"
+            // (but an array of nonprimitive does not, the desc would be, e.g., "java/lang/String")
+            val insn = prod.asInstanceOf[TypeInsnNode]
+            if insn.desc.startsWith("[") && !insn.desc.contains('L') then
+              toRemove += prod
+              handleInputs(prod, 1)
             else popAfterProd()
 
           case LDC =>
-            prod.asInstanceOf[LdcInsnNode].cst match {
-            case _: java.lang.Integer | _: java.lang.Float | _: java.lang.Long | _: java.lang.Double | _: String =>
-              toRemove += prod
-
-            case _ =>
-              if (settings.optAllowSkipClassLoading) toRemove += prod
-              else popAfterProd()
-          }
+            prod.asInstanceOf[LdcInsnNode].cst match
+              case _: java.lang.Integer | _: java.lang.Float | _: java.lang.Long | _: java.lang.Double | _: String =>
+                toRemove += prod
+              case _ =>
+                if (settings.optAllowSkipClassLoading) toRemove += prod
+                else popAfterProd()
 
           case MULTIANEWARRAY =>
             toRemove += prod

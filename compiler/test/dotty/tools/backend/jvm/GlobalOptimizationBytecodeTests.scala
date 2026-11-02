@@ -4,6 +4,7 @@ import dotty.{AsmConverters, DottyBytecodeTest}
 import dotty.AsmConverters.instructionsFromMethod
 import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
 import org.junit.Test
+import org.objectweb.asm.Opcodes
 
 class GlobalOptimizationBytecodeTests extends OptimizationBytecodeTest {
   override def initCtx = {
@@ -304,11 +305,96 @@ class GlobalOptimizationBytecodeTests extends OptimizationBytecodeTest {
       "def eat(x: Int): Unit = (); var x = 42; eat(x); 1"
     )
 
+  @Test def deadNewArrayOfPrimitive =
+    assertEquivalence(
+      "1",
+      "val x = new Array[Int](123); 1"
+    )
+
+  @Test def deadNewMultidimArrayOfPrimitive =
+    assertEquivalence(
+      "1",
+      "val x = new Array[Array[Int]](123); 1"
+    )
+
+  @Test def deadNewArrayOfRefIsNotElided =
+    // there may be a static constructor
+    val source =
+      f"""
+         |class Bar
+         |class Foo:
+         |    def foo(): Unit = { new Array[Bar](1); () }
+         """.stripMargin
+    checkBCode(source) { dir =>
+      val clsIn = lookupClass(dir, "Foo.class")
+      val clsNode = loadClassNode(clsIn)
+      val meth1 = getMethod(clsNode, "foo")
+      val instructions = instructionsFromMethod(meth1)
+      assert(instructions.exists(_.opcode == Opcodes.ANEWARRAY), instructions.mkString("\n"))
+    }
+
   @Test def deadTryCatch =
     assertEquivalence(
       "1",
       "var x = 1; try () catch case _ => (); x"
     )
+
+  @Test def deadTryCatchOnlyForException =
+    assertEquivalence(
+      "1",
+      "try 1 catch case _: Exception => 2"
+    )
+
+  @Test def deadTryCatchOnlyForException2 =
+    assertEquivalence(
+      "()",
+      "try 1 catch case _: Exception => 2",
+      returnType = "Unit"
+    )
+
+  @Test def deadTryCatchIsRetainedWhenHandlingVMError =
+    // the body may throw a VirtualMachineError
+    val source =
+      f"""
+         |class Foo:
+         |    def foo(): Int = try 1 catch case _ => 2
+         """.stripMargin
+    checkBCode(source) { dir =>
+      val clsIn = lookupClass(dir, "Foo.class")
+      val clsNode = loadClassNode(clsIn)
+      val meth1 = getMethod(clsNode, "foo")
+      assert(!meth1.tryCatchBlocks.isEmpty)
+    }
+
+  @org.junit.Ignore("We should not be doing DCE when inside a catch block that can catch VirtualMachineError. Hopefully nobody depends on this.")
+  @Test def deadTryCatchIsRetainedWhenHandlingVMError2 =
+    // the body may throw a VirtualMachineError
+    val source =
+      f"""
+         |class Foo:
+         |    def foo(): Unit = try 1 catch case _ => 2
+         """.stripMargin
+    checkBCode(source) { dir =>
+      val clsIn = lookupClass(dir, "Foo.class")
+      val clsNode = loadClassNode(clsIn)
+      val meth1 = getMethod(clsNode, "foo")
+      assert(!meth1.tryCatchBlocks.isEmpty)
+    }
+
+  @Test def tryCatchIsRetainedWhenNotDead =
+    // the body may throw a VirtualMachineError
+    val source =
+      f"""
+         |class Foo:
+         |    @noinline def bar(): Unit = ???
+         |    def foo(): Unit = try bar() catch case _: Exception => ()
+         """.stripMargin
+    checkBCode(source) { dir =>
+      val clsIn = lookupClass(dir, "Foo.class")
+      val clsNode = loadClassNode(clsIn)
+      val meth1 = getMethod(clsNode, "foo")
+      assert(!meth1.tryCatchBlocks.isEmpty)
+    }
 
 
   @Test def elidedCastPrimitive =
@@ -339,6 +425,30 @@ class GlobalOptimizationBytecodeTests extends OptimizationBytecodeTest {
       "true",
       "val b = (x: Integer); b.isInstanceOf[Number]",
       params = List("x: Int"),
+      returnType = "Boolean"
+    )
+
+  @Test def elidedIsInstanceArray =
+    assertEquivalence(
+      "false",
+      "x.isInstanceOf[Array[AnyRef]]",
+      params = List("x: Array[Int]"),
+      returnType = "Boolean"
+    )
+
+  @Test def elidedIsInstanceArrayOfArray =
+    assertEquivalence(
+      "false",
+      "x.isInstanceOf[Array[Array[AnyRef]]]",
+      params = List("x: Array[Array[Int]]"),
+      returnType = "Boolean"
+    )
+
+  @Test def elidedIsInstanceArrayOfArray2 =
+    assertEquivalence(
+      "true",
+      "new Array[Array[Int]](42).isInstanceOf[Array[AnyRef]]",
+      params = List(),
       returnType = "Boolean"
     )
 
