@@ -21,8 +21,6 @@ object Settings:
   private val StringTag: ClassTag[String]        = ClassTag(classOf[String])
   private val ListTag: ClassTag[List[?]]         = ClassTag(classOf[List[?]])
   private val VersionTag: ClassTag[ScalaVersion] = ClassTag(classOf[ScalaVersion])
-  private val FileContainerTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
-  private val OptionalFileContainerTag: ClassTag[Option[AbstractFile]]  = ClassTag(classOf[Option[AbstractFile]])
 
   trait SettingCategory:
     def prefixLetter: String
@@ -46,6 +44,9 @@ object Settings:
         values(idx) = x
         changed.add(idx)
         this
+
+    private[Settings] def updateLazyLoaded(idx: Int, x: Any): Unit =
+      values(idx) = x
 
     def reinitializedCopy(): SettingsState =
       SettingsState(values.toSeq, changed.toSet)
@@ -82,10 +83,6 @@ object Settings:
   private def validateSettingString(name: String): Unit =
     assert(settingCharacters.matches(name), s"Setting string $name contains invalid characters")
 
-  private val validTags = List(BooleanTag, IntTag, StringTag, ListTag, VersionTag, FileContainerTag, OptionalFileContainerTag)
-  private def validateSettingTag(ct: ClassTag[?]): Unit =
-    assert(validTags.contains(ct), s"Unsupported option value $ct")
-
   /** List of setting-value pairs that are required for another setting to be valid.
     * For example, `s = Setting(..., depends = List(YprofileEnabled -> true))`
     * means that `s` requires `YprofileEnabled` to be set to `true`.
@@ -98,7 +95,11 @@ object Settings:
     def apply(name: String): SettingAlias = new SettingAlias(name, None)
     def apply(name: String, deprecation: Deprecation): SettingAlias = new SettingAlias(name, Some(deprecation))
 
-  class Setting[T] private[Settings] (
+  trait SettingLazyLoader[T]:
+    def check(argValue: String, argDescription: String): Option[String] // Some(error), or None if OK
+    def load(argValue: String, state: SettingsState): T
+
+  class Setting[T](
     category: SettingCategory,
     val name: String,
     description: String,
@@ -114,7 +115,9 @@ object Settings:
     // kept only for -Xkind-projector option compatibility
     legacyArgs: Boolean = false,
     // accept legacy choices (for example, valid in Scala 2 but no longer supported)
-    legacyChoices: Option[Seq[?]] = None)(private val idx: Int)(using ct: ClassTag[T]):
+    legacyChoices: Option[Seq[?]] = None,
+    // for settings that depend on other settings
+    lazyLoader: Option[SettingLazyLoader[T]] = None)(private val idx: Int)(using ct: ClassTag[T]):
 
     validateSettingString(prefix.getOrElse(name))
     for alias <- aliases do
@@ -124,7 +127,6 @@ object Settings:
         assert(dep.replacedBy.isEmpty, msg)
     assert(name.startsWith(s"-${category.prefixLetter}"), s"Setting $name does not start with category -$category")
     assert(legacyArgs || !choices.exists(_.contains("")), s"Empty string is not supported as a choice for setting $name")
-    validateSettingTag(ct)
 
     // Without the following assertion, it would be easy to mistakenly try to pass a file to a setting that ignores invalid args.
     // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
@@ -132,10 +134,21 @@ object Settings:
 
     val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases.map(_.name)
 
-    def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
+    def valueIn(state: SettingsState): T =
+      val underlying = state.value(idx)
+      underlying match
+        case str: String =>
+          lazyLoader match
+            case Some(loader) =>
+              val result = loader.load(str, state)
+              state.updateLazyLoaded(idx, result)
+              result
+            case None => underlying.asInstanceOf[T]
+        case _ => underlying.asInstanceOf[T]
 
     def updateIn(state: SettingsState, x: Any): SettingsState = x match
       case "help" | _: T => state.update(idx, x) // always ok to store "help" because we'll exit after printing help text
+      case _: String if lazyLoader.nonEmpty => state.update(idx, x)
       case _ => throw IllegalArgumentException(s"found: $x of type ${x.getClass.getName}, required: $ct")
 
     // For now, skip the default values that do not make sense for the end user, such as 'false' for the version command.
@@ -252,19 +265,6 @@ object Settings:
         .getOrElse:
           state.fail(s"$argValue is not an integer argument for $name", args)
 
-      def setFileContainer(arg: String, args: List[String], optional: Boolean)(using ArgsSummary) =
-        val path = Directory(arg)
-        val isJar = path.ext.isJar
-        if !isJar && !path.isDirectory then
-          state.fail(s"'$arg' does not exist or is not a " + helpArg, args)
-        else
-          /* Side effect, do not change this method to evaluate eagerly */
-          def file = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
-          def fullFile = if optional then Some(file) else file
-          val dubious = changed && fullFile != valueIn(sstate)
-          val updated = update(fullFile, arg, args)
-          if dubious then updated.warn(s"Option $name was updated") else updated
-
       // argRest is the remainder of -foo:bar if any. This setting will receive a value from argRest or args.head.
       // useArg means use argRest even if empty.
       def doSet(argRest: String, useArg: Boolean)(using ArgsSummary): ArgsSummary =
@@ -287,14 +287,18 @@ object Settings:
         else if preferPrevious && changed then
           if ignoreInvalidArgs then state.shifted(args1)
           else state.warn(s"Ignoring update of option $name", args1)
-        else ct match
-          case ListTag => setMultivalue(arg1, args1)
-          case StringTag => setString(arg1, args1)
-          case FileContainerTag => setFileContainer(arg1, args1, optional = false)
-          case OptionalFileContainerTag => setFileContainer(arg1, args1, optional = true)
-          case IntTag => setInt(arg1, args1)
-          case VersionTag => setVersion(arg1, args1)
-          case _ => state.fail(s"unknown $ct", args1)
+        else lazyLoader match
+          case Some(loader) =>
+            loader.check(arg1, helpArg) match
+              case Some(err) => state.fail(err)
+              case None => setString(arg1, args1)
+          case None =>
+            ct match
+              case ListTag => setMultivalue(arg1, args1)
+              case StringTag => setString(arg1, args1)
+              case IntTag => setInt(arg1, args1)
+              case VersionTag => setVersion(arg1, args1)
+              case _ => state.fail(s"unknown $ct", args1)
       end doSet
 
       def setVersion(arg: String, args: List[String])(using ArgsSummary) =
@@ -457,12 +461,12 @@ object Settings:
     def processArguments(arguments: List[String], processAll: Boolean, settingsState: SettingsState = defaultState): ArgsSummary =
       processArguments(ArgsSummary(settingsState, arguments, errors = Nil, warnings = Nil), processAll, skipped = Nil)
 
-    private def publish[T](settingf: Int => Setting[T]): Setting[T] =
+    protected def publish[T](settingf: Int => Setting[T]): Setting[T] =
       val setting = settingf(_allSettings.length)
       _allSettings += setting
       setting
 
-    private def prependName(name: String): String =
+    protected def prependName(name: String): String =
       assert(!name.startsWith("-"), s"Setting $name cannot start with -")
       "-" + name
 
@@ -489,12 +493,6 @@ object Settings:
 
     protected def MultiStringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[List[String]] =
       publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, deprecation = deprecation))
-
-    protected def FileContainerSetting(category: SettingCategory, name: String, allowsJar: Boolean, descr: String, default: AbstractFile, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[AbstractFile] =
-      publish(Setting(category, prependName(name), descr, default, if allowsJar then "directory or .jar file" else "directory", aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs))
-
-    protected def OptionalFileContainerSetting(category: SettingCategory, name: String, allowsJar: Boolean, descr: String, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[Option[AbstractFile]] =
-      publish(Setting(category, prependName(name), descr, None, if allowsJar then "directory or .jar file" else "directory", aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs))
 
     protected def PathSetting(category: SettingCategory, name: String, descr: String, default: String, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[String] =
       publish(Setting(category, prependName(name), descr, default, aliases = aliases, deprecation = deprecation))
