@@ -968,6 +968,8 @@ object TypeOps:
         case AppliedType(_, args) => args.forall(_.isInstanceOf[TypeBounds])
         case _ => t.typeParams.nonEmpty
       tp1.classSymbol.info.parents.exists { parent =>
+        // If the parent is a raw type, the relationship is inverted.
+        // Consider the `tests/warn/patmat-raw` case, where the `parent` of `TimedOut` is a raw `Event`, which we consider a supertype of `Event[String]`
         (parent.argInfos.nonEmpty && approximateParent(parent) <:< tp2) || (looksLikeRawType(parent) && tp2 <:< parent)
       }
 
