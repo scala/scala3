@@ -965,10 +965,7 @@ object TypeOps:
       // e.g., `class X<T>` having `A<String> extends X<String>` and `B extends X` as children.
       // Detect this and use the type anyway. See tests/warn/patmat-raw.
       def looksLikeRawType(t: Type): Boolean = t match
-        case AppliedType(_, args) => args.forall {
-          case b: TypeBounds => b.lo == defn.NothingType && b.hi == defn.AnyType
-          case _ => false
-        }
+        case AppliedType(_, args) => args.forall(_.isInstanceOf[TypeBounds])
         case _ => t.typeParams.nonEmpty
       tp1.classSymbol.info.parents.exists { parent =>
         (parent.argInfos.nonEmpty && approximateParent(parent) <:< tp2) || (looksLikeRawType(parent) && tp2 <:< parent)
