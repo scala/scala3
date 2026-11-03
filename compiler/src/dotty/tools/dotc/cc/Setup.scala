@@ -46,9 +46,10 @@ trait SetupAPI:
    *  instantiated with any capture set. Dropping it would make the bound `{}`.
    *  Parts of `tp` that are declared, see `PostTyper.makeFormalsDeclared`, are also
    *  pickled as they are, and are transformed as explicitly given types, as it is
-   *  done by `transformSym` for symbols from other compilation units.
+   *  done by `transformSym` for symbols from other compilation units. If `keepCaps`
+   *  is true, so are capturing types written `T^`, which are also pickled as they are.
    */
-  def externalType(tp: Type, sym: Symbol)(using Context): Type
+  def externalType(tp: Type, sym: Symbol, keepCaps: Boolean)(using Context): Type
 
   /** Check to do after the capture checking traversal */
   def postCheck()(using Context): Unit
@@ -1035,10 +1036,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   def setupUnit(tree: Tree, checker: CheckerAPI)(using Context): Unit =
     setupTraverser(checker).traverse(tree)(using ctx.withPhase(thisPhase))
 
-  def externalType(tp: Type, sym: Symbol)(using Context): Type = // TODO we should drop retains from inferred types before unpickling
+  def externalType(tp: Type, sym: Symbol, keepCaps: Boolean)(using Context): Type = // TODO we should drop retains from inferred types before unpickling
     inContext(ctx.withPhase(thisPhase)):
       val tm = new TypeMap:
         def apply(t: Type) = t match
+          case AnnotatedType(_, annot) if keepCaps && annot.symbol == defn.RetainsCapAnnot =>
+            transformExplicitType(t, sym, initialVariance = variance)
           case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
             apply(parent)
           case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
