@@ -39,6 +39,17 @@ trait SetupAPI:
    */
   def isPreCC(sym: Symbol)(using Context): Boolean
 
+  /** The type of a definition `sym` with inferred type `tp` as it is seen in other
+   *  compilation units. That type drops the inferred capture sets of `tp`, except in
+   *  the bounds of type parameters of polymorphic types, which are kept as they are
+   *  pickled. For instance, `^` in the bound `CapSet^` of `[C^]` says that `C` can be
+   *  instantiated with any capture set. Dropping it would make the bound `{}`.
+   *  Parts of `tp` that are declared, see `PostTyper.makeFormalsDeclared`, are also
+   *  pickled as they are, and are transformed as explicitly given types, as it is
+   *  done by `transformSym` for symbols from other compilation units.
+   */
+  def externalType(tp: Type, sym: Symbol)(using Context): Type
+
   /** Check to do after the capture checking traversal */
   def postCheck()(using Context): Unit
 
@@ -1023,6 +1034,21 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    */
   def setupUnit(tree: Tree, checker: CheckerAPI)(using Context): Unit =
     setupTraverser(checker).traverse(tree)(using ctx.withPhase(thisPhase))
+
+  def externalType(tp: Type, sym: Symbol)(using Context): Type = // TODO we should drop retains from inferred types before unpickling
+    inContext(ctx.withPhase(thisPhase)):
+      val tm = new TypeMap:
+        def apply(t: Type) = t match
+          case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
+            apply(parent)
+          case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
+            transformExplicitType(parent, sym, initialVariance = variance)
+          case _ =>
+            mapOver(t)
+        override protected def mapOverLambda(tp: LambdaType) = tp match
+          case tp: PolyType => derivedLambdaType(tp)(tp.paramInfos, this(tp.resultType))
+          case _ => super.mapOverLambda(tp)
+      tm(tp)
 
   // ------ Checks to run at Setup ----------------------------------------
 

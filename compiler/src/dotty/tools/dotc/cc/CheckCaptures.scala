@@ -1409,7 +1409,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *
      *   1. If val or def definition with inferred (result) type is visible
      *      in other compilation units, check that the actual inferred type
-     *      conforms to the expected type where all inferred capture sets are dropped.
+     *      conforms to the type seen in other compilation units, see `Setup.externalType`.
      *      This ensures that if files compile separately, they will also compile
      *      in a joint compilation.
      *   2. If a val has an inferred type with a terminal capability in its capture set,
@@ -1457,7 +1457,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           if !sym.isExemptFromExplicitChecks // Symbols that can't be seen outside the compilation unit can have inferred types
               && !sym.needsResultRefinement  // If we refine the result type anyway, the inferred type does not matter
           then // Symbols that can't be seen outside the compilation unit can have inferred types
-            val expected = tpt.tpe.dropAllRetains
+            val expected = setup.externalType(tpt.tpe, sym)
             todoAtPostCheck += { () =>
               withGlobalCapAsRoot:
                 testAdapted(tp, expected, tree.rhs, addendum(expected) :: Nil)(fail)
