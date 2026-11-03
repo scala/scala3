@@ -316,7 +316,10 @@
 ./experimental/capture-checking/polymorphism.html
 ./experimental/capture-checking/safe.html
 ./experimental/capture-checking/scoped-capabilities.html
+./experimental/capture-checking/scoped-caps.html
 ./experimental/capture-checking/separation-checking.html
+./experimental/cc-advanced.html
+./experimental/cc.html
 ./experimental/dedented-string-literals.html
 ./experimental/erased-defs-spec.html
 ./experimental/erased-defs.html

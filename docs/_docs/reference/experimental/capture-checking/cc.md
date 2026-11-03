@@ -1,6 +1,7 @@
 ---
 layout: index
 title: "Capture Checking"
+redirectFrom: /experimental/cc.html
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/index.html
 ---
 
