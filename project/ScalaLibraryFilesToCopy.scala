@@ -54,10 +54,14 @@ object ScalaLibraryFilesToCopy {
   )
 
   /** Files that match `filesToCopy` but must keep the version compiled by Scala 3.
-   *  `scala/Function1$` is the companion object of `Function1`. It is not specialized and it
-   *  defines Scala 3 extension methods (`applyUsing`) that the Scala 2.13 version does not have.
+   *  These are the companion objects of the specialized `Function0`, `Function1` and `Function2`.
+   *  They are not specialized, and they define Scala 3 extension methods (`applyUsing`)
+   *  that the Scala 2.13 versions do not have.
+   *  (Scala 2.13 has no `Function0` and `Function2` companions now, but this keeps them safe if it adds them.)
    */
   lazy val filesToKeep = Set(
+    "scala/Function0$",
     "scala/Function1$",
+    "scala/Function2$",
   )
 }
