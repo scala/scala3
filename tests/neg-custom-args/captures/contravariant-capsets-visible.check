@@ -1,0 +1,26 @@
+-- Error: tests/neg-custom-args/captures/contravariant-capsets-visible.scala:10:27 -------------------------------------
+10 |  def mk1(io: File^) = Some((f: File^{io}) => ()) // error
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                       method mk1 needs an explicit result type because the type that is externally visible
+   |                       in other compilation units does not conform to the inferred type.
+   |
+   |                        Inferred type          : Some[(f: p.File^{io}) -> Unit]^{}
+   |                        Externally visible type: Some[(f: p.File) -> Unit]
+-- Error: tests/neg-custom-args/captures/contravariant-capsets-visible.scala:11:27 -------------------------------------
+11 |  def mk2(io: File^) = Some(sink[File^{io}]) // error
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |                       method mk2 needs an explicit result type because the type that is externally visible
+   |                       in other compilation units does not conform to the inferred type.
+   |
+   |                        Inferred type          : Some[p.File^{io} -> Unit]^{}
+   |                        Externally visible type: Some[p.File -> Unit]
+-- Error: tests/neg-custom-args/captures/contravariant-capsets-visible.scala:13:4 --------------------------------------
+13 |    val g = (f: File^{io}) => () // error
+   |    ^
+   |    method mk3 needs an explicit result type because the type that is externally visible
+   |    in other compilation units does not conform to the inferred type.
+   |
+   |     Inferred type          : Some[(f: p.File^{io}) -> Unit]^{}
+   |     Externally visible type: Some[(f: p.File) -> Unit]
+   |
+14 |    Some(g)
