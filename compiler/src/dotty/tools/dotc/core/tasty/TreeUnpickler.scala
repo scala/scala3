@@ -26,7 +26,7 @@ import typer.Checking.checkNonCyclic
 import typer.Nullables.*
 import util.Spans.*
 import util.{SourceFile, Property}
-import ast.{Trees, tpd, untpd}
+import ast.{Trees, TreeTypeMap, tpd, untpd}
 import Trees.*
 import Decorators.*
 import config.Feature
@@ -1537,6 +1537,48 @@ class TreeUnpickler(reader: TastyReader,
           case _ => // nestedSplice[T](quotes)
             tpd.Apply(fn, args)
 
+      /** Does `fn` in `Apply(fn, args)` need an extra `.apply` to typecheck now? This is the case
+       *  when reading the pre 3.10 tree, which represented PolyFunctions differently (see `curryPolyFunction`).
+       */
+      def isUncurriedPolyFunctionApply(fn: Tree): Boolean = fn match
+        case TypeApply(Select(qual, nme.apply), _) =>
+          !fn.tpe.widen.isInstanceOf[MethodType]
+          && qual.tpe.widen.derivesFrom(defn.PolyFunctionClass)
+        case _ => false
+
+      /** Convert a polymorphic closure in the representation used before 3.10:
+       *
+       *      { def $anonfun[Ts](ps): R = body; closure($anonfun) }
+       *
+       *  to the curried representation, where the type parameters and value
+       *  parameters belong to separate closures:
+       *
+       *      { def $anonfun[Ts]: (ps) => R = { def $anonfun(ps): R = body; closure($anonfun) }
+       *        closure($anonfun) }
+       */
+      def curryPolyClosure(tree: Block): Block = tree match
+        case Block(
+          (ddef @ DefDef(_, (tparams @ TypeDefs(_)) :: (vparams @ ValDefs(_)) :: Nil, _, _)) :: Nil,
+          closure @ Closure(Nil, meth, tpt))
+        if meth.symbol == ddef.symbol => // match the pre 3.10 shape
+          // mutate the ddef symbol and it's tree in place
+          val outer = ddef.symbol.asTerm
+          val poly = outer.info.asInstanceOf[PolyType]
+          val inner = newAnonFun(outer, poly.instantiate(tparams.map(_.symbol.typeRef)), outer.coord)
+          val innerClosure = tpd.Closure(inner, paramss =>
+            TreeTypeMap(
+              oldOwners = outer :: Nil, newOwners = inner :: Nil,
+              substFrom = vparams.map(_.symbol), substTo = paramss.head.map(_.symbol)
+            ).transform(ddef.rhs)
+          ).withSpan(ddef.span)
+          outer.info = poly.curryPolyFunction(defn.PolyFunctionClass)
+          outer.setParamss(tparams.map(_.symbol) :: Nil)
+          // reconstruct
+          val ddef1 = cpy.DefDef(ddef)(
+            paramss = tparams :: Nil, tpt = TypeTree(innerClosure.tpe), rhs = innerClosure)
+          cpy.Block(tree)(ddef1 :: Nil, tpd.Closure(Nil, meth, tpt).withSpan(closure.span))
+        case _ => tree
+
       def simplifyLub(tree: Tree): Tree =
         tree.overwriteType(tree.tpe.simplified)
         tree
@@ -1558,6 +1600,7 @@ class TreeUnpickler(reader: TastyReader,
               else if sym == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args) // decode pre 3.5.0 encoding
               else if sym == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args) // decode pre 3.5.0 encoding
               else if isSpuriousApply(fn, args) then fn
+              else if isUncurriedPolyFunctionApply(fn) then tpd.Apply(fn.select(nme.apply), args)
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTree(), until(end)(readTpt()))
@@ -1577,7 +1620,7 @@ class TreeUnpickler(reader: TastyReader,
               val exprReader = fork
               skipTree()
               readStats(ctx.owner, end,
-                (stats, ctx) => Block(stats, exprReader.readTree()(using ctx)))
+                (stats, ctx) => curryPolyClosure(Block(stats, exprReader.readTree()(using ctx))))
             case INLINED =>
               val exprReader = fork
               skipTree()
