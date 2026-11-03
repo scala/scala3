@@ -9,7 +9,7 @@ import org.junit.Test
  *
  *  Ported from the Scala 2 test `test/files/run/repl-completions.scala`.
  */
-class CompletionsCommandTests extends ReplTest:
+class CompletionsCommandTests extends ReplTest, SessionFileHelpers:
 
   private def completionLines(): List[String] =
     storedOutput().linesIterator.toList
@@ -73,10 +73,67 @@ class CompletionsCommandTests extends ReplTest:
     } andThen {
       storedOutput() // discard output
       run(":completions object O2 { val x = O.")
-      val lines = completionLines()
-      val expected = List("getFooBarZot", "x_y_x", "x_y_z").map(m => s"[completions] object O2 { val x = O.$m")
-      assertEquals(lines.toString, expected, lines.filter(l => expected.contains(l)))
-      assertTrue(lines.toString, lines.forall(_.startsWith("[completions] object O2 { val x = O.")))
+      assertEquals(
+        List("getFooBarZot", "x_y_x", "x_y_z").map(m => s"[completions] object O2 { val x = O.$m"),
+        completionLines())
+    }
+
+  @Test def leavesOutUniversalMembersWhenNothingTyped =
+    initially {
+      run(defineO)
+    } andThen {
+      storedOutput() // discard output
+      run(":completions O.")
+      assertEquals(
+        List("[completions] O.getFooBarZot", "[completions] O.x_y_x", "[completions] O.x_y_z"),
+        completionLines())
+    }
+
+  @Test def completesUniversalMembersOnceTyped =
+    initially {
+      run(defineO)
+    } andThen {
+      storedOutput() // discard output
+      run(":completions O.toStr")
+      assertEquals(List("[completions] O.toString"), completionLines())
+    }
+
+  @Test def ignoresTrailingWhitespace =
+    initially {
+      run(defineO)
+    } andThen {
+      storedOutput() // discard output
+      run(":completions O.x  ")
+      assertEquals(List("[completions] O.x_y_x", "[completions] O.x_y_z"), completionLines())
+    }
+
+  @Test def notRecordedBySave =
+    val target = tempFile()
+    initially {
+      run("val x = 1")
+    } andThen {
+      run(":completions x.")
+    } andThen {
+      run(s":save $target")
+      assertEquals(
+        s"""|$header
+            |$sep
+            |val x = 1""".stripMargin,
+        contentOf(target)
+      )
+    }
+
+  @Test def notReplayed =
+    initially {
+      run("val x = 1")
+    } andThen {
+      run(":completions x.")
+    } andThen {
+      storedOutput() // discard output
+      run(":replay")
+      val output = storedOutput()
+      assertTrue(output, output.contains("val x: Int = 1"))
+      assertFalse(output, output.contains("[completions]"))
     }
 
   @Test def completesCommandNames = initially {

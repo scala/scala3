@@ -24,7 +24,7 @@ import dotc.core.NameKinds.DefaultGetterName
 import dotc.core.NameOps.*
 import dotc.core.Names.Name
 import dotc.core.StdNames.*
-import dotc.core.Symbols.{Symbol, defn}
+import dotc.core.Symbols.*
 import dotc.core.SymbolLoaders
 import dotc.interfaces
 import dotc.interactive.Completion
@@ -373,23 +373,31 @@ class ReplDriver(settings: Array[String],
     cursor: Int,
     expr: String,
     state0: State,
-    displayLoadingErrors: String => Unit
+    displayError: String => Unit
   ): List[Completion] =
-    completionsWithOffset(cursor, expr, state0, displayLoadingErrors)._2
+    completionsWithOffset(cursor, expr, state0, displayError, includeUniversal = true)._2
 
   /** Extract possible completions at the index of `cursor` in `expr`, together
    *  with the offset in `expr` at which the completed word starts, i.e. the
    *  part of `expr` before the offset is kept and the rest is replaced by the
-   *  completion label.
+   *  completion label. Unless `includeUniversal` is set, members every value
+   *  has (see [[isUniversal]]) are left out when nothing has been typed yet
+   *  after the qualifier, e.g. for `xs.` but not for `xs.toS`.
    */
-  protected final def completionsWithOffset(cursor: Int, expr: String, state0: State): (Int, List[Completion]) =
-    completionsWithOffset(cursor, expr, state0, out.println(_))
+  protected final def completionsWithOffset(
+    cursor: Int,
+    expr: String,
+    state0: State,
+    includeUniversal: Boolean = true
+  ): (Int, List[Completion]) =
+    completionsWithOffset(cursor, expr, state0, out.println(_), includeUniversal)
 
   private def completionsWithOffset(
     cursor: Int,
     expr: String,
     state0: State,
-    displayLoadingErrors: String => Unit
+    displayError: String => Unit,
+    includeUniversal: Boolean
   ): (Int, List[Completion]) =
     if expr.startsWith(":") then
       val comps = ReplCommands.names.collect:
@@ -408,9 +416,13 @@ class ReplDriver(settings: Array[String],
           given Context = state.context.fresh.setCompilationUnit(unit)
           val srcPos = SourcePosition(file, Span(cursor))
           try
-            Completion.completions(srcPos)
+            val (offset, comps) = Completion.completions(srcPos)
+            val typedPrefix = expr.substring(offset, cursor)
+            if includeUniversal || typedPrefix.nonEmpty then (offset, comps)
+            else (offset, comps.filterNot(isUniversal))
           catch case NonFatal(_) =>
-            (cursor, List(Completion("<Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues>", "", Nil)))
+            displayError("Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues")
+            (cursor, Nil)
         }
         .getOrElse((cursor, Nil))
       // Candidate discovery can load symbols unrelated to the qualifier. Discard its
@@ -420,9 +432,26 @@ class ReplDriver(settings: Array[String],
         case error: Diagnostic.LoadingError => error
       if loadingErrors.nonEmpty then
         given Context = state.context
-        displayLoadingErrors(loadingErrors.map(ReplConsoleReporter.messageAndPos).mkString("\n"))
+        displayError(loadingErrors.map(ReplConsoleReporter.messageAndPos).mkString("\n"))
       result
   end completionsWithOffset
+
+  /** Is `completion` a member every value has, i.e. one inherited from `Any`/`AnyRef`
+   *  or added to every type by a `Predef` conversion or extension? `:completions`
+   *  leaves these out when no prefix has been typed, to reduce noise.
+   */
+  private def isUniversal(completion: Completion)(using Context): Boolean =
+    lazy val universalOwners = Set[Symbol](
+      defn.AnyClass, defn.ObjectClass,
+      requiredClass("scala.Predef.ArrowAssoc"),
+      requiredClass("scala.Predef.Ensuring"),
+      requiredClass("scala.Predef.StringFormat"))
+    lazy val universalMethods: Set[Symbol] =
+      List("nn", nme.runtimeChecked.toString, "->")
+        .flatMap(name => defn.ScalaPredefModule.info.member(name.toTermName).alternatives)
+        .map(_.symbol).toSet
+    completion.symbols.nonEmpty && completion.symbols.forall: sym =>
+      universalOwners.contains(sym.owner) || universalMethods.contains(sym)
 
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
@@ -807,8 +836,9 @@ class ReplDriver(settings: Array[String],
             out.println(s"Error: ${ex.getMessage}")
           queryState
 
-    case Completions(expr) =>
-      val (offset, comps) = completionsWithOffset(expr.length, expr, state)
+    case Completions(rawExpr) =>
+      val expr = rawExpr.stripTrailing()
+      val (offset, comps) = completionsWithOffset(expr.length, expr, state, includeUniversal = false)
       val lines = comps.map(c => s"[completions] ${expr.take(offset)}${c.label}").distinct.sorted
       // Editors (e.g. emacs-sbt-mode) collect the output of a single command, so the
       // candidates are echoed in one go rather than one `println` per candidate.

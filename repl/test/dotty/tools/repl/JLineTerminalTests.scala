@@ -10,6 +10,12 @@ import org.jline.utils.NonBlockingReader
 
 class JLineTerminalTests:
 
+  /** A throwaway history file, so tests never read or write the user's `~/.dotty_history`. */
+  private def tempHistoryFile(): java.nio.file.Path =
+    val file = java.nio.file.Files.createTempFile("repl_history", ".txt")
+    file.toFile.deleteOnExit()
+    file
+
   /** Build a `JLineTerminal` backed by piped streams we control, so the test
    *  works in CI (no TTY) and lets us verify the terminal's input is alive
    *  without depending on `System.in`.
@@ -24,7 +30,7 @@ class JLineTerminalTests:
         .streams(pis, sink)
         .dumb(true)
         .build()
-    val jlt = new JLineTerminal(terminal)
+    val jlt = new JLineTerminal(terminal, historyFile = tempHistoryFile())
     try test(jlt, pos)
     finally jlt.close()
 
