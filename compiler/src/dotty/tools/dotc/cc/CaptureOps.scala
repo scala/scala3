@@ -427,23 +427,6 @@ extension (tp: Type)
 
   def isArrayUnderStrictMut(using Context): Boolean = tp.classSymbol.isArrayUnderStrictMut
 
-  /** Drop @retains annotations everywhere, except in the bounds of type parameters
-   *  of polymorphic types, which are kept as they are pickled. For instance, `^` in
-   *  the bound `CapSet^` of `[C^]` says that `C` can be instantiated with any capture
-   *  set. Dropping it would make the bound `{}`.
-   */
-  def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
-    val tm = new TypeMap:
-      def apply(t: Type) = t match
-        case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
-          apply(parent)
-        case _ =>
-          mapOver(t)
-      override protected def mapOverLambda(tp: LambdaType) = tp match
-        case tp: PolyType => derivedLambdaType(tp)(tp.paramInfos, this(tp.resultType))
-        case _ => super.mapOverLambda(tp)
-    tm(tp)
-
   private def containsGlobal(c: GlobalCap, directly: Boolean)(using Context): Boolean =
     val search = new TypeAccumulator[Boolean]:
       def apply(x: Boolean, t: Type) =
