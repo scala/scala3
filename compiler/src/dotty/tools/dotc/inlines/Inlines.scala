@@ -1043,12 +1043,17 @@ object Inlines:
         flags &~= Override          // private override is illegal; if the inlined method was already override then we might make it private override by accident.
       else
         flags |= Override
-      sym.copy(
+      
+      val newSym = sym.copy(
         owner = ctx.owner,
         name = name,
         flags = flags &~ withoutFlags,
         info = inlinerTypeMap(sym.info),
-        coord = spanCoord(parent.span)).entered
+        coord = spanCoord(parent.span)
+      ).entered
+      
+      newSym.annotations = sym.annotations
+      newSym
 
     private def inlinedValDef(vdef: ValDef, inlinedSym: Symbol)(using Context): ValDef =
       val rhs =
