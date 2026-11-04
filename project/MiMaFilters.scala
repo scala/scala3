@@ -21,7 +21,6 @@ object MiMaFilters {
         // new experimental language feature: relaxed null checks under strictEquality (SIP-79)
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$relaxedNullChecks$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$relaxedNullChecks$"),
-      ),
         // new extension methods `applyUsing` on function types
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Function.applyUsing"),
         // `object Function1` is now compiled by Scala 3 instead of copied from Scala 2.13, so it is `Serializable`
