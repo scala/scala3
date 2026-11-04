@@ -136,7 +136,7 @@ import scala.language.implicitConversions
  *  combinedDefaulting(p("tenty-nine"))
  *
  *  // Int = -1
- *  combinedDefaulting(p(null: String))
+ *  combinedDefaulting(p(null.asInstanceOf[String]))
  *
  *  // Int = -100
  *  combinedDefaulting(throw new IllegalStateException)

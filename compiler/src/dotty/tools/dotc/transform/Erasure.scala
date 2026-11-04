@@ -601,7 +601,7 @@ object Erasure {
     }
 
     /** When erasing most TypeTrees we should not semi-erase value types.
-     *  This is not the case for [[DefDef#tpt]], [[ValDef#tpt]] and [[Typed#tpt]], they
+     *  This is not the case for `DefDef#tpt`, `ValDef#tpt` and `Typed#tpt`, they
      *  are handled separately by [[typedDefDef]], [[typedValDef]] and [[typedTyped]].
      */
     override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): TypeTree =
@@ -837,7 +837,7 @@ object Erasure {
       }
     }
 
-    /** Erase anonymous instances of specialized traits to $impl$ classes.
+    /** Erase anonymous instances of specialized traits to \$impl\$ classes.
      *  Erase polymorphic closure literals to the erasure of their bodies.
      */
     override def typedBlock(tree: untpd.Block, pt: Type)(using Context): Tree = tree.asInstanceOf[Block] match

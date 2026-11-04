@@ -136,7 +136,7 @@ object report:
     ctx.reporter.incomplete(Error(msg, pos.sourcePos))
 
   /** Log msg if settings.log contains the current phase.
-   *  See [[config.CompilerCommand#explainAdvanced]] for the exact meaning of
+   *  See `config.CompilerCommand#explainAdvanced` for the exact meaning of
    *  "contains" here.
    */
   def log(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =

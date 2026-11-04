@@ -12,7 +12,7 @@ object MiMaFilters {
 
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
-      Versions.mimaPreviousVersion -> Seq(
+      Versions.mimaPreviousVersion -> (Seq(
         // new annotation carrying the component names of Java records
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
         // new experimental language feature: method block end markers (SIP-77)
@@ -22,7 +22,16 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Using.unmanaged"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Using.managed"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Using.track"),
-      ),
+        // new extension methods `applyUsing` on function types
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Function.applyUsing"),
+        // `object Function1` is now compiled by Scala 3 instead of copied from Scala 2.13, so it is `Serializable`
+        ProblemFilters.exclude[MissingTypesProblem]("scala.Function1$"),
+      ) ++ (0 to 22).flatMap { n =>
+        // `applyUsing` for arity `n` is defined in the companion object of `FunctionN`,
+        // which is a new object for all arities except 1
+        ProblemFilters.exclude[DirectMissingMethodProblem](s"scala.Function$n.applyUsing") +:
+        (if (n == 1) Nil else Seq(ProblemFilters.exclude[MissingClassProblem](s"scala.Function$n$$")))
+      }),
 
       // Additions since last LTS
       Versions.mimaPreviousLTSVersion -> Seq(

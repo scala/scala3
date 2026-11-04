@@ -161,7 +161,7 @@ object TypeErasure:
    *  during ElimErasedValueType. This type is outside the normal Scala class
    *  hierarchy: it is a subtype of no other type and is a supertype only of
    *  Nothing. This is because this type is only useful for type adaptation (see
-   *  [[Erasure.Boxing#adaptToType]]).
+   *  `Erasure.Boxing#adaptToType`).
    *
    *  @param   tycon             A TypeRef referring to the value class symbol
    *  @param   erasedUnderlying  The erased type of the single field of the value class
@@ -227,7 +227,7 @@ object TypeErasure:
     erasureFn(sourceLanguage = SourceLanguage.Scala3, semiEraseVCs = false, isConstructor = false, isSymbol = false, inSigName = false)(tp)(using preErasureCtx)
 
   /** The value class erasure of a Scala type, where value classes are semi-erased to
-   *  ErasedValueType (they will be fully erased in [[ElimErasedValueType]]).
+   *  ErasedValueType (they will be fully erased in `ElimErasedValueType`).
    *
    *  @param tp            The type to erase.
    */
@@ -732,7 +732,7 @@ import TypeErasure.*
  *  @param sourceLanguage Adapt our erasure rules to mimic what the given language
  *                        would do.
  *  @param semiEraseVCs   If true, value classes are semi-erased to ErasedValueType
- *                        (they will be fully erased in [[ElimErasedValueType]]).
+ *                        (they will be fully erased in `ElimErasedValueType`).
  *                        If false, they are erased like normal classes.
  *  @param isConstructor  Argument forms part of the type of a constructor
  *  @param isSymbol       If true, the type being erased is the info of a symbol.

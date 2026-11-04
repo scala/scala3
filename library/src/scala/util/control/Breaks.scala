@@ -73,7 +73,7 @@ import scala.language.`2.13`
  *  val xs = (1 to 10).toList
  *
  *  breakable {
- *    for (x <- xs) Try { if (quit) break else f(x) }.foreach(println)
+ *    for (x <- xs) Try { if (quit) break() else f(x) }.foreach(println)
  *  }
  *  ```
  */
@@ -135,7 +135,7 @@ class Breaks {
  *
  *  breakable {
  *    for i <- 1 to 10 do
- *      if i == 5 then break
+ *      if i == 5 then break()
  *  }
  *  ```
  */

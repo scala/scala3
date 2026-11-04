@@ -56,3 +56,13 @@ trait Function7[-T1, -T2, -T3, -T4, -T5, -T6, -T7, +R] extends AnyRef {
   }
   override def toString(): String = "<function7>"
 }
+
+object Function7 {
+
+  extension [T1, T2, T3, T4, T5, T6, T7, R](f: (T1, T2, T3, T4, T5, T6, T7) => R)
+    /** Applies this function to the arguments taken from the context.
+     *  @return the result of the function application
+     */
+    def applyUsing(using v1: T1, v2: T2, v3: T3, v4: T4, v5: T5, v6: T6, v7: T7): R = f(v1, v2, v3, v4, v5, v6, v7)
+
+}
