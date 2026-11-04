@@ -4,10 +4,11 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.IllegalUseOfSpecialized
-import dotty.tools.dotc.core.Symbols.defn
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.NameKinds.ContextBoundParamName
 import dotty.tools.dotc.core.Contexts.ctx
@@ -15,7 +16,7 @@ import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.transform.Specialization.isSpecializationCandidate
 import dotty.tools.dotc.transform.Specialization.isSpecializedTrait
-import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.util.SrcPos
 
 object CheckInlineTraits:
   val name: String = "checkInlineTraits"
@@ -33,45 +34,40 @@ class CheckInlineTraits extends MiniPhase:
     override def runsAfter: Set[String] = Set("typer")
 
     override def transformIdent(tree: Ident)(using Context): Tree = {
-      val sym = tree.symbol
-      if !sym.isType then 
+      if !tree.name.isTypeName then
+        val sym = tree.symbol
         if sym == defn.SpecializedModule && (ctx.owner ne defn.SpecializedModule.moduleClass) then
           report.error(IllegalUseOfSpecialized(), tree.srcPos)
-        
         if sym == defn.SpecializedModule_apply then 
           registerSpecializationsInUnit
 
       tree
     }
 
-    private def checkInlTraitPrivateMemberIsLocal(tree: ValOrDefDef)(using Context): Unit =
-      val sym = tree.symbol
+    private def checkInlTraitPrivateMemberIsLocal(sym: Symbol, srcPos: SrcPos)(using Context): Unit =
       if sym.exists && !sym.is(Synthetic) && sym.owner.isInlineTrait && sym.isAllOf(Private, butNot = Local) then
         report.error(
-          em"""
-            implementation restriction: inline traits cannot have non-local private members. 
-            This also means no retained inline methods.
+          """
+          implementation restriction: inline traits cannot have non-local private members.
+          This also means no retained inline methods.
           """, 
-          tree.srcPos
+          srcPos
         )
   
           
-    override def transformValDef(tree: ValDef)(using Context): Tree = {
-      checkInlTraitPrivateMemberIsLocal(tree)
-
+    override def transformValDef(tree: ValDef)(using Context): Tree =
+      checkInlTraitPrivateMemberIsLocal(tree.symbol, tree.srcPos)
       tree
-    }
 
     override def transformDefDef(tree: DefDef)(using Context): Tree = {
-      checkInlTraitPrivateMemberIsLocal(tree)
-
-      val sym = tree.symbol 
+      val sym = tree.symbol
+      checkInlTraitPrivateMemberIsLocal(sym, tree.srcPos)
       val isConstructorOfNonInlineType = sym.isConstructor && !sym.owner.is(Inline)
       val isRegularDefDef = !sym.isConstructor && !sym.is(Inline) 
       if isConstructorOfNonInlineType || isRegularDefDef then
         tree.paramss.flatten.foreach {
           param => if SpecializedEvidence.unapply(param.tpe.widen.dealias).nonEmpty then 
-            report.error(s"Only inline traits and inline functions may take Specialized type parameters", param.srcPos)
+            report.error("Only inline traits and inline functions may take Specialized type parameters", param.srcPos)
         }
 
       tree
@@ -89,13 +85,14 @@ class CheckInlineTraits extends MiniPhase:
     }
 
     override def transformTypeDef(tree: TypeDef)(using Context): Tree = {
+      val sym = tree.symbol
+      if sym.isInlineTrait then
+        registerSpecializationsInUnit
+
       val containUseOfSpecialized = 
         tree.rhs.tpe.existsPart(t => t.typeSymbol == defn.SpecializedClass.asType) 
-      if containUseOfSpecialized && (tree.symbol ne defn.SpecializedClass) then
+      if containUseOfSpecialized && (sym ne defn.SpecializedClass) then
         report.error(IllegalUseOfSpecialized(), tree.srcPos)
-        
-      if tree.symbol.isInlineTrait then 
-        registerSpecializationsInUnit
 
       tree
     }
@@ -131,7 +128,7 @@ class CheckInlineTraits extends MiniPhase:
               .foreach(spec => 
                 if spec.hasSpecializedParams then
                   // Only allowed to contain evidence parameters
-                  if anon.body.filterNot(x => x.symbol.name.is(ContextBoundParamName)).nonEmpty then 
+                  if !anon.body.forall(x => x.symbol.name.is(ContextBoundParamName)) then
                     report.error(
                       """
                       Anonymous classes acting as instances of Specialized traits may not have additional members; 
@@ -144,7 +141,7 @@ class CheckInlineTraits extends MiniPhase:
                     case (obj :: parentsOfSpecTrait) :+ (app@Apply(_, _)) =>
                       val isFirstParentObject = obj.symbol.owner == ctx.definitions.ObjectClass
                       val validOtherParents =
-                        parentsOfSpecTrait.forall(x => spec.symbol.asClass.baseClasses.exists(p => p == x.symbol.owner))
+                        parentsOfSpecTrait.forall(x => spec.symbol.asClass.baseClasses.contains(x.symbol.owner))
                       
                       isFirstParentObject && validOtherParents
                     case _ => false
@@ -154,7 +151,8 @@ class CheckInlineTraits extends MiniPhase:
                     report.error(
                       """
                       Anonymous classes acting as instances of Specialized traits may not mix in other traits; 
-                      you can make a named object instead if you like.""", 
+                      you can make a named object instead if you like.
+                      """,
                       anon.srcPos
                     )
 

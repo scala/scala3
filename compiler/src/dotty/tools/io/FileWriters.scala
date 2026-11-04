@@ -220,23 +220,17 @@ object FileWriters {
       checkName(filePath.getFileName)
     }
 
-    // the common case is that we are creating a new file, and on MS Windows the create and truncate is expensive
-    // because there is not an options in the Windows API that corresponds to this so the truncate is applied as a separate call
-    // even if the file is new.
-    // as this is rare, it's best to always try to create a new file, and it that fails, then open with truncate if that fails
-    // TODO: The comment above is very old. It would be good to check this. (Win32's CreateFile can take CREATE_ALWAYS which truncates, so... why would that not be ok?)
-    private val fastOpenOptions = Array(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
-    private val fallbackOpenOptions = Array(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
+    private val openOptions = Array(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
 
     override def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile = {
       val path = base.resolve(relativePath)
       try {
         ensureDirForPath(base, path)
         try
-          if isWindows then
-            try Files.write(path, bytes, fastOpenOptions*)
-            catch case _: FileAlreadyExistsException => Files.write(path, bytes, fallbackOpenOptions*)
-          else Files.write(path, bytes, fallbackOpenOptions*)
+          // If the path points to a symlink, we want to replace the symlink itself (not its target).
+          // The only way is `deleteIfExists`; `LinkOption.NOFOLLOW_LINKS` instead means "throw if you find a symlink at that path".
+          Files.deleteIfExists(path)
+          Files.write(path, bytes, openOptions*)
         catch
           case ex: ClosedByInterruptException =>
             try Files.deleteIfExists(path) // don't leave an empty of half-written classfile around after an interrupt

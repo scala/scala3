@@ -22,6 +22,7 @@ import StdNames.nme
 import annotation.constructorOnly
 import annotation.tailrec
 import dotty.tools.dotc.cc.boxed
+import scala.collection.mutable
 
 object Recheck:
   import tpd.*
@@ -169,7 +170,7 @@ abstract class Recheck extends Phase, SymTransformer:
   /** A map from NamedTypes to the denotations they had before this phase.
    *  Needed so that we can `reset` them after this phase.
    */
-  val prevSelDenots = util.HashMap[NamedType, Denotation]()
+  val prevSelDenots = mutable.Map.empty[NamedType, Denotation]
 
   def newRechecker()(using Context): Rechecker
 

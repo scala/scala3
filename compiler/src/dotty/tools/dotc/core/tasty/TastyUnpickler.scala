@@ -84,7 +84,7 @@ class TastyUnpickler(protected val reader: TastyReader, isBestEffortTasty: Boole
   def this(bytes: Array[Byte]) = this(new TastyReader(bytes), false)
   def this(bytes: Array[Byte], isBestEffortTasty: Boolean) = this(new TastyReader(bytes), isBestEffortTasty)
 
-  private val sectionReader = new mutable.HashMap[String, TastyReader]
+  private val sectionReader = mutable.Map.empty[String, TastyReader]
   val nameAtRef: mutable.ArrayBuffer[TermName] = new mutable.ArrayBuffer[TermName]
 
   private def readName(): TermName = nameAtRef(readNat())
@@ -139,6 +139,7 @@ class TastyUnpickler(protected val reader: TastyReader, isBestEffortTasty: Boole
     result
   }
 
+  // This advances the reader position, it cannot be a lazy val or def!
   val header: CommonTastyHeader =
     if isBestEffortTasty then
       new CommonTastyHeader(new BestEffortTastyHeaderUnpickler(scala3CompilerConfig, reader).readFullHeader())

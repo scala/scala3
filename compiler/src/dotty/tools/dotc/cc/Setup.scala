@@ -140,7 +140,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   /** A set containing symbols whose denotation is in train of being updated
    *  Used to suppress transforming the denotations of these symbols.
    */
-  private val toBeUpdated = new mutable.HashSet[Symbol]
+  private val toBeUpdated = mutable.Set.empty[Symbol]
 
   /** Drops `private` from the flags of `symd` provided it is
    *  a parameter accessor that's not `constructorOnly` or `uncheckedCaptured`
@@ -150,7 +150,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   private def newFlagsFor(symd: SymDenotation)(using Context): FlagSet =
 
     object containsCovarRetains extends TypeAccumulator[Boolean]:
-      val seen = util.HashSet[Symbol]()
+      val seen = mutable.Set.empty[Symbol]
       def apply(x: Boolean, tp: Type): Boolean =
         if x then true
         else if tp.derivesFromCapability && variance >= 0 then true
@@ -589,9 +589,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   extension (sym: Symbol) def nextInfo(using Context): Type =
     atPhase(thisPhase.next)(sym.info)
 
-  val capturedBy: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
+  val capturedBy: mutable.Map[Symbol, Symbol] = mutable.Map.empty
 
-  val anonFunCallee: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
+  val anonFunCallee: mutable.Map[Symbol, Symbol] = mutable.Map.empty
 
   /** A traverser that adds knownTypes and updates symbol infos */
   def setupTraverser(checker: CheckerAPI) = new TreeTraverserWithPreciseImportContexts:
@@ -1082,7 +1082,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 if !r.isTerminalCapability
               yield r
             val remaining = CaptureSet(others*)
-            check(remaining, remaining)
+            if remaining.accountsFor(ref) then
+              // Elements that `ref` subsumes but not vice versa, such as projections of `ref`,
+              // are redundant themselves. They should not make `ref` redundant together, as in
+              // `{x, x.only[C], x.except[C]}`, since dropping `ref` would keep the pieces
+              // instead of the whole.
+              val notBelow = others.filterNot(r => ref.subsumes(r) && !r.subsumes(ref))
+              val dom = if notBelow.length == others.length then remaining else CaptureSet(notBelow*)
+              if (dom eq remaining) || dom.accountsFor(ref) then
+                report.warning(em"redundant capture: $dom already accounts for $ref", pos)
       end for
     catch case ex: IllegalCaptureRef =>
       report.error(em"Illegal capture reference: ${ex.getMessage}", tpt.srcPos)

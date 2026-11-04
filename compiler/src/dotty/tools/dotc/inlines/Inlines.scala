@@ -499,6 +499,31 @@ object Inlines:
         ref(meth).appliedToArgss(prefss).withSpan(mdef.rhs.span.startPos))(
         using ctx.withOwner(retainer)))
     .showing(i"retainer for $meth: $result", inlining)
+  
+  /** Similar to `bodyRetainer`, a method that keeps track of the body that is kept at runtime,
+   *  except synthesised for indirect overrides, and put into a downstream class, e.g. in:
+   *  
+   *    class Foo:
+   *      inline def bar = True
+   *    class Bar:
+   *      def bar
+   *      def test = bar
+   *    class Test extends Foo, Bar
+   * 
+   * `bar$indirectRetainedBody` is added to `Test`, and rewritten to `bar` in erasure.
+   */
+  def indirectBodyRetainer(sym: Symbol, impl: Symbol, cls: ClassSymbol)(using Context): DefDef =
+    val retainer = impl.asTerm.copy(
+        owner = cls,
+        name = NameKinds.indirectRetainerName(sym.name.asTermName),
+        flags = (impl.flags &~ (Inline | Macro | Override | AbsOverride)) | Private,
+        info = sym.info.asSeenFrom(cls.thisType, sym.owner),
+        coord = cls.coord
+      ).asTerm.entered
+      DefDef(retainer, prefss =>
+        inlineCall(
+          This(cls).select(impl).appliedToArgss(prefss).withSpan(cls.span))(
+            using ctx.withOwner(retainer)))
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: Inlined)(using Context): Tree =
@@ -689,7 +714,7 @@ object Inlines:
 
       constructor.appliedTo(
         lit(error.message),
-        lit(error.pos.lineContent.reverse.dropWhile("\n ".contains).reverse),
+        lit(if error.pos.source.textContent().length > 0 then error.pos.lineContent.reverse.dropWhile("\n ".contains).reverse else "<no source available>"),
         lit(error.pos.column),
         if kind == ErrorKind.Parser then parserErrorKind else typerErrorKind)
 
@@ -1018,12 +1043,17 @@ object Inlines:
         flags &~= Override          // private override is illegal; if the inlined method was already override then we might make it private override by accident.
       else
         flags |= Override
-      sym.copy(
+      
+      val newSym = sym.copy(
         owner = ctx.owner,
         name = name,
         flags = flags &~ withoutFlags,
         info = inlinerTypeMap(sym.info),
-        coord = spanCoord(parent.span)).entered
+        coord = spanCoord(parent.span)
+      ).entered
+      
+      newSym.annotations = sym.annotations
+      newSym
 
     private def inlinedValDef(vdef: ValDef, inlinedSym: Symbol)(using Context): ValDef =
       val rhs =
@@ -1110,6 +1140,9 @@ object Inlines:
             ctx.inlineTraitState.registerInlineOrigin(newSym, child, parentSym)
 
             tpd.ClassDefWithParents(newSym.asClass, ctor, tmpl1.parents, tmpl1.body)
+          case tree @ Return(expr, from) 
+            if ctx.owner.is(Method) && ctx.owner.overriddenSymbol(from.symbol.enclosingClass.asClass) == from.symbol =>
+              cpy.Return(tree)(expr = expr, from = Ident(ctx.owner.termRef))
           case tree => tree
         })
 
@@ -1161,7 +1194,7 @@ object Inlines:
     // For a class symbol created during inlining of an inline trait,
     // the chain of inlined traits which produced it. We don't actually care about the order. 
     // Used as a "seen list" for cycle checking. Persists across invocations of InlineParentTrait
-    val inlineOrigins: mutable.Map[Symbol, Set[Symbol]] = mutable.HashMap[Symbol, Set[Symbol]]().withDefaultValue(Set.empty),
+    val inlineOrigins: mutable.Map[Symbol, Set[Symbol]] = mutable.Map.empty[Symbol, Set[Symbol]].withDefaultValue(Set.empty),
     val inlineTraitsPhase: InlineTraitState.InlineContext = InlineTraitState.InlineContext.None
   ):
 

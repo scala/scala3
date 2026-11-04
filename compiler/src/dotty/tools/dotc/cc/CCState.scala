@@ -21,7 +21,7 @@ class CCState:
   /** Warnings relating to upper approximations of capture sets with
    *  existentially bound variables.
    */
-  val approxWarnings: mutable.ListBuffer[Message] = mutable.ListBuffer()
+  val approxWarnings: mutable.ListBuffer[Message] = mutable.ListBuffer.empty
 
   // ------ BiTypeMap adjustment -----------------------
 

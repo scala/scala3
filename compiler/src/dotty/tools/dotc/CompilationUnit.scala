@@ -46,7 +46,7 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   var sourceVersion: Option[SourceVersion] = None
 
   /** Pickled TASTY binaries, indexed by class. */
-  var pickled: Map[ClassSymbol, () => Array[Byte]] = Map()
+  var pickled: Map[ClassSymbol, () => Array[Byte]] = Map.empty
 
   /** The fresh name creator for the current unit.
    *  FIXME(#7661): This is not fine-grained enough to enable reproducible builds,
@@ -61,7 +61,7 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
 
   /** Set to `true` if there are inline traits (with or without Specialized context bounds)
    *  This is used by:
-   *  DesugarSpecializedTraits, SpecializeInlineTraits, PruneInlinedMethods, PruneInlineTraits
+   *  DesugarSpecializedTraits, SpecializeInlineTraits, PruneInlineTraits
    */
   var hasSpecializations: Boolean = false
 
@@ -220,7 +220,7 @@ object CompilationUnit {
       if tree.symbol.is(Flags.Inline) then
         containsInline = true
       tree match
-        case _: tpd.Quote =>
+        case _: tpd.Quote | _: tpd.QuotePattern =>
           containsQuote = true
         case tree: tpd.Apply if tree.symbol == defn.QuotedTypeModule_of =>
           containsQuote = true

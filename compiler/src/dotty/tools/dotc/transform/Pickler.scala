@@ -352,9 +352,9 @@ class Pickler extends Phase {
   }
 
   // Maps that keep a record if -Ytest-pickler is set.
-  private val beforePickling = new mutable.HashMap[ClassSymbol, String]
-  private val printedTasty = new mutable.HashMap[ClassSymbol, String]
-  private val pickledBytes = new mutable.HashMap[ClassSymbol, (CompilationUnit, Array[Byte])]
+  private val beforePickling = mutable.Map.empty[ClassSymbol, String]
+  private val printedTasty = mutable.Map.empty[ClassSymbol, String]
+  private val pickledBytes = mutable.Map.empty[ClassSymbol, (CompilationUnit, Array[Byte])]
 
   /** Drop any elements of this list that are linked module classes of other elements in the list */
   private def dropCompanionModuleClasses(clss: List[ClassSymbol])(using Context): List[ClassSymbol] = {

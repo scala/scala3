@@ -1,28 +1,28 @@
--- [E007] Type Mismatch Error: tests/neg/polymorphic-erased-functions-types.scala:3:28 ---------------------------------
+-- [E007] Type Mismatch Error: tests/neg/polymorphic-erased-functions-types.scala:3:35 ---------------------------------
 3 |def t1a: [T] => T => Unit = [T] => (erased t: T) => () // error
-  |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |                            Found:    [T] => (erased t: T) => Unit
-  |                            Required: [T] => (x$1: T) => Unit
+  |                                   ^^^^^^^^^^^^^^^^^^^
+  |                                   Found:    (erased t: T) => Unit
+  |                                   Required: T => Unit
   |
   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/polymorphic-erased-functions-types.scala:4:40 ---------------------------------
+-- [E007] Type Mismatch Error: tests/neg/polymorphic-erased-functions-types.scala:4:47 ---------------------------------
 4 |def t1b: [T] => (erased t: T) => Unit = [T] => (t: T) => () // error
-  |                                        ^^^^^^^^^^^^^^^^^^^
-  |                                        Found:    [T] => (t: T) => Unit
-  |                                        Required: [T] => (erased t: T) => Unit
+  |                                               ^^^^^^^^^^^^
+  |                                               Found:    T => Unit
+  |                                               Required: (erased t: T) => Unit
   |
   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/polymorphic-erased-functions-types.scala:6:36 ---------------------------------
+-- [E007] Type Mismatch Error: tests/neg/polymorphic-erased-functions-types.scala:6:46 ---------------------------------
 6 |def t2a: [T, U] => (T, U) => Unit = [T, U] => (t: T, erased u: U) => () // error
-  |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |                                    Found:    [T, U] => (t: T, erased u: U) => Unit
-  |                                    Required: [T, U] => (x$1: T, x$2: U) => Unit
+  |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                                              Found:    (t: T, erased u: U) => Unit
+  |                                              Required: (T, U) => Unit
   |
   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/polymorphic-erased-functions-types.scala:7:49 ---------------------------------
+-- [E007] Type Mismatch Error: tests/neg/polymorphic-erased-functions-types.scala:7:59 ---------------------------------
 7 |def t2b: [T, U] => (t: T, erased u: U) => Unit = [T, U] => (t: T, u: U) => () // error
-  |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |                                                 Found:    [T, U] => (t: T, u: U) => Unit
-  |                                                 Required: [T, U] => (t: T, erased u: U) => Unit
+  |                                                           ^^^^^^^^^^^^^^^^^^
+  |                                                           Found:    (T, U) => Unit
+  |                                                           Required: (t: T, erased u: U) => Unit
   |
   | longer explanation available when compiling with `-explain`

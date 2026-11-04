@@ -122,7 +122,12 @@ object PrepareInlineable {
             val accessor = useAccessor(tree)
             if tree != accessor then
               checkUnstableAccessor(tree, accessor.symbol)
-            accessor
+              // Keep the member's path-dependent type (e.g. `ctx.T`). The receiver of a private inline
+              // method is always typed as its owner class (see the upcast in Inliner), so the path is valid.
+              if inlineSym.is(Private) && tree.symbol.isStableMember && !tree.symbol.is(Method) then
+                accessor.ensureConforms(tree.tpe)
+              else accessor
+            else accessor
         case _ =>
           tree
       }
@@ -188,6 +193,7 @@ object PrepareInlineable {
           def addQualType(tp: Type): Type = tp match {
             case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
             case tp: ExprType => addQualType(tp.resultType)
+            case tp if qualType.typeSymbol.is(Package) => MethodType(Nil, tp)
             case tp => MethodType(qualType.simplified :: Nil, tp)
           }
 
@@ -210,7 +216,8 @@ object PrepareInlineable {
           val (leadingTypeArgs, otherArgss) = splitArgs(argss)
           val argss1 = joinArgs(
             localRefs.map(TypeTree(_)) ++ leadingTypeArgs, // TODO: pass type parameters in two sections?
-            (qual :: Nil) :: otherArgss
+            if qualType.typeSymbol.is(Package) then Nil :: otherArgss
+            else (qual :: Nil) :: otherArgss
           )
           ref(accessor).appliedToArgss(argss1).withSpan(tree.span)
 

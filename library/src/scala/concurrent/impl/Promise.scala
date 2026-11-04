@@ -485,12 +485,13 @@ private[concurrent] object Promise {
     // submitWithValue *happens-before* run(), through ExecutionContext.execute.
     // Invariant: _arg is `null`, _ec is non-null. `this` ne Noop.
     // requireNonNull(resolved) will hold as guarded by `resolve`
+    @nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
     final def submitWithValue(resolved: Try[F]): this.type = {
       _arg = resolved
       val e = _ec
       try e.nn.execute(this) /* Safe publication of _arg, _fun, _ec */
       catch {
-        case NonFatal(t) =>
+        case t: Throwable =>
           _fun = null // allow to GC
           _arg = null // see above
           _ec  = null // see above again
@@ -513,6 +514,7 @@ private[concurrent] object Promise {
     }
 
     // Gets invoked by the ExecutionContext, when we have a value to transform.
+    @nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
     override final def run(): Unit = {
       val v   = _arg.nn
       val fun = _fun.nn
@@ -565,7 +567,7 @@ private[concurrent] object Promise {
         if (resolvedResult ne null)
           tryComplete0(get(), resolvedResult.asInstanceOf[Try[T]]) // T is erased anyway so we won't have any use for it above
       } catch {
-        case NonFatal(t) => handleFailure(t, ec)
+        case t: Throwable => handleFailure(t, ec)
       }
     }
   }

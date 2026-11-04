@@ -45,6 +45,11 @@ class BetaReduce extends MiniPhase:
     if app1 ne app then report.log(i"beta reduce $app -> $app1")
     app1
 
+  override def transformTypeApply(app: TypeApply)(using Context): Tree =
+    val app1 = BetaReduce(app)
+    if app1 ne app then report.log(i"beta reduce $app -> $app1")
+    app1
+
 object BetaReduce:
   import ast.tpd.*
 
@@ -64,54 +69,48 @@ object BetaReduce:
    *
    *  Similarly, rewrites type applications
    *
-   *    ([X1, ..., Xm] => (x1, ..., xn) => b).apply[T1, .., Tm](e1, ..., en)
+   *    ([X1, ..., Xm] => b).apply[T1, .., Tm]
    *
    *  to
    *
-   *    type X1 = T1; ...; type Xm = Tm;val/def x1 = e1; ...; val/def xn = en; b
+   *    type X1 = T1; ...; type Xm = Tm; b
    *
    *  This beta-reduction preserves the integrity of `Inlined` tree nodes.
    */
-  def apply(tree: Tree)(using Context): Tree =
+  def apply(tree: Tree)(using Context): Tree = {
     val bindingsBuf = new ListBuffer[DefTree]
-    def recur(fn: Tree, argss: List[List[Tree]]): Option[Tree] = fn match
+
+    def recur(fn: Tree, args: List[Tree]): Option[Tree] = fn match
       case Block((ddef : DefDef) :: Nil, closure: Closure) if ddef.symbol == closure.meth.symbol =>
-        reduceApplication(ddef, argss, bindingsBuf)
+        reduceApplication(ddef, args :: Nil, bindingsBuf)
       case Block((TypeDef(_, template: Template)) :: Nil, Typed(Apply(Select(New(_), _), _), _)) if template.constr.rhs.isEmpty =>
         template.body match
-          case (ddef: DefDef) :: Nil => reduceApplication(ddef, argss, bindingsBuf)
+          case (ddef: DefDef) :: Nil => reduceApplication(ddef, args :: Nil, bindingsBuf)
           case _ => None
       case Block(stats, expr) if stats.forall(isPureBinding) =>
-        recur(expr, argss).map(cpy.Block(fn)(stats, _))
+        recur(expr, args).map(cpy.Block(fn)(stats, _))
       case fn @ Inlined(call, bindings, expr) if bindings.forall(isPureBinding) =>
-        recur(expr, argss).map(cpy.Inlined(fn)(call, bindings, _))
+        recur(expr, args).map(cpy.Inlined(fn)(call, bindings, _))
       case Typed(expr, tpt) =>
-        recur(expr, argss)
+        recur(expr, args)
       case TypeApply(Select(expr, nme.asInstanceOfPM), List(tpt)) =>
-        recur(expr, argss)
+        recur(expr, args)
       case _ => None
-    // The reduced body's type may be narrower than the apply's result type when
-    // an opaque type was transparent inside the lambda but not at the call site
-    // (see #25754). Cast back so callers see the originally declared type.
-    def adaptReduced(reduced: Tree, expectedTpe: Type): Tree =
-      if reduced.tpe <:< expectedTpe then reduced
-      else reduced.cast(expectedTpe)
+
+    def reduce(fn: Tree, args: List[Tree]): Tree = recur(fn, args) match
+      case Some(reduced) =>
+        seq(bindingsBuf.result(), reduced.ensureConforms(tree.tpe)).withSpan(tree.span)
+      case None =>
+        tree
 
     tree match
       case Apply(Select(fn, nme.apply), args) if defn.isFunctionNType(fn.tpe) =>
-        recur(fn, List(args)) match
-          case Some(reduced) =>
-            seq(bindingsBuf.result(), adaptReduced(reduced, tree.tpe)).withSpan(tree.span)
-          case None =>
-            tree
-      case Apply(TypeApply(Select(fn, nme.apply), targs), args) if fn.tpe.typeSymbol eq dotc.core.Symbols.defn.PolyFunctionClass =>
-        recur(fn, List(targs, args)) match
-          case Some(reduced) =>
-            seq(bindingsBuf.result(), adaptReduced(reduced, tree.tpe)).withSpan(tree.span)
-          case None =>
-            tree
+        reduce(fn, args)
+      case TypeApply(Select(fn, nme.apply), targs) if fn.tpe.typeSymbol eq defn.PolyFunctionClass =>
+        reduce(fn, targs)
       case _ =>
         tree
+  }
 
   /** Beta-reduces a call to `ddef` with arguments `args` and registers new bindings.
    *  @return optionally, the expanded call, or none if the actual argument

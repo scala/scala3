@@ -14,7 +14,7 @@
 -- Error: tests/neg-custom-args/captures/i21401.scala:16:66 ------------------------------------------------------------
 16 |  val leaked: [R, X <: Boxed[IO^] -> R] -> (op: X) -> R = usingIO[Res](mkRes) // error
    |                                                                  ^^^
-   |     Type variable R of method usingIO cannot be instantiated to [R, X <: Boxed[IO^] -> R] => (op: X) -> R since
+   |     Type variable R of method usingIO cannot be instantiated to [R, X <: Boxed[IO^] -> R] -> (op: X) -> R since
    |     the part IO^ of that type captures the root capability `any`.
    |
    |     where:    ^ refers to the root capability caps.any

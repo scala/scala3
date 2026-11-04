@@ -1738,7 +1738,7 @@ object Scanners {
     knownWidth = width
 
     /** Other indendation widths > width of lines in the same region */
-    var otherIndentWidths: Set[IndentWidth] = Set()
+    var otherIndentWidths: Set[IndentWidth] = Set.empty
 
     override def coversIndent(w: IndentWidth) = width == w || otherIndentWidths.contains(w)
   end Indented

@@ -19,6 +19,7 @@ import config.Feature
 import NameKinds.{TryOwnerName, DefaultGetterName}
 import TypeOps.AsSeenFromMap
 import typer.ProtoTypes.WildcardSelectionProto
+import scala.collection.mutable
 
 /** Are we at checkCaptures phase? */
 def isCaptureChecking(using Context): Boolean =
@@ -511,8 +512,7 @@ extension (tp: Type)
    *  result type?
    */
   def hasCapInResult(using Context): Boolean =
-    val (mt: MethodicType) = tp.stripPoly.runtimeChecked
-    mt.resType.spanCaptureSet.containsGlobalOrLocalCap
+    tp.asInstanceOf[MethodOrPoly].resType.spanCaptureSet.containsGlobalOrLocalCap
 
   /** The implied captures of a lambda that come from its result type.
    *  This is the set that needs to be added to a lambda type to ensure
@@ -999,7 +999,7 @@ object ContainsParam:
 /** A class encapsulating the accumulator logic needed for `CaptureSet.ofTypeDeeply`.
  */
 abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
-  val seen = util.HashSet[Symbol]()
+  val seen = mutable.Set.empty[Symbol]
 
   protected def capturingCase(acc: T, parent: Type, refs: CaptureSet, boxed: Boolean): T
 

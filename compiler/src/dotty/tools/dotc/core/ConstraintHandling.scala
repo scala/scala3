@@ -602,8 +602,8 @@ trait ConstraintHandling {
    *  and other types to start with).
    */
   def dropTransparentTraits(tp: Type, bound: Type)(using Context): Type =
-    var kept: Set[Type] = Set()      // types to keep since otherwise bound would not fit
-    var dropped: List[Type] = List() // the types dropped so far, last one on top
+    var kept: Set[Type] = Set.empty      // types to keep since otherwise bound would not fit
+    var dropped: List[Type] = List.empty // the types dropped so far, last one on top
 
     def dropOneTransparentTrait(tp: Type): Type =
       if tp.isTransparent(traitOnly = true) && !kept.contains(tp) then

@@ -1,8 +1,14 @@
 -- Error: tests/neg/i18302b.scala:3:32 ---------------------------------------------------------------------------------
 3 |def polyFun: PolyFunction { def apply(x: Int)(y: Int): Int } = // error
   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |Implementation restriction: PolyFunction apply must have exactly one parameter list and optionally type arguments. No by-name nor varags are allowed.
--- Error: tests/neg/i18302b.scala:4:6 ----------------------------------------------------------------------------------
+  |                            Malformed PolyFunction refinement,
+  |                            only an `apply` method with one parameter list is allowed.
+-- [E007] Type Mismatch Error: tests/neg/i18302b.scala:4:2 -------------------------------------------------------------
 4 |  new PolyFunction: // error
-  |      ^^^^^^^^^^^^
-  |      `PolyFunction` marker trait is reserved for compiler generated refinements
+  |  ^
+  |  Found:    Object with PolyFunction {...}
+  |  Required: (x: Int) => Int => Int
+  |
+5 |    def apply(x: Int)(y: Int): Int = x + y
+  |
+  | longer explanation available when compiling with `-explain`

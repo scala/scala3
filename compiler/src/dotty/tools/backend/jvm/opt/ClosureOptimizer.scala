@@ -109,8 +109,7 @@ class ClosureOptimizer(byteCodeRepository: BCodeRepository, callGraph: Optimizer
 
         if (Limits.sizeOKForSourceValue(method)) {
           val closureInits = callGraph.getClosureInstantiations(method)
-            // A lazy val to ensure the analysis only runs if necessary (the value is passed by name to `closureCallsites`)
-            lazy val prodCons = new ProdConsAnalyzer(method, ownerClass)
+            val prodCons = new ProdConsAnalyzer(method, ownerClass)
 
             for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
               case Left(warning) =>
@@ -170,7 +169,7 @@ class ClosureOptimizer(byteCodeRepository: BCodeRepository, callGraph: Optimizer
   /**
    * Find all callsites of a closure within the method where the closure is allocated.
    */
-  private def closureCallsites(closureInit: ClosureInstantiation, prodCons: => ProdConsAnalyzer): List[Either[RewriteClosureApplyToClosureBodyFailed, (MethodInsnNode, Int)]] = {
+  private def closureCallsites(closureInit: ClosureInstantiation, prodCons: ProdConsAnalyzer): List[Either[RewriteClosureApplyToClosureBodyFailed, (MethodInsnNode, Int)]] = {
     val ownerMethod = closureInit.ownerMethod
     val ownerClass = closureInit.ownerClass
     val lambdaBodyHandle = closureInit.lambdaMetaFactoryCall.implMethod
@@ -222,7 +221,7 @@ class ClosureOptimizer(byteCodeRepository: BCodeRepository, callGraph: Optimizer
    * The opposite case is in t9: a the specialized `apply$sp..` is invoked, but the lambda body
    * method takes boxed arguments, so we have to insert boxing operations.
    */
-  private def isSamInvocation(invocation: MethodInsnNode, closureInit: ClosureInstantiation, prodCons: => ProdConsAnalyzer): Boolean = {
+  private def isSamInvocation(invocation: MethodInsnNode, closureInit: ClosureInstantiation, prodCons: ProdConsAnalyzer): Boolean = {
     val indy = closureInit.lambdaMetaFactoryCall.indy
     if (invocation.getOpcode == INVOKESTATIC) false
     else {

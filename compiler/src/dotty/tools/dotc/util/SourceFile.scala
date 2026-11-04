@@ -11,7 +11,7 @@ import scala.io.Codec
 import Chars.*
 
 import scala.annotation.internal.sharable
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.ArrayBuilder
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.util.chaining.*
 
@@ -37,31 +37,26 @@ object WrappedSourceFile:
       case _ => sourceFile.atSpan(span)
 
   private def lookupMagicHeader(sourceFile: SourceFile)(using Context): MagicHeaderInfo =
-    val cache = ctx.base.magicHeaderCache
-    cache.lookup(sourceFile) match
-      case null =>
-        val magicHeader = ctx.settings.YmagicOffsetHeader.value
-        val result =
-          if magicHeader.isEmpty then NoHeader
-          else
-            val text = sourceFile.textContent()
-            val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
-            val regex = s"(?m)^$headerQuoted:(.+)$$".r
-            regex.findFirstMatchIn(text) match
-              case Some(m) =>
-                val sourceStartOffset = sourceFile.nextLine(m.start)
-                val name = m.group(1).nn
-                val src = ctx.getSource(name)
-                val file = src.file
-                if file != null && file.exists then
-                  HasHeader(sourceStartOffset, src)
-                else
-                  report.warning(em"original source file not found: $name")
-                  NoHeader
-              case None => NoHeader
-        cache(sourceFile) = result
-        result
-      case result => result
+    ctx.base.magicHeaderCache.getOrElseUpdate(sourceFile, {
+      val magicHeader = ctx.settings.YmagicOffsetHeader.value
+      if magicHeader.isEmpty then NoHeader
+      else
+        val text = sourceFile.textContent()
+        val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
+        val regex = s"(?m)^$headerQuoted:(.+)$$".r
+        regex.findFirstMatchIn(text) match
+          case Some(m) =>
+            val sourceStartOffset = sourceFile.nextLine(m.start)
+            val name = m.group(1).nn
+            val src = ctx.getSource(name)
+            val file = src.file
+            if file != null && file.exists then
+              HasHeader(sourceStartOffset, src)
+            else
+              report.warning(em"original source file not found: $name")
+              NoHeader
+          case None => NoHeader
+    })
 
 class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec: Codec) extends interfaces.SourceFile {
   private var myContent: String | Null = null
@@ -87,7 +82,7 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
 
   override def name: String =
     if file eq null then "" else file.name
-  def ext: FileExtension =
+  val ext: FileExtension =
     if file eq null then FileExtension.Empty else file.ext
   override def path: String =
     if file eq null then "" else file.path
@@ -146,8 +141,9 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
 
   private def calculateLineIndicesFromContents() = {
     val cs = textContent()
-    val buf = new ArrayBuffer[Int]
-    buf += 0
+    val buf = new ArrayBuilder.ofInt // unboxed, unlike ArrayBuffer[Int]
+    buf.sizeHint(cs.length / 30 + 2) // guess a short average line length to avoid regrowing
+    buf.addOne(0)
     var i = 0
     while i < cs.length do
       val isLineBreak =
@@ -155,10 +151,10 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
         // don't identify the CR in CR LF as a line break, since LF will do.
         if ch == CR then i + 1 == cs.length || cs(i + 1) != LF
         else isLineBreakChar(ch)
-      if isLineBreak then buf += i + 1
+      if isLineBreak then buf.addOne(i + 1)
       i += 1
-    buf += cs.length // sentinel, so that findLine below works smoother
-    buf.toArray
+    buf.addOne(cs.length) // sentinel, so that findLine below works smoother
+    buf.result()
   }
 
   private var lineIndicesCache: Array[Int] = uninitialized
@@ -214,7 +210,10 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
 
   /** The content of the line containing position `offset` */
   def lineContent(offset: Int): String =
-    textContent.substring(startOfLine(offset), nextLine(offset))
+    if textContent.isEmpty then
+      ""
+    else
+      textContent.substring(startOfLine(offset), nextLine(offset))
 
   /** The column corresponding to `offset`, starting at 0 */
   def column(offset: Int): Int = {

@@ -82,7 +82,6 @@ object DependencyResolver:
           Left(s"Failed to resolve dependencies: ${e.getMessage}")
 
   /** Add resolved dependencies to the compiler classpath and classloader.
-   *  Returns the new classloader.
    *
    *  This follows the same pattern as the `:jar` command.
    */

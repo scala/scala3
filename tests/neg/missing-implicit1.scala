@@ -22,4 +22,9 @@ object testObjectInstance:
     import instances.traverseList
     List(1, 2, 3).traverse(x => Option(x)) // error
   }
+
+  locally {
+    import instances.given
+    List(1, 2, 3).traverse(x => Option(x)) // whew
+  }
 end testObjectInstance

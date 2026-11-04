@@ -46,8 +46,8 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
 
   val site = root.thisType
 
-  private var toBeRemoved = immutable.Set[Symbol]()
-  private val bridges = mutable.ListBuffer[Tree]()
+  private var toBeRemoved = immutable.Set.empty[Symbol]
+  private val bridges = mutable.ListBuffer.empty[Tree]
   private val bridgesScope = newScope
   private val bridgeTarget = MutableSymbolMap[Symbol]()
 

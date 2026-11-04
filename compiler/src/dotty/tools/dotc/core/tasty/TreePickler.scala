@@ -38,7 +38,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
 
   /** A set of annotation trees appearing in annotated types.
    */
-  private val annotatedTypeTrees = mutable.ListBuffer[Tree]()
+  private val annotatedTypeTrees = mutable.ListBuffer.empty[Tree]
 
   /** A map from member definitions to their doc comments, so that later
    *  parallel comment pickling does not need to access symbols of trees (which

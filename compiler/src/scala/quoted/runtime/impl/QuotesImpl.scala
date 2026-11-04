@@ -440,6 +440,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case tpd.Apply(ta @ tpd.TypeApply(sel @ tpd.Select(expr: Apply, nme), tpts), args) =>
               val tree1 = cpy.Apply(tree)(cpy.TypeApply(ta)(cpy.Select(sel)(transform(expr), nme), tpts), args)
               dotc.transform.BetaReduce(tree1).withSpan(tree.span)
+            case tpd.TypeApply(sel @ tpd.Select(expr, nme), tpts) =>
+              val tree1 = cpy.TypeApply(tree)(cpy.Select(sel)(transform(expr), nme), tpts)
+              dotc.transform.BetaReduce(tree1).withSpan(tree.span)
             case _ =>
               dotc.transform.BetaReduce(tree).withSpan(tree.span)
           }
@@ -1961,13 +1964,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           dotc.core.Symbols.defn.isContextFunctionType(self)
         def isErasedFunctionType: Boolean =
           self match
-            case dotc.core.Symbols.defn.PolyFunctionOf(mt) =>
-              mt match
-                case mt: MethodType => mt.hasErasedParams
-                case PolyType(_, _, mt1) => mt1.hasErasedParams
+            case dotc.core.Symbols.defn.PolyFunctionOf(mt: MethodType) => mt.hasErasedParams
             case _ => false
         def isDependentFunctionType: Boolean =
-          val tpNoRefinement = self.dropDependentRefinement
+          val tpNoRefinement = self.dropFunctionRefinement
           tpNoRefinement != self
           && dotc.core.Symbols.defn.isNonRefinedFunction(tpNoRefinement)
         def isTupleN: Boolean =
@@ -2879,7 +2879,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case result =>
               List()
         // Maps PolyType indexes to type parameter symbol typerefs
-        val paramRefMap = collection.mutable.HashMap[Int, Symbol]()
+        val paramRefMap = collection.mutable.Map.empty[Int, Symbol]
         val paramRefRemapper = new Types.TypeMap {
           def apply(tp: Types.Type) = tp match {
             case pRef: ParamRef if pRef.binder == methodType => paramRefMap(pRef.paramNum).typeRef
@@ -3060,7 +3060,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def fieldMembers: List[Symbol] =
           lookupPrefix.allMembers.iterator.map(_.symbol).collect {
             case sym if isField(sym) => sym.asTerm
-          }.toList
+          }.toList.sortBy(_.name.toString)
 
         def declaredMethod(name: String): List[Symbol] =
           self.typeRef.decls.iterator.collect {
@@ -3080,9 +3080,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def memberMethods: List[Symbol] = methodMembers
         def methodMembers: List[Symbol] =
-          lookupPrefix.allMembers.iterator.map(_.symbol).collect {
-            case sym if isMethod(sym) => sym.asTerm
-          }.toList
+          lookupPrefix.allMembers.filter(denot => isMethod(denot.symbol)).sortWith { (methodA, methodB) =>
+            val nameOrder = methodA.name.toString.compareTo(methodB.name.toString)
+            if nameOrder != 0 then nameOrder < 0
+            else dotc.core.Signature.lexicographicOrdering.compare(methodA.signature, methodB.signature) < 0
+          }.map(_.symbol.asTerm).toList
 
         def declaredType(name: String): List[Symbol] =
           self.typeRef.decls.iterator.collect {

@@ -375,19 +375,18 @@ object QuotesAndSplices {
     end TreeMapWithVariance
 
   object PolyFunctionOf {
-    /** Return a poly-type + method type `[$typeargs] => ($args) => ($resultType)`
+    /** Return a polymorphic function type `[$typeargs] => ($args) => ($resultType)`
      *  where typeargs occur in `args` and `resultType`.
      */
     def apply(typeargs: List[Type], args: List[Type], resultType: Type)(using Context): Type =
       val typeargs1 = PolyType.syntheticParamNames(typeargs.length)
 
       val bounds = typeargs map (_ => TypeBounds.empty)
-      val resultTypeExp = (pt: PolyType) => {
+      val resultTypeExp = (pt: PolyType) =>
         val fromSymbols = typeargs map (_.typeSymbol)
         val args1 = args map (_.subst(fromSymbols, pt.paramRefs))
         val resultType1 = resultType.subst(fromSymbols, pt.paramRefs)
-        MethodType(args1, resultType1)
-      }
+        defn.FunctionNOf(args1, resultType1)
       defn.PolyFunctionOf(PolyType(typeargs1)(_ => bounds, resultTypeExp))
   }
 }

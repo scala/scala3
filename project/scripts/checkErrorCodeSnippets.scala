@@ -668,7 +668,7 @@ object SnippetCompiler:
 
     // Extract results
     val runCtx = run.runContext
-    val rawMessages = reporter.removeBufferedMessages(using runCtx)
+    val rawMessages = reporter.removeBufferedMessages
 
     val diagnostics = rawMessages.map { diag =>
       val errorNumber = diag.msg.errorId.errorNumber

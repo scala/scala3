@@ -821,7 +821,7 @@ trait Applications extends Compatibility {
 
 
     /** Is `sym` a constructor of an annotation class, and are we in an
-     *  annotation? If so, we don't lift arguments. See [[Mode.InAnnotation]].
+     *  annotation? If so, we don't lift arguments. See `Mode.InAnnotation`.
      */
     protected final def isAnnotConstr(sym: Symbol): Boolean =
       ctx.mode.is(Mode.InAnnotation) && sym.isConstructor && sym.owner.isAnnotation
@@ -919,7 +919,7 @@ trait Applications extends Compatibility {
                 addTyped(arg)
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
-                val typedVarArgs = util.HashSet[TypedArg]()
+                val typedVarArgs = mutable.Set.empty[TypedArg]
                 val typedArgs = harmonic(harmonizeArgs, elemFormal):
                   args.map: arg =>
                     if isVarArg(arg) then
@@ -1366,7 +1366,12 @@ trait Applications extends Compatibility {
             val resultType =
               if !originalResultType.isRef(defn.ObjectClass) then originalResultType
               else AvoidWildcardsMap()(proto.resultType.deepenProtoTrans) match
-                case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _, _) => resTp
+                case SelectionProto(nme.asInstanceOf_, PolyProto(_, castPt), _, _, _)
+                if !Feature.sourceVersion.isAtLeast(SourceVersion.future) =>
+                  // The spec says the call's expected type sets the result type. As the receiver of a cast,
+                  // the call has none, but so far the expected type of the cast was used. Deprecated in
+                  // CrossVersionChecks.checkSignaturePolymorphicCast.
+                  castPt
                 case resTp if isFullyDefined(resTp, ForceDegree.all) => resTp
                 case _ => defn.ObjectType
             val methType = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)
@@ -1902,7 +1907,7 @@ trait Applications extends Compatibility {
      *    }.unapply
      *  ```
      *  For a record with no components the result type is `Boolean` and the body is `true`.
-     * 
+     *
      *  For a vararg record - Rec(T_1, ..., T_n, T*) - generate unapplySeq.
      *  The vararg component is exposed through `Array.UnapplySeqWrapper`. The result type is:
      *  - Array.UnapplySeqWrapper[T]                  when n = 0
@@ -2607,7 +2612,12 @@ trait Applications extends Compatibility {
       case _ => false
     }
 
-    /** Replace each alternative by its apply members where necessary */
+    /** Replace each alternative by its apply members where necessary.
+     *  If an apply member is itself a polymorphic function `[T] => F` where `F` is
+     *  a function type, as is the case for the `apply` of a polymorphic function value,
+     *  expand it further to the apply members of `F`, mirroring the repeated apply
+     *  insertion done in `Typer.tryInsertApplyOrImplicit`.
+     */
     def applyMembers(alt: TermRef): List[TermRef] =
       if (tryApply(alt)) {
         val qual = alt.widen match {
@@ -2616,14 +2626,25 @@ trait Applications extends Compatibility {
           case _ =>
             alt
         }
-        qual.member(nme.apply).alternatives.map(TermRef(alt, nme.apply, _))
+        qual.member(nme.apply).alternatives
+          .map(TermRef(alt, nme.apply, _))
+          .flatMap: applyAlt =>
+            applyAlt.widen match
+              case pt: PolyType if defn.isFunctionType(pt.resultType) => applyMembers(applyAlt)
+              case _ => applyAlt :: Nil
       }
       else alt :: Nil
 
-    /** Fall back from an apply method to its original alternative */
+    /** Fall back from an apply method, or a chain of apply methods,
+     *  to its original alternative
+     */
     def retract(alt: TermRef): TermRef =
       if (alt.name == nme.apply && !alts.contains(alt))
-        alts.find(_.symbol == alt.prefix.termSymbol).getOrElse(alt)
+        alts.find(_.symbol == alt.prefix.termSymbol) match
+          case Some(orig) => orig
+          case None => alt.prefix match
+            case pre: TermRef if pre.name == nme.apply => retract(pre)
+            case _ => alt
       else alt
 
     if (alts.exists(tryApply)) {

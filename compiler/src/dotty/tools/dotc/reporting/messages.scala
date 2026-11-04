@@ -13,7 +13,7 @@ import Flags.*
 import Phases.*
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
-import NameKinds.{ContextFunctionParamName, WildcardParamName}
+import NameKinds.{ContextFunctionParamName, WildcardParamName, SimpleNameKind}
 import parsing.Scanners.Token
 import parsing.Tokens
 import Tokens.showToken
@@ -367,8 +367,14 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
       if (found1 frozen_<:< expected1) || reported.fbounded then (found, expected)
       else (found1, expected1)
     val (foundStr, expectedStr) = Formatting.typeDiff(found2.normalized, expected2.normalized)
+    val extra =
+      if defn.isFunctionNType(found)
+        && SAMType.deconstruct(expected, ignoreFinalOrSealed = false).isEmpty
+        && SAMType.deconstruct(expected, ignoreFinalOrSealed = true).nonEmpty
+      then i"\nNote that conversion from a function to a single abstract method type is only possible if the type is neither ${hl("final")} nor ${hl("sealed")}"
+      else ""
     i"""|${preface}Found:    $foundStr
-        |Required: $expectedStr${reported.notes}"""
+        |Required: $expectedStr${reported.notes}$extra"""
   end msg
 
   override def msgPostscript(using Context): String =
@@ -655,6 +661,12 @@ extends SyntaxMsg(UnboundPlaceholderParameterID) {
         |${hl("trait A { this: B => ... ")}
         |"""
 }
+
+class BadErased()(implicit ctx:Context)
+extends SyntaxMsg(BadErasedID):
+  def msg(using Context) = i"${hl("erased")} cannot be used here"
+  def explain(using Context) =
+    i"|${hl("erased")} can be used only as a modifier in definitions or function parameters."
 
 class IllegalStartSimpleExpr(illegalToken: String)(using Context)
 extends SyntaxMsg(IllegalStartSimpleExprID) {
@@ -980,7 +992,7 @@ class UncheckedTypePattern(argType: Type, whyNot: String)(using Context)
         |"""
 }
 
-class MatchCaseUnreachable(why: String = "")(using Context)
+class MatchCaseUnreachable(why: => String = "")(using Context)
 extends Message(MatchCaseUnreachableID) {
   def kind = MessageKind.MatchCaseUnreachable
   override protected def msg(using Context) = "Unreachable case"
@@ -3137,6 +3149,31 @@ class MissingImplicitArgument(
     filter(userDefinedImplicitNotFoundParamMessage)
       .orElse(filter(userDefinedImplicitNotFoundTypeMessage))
 
+  def noteTrailingContextOfExtension(explain: Boolean)(using Context): Option[String] =
+    paramSymWithMethodCallTree.flatMap: (sym, applTree) =>
+      def hasLeadingImplicit(tpe: Type): Boolean =
+        val resTypes = Iterator.iterate(tpe.resultType)(_.resultType)
+        val (prefix, suffix) = resTypes.span(_.isContextualMethod)
+        val tps = prefix ++ suffix.drop(1).takeWhile(_.isContextualMethod)
+        tps.exists:
+          case mt: MethodType => mt.paramNames.contains(sym.name)
+          case pt: PolyType => false
+      if applTree.symbol.is(Extension)
+         && sym.info.typeSymbol != defn.SameTypeClass
+         && sym.info.typeSymbol != defn.SubTypeClass
+         && !hasLeadingImplicit(applTree.symbol.info) then
+        val name = if sym.name.is(SimpleNameKind) then i"`${sym.name}`" else "The missing arg"
+        val ext = applTree.symbol.name
+        Some:
+          if explain then
+            i"""|${name} is not a leading implicit of `${ext}`; it is not used to construct the extension.
+                |Write an explicit `using` clause at the beginning of the extension method to keep it from
+                |being considered for this method application. Context bounds, when desugared, are appended
+                |to the end of the signature even though they are written at the beginning."""
+          else
+            i"\n\nNote: ${name} does not affect whether extension `${ext}` is chosen."
+      else None
+
   object AmbiguousImplicitMsg {
     def unapply(search: SearchSuccess): Option[String] =
       userDefinedMsg(search.ref.symbol, defn.ImplicitAmbiguousAnnot)
@@ -3240,7 +3277,7 @@ class MissingImplicitArgument(
       case _: AmbiguousImplicits =>
         ""  // show no disambiguation
       case _: TooUnspecific =>
-        super.msgPostscript // show just disambigutation and match type trace
+        super.msgPostscript // show just disambiguation and match type trace
       case _ =>
         // show all available additional info
         def hiddenImplicitNote(s: SearchSuccess) =
@@ -3262,12 +3299,14 @@ class MissingImplicitArgument(
             case _ =>
               ctx.typer.importSuggestionAddendum(pt)
         super.msgPostscript
+        + noteTrailingContextOfExtension(explain = false).getOrElse("")
         + ignoredInstanceNormalImport.map(hiddenImplicitNote)
             .orElse(noChainConversionsNote(ignoredConvertibleImplicits))
             .getOrElse(importSuggestionAddendum)
 
   def explain(using Context) = userDefinedImplicitNotFoundMessage(explain = true)
     .getOrElse("")
+    + noteTrailingContextOfExtension(explain = true).getOrElse("")
 end MissingImplicitArgument
 
 class CannotBeAccessed(tpe: NamedType, superAccess: Boolean)(using Context)
@@ -3489,6 +3528,7 @@ object UnusedSymbol:
     UnusedSymbol(i"unused explicit parameter${paramAddendum(sym)}")
   def implicitParams(sym: Symbol)(using Context): UnusedSymbol =
     UnusedSymbol(i"unused implicit parameter${paramAddendum(sym)}")
+  def incorrectUnused(sym: Symbol)(using Context): UnusedSymbol = UnusedSymbol(i"incorrect @unused annotation on $sym")
   def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
   def privateVars(using Context): UnusedSymbol = UnusedSymbol(i"private variable was mutated but not read")
   def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
@@ -3983,7 +4023,7 @@ final class IllegalUseOfSpecialized(using Context)
         inline def foo[T: Specialized](v: Vec[T]) = v.x
 
         In this instance it was used in a way which is unsupported, such as
-        trying to create a type synonym or a value with explicit type Specialized[X].  
+        trying to create a type synonym or a value with explicit type Specialized[X].
       """
 
 /** Shows up as a TypeError (in the notes field) if variance is attempted
@@ -3997,17 +4037,17 @@ final class IllegalVarianceInSpecializedTraitsNote(using Context) extends Note:
     - Primitives are specialized: Foo[Int] erases to Foo$$sp$$Int
     - Reference types are specialized to the highest non-top class: Foo[Lion] erases to Foo$$sp$$Animal
     - Top classes are erased normally: Foo[Any] / Foo[AnyVal] / Foo[Object] / Foo[AnyRef] erase to Foo.
-    This means that variance patterns that cross these erasure categories will fail at 
+    This means that variance patterns that cross these erasure categories will fail at
     runtime due to a ClassCastException, so they are not permitted.
 
     Please see the docs for more information on how specialized traits are erased.
     Suggested fixes:
       - Make the type of the target site more general e.g. Foo[Object] instead of Foo[Animal].
-      - Reconsider if you really need to use Nothing / Object / Any / AnyRef / AnyVal in your code. 
+      - Reconsider if you really need to use Nothing / Object / Any / AnyRef / AnyVal in your code.
       - Remove Specialized from the definition of the corresponding parameter.
     """
 
-  override def covers(other: Note)(using Context): Boolean =    
+  override def covers(other: Note)(using Context): Boolean =
     other.isInstanceOf[IllegalVarianceInSpecializedTraitsNote]
 
 final class VarianceInSpecializedTraitsLimitation(using Context)
@@ -4020,18 +4060,18 @@ final class VarianceInSpecializedTraitsLimitation(using Context)
     - Primitives are specialized: Foo[Int] erases to Foo$$sp$$Int
     - Reference types are specialized to the highest non-top class: Foo[Lion] erases to Foo$$sp$$Animal
     - Top classes are erased normally: Foo[Any] / Foo[AnyVal] / Foo[Object] / Foo[AnyRef] erase to Foo.
-    This means that certain variance patterns that cross these erasure categories will fail at 
+    This means that certain variance patterns that cross these erasure categories will fail at
     runtime due to a ClassCastException, so they are not permitted.
-    
-    For example, treating Foo[Any] as Foo[Animal] via contravariance is not allowed with Specialized. 
+
+    For example, treating Foo[Any] as Foo[Animal] via contravariance is not allowed with Specialized.
 
     Please see the docs for more information on how specialized traits are erased.
 
     If you accept this limitation you can silence this warning with @nowarn. For example:
-    
+
     @nowarn("id=E${VarianceInSpecializedTraitsLimitationID.errorNumber}")
     inline trait Foo[-T: Specialized]:
- 
+
     Otherwise, remove Specialized, or remove the variance.
     """
 

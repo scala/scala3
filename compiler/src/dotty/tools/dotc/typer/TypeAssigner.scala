@@ -349,7 +349,7 @@ trait TypeAssigner {
             val paramBoundsByName = paramNames.zip(pt.paramInfos).toMap
 
             // Type arguments which are specified by name (immutable after this first loop)
-            val namedArgMap = new mutable.HashMap[Name, Type]
+            val namedArgMap = mutable.Map.empty[Name, Type]
             for (case NamedArg(name, arg) <- args)
               if (namedArgMap.contains(name))
                 report.error(DuplicateNamedTypeParameter(name), arg.srcPos)
@@ -529,7 +529,7 @@ trait TypeAssigner {
       val rinfo = if (rsym.is(Accessor)) rsym.info.resultType else rsym.info
       if (rinfo.isError) rinfo
       else if (!rinfo.exists) parent // can happen after failure in self type definition
-      else RefinedType(parent, rsym.name, rinfo)
+      else RefinedType(parent, rsym.name, rinfo.curryPolyFunction(parent.typeSymbol))
     }
     val refined = refinements.foldLeft(parent.tpe)(addRefinement)
     tree.withType(RecType.closeOver(rt => refined.substThis(refineCls, rt.recThis)))

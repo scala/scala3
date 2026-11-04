@@ -22,7 +22,6 @@ import dotty.tools.sbtplugin.RepublishPlugin
 import dotty.tools.sbtplugin.RepublishPlugin.autoImport._
 import dotty.tools.sbtplugin.ScalaLibraryPlugin
 import dotty.tools.sbtplugin.ScalaLibraryPlugin.autoImport._
-import dotty.tools.sbtplugin.ScaladocGeneration._
 import dotty.tools.sbtplugin.DottyJSPlugin
 
 import sbt.ScriptedPlugin.autoImport._
@@ -147,6 +146,8 @@ object Build {
       } yield Credentials("Sonatype Nexus Repository Manager", "central.sonatype.com", username, password)
     ).toList,
     PgpKeys.pgpPassphrase := sys.env.get("PGP_PW").map(_.toCharArray()),
+    // BouncyCastle signs with the primary key by default, but CI has only the signing subkey
+    PgpKeys.pgpSigningKey := sys.env.get("SCALA_PGP_FINGERPRINT").filter(_.nonEmpty),
     PgpKeys.useGpgPinentry := true,
 
     // Do not cut off the bottom of large stack traces (default is 1024)
@@ -335,6 +336,9 @@ object Build {
       docScalaInstance
     },
     Compile / doc / scalacOptions ++= ScaladocOptions.scalacOptionsDocSettings(),
+    // `-siteroot` defaults to `./docs`, which sbt resolves against the repo root, so without
+    // this every javadoc JAR would bundle the repo's static site (blog, reference, PDFs).
+    Compile / doc / scalacOptions ++= Seq("-siteroot", (baseDirectory.value / "docs").getPath),
   )
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
@@ -547,7 +551,7 @@ object Build {
            |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [--failed] [--enable-coverage-phase] [<filter>]
            |
            |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
-           |excluding tests tagged with dotty.SlowTests.
+           |excluding "slow" tests.
            |
            |  --help                show this message
            |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
@@ -577,7 +581,7 @@ object Build {
         else if (coverage) "dotty.tools.dotc.coverage.*"
         else if (coverageFlag) compilationTests
         else s"$compilationTests dotty.tools.dotc.coverage.*"
-      val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
+      val cmd = s" $test -- -Ddotty.tests.quick=TRUE " +
         (if (enableCoveragePhase) " --include-categories=dotty.CoverageCompilationTests" else "") +
         (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
         (if (rerunFailed) " -Ddotty.tests.rerunFailed=TRUE" else "") +
@@ -1010,7 +1014,7 @@ object Build {
       Compile / unmanagedSourceDirectories   += baseDirectory.value / "src-non-bootstrapped",
       Compile / unmanagedResourceDirectories := Seq(baseDirectory.value / "resources"),
       Compile / compile / scalacOptions ++= Seq(
-        "-opt", "-opt-inline:**,!java.**",
+        "-opt",
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
@@ -1467,6 +1471,7 @@ object Build {
         Dependencies.asmCommons,
         Dependencies.sbtCompilerInterface,
         (Dependencies.coursier % Test).cross(CrossVersion.for3Use2_13),
+        Dependencies.scalaReflect % Test,
       ),
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
@@ -1539,9 +1544,7 @@ object Build {
           val sjsSources = (trgDir ** "*.scala").get().toSet
           sjsSources.foreach(f => {
             val lines = IO.readLines(f)
-            val linesWithPackage = Shading.replacePackage(lines) {
-              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
-            }
+            val linesWithPackage = Shading.replacePackage(lines, "org.scalajs.ir", "dotty.tools.sjs.ir")
             IO.writeLines(f, linesWithPackage)
           })
           sjsSources
@@ -1604,6 +1607,7 @@ object Build {
         Dependencies.sbtCompilerInterface,
         Dependencies.sbtJunitInterface % Test,
         (Dependencies.coursier % Test).cross(CrossVersion.for3Use2_13),
+        Dependencies.scalaReflect % Test,
       ),
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
@@ -1667,9 +1671,7 @@ object Build {
           val sjsSources = (trgDir ** "*.scala").get().toSet
           sjsSources.foreach(f => {
             val lines = IO.readLines(f)
-            val linesWithPackage = Shading.replacePackage(lines) {
-              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
-            }
+            val linesWithPackage = Shading.replacePackage(lines, "org.scalajs.ir", "dotty.tools.sjs.ir")
             IO.writeLines(f, linesWithPackage)
           })
           sjsSources
@@ -1737,13 +1739,12 @@ object Build {
       ),
       Test / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       // All the dependencies needed by the doctool
-      libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
+      libraryDependencies ++= Dependencies.liqpDependencyOverrides ++ Dependencies.flexmarkDeps ++ Seq(
         Dependencies.liqp,
         Dependencies.jsoup, // Needed to process .html files for static site
         Dependencies.jacksonDataformatYaml,
         Dependencies.sbtJunitInterface % Test,
       ),
-      dependencyOverrides ++= Dependencies.liqpDependencyOverrides,
       Compile / scalacOptions += "-experimental",
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
@@ -1796,31 +1797,14 @@ object Build {
 
       generateScalaDocumentation := Def.inputTaskDyn {
         val majorVersion = (`scala-library-bootstrapped` / scalaBinaryVersion).value
-        val extraArgs = spaceDelimited("[<output-dir>] [--justAPI]").parsed
-        val outputDirOverride = extraArgs.headOption.fold(identity[GenerationConfig](_))(newDir => {
-          config: GenerationConfig => config.add(OutputDir(newDir))
-        })
-        val justAPI = extraArgs.contains("--justAPI")
-        def justAPIOverride(config: GenerationConfig): GenerationConfig = {
-          if (!justAPI) config
-          else {
-            val siteRoot = IO.createTemporaryDirectory.getAbsolutePath()
-            config.add(SiteRoot(siteRoot))
-          }
-        }
         // It would be the easiest to create a temp directory and apply patches there, but this task would be used frequently during development
         // If we'd build using copy the emitted warnings would point developers to copies instead of original sources. Any fixes made in there would be lost.
         // Instead let's apply revertable patches to the files as part snapshot doc generation process
         val docs = file("docs")
-        val sourcePatches = if (justAPI) Nil else Seq(
+        val sourcePatches = Seq(
           ScaladocGeneration.sidebarSourcePatch(docs),
           ScaladocGeneration.nightlyVersionNoteSourcePatch(docs)
         )
-        val config = Def.task {
-          outputDirOverride
-          .andThen(justAPIOverride)
-          .apply(Scala3.value)
-        }
         // Use taskDyn with .result to ensure patches are always reverted, even if generation fails
         Def.taskDyn {
           val log = streams.value.log
@@ -1828,7 +1812,7 @@ object Build {
           sourcePatches.foreach(_.apply())
 
           Def.task {
-            val docResult = generateDocumentation(config).result.value
+            val docResult = generateDocumentation(Scala3).result.value
             log.info(s"Generated snapshot scaladoc, reverting changes made to ${sourcePatches.map(_.file)}")
             sourcePatches.foreach(_.revert())
 
@@ -1836,12 +1820,10 @@ object Build {
               case Inc(inc) =>
                 throw inc.directCause.getOrElse(new RuntimeException("Documentation generation failed", inc))
               case Value(_) =>
-                val dest = file(config.value.get[OutputDir].get.value)
-                if (!justAPI) {
-                  IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
-                  // This file is used by GitHub Pages when the page is available in a custom domain
-                  IO.write(dest / "CNAME", "nightly.scala-lang.org")
-                }
+                val dest = file(ScaladocConfigs0.scala3Output)
+                IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
+                // This file is used by GitHub Pages when the page is available in a custom domain
+                IO.write(dest / "CNAME", "nightly.scala-lang.org")
             }
           }
         }
@@ -1865,13 +1847,7 @@ object Build {
         IO.delete(docs / "_blog")
 
         val config = Def.task {
-          Scala3.value
-          .add(ProjectVersion(version))
-          .add(Revision(version))
-          .add(OutputDir(s"scaladoc/output/${version}"))
-          .add(SiteRoot(docs.getAbsolutePath))
-          .add(ScaladocConfigs0.defaultSourceLinks(version = version, allowGitSHA = false))
-          .remove[ApiSubdirectory]
+          ScaladocConfigs0.StableDoc(Scala3.value, version, docs.getAbsolutePath)
         }
         generateDocumentation(config)
       }.evaluated,
@@ -1892,7 +1868,7 @@ object Build {
         ScaladocGeneration.prepareReferenceDocumentationDir(docs)
 
         val languageReferenceConfig = Def.task {
-          ScaladocGeneration.languageReferenceConfig(docs, Scala3.value)
+          ScaladocConfigs0.Reference(docs, Scala3.value)
         }
 
         val generateDocs = generateDocumentation(languageReferenceConfig)
@@ -1960,19 +1936,7 @@ object Build {
           requested.map(resolveSelected).foreach(copySelected)
 
           val config = Def.task {
-            Scala3.value
-              .add(OutputDir(outputDir))
-              .add(SiteRoot(tempRoot.getAbsolutePath))
-              .add(ProjectName("Scala 3 Reference Snippets"))
-              .add(ProjectVersion(baseVersion))
-              .remove[VersionsDictionaryUrl]
-              .add(SourceLinks(List(
-                s"${tempRoot.getAbsolutePath}=github://scala/scala3/main#docs"
-              )))
-              .add(NoLinkWarnings(true))
-              .add(NoLinkAssetWarnings(true))
-              .add(GenerateAPI(false))
-              .add(SnippetCompiler(ScaladocConfigs0.referenceSnippetCompilerTargets(tempRoot.getAbsolutePath)))
+            ScaladocConfigs0.ReferenceSnippets(Scala3.value, outputDir, tempRoot.getAbsolutePath)
           }
 
           generateDocumentation(config)
@@ -2444,13 +2408,10 @@ object Build {
       libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
     )
 
-  def generateDocumentation(configTask: Def.Initialize[Task[GenerationConfig]]) =
+  def generateDocumentation(configTask: Def.Initialize[Task[Array[String]]]) =
     Def.taskDyn {
       val config = configTask.value
-      config.get[OutputDir].foreach { outDir =>
-        IO.createDirectory(file(outDir.value))
-      }
-      val command = generateCommand(config)
+      val command = config.map(s => if (s.isEmpty || s.contains(" ")) s""""$s"""" else s).mkString(" ", " ", "")
       Def.task {
         (Compile / run).toTask(command).value
       }

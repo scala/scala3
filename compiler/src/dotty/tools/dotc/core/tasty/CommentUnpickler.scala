@@ -3,7 +3,7 @@ package core.tasty
 
 import core.Comments.Comment
 import util.Spans.Span
-import util.HashMap
+import scala.collection.mutable
 
 import dotty.tools.tasty.{TastyReader, TastyBuffer}
 import TastyBuffer.Addr
@@ -13,8 +13,8 @@ import java.nio.charset.StandardCharsets
 class CommentUnpickler(reader: TastyReader) {
   import reader.*
 
-  private[tasty] lazy val comments: HashMap[Addr, Comment] = {
-    val comments = new HashMap[Addr, Comment]
+  private[tasty] lazy val comments: mutable.Map[Addr, Comment] = {
+    val comments = mutable.Map.empty[Addr, Comment]
     while (!isAtEnd) {
       val addr = readAddr()
       val rawComment = readUtf8()

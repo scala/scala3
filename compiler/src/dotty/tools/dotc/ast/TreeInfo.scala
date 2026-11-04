@@ -409,8 +409,11 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
           }
           fun.symbol != NoSymbol && loop(fun.symbol.info)
       }
-    case _ =>
-      tree.tpe.isInstanceOf[ThisType]
+    case fun =>
+      tree.tpe match
+        case tref: TermRef if fun.symbol.is(ExtensionMethod) =>          // ext(b)(x): b.type
+          termArgss(tree).exists(_.exists(tref.symbol == _.symbol))
+        case tpe => tpe.isInstanceOf[ThisType]
   }
 
   /** Under x.modularity: Extractor for `annotation.internal.WitnessNames(name_1, ..., name_n)`

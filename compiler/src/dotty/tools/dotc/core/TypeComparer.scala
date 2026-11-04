@@ -63,13 +63,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     frozenConstraint = false
     if Config.checkTypeComparerReset then checkReset()
 
-  private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
+  private var pendingSubTypes: mutable.Set[(Type, Type)] | Null = null
   /** Tracks the `(tycon, args, other, fromBelow, constraint)` tuples currently
    *  being compared by [[compareAppliedTypeParamRef]] to guard against infinite recursion.
    *  See https://github.com/scala/scala3/issues/24537.
    */
   private var pendingAppliedTypeParamRefs:
-    util.MutableSet[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)] | Null = null
+    mutable.Set[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)] | Null = null
   private var appliedRecCount = 0
   private var appliedMonitored = false
 
@@ -77,7 +77,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       tycon: TypeParamRef, args: List[Type], other: AppliedType, fromBelow: Boolean)(inline op: Boolean): Boolean =
     def monitoredAppliedTypeParamRef =
       if pendingAppliedTypeParamRefs == null then
-        pendingAppliedTypeParamRefs = util.HashSet[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)]()
+        pendingAppliedTypeParamRefs = mutable.Set.empty[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)]
       val key = (tycon, args, other, fromBelow, constraint)
       !pendingAppliedTypeParamRefs.nn.contains(key) && {
         pendingAppliedTypeParamRefs.nn += key
@@ -97,7 +97,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var maxErrorLevel: Int = -1
   protected var errorNotes: List[(Int, Note)] = Nil
 
-  val undoLog = mutable.ArrayBuffer[() => Unit]()
+  val undoLog = mutable.ArrayBuffer.empty[() => Unit]
 
   private var needsGc = false
 
@@ -249,9 +249,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       bounds != null && op(bounds)
 
   private inline def comparingTypeLambdas(tl1: TypeLambda, tl2: TypeLambda)(op: => Boolean): Boolean =
+    comparingTypeLambda(tl1)(comparingTypeLambda(tl2)(op))
+
+  private inline def comparingTypeLambda(tl: TypeLambda)(op: => Boolean): Boolean =
     val saved = comparedTypeLambdas
-    comparedTypeLambdas += tl1
-    comparedTypeLambdas += tl2
+    comparedTypeLambdas += tl
     try op finally comparedTypeLambdas = saved
 
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
@@ -292,7 +294,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
-        pendingSubTypes = util.HashSet[(Type, Type)]()
+        pendingSubTypes = mutable.Set.empty[(Type, Type)]
         report.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
         report.log(s"!!! constraint = ${constraint.show}")
         //if (ctx.settings.YnoDeepSubtypes.value) {
@@ -993,11 +995,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // branches of the AndType tp1 conforms to tp2, but its base type does
           // not, or else that its base type for cls2 does not exist, in which case
           // it would not show up in `base`. In either case, we need to also fall back
-          // to fourthTry. Test cases are i18266.scala and i18226a.scala.
+          // to fourthTry. Test cases are i18226.scala and i18226a.scala.
           // If base is a disjunction, this might have come from a tp1 type that
           // expands to a match type. In this case, we should try to reduce the type
           // and compare the redux. This is done in fourthTry
-          either(checkBase, fourthTry)
+          checkBase || fourthTry
         else
           checkBase
       else fourthTry
@@ -1094,7 +1096,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             recur(tycon1, tp2)
           case _ => tp2 match {
             case tp2: HKTypeLambda => false // this case was covered in thirdTry
-            case _ => tp2.typeParams.hasSameLengthAs(tp1.paramRefs) && isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
+            case _ =>
+              tp2.typeParams.hasSameLengthAs(tp1.paramRefs)
+              && comparingTypeLambda(tp1) {
+                isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
+              }
           }
         }
         compareHKLambda
@@ -1122,7 +1128,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if tp1 ne tp1norm then recur(tp1norm, tp2)
         else either(recur(tp11, tp2), recur(tp12, tp2))
       case tp1: MatchType =>
-        def compareMatch = tp2 match {
+        inline def compareMatch = tp2 match {
           case tp2: MatchType =>
             // we allow a small number of scrutinee types to be widened:
             // * skolems, which may appear from type avoidance, but are widened in the inferred result type
@@ -1423,7 +1429,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case _ =>
               false
           }
-          loop(tycon1, args1)
+          ctx.handleRecursive("check for a matching apply", tp1):
+            loop(tycon1, args1)
         case _ =>
           false
       }
@@ -1959,7 +1966,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                    && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
-                if v < 0 then 
+                if v < 0 then
                   val isValidSubtype = isSubType(arg2, arg1)
                   // Specialized traits have special variance rules because they have special erasure
                   if tp1.classSymbol.isSpecializedTrait
@@ -1971,7 +1978,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     false
                   else // Normal contravariance case
                     isValidSubtype
-                else if v > 0 then 
+                else if v > 0 then
                   val isValidSubtype = isSubType(arg1, arg2)
                   // Specialized traits have special variance rules because they have special erasure
                   if tp1.classSymbol.isSpecializedTrait
@@ -2099,7 +2106,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  Method name comes from the notion that we are keeping a constraint which is sufficient to satisfy
    *  one of subtyping relationships.
    */
-  private def sufficientEither(op1: => Boolean, op2: => Boolean): Boolean =
+  private inline def sufficientEither(inline op1: => Boolean, inline op2: => Boolean): Boolean =
     val preConstraint = constraint
     if op1 then tryAlso(preConstraint, op2) else op2
 
@@ -2108,7 +2115,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  If that's the case, replace the current constraint with the
    *  constraint generated by `op`.
    */
-  private def tryAlso(preConstraint: Constraint, op: => Boolean): true =
+  private inline def tryAlso(preConstraint: Constraint, inline op: => Boolean): true =
     if constraint ne preConstraint then
       // check whether `op2` generates a weaker constraint than `op1`
       val leftConstraint = constraint
@@ -3119,7 +3126,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def provablyDisjoint(tp1: Type, tp2: Type)(using Context): Boolean =
     provablyDisjoint(tp1, tp2, null)
 
-  private def provablyDisjoint(tp1: Type, tp2: Type, pending: util.HashSet[(Type, Type)] | Null)(
+  private def provablyDisjoint(tp1: Type, tp2: Type, pending: mutable.Set[(Type, Type)] | Null)(
       using Context): Boolean = trace(i"provable disjoint $tp1, $tp2", matchTypes) {
     // println(s"provablyDisjoint(${tp1.show}, ${tp2.show})")
 
@@ -3265,7 +3272,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val cls1 = tp1.classSymbol.asClass
         val cls2 = tp2.classSymbol.asClass
 
-        def isBaseTypeWithDisjointArguments(baseClass: ClassSymbol, pending: util.HashSet[(Type, Type)]): Boolean =
+        def isBaseTypeWithDisjointArguments(baseClass: ClassSymbol, pending: mutable.Set[(Type, Type)]): Boolean =
           if baseClass.typeParams.isEmpty then
             // A common mono base class can never be disjoint thanks to type params
             false
@@ -3298,7 +3305,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
              */
             val innerPending =
               if pending != null then pending
-              else util.HashSet[(Type, Type)]()
+              else mutable.Set.empty[(Type, Type)]
             innerPending += tpPair
 
             val cls2BaseClassSet = SymDenotations.BaseClassSet(cls2.classDenot.baseClasses)
@@ -3374,7 +3381,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         false
   end provablyDisjointClasses
 
-  private def provablyDisjointTypeArgs(cls: ClassSymbol, args1: List[Type], args2: List[Type], pending: util.HashSet[(Type, Type)])(using Context): Boolean =
+  private def provablyDisjointTypeArgs(cls: ClassSymbol, args1: List[Type], args2: List[Type], pending: mutable.Set[(Type, Type)])(using Context): Boolean =
     // sjrd: I will not be surprised when this causes further issues in the future.
     // This is a compromise to be able to fix #21295 without breaking the world.
     def cannotBeNothing(tp: Type): Boolean = tp match
@@ -3705,10 +3712,15 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
 
   override def matchReducer = this
 
-  def matchCases(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = ctx.handleRecursive("match cases for", scrut) {
+  def matchCases(scrut0: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = ctx.handleRecursive("match cases for", scrut0) {
     // a reference for the type parameters poisoned during matching
     // for use during the reduction step
     var poisoned: Set[TypeParamRef] = Set.empty
+
+    // If we are under capture checking, we generally want to ignore capturing annotations (#27145).
+    // These can also appear when using non-capture-checked libraries from CC code itself,
+    // where <fluid> capture sets can be inserted during the setupCC phase.
+    val scrut: Type = if isCaptureCheckingOrSetup then scrut0.stripCapturing else scrut0
 
     def paramInstances(canApprox: Boolean) = new TypeAccumulator[Array[Type]]:
       def apply(insts: Array[Type], t: Type) = t match

@@ -39,3 +39,13 @@ trait Function0[@specialized(Specializable.Primitives) +R] extends AnyRef {
 
   override def toString(): String = "<function0>"
 }
+
+object Function0 {
+
+  extension [R](f: () => R)
+    /** Applies this function.
+     *  @return the result of the function application
+     */
+    def applyUsing: R = f()
+
+}

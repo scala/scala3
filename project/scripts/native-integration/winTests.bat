@@ -3,6 +3,8 @@ setlocal
 
 @rem paths are relative to the root project directory
 set "_PREFIX=dist\win-x86_64\target\universal\stage"
+@rem LAUNCHER_PREFIX lets CI test another distribution, e.g. the generic JVM-launcher one on Windows ARM64
+if defined LAUNCHER_PREFIX set "_PREFIX=%LAUNCHER_PREFIX%"
 set "_SOURCE=tests\pos\HelloWorld.scala"
 set "_SOURCE_TEST_BOOTSTRAPPED=project\scripts\native-integration\testBootstrappedLibrary.scala"
 set "_OUT_DIR=out"

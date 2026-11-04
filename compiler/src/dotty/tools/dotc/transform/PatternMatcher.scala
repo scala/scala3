@@ -621,7 +621,7 @@ object PatternMatcher {
     }
 
     private class RefCounter extends PlanTransform {
-      val count = new mutable.HashMap[Symbol, Int].withDefaultValue(0)
+      val count = mutable.Map.empty[Symbol, Int].withDefaultValue(0)
     }
 
     /** Reference counts for all labels */

@@ -12,6 +12,7 @@
 
 package scala.runtime
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 // things that should be in `Statics`, but can't be yet for bincompat reasons

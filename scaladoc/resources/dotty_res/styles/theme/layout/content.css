@@ -475,10 +475,6 @@ main :is(ul, ol) li .snippet {
   content: url("../../../images/method-big.svg");
 }
 
-.cover-header .micon.in {
-  content: url("../../../images/inkuire-big.svg");
-}
-
 /* icons dark */
 .theme-dark .cover-header .micon.cl {
   content: url("../../../images/class-dark-big.svg");
@@ -534,10 +530,6 @@ main :is(ul, ol) li .snippet {
 
 .theme-dark .cover-header .micon.de {
   content: url("../../../images/method-dark-big.svg");
-}
-
-.theme-dark .cover-header .micon.in {
-  content: url("../../../images/inkuire-big.svg");
 }
 
 .cover-header {

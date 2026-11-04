@@ -1,0 +1,132 @@
+/* Interactive toggles for experimental language features (e.g. capture checking).
+ *
+ * Signature fragments that depend on a toggleable feature carry both variants
+ * in the DOM (see featureToggles.js); these rules display exactly one of them.
+ * By default the feature's syntax is shown; a `<id>-hidden` class on the
+ * root element (e.g. `cc-hidden`) swaps every fragment to its plain variant.
+ */
+
+.feature-off {
+  display: none;
+}
+
+:root.cc-hidden .feature-cc > .feature-on {
+  display: none;
+}
+
+:root.cc-hidden .feature-cc > .feature-off {
+  display: inline;
+}
+
+/* The notices below the main signature, explaining a feature's fragments and
+ * holding the switch toggling them */
+
+.feature-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-spacing);
+}
+
+/* The main signature has no bottom margin */
+#content > div > .feature-toggles {
+  margin-top: calc(2 * var(--base-spacing));
+}
+
+.feature-toggle-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--base-spacing) calc(3 * var(--base-spacing));
+  padding: calc(1.5 * var(--base-spacing)) calc(2 * var(--base-spacing));
+  border: 1px solid var(--indigo7);
+  border-radius: 4px;
+  background-color: var(--indigo3);
+  color: var(--text-primary);
+}
+
+.feature-toggle-text {
+  flex: 1 1 20em;
+}
+
+.feature-toggle-title {
+  display: flex;
+  align-items: center;
+  gap: var(--base-spacing);
+  font-weight: 600;
+  margin-bottom: calc(0.5 * var(--base-spacing));
+}
+
+.feature-toggle-title::before {
+  content: url("../../../images/info/light/default.svg");
+  display: flex;
+}
+
+.theme-dark .feature-toggle-title::before {
+  content: url("../../../images/info/dark/default.svg");
+}
+
+.feature-toggle-text a {
+  margin-left: var(--base-spacing);
+  white-space: nowrap;
+}
+
+/* While a feature's fragments are hidden, the notice is tinted differently,
+ * so that readers don't forget they are looking at simplified signatures.
+ * Needed for each toggleable feature. */
+:root.cc-hidden .feature-toggle-notice[data-feature="cc"] {
+  border-color: var(--yellow7);
+  background-color: var(--yellow3);
+}
+
+/* Hovering over a notice or focusing its switch highlights the fragments it toggles */
+:root:has(.feature-toggle-notice[data-feature="cc"]:hover, [data-feature="cc"] .feature-toggle input:focus-visible) .feature-cc > span {
+  border-radius: 2px;
+  background-color: var(--indigo4);
+}
+
+:root.cc-hidden:has(.feature-toggle-notice[data-feature="cc"]:hover, [data-feature="cc"] .feature-toggle input:focus-visible) .feature-cc > span {
+  background-color: var(--yellow4);
+}
+
+.feature-toggle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.feature-toggle .switch {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.feature-toggle input:focus-visible + .slider {
+  outline: 2px solid var(--focus-default);
+  outline-offset: 2px;
+}
+
+/* The switches are rendered checked and synced by the script once the page is
+ * loaded; until then, show them in the state of the root class. Needed for each
+ * toggleable feature. */
+:root.cc-hidden input[data-feature-toggle="cc"] + .slider {
+  background-color: var(--switch-background-default);
+}
+
+:root.cc-hidden input[data-feature-toggle="cc"] + .slider:before {
+  transform: none;
+}
+
+/* Forced colors (e.g. Windows contrast themes) replace backgrounds and drop
+ * shadows, which would leave the switch invisible */
+@media (forced-colors: active) {
+  .feature-toggle .slider {
+    border: 1px solid CanvasText;
+  }
+
+  .feature-toggle .slider:before {
+    left: 0;
+    bottom: 0;
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+}

@@ -66,8 +66,8 @@ class DottyUnpickler(
     unpickler.unpickle(new AttributesSectionUnpickler)
       .map(_.attributes).getOrElse(Attributes.empty)
   val compilationUnitInfo: CompilationUnitInfo =
-    import unpickler.header.{majorVersion, minorVersion, experimentalVersion}
-    val tastyVersion = TastyVersion(majorVersion, minorVersion, experimentalVersion)
+    val header = unpickler.header
+    val tastyVersion = TastyVersion(header.majorVersion, header.minorVersion, header.experimentalVersion)
     val tastyInfo = TastyInfo(tastyVersion, tastyAttributes)
     CompilationUnitInfo(tastyFile, () => Some(tastyInfo))
 

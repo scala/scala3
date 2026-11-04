@@ -1456,9 +1456,16 @@ object SymDenotations {
 
     /** The class that encloses the owner of the current context
      *  and that is a subclass of this class. NoSymbol if no such class exists.
+     *  Java statics are entered in a companion module, but in Java they are part
+     *  of the class body (JLS 8.1.6), where protected access is allowed (JLS 6.6.2.1).
+     *  So the companion class of a Java statics module is also considered.
      */
     final def enclosingSubClass(using Context): Symbol =
-      ctx.owner.ownersIterator.findSymbol(_.isSubClass(symbol))
+      ctx.owner.ownersIterator
+        .flatMap: owner =>
+          if owner.isJavaStaticsClass then Iterator(owner, owner.companionClass)
+          else Iterator.single(owner)
+        .findSymbol(_.isSubClass(symbol))
 
     /** The alias of an opaque type alias that's stored in the self type of the
      *  containing object.
@@ -1857,7 +1864,7 @@ object SymDenotations {
       @tailrec
       def findLvlN(
         explore: mutable.ArrayDeque[Symbol],
-        seen: util.HashSet[Symbol],
+        seen: mutable.Set[Symbol],
         acc: mutable.ListBuffer[Symbol]
       ): List[Symbol] =
         if explore.isEmpty then
@@ -1879,7 +1886,7 @@ object SymDenotations {
        */
       @tailrec
       def findLvl2(
-        lvl1: List[Symbol], explore: List[Symbol], seenOrNull: util.HashSet[Symbol] | Null
+        lvl1: List[Symbol], explore: List[Symbol], seenOrNull: mutable.Set[Symbol] | Null
       ): List[Symbol] = explore match
         case sym :: explore1 =>
           val lvl2 = sym.children
@@ -1888,7 +1895,7 @@ object SymDenotations {
           else // check if we have seen the children before
             val seen = // initialise the seen set if not already
               if seenOrNull != null then seenOrNull
-              else util.HashSet.from(lvl1)
+              else mutable.Set.from(lvl1)
             val notSeen = lvl2.filterConserve(!seen.contains(_))
             if notSeen.isEmpty then // we found children, but we had already seen them, scan the rest of explore1
               findLvl2(lvl1, explore1, seen)
@@ -2527,8 +2534,8 @@ object SymDenotations {
       }
 
     def computeMemberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {
-      var names = Set[Name]()
-      def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
+      var names = Set.empty[Name]
+      inline def maybeAdd(name: Name) = if keepOnly(thisType, name) then names += name
       ctx.handleRecursive("member names of", this):
         for ptype <- parentTypes do
           ptype.classSymbol match

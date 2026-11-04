@@ -4,7 +4,8 @@ package transform
 
 import core.*
 import Annotations.Annotation
-import Symbols.*, Types.*, Contexts.*, Flags.*, Decorators.*, reporting.*
+import Symbols.*, Types.*, Contexts.*, Flags.*, Decorators.*, StdNames.*, reporting.*
+import NullOpsDecorator.*
 import util.SrcPos
 import config.{ScalaVersion, NoScalaVersion, Feature}
 import MegaPhase.MiniPhase
@@ -183,6 +184,28 @@ end CrossVersionChecks
 object CrossVersionChecks:
   val name: String = "crossVersionChecks"
   val description: String = "check issues related to deprecated and experimental"
+
+  /** In `sigPoly(args).asInstanceOf[T]`, the call returns Object unless the cast's expected type set its
+   *  result type, which is deprecated. Unlike in Java, the cast itself does not set the result type.
+   */
+  def checkSignaturePolymorphicCast(tree: tpd.TypeApply)(using Context): Unit = tree match
+    case tpd.TypeApply(tpd.Select(app @ tpd.Apply(fn, _), nme.asInstanceOf_), targ :: Nil) =>
+      val sigPoly = fn.symbol.originalSignaturePolymorphic
+      if sigPoly.exists && sigPoly.info.resultType.stripNull().isRef(defn.ObjectClass) then
+        def erasesToObject(tp: Type) = TypeErasure.erasure(tp).isRef(defn.ObjectClass)
+        val name = sigPoly.symbol.name
+        val resTp = app.tpe.widen
+        if !erasesToObject(resTp) then
+          report.deprecationWarning(
+            em"""using the cast to set the result type of signature polymorphic method $name is deprecated;
+                |use a type ascription instead: `(... : ${resTp.stripNull()})`""",
+            app.srcPos)
+        else if !erasesToObject(targ.tpe) then
+          report.warning(
+            em"""the cast does not set the result type of signature polymorphic method $name, the call returns Object;
+                |use a type ascription instead: `(... : ${targ.tpe})`""",
+            app.srcPos)
+    case _ =>
 
   /** Check that a reference to an experimental definition with symbol `sym` meets cross-version constraints
    *  for `@deprecated`, `@experimental` and `@preview`.

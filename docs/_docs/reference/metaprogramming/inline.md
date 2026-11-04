@@ -191,6 +191,22 @@ Inline methods can override other non-inline methods. The rules are as follows:
     val a: A = B
     a.f         // error: cannot inline f in A.
     ```
+4. Indirectly overridden inline methods, like:
+    ```scala
+    trait Settings:
+      inline def switch: Boolean = true
+
+    trait Inner:
+      def switch: Boolean
+      def go: String = if switch then "Yes" else "No"
+
+    object Outer extends Inner, Settings
+    ```
+    have their inline expanded body copied (not in TASTy, only at the backend level) to the first class that is aware of the override (`Outer` in the example above).
+    This is because:
+    * inline defs that are not overriding any method at the point of implementation are erased.
+    * we might only be able to detect indirect overrides after the initial classlike with the inline method is already compiled (so we can't un-erase it then, and we have to include some reference to it in the classfile, copying makes the most sense). 
+
 
 ### Relationship to `@inline`
 

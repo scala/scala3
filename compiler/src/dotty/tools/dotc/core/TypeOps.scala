@@ -20,6 +20,7 @@ import typer.IfBottom
 import Annotations.Annotation
 import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed}
 import CaptureSet.{IdentityCaptRefMap, VarState}
+import util.*
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -31,7 +32,7 @@ object TypeOps:
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
    *  for what this means.
    */
-  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol)(using Context): Type = ctx.handleRecursive("checking 'as seen from' for", tp):
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol)(using Context): Type =
     // we only include 'tp' in the handleRecursive details because if we make it a fancy display,
     // the implementing closure is responsible for ~0.5% of all compiler allocations
     pre match {
@@ -66,7 +67,7 @@ object TypeOps:
      */
     private[TypeOps] var approxCount: Int = 0
 
-    def apply(tp: Type): Type = {
+    def apply(tp: Type): Type = ctx.handleRecursive("checking 'as seen from' for", tp) {
 
       /** Map a `C.this` type to the right prefix. If the prefix is unstable, and
        *  the current variance is <= 0, return a range.
@@ -459,7 +460,7 @@ object TypeOps:
 
   /** An approximating map that drops NamedTypes matching `toAvoid` and wildcard types. */
   abstract class AvoidMap(using Context) extends AvoidWildcardsMap:
-    @threadUnsafe lazy val localParamRefs = util.HashSet[Type]()
+    @threadUnsafe lazy val localParamRefs = mutable.Set.empty[Type]
 
     def toAvoid(tp: NamedType): Boolean
 
@@ -563,18 +564,24 @@ object TypeOps:
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(tp: NamedType) = forbidden.contains(tp.symbol)
 
+      private var pendingTypeVars: List[TypeVar] = Nil
+
       override def apply(tp: Type): Type = tp match
         case tp: TermRef if toAvoid(tp) =>
           replacements.get(tp.symbol) match
             case Some(replacement) => replacement
             case None => super.apply(tp)
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
-          val lo = TypeComparer.instanceType(
-            tp.origin,
-            fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound,
-            tp.widenPolicy)(using mapCtx)
-          val lo1 = apply(lo)
-          if (lo1 ne lo) lo1 else tp
+          if pendingTypeVars.exists(_ eq tp) then tp
+          else
+            pendingTypeVars = tp :: pendingTypeVars
+            val lo = TypeComparer.instanceType(
+              tp.origin,
+              fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound,
+              tp.widenPolicy)(using mapCtx)
+            val lo1 = apply(lo)
+            pendingTypeVars = pendingTypeVars.tail
+            if (lo1 ne lo) lo1 else tp
         case _ =>
           super.apply(tp)
       end apply
@@ -787,7 +794,7 @@ object TypeOps:
   private def instantiateToSubType(tp1: NamedType, tp2: Type, mixins: List[Type])(using Context): Type = trace(i"instantiateToSubType($tp1, $tp2, $mixins)", typr) {
     /** Gather GADT symbols and singletons found in `tp2`, ie. the scrutinee. */
     object TraverseTp2 extends TypeTraverser:
-      val singletons = util.HashMap[Symbol, SingletonType]()
+      val singletons = mutable.Map.empty[Symbol, SingletonType]
       val gadtSyms = new mutable.ListBuffer[Symbol]
 
       def traverse(tp: Type) = ctx.handleRecursive("traverseTp2", tp):
@@ -864,7 +871,7 @@ object TypeOps:
     // 3. Replace non-reducing MatchType with its bound
     //
     val approximateParent = new TypeMap {
-      val boundTypeParams = util.HashMap[TypeRef, TypeVar]()
+      val boundTypeParams = mutable.Map.empty[TypeRef, TypeVar]
 
       def apply(tp: Type): Type = tp.dealias match {
         case tp: MatchType =>
@@ -887,15 +894,15 @@ object TypeOps:
         case tp: TypeRef if !tp.symbol.isClass =>
           if initialGadt.contains(tp.symbol) then tp
           else
-            val lookup = boundTypeParams.lookup(tp)
-            if lookup != null then lookup
-            else
-              val TypeBounds(lo, hi) = tp.underlying.bounds
-              val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
-              boundTypeParams(tp) = tv
-              assert(tv <:< apply(hi))
-              apply(lo) <:< tv //  no assert, since bounds might conflict
-              tv
+            boundTypeParams.get(tp) match
+              case None =>
+                val TypeBounds(lo, hi) = tp.underlying.bounds
+                val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
+                boundTypeParams(tp) = tv
+                assert(tv <:< apply(hi))
+                apply(lo) <:< tv //  no assert, since bounds might conflict
+                tv
+              case Some(tv) => tv
 
         case tp @ AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass && !tp.isMatchAlias =>
           // In tests/patmat/i3645g.scala, we need to tell whether it's possible
@@ -953,11 +960,21 @@ object TypeOps:
     // variance. As this logic is only needed in exhaustivity check,
     // we manually patch subtyping check instead of changing TypeComparer.
     // See tests/patmat/i3645b.scala
-    def parentQualify(tp1: Type, tp2: Type) = tp1.classSymbol.info.parents.exists { parent =>
-      parent.argInfos.nonEmpty && approximateParent(parent) <:< tp2
-    }
+    def parentQualify(tp1: Type, tp2: Type) =
+      // This doesn't do what we want when a subclass inherits from a raw version of the superclass,
+      // e.g., `class X<T>` having `A<String> extends X<String>` and `B extends X` as children.
+      // Detect this and use the type anyway. See tests/warn/patmat-raw.
+      def looksLikeRawType(t: Type): Boolean = t match
+        case AppliedType(_, args) => args.forall(_.isInstanceOf[TypeBounds])
+        case _ => t.typeParams.nonEmpty
+      tp1.classSymbol.info.parents.exists { parent =>
+        // If the parent is a raw type, the relationship is inverted.
+        // Consider the `tests/warn/patmat-raw` case, where the `parent` of `TimedOut` is a raw `Event`, which we consider a supertype of `Event[String]`
+        (parent.argInfos.nonEmpty && approximateParent(parent) <:< tp2) || (looksLikeRawType(parent) && tp2 <:< parent)
+      }
 
     def instantiate(): Type = {
+      // This bizarre loop fixes tests/pos/i16539.scala
       for tp <- mixins.reverseIterator do
         protoTp1 <:< tp
       maximizeType(protoTp1, NoSpan)
@@ -1008,7 +1025,7 @@ object TypeOps:
       case _ =>
         mapFollowingAliases(t)
 
-  /** Apply [[Type.stripTypeVar]] recursively. */
+  /** Apply `Type.stripTypeVar` recursively. */
   def stripTypeVars(tp: Type)(using Context): Type =
     new StripTypeVarsMap().apply(tp)
 

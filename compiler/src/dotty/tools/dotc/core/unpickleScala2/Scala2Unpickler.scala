@@ -162,7 +162,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   private val entries = new Array[AnyRef](index.length)
 
   /** A map from symbols to their associated `decls` scopes */
-  private val symScopes = mutable.HashMap[Symbol, Scope]()
+  private val symScopes = mutable.Map.empty[Symbol, Scope]
 
   /** A mapping from method types to the parameters used in constructing them */
   private val paramsOfMethodType = new java.util.IdentityHashMap[MethodType, List[Symbol]]
@@ -1001,15 +1001,19 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   /** Read an annotation argument, which is pickled either
    *  as a Constant or a Tree.
+   *
+   *  A constant entry can also be referenced from elsewhere in the pickle
+   *  (e.g. by a `LITERALtree` or a `CONSTANTtpe`), so we must cache the
+   *  constant itself in `entries`, as `readConstantRef` does, not the
+   *  `Literal` wrapping it.
    */
   protected def readAnnotArg(i: Int)(using Context): untpd.Tree = untpd.TypedSplice:
     bytes(index(i)) match
     case TREE => at(i, () => readTree())
-    case _ => at(i, () =>
-      readConstant() match
+    case _ =>
+      at(i, () => readConstant()) match
         case c: Constant => Literal(c)
         case tp: TermRef => ref(tp)
-    )
 
   /** Read a ClassfileAnnotArg (argument to a classfile annotation)
    */

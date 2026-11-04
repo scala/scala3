@@ -1,0 +1,9 @@
+class Test:
+  def f =
+    while ({ {
+      println(1)
+    } ; {
+      println(2)
+      false
+    }}) ()
+    while ({ println(3) ; false}) ()

@@ -86,7 +86,7 @@ import scala.runtime.ScalaRunTime.nullForGC
  *   val xres = X(x)
  *   override def close() = println(s"CLOSE $y")
  *   // an error during construction releases previously acquired resources
- *   require(y != null, "y is null")
+ *   require(y != "", "y is empty")
  *   mgr.acquire(this)
  *  }
  *
@@ -96,9 +96,9 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  }
  *  println {
  *   Using.Manager { implicit mgr =>
- *     Y(null)("X")
+ *     Y("")("X")
  *   }
- *  } // Failure(java.lang.IllegalArgumentException: requirement failed: y is null)
+ *  } // Failure(java.lang.IllegalArgumentException: requirement failed: y is empty)
  *  ```
  *
  *  If you wish to avoid wrapping management and operations in a `Try`, you can use

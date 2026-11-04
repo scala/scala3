@@ -13,6 +13,14 @@ final class SimpleIdentityMap[K <: AnyRef, +V <: AnyRef](bindings: Array[AnyRef]
   def isEmpty: Boolean =
     bindings.length == 0
 
+  private def repr: Array[AnyRef] = bindings
+
+  /** Is `this` backed by the same underlying storage as `that`? If so, they are
+   *  guaranteed to hold the same bindings (the converse need not hold: two maps
+   *  with equal bindings might still be backed by different storage).
+   */
+  def sameBindings[K2 <: AnyRef, V2 <: AnyRef](that: SimpleIdentityMap[K2, V2]): Boolean = bindings eq that.repr
+
   def size: Int = bindings.length / 2
 
   //Stats.record(s"SimpleIdentityMap/$size")

@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/i8646.scala:58:4 --------------------------------------------------------------
+58 |    (uuid: Int) => body => IO(SomeResponse()) // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    Found:    Int => main.SomeRequestBody => main.IO[main.SomeResponse]
+   |    Required: java.util.UUID => main.SomeRequestBody => main.IO[main.SomeResponse]
+   |
+   | longer explanation available when compiling with `-explain`

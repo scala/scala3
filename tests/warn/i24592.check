@@ -1,0 +1,4 @@
+-- [E198] Unused Symbol Warning: tests/warn/i24592.scala:5:23 ----------------------------------------------------------
+5 |  transforms.map((str, int) => str) // warn untupled param not local
+  |                       ^^^
+  |                       unused explicit parameter

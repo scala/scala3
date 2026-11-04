@@ -1,16 +1,17 @@
 package dotty.tools.dotc
 package transform
 
+import core.Contexts.*
+import core.Flags
+import core.NameKinds.ExceptionBinderName
 import core.Symbols.*
 import core.StdNames.*
 import core.Types.*
-import core.NameKinds.ExceptionBinderName
-import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.reporting.UnreasonableCatch
-import dotty.tools.dotc.transform.MegaPhase.MiniPhase
-import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.util.SrcPos
+import reporting.UnreasonableCatch
+import util.chaining.*
+import util.Spans.Span
+import util.SrcPos
+import MegaPhase.MiniPhase
 
 import scala.annotation.tailrec
 
@@ -44,7 +45,8 @@ import scala.annotation.tailrec
  *
  */
 class TryCatchPatterns extends MiniPhase {
-  import dotty.tools.dotc.ast.tpd.*
+  import ast.tpd.*
+  import TryCatchPatterns.SimpleMultiCatch
 
   override def phaseName: String = TryCatchPatterns.name
 
@@ -66,24 +68,31 @@ class TryCatchPatterns extends MiniPhase {
   override def transformTry(tree: Try)(using Context): Tree = {
     val (tryCases, patternMatchCases) = tree.cases.span(isCatchCase)
     val fallbackCase = mkFallbackPatterMatchCase(patternMatchCases, tree.span)
-    cpy.Try(tree)(cases = tryCases ++ fallbackCase)
+    cpy.Try(tree)(cases = transformTryCases(tryCases) ++ fallbackCase)
+  }
+
+  private def transformTryCases(tryCases: List[CaseDef])(using Context) = tryCases.mapConserve {
+    case cdef @ CaseDef(Typed(_, tpt @ DisjointUnion(types)), _, _) =>
+      cdef.withAttachment(SimpleMultiCatch, types)
+    case cdef @ CaseDef(Bind(_, Typed(_, tpt @ DisjointUnion(types))), _, _) =>
+      cdef.withAttachment(SimpleMultiCatch, types)
+    case cdef => cdef
   }
 
   /** Is this pattern node a catch-all or type-test pattern? */
-  private def isCatchCase(cdef: CaseDef)(using Context): Boolean = cdef match {
+  private def isCatchCase(cdef: CaseDef)(using Context): Boolean = cdef match
     case CaseDef(Typed(Ident(nme.WILDCARD), tpt), guard, _) =>
       warnIfUnreasonableCatch(tpt)
-      guard == EmptyTree && isSimpleThrowable(tpt.tpe)
+      guard == EmptyTree && isSimpleThrowable(tpt)
     case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt)), guard, _) =>
       warnIfUnreasonableCatch(tpt)
-      guard == EmptyTree && isSimpleThrowable(tpt.tpe)
+      guard == EmptyTree && isSimpleThrowable(tpt)
     case _ =>
-      if isDefaultCase(cdef) then
-        warnForUnreasonableCatch(cdef)
-        true
-      else
-        false
-  }
+      isDefaultCase(cdef).tap(if _ then warnForUnreasonableCatch(cdef))
+
+  private def isSimpleThrowable(tpt: Tree)(using Context): Boolean = tpt match
+    case DisjointUnion(types) => types.forall(isSimpleThrowable)
+    case _ => isSimpleThrowable(tpt.tpe)
 
   @tailrec
   private def isSimpleThrowable(tp: Type)(using Context): Boolean = tp.strippedDealias match {
@@ -125,3 +134,5 @@ class TryCatchPatterns extends MiniPhase {
 object TryCatchPatterns:
   val name: String = "tryCatchPatterns"
   val description: String = "compile cases in try/catch"
+  import util.Property
+  val SimpleMultiCatch: Property.StickyKey[List[Type]] = Property.StickyKey()

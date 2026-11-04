@@ -223,6 +223,12 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
       currentTrace = after
     }
 
+    // Bounds the producer/consumer analysis work for this method, across all rounds and optimizations.
+    // Once exhausted, the optimizations that need that analysis are skipped (they report no change);
+    // the analysis completes before an optimization rewrites the method, so nothing is left half-done.
+    val budget = AnalysisBudget(settings.optAnalysisBudget)
+    def withinBudget[T](noChange: T)(optimization: => T): T = budget.run(method, noChange)(optimization)
+
     /*
      * Runs the optimizations that depend on each other in a loop until reaching a fixpoint. See
      * comment in class [[LocalOpt]].
@@ -259,7 +265,7 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
 
       // BOX-UNBOX
       val runBoxUnbox = settings.optBoxUnbox && (requestBoxUnbox || nullnessOptChanged)
-      val boxUnboxChanged = runBoxUnbox && boxUnbox.boxUnboxElimination(method, ownerClassName)
+      val boxUnboxChanged = runBoxUnbox && withinBudget(false)(boxUnbox.boxUnboxElimination(method, ownerClassName, budget))
       traceIfChanged("boxUnbox")
 
       // COPY PROPAGATION
@@ -269,7 +275,7 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
 
       // STALE STORES
       val runStaleStores = settings.optCopyPropagation && (requestStaleStores || nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged)
-      val (storesRemoved, intrinsicRewrittenByStaleStores, callInlinedByStaleStores) = if (!runStaleStores) (false, false, false) else copyProp.eliminateStaleStoresAndRewriteSomeIntrinsics(method, ownerClassName)
+      val (storesRemoved, intrinsicRewrittenByStaleStores, callInlinedByStaleStores) = if (!runStaleStores) (false, false, false) else withinBudget((false, false, false))(copyProp.eliminateStaleStoresAndRewriteSomeIntrinsics(method, ownerClassName, budget))
       traceIfChanged("staleStores")
 
       // REDUNDANT CASTS
@@ -279,7 +285,7 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
 
       // PUSH-POP
       val runPushPop = settings.optCopyPropagation && (requestPushPop || storesRemoved || typeInsnChanged)
-      val (pushPopRemoved, pushPopCastAdded, pushPopNullCheckAdded) = if (!runPushPop) (false, false, false) else copyProp.eliminatePushPop(method, ownerClassName)
+      val (pushPopRemoved, pushPopCastAdded, pushPopNullCheckAdded) = if (!runPushPop) (false, false, false) else withinBudget((false, false, false))(copyProp.eliminatePushPop(method, ownerClassName, budget))
       traceIfChanged("pushPop")
 
       // STORE-LOAD PAIRS
@@ -383,7 +389,7 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
    */
   private def nullnessOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
     Limits.sizeOKForNullness(method) && {
-      lazy val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, ts.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
+      val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, ts.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
 
       // When running nullness optimizations the method may still have unreachable code. Analyzer
       // frames of unreachable instructions are `null`.
@@ -572,8 +578,8 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
       aType.flatMap(a => bType.map(b => impl(a, b))).getOrElse(false)
     }
 
-    lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(method, owner)
-    lazy val nullnessAnalyzer = new NullnessAnalyzer(method, owner, ts.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
+    val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(method, owner)
+    val nullnessAnalyzer = new NullnessAnalyzer(method, owner, ts.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
 
     // cannot remove instructions while iterating, it gets the analysis out of synch (indexed by instructions)
     val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]

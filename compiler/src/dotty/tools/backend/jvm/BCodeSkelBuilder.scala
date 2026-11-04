@@ -143,7 +143,7 @@ trait BCodeSkelBuilder(val bTypes: KnownBTypes) extends BCodeHelpers {
     private var isCZStaticModule    = false
 
     // keep track of interfaces that are used in super calls, as they need to be directly inherited even if they are also indirectly inherited
-    val superCallTargets = mutable.LinkedHashSet[ClassBType]()
+    val superCallTargets = mutable.LinkedHashSet.empty[ClassBType]
 
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
@@ -319,7 +319,7 @@ trait BCodeSkelBuilder(val bTypes: KnownBTypes) extends BCodeHelpers {
     * method due to a limitation in the JVM. Instead, we emit a separate invokedynamic bytecode for each group of target
     * methods.
     */
-    private def addLambdaDeserialize(classNode: ClassNode, serializableLambdas: List[Handle]): Unit = {
+    private def addLambdaDeserialize(classNode: ClassNode, serializableLambdas: List[Handle])(using Context): Unit = {
       if serializableLambdas.isEmpty then
         return
 
@@ -332,7 +332,7 @@ trait BCodeSkelBuilder(val bTypes: KnownBTypes) extends BCodeHelpers {
       val serializedLambdaObjDesc = s"(Ljava/lang/invoke/SerializedLambda;)L${ClassBType.javaLangObjectInternalName};"
       val mv = cw.visitMethod(Opcodes.ACC_PRIVATE + Opcodes.ACC_STATIC + Opcodes.ACC_SYNTHETIC, "$deserializeLambda$", serializedLambdaObjDesc, null, null)
 
-      def emitLambdaDeserializeIndy(targetMethods: Seq[Handle]): Unit = {
+      def emitLambdaDeserializeIndy(targetMethods: Seq[Handle])(using Context): Unit = {
         mv.visitVarInsn(Opcodes.ALOAD, 0)
         mv.visitInvokeDynamicInsn("lambdaDeserialize", serializedLambdaObjDesc, bTypes.jliLambdaDeserializeBootstrapHandle, targetMethods *)
       }
@@ -589,7 +589,7 @@ trait BCodeSkelBuilder(val bTypes: KnownBTypes) extends BCodeHelpers {
      */
     object locals {
 
-      private val slots = mutable.HashMap.empty[Symbol, Local] // (local-or-param-sym -> Local(BType, name, idx, isSynth))
+      private val slots = mutable.Map.empty[Symbol, Local] // (local-or-param-sym -> Local(BType, name, idx, isSynth))
 
       private var nxtIdx = -1 // next available index for local-var
 

@@ -122,9 +122,6 @@ i15867.scala
 
 java-inherited-type1
 
-# recursion limit exceeded
-i7445b.scala
-
 # more aggresive reduce projection makes a difference
 i15525.scala
 i19955a.scala

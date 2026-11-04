@@ -1122,14 +1122,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           assert(sym.name.isSetterName && sym.info.firstParamTypes.nonEmpty, sym)
           sym
         }
-        val qual = tree match {
-          case id: Ident => desugarIdentPrefix(id)
-          case Select(qual, _) => qual
-        }
-        qual.select(setter).appliedTo(rhs)
+        setterAppliedTo(setter, rhs)
       }
       else Assign(tree, rhs)
     }
+
+    def setterAppliedTo(setter: Symbol, rhs: Tree)(using Context): Tree =
+      val qual = tree match
+        case id: Ident => desugarIdentPrefix(id)
+        case Select(qual, _) => qual
+      qual.select(setter).appliedTo(rhs)
 
     /** tree @annot
      *
@@ -1193,7 +1195,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     def collectSubTrees[A](f: PartialFunction[Tree, A])(using Context): List[A] =
-      val buf = mutable.ListBuffer[A]()
+      val buf = mutable.ListBuffer.empty[A]
       foreachSubTree(f.runWith(buf += _)(_))
       buf.toList
 
@@ -1675,6 +1677,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   def repeated(trees: List[Tree], tpt: Tree)(using Context): Tree =
     ctx.typeAssigner.arrayToRepeated(JavaSeqLiteral(trees, tpt))
+
+  /** Convert a list of trees to a vararg-compatible tree represented as SeqLiteral.
+   */
+  def repeatedSeq(trees: List[Tree], tpt: Tree)(using Context): Tree =
+    ctx.typeAssigner.seqToRepeated(SeqLiteral(trees, tpt))
 
   /** Create a tree representing a list containing all
    *  the elements of the argument list. A "list of tree to

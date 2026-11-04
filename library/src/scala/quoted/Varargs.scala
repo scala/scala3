@@ -22,7 +22,7 @@ object Varargs {
    *  def f(using Quotes) = {
    *    import quotes.reflect.*
    *  //}
-   *    '{ List(${Varargs(List('{1}, '{2}, '{3}))}: _*) } // equivalent to '{ List(1, 2, 3) }
+   *    '{ List(${Varargs(List('{1}, '{2}, '{3}))}*) } // equivalent to '{ List(1, 2, 3) }
    *  //{
    *  }
    *  //}

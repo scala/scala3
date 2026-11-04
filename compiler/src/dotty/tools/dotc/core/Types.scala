@@ -1058,11 +1058,11 @@ object Types extends TypeUtils {
       case tp: OrType =>
         tp.tp1.memberNames(keepOnly, pre) & tp.tp2.memberNames(keepOnly, pre)
       case _ =>
-        Set()
+        Set.empty
     }
 
     def memberDenots(keepOnly: NameFilter, f: (Name, mutable.Buffer[SingleDenotation]) => Unit)(using Context): Seq[SingleDenotation] = {
-      val buf = mutable.ListBuffer[SingleDenotation]()
+      val buf = mutable.ListBuffer.empty[SingleDenotation]
       for (name <- memberNames(keepOnly)) f(name, buf)
       buf.toList
     }
@@ -1663,7 +1663,7 @@ object Types extends TypeUtils {
     }
 
     /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
-    final def dropDependentRefinement(using Context): Type = dealias match {
+    final def dropFunctionRefinement(using Context): Type = dealias match {
       case RefinedType(parent, nme.apply, mt) if defn.isNonRefinedFunction(parent) => parent
       case tp => tp
     }
@@ -2024,7 +2024,6 @@ object Types extends TypeUtils {
      */
     def toFunctionType(isJava: Boolean = false, alwaysDependent: Boolean = false)(using Context): Type = this match {
       case mt: MethodType =>
-        assert(!mt.isParamDependent)
         def nonDependentFunType =
           val isContextual = mt.isContextualMethod && !ctx.erasedTypes
           val result1 = mt.nonDependentResultApprox match {
@@ -2035,14 +2034,18 @@ object Types extends TypeUtils {
             mt.paramInfos.mapConserve:
               _.translateFromRepeated(toArray = isJava),
             result1, isContextual)
-        if mt.hasErasedParams then
+        if mt.hasErasedParams || mt.isParamDependent then
+          // Function types with erased parameters are represented with a PolyFunction
+          // parent. We do the same for parameter-dependent method types, since we
+          // don't know how to construct a parametric FunctionN parent for them.
+          // Such method types can only come from explicit `PolyFunction` refinements
+          // or from Tasty files of previous versions; a dependent function type
+          // in source cannot have inter-parameter dependencies.
           defn.PolyFunctionOf(mt)
         else if alwaysDependent || mt.isResultDependent then
           RefinedType(nonDependentFunType, nme.apply, mt)
         else nonDependentFunType
-      case poly @ PolyType(_, mt: MethodType) =>
-        // mt can be paramDependent here since we don't need to compute a
-        // non-dependent result approximation.
+      case poly: PolyType =>
         // TODO: Move all dependent functions to PolyFunctionOf and drop the
         // no parameter dependencies restriction everywhere.
         defn.PolyFunctionOf(poly)
@@ -2934,6 +2937,7 @@ object Types extends TypeUtils {
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: NamedType =>
         designator.equals(that.designator) &&
+        isTerm == that.isTerm &&
         prefix.equals(that.prefix, bs)
       case _ =>
         false
@@ -4206,7 +4210,7 @@ object Types extends TypeUtils {
   abstract class LambdaTypeCompanion[N <: Name, PInfo <: Type, LT <: LambdaType] {
     def syntheticParamName(n: Int): N
 
-    @sharable private val memoizedNames = util.HashMap[Int, List[N]]()
+    @sharable private val memoizedNames = mutable.Map.empty[Int, List[N]]
     def syntheticParamNames(n: Int): List[N] = synchronized {
       memoizedNames.getOrElseUpdate(n, (0 until n).map(syntheticParamName).toList)
     }
@@ -5185,7 +5189,7 @@ object Types extends TypeUtils {
     def underlying(using Context): Type = bound
 
     private var myReduced: Type | Null = null
-    private var reductionContext: util.MutableMap[Type, Type] | Null = null
+    private var reductionContext: mutable.Map[Type, Type] | Null = null
 
     private def thisMatchType = this
 
@@ -5205,9 +5209,9 @@ object Types extends TypeUtils {
 
       def setReductionContext(): Unit =
         new TypeTraverser:
-          var footprint: Set[Type] = Set()
+          var footprint: Set[Type] = Set.empty
           var deep: Boolean = true
-          val seen = util.HashSet[Type]()
+          val seen = mutable.Set.empty[Type]
           def traverse(tp: Type) =
             if !seen.contains(tp) then
               seen += tp
@@ -5231,7 +5235,7 @@ object Types extends TypeUtils {
           traverse(scrutinee)
           deep = false
           cases.foreach(traverse)
-          reductionContext = util.HashMap()
+          reductionContext = mutable.Map.empty
           for tp <- footprint do
             reductionContext.nn(tp) = contextInfo(tp)
           matchTypes.println(i"footprint for $thisMatchType $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
@@ -6022,37 +6026,41 @@ object Types extends TypeUtils {
         approxWildcardArgs(tp)
     end samParent
 
-    def samClass(tp: Type)(using Context): Symbol = tp match
-      case tp: ClassInfo =>
-        val cls = tp.cls
-        def takesNoArgs(tp: Type) =
-          !tp.classSymbol.primaryConstructor.exists
-              // e.g. `ContextFunctionN` does not have constructors
-          || tp.applicableConstructors(argTypes = Nil, adaptVarargs = true).lengthCompare(1) == 0
-              // we require a unique constructor so that SAM expansion is deterministic
-        val noArgsNeeded: Boolean =
-          takesNoArgs(tp)
-          && (!cls.is(Trait) || takesNoArgs(tp.parents.head))
-        def isInstantiable =
-          !cls.isOneOf(FinalOrSealed) && (tp.appliedRef <:< tp.selfType)
-        if noArgsNeeded && isInstantiable then cls
-        else NoSymbol
-      case tp: AppliedType =>
-        samClass(tp.superType)
-      case tp: TypeRef =>
-        samClass(tp.underlying)
-      case tp: RefinedType =>
-        samClass(tp.underlying)
-      case tp: TypeBounds =>
-        samClass(tp.underlying)
-      case tp: TypeVar =>
-        samClass(tp.underlying)
-      case tp: AnnotatedType =>
-        samClass(tp.underlying)
-      case _ =>
-        NoSymbol
-
     def unapply(tp: Type)(using Context): Option[(MethodType, Type)] =
+      deconstruct(tp, false)
+
+    /** Optionally ignores `final` and `sealed`, so that error messages can point to this specific problem. */
+    def deconstruct(tp: Type, ignoreFinalOrSealed: Boolean)(using Context): Option[(MethodType, Type)] =
+      def samClass(tp: Type)(using Context): Symbol = tp match {
+        case tp: ClassInfo =>
+          val cls = tp.cls
+          def takesNoArgs(tp: Type) =
+            !tp.classSymbol.primaryConstructor.exists
+              // e.g. `ContextFunctionN` does not have constructors
+              || tp.applicableConstructors(argTypes = Nil, adaptVarargs = true).lengthCompare(1) == 0
+          // we require a unique constructor so that SAM expansion is deterministic
+          val noArgsNeeded: Boolean =
+            takesNoArgs(tp)
+              && (!cls.is(Trait) || takesNoArgs(tp.parents.head))
+          def isInstantiable =
+            (ignoreFinalOrSealed || !cls.isOneOf(FinalOrSealed)) && (tp.appliedRef <:< tp.selfType)
+          if noArgsNeeded && isInstantiable then cls
+          else NoSymbol
+        case tp: AppliedType =>
+          samClass(tp.superType)
+        case tp: TypeRef =>
+          samClass(tp.underlying)
+        case tp: RefinedType =>
+          samClass(tp.underlying)
+        case tp: TypeBounds =>
+          samClass(tp.underlying)
+        case tp: TypeVar =>
+          samClass(tp.underlying)
+        case tp: AnnotatedType =>
+          samClass(tp.underlying)
+        case _ =>
+          NoSymbol
+      }
       val cls = samClass(tp)
       if cls.exists then
         val absMems =
@@ -6947,7 +6955,7 @@ object Types extends TypeUtils {
   class NamedPartsAccumulator(p: NamedType => Boolean)(using Context)
   extends TypeAccumulator[List[NamedType]]:
     def maybeAdd(xs: List[NamedType], tp: NamedType): List[NamedType] = if p(tp) then tp :: xs else xs
-    val seen = util.HashSet[Type]()
+    val seen = mutable.Set.empty[Type]
     def apply(xs: List[NamedType], tp: Type): List[NamedType] =
       if seen.contains(tp) then xs
       else
@@ -6985,7 +6993,7 @@ object Types extends TypeUtils {
   }
 
   class TypeSizeAccumulator(using Context) extends TypeAccumulator[Int] {
-    var seen = util.HashSet[Type](initialCapacity = 8)
+    var seen = new mutable.HashSet[Type](initialCapacity = 8, mutable.HashSet.defaultLoadFactor)
     def apply(n: Int, tp: Type): Int =
       tp match {
         case tp: AppliedType if defn.isTupleNType(tp) =>
@@ -7017,7 +7025,7 @@ object Types extends TypeUtils {
   }
 
   class CoveringSetAccumulator(using Context) extends TypeAccumulator[Set[Symbol]] {
-    var seen = util.HashSet[Type](initialCapacity = 8)
+    var seen = new mutable.HashSet[Type](initialCapacity = 8, mutable.HashSet.defaultLoadFactor)
     def apply(cs: Set[Symbol], tp: Type): Set[Symbol] =
       if seen.contains(tp) then cs
       else {

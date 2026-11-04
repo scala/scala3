@@ -326,7 +326,7 @@ object TastyFormat {
    *  compatibility, but remains backwards compatible, with all
    *  preceding `MinorVersion`.
    */
-  final val MinorVersion: Int = 10
+  final val MinorVersion: Int = 11
 
   /** Natural Number. The `ExperimentalVersion` allows for
    *  experimentation with changes to TASTy without committing
@@ -772,6 +772,9 @@ object TastyFormat {
     case PARAMalias => "PARAMalias"
     case EMPTYCLAUSE => "EMPTYCLAUSE"
     case SPLITCLAUSE => "SPLITCLAUSE"
+    case TRACKED => "TRACKED"
+    case SUBMATCH => "SUBMATCH"
+    case INTO => "INTO"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"

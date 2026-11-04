@@ -70,6 +70,8 @@ object Test extends App {
   // Overload
   class O(is: List[Int]) {
     def m(f: [T] => List[T] => Option[T]): (Option[Int], Boolean) = (f(is), true)
+    // Polymorphic function types all erase to Function0, so a targetName is needed
+    // to distinguish the overloads after erasure.
     def m(f: [T] => (List[T], T) => Option[T]): (Option[Int], Boolean) = (is.headOption.flatMap(f(is, _)), false)
   }
 

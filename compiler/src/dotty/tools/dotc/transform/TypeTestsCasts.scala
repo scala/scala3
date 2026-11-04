@@ -136,7 +136,7 @@ object TypeTestsCasts {
       case _: SingletonType     => ""
       case MatchType.Normalizing(tp) => recur(X, tp)
       case _: TypeProxy
-      if isAbstract(P)          => i"it refers to an abstract type member or type parameter"
+      if isAbstract(P)          => "it refers to an abstract type member or type parameter"
       case defn.ArrayOf(tpT)    =>
         X match {
           case defn.ArrayOf(tpE)   => recur(tpE, tpT)
@@ -171,7 +171,7 @@ object TypeTestsCasts {
       case tp2: RecType         => recur(X, tp2.parent)
       case _
       if P.classSymbol.isLocal && effectiveClassSymbols(X).exists(P.classSymbol.isInaccessibleChildOf) => // 8
-        i"it's a local class"
+        "it's a local class"
       case _                    => ""
     }
 

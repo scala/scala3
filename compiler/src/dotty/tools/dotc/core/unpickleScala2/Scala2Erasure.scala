@@ -241,7 +241,7 @@ object Scala2Erasure:
    *  flattened to three parents.
    */
   def flattenedParents(tp: AndType)(using Context): List[Type] =
-    val parents = ListBuffer[Type]()
+    val parents = ListBuffer.empty[Type]
 
     def collect(parent: Type, parents: ListBuffer[Type]): Unit = parent.dealiasKeepAnnots match
       case AndType(tp1, tp2) =>

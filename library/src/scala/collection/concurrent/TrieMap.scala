@@ -718,7 +718,7 @@ private[concurrent] case class RDCSS_Descriptor[K, V](old: INode[K, V], expected
  *  iterator and clear operations. The cost of evaluating the (lazy) snapshot is
  *  distributed across subsequent updates, thus making snapshot evaluation horizontally scalable.
  *
- *  For details, see: [[http://lampwww.epfl.ch/~prokopec/ctries-snapshot.pdf]]
+ *  For details, see: [[https://doi.org/10.1145/2145816.2145836 Concurrent Tries with Efficient Non-Blocking Snapshots]]
  */
 @SerialVersionUID(-5212455458703321708L)
 final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater[TrieMap[K, V], AnyRef] | Null, hashf: Hashing[K], ef: Equiv[K])
