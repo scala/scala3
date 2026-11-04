@@ -49,7 +49,6 @@ object ScalaLibraryFilesToCopy {
     "scala/runtime/AbstractFunction2",
     "scala/runtime/AbstractPartialFunction",
     "scala/runtime/NonLocalReturnControl",
-    "scala/util/hashing/MurmurHash3",
   )
 
   /** Files that match `filesToCopy` but must keep the version compiled by Scala 3.

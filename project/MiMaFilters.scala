@@ -41,7 +41,11 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.Range#Partial.hashCode$extension"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.Range#Partial.toString$extension"),
         // `object Sorting` is now compiled by Scala 3 instead of copied from Scala 2.13, so it is `Serializable`
-        ProblemFilters.exclude[MissingTypesProblem]("scala.util.Sorting$")
+        ProblemFilters.exclude[MissingTypesProblem]("scala.util.Sorting$"),
+        // `object MurmurHash3` is now compiled by Scala 3 instead of copied from Scala 2.13, so it is `Serializable`
+        ProblemFilters.exclude[MissingTypesProblem]("scala.util.hashing.MurmurHash3$"),
+        // MurmurHash3 is now compiled by Scala 3 instead of copied from Scala 2.13, so it has a default value for a method that is no longer final
+        ProblemFilters.exclude[FinalMethodProblem]("scala.util.hashing.MurmurHash3.productHash$default$3()Boolean"),
       ) ++ (0 to 22).flatMap { n =>
         // `applyUsing` for arity `n` is defined in the companion object of `FunctionN`,
         // which is a new object for all arities except 1
@@ -250,6 +254,8 @@ object MiMaFilters {
         ProblemFilters.exclude[FinalClassProblem]("scala.collection.immutable.Range$Partial$"),
         // The private `Sorting.mergeSort` function has a different implementation detail
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Sorting.scala$util$Sorting$$mergeSort$default$5"),
+        // `MurmurHash3` is private[scala.util.hashing] so could in theory have been used externally
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.hashing.MurmurHash3.arrayHash(java.lang.Object,Int)Int"),
       ),
 
       // Breaking changes since last LTS
@@ -713,6 +719,15 @@ object MiMaFilters {
       // https://github.com/scala/scala3/pull/24656
       BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.Predef$any2stringadd"),
       BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.Predef$any2stringadd$"),
+      // `MurmurHash3` is private[scala.util.hashing] so could in theory have been used externally
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.util.hashing.MurmurHash3$ArrayHashing$mcB$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.util.hashing.MurmurHash3$ArrayHashing$mcC$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.util.hashing.MurmurHash3$ArrayHashing$mcD$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.util.hashing.MurmurHash3$ArrayHashing$mcF$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.util.hashing.MurmurHash3$ArrayHashing$mcI$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.util.hashing.MurmurHash3$ArrayHashing$mcJ$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.util.hashing.MurmurHash3$ArrayHashing$mcV$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.util.hashing.MurmurHash3$ArrayHashing$mcZ$sp"),
     )
   }
 
