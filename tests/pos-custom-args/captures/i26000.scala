@@ -60,6 +60,12 @@ def classified(s: Sh^) =
   val b = Box([C^] => (r: Sh^{C}) => ())
   b.value[{s}](s)
 
+// The bound lets `C` flow into the classified formal `Sh^{C}`
+def classifiedBounded(s: Sh^) =
+  val b: Box[[C^ <: {any.only[SharedCapability]}] -> (r: Sh^{C}) -> Sh^{C}] =
+    Box([C^ <: {any.only[SharedCapability]}] => (r: Sh^{C}) => r)
+  val r: Sh^{s} = b.value[{s}](s)
+
 class K:
   private val f = Box([C^] => (f: File^{C}) => f)
   def use(x: File^): File^{x} = f.value[{x}](x)
