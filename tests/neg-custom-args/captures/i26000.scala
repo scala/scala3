@@ -34,3 +34,15 @@ def typeParam(a: File^, b: File^) =
 def bodyBounds(x: File^) =
   val f = Box([C^] => (f: File^{C}) => { println(); [D^ >: {C}] => (v: Unit) => (f: File^{D}) })
   val r: File = f.value[{x}](x)[{}](()) // error
+
+class Sh extends SharedCapability
+
+// The closures return their argument, so their results are not pure
+def classifiedLeak(s: Sh^): Sh^{} =
+  val b: Box[[C^] -> (r: Sh^{C}) -> Sh^{}] = Box([C^] => (r: Sh^{C}) => r) // error
+  b.value[{s}](s)
+
+def classifiedBoundedLeak(s: Sh^): Sh^{} =
+  val b: Box[[C^ <: {any.only[SharedCapability]}] -> (r: Sh^{C}) -> Sh^{}] =
+    Box([C^ <: {any.only[SharedCapability]}] => (r: Sh^{C}) => r) // error
+  b.value[{s}](s)
