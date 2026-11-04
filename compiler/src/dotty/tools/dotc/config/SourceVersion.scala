@@ -52,8 +52,9 @@ enum SourceVersion:
   def enablesCompactAnnotation = isAtLeast(`3.9`) && this != `2.13`
   /** `_` is a type parameter placeholder instead of a wildcard type.
    *  Not under `-migration`, so that `-rewrite` can still replace `_` wildcards with `?`.
+   *  Not under `2.13` either, where `_` keeps its Scala 2 meaning as a wildcard.
    */
-  def enablesUnderscoreTypeLambdas = isAtLeast(`3.11`) && !isMigrating
+  def enablesUnderscoreTypeLambdas = isAtLeast(`3.11`) && !isMigrating && !isScala2
 
   def requiresNewSyntax = isAtLeast(future)
 
