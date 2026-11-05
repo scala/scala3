@@ -49,7 +49,6 @@ object ScalaLibraryFilesToCopy {
     "scala/runtime/AbstractFunction2",
     "scala/runtime/AbstractPartialFunction",
     "scala/runtime/NonLocalReturnControl",
-    "scala/util/Sorting",
     "scala/util/hashing/MurmurHash3",
   )
 

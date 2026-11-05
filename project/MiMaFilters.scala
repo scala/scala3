@@ -40,6 +40,8 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.Range#Partial.equals$extension"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.Range#Partial.hashCode$extension"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.Range#Partial.toString$extension"),
+        // `object Sorting` is now compiled by Scala 3 instead of copied from Scala 2.13, so it is `Serializable`
+        ProblemFilters.exclude[MissingTypesProblem]("scala.util.Sorting$")
       ) ++ (0 to 22).flatMap { n =>
         // `applyUsing` for arity `n` is defined in the companion object of `FunctionN`,
         // which is a new object for all arities except 1
@@ -246,6 +248,8 @@ object MiMaFilters {
         ProblemFilters.exclude[FinalClassProblem]("scala.collection.immutable.Range$Int$"),
         ProblemFilters.exclude[FinalClassProblem]("scala.collection.immutable.Range$Long$"),
         ProblemFilters.exclude[FinalClassProblem]("scala.collection.immutable.Range$Partial$"),
+        // The private `Sorting.mergeSort` function has a different implementation detail
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Sorting.scala$util$Sorting$$mergeSort$default$5"),
       ),
 
       // Breaking changes since last LTS
