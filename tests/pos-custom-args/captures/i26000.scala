@@ -70,6 +70,17 @@ class K:
   private val f = Box([C^] => (f: File^{C}) => f)
   def use(x: File^): File^{x} = f.value[{x}](x)
 
+// Closures in type arguments of definitions with written types
+object Written:
+  val pub: Box[[C^] -> (f: File^{C}) -> File^{C}] = Box([C^] => (f: File^{C}) => f)
+  def use(x: File^) =
+    val b: Box[[C^] -> (f: File^{C}) -> File^{C}] = Box([C^] => (f: File^{C}) => f)
+    val s: Same[[C^] -> (f: File^{C}) -> File^{C}] =
+      Same([C^] => (f: File^{C}) => f, [C^] => (f: File^{C}) => f)
+    val r1: File^{x} = pub.value[{x}](x)
+    val r2: File^{x} = b.value[{x}](x)
+    val r3: File^{x} = s.a[{x}](x)
+
 // Type arguments not determined by a single closure stay inferred
 class Sub[A, B <: A](val a: A, val b: B)
 
