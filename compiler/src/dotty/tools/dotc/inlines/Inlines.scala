@@ -1053,6 +1053,8 @@ object Inlines:
       ).entered
       
       newSym.annotations = sym.annotations
+        
+      ctx.inlineTraitState.registerInlineOrigin(newSym, sym)
       newSym
 
     private def inlinedValDef(vdef: ValDef, inlinedSym: Symbol)(using Context): ValDef =
@@ -1191,15 +1193,18 @@ object Inlines:
       case InlineTraits, SpecializedTraits, None
 
   class InlineTraitState(
-    // For a class symbol created during inlining of an inline trait,
-    // the chain of inlined traits which produced it. We don't actually care about the order. 
-    // Used as a "seen list" for cycle checking. Persists across invocations of InlineParentTrait
+    // For symbols created during inlining of an inline trait, the chain of inlined symbols which produced it. 
+    // The order is not important as this is used as a "seen list" for cycle checking. 
+    // Persists across invocations of InlineParentTrait.
     val inlineOrigins: mutable.Map[Symbol, Set[Symbol]] = mutable.Map.empty[Symbol, Set[Symbol]].withDefaultValue(Set.empty),
     val inlineTraitsPhase: InlineTraitState.InlineContext = InlineTraitState.InlineContext.None
   ):
 
     def registerInlineOrigin(newSym: Symbol, owner: Symbol, parentSym: Symbol): Unit =
       inlineOrigins(newSym) = inlineOrigins(owner) + parentSym
+      
+    def registerInlineOrigin(newSym: Symbol, parentSym: Symbol): Unit =
+      inlineOrigins(newSym) += parentSym
 
     def copyInPhase(phase: InlineTraitState.InlineContext) =
       InlineTraitState(inlineOrigins, phase)
