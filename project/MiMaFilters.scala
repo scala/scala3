@@ -6,7 +6,7 @@ object MiMaFilters {
 
   // By default, you should include new filters under Versions.mimaPreviousVersion
   // MiMa does collect all filters based on semantic versioning, so we don't need to duplicate them for each version
-  // Entries in mimaPreviousVersion would be moved to mimaPreviousLTSVersion or it's own dedicated version when new minor version is released
+  // Entries in mimaPreviousVersion would be moved to mimaPreviousLTSVersion or its own dedicated version when new minor version is released
 
   object ScalaLibrary {
 
@@ -22,6 +22,24 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Function.applyUsing"),
         // `object Function1` is now compiled by Scala 3 instead of copied from Scala 2.13, so it is `Serializable`
         ProblemFilters.exclude[MissingTypesProblem]("scala.Function1$"),
+        // Range's parameter default values are now compiled by Scala 3 instead of copied from Scala 2.13, so they are no longer final
+        ProblemFilters.exclude[FinalMethodProblem]("scala.collection.immutable.Range.copy$default$1"),
+        ProblemFilters.exclude[FinalMethodProblem]("scala.collection.immutable.Range.copy$default$2"),
+        ProblemFilters.exclude[FinalMethodProblem]("scala.collection.immutable.Range.copy$default$3"),
+        ProblemFilters.exclude[FinalMethodProblem]("scala.collection.immutable.Range.copy$default$4"),
+        ProblemFilters.exclude[FinalMethodProblem]("scala.collection.immutable.Range.indexOf$default$2"),
+        ProblemFilters.exclude[FinalMethodProblem]("scala.collection.immutable.Range.lastIndexOf$default$2"),
+        // Range `object`s are now compiled by Scala 3 instead of copied from Scala 2.13, so they are `Serializable`
+        ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.Range$BigDecimal$"),
+        ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.Range$BigInt$"),
+        ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.Range$Int$"),
+        ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.Range$Long$"),
+        ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.Range$Partial$"),
+        // `Range#Partial`, an `AnyVal`-derived class, is now compiled by Scala 3 instead of copied from Scala 2.13, so it has extra methods
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.Range#Partial.by$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.Range#Partial.equals$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.Range#Partial.hashCode$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.Range#Partial.toString$extension"),
       ) ++ (0 to 22).flatMap { n =>
         // `applyUsing` for arity `n` is defined in the companion object of `FunctionN`,
         // which is a new object for all arities except 1
@@ -221,7 +239,14 @@ object MiMaFilters {
       // In general we should never have backwards incompatible changes in the library.
       // Only exceptional cases should be added here.
 
-      Versions.mimaPreviousVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq(
+        // Range `object`s are now compiled by Scala 3 instead of copied from Scala 2.13, so they are final
+        ProblemFilters.exclude[FinalClassProblem]("scala.collection.immutable.Range$BigDecimal$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.collection.immutable.Range$BigInt$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.collection.immutable.Range$Int$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.collection.immutable.Range$Long$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.collection.immutable.Range$Partial$"),
+      ),
 
       // Breaking changes since last LTS
       Versions.mimaPreviousLTSVersion -> Seq(
