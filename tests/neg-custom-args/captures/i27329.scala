@@ -35,3 +35,18 @@ def dependent(x: File^, y: File^, g: DP) =
   val h = g
   h[{x}, {x}](x, x)
   h[{x}, {y}](x, y) // error
+
+// `any` in a type argument is a root of the enclosing definition, also in bounds
+class Cov[+A](val value: A)
+def mk[X^](): [D^ <: {X}] -> (g: File^{D}) -> Cov[File^{X}] =
+  [D^ <: {X}] => (g: File^{D}) => Cov(g)
+def withFile[T](op: (f: File^) => T): T = op(File())
+
+def anyArg(a: File^) =
+  val h = mk[{any}]()
+  val r1 = h[{a}](a)
+  val r2 = withFile(f => h[{f}](f)) // error
+
+def anyArgWidened() =
+  val h: [D^] -> (g: File^{D}) -> Cov[File^{any}] = mk[{any}]() // error
+  val r = withFile(f => h[{f}](f)) // `f` would escape in `r`
