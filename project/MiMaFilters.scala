@@ -679,6 +679,12 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingFieldProblem]("scala.util.matching.Regex.Groups"),
       ),
     )
+
+    val BinaryApiTracking: Seq[BinaryApiEntry] = Seq(
+      // https://github.com/scala/scala3/pull/24656
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.Predef$any2stringadd"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.Predef$any2stringadd$"),
+    )
   }
 
   object ScalaLibrarySJS {
