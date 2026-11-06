@@ -749,6 +749,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           traverse(elems)
           tpt.setNuType(transformInferredType(tpt.tpe, ctx.owner).boxDeeply)
 
+        case CaseDef(pat, guard, body) =>
+          traversePattern(pat)
+          traverse(guard)
+          traverse(body)
+
         case tree @ Try(body, catches, finalizer) =>
           val tryOwner = firstCanThrowEvidence(body) match
             case Some(vd) =>
@@ -787,6 +792,30 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           transformInferredType(resType, owner)
         updateInfo(owner, MethodType(Nil, resType1), owner.owner)
         traverse(arg)
+
+    /** Traverse pattern `pat`. Parts of patterns that are not themselves patterns
+     *  are traversed like other trees. The exception are the types of typed patterns.
+     *  A matching scrutinee is cast to such a type, so the type is treated like the
+     *  type argument of a cast.
+     */
+    def traversePattern(pat: Tree)(using Context): Unit =
+      pat match
+        case Bind(_, body) =>
+          traversePattern(body)
+        case Typed(pat1, tpt) =>
+          tpt.setNuType(globalCapToLocal(tpt.tpe, Origin.TypeArg(tpt.tpe)))
+          traversePattern(pat1)
+        case UnApply(fun, implicits, pats) =>
+          traverse(fun)
+          traverse(implicits)
+          pats.foreach(traversePattern)
+        case Alternative(pats) =>
+          pats.foreach(traversePattern)
+        case NamedArg(_, arg) =>
+          traversePattern(arg)
+        case _ =>
+          return traverse(pat)
+      postProcess(pat)
 
     /** The owner of definition `sym` during capture checking */
     def ccOwnerOf(sym: Symbol)(using Context): Symbol =
@@ -877,6 +906,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tree: Bind =>
         val sym = tree.symbol
         updateInfo(sym, transformInferredType(sym.info, sym), ccOwnerOf(sym))
+      case tree: Match =>
+        // The type of a match is its original type with fresh capture sets added.
+        // The types of the cases have to conform to it.
+        val matchType = tree.tpe.widenSingleton match
+          case ExprType(rt) => rt
+          case _ => tree.tpe
+        tree.setNuType(transformInferredType(matchType, NoSymbol))
       case tree @ TypeDef(_, impl: Template) =>
         val cls: ClassSymbol = tree.symbol.asClass
 
