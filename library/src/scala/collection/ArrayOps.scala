@@ -823,7 +823,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *                     going left to right. Returns `z` if this array is empty.
    */
   def foldLeft[B](z: B)(op: (B, A) => B): B = {
-    def f[@specialized(Specializable.Everything) T](xs: Array[T], op: (Any, Any) => Any, z: Any): Any = {
+    inline def f[T](xs: Array[T], op: (Any, Any) => Any, z: Any): Any = {
       val length = xs.length
       var v: Any = z
       var i = 0
@@ -927,7 +927,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *                     is empty.
    */
   def foldRight[B](z: B)(op: (A, B) => B): B = {
-    def f[@specialized(Specializable.Everything) T](xs: Array[T], op: (Any, Any) => Any, z: Any): Any = {
+    inline def f[T](xs: Array[T], op: (Any, Any) => Any, z: Any): Any = {
       var v = z
       var i = xs.length - 1
       while(i >= 0) {
