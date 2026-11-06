@@ -1,0 +1,190 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+i27506.scala
+covtest
+Inner
+Object
+covtest.A.Inner
+f
+63
+68
+5
++
+Apply
+false
+0
+false
+x + 1
+
+1
+i27506.scala
+covtest
+Inner
+Object
+covtest.A.Inner
+f
+47
+52
+5
+f
+DefDef
+false
+0
+false
+def f
+
+2
+i27506.scala
+covtest
+Inner
+Object
+covtest.B.Inner
+f
+116
+121
+9
++
+Apply
+false
+0
+false
+x + 2
+
+3
+i27506.scala
+covtest
+Inner
+Object
+covtest.B.Inner
+f
+100
+105
+9
+f
+DefDef
+false
+0
+false
+def f
+
+4
+i27506.scala
+covtest
+Inner
+Object
+covtest.Outer.Middle.Inner
+f
+192
+197
+14
++
+Apply
+false
+0
+false
+x + 3
+
+5
+i27506.scala
+covtest
+Inner
+Object
+covtest.Outer.Middle.Inner
+f
+176
+181
+14
+f
+DefDef
+false
+0
+false
+def f
+
+6
+i27506.scala
+covtest
+Inner
+Class
+covtest.Methods.Inner
+g
+272
+277
+19
++
+Apply
+false
+0
+false
+y + 4
+
+7
+i27506.scala
+covtest
+Inner
+Class
+covtest.Methods.Inner
+g
+256
+261
+19
+g
+DefDef
+false
+0
+false
+def g
+
+8
+i27506.scala
+covtest
+Methods
+Object
+covtest.Methods
+f
+282
+294
+20
+g
+Apply
+false
+0
+false
+Inner().g(x)
+
+9
+i27506.scala
+covtest
+Methods
+Object
+covtest.Methods
+f
+217
+222
+17
+f
+DefDef
+false
+0
+false
+def f
+
