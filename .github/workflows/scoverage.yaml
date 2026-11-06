@@ -57,7 +57,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -79,7 +79,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -101,7 +101,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -123,7 +123,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -145,7 +145,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -167,7 +167,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -190,7 +190,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       # sbt first builds the compiler from this checkout without coverage, then uses it here.
       - name: Compile with coverage
         run: |
@@ -213,7 +213,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Compile with coverage
         run: |
           ./project/scripts/sbt '
@@ -235,6 +235,6 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Run coverage compilation tests
         run: ./project/scripts/sbt 'scala3-bootstrapped/testCompilation --enable-coverage-phase'

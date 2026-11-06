@@ -26,7 +26,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
 
       - name: Test `scala3-compiler-nonbootstrapped`
         run: ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
@@ -50,7 +50,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
 
       - name: Test `scala3-compiler-bootstrapped`
         run: ./project/scripts/sbt scala3-compiler-bootstrapped/test
@@ -73,7 +73,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `scala3-sbt-bridge-nonbootstrapped`
         run: ./project/scripts/sbt scala3-sbt-bridge-nonbootstrapped/test
 
@@ -92,7 +92,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `scala3-sbt-bridge-nonbootstrapped` against compiler-interface 2.x
         run: ./project/scripts/sbt scala3-sbt-bridge-nonbootstrapped/test
 
@@ -109,7 +109,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `scala3-sbt-bridge-bootstrapped`
         run: ./project/scripts/sbt scala3-sbt-bridge-bootstrapped/test
 
@@ -126,7 +126,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `tasty-core-nonbootstrapped`
         run: ./project/scripts/sbt tasty-core-nonbootstrapped/test
 
@@ -143,7 +143,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `tasty-core-bootstrapped`
         run: ./project/scripts/sbt tasty-core-bootstrapped/test
 
@@ -159,7 +159,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `scala3-directives-parser-nonbootstrapped`
         run: ./project/scripts/sbt scala3-directives-parser-nonbootstrapped/test
 
@@ -175,7 +175,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `scala3-directives-parser-bootstrapped`
         run: ./project/scripts/sbt scala3-directives-parser-bootstrapped/test
 
@@ -195,7 +195,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24.x'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Scala.js compiler tests
         run: ./project/scripts/sbt "sjsCompilerTests/test"
       - name: Scala.js sandbox
@@ -231,7 +231,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
       - uses: VirtusLab/scala-cli-setup@3f5bf11a33bb88343238780c18257c8fa43789e1 # v1.18.0
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test REPL on JDK ${{ matrix.jdk }}
         env:
           DOTTY_REPL_TEST_JAVA_HOME: ${{ steps.jdk.outputs.path }}
@@ -251,6 +251,6 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test Presentation Compiler
         run: ./project/scripts/sbt scala3-presentation-compiler/test
