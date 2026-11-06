@@ -54,6 +54,24 @@
    |                                                         any² is the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27329.scala:56:58 ---------------------------------------
+56 |  val h: Cov[[D^] -> (g: File^{D}) -> Cov[File^{Y}]] = Cov(mk[{Y}]()) // error
+   |                                                       ^^^^^^^^^^^^^^
+   |                                     Found:    p.Cov[[D^ <: 's1] -> (g: p.File^'s2) ->'s3 p.Cov[p.File^{Y}]^'s4]
+   |                                     Required: p.Cov[[D^ <: {any}] -> (g: p.File^{D}) -> p.Cov[p.File^{Y}]]
+   |
+   |                                     Note that capability `any` cannot flow into capture set {Y}.
+   |
+   |                                     where:    any is the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i27329.scala:60:33 -------------------------------------
+60 |  val r = withFile(f => h.value[{f}](f)) // error
+   |                                 ^
+   |                                 Reference `f` is not included in the allowed capture set {any}
+   |                                 of capture set parameter D.
+   |
+   |                                 where:    any is a root capability created in value h
 -- [E057] Type Mismatch Error: tests/neg-custom-args/captures/i27329.scala:37:10 ---------------------------------------
 37 |  h[{x}, {y}](x, y) // error
    |          ^

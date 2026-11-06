@@ -50,3 +50,11 @@ def anyArg(a: File^) =
 def anyArgWidened() =
   val h: [D^] -> (g: File^{D}) -> Cov[File^{any}] = mk[{any}]() // error
   val r = withFile(f => h[{f}](f)) // `f` would escape in `r`
+
+// Bounds are also kept through inferred type arguments
+def typeArg[Y^]() =
+  val h: Cov[[D^] -> (g: File^{D}) -> Cov[File^{Y}]] = Cov(mk[{Y}]()) // error
+
+def typeArgInferred() =
+  val h = Cov(mk[{any}]())
+  val r = withFile(f => h.value[{f}](f)) // error
