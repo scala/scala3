@@ -26,7 +26,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@b113b960ba361e87e08ce02a390d51871b7ee459 # v1.5.13
       - name: Run Community Build A
         run: |
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestA"
@@ -45,7 +45,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@b113b960ba361e87e08ce02a390d51871b7ee459 # v1.5.13
       - name: Run Community Build B
         run: |
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestB"
@@ -64,7 +64,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@b113b960ba361e87e08ce02a390d51871b7ee459 # v1.5.13
       - name: Run Community Build C
         run: |
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestC"

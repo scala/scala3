@@ -20,7 +20,7 @@ jobs:
           java-version: '17'
           distribution: 'zulu'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@b113b960ba361e87e08ce02a390d51871b7ee459 # v1.5.13
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -39,7 +39,7 @@ jobs:
           java-version: '17'
           distribution: 'zulu'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@b113b960ba361e87e08ce02a390d51871b7ee459 # v1.5.13
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -58,7 +58,7 @@ jobs:
           java-version: '17'
           distribution: 'zulu'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@b113b960ba361e87e08ce02a390d51871b7ee459 # v1.5.13
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -77,7 +77,7 @@ jobs:
           java-version: '17'
           distribution: 'zulu'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@b113b960ba361e87e08ce02a390d51871b7ee459 # v1.5.13
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -96,7 +96,7 @@ jobs:
           java-version: '17'
           distribution: 'zulu'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@b113b960ba361e87e08ce02a390d51871b7ee459 # v1.5.13
       - name: Build the launcher command
         run: sbt "dist-win-x86_64/Universal/stage"
       - name: Run the launcher command tests
@@ -117,7 +117,7 @@ jobs:
           # Temurin has no GA JDK 17 build for Windows ARM64
           distribution: 'zulu'
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@b113b960ba361e87e08ce02a390d51871b7ee459 # v1.5.13
       # Build both launchers in a single sbt invocation: a second sbt run on this runner
       # intermittently fails to create its boot server pipe lock (Windows error 1336)
       - name: Build the launcher commands
