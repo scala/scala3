@@ -348,16 +348,23 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
    *  the latter contains an `any`.
    */
   private def formalCaptures(arg: Tree)(using Context): Refs =
-    arg.formalType.orElse(arg.nuType).spanCaptureSet.elems
+    arg.formalType.orElse(argType(arg)).spanCaptureSet.elems
+
+  /** The type of `tree` when seen as an argument. For arguments of by-name
+   *  parameters this is the type of the argument as a nullary context function,
+   *  which captures what the argument uses.
+   */
+  private def argType(tree: Tree)(using Context): Type =
+    tree.byNameType.orElse(tree.nuType)
 
    /** The span capture set of the type of `tree`. */
-  private def spanCaptures(tree: Tree)(using Context): Refs = tree.nuType.widen match
+  private def spanCaptures(tree: Tree)(using Context): Refs = argType(tree).widen match
     case _: MethodOrPoly if tree.symbol.is(Method) => tree.symbol.useSet.elems
-    case _ => tree.nuType.spanCaptureSet.elems
+    case _ => argType(tree).spanCaptureSet.elems
 
    /** The deep capture set of the type of `tree` */
   private def deepCaptures(tree: Tree)(using Context): Refs =
-   tree.nuType.deepCaptureSet.elems
+   argType(tree).deepCaptureSet.elems
 
   // ---- Error reporting TODO Once these are stabilized, move to messages -----" +
 
@@ -1017,6 +1024,15 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
   def pushDef(tree: ValOrDefDef, hiddenByDef: Refs)(using Context): Unit =
     defsShadow ++= hiddenByDef
     previousDefs = DefInfo(tree, tree.symbol, hiddenByDef, hiddenByDef.allPeaks) :: previousDefs
+  /** Traverse the argument `arg` of a by-name parameter. It is treated like the
+   *  body of a function literal: definitions and consumed capabilities in it are
+   *  local, but the capabilities hidden by its result count as consumed.
+   */
+  def traverseByNameArg(arg: Tree, owner: Symbol)(using Context): Unit =
+    inSection:
+      consumed.segment:
+        traverse(arg)(using ctx.withOwner(owner))
+      checkType(arg.nuType, arg.srcPos, TypeRole.Result(owner, inferred = true))
 
   /** Check (result-) type of `tree` for separation conditions using `checkType`.
    *  Excluded are parameters and definitions that have an =unsafeAssumeSeparate
@@ -1074,7 +1090,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
               TypeRole.Qualifier(qual, tree.symbol),
               i"call prefix of consume ${tree.symbol} refers to", qual.srcPos)
         case tree: GenericApply =>
-          traverseChildren(tree)
+          tree match
+            case Apply(fn, args) =>
+              traverse(fn)
+              for arg <- args do
+                val owner = arg.byNameOwner
+                if owner.exists then traverseByNameArg(arg, owner) else traverse(arg)
+            case _ =>
+              traverseChildren(tree)
           tree.tpe match
             case _: MethodOrPoly =>
             case _ => traverseApply(tree)
