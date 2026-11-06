@@ -84,10 +84,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
         case ExprType(rt) =>
           if rt.hasAnnotation(defn.ErasedParamAnnot) then
             report.error(em"By-name parameter cannot be erased: $name", sym.srcPos)
-          // `@consume` belongs to the parameter, so it goes on the function type
-          rt.getAnnotation(defn.ConsumeAnnot) match
-            case Some(annot) => AnnotatedType(defn.ByNameFunction(rt.dropAnnot(defn.ConsumeAnnot)), annot)
-            case None => defn.ByNameFunction(rt)
+          defn.ByNameFunction(rt)
         case tp => tp
       tp.derivedLambdaType(
         paramInfos = tp.paramInfos.zipWithConserve(tp.paramNames)(exprToFun),
@@ -106,9 +103,8 @@ class ElimByName extends MiniPhase, InfoTransformer:
     Closure(meth,
         _ => arg.changeOwnerAfter(ctx.owner, meth, thisPhase),
         targetType = defn.ByNameFunction(argType)
-          // Note: this will forget any captures on the original by-name type
-          // But that's not a problem since we treat these closures specially
-          // anyway during recheck.
+          // Note: this will forget any captures on the original by-name type.
+          // That's not a problem since capture checking is done by now.
       ).withSpan(arg.span)
 
   private def isByNameRef(tree: Tree)(using Context): Boolean =

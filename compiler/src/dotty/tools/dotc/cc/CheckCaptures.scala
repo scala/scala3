@@ -249,6 +249,16 @@ object CheckCaptures:
       /** The "use set", i.e. the capture set marked as free at this node. */
       def markedFree: CaptureSet
 
+      /** If the tree is an argument of a by-name parameter, the symbol owning
+       *  its environment, otherwise NoSymbol.
+       */
+      def byNameOwner(using Context): Symbol
+
+      /** If the tree is an argument of a by-name parameter, its type as a
+       *  nullary context function, otherwise NoType.
+       */
+      def byNameType: Type
+
   end CheckerAPI
 
 class CheckCaptures extends Recheck, SymTransformer:
@@ -331,13 +341,19 @@ class CheckCaptures extends Recheck, SymTransformer:
     def resetIteration()(using Context): Unit =
       needAnotherRun = false
       resetNuTypes()
+      byNameArgTypes.clear(resetToInitial = false)
       todoAtPostCheck.clear()
       completed.clear()
+
+    /** Maps arguments of by-name parameters to their types as nullary context functions */
+    private val byNameArgTypes = util.EqHashMap[Tree, Type]()
 
     extension [T <: Tree](tree: T)
       def needsSepCheck: Boolean = sepCheckFormals.contains(tree)
       def formalType: Type = sepCheckFormals.getOrElse(tree, NoType)
       def markedFree: CaptureSet = usedSet.getOrElse(tree, CaptureSet.empty)
+      def byNameOwner(using Context): Symbol = setup.byNameOwner(tree)
+      def byNameType: Type = byNameArgTypes.getOrElse(tree, NoType)
 
     /** Instantiate capture set variables appearing contra-variantly to their
      *  upper approximation.
@@ -675,12 +691,20 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
           tp
 
+    /** A reference to a by-name parameter is typed as a call of the parameter,
+     *  see `byNameResult`.
+     */
+    override def recheckIdent(tree: Ident, pt: Type)(using Context): Type =
+      if tree.symbol.isByNameParam then
+        byNameResult(tree, recheckIdentRef(tree, byNameProto(tree, pt)))
+      else recheckIdentRef(tree, pt)
+
     /** Rechecking idents involves:
      *   - adding call captures for idents referring to methods
      *   - marking as free the identifier with any selections or .rd
      *     modifiers implied by the expected type
      */
-    override def recheckIdent(tree: Ident, pt: Type)(using Context): Type = {
+    private def recheckIdentRef(tree: Ident, pt: Type)(using Context): Type = {
       val sym = tree.symbol
       if sym.isOneOf(MethodOrLazy) then
         // If ident refers to a parameterless method or lazy val, charge its cv to the environment.
@@ -754,7 +778,30 @@ class CheckCaptures extends Recheck, SymTransformer:
           case Some(idx) if idx >= 0 && idx < cls.caseAccessors.length =>
             normTree = tree.qualifier.select(cls.caseAccessors(idx)).withSpan(tree.span)
           case _ =>
-      super.recheckSelect(normTree, pt)
+      if tree.symbol.isByNameParam then
+        byNameResult(tree, super.recheckSelect(normTree, byNameProto(tree, pt)))
+      else super.recheckSelect(normTree, pt)
+
+    /** The expected type of a reference `tree` to a by-name parameter, seen as
+     *  a function value. `pt` is the expected type of the parameter's result.
+     */
+    private def byNameProto(tree: Tree, pt: Type)(using Context): Type =
+      PathSelectionProto(defn.ContextFunction0_apply, pt, tree)
+
+    /** The type of a reference `tree` to a by-name parameter. By-name parameters
+     *  have types of the form `() ?->{C} R`. A reference to such a parameter calls
+     *  the function, so its type is the result type of that call.
+     *  @param  funType   the type of `tree` seen as a function value
+     */
+    private def byNameResult(tree: Tree, funType: Type)(using Context): Type =
+      val qualType = funType.widenIfUnstable
+      val pre = ctx.typeAssigner.maybeSkolemizePrefix(qualType, nme.apply)
+      qualType.findMember(nme.apply, pre).info match
+        case mt: MethodType =>
+          applicationResult(mt.resType, qualType, mt, Nil, defn.ContextFunction0_apply, tree)
+        case info =>
+          assert(ctx.reporter.errorsReported, i"unexpected type of by-name reference $tree: $funType / $info")
+          tree.tpe.widen
 
     /** A specialized implementation of the selection rule.
      *
@@ -868,8 +915,11 @@ class CheckCaptures extends Recheck, SymTransformer:
       then
         arg.putAttachment(NoWiden, ())
       val instantiatedFormal = globalCapToLocal(formal, Origin.Formal(pref, app))
-      val argType = recheck(arg, instantiatedFormal)
-        .showing(i"recheck arg $arg vs $instantiatedFormal = $result", capt)
+      val byNameOwner = arg.byNameOwner
+      val argType =
+        if byNameOwner.exists then recheckByNameArg(arg, byNameOwner, instantiatedFormal)
+        else recheck(arg, instantiatedFormal)
+      capt.println(i"recheck arg $arg vs $instantiatedFormal = $argType")
       if formal.hasAnnotation(defn.ConsumeAnnot) then
         // The @consume annotation is added to `formal` when creating methods types.
         // See [[MethodTypeCompanion.adaptParamInfo]].
@@ -921,6 +971,14 @@ class CheckCaptures extends Recheck, SymTransformer:
           argTypes1
         else argTypes
       val resultType = super.recheckApplication(tree, qualType, funType, instArgs)
+      applicationResult(resultType, qualType, funType, argTypes, tree.fun.symbol, tree)
+
+    /** The type of an application `tree` of method `meth`, given the instantiated
+     *  result type `resultType` of its method type `funType`. See `recheckApplication`
+     *  for the rule that is implemented.
+     */
+    private def applicationResult(resultType: Type, qualType: Type, funType: MethodType,
+        argTypes: List[Type], meth: Symbol, tree: Tree)(using Context): Type =
       val appType = resultToAny(resultType, Origin.ResultInstance(_, funType, tree))
       val qualCaptures = qualType.captureSet
       val argCaptures = argTypes.map(_.captureSet)
@@ -929,7 +987,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         if qualType.exists
             && !qualType.hasBoxedCapset
             && !resultType.hasBoxedCapset
-            && !tree.fun.symbol.isConstructor
+            && !meth.isConstructor
             && !resultType.captureSet.containsResultCapability
 
             && qualCaptures.mightSubcapture(refs)
@@ -1148,13 +1206,6 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
       val anonfun = mdef.symbol
 
-      /** Does `tp` contain capturing types with unsolved capture set variables? */
-      def hasCapsetVars(tp: Type) =
-        def isVarCapturing(tp: Type) = tp match
-          case CapturingType(_, refs) => !refs.isConst
-          case _ => false
-        tp.existsPart(isVarCapturing, stopAt = StopAt.Package)
-
       /** Use the capture sets of `tp2` in matching capture set variables in `tp1`.
        *  This is done by copying the elements from `tp2` sets to `tp1` sets
        *  and marking the `tp1` sets as solved.
@@ -1211,22 +1262,13 @@ class CheckCaptures extends Recheck, SymTransformer:
                     adoptCaptures(param.symbol.info, localArgType)
                   case _ =>
 
-              // Propagate fully defined result types
-              if resType.isValueType && !hasCapsetVars(resType) then
-                // Try to update the declared result type of the closure `mdef.tpt` with the expected
-                // result type, in order to propagate constraints into the closure.
-                // Note: We could use adoptCaptures instead, but this seems to give somewhat worse
-                // error messages.
-                pt match
-                  case RefinedType(_, _, mt: MethodType) =>
-                    if !mt.isResultDependent then
-                      // If mt is result dependent we could compensate this by
-                      // internalizing `resType.substParams(mt, params.tpes)`.
-                      // But this tends to give worse error messages, so we refrain
-                      // from doing that and don't update the local result type instead.
-                      updateResult(Internalize(mt)(resType))
-                  case _ =>
-                    updateResult(resType)
+              // Propagate fully defined result types: Try to update the declared result
+              // type of the closure `mdef.tpt` with the expected result type, in order to
+              // propagate constraints into the closure.
+              // Note: We could use adoptCaptures instead, but this seems to give somewhat worse
+              // error messages.
+              val knownRes = knownResult(pt, resType)
+              if knownRes.exists then updateResult(knownRes)
             }
           case SAMType(mt1, _) =>
             matchParamsAndResult(paramss, mt1.derivedLambdaType(resType = WildcardType))
@@ -1253,6 +1295,59 @@ class CheckCaptures extends Recheck, SymTransformer:
         openClosures = openClosures.tail
     end recheckClosureBlock
 
+    /** Does `tp` contain capturing types with unsolved capture set variables? */
+    private def hasCapsetVars(tp: Type)(using Context) =
+      def isVarCapturing(tp: Type) = tp match
+        case CapturingType(_, refs) => !refs.isConst
+        case _ => false
+      tp.existsPart(isVarCapturing, stopAt = StopAt.Package)
+
+    /** The result type `resType` of the expected function type `fn`, as it is seen
+     *  in the body of the function, if it is a value type without unsolved capture
+     *  set variables. Otherwise NoType.
+     */
+    private def knownResult(fn: Type, resType: Type)(using Context): Type =
+      if !resType.isValueType || hasCapsetVars(resType) then NoType
+      else fn match
+        case RefinedType(_, _, mt: MethodType) =>
+          // If mt is result dependent we could compensate this by internalizing
+          // `resType.substParams(mt, params.tpes)`. But this tends to give worse
+          // error messages, so we refrain from doing that.
+          if mt.isResultDependent then NoType else Internalize(mt)(resType)
+        case _ => resType
+
+    /** Recheck the argument `arg` of a by-name parameter of type `pt = () ?->{C} R`.
+     *  The argument is checked like the body of a function literal: in an
+     *  environment of its own, owned by `owner`, and against `R` if `R` has no
+     *  unsolved capture set variables, or else against the result type that Setup
+     *  gave to `owner`.
+     *  Its type is `() ?->{U} R'`, where `U` is the use set of that environment
+     *  and `R'` is the type it was checked against.
+     */
+    def recheckByNameArg(arg: Tree, owner: Symbol, pt: Type)(using Context): Type =
+      val localSet = owner.useSet
+
+      def knownResultOf(pt: Type): Type = pt.dealias match
+        case CapturingType(parent, _) => knownResultOf(parent)
+        case fn @ FunctionOrMethod(Nil, resType) => knownResult(fn, resType)(using ctx.withOwner(owner))
+        case _ => NoType
+
+      val resType = knownResultOf(pt).orElse(owner.info.finalResultType)
+      val saved = curEnv
+      openClosures = (owner, pt) :: openClosures
+      try
+        curEnv = Env(owner, EnvKind.Regular, localSet, curEnv)
+        recheck(arg, resType)(using ctx.withOwner(owner))
+      finally
+        curEnv = saved
+        openClosures = openClosures.tail
+      val mt = ContextualMethodType(Nil)(_ => Nil, toResult(resType, _, owner))
+      val argType = mt.toFunctionType(alwaysDependent = true).capturing(localSet)
+      capt.println(i"rechecked by-name arg $arg / $pt = $argType")
+      val adapted = checkConformsExpr(argType, pt, arg)
+      byNameArgTypes(arg) = adapted
+      adapted
+
     private def canConstrainClosureBody(refs: CaptureSet)(using Context): Boolean =
       refs.isConst && refs != CaptureSet.Fluid && !refs.isProvisionallySolved
 
@@ -1262,15 +1357,11 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  the expected type.
      *
      *  We ignore imprecise expected captures, notably `Fluid` and provisional sets.
-     *  We also ignore capsets in by-name wrappers: their captures describe evaluating the
-     *  by-name argument, whereas a closure value produced by that evaluation is
-     *  checked separately against the by-name result type.
      */
     private def constrainClosureCaptures(sym: Symbol, localSet: CaptureSet)(using Context): Unit =
       openClosures match
         case (`sym`, CapturingType(parent, refs)) :: _ if canConstrainClosureBody(refs) =>
           parent.dealias match
-            case defn.ByNameFunction(_) =>
             case FunctionOrMethod(_, _) | SAMType(_, _) =>
               if !localSet.subCaptures(refs) then
                 capt.println(i"failure to constrain closure set $localSet against $refs")
@@ -1662,22 +1753,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           tree.srcPos)
       tp
 
-    /* Currently not needed, since capture checking takes place after ElimByName.
-     * Keep around in case we need to get back to it
-    def recheckByNameArg(tree: Tree, pt: Type)(using Context): Type =
-      val closureDef(mdef) = tree: @unchecked
-      val arg = mdef.rhs
-      val localSet = CaptureSet.Var()
-      curEnv = Env(mdef.symbol, localSet, isBoxed = false, curEnv)
-      val result =
-        try
-          inContext(ctx.withOwner(mdef.symbol)) {
-            recheckStart(arg, pt).capturing(localSet)
-          }
-        finally curEnv = curEnv.outer
-      recheckFinish(result, arg, pt)
-    */
-
     /** If environment is owned by a class, run in a new environment owned by
      *  its primary constructor instead.
      */
@@ -1696,7 +1771,8 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** The main recheck method does some box adapation for all nodes:
      *   - If expected type `pt` is boxed and the tree is a lambda or a reference,
-     *     don't propagate free variables.
+     *     don't propagate free variables. References to by-name parameters are
+     *     excluded since they call the parameter.
      *   - If the expected type is not boxed but the result type is boxed,
      *     simulate an unboxing by adding all references in the boxed capture set
      *     of the result type to the current environment.
@@ -1704,7 +1780,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
       val saved = curEnv
       tree match
-        case _: RefTree | closureDef(_) if pt.isBoxed =>
+        case _: RefTree | closureDef(_) if pt.isBoxed && !tree.symbol.isByNameParam =>
           curEnv = Env(curEnv.owner, EnvKind.Boxed,
             CaptureSet.Var(curEnv.owner), curEnv)
         case _ =>

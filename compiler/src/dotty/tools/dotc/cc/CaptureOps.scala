@@ -747,6 +747,15 @@ extension (sym: Symbol) {
     && !defn.isPolymorphicAfterErasure(sym)
     && !defn.isTypeTestOrCast(sym)
 
+  /** Is `sym` a by-name parameter or the parameter accessor of one? The test
+   *  looks at the type the symbol had before capture checking, since during
+   *  capture checking by-name parameters have nullary context function types.
+   */
+  def isByNameParam(using Context): Boolean =
+    sym.isOneOf(TermParamOrAccessor)
+    && !sym.is(Method)
+    && sym.originDenotation.info.isInstanceOf[ExprType]
+
   /** It's a parameter accessor for a parameter that that is not annotated
    *  @constructorOnly or @uncheckedCaptures and that is not a consume parameter.
    */
