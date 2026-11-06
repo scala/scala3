@@ -759,6 +759,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           traverse(guard)
           traverse(body)
 
+        case Quote(body, _) =>
+          // Quoted code is not capture checked, but the splices in it are
+          splicesIn(body).foreach(traverse)
+
         case tree @ Try(body, catches, finalizer) =>
           val tryOwner = firstCanThrowEvidence(body) match
             case Some(vd) =>

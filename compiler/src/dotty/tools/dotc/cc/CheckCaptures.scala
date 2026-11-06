@@ -1375,15 +1375,36 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       defn.UnitType
 
-    /** Recheck Closure node: add the captured vars of the anonymoys function
+    /** Recheck Closure node: add the captured vars of the anonymous function
      *  to the result type. See also `recheckClosureBlock` which rechecks the
      *  block containing the anonymous function and the Closure node.
      */
     override def recheckClosure(tree: Closure, pt: Type, forceDependent: Boolean)(using Context): Type =
       val cs = tree.meth.symbol.useSet
       capt.println(i"typing closure $tree with cvs $cs")
+      checkSAMClosure(tree)
       super.recheckClosure(tree, pt, forceDependent).capturing(cs)
         .showing(i"rechecked closure $tree / $pt = $result", capt)
+
+    /** If `tree` is a closure that implements a SAM type which is not a function type,
+     *  check that the type of its anonymous function is compatible with the type of
+     *  the method it implements. The anonymous function will be turned into an
+     *  implementation of that method, so it has to meet the conditions for an
+     *  overriding method.
+     */
+    private def checkSAMClosure(tree: Closure)(using Context): Unit =
+      if !tree.tpt.isEmpty && !defn.isFunctionType(tree.tpt.tpe) then
+        tree.tpt.nuType match
+          case SAMType(samType, _) =>
+            val methType = tree.meth.tpe.widen
+            TypeComparer.compareResult(isCompatible(methType, samType)) match
+              case TypeComparer.CompareResult.Fail(notes) =>
+                def asFunction(tp: Type) = tp match
+                  case tp: MethodType => tp.toFunctionType(alwaysDependent = true)
+                  case _ => tp
+                err.typeMismatch(tree.withType(asFunction(methType)), asFunction(samType), notes)
+              case _ =>
+          case _ =>
 
     /** Recheck a lambda of the form
      *  ```
@@ -1636,6 +1657,14 @@ class CheckCaptures extends Recheck, SymTransformer:
             checkFieldOfClassifiedClass(sym, declaredCaptures, sym.owner.asClass, tree.namePos)
           }
     }
+
+    /** Capture checking runs before inlining, so calls of inline methods are
+     *  checked against the signatures of these methods. Hence, their bodies have
+     *  to be checked like the bodies of other methods. The exception are macros,
+     *  where we have to trust the signature.
+     */
+    override protected def skipBody(sym: Symbol)(using Context): Boolean =
+      sym.is(Macro)
 
     /** Recheck method definitions:
      *   - check body in a nested environment that tracks uses, in  a nested level,
@@ -2322,8 +2351,21 @@ class CheckCaptures extends Recheck, SymTransformer:
               expected, covariant)
           case _ =>
 
+        /** The shape of a boxed intersection type: Strip the capture sets of its
+         *  operands, so that their boxes do not stay in place when the intersection
+         *  is unboxed. An example of such a type is the result type `x.type & T` of
+         *  `nn` where `T` is instantiated to a boxed type.
+         */
+        def intersectionShape(tp: Type): Type = tp match
+          case tp: AndType => tp.derivedAndType(intersectionShape(tp.tp1), intersectionShape(tp.tp2))
+          case _ => tp.stripCapturing
+
         // Decompose the actual type into the inner shape type, the capture set and the box status
-        val actualShape = if actual.isFromJavaObject then actual else actual.stripCapturing
+        val actualShape =
+          if actual.isFromJavaObject then actual
+          else actual match
+            case actual: AndType if actual.hasBoxedCapset => intersectionShape(actual)
+            case _ => actual.stripCapturing
         val actualIsBoxed = actual.hasBoxedCapset
           // We also need to do adapation if acual has nested boxed capture sets
           // See neg-custom-args/captures/box-adapt-cov.scala for a test case where
