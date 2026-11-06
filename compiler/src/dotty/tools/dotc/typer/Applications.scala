@@ -821,7 +821,7 @@ trait Applications extends Compatibility {
 
 
     /** Is `sym` a constructor of an annotation class, and are we in an
-     *  annotation? If so, we don't lift arguments. See [[Mode.InAnnotation]].
+     *  annotation? If so, we don't lift arguments. See `Mode.InAnnotation`.
      */
     protected final def isAnnotConstr(sym: Symbol): Boolean =
       ctx.mode.is(Mode.InAnnotation) && sym.isConstructor && sym.owner.isAnnotation
@@ -1570,7 +1570,7 @@ trait Applications extends Compatibility {
           case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
             val op = fn.symbol
             if (op == defn.Any_== || op == defn.Any_!=)
-              checkCanEqual(left, right.tpe.widen, app.span)
+              checkCanEqual(left, right, app.span)
           case _ =>
         }
         app

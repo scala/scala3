@@ -276,7 +276,7 @@ class OptimizerCallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfil
 
 
   /**
-   * Clone the instructions in `methodNode` into a new [[InsnList]], mapping labels according to
+   * Clone the instructions in `methodNode` into a new `InsnList`, mapping labels according to
    * the `labelMap`.
    *
    * For invocation instructions, set the callGraph.callsitePositions to the `callsitePos`.

@@ -142,7 +142,7 @@ object ScalaRunTime {
    *  @return an `Array[Object]` containing the (boxed) elements of `src`
    */
   def toObjectArray(src: AnyRef^): Array[Object] = {
-    def copy[@specialized T <: AnyVal](src: Array[T]): Array[Object] = {
+    inline def copy[T](src: Array[T]): Array[Object] = {
       val length = src.length
       if (length == 0) Array.emptyObjectArray
       else {

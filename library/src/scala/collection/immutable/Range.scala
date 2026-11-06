@@ -253,7 +253,7 @@ sealed abstract class Range(
     } else locationAfterN(idx)
   }
 
-  /*@`inline`*/ final override def foreach[@specialized(Unit) U](f: Int => U): Unit = {
+  final override def foreach[U](f: Int => U): Unit = {
     // Implementation chosen on the basis of favorable microbenchmarks
     // Note--initialization catches step == 0 so we don't need to here
     if (!isEmpty) {
@@ -265,22 +265,28 @@ sealed abstract class Range(
       }
     }
   }
+  // Manually specialized for Scala 2 binary compatibility
+  private[Range] def `foreach$mVc$sp`(f: Int => Unit): Unit = foreach(f)
 
-  override final def indexOf[@specialized(Int) B >: Int](elem: B, from: Int = 0): Int =
+  override final def indexOf[B >: Int](elem: B, from: Int = 0): Int =
     elem match {
       case i: Int =>
         val pos = posOf(i)
         if (pos >= from) pos else -1
       case _ => super.indexOf(elem, from)
     }
+  // Manually specialized for Scala 2 binary compatibility
+  private[Range] def `indexOf$mIc$sp`(elem: Int, from: Int = 0): Int = indexOf(elem, from)
 
-  override final def lastIndexOf[@specialized(Int) B >: Int](elem: B, end: Int = length - 1): Int =
+  override final def lastIndexOf[B >: Int](elem: B, end: Int = length - 1): Int =
     elem match {
       case i: Int =>
         val pos = posOf(i)
         if (pos <= end) pos else -1
       case _ => super.lastIndexOf(elem, end)
     }
+  // Manually specialized for Scala 2 binary compatibility
+  private[Range] def `lastIndexOf$mIc$sp`(elem: Int, end: Int = length - 1): Int = lastIndexOf(elem, end)
 
   private def posOf(i: Int): Int =
     if (contains(i)) (i - start) / step else -1

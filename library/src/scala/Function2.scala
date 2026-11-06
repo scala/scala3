@@ -56,3 +56,13 @@ trait Function2[@specialized(Specializable.Args) -T1, @specialized(Specializable
   }
   override def toString(): String = "<function2>"
 }
+
+object Function2 {
+
+  extension [T1, T2, R](f: (T1, T2) => R)
+    /** Applies this function to the arguments taken from the context.
+     *  @return the result of the function application
+     */
+    def applyUsing(using v1: T1, v2: T2): R = f(v1, v2)
+
+}

@@ -53,12 +53,12 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Generate The Website
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
       - name: Generate GitHub App Token
         id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           app-id: ${{ secrets.SCALA_APP_ID }}
           private-key: ${{ secrets.SCALA_APP_PRIVATE_KEY }}

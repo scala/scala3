@@ -57,15 +57,6 @@ object ClassPath {
         try Some(new JrtClassPath(FileSystems.getFileSystem(URI.create("jrt:/"))))
         catch case _: ProviderNotFoundException | _: FileSystemNotFoundException => None
 
-  /** Replaces ct.sym with jrt in the given classpath. */
-  def replaceCtSymWithJrt(classPath: ClassPath): ClassPath =
-    classPath match
-      case AggregateClassPath((_: CtSymClassPath) :: rest) =>
-        jrt(release = None) match
-          case Some(jrt) => AggregateClassPath(jrt :: rest)
-          case None => classPath
-      case _ => classPath
-
   /** Update classpath with a substituted subentry */
   def replace(classPath: ClassPath, subst: Map[ClassPath, ClassPath]): ClassPath =
     classPath match

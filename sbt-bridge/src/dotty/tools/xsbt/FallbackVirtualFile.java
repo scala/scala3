@@ -28,4 +28,14 @@ public class FallbackVirtualFile extends xsbti.BasicVirtualFileRef implements xs
       return scala.util.hashing.MurmurHash3$.MODULE$.stringHash(sourceFile.textContent());
   }
 
+  // Required by xsbti.HashedVirtualFileRef in compiler-interface 2.x.
+  // No @Override, so this still compiles against 1.x.
+  public String contentHashStr() {
+    return "murmur3-" + Long.toHexString(contentHash());
+  }
+
+  public long sizeBytes() {
+    return sourceFile.textContent().getBytes(StandardCharsets.UTF_8).length;
+  }
+
 }
