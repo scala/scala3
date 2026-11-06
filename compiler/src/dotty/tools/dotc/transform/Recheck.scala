@@ -78,12 +78,18 @@ object Recheck:
       symd.validFor.firstPhaseId == phase.id + 1 && (sym.originDenotation ne symd)
 
   /** Map ExprType => T to () ?=> T (and analogously for pure versions).
-   *  Even though this phase runs after ElimByName, ExprTypes can still occur
-   *  as by-name arguments of applied types. See note in doc comment for
+   *  If rechecking runs before ElimByName, this is how the types of by-name
+   *  parameters are represented. If it runs after ElimByName, ExprTypes can still
+   *  occur as by-name arguments of applied types. See note in doc comment for
    *  ElimByName phase. Test case is bynamefun.scala.
+   *  A `@consume` annotation on `T` belongs to the parameter, so it goes on
+   *  the function type.
    */
   def mapExprType(tp: Type)(using Context): Type = tp match
-    case ExprType(rt) => defn.ByNameFunction(rt)
+    case ExprType(rt) =>
+      rt.getAnnotation(defn.ConsumeAnnot) match
+        case Some(annot) => AnnotatedType(defn.ByNameFunction(rt.dropAnnot(defn.ConsumeAnnot)), annot)
+        case None => defn.ByNameFunction(rt)
     case _ => tp
 
   /** Normalize `=> A` types to `() ?=> A` types
