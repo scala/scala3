@@ -125,7 +125,7 @@ scoverage-samples-implicit-class.scala
 org.scoverage.samples
 StringOpssssss
 Class
-org.scoverage.samples.StringOpssssss
+org.scoverage.samples.scoverage-samples-implicit-class$package.StringOpssssss
 !
 152
 174
@@ -142,7 +142,7 @@ scoverage-samples-implicit-class.scala
 org.scoverage.samples
 StringOpssssss
 Class
-org.scoverage.samples.StringOpssssss
+org.scoverage.samples.scoverage-samples-implicit-class$package.StringOpssssss
 !
 160
 173
@@ -159,7 +159,7 @@ scoverage-samples-implicit-class.scala
 org.scoverage.samples
 StringOpssssss
 Class
-org.scoverage.samples.StringOpssssss
+org.scoverage.samples.scoverage-samples-implicit-class$package.StringOpssssss
 !
 124
 129
