@@ -79,6 +79,17 @@ object Recheck:
       val symd = sym.denot
       symd.validFor.firstPhaseId == phase.id + 1 && (sym.originDenotation ne symd)
 
+  /** The splices in the quoted code `body` that are evaluated at the same stage
+   *  as the quote enclosing `body`, see `recheckQuote`.
+   */
+  def splicesIn(body: Tree)(using Context): List[Splice] =
+    val collect = new TreeAccumulator[List[Splice]]:
+      def apply(splices: List[Splice], tree: Tree)(using Context) = tree match
+        case tree: Splice => tree :: splices
+        case _: Quote => splices
+        case _ => foldOver(splices, tree)
+    collect(Nil, body).reverse
+
   /** Map ExprType => T to () ?=> T (and analogously for pure versions).
    *  If rechecking runs before ElimByName, this is how the types of by-name
    *  parameters are represented. If it runs after ElimByName, ExprTypes can still
@@ -307,10 +318,14 @@ abstract class Recheck extends Phase, SymTransformer:
       if tree.rhs.isEmpty || isUninitWildcard then resType
       else recheck(tree.rhs, resType)
 
+    /** A hook to exclude the right hand side of method `sym` from rechecking */
+    protected def skipBody(sym: Symbol)(using Context): Boolean =
+      sym.isInlineMethod
+
     def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =
       inContext(linkConstructorParams(sym).withOwner(sym)):
         val resType = recheck(tree.tpt)
-        if tree.rhs.isEmpty || sym.isInlineMethod
+        if tree.rhs.isEmpty || skipBody(sym)
         then resType
         else recheck(tree.rhs, resType)
 
@@ -723,6 +738,15 @@ abstract class Recheck extends Phase, SymTransformer:
       val altTypes = tree.trees.map(recheck(_, pt))
       TypeComparer.lub(altTypes)
 
+    /** Quoted code is not rechecked, with the exception of the splices in it */
+    def recheckQuote(tree: Quote, pt: Type)(using Context): Type =
+      splicesIn(tree.body).foreach(recheck(_, WildcardType))
+      tree.tpe
+
+    def recheckSplice(tree: Splice, pt: Type)(using Context): Type =
+      recheck(tree.expr)
+      tree.tpe
+
     def recheckPackageDef(tree: PackageDef)(using Context): Type =
       recheckStats(tree.stats)
       NoType
@@ -800,6 +824,8 @@ abstract class Recheck extends Phase, SymTransformer:
         case tree: Inlined => recheckInlined(tree, pt)
         case tree: Annotated => recheckAnnotated(tree)
         case tree: Alternative => recheckAlternative(tree, pt)
+        case tree: Quote => recheckQuote(tree, pt)
+        case tree: Splice => recheckSplice(tree, pt)
         case tree: NamedArg => recheck(tree.arg, pt)
         case tree: PackageDef => recheckPackageDef(tree)
         case tree: Thicket => defn.NothingType
