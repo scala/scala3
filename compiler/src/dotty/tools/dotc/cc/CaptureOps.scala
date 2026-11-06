@@ -45,11 +45,12 @@ def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames
   mt.toFunctionType(alwaysDependent = true)
 
 /** A tree traverser that visits only the parts of a tree that are capture checked:
- *  Type trees are not traversed.
+ *  Type trees are not traversed, and of quoted code only the splices are traversed.
  */
 abstract class CheckedTreeTraverser extends TreeTraverser:
   override protected def traverseChildren(tree: Tree)(using Context): Unit = tree match
     case _ if tree.isType =>
+    case Quote(body, _) => transform.Recheck.splicesIn(body).foreach(traverse)
     case _ => super.traverseChildren(tree)
 
 /** An exception thrown if a @retains argument is not syntactically a Capability */

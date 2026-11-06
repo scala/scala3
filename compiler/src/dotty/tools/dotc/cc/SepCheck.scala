@@ -1107,9 +1107,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
   /** Should separatiion checking be disabled for the body of this method?
    */
   def skippable(sym: Symbol)(using Context): Boolean =
-    sym.isInlineMethod
-      // We currently skip inline method bodies since these seem to generate
-      // spurious recheck completions. Test case is i20237.scala
+    sym.is(Macro)
+      // The bodies of macros are not capture checked
     || sym.is(Synthetic) && sym.name.startsWith("_")
       // Approximation of case class getters _1, _2, ... . We can't separation check them
       // or colltest5/CollectionStrawManCC5_1.scala would fail with an error in
