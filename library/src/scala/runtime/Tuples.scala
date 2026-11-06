@@ -519,7 +519,7 @@ object Tuples {
     }
   }
 
-  /** Returns a new tuple with `x` appended to the elements of `self`; implements [[scala.Tuple.:*]].
+  /** Returns a new tuple with `x` appended to the elements of `self`; implements [[scala.Tuple.:**]] .
    *
    *  The result has arity `self.size + 1`: a `Tuple22` or [[TupleXXL]] receiver
    *  yields a `TupleXXL`, smaller receivers yield the next larger `TupleN`.

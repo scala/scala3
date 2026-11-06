@@ -236,7 +236,7 @@ object LazyVals {
    *  @param name the name of the field
    *  @return the offset, suitable for the `offset` arguments of the other
    *          members of this object
-   *  @throws NoSuchFieldException if `clz` declares no field named `name`
+   *  @throws java.lang.NoSuchFieldException if `clz` declares no field named `name`
    */
   def getOffset(clz: Class[?], name: String): Long = {
     @nowarn
