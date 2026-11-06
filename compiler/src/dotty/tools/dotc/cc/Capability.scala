@@ -771,6 +771,7 @@ object Capabilities:
      */
     def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
       cls.isTopClassifier
+      || ccState.ignoreClassifiers
       || this.match
         case self: LocalCap =>
           if self.isClassified then self.hiddenSet.classifier.derivesFrom(cls)
@@ -786,8 +787,6 @@ object Capabilities:
           ref1.tryClassifyAs(cls)
         case Maybe(ref1) =>
           ref1.tryClassifyAs(cls)
-        case self: TermRef if self.symbol.is(Case) && ccState.ignoreClassifiers =>
-          true
         case self: CoreCapability =>
           if self.derivesFromCapability then self.derivesFrom(cls)
           else captureSetOfInfo.tryClassifyAs(cls)

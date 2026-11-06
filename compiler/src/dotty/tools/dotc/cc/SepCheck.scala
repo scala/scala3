@@ -7,7 +7,7 @@ import collection.mutable
 import core.*
 import Symbols.*, Types.*, Flags.*, Contexts.*, Names.*, Decorators.*
 import CaptureSet.{Refs, emptyRefs, HiddenSet}
-import NameKinds.WildcardParamName
+import NameKinds.{WildcardParamName, PatMatStdBinderName}
 import config.Printers.capt
 import StdNames.nme
 import transform.LiftCoverage
@@ -169,7 +169,11 @@ object SepCheck:
 
   case class PeaksPair(actual: Refs, hidden: Refs)
 
-  case class DefInfo(tree: ValOrDefDef, symbol: Symbol, hidden: Refs, hiddenPeaks: Refs)
+  /** Info about a previous definition of `symbol` with (result) type `tpe`.
+   *  Besides `val`s and `def`s, this covers variables bound in patterns and
+   *  the variables created by the capture checker for values matched in patterns.
+   */
+  case class DefInfo(symbol: Symbol, tpe: Type, hidden: Refs, hiddenPeaks: Refs)
 
   extension (refs: Refs)
 
@@ -335,19 +339,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
    */
   private var defsShadow: Refs = emptyRefs
 
-  /** The previous val or def definitions encountered during separation checking
-   *  in reverse order. These all enclose and precede the current traversal node.
+  /** The previous definitions encountered during separation checking in reverse
+   *  order, including variables of patterns. These all enclose and precede the
+   *  current traversal node.
    */
   private var previousDefs: List[DefInfo] = Nil
 
   /** The set of references that were consumed so far in the current method */
   private var consumed: MutConsumedSet = MutConsumedSet()
-
-  /** Infos about Labeled expressions enclosing the current traversal point.
-   *  For each labeled expression, it's label name, and a list buffer containing
-   *  all consumed sets of return expressions referring to that label.
-   */
-  private var openLabeled: List[(Name, mutable.ListBuffer[ConsumedSet])] = Nil
 
   /** The deep capture set of an argument or prefix widened to the formal parameter, if
    *  the latter contains an `any`.
@@ -454,21 +453,26 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
   /** Report a use/definition failure, where a previously hidden capability is
    *  used again.
    *  @param tree        the tree where the capability is used
-   *  @param clashing    the tree where the capability is previously hidden,
-   *                     or emptyTree if none exists
+   *  @param clashingDef the previous definition that hides the capability,
+   *                     or null if none was found
    *  @param used        the uses of `tree`
    *  @param hidden      the hidden set of the clashing def,
    *                     or the global hidden set if no clashing def exists
    */
-  def sepUseError(tree: Tree, clashingDef: ValOrDefDef | Null, used: Refs, hidden: Refs)(using Context): Unit =
+  def sepUseError(tree: Tree, clashingDef: DefInfo | Null, used: Refs, hidden: Refs)(using Context): Unit =
     if clashingDef != null then
-      def resultStr = if clashingDef.isInstanceOf[DefDef] then " result" else ""
-      //println(i"sep use error: previous ${clashingDef.tpt.nuType}, ref = $used")
-      report.error(
-        em"""Separation failure: Illegal access to ${overlapStr(hidden, used)} which is hidden by the previous definition
-            |of ${clashingDef.symbol} with$resultStr type ${clashingDef.tpt.nuType}.
-            |This type hides capabilities  ${CaptureSet(hidden)}${synthNote(tree)}""",
-        tree.srcPos)
+      val sym = clashingDef.symbol
+      def resultStr = if sym.is(Method) then " result" else ""
+      val msg =
+        if sym.name.is(PatMatStdBinderName) then
+          em"""Separation failure: Illegal access to ${overlapStr(hidden, used)} which is hidden by a value
+              |of type ${clashingDef.tpe} that is matched in a pattern.
+              |This type hides capabilities  ${CaptureSet(hidden)}${synthNote(tree)}"""
+        else
+          em"""Separation failure: Illegal access to ${overlapStr(hidden, used)} which is hidden by the previous definition
+              |of $sym with$resultStr type ${clashingDef.tpe}.
+              |This type hides capabilities  ${CaptureSet(hidden)}${synthNote(tree)}"""
+      report.error(msg, tree.srcPos)
     else
       report.error(
         em"""Separation failure: illegal access to ${overlapStr(hidden, used)} which is hidden by some previous definitions
@@ -630,20 +634,18 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
     case tree: Ident => tree.symbol.exists && LiftCoverage.isCoverageLiftedTemp(tree.symbol)
     case _ => false
 
-  private def isPatmatCast(tree: Tree)(using Context): Boolean = tree match
-    case tree: TypeApply => tree.symbol == defn.Any_typeCast
-    case _ => false
-
   /** 1. Check that the capabilities used at `tree` don't overlap with
    *     capabilities hidden by a previous definition.
    *  2. Also check that none of the used capabilities was consumed before.
    */
-  def checkUse(tree: Tree)(using Context): Unit =
+  def checkUse(tree: Tree, inPattern: Boolean = false)(using Context): Unit =
     val used = tree.markedFree.elems
-    if !used.isEmpty && !isCoverageLiftedTemp(tree) && !isPatmatCast(tree) then
+    if !used.isEmpty && !isCoverageLiftedTemp(tree) then
       capt.println(i"check use $tree: $used")
-      val usedPeaks = used.allPeaks
-      if !defsShadow.allPeaks.sharedPeaks(usedPeaks).isEmpty then
+      lazy val usedPeaks = used.allPeaks
+      // Capabilities used in a pattern are accessed through the scrutinee, which
+      // was already checked against the previous definitions.
+      if !inPattern && !defsShadow.allPeaks.sharedPeaks(usedPeaks).isEmpty then
         // Drop all Selects unless they select from a `this`
         def pathRoot(tree: Tree): Tree = tree match
           case Select(This(_), _) => tree
@@ -664,7 +666,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
           case Some(clashing) =>
             //println(i"check use $tree, $used, $rootSym, ${clashing.symbol}")
             if clashing.symbol != rootSym then
-              sepUseError(tree, clashing.tree, used, clashing.hidden)
+              sepUseError(tree, clashing, used, clashing.hidden)
           case None =>
             sepUseError(tree, null, used, defsShadow)
       end if
@@ -1030,8 +1032,48 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
     case _ => false
 
   def pushDef(tree: ValOrDefDef, hiddenByDef: Refs)(using Context): Unit =
+    pushDef(tree.symbol, tree.tpt.nuType, hiddenByDef)
+
+  def pushDef(sym: Symbol, tpe: Type, hiddenByDef: Refs)(using Context): Unit =
     defsShadow ++= hiddenByDef
-    previousDefs = DefInfo(tree, tree.symbol, hiddenByDef, hiddenByDef.allPeaks) :: previousDefs
+    previousDefs = DefInfo(sym, tpe, hiddenByDef, hiddenByDef.allPeaks) :: previousDefs
+
+  /** Check the type of variable `sym`, which is bound in a pattern or was created
+   *  for a value that is matched in a pattern, and record `sym` as a previous
+   *  definition. Such variables are treated like `val`s with inferred types,
+   *  except that `checkLegalRefs` skips them.
+   */
+  def checkPatternVar(sym: Symbol, pos: SrcPos)(using Context): Unit =
+    val tpe = sym.info
+    checkType(tpe, pos, TypeRole.Result(sym, inferred = true))
+    pushDef(sym, tpe, tpe.spanCaptureSet.elems.transHiddenSet.deductSymRefs(sym))
+
+  /** Traverse pattern `pat`, treating the variables bound in it as definitions */
+  def traversePattern(pat: Tree)(using Context): Unit = pat match
+    case Bind(_, body) =>
+      checkUse(pat, inPattern = true)
+      traversePattern(body)
+      if pat.symbol.isTerm then
+        checkPatternVar(pat.symbol, pat.srcPos)
+    case Typed(pat1, _) =>
+      checkUse(pat, inPattern = true)
+      traversePattern(pat1)
+    case UnApply(fun, implicits, pats) =>
+      checkUse(pat, inPattern = true)
+      traverse(fun)
+      implicits.foreach(traverse)
+      val arg = pat.unapplyArg
+      if !arg.isEmpty then
+        checkType(arg.formalType, pat.srcPos, TypeRole.Argument(arg, fun.symbol))
+      pat.patternTemps.foreach(checkPatternVar(_, pat.srcPos))
+      pats.foreach(traversePattern)
+    case Alternative(pats) =>
+      pats.foreach(traversePattern)
+    case NamedArg(_, arg) =>
+      traversePattern(arg)
+    case _ =>
+      traverse(pat)
+
   /** Traverse the argument `arg` of a by-name parameter. It is treated like the
    *  body of a function literal: definitions and consumed capabilities in it are
    *  local, but the capabilities hidden by its result count as consumed.
@@ -1134,26 +1176,20 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
           val elseConsumed = consumed.segment(traverse(elsep))
           consumed ++= thenConsumed
           consumed ++= elseConsumed
-        case tree @ Labeled(bind, expr) =>
-          val consumedBuf = mutable.ListBuffer[ConsumedSet]()
-          openLabeled = (bind.name, consumedBuf) :: openLabeled
-          traverse(expr)
-          for cs <- consumedBuf do consumed ++= cs
-          openLabeled = openLabeled.tail
-        case Return(expr, from) =>
-          val retConsumed = consumed.segment(traverse(expr))
-          from match
-            case Ident(name) =>
-              for (lbl, consumedBuf) <- openLabeled do
-                if lbl == name then
-                  consumedBuf += retConsumed
-            case _ =>
+        case Return(expr, _) =>
+          // What is consumed in the returned expression does not matter
+          // for the code that follows the return.
+          consumed.segment(traverse(expr))
         case Match(sel, cases) =>
-          // Matches without returns might still be kept after pattern matching to
-          // encode table switches.
           traverse(sel)
           val caseConsumed = for cas <- cases yield consumed.segment(traverse(cas))
           caseConsumed.foreach(consumed ++= _)
+        case tree @ CaseDef(pat, guard, body) =>
+          inSection:
+            tree.patternTemps.foreach(checkPatternVar(_, pat.srcPos))
+            traversePattern(pat)
+            traverse(guard)
+            traverse(body)
         case tree: TypeDef if tree.symbol.isClass =>
           consumed.segment:
             traverseChildren(tree)
