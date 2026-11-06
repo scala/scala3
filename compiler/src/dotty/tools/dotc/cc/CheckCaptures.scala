@@ -24,7 +24,7 @@ import scala.collection.mutable
 import CaptureSet.{withCaptureSetsExplained, IncludeFailure, MutAdaptFailure, VarState}
 import CCState.*
 import StdNames.nme
-import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
+import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind, PatMatStdBinderName}
 import NameOps.{isReplWrapperName, isSelectorName, selectorIndex}
 import reporting.*
 import reporting.Message.Note
@@ -249,6 +249,11 @@ object CheckCaptures:
       /** The "use set", i.e. the capture set marked as free at this node. */
       def markedFree: CaptureSet
 
+      /** If the tree is a case or an extractor pattern, the variables that
+       *  were created to hold the values matched in it.
+       */
+      def patternTemps: List[Symbol]
+
       /** If the tree is an argument of a by-name parameter, the symbol owning
        *  its environment, otherwise NoSymbol.
        */
@@ -258,6 +263,12 @@ object CheckCaptures:
        *  nullary context function, otherwise NoType.
        */
       def byNameType: Type
+
+      /** If the tree is an extractor pattern whose scrutinee needs a separation
+       *  check, a tree standing for the scrutinee as argument of the extractor
+       *  method, otherwise EmptyTree. `needsSepCheck` is true for that tree.
+       */
+      def unapplyArg: Tree
 
   end CheckerAPI
 
@@ -341,19 +352,32 @@ class CheckCaptures extends Recheck, SymTransformer:
     def resetIteration()(using Context): Unit =
       needAnotherRun = false
       resetNuTypes()
+      patternTempsOf.clear(resetToInitial = false)
+      castTypes.clear(resetToInitial = false)
       byNameArgTypes.clear(resetToInitial = false)
+      unapplyArgs.clear(resetToInitial = false)
       todoAtPostCheck.clear()
       completed.clear()
 
+    /** Maps cases and extractor patterns to the variables that were created for
+     *  them by `stablePrefix`, in the order of their creation.
+     */
+    private val patternTempsOf = util.EqHashMap[Tree, List[Symbol]]()
+
     /** Maps arguments of by-name parameters to their types as nullary context functions */
     private val byNameArgTypes = util.EqHashMap[Tree, Type]()
+
+    /** Maps extractor patterns to trees standing for their scrutinees, see `unapplyArg` */
+    private val unapplyArgs = util.EqHashMap[Tree, Tree]()
 
     extension [T <: Tree](tree: T)
       def needsSepCheck: Boolean = sepCheckFormals.contains(tree)
       def formalType: Type = sepCheckFormals.getOrElse(tree, NoType)
       def markedFree: CaptureSet = usedSet.getOrElse(tree, CaptureSet.empty)
+      def patternTemps: List[Symbol] = patternTempsOf.getOrElse(tree, Nil)
       def byNameOwner(using Context): Symbol = setup.byNameOwner(tree)
       def byNameType: Type = byNameArgTypes.getOrElse(tree, NoType)
+      def unapplyArg: Tree = unapplyArgs.getOrElse(tree, EmptyTree)
 
     /** Instantiate capture set variables appearing contra-variantly to their
      *  upper approximation.
@@ -684,9 +708,9 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** If `tp` (possibly after widening singletons) is an ExprType
      *  of a parameterless method, map ResultCap instances in it to LocalCap instances
      */
-    def mapResultRoots(tp: Type, tree: Tree)(using Context): Type =
+    def mapResultRoots(tp: Type, sym: Symbol, tree: Tree)(using Context): Type =
       tp.widenSingleton match
-        case tp: ExprType if tree.symbol.is(Method) =>
+        case tp: ExprType if sym.is(Method) =>
           resultToAny(tp, Origin.ResultInstance(_, tp, tree))
         case _ =>
           tp
@@ -735,7 +759,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         // charged for the prefix `p` in `p.x`.
         markFree(sym.info.captureSet, tree)
 
-      mapResultRoots(super.recheckIdent(tree, pt), tree)
+      mapResultRoots(super.recheckIdent(tree, pt), tree.symbol, tree)
     }
 
     override def recheckThis(tree: This, pt: Type)(using Context): Type =
@@ -767,17 +791,24 @@ class CheckCaptures extends Recheck, SymTransformer:
       if tree.symbol.is(Package) then super.selectionProto(tree, pt)
       else PathSelectionProto(tree.symbol, pt, tree)
 
+    /** If `sym` is a case class selector `_i`, the corresponding parameter accessor,
+     *  otherwise `sym` itself.
+     */
+    private def caseAccessorOf(sym: Symbol)(using Context): Symbol =
+      val cls = sym.maybeOwner
+      if cls.is(CaseClass) && sym.name.isSelectorName then
+        sym.name.selectorIndex.flatMap(cls.caseAccessors.lift).getOrElse(sym)
+      else sym
+
     /** Before rechecking a select, map case class selectors `c._i` to the
-     *  corresponding parameter accessors.
+     *  corresponding parameter accessors. A selection of a by-name parameter
+     *  accessor is typed as a call of the parameter, see `byNameResult`.
      */
     override def recheckSelect(tree: Select, pt: Type)(using Context): Type =
-      var normTree = tree
-      val cls = tree.symbol.maybeOwner
-      if cls.is(CaseClass) && tree.symbol.name.isSelectorName then
-        tree.symbol.name.selectorIndex match
-          case Some(idx) if idx >= 0 && idx < cls.caseAccessors.length =>
-            normTree = tree.qualifier.select(cls.caseAccessors(idx)).withSpan(tree.span)
-          case _ =>
+      val accessor = caseAccessorOf(tree.symbol)
+      val normTree =
+        if accessor eq tree.symbol then tree
+        else tree.qualifier.select(accessor).withSpan(tree.span)
       if tree.symbol.isByNameParam then
         byNameResult(tree, super.recheckSelect(normTree, byNameProto(tree, pt)))
       else super.recheckSelect(normTree, pt)
@@ -814,20 +845,6 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  and picks Cr otherwise.
      */
     override def recheckSelection(tree: Select, qualType: Type, name: Name, pt: Type)(using Context) = {
-      def disambiguate(denot: Denotation): Denotation = denot match
-        case MultiDenotation(denot1, denot2) =>
-          // This case can arise when we try to merge multiple types that have different
-          // capture sets on some part. For instance an asSeenFrom might produce
-          // a bi-mapped capture set arising from a substition. Applying the same substitution
-          // to the same type twice will nevertheless produce different capture sets which can
-          // lead to a failure in disambiguation since neither alternative is better than the
-          // other in a frozen constraint. An example test case is disambiguate-select.scala.
-          // We address the problem by disambiguating while ignoring all capture sets as a fallback.
-          withMode(Mode.IgnoreCaptures) {
-            disambiguate(denot1).meet(disambiguate(denot2), qualType)
-          }
-        case _ => denot
-
       // Don't allow update methods to be called unless the qualifier captures
       // an exclusive reference.
       if tree.symbol.isUpdateMethod then
@@ -840,8 +857,39 @@ class CheckCaptures extends Recheck, SymTransformer:
         checkUpdate(prefix, tree.srcPos):
           i"Cannot create an instance of update ${tree.symbol.owner} of ${prefix.showRef}"
 
-      val origSelType = recheckSelection(tree, qualType, name, disambiguate)
-      val selType = mapResultRoots(origSelType, tree)
+      val origSelType = recheckSelection(tree, qualType, name, disambiguate(_, qualType))
+      val selType = mapResultRoots(origSelType, tree.symbol, tree)
+
+      // Don't apply the rule
+      //   - on the LHS of assignments, or
+      //   - if the selection is a trackable capture reference
+      if noWiden(selType, pt)
+          || tree.hasAttachment(NoWiden)
+          || selType.isTrackableRef
+      then selType
+      else narrowSelection(selType, origSelType, qualType, pt)
+    }//.showing(i"recheck sel $tree, $qualType = $result")
+
+    /** Merge the alternatives of member `denot` of `qualType` into one denotation */
+    private def disambiguate(denot: Denotation, qualType: Type)(using Context): Denotation = denot match
+      case MultiDenotation(denot1, denot2) =>
+        // This case can arise when we try to merge multiple types that have different
+        // capture sets on some part. For instance an asSeenFrom might produce
+        // a bi-mapped capture set arising from a substition. Applying the same substitution
+        // to the same type twice will nevertheless produce different capture sets which can
+        // lead to a failure in disambiguation since neither alternative is better than the
+        // other in a frozen constraint. An example test case is disambiguate-select.scala.
+        // We address the problem by disambiguating while ignoring all capture sets as a fallback.
+        withMode(Mode.IgnoreCaptures) {
+          disambiguate(denot1, qualType).meet(disambiguate(denot2, qualType), qualType)
+        }
+      case _ => denot
+
+    /** The second part of the selection rule: Pick `{f}` or `Cr` as capture set
+     *  of the selection of type `selType` from a qualifier of type `qualType`.
+     *  @param origSelType  the type of the selection before result roots were mapped
+     */
+    private def narrowSelection(selType: Type, origSelType: Type, qualType: Type, pt: Type)(using Context): Type =
       val selWiden = selType.widen
 
       def capturesResult = origSelType.widenSingleton match
@@ -849,16 +897,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ => false
 
       // Don't apply the rule
-      //   - on the LHS of assignments, or
       //   - if the qualifier or selection type is boxed, or
-      //   - the selection is either a trackable capture reference or a pure type, or
+      //   - the selection is a pure type, or
       //   - if the selection is of a parameterless method capturing a ResultCap
-      if noWiden(selType, pt)
-          || tree.hasAttachment(NoWiden)
-          || qualType.hasBoxedCapset
+      if qualType.hasBoxedCapset
           || selType.hasBoxedCapset
           || selWiden.hasBoxedCapset
-          || selType.isTrackableRef
           || selWiden.captureSet.isAlwaysEmpty
           || capturesResult
       then
@@ -866,16 +910,159 @@ class CheckCaptures extends Recheck, SymTransformer:
       else
         val qualCs = qualType.captureSetInContext
         val selCs = selType.captureSet
-        capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs ${selWiden.captureSet} in $tree")
+        capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs ${selWiden.captureSet}")
 
         if qualCs.mightSubcapture(selCs)
             && !pt.stripCapturing.isInstanceOf[SingletonType]
         then
           selWiden.stripCapturing.capturing(qualCs)
-            .showing(i"alternate type for select $tree: $selType --> $result, $qualCs / $selCs", capt)
+            .showing(i"alternate type for select: $selType --> $result, $qualCs / $selCs", capt)
         else
           selType
-    }//.showing(i"recheck sel $tree, $qualType = $result")
+    end narrowSelection
+
+    /** The type of a selection of the parameterless member `sym` from a qualifier
+     *  of type `qualType`, following the selection rule. Like `recheckSelect`,
+     *  this maps case class selectors `_i` to the corresponding parameter accessors.
+     */
+    override protected def memberType(qualType: Type, sym: Symbol, tree: Tree)(using Context): Type =
+      val mbrSym = caseAccessorOf(sym)
+      val mbr = selectedMember(qualType, mbrSym.name, mbrSym, disambiguate(_, qualType))
+      // If the qualifier is a path, so is the selection of a stable member
+      val origSelType =
+        if qualType.isStable && mbrSym.isStableMember
+        then qualType.select(mbrSym.name.asTermName, mbr)
+        else mbr.info
+      val selType = mapResultRoots(origSelType, mbrSym, tree)
+      if selType.isTrackableRef then selType
+      else narrowSelection(selType, origSelType, qualType, WildcardType).widen
+
+    // ---- Rechecking patterns -----------------------------------------------------
+
+    /** The type `x.type` of a fresh variable `x` that stands for the value of type
+     *  `tp` matched in `tree`. That way, the components of the value are paths
+     *  `x.f`, and they can be told apart from each other. Unless `always` is true,
+     *  `tp` itself is returned if it is already a path or cannot capture anything.
+     */
+    override protected def stablePrefix(tp: Type, tree: Tree, always: Boolean)(using Context): Type =
+      if !always && (tp.isStable || tp.deepCaptureSet.isAlwaysEmpty) then tp
+      else
+        val temp = newSymbol(ctx.owner, PatMatStdBinderName.fresh(), SyntheticCase, tp, coord = tree.span)
+        patternTempsOf(tree) = tree.patternTemps :+ temp
+        temp.termRef
+
+    /** The type of a match is the type established for it at Setup, which is its
+     *  original type with fresh capture set variables. The types of the cases have to
+     *  conform to that type. This avoids having to compute the least upper bound
+     *  of the types of the cases. The case bodies are still checked against the
+     *  expected type `pt`, so that errors are reported where they arise.
+     */
+    override def recheckMatch(tree: Match, pt: Type)(using Context): Type =
+      // Types of matches are sometimes singleton types whereas the types of
+      // the cases are widened. We compensate by widening the expected type as well.
+      def widened(tp: Type): Type = tp match
+        case tp: SingletonType => tp.widen
+        case tp: AndOrType => tp.derivedAndOrType(widened(tp.tp1), widened(tp.tp2))
+        case tp @ AnnotatedType(tp1, ann) => tp.derivedAnnotatedType(widened(tp1), ann)
+        case _ => tp
+      val selType = recheck(tree.selector)
+      val matchType = tree.nuType
+      val expected = widened(matchType)
+      for cdef <- tree.cases do
+        checkConforms(recheckCase(cdef, selType, pt), expected, cdef.body)
+      matchType
+
+    /** The type of a case is the type of its body, where the variables bound in the
+     *  pattern and the variables created for the matched values are avoided.
+     */
+    override def recheckCase(tree: CaseDef, selType: Type, pt: Type)(using Context): Type =
+      val tp = super.recheckCase(tree, selType, pt)
+      val unapplyTemps = tree.pat.collectSubTrees { case pat: UnApply => pat.patternTemps }
+      avoidLocals(tp, tree.patternTemps ++ unapplyTemps.flatten)
+
+    /** If the match succeeds, the pattern-bound variable is an alias of the scrutinee:
+     *  The type of the scrutinee has to conform to the type of the variable, which
+     *  has fresh capture set variables added at Setup.
+     */
+    override def recheckBindPattern(pat: Bind, selType: Type)(using Context): Type =
+      val matchedType = super.recheckBindPattern(pat, selType)
+      val sym = pat.symbol
+      if sym.isTerm then
+        val declared = sym.info
+        // If the scrutinee does not conform to the type of the variable, PatternMatcher
+        // casts it to that type. Like other casts, this is not checked.
+        if withMode(Mode.IgnoreCaptures)(isCompatible(matchedType, declared)) then
+          ignoringClassifiersOfCast(matchedType):
+            checkConformsExpr(matchedType, declared, pat.body)
+        interpolate(declared, sym)
+        anchorCaps(sym).traverse(declared)
+      matchedType
+
+    /** The types of scrutinees after their cast to the type of a typed pattern, as
+     *  far as they have a capture set. These are fresh types, so such a scrutinee
+     *  is recognized by the identity of its type.
+     */
+    private val castTypes = util.EqHashSet[Type]()
+
+    /** A scrutinee that is cast to the type of a typed pattern keeps its capture set */
+    override protected def typedPatternType(tptType: Type, selType: Type)(using Context): Type =
+      val castType = tptType.capturing(selType.captureSet)
+      if castType ne tptType then castTypes += castType
+      castType
+
+    /** Run `op`, ignoring classifiers if `selType` is the type of a scrutinee that
+     *  was cast to the type of a typed pattern. As with other casts, we assume
+     *  that the capabilities of the scrutinee are classified according to the
+     *  type it is cast to.
+     */
+    private def ignoringClassifiersOfCast[T](selType: Type)(op: => T)(using Context): T =
+      val saved = ccState.ignoreClassifiers
+      if castTypes.contains(selType) then ccState.ignoreClassifiers = true
+      try op finally ccState.ignoreClassifiers = saved
+
+    /** Check the scrutinee like other arguments: Toplevel `any` occurrences in
+     *  `formal` are replaced by LocalCap instances.
+     */
+    override protected def recheckUnapplyArg(tree: UnApply, selType: Type, formal: Type, funType: MethodType)(using Context): Type =
+      lazy val instantiatedFormal = globalCapToLocal(formal, Origin.UnapplyInstance(funType))
+      val argType =
+        if withMode(Mode.IgnoreCaptures)(isCompatible(selType, formal)) then
+          ignoringClassifiersOfCast(selType):
+            checkConformsExpr(selType, instantiatedFormal, tree)
+        else
+          // PatternMatcher casts the scrutinee to the declared parameter type.
+          // Like other casts, this is not checked.
+          val castType = tree.fun.tpe.widen.firstParamTypes.head
+          globalCapToLocal(castType, Origin.TypeArg(castType))
+      if formal.hasAnnotation(defn.ConsumeAnnot) then
+        markFree(argType.deepCaptureSet, tree)
+      if formal.containsGlobalAny then
+        val arg = TypeTree(selType).withSpan(tree.span)
+        sepCheckFormals(arg) = instantiatedFormal
+        unapplyArgs(tree) = arg
+      // As with other arguments, instantiate the result type with the scrutinee itself
+      // if it is a capability, so that the result can refer to it.
+      if selType.isStable && selType.isTrackableRef && !argType.hasBoxedCapset
+      then selType
+      else argType
+
+    /** The extractor call is typed like other applications. Its result is widened,
+     *  as it would be if it were the right-hand side of a `val` with an inferred type.
+     */
+    override protected def unapplyResult(tree: UnApply, resultType: Type, qualType: Type, funType: MethodType, argType: Type)(using Context): Type =
+      val unapp = tree.fun.symbol
+      val res = applicationResult(resultType, qualType, funType, argType :: Nil, unapp, tree)
+      includeCallCaptures(unapp, res, tree)
+      if res.isSingleton then improveCaptures(res.widen.dealiasKeepAnnots, res) else res
+
+    /** If we cannot select a component from an extractor result, assume that it
+     *  captures everything the extractor result captures.
+     */
+    override protected def unknownArgType(pat: Tree, resultType: Type)(using Context): Type =
+      val shape = pat match
+        case pat: Bind if pat.symbol.isTerm => pat.symbol.info.stripCapturing
+        case _ => pat.tpe.widen
+      shape.capturing(resultType.deepCaptureSet)
 
     /** Recheck `caps.unsafe.unsafeAssumePure(...)` */
     def applyAssumePure(tree: Apply, pt: Type)(using Context): Type =
@@ -1842,15 +2029,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  where local capture roots are instantiated to root variables.
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: List[Note])(using Context): Type =
-      val saved = ccState.ignoreClassifiers
       printOnAssertionError(i"error while checking $tree: $actual against $expected"):
-        try
-          tree match
-            case tree: TypeApply if tree.symbol == defn.Any_typeCast => ccState.ignoreClassifiers = true
-            case _ =>
-          testAdapted(actual, expected, tree, notes)(err.typeMismatch)
-        finally
-          ccState.ignoreClassifiers = saved
+        testAdapted(actual, expected, tree, notes)(err.typeMismatch)
 
     private def findImpureUpperBound(tp: Type)(using Context): Type = tp match
       case _: SingletonType => findImpureUpperBound(tp.widen)

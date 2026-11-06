@@ -52,4 +52,4 @@ def Test4 =
       case FreshCons(h, t) => FreshCons(h, t)
 
     val err = xs match // error separation
-      case FreshCons(h, t) => FreshCons(h, t) // error separation // error separation
+      case FreshCons(h, t) => FreshCons(h, t) // error separation
