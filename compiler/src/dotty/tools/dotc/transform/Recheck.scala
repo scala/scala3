@@ -307,7 +307,7 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckClassDef(tree: TypeDef, impl: Template, sym: ClassSymbol)(using Context): Type =
       recheck(impl.constr)
       impl.parents.foreach(recheck(_))
-      recheck(impl.self)
+      if !impl.self.isEmpty then recheck(impl.self.tpt)
       recheckStats(impl.body)
       sym.typeRef
 
@@ -499,7 +499,10 @@ abstract class Recheck extends Phase, SymTransformer:
       val elemTypes = tree.elems.map(recheck(_, elemProto))
       seqLitType(tree, TypeComparer.lub(declaredElemType :: elemTypes))
 
-    def recheckTypeTree(tree: TypeTree)(using Context): Type =
+    /** Recheck a type tree. Type trees are not traversed; their new type is
+     *  either the one installed at Setup or else their original type.
+     */
+    def recheckTypeTree(tree: Tree)(using Context): Type =
       tree.nuType  // allows to install new types at Setup
 
     def recheckAnnotated(tree: Annotated)(using Context): Type =
@@ -587,14 +590,15 @@ abstract class Recheck extends Phase, SymTransformer:
         case tree: Try => recheckTry(tree, pt)
         case tree: SeqLiteral => recheckSeqLiteral(tree, pt)
         case tree: Inlined => recheckInlined(tree, pt)
-        case tree: TypeTree => recheckTypeTree(tree)
         case tree: Annotated => recheckAnnotated(tree)
         case tree: Alternative => recheckAlternative(tree, pt)
+        case tree: NamedArg => recheck(tree.arg, pt)
         case tree: PackageDef => recheckPackageDef(tree)
         case tree: Thicket => defn.NothingType
-        case tree: Import => defn.NothingType
+        case tree: (Import | Export) => defn.NothingType
 
       tree match
+        case tree if tree.isType => recheckTypeTree(tree)
         case tree: NameTree => recheckNamed(tree, pt)
         case tree => recheckUnnamed(tree, pt)
     end recheckStart
@@ -644,14 +648,15 @@ abstract class Recheck extends Phase, SymTransformer:
 
     /** Check that widened types of `tpe` and `pt` are compatible. */
     def checkConforms(tpe: Type, pt: Type, tree: Tree)(using Context): Type = tree match
-      case _: DefTree | EmptyTree | _: TypeTree => tpe
+      case _: DefTree | EmptyTree => tpe
+      case _ if tree.isType => tpe
       case _ => checkConformsExpr(tpe.widenExpr, pt.widenExpr, tree)
 
     def isCompatible(actual: Type, expected: Type)(using Context): Boolean = printOnAssertionError(i"fail while $actual iscompat $expected"):
       actual <:< expected
       || expected.isRepeatedParam
           && isCompatible(actual,
-              expected.translateFromRepeated(toArray = actual.isRef(defn.ArrayClass)))
+              expected.translateFromRepeated(toArray = actual.widen.isRef(defn.ArrayClass)))
       || {
         val widened = widenSkolems(expected)
         (widened ne expected) && isCompatible(actual, widened)

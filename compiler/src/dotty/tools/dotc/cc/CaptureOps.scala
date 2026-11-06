@@ -44,6 +44,14 @@ def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames
     else make(args, resultType)
   mt.toFunctionType(alwaysDependent = true)
 
+/** A tree traverser that visits only the parts of a tree that are capture checked:
+ *  Type trees are not traversed.
+ */
+abstract class CheckedTreeTraverser extends TreeTraverser:
+  override protected def traverseChildren(tree: Tree)(using Context): Unit = tree match
+    case _ if tree.isType =>
+    case _ => super.traverseChildren(tree)
+
 /** An exception thrown if a @retains argument is not syntactically a Capability */
 class IllegalCaptureRef(tpe: Type)(using Context) extends Exception(tpe.show)
 

@@ -321,7 +321,7 @@ object SepCheck:
     def directPeaks (using Context): Refs =
       SimpleIdentitySet(ref).directFootprint.peaks
 
-class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
+class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
   import checker.*
   import SepCheck.*
 
@@ -1064,7 +1064,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   /** Traverse `tree` and perform separation checks everywhere */
   def traverse(tree: Tree)(using Context): Unit =
-    if !isAssumedSeparate(tree) then trace(i"checking separate $tree"):
+    if !tree.isType && !isAssumedSeparate(tree) then trace(i"checking separate $tree"):
       checkUse(tree)
       tree match
         case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.isConsume =>
