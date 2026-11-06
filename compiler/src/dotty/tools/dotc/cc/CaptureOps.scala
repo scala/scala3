@@ -28,8 +28,8 @@ def isCaptureChecking(using Context): Boolean =
 /** Are we in the Setup phase preceding CheckCaptures? */
 def isCaptureSetup(using Context): Boolean =
   ctx.phaseId == Phases.checkCapturesPhaseId - 1 && ccState.iterationId > 0
-    // Note: just checking phase id is not enough since Setup would
-    // also be the phase after pattern matcher.
+    // Note: just checking phase id is not enough since Setup is
+    // also the phase after PostTyper.
 
 /** Are we in the CheckCaptures or Setup phase?
  *  Optimized version of `isCaptureChecking || isCaptureSetup
@@ -49,6 +49,14 @@ def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames
     if paramNames.length == args.length then make(paramNames, args, resultType)
     else make(args, resultType)
   mt.toFunctionType(alwaysDependent = true)
+
+/** A tree traverser that visits only the parts of a tree that are capture checked:
+ *  Type trees are not traversed.
+ */
+abstract class CheckedTreeTraverser extends TreeTraverser:
+  override protected def traverseChildren(tree: Tree)(using Context): Unit = tree match
+    case _ if tree.isType =>
+    case _ => super.traverseChildren(tree)
 
 /** An exception thrown if a @retains argument is not syntactically a Capability */
 class IllegalCaptureRef(tpe: Type)(using Context) extends Exception(tpe.show)

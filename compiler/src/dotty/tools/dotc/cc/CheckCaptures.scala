@@ -635,7 +635,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  which represents a trait parent in a template.
      *   - Disallow GlobalCaps and ResultCaps in such arguments.
      *   - Charge the deep capture sets of arguments to capset parameters.
-     *  @param  fn   the type application, of type TypeApply or TypeTree
+     *  @param  fn   the type application, a TypeApply or a type tree
      *  @param  sym  the constructor symbol (could be a method or a val or a class)
      *  @param  args the type arguments
      */
@@ -648,13 +648,14 @@ class CheckCaptures extends Recheck, SymTransformer:
             case ref: AppliedType if ref.typeSymbol.isClass => ref.typeSymbol.typeParams.map(_.name)
             case t => args.map(_ => EmptyTypeName)
 
-        for case (arg: TypeTree, pname) <- args.lazyZip(paramNames) do
+        for (arg, pname) <- args.lazyZip(paramNames) do
+          val isInferred = arg.isInstanceOf[InferredTypeTree]
           def where = if sym.exists then i" in an argument of $sym" else ""
           def addendum =
-            if arg.isInferred
+            if isInferred
             then i"\nThis is often caused by a local capability$where\nleaking as part of its result."
             else ""
-          def errTree = if !arg.isInferred && arg.span.exists then arg else fn
+          def errTree = if !isInferred && arg.span.exists then arg else fn
           disallowBadRootsIn(arg.nuType, NoSymbol,
             i"Type variable $pname of $sym", "be instantiated to", addendum, errTree.srcPos)
 
@@ -1606,18 +1607,13 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         // (4) If class extends Pure, capture set of self type is empty
         for pureBase <- cls.pureBaseClass do // (4)
-          def selfTypeTree = impl.body
-            .collect:
-              case TypeDef(tpnme.SELF, rhs) => rhs
-            .headOption
-            .getOrElse(tree)  // Use class tree if self type tree is missing ...
-            .orElse(tree)     // ... or empty.
+          def selfTypeTree = impl.self.tpt.orElse(tree) // Use class tree if self type tree is missing
           checkSubset(thisSet,
             CaptureSet.empty.withDescription(i"of pure base class $pureBase"),
             selfTypeTree.srcPos)
 
         // (5) Check AppliedType parents
-        for case tpt: TypeTree <- impl.parents do
+        for tpt <- impl.parents if tpt.isType do
           tpt.tpe match
             case AppliedType(fn, args) =>
               markFreeTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
@@ -2186,12 +2182,13 @@ class CheckCaptures extends Recheck, SymTransformer:
 
 // ---- Unit-level rechecking -------------------------------------------
 
-    /** Check overrides again, taking capture sets into account.
+    /** Check overrides, taking capture sets into account. RefChecks checks them
+    *  again later, without capture sets.
     *  TODO: Can we avoid doing overrides checks twice?
     *  We need to do them here since only at this phase CaptureTypes are relevant
     *  But maybe we can then elide the check during the RefChecks phase under captureChecking?
     */
-    def checkOverrides = new TreeTraverser:
+    def checkOverrides = new CheckedTreeTraverser:
       class OverridingPairsCheckerCC(clazz: ClassSymbol, self: Type, tree: Tree)(using Context) extends OverridingPairsChecker(clazz, self):
 
         /** Omit the check if one of {overriding,overridden} was nnot capture checked */
@@ -2328,10 +2325,13 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def checkSelfTypes(unit: tpd.Tree)(using Context): Unit =
       val parentTrees = mutable.Map.empty[Symbol, List[Tree]]
-      unit.foreachSubTree {
-        case cdef @ TypeDef(_, impl: Template) => parentTrees(cdef.symbol) = impl.parents
-        case _ =>
-      }
+      val collectParents = new CheckedTreeTraverser:
+        def traverse(tree: Tree)(using Context) =
+          tree match
+            case cdef @ TypeDef(_, impl: Template) => parentTrees(cdef.symbol) = impl.parents
+            case _ =>
+          traverseChildren(tree)
+      collectParents.traverse(unit)
       // Perform self type checking. The problem here is that `checkParents` compares a
       // self type of a subclass with the result of an asSeenFrom of the self type of the
       // superclass. That's no good. We need to constrain the original superclass self type
@@ -2511,12 +2511,12 @@ class CheckCaptures extends Recheck, SymTransformer:
      * Run these tests only if preceding checks are error-free.
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
-      val checker = new TreeTraverser:
+      val checker = new CheckedTreeTraverser:
         def traverse(tree: Tree)(using Context): Unit =
           val lctx = tree match
             case _: DefTree | _: TypeDef if tree.symbol.exists => ctx.withOwner(tree.symbol)
             case _ => ctx
-          trace(i"post check $tree"):
+          if !tree.isType then trace(i"post check $tree"):
             traverseChildren(tree)(using lctx)
             check(tree)
 
@@ -2553,13 +2553,13 @@ class CheckCaptures extends Recheck, SymTransformer:
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives
         // often worse error messages than the original errors.
-        val checkAppliedTypes = new TreeTraverser:
+        val checkAppliedTypes = new CheckedTreeTraverser:
           def traverse(t: Tree)(using Context) = t match
             case tree: InferredTypeTree =>
             case tree: New =>
-            case tree: TypeTree =>
+            case tree if tree.isType =>
               withCollapsedLocalCaps:
-                checkAppliedTypesIn(tree.withType(tree.nuType))
+                checkAppliedTypesIn(TypeTree(tree.nuType).withSpan(tree.span))
             case _ => traverseChildren(t)
         checkAppliedTypes.traverse(unit)
     end postCheck

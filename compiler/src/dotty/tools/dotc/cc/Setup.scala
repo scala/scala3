@@ -202,7 +202,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 case Some(ann) =>
                   AnnotatedType(sym.info, RetainingAnnotation.fromAnnotation(ann))
                 case None => sym.info
-            else sym.info
+            else withSelfType(sym.info)
           toResultInReturnType(sym):
             transformExplicitType(oldInfo, sym)(using symCtx)
       if Synthetics.needsTransform(symd) then
@@ -228,6 +228,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       else symd
     else symd
   end transformSym
+
+  /** If `info` is a class info with a self symbol, the same class info with the
+   *  declared type of that symbol as self type. Otherwise `info` itself.
+   *  We need the self type as a type so that it gets transformed together
+   *  with the rest of the class info.
+   */
+  private def withSelfType(info: Type)(using Context): Type = info match
+    case info: ClassInfo => info.derivedClassInfo(selfInfo = info.cls.givenSelfType)
+    case _ => info
 
   /** Apply toResult to the return types of def methods, so that local `any` capabilties
    *  are mapped to `fresh` in the return type of the resulting methodic types.
@@ -605,10 +614,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     /** Transform type of tree, and remember the transformed type as the type of the tree
      *  @pre !(boxed && sym.exists)
      */
-    private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean, typeArgFormal: Type = NoType)(using Context): Unit =
+    private def transformTT(tree: Tree, sym: Symbol, boxed: Boolean, typeArgFormal: Type = NoType)(using Context): Unit =
       if !tree.hasNuType then
         var transformed =
-          if tree.isInferred || sym.is(ModuleVal)
+          if tree.isInstanceOf[InferredTypeTree] || sym.is(ModuleVal)
           then transformInferredType(tree.tpe, sym, typeArgFormal)
           else transformExplicitType(tree.tpe, sym, tptToCheck = tree)
         if boxed then transformed = transformed.boxDeeply
@@ -617,7 +626,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           else transformed)
 
     /** Transform the type of a val or var or the result type of a def */
-    def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
+    def transformResultType(tpt: Tree, sym: Symbol)(using Context): Unit =
       // First step: Transform the type and record it as knownType of tpt.
       try
         inContext(ctx.addMode(Mode.CCPreciseOwner)):
@@ -641,6 +650,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     def traverse(tree: Tree)(using Context): Unit =
       tree match
+        case _ if tree.isType =>
+          // Type trees are transformed as a whole in `postProcess`; their parts
+          // are not traversed.
+
         case tree: Ident =>
           val sym = tree.symbol
           if sym.isMutableVar && sym.owner.isTerm then
@@ -663,7 +676,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             transformResultType(tpt, meth)
             traverse(tree.rhs)
 
-        case tree @ ValDef(_, tpt: TypeTree, _) =>
+        case tree @ ValDef(_, tpt, _) =>
           val sym = tree.symbol
           val defCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
           inContext(defCtx):
@@ -675,7 +688,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           val formals = fn.tpe.widen match
             case tl: TypeLambda => tl.paramInfos
             case _ => args.map(_ => NoType)
-          for case (arg: TypeTree, formal) <- args.lazyZip(formals) do
+          for (arg, formal) <- args.lazyZip(formals) do
             if defn.isTypeTestOrCast(fn.symbol) then
               arg.setNuType(
                 globalCapToLocal(arg.tpe, Origin.TypeArg(arg.tpe)))
@@ -687,7 +700,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           inContext(ctx.withOwner(sym))
             traverseChildren(tree)
 
-        case tree @ TypeDef(_, rhs: TypeTree) =>
+        case tree: Template =>
+          traverse(tree.constr)
+          traverse(tree.parents)
+          // The self type tree is transformed only so that it can be checked for
+          // well-formedness. The self type in the class info is established
+          // in `postProcess` and `transformSym`.
+          if !tree.self.isEmpty then transformTT(tree.self.tpt, ctx.owner, boxed = false)
+          traverse(tree.body)
+
+        case tree @ TypeDef(_, rhs) =>
           transformTT(rhs, tree.symbol, boxed = false)
 
         case tree @ SeqLiteral(elems, tpt: TypeTree) =>
@@ -717,7 +739,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     /** Processing done on node `tree` after its children are traversed */
     def postProcess(tree: Tree)(using Context): Unit = tree match
-      case tree: TypeTree =>
+      case _ if tree.isType =>
         transformTT(tree, NoSymbol, boxed = false)
       case tree: ValOrDefDef =>
         // Make sure denotation of tree's symbol is correct
@@ -807,19 +829,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         ccState.fieldsWithExplicitTypes(cls) =
           for
-            case vd @ ValDef(_, tpt: TypeTree, _) <- impl.body
-            if !tpt.isInferred && vd.symbol.exists && !vd.symbol.is(NonMember)
+            case vd @ ValDef(_, tpt, _) <- impl.body
+            if !tpt.isInstanceOf[InferredTypeTree] && vd.symbol.exists && !vd.symbol.is(NonMember)
           yield
             vd.symbol
 
         checkClassifiedInheritance(cls)
-        val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
+        val cinfo @ ClassInfo(prefix, _, ps, decls, _) = cls.classInfo
+        val selfInfo = cls.givenSelfType
 
         // Is self info inferred, i.e. only the name is given but not the type?
         def selfInfoIsInferred =
-          impl.body.exists:
-            case TypeDef(tpnme.SELF, tpt: TypeTree) => tpt.isInferred
-            case _ => false
+          impl.self.tpt.isInstanceOf[InferredTypeTree]
 
         // Compute new self type
         val selfInfo1 =
@@ -1019,7 +1040,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case _ => mapFollowingAliases(t)
 
   /** Run setup on a compilation unit with given `tree`.
-   *  @param recheckDef   the function to run for completing a val or def
+   *  @param checker   the checker, which records the new types of trees and
+   *                   completes vals and defs
    */
   def setupUnit(tree: Tree, checker: CheckerAPI)(using Context): Unit =
     setupTraverser(checker).traverse(tree)(using ctx.withPhase(thisPhase))
