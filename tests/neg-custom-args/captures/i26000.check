@@ -40,16 +40,20 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i26000.scala:42:48 ---------------------------------------
 42 |  val b: Box[[C^] -> (r: Sh^{C}) -> Sh^{}] = Box([C^] => (r: Sh^{C}) => r) // error
    |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                             Found:    p.Box[[C^ <: 's1] -> (r: p.Sh^'s2) ->'s3 p.Sh^{r}]
-   |                                             Required: p.Box[[C^] -> (r: p.Sh^{C}) -> p.Sh^{}]
+   |Found:    p.Box[[C^ <: 's1] -> (r: p.Sh^'s2) ->'s3 p.Sh^{r}]
+   |Required: p.Box[[C^] -> (r: p.Sh^{C}) -> p.Sh^{}]
    |
-   |                                             Note that capability `r` cannot flow into capture set {}.
+   |Note that capability `C²` is not classified as trait SharedCapability, therefore it
+   |cannot flow into capture set 's4 of method $anonfun of SharedCapability elements.
+   |
+   |where:    C  is a type variable with constraint >: scala.caps.CapSet^'s5 and <: scala.caps.CapSet^'s1
+   |          C² is a type in an anonymous function in method classifiedLeak with bounds >: scala.caps.CapSet and <: scala.caps.CapSet^
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i26000.scala:47:7 ----------------------------------------
 47 |    Box([C^ <: {any.only[SharedCapability]}] => (r: Sh^{C}) => r) // error
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |    Found:    p.Box[[C^ <: 's4] -> (r: p.Sh^'s5) ->'s6 p.Sh^{r}]
+   |    Found:    p.Box[[C^ <: 's6] -> (r: p.Sh^'s7) ->'s8 p.Sh^{r}]
    |    Required: p.Box[[C^ <: {any.only[SharedCapability]}] -> (r: p.Sh^{C}) -> p.Sh^{}]
    |
    |    Note that capability `r` cannot flow into capture set {}.
