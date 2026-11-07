@@ -810,7 +810,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       then
         selType
       else
-        val qualCs = qualType.captureSet
+        val qualCs = qualType.captureSetInContext
         val selCs = selType.captureSet
         capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs ${selWiden.captureSet} in $tree")
 
