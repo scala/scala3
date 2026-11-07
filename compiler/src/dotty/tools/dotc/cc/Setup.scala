@@ -146,6 +146,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  a parameter accessor that's not `constructorOnly` or `uncheckedCaptured`
    *  and that contains at least one @retains in co- or in-variant position.
    *  The @retains might be implicit for a type deriving from `Capability`.
+   *  `@retainsByName` counts as well.
    */
   private def newFlagsFor(symd: SymDenotation)(using Context): FlagSet =
 
@@ -155,7 +156,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         if x then true
         else if tp.derivesFromCapability && variance >= 0 then true
         else tp.dealiasKeepAnnots match
-          case AnnotatedType(_, ann) if ann.symbol.isRetains && variance >= 0 => true
+          case AnnotatedType(_, ann) if ann.symbol.isRetainsLike && variance >= 0 => true
           case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
             seen += t.symbol
             apply(x, t.info.bounds.hi)
