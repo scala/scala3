@@ -18,9 +18,10 @@ import Variances.alwaysInvariant
 import config.{Config, Feature, MigrationVersion}
 import config.Printers.typr
 import inlines.{Inlines, PrepareInlineable}
-import parsing.JavaParsers.JavaParser
+import parsing.JavaParsers.{JavaParser, JavaConstantInitializer}
 import parsing.Parsers.Parser
 import Annotations.*
+import Constants.Constant
 import Inferencing.*
 import Nullables.*
 import transform.ValueClasses.*
@@ -2007,7 +2008,10 @@ class Namer { typer: Typer =>
           sym.setFlag(Deferred | HasDefault)
         case _ =>
 
-    val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    val mbrTpe0 = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    val mbrTpe = mdef.removeAttachment(JavaConstantInitializer) match
+      case Some(expr) => javaConstantType(expr, mbrTpe0)
+      case None       => mbrTpe0
     // Add an erased to the using clause generated from a `: Singleton` context bound
     mdef.tpt match
       case tpt: untpd.ContextBoundTypeTree if mbrTpe.typeSymbol == defn.SingletonClass =>
@@ -2018,6 +2022,35 @@ class Namer { typer: Typer =>
       ImplicitNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
     else mbrTpe
   }
+
+  /** The type of a Java `final` field of type `declared` with initializer `expr`: a constant type
+   *  if `expr` is a constant expression, as for a field read from a classfile with a `ConstantValue`.
+   */
+  private def javaConstantType(expr: untpd.Tree, declared: Type)(using Context): Type =
+    if !(declared.isPrimitiveValueType || declared.classSymbol == defn.StringClass) then declared
+    else
+      def resolve(ref: untpd.Tree): Constant | Null =
+        try
+          explore {
+            val typed = ctx.typer.typedExpr(ref)
+            if ctx.reporter.hasUnreportedErrors then null
+            else typed.tpe.widenTermRefExpr match
+              case ConstantType(c) => c
+              case _               => null
+          }
+        // a cyclic reference: fields whose initializers refer to each other, which javac does not treat as constants either
+        catch case _: TypeError => null
+      JavaConstantFolder(expr, resolve) match
+        case null => declared
+        case const: Constant =>
+          // assignment conversion (JLS 5.2), e.g. an `int` constant to a `byte` field if it is in range.
+          // Unlike Scala, Java allows widening an `int` or `long` to `float` or `double` with loss of precision.
+          val cls = declared.classSymbol
+          val converted =
+            if cls == defn.FloatClass && const.isNumeric && const.tag <= Constants.FloatTag then Constant(const.floatValue)
+            else if cls == defn.DoubleClass && const.isNumeric then Constant(const.doubleValue)
+            else const.convertTo(declared)
+          if converted == null then declared else ConstantType(converted)
 
   // Decides whether we want to run tracked inference on all code, not just
   // code with x.modularity
