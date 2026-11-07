@@ -39,54 +39,52 @@ class CopyProp(callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes,
    * by [[eliminateStaleStoresAndRewriteSomeIntrinsics]].
    */
   def copyPropagation(method: MethodNode, owner: InternalName): Boolean = {
-    Limits.sizeOKForAliasing(method) && {
-      var changed = false
-      val numParams = parametersSize(method)
-      val aliasAnalysis = new BasicAliasingAnalyzer(method, owner)
+    var changed = false
+    val numParams = parametersSize(method)
+    val aliasAnalysis = new BasicAliasingAnalyzer(method, owner)
 
-      // Remember locals that are used in a `LOAD` instruction. Assume a program has two LOADs:
-      //
-      //   ...
-      //   LOAD 3  // aliases of 3 here: <3>
-      //   ...
-      //   LOAD 1  // aliases of 1 here: <1, 3>
-      //
-      // In this example, we should change the second load from 1 to 3, which might render the
-      // local variable 1 unused.
-      val knownUsed = new Array[Boolean](MethodMax.maxLocals(method))
+    // Remember locals that are used in a `LOAD` instruction. Assume a program has two LOADs:
+    //
+    //   ...
+    //   LOAD 3  // aliases of 3 here: <3>
+    //   ...
+    //   LOAD 1  // aliases of 1 here: <1, 3>
+    //
+    // In this example, we should change the second load from 1 to 3, which might render the
+    // local variable 1 unused.
+    val knownUsed = new Array[Boolean](MethodMax.maxLocals(method))
 
-      def usedOrMinAlias(it: IntIterator, init: Int): Int = {
-        if (knownUsed(init)) init
-        else {
-          var r = init
-          while (it.hasNext) {
-            val n = it.next()
-            // knownUsed.length is the number of locals, `n` may be a stack slot
-            if (n < knownUsed.length && knownUsed(n)) return n
-            if (n < r) r = n
-          }
-          r
+    def usedOrMinAlias(it: IntIterator, init: Int): Int = {
+      if (knownUsed(init)) init
+      else {
+        var r = init
+        while (it.hasNext) {
+          val n = it.next()
+          // knownUsed.length is the number of locals, `n` may be a stack slot
+          if (n < knownUsed.length && knownUsed(n)) return n
+          if (n < r) r = n
         }
+        r
       }
-
-      val it = method.instructions.iterator
-      while (it.hasNext) it.next() match {
-        case vi: VarInsnNode if vi.`var` >= numParams && isLoad(vi) =>
-          val aliases = aliasAnalysis.frameAt(vi).asInstanceOf[AliasingFrame[?]].aliasesOf(vi.`var`)
-          if (aliases.size > 1) {
-            val alias = usedOrMinAlias(aliases.iterator, vi.`var`)
-            if (alias != -1) {
-              changed = true
-              vi.`var` = alias
-            }
-          }
-          knownUsed(vi.`var`) = true
-
-        case _ =>
-      }
-
-      changed
     }
+
+    val it = method.instructions.iterator
+    while (it.hasNext) it.next() match {
+      case vi: VarInsnNode if vi.`var` >= numParams && isLoad(vi) =>
+        val aliases = aliasAnalysis.frameAt(vi).asInstanceOf[AliasingFrame[?]].aliasesOf(vi.`var`)
+        if (aliases.size > 1) {
+          val alias = usedOrMinAlias(aliases.iterator, vi.`var`)
+          if (alias != -1) {
+            changed = true
+            vi.`var` = alias
+          }
+        }
+        knownUsed(vi.`var`) = true
+
+      case _ =>
+    }
+
+    changed
   }
 
   private def classTagNewArrayInstr(mi: MethodInsnNode, prodCons: ProdConsAnalyzer): AbstractInsnNode | Null = {
@@ -147,140 +145,138 @@ class CopyProp(callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes,
    * Returns (staleStoreRemoved, intrinsicRewritten, callInlined).
    */
   def eliminateStaleStoresAndRewriteSomeIntrinsics(method: MethodNode, owner: InternalName, budget: AnalysisBudget): (Boolean, Boolean, Boolean) = {
-    if (!Limits.sizeOKForSourceValue(method)) (false, false, false) else {
-      val prodCons = budget.prodConsAnalyzer(method, owner)
-      def hasNoCons(varIns: AbstractInsnNode, slot: Int) = prodCons.consumersOfValueAt(varIns.getNext, slot).isEmpty
+    val prodCons = budget.prodConsAnalyzer(method, owner)
+    def hasNoCons(varIns: AbstractInsnNode, slot: Int) = prodCons.consumersOfValueAt(varIns.getNext, slot).isEmpty
 
-      def popFor(vi: VarInsnNode): AbstractInsnNode = getPop(if (isSize2LoadOrStore(vi.getOpcode)) 2 else 1)
+    def popFor(vi: VarInsnNode): AbstractInsnNode = getPop(if (isSize2LoadOrStore(vi.getOpcode)) 2 else 1)
 
-      // ASTORE insn that have no consumer.
-      //   - if the local is not live, the store is replaced by POP
-      //   - otherwise, pop the argument value and store NULL instead. Unless the boolean field is
-      //     `true`: then the store argument is already known to be ACONST_NULL.
-      val toNullOut = mutable.Map.empty[VarInsnNode, Boolean]
+    // ASTORE insn that have no consumer.
+    //   - if the local is not live, the store is replaced by POP
+    //   - otherwise, pop the argument value and store NULL instead. Unless the boolean field is
+    //     `true`: then the store argument is already known to be ACONST_NULL.
+    val toNullOut = mutable.Map.empty[VarInsnNode, Boolean]
 
-      val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
+    val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
 
-      val returns = mutable.Set.empty[AbstractInsnNode]
+    val returns = mutable.Set.empty[AbstractInsnNode]
 
-      val toInline = mutable.Set.empty[MethodInsnNode]
+    val toInline = mutable.Set.empty[MethodInsnNode]
 
-      // `true` for variables that are known to be live and hold non-primitives
-      val liveRefVars = new Array[Boolean](MethodMax.maxLocals(method))
+    // `true` for variables that are known to be live and hold non-primitives
+    val liveRefVars = new Array[Boolean](MethodMax.maxLocals(method))
 
-      val firstLocalIndex = parametersSize(method)
+    val firstLocalIndex = parametersSize(method)
 
-      val it = method.instructions.iterator
-      while (it.hasNext) it.next() match {
-        case vi: VarInsnNode if isStore(vi) && hasNoCons(vi, vi.`var`) =>
-          val canElim = vi.getOpcode != ASTORE || {
-            val currentFieldValueProds = prodCons.initialProducersForValueAt(vi, vi.`var`)
-            currentFieldValueProds.size == 1 && (currentFieldValueProds.head match {
-              case ParameterProducer(0) => !isStaticMethod(method) // current field value is `this`, which won't be gc'd anyway
-              case _: UninitializedLocalProducer => true // field is not yet initialized, so current value cannot leak
-              case _ => false
-            })
-          }
-          if (canElim) toReplace(vi) = List(popFor(vi))
-          else {
-            val prods = prodCons.producersForValueAt(vi, prodCons.frameAt(vi).stackTop)
-            val isStoreNull = prods.size == 1 && prods.head.getOpcode == ACONST_NULL
-            toNullOut(vi) = isStoreNull
-          }
-
-        case ii: IincInsnNode if hasNoCons(ii, ii.`var`) =>
-          toReplace(ii) = Nil
-
-        case vi: VarInsnNode =>
-          val opc = vi.getOpcode
-          val markAsLive = opc == ALOAD || opc == ASTORE && (
-            // a store makes the variable live if it's a parameter, or if a non-null value if stored
-            vi.`var` < firstLocalIndex || prodCons.initialProducersForInputsOf(vi).exists(_.getOpcode != ACONST_NULL)
-          )
-          if (markAsLive)
-            liveRefVars(vi.`var`) = true
-
-        case mi: MethodInsnNode =>
-          // rewrite `ClassTag(classOf[X]).newArray` to `new Array[X]`
-          val newArrayInstr = classTagNewArrayInstr(mi, prodCons)
-          if (newArrayInstr != null) {
-            val receiverProds = prodCons.producersForValueAt(mi, prodCons.frameAt(mi).stackTop - 1)
-            if (receiverProds.size == 1) {
-              toReplace(receiverProds.head) = List(receiverProds.head, getPop(1))
-              toReplace(mi) = List(newArrayInstr)
-              toInline ++= prodCons.ultimateConsumersOfOutputsFrom(mi).collect({case i if AnalysisUtils.isRuntimeArrayLoadOrUpdate(i) => i.asInstanceOf[MethodInsnNode]})
-            }
-          }
-
-        case insn =>
-          if (isReturn(insn)) returns += insn
-      }
-
-      def isTrailing(insn: AbstractInsnNode) =
-        import AbstractInsnNode.*
-        insn.getType match {
-          case METHOD_INSN | INVOKE_DYNAMIC_INSN | JUMP_INSN | TABLESWITCH_INSN | LOOKUPSWITCH_INSN => false
-          case _ => true
+    val it = method.instructions.iterator
+    while (it.hasNext) it.next() match {
+      case vi: VarInsnNode if isStore(vi) && hasNoCons(vi, vi.`var`) =>
+        val canElim = vi.getOpcode != ASTORE || {
+          val currentFieldValueProds = prodCons.initialProducersForValueAt(vi, vi.`var`)
+          currentFieldValueProds.size == 1 && (currentFieldValueProds.head match {
+            case ParameterProducer(0) => !isStaticMethod(method) // current field value is `this`, which won't be gc'd anyway
+            case _: UninitializedLocalProducer => true // field is not yet initialized, so current value cannot leak
+            case _ => false
+          })
         }
-
-      // stale stores that precede a return can be removed, there's no need to null them out. the
-      // references are released for gc when the method returns. this also cleans up unnecessary
-      // `ACONST_NULL; ASTORE x` created by the inliner (for locals of the inlined method).
-      for (ret <- returns) {
-        var i = ret
-        while (i != null && isTrailing(i)) {
-          if (i.getType == AbstractInsnNode.VAR_INSN) {
-            val vi = i.asInstanceOf[VarInsnNode]
-            if (toNullOut.remove(vi).nonEmpty)
-              toReplace(vi) = List(popFor(vi))
-          }
-          i = i.getPrevious
-        }
-      }
-
-      var staleStoreRemoved = toNullOut.nonEmpty
-      var intrinsicRewritten = false
-      val callInlined = toInline.nonEmpty
-
-      for ((i, nis) <- toReplace) {
-        i.getType match {
-          case AbstractInsnNode.VAR_INSN | AbstractInsnNode.IINC_INSN => staleStoreRemoved = true
-          case AbstractInsnNode.METHOD_INSN => intrinsicRewritten = true
-          case _ =>
-        }
-        // the original instruction `i` may appear (once) in `nis`.
-        var insertBefore: AbstractInsnNode | Null = i
-        var insertAfter : AbstractInsnNode | Null = null
-        for (ni <- nis) {
-          if (ni eq i) {
-            insertBefore = null
-            insertAfter = i
-          } else if (insertBefore != null)
-            method.instructions.insertBefore(insertBefore, ni)
-          else {
-            method.instructions.insert(insertAfter, ni)
-            insertAfter = ni
-          }
-        }
-        if (insertBefore != null)
-          method.instructions.remove(i)
-      }
-
-      for ((vi, isStoreNull) <- toNullOut) {
-        if (!liveRefVars(vi.`var`)) method.instructions.set(vi, popFor(vi)) // can drop `ASTORE x` where x has only dead stores
+        if (canElim) toReplace(vi) = List(popFor(vi))
         else {
-          if (!isStoreNull) {
-            val prev = vi.getPrevious
-            method.instructions.insert(prev, new InsnNode(ACONST_NULL))
-            method.instructions.insert(prev, getPop(1))
+          val prods = prodCons.producersForValueAt(vi, prodCons.frameAt(vi).stackTop)
+          val isStoreNull = prods.size == 1 && prods.head.getOpcode == ACONST_NULL
+          toNullOut(vi) = isStoreNull
+        }
+
+      case ii: IincInsnNode if hasNoCons(ii, ii.`var`) =>
+        toReplace(ii) = Nil
+
+      case vi: VarInsnNode =>
+        val opc = vi.getOpcode
+        val markAsLive = opc == ALOAD || opc == ASTORE && (
+          // a store makes the variable live if it's a parameter, or if a non-null value if stored
+          vi.`var` < firstLocalIndex || prodCons.initialProducersForInputsOf(vi).exists(_.getOpcode != ACONST_NULL)
+        )
+        if (markAsLive)
+          liveRefVars(vi.`var`) = true
+
+      case mi: MethodInsnNode =>
+        // rewrite `ClassTag(classOf[X]).newArray` to `new Array[X]`
+        val newArrayInstr = classTagNewArrayInstr(mi, prodCons)
+        if (newArrayInstr != null) {
+          val receiverProds = prodCons.producersForValueAt(mi, prodCons.frameAt(mi).stackTop - 1)
+          if (receiverProds.size == 1) {
+            toReplace(receiverProds.head) = List(receiverProds.head, getPop(1))
+            toReplace(mi) = List(newArrayInstr)
+            toInline ++= prodCons.ultimateConsumersOfOutputsFrom(mi).collect({case i if AnalysisUtils.isRuntimeArrayLoadOrUpdate(i) => i.asInstanceOf[MethodInsnNode]})
           }
         }
+
+      case insn =>
+        if (isReturn(insn)) returns += insn
+    }
+
+    def isTrailing(insn: AbstractInsnNode) =
+      import AbstractInsnNode.*
+      insn.getType match {
+        case METHOD_INSN | INVOKE_DYNAMIC_INSN | JUMP_INSN | TABLESWITCH_INSN | LOOKUPSWITCH_INSN => false
+        case _ => true
       }
 
-      inliner.inlineCallsites(method, toInline)
-
-      (staleStoreRemoved, intrinsicRewritten, callInlined)
+    // stale stores that precede a return can be removed, there's no need to null them out. the
+    // references are released for gc when the method returns. this also cleans up unnecessary
+    // `ACONST_NULL; ASTORE x` created by the inliner (for locals of the inlined method).
+    for (ret <- returns) {
+      var i = ret
+      while (i != null && isTrailing(i)) {
+        if (i.getType == AbstractInsnNode.VAR_INSN) {
+          val vi = i.asInstanceOf[VarInsnNode]
+          if (toNullOut.remove(vi).nonEmpty)
+            toReplace(vi) = List(popFor(vi))
+        }
+        i = i.getPrevious
+      }
     }
+
+    var staleStoreRemoved = toNullOut.nonEmpty
+    var intrinsicRewritten = false
+    val callInlined = toInline.nonEmpty
+
+    for ((i, nis) <- toReplace) {
+      i.getType match {
+        case AbstractInsnNode.VAR_INSN | AbstractInsnNode.IINC_INSN => staleStoreRemoved = true
+        case AbstractInsnNode.METHOD_INSN => intrinsicRewritten = true
+        case _ =>
+      }
+      // the original instruction `i` may appear (once) in `nis`.
+      var insertBefore: AbstractInsnNode | Null = i
+      var insertAfter : AbstractInsnNode | Null = null
+      for (ni <- nis) {
+        if (ni eq i) {
+          insertBefore = null
+          insertAfter = i
+        } else if (insertBefore != null)
+          method.instructions.insertBefore(insertBefore, ni)
+        else {
+          method.instructions.insert(insertAfter, ni)
+          insertAfter = ni
+        }
+      }
+      if (insertBefore != null)
+        method.instructions.remove(i)
+    }
+
+    for ((vi, isStoreNull) <- toNullOut) {
+      if (!liveRefVars(vi.`var`)) method.instructions.set(vi, popFor(vi)) // can drop `ASTORE x` where x has only dead stores
+      else {
+        if (!isStoreNull) {
+          val prev = vi.getPrevious
+          method.instructions.insert(prev, new InsnNode(ACONST_NULL))
+          method.instructions.insert(prev, getPop(1))
+        }
+      }
+    }
+
+    inliner.inlineCallsites(method, toInline)
+
+    (staleStoreRemoved, intrinsicRewritten, callInlined)
   }
 
   /**
@@ -298,317 +294,329 @@ class CopyProp(callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes,
    * Returns (pushPopChanged, castAdded, nullCheckAdded)
    */
   def eliminatePushPop(method: MethodNode, owner: InternalName, budget: AnalysisBudget): (Boolean, Boolean, Boolean) = {
-    if (!Limits.sizeOKForSourceValue(method)) (false, false, false) else {
-      // A queue of instructions producing a value that has to be eliminated. If possible, the
-      // instruction (and its inputs) will be removed, otherwise a POP is inserted after
-      val queue = mutable.Queue.empty[ProducedValue]
-      // Contains the creation of values that can be eliminated if unused.
-      val sideEffectFreeCreations = mutable.ArrayBuffer.empty[MethodInsnNode]
+    // A queue of instructions producing a value that has to be eliminated. If possible, the
+    // instruction (and its inputs) will be removed, otherwise a POP is inserted after
+    val queue = mutable.Queue.empty[ProducedValue]
+    // Contains the creation of values that can be eliminated if unused.
+    val sideEffectFreeCreations = mutable.ArrayBuffer.empty[MethodInsnNode]
 
-      // instructions to remove (we don't change the bytecode while analyzing it. this allows
-      // running the ProdConsAnalyzer only once.)
-      val toRemove = mutable.Set.empty[AbstractInsnNode]
-      // instructions to insert before some instruction
-      val toInsertBefore = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
-      // an instruction to insert after some instruction
-      val toInsertAfter = mutable.Map.empty[AbstractInsnNode, AbstractInsnNode]
+    // instructions to remove (we don't change the bytecode while analyzing it. this allows
+    // running the ProdConsAnalyzer only once.)
+    val toRemove = mutable.Set.empty[AbstractInsnNode]
+    // instructions to insert before some instruction
+    val toInsertBefore = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
+    // an instruction to insert after some instruction
+    val toInsertAfter = mutable.Map.empty[AbstractInsnNode, AbstractInsnNode]
 
-      var castAdded = false
-      var nullCheckAdded = false
+    var castAdded = false
+    var nullCheckAdded = false
 
-      val prodCons = budget.prodConsAnalyzer(method, owner)
+    val prodCons = budget.prodConsAnalyzer(method, owner)
 
+    /*
+     * Returns the producers for the stack value `inputSlot` consumed by `cons`, if the consumer
+     * instruction is the only consumer for all of these producers.
+     *
+     * If a producer has multiple consumers, or the value is the caught exception in a catch
+     * block, this method returns Set.empty.
+     */
+    def producersIfSingleConsumer(cons: AbstractInsnNode, inputSlot: Int): Set[AbstractInsnNode] = {
       /*
-       * Returns the producers for the stack value `inputSlot` consumed by `cons`, if the consumer
-       * instruction is the only consumer for all of these producers.
+       * True if the values produced by `prod` are all the same. Most instructions produce a single
+       * value. DUP and DUP2 (with a size-2 input) produce two equivalent values. However, there
+       * are some exotic instructions that produce multiple non-equal values (DUP_X1, SWAP, ...).
        *
-       * If a producer has multiple consumers, or the value is the caught exception in a catch
-       * block, this method returns Set.empty.
+       * Assume we have `DUP_X2; POP`. In order to remove the `POP` we need to change the DUP_X2
+       * into something else, which is not straightforward.
+       *
+       * Since scalac never emits any of those exotic bytecodes, we don't optimize them.
        */
-      def producersIfSingleConsumer(cons: AbstractInsnNode, inputSlot: Int): Set[AbstractInsnNode] = {
-        /*
-         * True if the values produced by `prod` are all the same. Most instructions produce a single
-         * value. DUP and DUP2 (with a size-2 input) produce two equivalent values. However, there
-         * are some exotic instructions that produce multiple non-equal values (DUP_X1, SWAP, ...).
-         *
-         * Assume we have `DUP_X2; POP`. In order to remove the `POP` we need to change the DUP_X2
-         * into something else, which is not straightforward.
-         *
-         * Since scalac never emits any of those exotic bytecodes, we don't optimize them.
-         */
-        def producerHasSingleOutput(prod: AbstractInsnNode): Boolean = prod match {
-          case _: ExceptionProducer[_] | _: UninitializedLocalProducer =>
-            // POP of an exception in a catch block cannot be removed. For an uninitialized local,
-            // there should not be a consumer. We are conservative and include it here, so the
-            // producer would not be removed.
-            false
+      def producerHasSingleOutput(prod: AbstractInsnNode): Boolean = prod match {
+        case _: ExceptionProducer[_] | _: UninitializedLocalProducer =>
+          // POP of an exception in a catch block cannot be removed. For an uninitialized local,
+          // there should not be a consumer. We are conservative and include it here, so the
+          // producer would not be removed.
+          false
 
-          case _: ParameterProducer =>
-            true
+        case _: ParameterProducer =>
+          true
 
-          case _ => (prod.getOpcode: @switch) match {
-            case DUP => true
-            case DUP2 => prodCons.frameAt(prod).peekStack(0).getSize == 2
-            case _ => InstructionStackEffect.prod(InstructionStackEffect.forAsmAnalysis(prod, prodCons.frameAt(prod))) == 1
-          }
-        }
-
-        val prods = prodCons.producersForValueAt(cons, inputSlot)
-        val singleConsumer = prods forall { prod =>
-          producerHasSingleOutput(prod) && {
-            // for DUP / DUP2, we only consider the value that is actually consumed by cons
-            val conss = prodCons.consumersOfValueAt(prod.getNext, inputSlot)
-            conss.size == 1 && conss.head == cons
-          }
-        }
-        if (singleConsumer) prods else Set.empty
-      }
-
-      /*
-       * For a POP instruction that is the single consumer of its producers, remove the POP and
-       * enqueue the producers.
-       */
-      def handleInitialPop(pop: AbstractInsnNode): Unit = {
-        val prods = producersIfSingleConsumer(pop, prodCons.frameAt(pop).stackTop)
-        if (prods.nonEmpty) {
-          toRemove += pop
-          val size = if (pop.getOpcode == POP2) 2 else 1
-          queue ++= prods.map(ProducedValue(_, size))
+        case _ => (prod.getOpcode: @switch) match {
+          case DUP => true
+          case DUP2 => prodCons.frameAt(prod).peekStack(0).getSize == 2
+          case _ => InstructionStackEffect.prod(InstructionStackEffect.forAsmAnalysis(prod, prodCons.frameAt(prod))) == 1
         }
       }
 
-      /*
-       * Traverse the method in its initial state and collect all POP instructions and side effect
-       * free constructor invocations that can be eliminated.
-       */
-      def collectInitialPopsAndPureConstrs(): Unit = {
-        val it = method.instructions.iterator
-        while (it.hasNext) {
-          val insn = it.next()
-          (insn.getOpcode: @switch) match {
-            case POP | POP2 =>
-              handleInitialPop(insn)
-
-            case INVOKESPECIAL =>
-              val mi = insn.asInstanceOf[MethodInsnNode]
-              if (ts.isSideEffectFreeConstructorCall(mi)) sideEffectFreeCreations += mi
-
-            case _ =>
-          }
+      val prods = prodCons.producersForValueAt(cons, inputSlot)
+      val singleConsumer = prods forall { prod =>
+        producerHasSingleOutput(prod) && {
+          // for DUP / DUP2, we only consider the value that is actually consumed by cons
+          val conss = prodCons.consumersOfValueAt(prod.getNext, inputSlot)
+          conss.size == 1 && conss.head == cons
         }
       }
+      if (singleConsumer) prods else Set.empty
+    }
 
-      /*
-       * Eliminate the `numArgs` inputs of the instruction `prod` (which was eliminated). For
-       * each input value
-       *   - if the `prod` instruction is the single consumer, enqueue the producers of the input
-       *   - otherwise, insert a POP instruction to POP the input value
-       */
-      def handleInputs(prod: AbstractInsnNode, numArgs: Int): Unit = {
-        val frame = prodCons.frameAt(prod)
-        val pops = mutable.ListBuffer.empty[InsnNode]
-        @tailrec def handle(stackOffset: Int): Unit = {
-          if (stackOffset >= 0) {
-            val prods = producersIfSingleConsumer(prod, frame.stackTop - stackOffset)
-            val nSize = frame.peekStack(stackOffset).getSize
-            if (prods.isEmpty) pops += getPop(nSize)
-            else queue ++= prods.map(ProducedValue(_, nSize))
-            handle(stackOffset - 1)
-          }
+    /*
+     * For a POP instruction that is the single consumer of its producers, remove the POP and
+     * enqueue the producers.
+     */
+    def handleInitialPop(pop: AbstractInsnNode): Unit = {
+      val prods = producersIfSingleConsumer(pop, prodCons.frameAt(pop).stackTop)
+      if (prods.nonEmpty) {
+        toRemove += pop
+        val size = if (pop.getOpcode == POP2) 2 else 1
+        queue ++= prods.map(ProducedValue(_, size))
+      }
+    }
+
+    /*
+     * Traverse the method in its initial state and collect all POP instructions and side effect
+     * free constructor invocations that can be eliminated.
+     */
+    def collectInitialPopsAndPureConstrs(): Unit = {
+      val it = method.instructions.iterator
+      while (it.hasNext) {
+        val insn = it.next()
+        (insn.getOpcode: @switch) match {
+          case POP | POP2 =>
+            handleInitialPop(insn)
+
+          case INVOKESPECIAL =>
+            val mi = insn.asInstanceOf[MethodInsnNode]
+            if (ts.isSideEffectFreeConstructorCall(mi)) sideEffectFreeCreations += mi
+
+          case _ =>
         }
-        handle(numArgs - 1) // handle stack offsets (numArgs - 1) to 0
-        if (pops.nonEmpty) toInsertBefore(prod) = pops.toList
       }
+    }
 
-      /* Eliminate LMF `indy` and its inputs. */
-      def handleClosureInst(indy: InvokeDynamicInsnNode): Unit = {
-        toRemove += indy
-        callGraph.removeClosureInstantiation(indy, method)
-        handleInputs(indy, Type.getArgumentTypes(indy.desc).length)
+    /*
+     * Eliminate the `numArgs` inputs of the instruction `prod` (which was eliminated). For
+     * each input value
+     *   - if the `prod` instruction is the single consumer, enqueue the producers of the input
+     *   - otherwise, insert a POP instruction to POP the input value
+     */
+    def handleInputs(prod: AbstractInsnNode, numArgs: Int): Unit = {
+      val frame = prodCons.frameAt(prod)
+      val pops = mutable.ListBuffer.empty[InsnNode]
+      @tailrec def handle(stackOffset: Int): Unit = {
+        if (stackOffset >= 0) {
+          val prods = producersIfSingleConsumer(prod, frame.stackTop - stackOffset)
+          val nSize = frame.peekStack(stackOffset).getSize
+          if (prods.isEmpty) pops += getPop(nSize)
+          else queue ++= prods.map(ProducedValue(_, nSize))
+          handle(stackOffset - 1)
+        }
       }
+      handle(numArgs - 1) // handle stack offsets (numArgs - 1) to 0
+      if (pops.nonEmpty) toInsertBefore(prod) = pops.toList
+    }
 
-      def runQueue(): Unit = while (queue.nonEmpty) {
-        val ProducedValue(prod, size) = queue.dequeue()
+    /* Eliminate LMF `indy` and its inputs. */
+    def handleClosureInst(indy: InvokeDynamicInsnNode): Unit = {
+      toRemove += indy
+      callGraph.removeClosureInstantiation(indy, method)
+      handleInputs(indy, Type.getArgumentTypes(indy.desc).length)
+    }
 
-        def prodString = s"Producer ${LogUtils.textify(prod)}@${method.instructions.indexOf(prod)}\n${LogUtils.textify(method)}"
-        def popAfterProd(): Unit = toInsertAfter(prod) = getPop(size)
+    def runQueue(): Unit = while (queue.nonEmpty) {
+      val ProducedValue(prod, size) = queue.dequeue()
 
-        (prod.getOpcode: @switch) match {
-          case ACONST_NULL | ICONST_M1 | ICONST_0 | ICONST_1 | ICONST_2 | ICONST_3 | ICONST_4 | ICONST_5 | LCONST_0 | LCONST_1 | FCONST_0 | FCONST_1 | FCONST_2 | DCONST_0 | DCONST_1 |
-               BIPUSH | SIPUSH | ILOAD | LLOAD | FLOAD | DLOAD | ALOAD=>
+      def prodString = s"Producer ${LogUtils.textify(prod)}@${method.instructions.indexOf(prod)}\n${LogUtils.textify(method)}"
+      def popAfterProd(): Unit = toInsertAfter(prod) = getPop(size)
+
+      (prod.getOpcode: @switch) match {
+        case ACONST_NULL | ICONST_M1 | ICONST_0 | ICONST_1 | ICONST_2 | ICONST_3 | ICONST_4 | ICONST_5 | LCONST_0 | LCONST_1 | FCONST_0 | FCONST_1 | FCONST_2 | DCONST_0 | DCONST_1 |
+             BIPUSH | SIPUSH | ILOAD | LLOAD | FLOAD | DLOAD | ALOAD=>
+          toRemove += prod
+
+        case opc @ (DUP | DUP2) =>
+          assert(opc != 2 || size == 2, s"DUP2 for two size-1 values; $prodString") // ensured in method `producerHasSingleOutput`
+          if (toRemove(prod))
+          // the DUP is already scheduled for removal because one of its consumers is a POP.
+          // now the second consumer is also a POP, so we need to eliminate the DUP's input.
+            handleInputs(prod, 1)
+          else
             toRemove += prod
 
-          case opc @ (DUP | DUP2) =>
-            assert(opc != 2 || size == 2, s"DUP2 for two size-1 values; $prodString") // ensured in method `producerHasSingleOutput`
-            if (toRemove(prod))
-            // the DUP is already scheduled for removal because one of its consumers is a POP.
-            // now the second consumer is also a POP, so we need to eliminate the DUP's input.
-              handleInputs(prod, 1)
-            else
-              toRemove += prod
+        case DUP_X1 | DUP_X2 | DUP2_X1 | DUP2_X2 | SWAP =>
+          // these are excluded in method `producerHasSingleOutput`
+          assert(false, s"Cannot eliminate value pushed by an instruction with multiple output values; $prodString")
 
-          case DUP_X1 | DUP_X2 | DUP2_X1 | DUP2_X2 | SWAP =>
-            // these are excluded in method `producerHasSingleOutput`
-            assert(false, s"Cannot eliminate value pushed by an instruction with multiple output values; $prodString")
+        case IDIV | LDIV | IREM | LREM =>
+          popAfterProd() // keep potential division by zero
 
-          case IDIV | LDIV | IREM | LREM =>
-            popAfterProd() // keep potential division by zero
+        case IADD | LADD | FADD | DADD | ISUB | LSUB | FSUB | DSUB | IMUL | LMUL | FMUL | DMUL | FDIV | DDIV | FREM | DREM |
+             LSHL | LSHR | LUSHR |
+             IAND | IOR | IXOR | LAND | LOR | LXOR |
+             LCMP | FCMPL | FCMPG | DCMPL | DCMPG =>
+          toRemove += prod
+          handleInputs(prod, 2)
 
-          case IADD | LADD | FADD | DADD | ISUB | LSUB | FSUB | DSUB | IMUL | LMUL | FMUL | DMUL | FDIV | DDIV | FREM | DREM |
-               LSHL | LSHR | LUSHR |
-               IAND | IOR | IXOR | LAND | LOR | LXOR |
-               LCMP | FCMPL | FCMPG | DCMPL | DCMPG =>
+        case INEG | LNEG | FNEG | DNEG |
+             I2L | I2F | I2D | L2I | L2F | L2D | F2I | F2L | F2D | D2I | D2L | D2F | I2B | I2C | I2S =>
+          toRemove += prod
+          handleInputs(prod, 1)
+
+        case GETFIELD | GETSTATIC =>
+          if (ts.isBoxedUnit(prod) || AnalysisUtils.isJavaLangStaticLoad(prod) || AnalysisUtils.isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
+          else popAfterProd() // keep potential class initialization (static field) or NPE (instance field)
+
+        case INVOKEVIRTUAL | INVOKESPECIAL | INVOKESTATIC | INVOKEINTERFACE =>
+          val methodInsn = prod.asInstanceOf[MethodInsnNode]
+          if (ts.isSideEffectFreeCall(methodInsn)) {
             toRemove += prod
-            handleInputs(prod, 2)
+            callGraph.removeCallsite(methodInsn, method)
+            val receiver = if (methodInsn.getOpcode == INVOKESTATIC) 0 else 1
+            handleInputs(prod, Type.getArgumentTypes(methodInsn.desc).length + receiver)
+          } else if (ts.isScalaUnbox(methodInsn)) {
+            val tp = OptimizerUtils.primitiveAsmTypeSortToBType(Type.getReturnType(methodInsn.desc).getSort)
+            val boxTp = ts.boxedClassOfPrimitive(tp)
+            toInsertBefore(methodInsn) = List(new TypeInsnNode(CHECKCAST, boxTp.internalName), new InsnNode(POP))
+            toRemove += prod
+            callGraph.removeCallsite(methodInsn, method)
+            castAdded = true
+          } else if (ts.isJavaUnbox(methodInsn)) {
+            val nullCheck = mutable.ListBuffer.empty[AbstractInsnNode]
+            val nonNullLabel = newLabelNode
+            nullCheck += new JumpInsnNode(IFNONNULL, nonNullLabel)
+            nullCheck += new InsnNode(ACONST_NULL)
+            nullCheck += new InsnNode(ATHROW)
+            nullCheck += nonNullLabel
+            toInsertBefore(methodInsn) = nullCheck.toList
+            toRemove += prod
+            callGraph.removeCallsite(methodInsn, method)
+            method.maxStack = math.max(MethodMax.maxStack(method), prodCons.frameAt(methodInsn).getStackSize + 1)
+            nullCheckAdded = true
+          } else
+            popAfterProd()
 
-          case INEG | LNEG | FNEG | DNEG |
-               I2L | I2F | I2D | L2I | L2F | L2D | F2I | F2L | F2D | D2I | D2L | D2F | I2B | I2C | I2S =>
+        case INVOKEDYNAMIC =>
+          prod match {
+            case AnalysisUtils.LambdaMetaFactoryCall(indy, _, _, _, _) => handleClosureInst(indy)
+            case _ => popAfterProd()
+          }
+
+        case NEW =>
+          if (ts.isSideEffectFreeConstructor(prod.asInstanceOf[TypeInsnNode])) toRemove += prod
+          else popAfterProd()
+
+        case NEWARRAY =>
+          // NEWARRAY is only for primitives, unlike ANEWARRAY, so we know there can't be a static constructor to run
+          // for the element type
+          toRemove += prod
+          handleInputs(prod, 1)
+
+        case ANEWARRAY =>
+          // We only elide arrays of arrays of primitives, ensuring we don't elide the need for a static constructor call.
+          // This can be checked as 'starts with [ and doesn't contain L' because any array of arrays of nonprimitive contains "L...;"
+          // (but an array of nonprimitive does not, the desc would be, e.g., "java/lang/String")
+          val insn = prod.asInstanceOf[TypeInsnNode]
+          if insn.desc.startsWith("[") && !insn.desc.contains('L') then
             toRemove += prod
             handleInputs(prod, 1)
+          else popAfterProd()
 
-          case GETFIELD | GETSTATIC =>
-            if (ts.isBoxedUnit(prod) || AnalysisUtils.isJavaLangStaticLoad(prod) || AnalysisUtils.isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
-            else popAfterProd() // keep potential class initialization (static field) or NPE (instance field)
-
-          case INVOKEVIRTUAL | INVOKESPECIAL | INVOKESTATIC | INVOKEINTERFACE =>
-            val methodInsn = prod.asInstanceOf[MethodInsnNode]
-            if (ts.isSideEffectFreeCall(methodInsn)) {
-              toRemove += prod
-              callGraph.removeCallsite(methodInsn, method)
-              val receiver = if (methodInsn.getOpcode == INVOKESTATIC) 0 else 1
-              handleInputs(prod, Type.getArgumentTypes(methodInsn.desc).length + receiver)
-            } else if (ts.isScalaUnbox(methodInsn)) {
-              val tp = OptimizerUtils.primitiveAsmTypeSortToBType(Type.getReturnType(methodInsn.desc).getSort)
-              val boxTp = ts.boxedClassOfPrimitive(tp)
-              toInsertBefore(methodInsn) = List(new TypeInsnNode(CHECKCAST, boxTp.internalName), new InsnNode(POP))
-              toRemove += prod
-              callGraph.removeCallsite(methodInsn, method)
-              castAdded = true
-            } else if (ts.isJavaUnbox(methodInsn)) {
-              val nullCheck = mutable.ListBuffer.empty[AbstractInsnNode]
-              val nonNullLabel = newLabelNode
-              nullCheck += new JumpInsnNode(IFNONNULL, nonNullLabel)
-              nullCheck += new InsnNode(ACONST_NULL)
-              nullCheck += new InsnNode(ATHROW)
-              nullCheck += nonNullLabel
-              toInsertBefore(methodInsn) = nullCheck.toList
-              toRemove += prod
-              callGraph.removeCallsite(methodInsn, method)
-              method.maxStack = math.max(MethodMax.maxStack(method), prodCons.frameAt(methodInsn).getStackSize + 1)
-              nullCheckAdded = true
-            } else
-              popAfterProd()
-
-          case INVOKEDYNAMIC =>
-            prod match {
-              case AnalysisUtils.LambdaMetaFactoryCall(indy, _, _, _, _) => handleClosureInst(indy)
-              case _ => popAfterProd()
-            }
-
-          case NEW =>
-            if (ts.isNewForSideEffectFreeConstructor(prod)) toRemove += prod
-            else popAfterProd()
-
-          case LDC =>
-            prod.asInstanceOf[LdcInsnNode].cst match {
+        case LDC =>
+          prod.asInstanceOf[LdcInsnNode].cst match
             case _: java.lang.Integer | _: java.lang.Float | _: java.lang.Long | _: java.lang.Double | _: String =>
               toRemove += prod
-
             case _ =>
               if (settings.optAllowSkipClassLoading) toRemove += prod
               else popAfterProd()
-          }
 
-          case MULTIANEWARRAY =>
+        case MULTIANEWARRAY =>
+          toRemove += prod
+          handleInputs(prod, prod.asInstanceOf[MultiANewArrayInsnNode].dims)
+
+        // Remove "is instance of j.l.Object", a leftover after some optimizations
+        case INSTANCEOF =>
+          val typeInsn = prod.asInstanceOf[TypeInsnNode]
+          if typeInsn.desc == ClassBType.javaLangObjectInternalName then
             toRemove += prod
-            handleInputs(prod, prod.asInstanceOf[MultiANewArrayInsnNode].dims)
-
-          // Remove "is instance of j.l.Object", a leftover after some optimizations
-          case INSTANCEOF =>
-            val typeInsn = prod.asInstanceOf[TypeInsnNode]
-            if typeInsn.desc == ClassBType.javaLangObjectInternalName then
-              toRemove += prod
-              handleInputs(prod, 1)
-            else
-              popAfterProd()
-
-          case _ =>
+            handleInputs(prod, 1)
+          else
             popAfterProd()
-        }
+
+        case _ =>
+          popAfterProd()
+      }
+    }
+
+    // there are two cases when we can eliminate a constructor call:
+    //   - NEW T; INVOKESPECIAL T.<init> -- there's no DUP, the new object is consumed only by the constructor
+    //   - NEW T; DUP; INVOKESPECIAL T.<init>, where the DUP will be removed
+    def eliminateUnusedPureConstructorCalls(): Boolean = {
+      var changed = false
+
+      def removeConstructorCall(mi: MethodInsnNode): Unit = {
+        toRemove += mi
+        callGraph.removeCallsite(mi, method)
+        sideEffectFreeCreations -= mi
+        changed = true
       }
 
-      // there are two cases when we can eliminate a constructor call:
-      //   - NEW T; INVOKESPECIAL T.<init> -- there's no DUP, the new object is consumed only by the constructor
-      //   - NEW T; DUP; INVOKESPECIAL T.<init>, where the DUP will be removed
-      def eliminateUnusedPureConstructorCalls(): Boolean = {
-        var changed = false
-
-        def removeConstructorCall(mi: MethodInsnNode): Unit = {
-          toRemove += mi
-          callGraph.removeCallsite(mi, method)
-          sideEffectFreeCreations -= mi
-          changed = true
-        }
-
-        for (mi <- sideEffectFreeCreations.toList) { // toList to allow removing elements while traversing
-        val frame = prodCons.frameAt(mi)
-          val stackTop = frame.stackTop
-          val numArgs = Type.getArgumentTypes(mi.desc).length
-          val receiverProds = producersIfSingleConsumer(mi, stackTop - numArgs)
-          if (receiverProds.size == 1) {
-            val receiverProd = receiverProds.head
-            if (receiverProd.getOpcode == NEW) {
+      for (mi <- sideEffectFreeCreations.toList) { // toList to allow removing elements while traversing
+      val frame = prodCons.frameAt(mi)
+        val stackTop = frame.stackTop
+        val numArgs = Type.getArgumentTypes(mi.desc).length
+        val receiverProds = producersIfSingleConsumer(mi, stackTop - numArgs)
+        if (receiverProds.size == 1) {
+          val receiverProd = receiverProds.head
+          if (receiverProd.getOpcode == NEW) {
+            removeConstructorCall(mi)
+            handleInputs(mi, numArgs + 1) // removes the producers of args and receiver
+          } else if (receiverProd.getOpcode == DUP && toRemove.contains(receiverProd)) {
+            val dupProds = producersIfSingleConsumer(receiverProd, prodCons.frameAt(receiverProd).stackTop)
+            if (dupProds.size == 1 && dupProds.head.getOpcode == NEW) {
               removeConstructorCall(mi)
-              handleInputs(mi, numArgs + 1) // removes the producers of args and receiver
-            } else if (receiverProd.getOpcode == DUP && toRemove.contains(receiverProd)) {
-              val dupProds = producersIfSingleConsumer(receiverProd, prodCons.frameAt(receiverProd).stackTop)
-              if (dupProds.size == 1 && dupProds.head.getOpcode == NEW) {
-                removeConstructorCall(mi)
-                handleInputs(mi, numArgs) // removes the producers of args. the producer of the receiver is DUP and already in toRemove.
-                queue += ProducedValue(dupProds.head, 1) // removes the NEW (which is NOT the producer of the receiver!)
-              }
+              handleInputs(mi, numArgs) // removes the producers of args. the producer of the receiver is DUP and already in toRemove.
+              queue += ProducedValue(dupProds.head, 1) // removes the NEW (which is NOT the producer of the receiver!)
             }
           }
         }
-        changed
       }
-
-      collectInitialPopsAndPureConstrs()
-
-      // eliminating producers enables eliminating unused constructor calls (when a DUP gets removed).
-      // vice versa, eliminating a constructor call adds producers of constructor parameters to the queue.
-      // so the two run in a loop.
-      runQueue()
-      while (eliminateUnusedPureConstructorCalls())
-        runQueue()
-
-      var changed = false
-      toInsertAfter foreach {
-        case (target, insn) =>
-          nextExecutableInstructionOrLabel(target) match {
-            case Some(next) if insn.getType == AbstractInsnNode.INSN && next.getOpcode == insn.getOpcode && toRemove(next) =>
-              // Inserting and removing a POP at the same place should not enable `changed`. This happens
-              // when a POP directly follows a producer that cannot be eliminated, e.g. INVOKESTATIC A.m ()I; POP
-              // The POP is initially added to `toRemove`, and the `INVOKESTATIC` producer is added to the queue.
-              // Because the producer cannot be elided, a POP is added to `toInsertAfter`.
-              toRemove -= next
-
-            case _ =>
-              changed = true
-              method.instructions.insert(target, insn)
-          }
-      }
-      toInsertBefore foreach {
-        case (target, insns) =>
-          changed = true
-          insns.foreach(method.instructions.insertBefore(target, _))
-      }
-      toRemove foreach { insn =>
-        changed = true
-        method.instructions.remove(insn)
-      }
-      (changed, castAdded, nullCheckAdded)
+      changed
     }
+
+    collectInitialPopsAndPureConstrs()
+
+    // eliminating producers enables eliminating unused constructor calls (when a DUP gets removed).
+    // vice versa, eliminating a constructor call adds producers of constructor parameters to the queue.
+    // so the two run in a loop.
+    runQueue()
+    while (eliminateUnusedPureConstructorCalls())
+      runQueue()
+
+    var changed = false
+    toInsertAfter foreach {
+      case (target, insn) =>
+        nextExecutableInstructionOrLabel(target) match {
+          case Some(next) if insn.getType == AbstractInsnNode.INSN && next.getOpcode == insn.getOpcode && toRemove(next) =>
+            // Inserting and removing a POP at the same place should not enable `changed`. This happens
+            // when a POP directly follows a producer that cannot be eliminated, e.g. INVOKESTATIC A.m ()I; POP
+            // The POP is initially added to `toRemove`, and the `INVOKESTATIC` producer is added to the queue.
+            // Because the producer cannot be elided, a POP is added to `toInsertAfter`.
+            toRemove -= next
+
+          case _ =>
+            changed = true
+            method.instructions.insert(target, insn)
+        }
+    }
+    toInsertBefore foreach {
+      case (target, insns) =>
+        changed = true
+        insns.foreach(method.instructions.insertBefore(target, _))
+    }
+    toRemove foreach { insn =>
+      changed = true
+      method.instructions.remove(insn)
+    }
+    (changed, castAdded, nullCheckAdded)
   }
 
   private case class ProducedValue(producer: AbstractInsnNode, size: Int) {
