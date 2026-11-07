@@ -186,7 +186,7 @@ object Using {
    *       }
    *       ```
    */
-  final class Manager private {
+  final class Manager private[Using] {
     import Manager._
 
     private var closed = false
@@ -217,7 +217,25 @@ object Using {
       resources = new Resource(resource) :: resources
     }
 
-    private def manage[A](op: Manager => A): A = {
+    private[Using] def release(primary: Throwable | Null): Unit = {
+      var toThrow = primary
+      closed = true
+      var rs = resources
+      resources = nullForGC[List[Resource[?]]] // allow GC, in case something is holding a reference to `this`
+      while (rs != null && rs.nonEmpty) {
+        val resource = rs.head
+        rs = rs.tail
+        try resource.release()
+        catch {
+          case t: Throwable =>
+            if (toThrow == null) toThrow = t
+            else toThrow = preferentiallySuppress(toThrow, t)
+        }
+      }
+      if (toThrow != null) throw toThrow
+    }
+
+    private[Using] def manage[A](op: Manager => A): A = {
       var toThrow: Throwable | Null = null
       try {
         op(this)
@@ -225,22 +243,7 @@ object Using {
         case t: Throwable =>
           toThrow = t
           null.asInstanceOf[A] // compiler doesn't know `finally` will throw
-      } finally {
-        closed = true
-        var rs = resources
-        resources = nullForGC[List[Resource[?]]] // allow GC, in case something is holding a reference to `this`
-        while (rs != null && rs.nonEmpty) {
-          val resource = rs.head
-          rs = rs.tail
-          try resource.release()
-          catch {
-            case t: Throwable =>
-              if (toThrow == null) toThrow = t
-              else toThrow = preferentiallySuppress(toThrow, t)
-          }
-        }
-        if (toThrow != null) throw toThrow
-      }
+      } finally release(toThrow)
     }
   }
 
@@ -279,6 +282,100 @@ object Using {
       def release(): Unit = releasable.release(resource)
     }
   }
+
+  /** Performs an operation using a `Manager`, then closes the `Manager`,
+   *  releasing its resources (in reverse order of acquisition).
+   *
+   *  Unlike [[Manager$.apply `Manager.apply`]], the `Manager` is passed to the operation
+   *  as a context parameter, so that it can be picked up by resources which require a
+   *  `Manager` (see the note on [[Manager]]), and exceptions are thrown rather than
+   *  wrapped in a [[Try]]. Other resources can be registered with [[track `Using.track`]].
+   *
+   *  Example:
+   *  ```
+   *  Using.managed {
+   *   val reader = new SafeFileReader("in.txt") // registers itself with the given `Manager`
+   *   val writer = Using.track(new FileWriter("out.txt"))
+   *   writer.write(reader.readLine())
+   *  }
+   *  ```
+   *
+   *  $suppressionBehavior
+   *
+   *  @tparam A the return type of the operation
+   *  @param op the operation to perform using the manager
+   *  @return the result of the operation, if neither the operation nor
+   *         releasing the resources throws
+   */
+  def managed[A](op: Manager ?=> A): A = (new Manager).manage(op(using _))
+
+  /** Performs an operation using a new `Manager`, *without* closing the `Manager`
+   *  afterwards, and returns an `AutoCloseable` which closes it, together with the
+   *  result of the operation.
+   *
+   *  If the operation throws an exception, the `Manager` is closed, releasing the
+   *  resources acquired so far (in reverse order of acquisition), and the exception
+   *  is re-thrown. Otherwise, the caller is responsible for eventually calling `close`
+   *  on the returned `AutoCloseable`, which releases the resources (in reverse order
+   *  of acquisition); they are not released otherwise. Calling `close` again has no
+   *  effect. Prefer [[managed `Using.managed`]] or [[Manager$.apply `Manager.apply`]]
+   *  whenever the resources are only needed within a single block of code.
+   *
+   *  This is useful when resources need to be managed across lifecycle callbacks,
+   *  e.g. acquired in a `beforeAll` hook of a test framework and released in `afterAll`,
+   *  or released when an asynchronous computation completes.
+   *
+   *  The `Manager` is passed to the operation as a context parameter, so that it can be
+   *  picked up by resources which require a `Manager` (see the note on [[Manager]]).
+   *  Other resources can be registered with [[track `Using.track`]].
+   *
+   *  Example:
+   *  ```
+   *  val (resources, (reader, writer)) = Using.unmanaged {
+   *   val reader = new SafeFileReader("in.txt") // registers itself with the given `Manager`
+   *   val writer = Using.track(new FileWriter("out.txt"))
+   *   (reader, writer)
+   *  }
+   *  Future(writer.write(reader.readLine())).andThen(_ => resources.close())
+   *  ```
+   *
+   *  $suppressionBehavior
+   *
+   *  @tparam A the return type of the operation
+   *  @param op the operation to perform using the manager
+   *  @return an `AutoCloseable` which closes the `Manager`, and the result of the operation
+   */
+  def unmanaged[A](op: Manager ?=> A): (AutoCloseable, A) = {
+    val manager = new Manager
+    try ((() => manager.release(null)): AutoCloseable, op(using manager))
+    catch {
+      case t: Throwable =>
+        manager.release(t)
+        throw t // unreachable, `release` always throws
+    }
+  }
+
+  /** Registers the specified resource with the given `Manager`, so that the resource is
+   *  released when the manager is closed, and then returns the (unmodified) resource.
+   *
+   *  This makes it convenient to register resources that don't require a `Manager`
+   *  themselves within [[managed `Using.managed`]] and [[unmanaged `Using.unmanaged`]]:
+   *
+   *  ```
+   *  import Using.track
+   *
+   *  Using.managed {
+   *   val reader = track(new BufferedReader(new FileReader("file.txt")))
+   *   reader.readLine()
+   *  }
+   *  ```
+   *
+   *  @tparam R the type of the resource, which must have a `Releasable` instance
+   *  @param resource the resource to register with the given manager
+   *  @param m the given `Manager`
+   *  @return the same `resource`, unmodified, to allow fluent use at the call site
+   */
+  def track[R: Releasable](resource: R)(using m: Manager): resource.type = m(resource)
 
   private def preferentiallySuppress(primary: Throwable, secondary: Throwable): Throwable = {
     @annotation.nowarn("cat=deprecation")  // avoid warning on mention of ThreadDeath
