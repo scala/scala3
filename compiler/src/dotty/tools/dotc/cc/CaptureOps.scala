@@ -44,6 +44,15 @@ def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames
     else make(args, resultType)
   mt.toFunctionType(alwaysDependent = true)
 
+/** A tree traverser that visits only the parts of a tree that are capture checked:
+ *  Type trees are not traversed, and of quoted code only the splices are traversed.
+ */
+abstract class CheckedTreeTraverser extends TreeTraverser:
+  override protected def traverseChildren(tree: Tree)(using Context): Unit = tree match
+    case _ if tree.isType =>
+    case Quote(body, _) => transform.Recheck.splicesIn(body).foreach(traverse)
+    case _ => super.traverseChildren(tree)
+
 /** An exception thrown if a @retains argument is not syntactically a Capability */
 class IllegalCaptureRef(tpe: Type)(using Context) extends Exception(tpe.show)
 
@@ -734,6 +743,15 @@ extension (sym: Symbol) {
   /** It's a parameter accessor for a parameter that that is not annotated
    *  @constructorOnly or @uncheckedCaptures and that is not a consume parameter.
    */
+  /** Is `sym` a by-name parameter or the parameter accessor of one? The test
+   *  looks at the type the symbol had before capture checking, since during
+   *  capture checking by-name parameters have nullary context function types.
+   */
+  def isByNameParam(using Context): Boolean =
+    sym.isOneOf(Param | ParamAccessor)
+    && !sym.is(Method)
+    && sym.originDenotation.info.isInstanceOf[ExprType]
+
   def isRefiningParamAccessor(using Context): Boolean =
     sym.is(ParamAccessor)
     && {

@@ -709,7 +709,7 @@ object Predef extends LowPriorityImplicits {
     if x.asInstanceOf[Any] == null then scala.runtime.Scala3RunTime.nnFail()
     x.asInstanceOf[x.type & T]
 
-  extension (inline x: AnyRef | Null)
+  extension (inline x: (AnyRef | Null)^)
     /** Enables an expression of type `T|Null`, where `T` is a subtype of `AnyRef`, to be checked for `null`
      *  using `eq` rather than only `==`. This is needed because `Null` no longer has
      *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`.
@@ -717,7 +717,7 @@ object Predef extends LowPriorityImplicits {
      *  @param y the reference to compare against for reference equality
      *  @return `true` if `x` and `y` are the same reference (including both being `null`), `false` otherwise
      */
-    inline infix def eq(inline y: AnyRef | Null): Boolean =
+    inline infix def eq(inline y: (AnyRef | Null)^): Boolean =
       x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
     /** Enables an expression of type `T|Null`, where `T` is a subtype of `AnyRef`, to be checked for `null`
      *  using `ne` rather than only `!=`. This is needed because `Null` no longer has
@@ -726,7 +726,7 @@ object Predef extends LowPriorityImplicits {
      *  @param y the reference to compare against for reference non-equality
      *  @return `true` if `x` and `y` refer to different objects (treating both-`null` as the same reference), `false` otherwise
      */
-    inline infix def ne(inline y: AnyRef | Null): Boolean =
+    inline infix def ne(inline y: (AnyRef | Null)^): Boolean =
       !(x eq y)
 
   /** A type supporting Self-based type classes.

@@ -430,6 +430,18 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *       right hand side of a defininition meeting condition (2), also make
      *       its parameter types non-inferred as specified by (2).
      */
+    /** The type trees of the value definitions seen so far, under ccEnabled */
+    private val seenTpts = util.EqHashSet[Tree]()
+
+    /** Under ccEnabled, make sure that the type tree `tpt` of a value definition is not
+     *  shared with another definition, as it is the case for `val x, y: T = e`.
+     *  The capture checker associates the types of definitions with their type trees.
+     */
+    private def unsharedTpt(tpt: Tree)(using Context): Tree =
+      if Feature.ccEnabled && !tpt.isEmpty && !seenTpts.add(tpt)
+      then tpt.cloneIn(tpt.source)
+      else tpt
+
     private def explicifyTpt(tree: ValOrDefDef)(using Context): Tree = tree.tpt match
       case tpt: InferredTypeTree if Feature.ccEnabled =>
         if tree.symbol.allOverriddenSymbols.hasNext then // (1)
@@ -671,7 +683,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree: ValDef =>
           annotateExperimentalCompanion(tree.symbol)
           registerIfHasMacroAnnotations(tree)
-          val tree1 = cpy.ValDef(tree)(tpt = explicifyTpt(tree))
+          val tree1 = cpy.ValDef(tree)(tpt = unsharedTpt(explicifyTpt(tree)))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))

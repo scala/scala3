@@ -22,7 +22,7 @@ import dotc.typer.ImportInfo.{withRootImports, RootRef}
 import dotc.typer.TyperPhase
 import dotc.util.Spans.*
 import dotc.util.{ParsedComment, Property, SourceFile}
-import dotc.{CompilationUnit, Compiler, Run}
+import dotc.{CompilationUnit, Compiler, Run, cc}
 import dotc.util.chaining.*
 
 import scala.collection.mutable
@@ -44,6 +44,8 @@ class ReplCompiler extends Compiler:
     List(WInferUnion(), CheckUnused.PostTyper(), CheckShadowing()),
     List(CollectTopLevelImports()),
     List(PostTyper()),
+    List(cc.Setup()),
+    List(cc.CheckCaptures()),
     List(UnrollDefinitions()),
   )
 
