@@ -39,8 +39,25 @@ trait SetupAPI:
    */
   def isPreCC(sym: Symbol)(using Context): Boolean
 
+  /** The type of a definition `sym` with inferred type `tp` as it is seen in other
+   *  compilation units. That type drops the inferred capture sets of `tp`, except in
+   *  the bounds of type parameters of polymorphic types, which are kept as they are
+   *  pickled. For instance, `^` in the bound `CapSet^` of `[C^]` says that `C` can be
+   *  instantiated with any capture set. Dropping it would make the bound `{}`.
+   *  Parts of `tp` that are declared, see `PostTyper.makeFormalsDeclared`, are also
+   *  pickled as they are, and are transformed as explicitly given types, as it is
+   *  done by `transformSym` for symbols from other compilation units. If `keepCaps`
+   *  is true, so are capturing types written `T^`, which are also pickled as they are.
+   */
+  def externalType(tp: Type, sym: Symbol, keepCaps: Boolean)(using Context): Type
+
   /** Check to do after the capture checking traversal */
   def postCheck()(using Context): Unit
+
+  /** Replace the capture set variables in the infos of members updated by Setup
+   *  with constant capture sets, see `Setup.freezeInfos`.
+   */
+  def freezeInfos()(using Context): Unit
 
   /** Used for error reporting:
    *  Maps mutable variables to the symbols that capture them (in the
@@ -383,10 +400,28 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, orig))),
           CaptureSet.VarInTypeTree(ctx.owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining = inCaptureRefinement),
           transformExplicitType(_, sym, initialVariance = variance),
-          typeArgFormal)
+          if orig eq tp then typeArgFormal else NoType) // the formal bounds only the type argument itself
 
       override def mapRefinedFunction(tp: Type, rinfo: MethodType): Type =
         addVar(super.mapRefinedFunction(tp, rinfo), tp)
+
+      /** Are we mapping the bounds of a type parameter of a polymorphic type? */
+      var inBounds = false
+
+      override protected def mapOverLambda(tp: LambdaType) = tp match
+        case tp: PolyType =>
+          val savedVariance = variance
+          val savedInBounds = inBounds
+          variance = -variance
+          inBounds = true
+          val paramInfos1 =
+            try tp.paramInfos.mapConserve(this).asInstanceOf[List[TypeBounds]]
+            finally
+              variance = savedVariance
+              inBounds = savedInBounds
+          derivedLambdaType(tp)(paramInfos1, this(tp.resultType))
+        case _ =>
+          super.mapOverLambda(tp)
 
       def innerApply(tp: Type) =
         tp match
@@ -396,7 +431,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             addVar(apply(parent), tp)
           case AnnotatedType(parent, annot)
           if annot.symbol == defn.DeclaredAnnot =>
-            transformExplicitType(parent, sym, initialVariance = variance)
+            transformExplicitType(parent, sym, initialVariance = variance, inBounds = inBounds)
           case tp @ RefinedType(parent, rname, rinfo) =>
             val saved = refiningNames
             refiningNames += rname
@@ -421,8 +456,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *   4. Map `any` in function result types to existentially bound variables.
    *   5. Schedule deferred well-formed tests for types with retains annotations.
    *   6. Perform normalizeCaptures
+   *  If `inBounds` is true, `tp` is a bound of a type parameter, where `any` stays as it is,
+   *  see `GlobalCapToLocal.mapOverLambda`.
    */
-  private def transformExplicitType(tp: Type, sym: Symbol, tptToCheck: Tree = EmptyTree, initialVariance: Int = 1)(using Context): Type =
+  private def transformExplicitType(tp: Type, sym: Symbol, tptToCheck: Tree = EmptyTree, initialVariance: Int = 1, inBounds: Boolean = false)(using Context): Type =
 
     def fail(msg: Message) =
       if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
@@ -576,7 +613,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             |The `fresh` capability may only be used in the result of a function type,
             |following a function arrow such as `=>` or `->`.""")
 
-    if initialVariance < 0 then tp2
+    if initialVariance < 0 || inBounds then tp2
     else globalCapToLocal(tp2, Origin.InDecl(sym))
   end transformExplicitType
 
@@ -585,6 +622,32 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     toBeUpdated += sym
     sym.updateInfo(thisPhase, info, newFlagsFor(sym), owner)
     toBeUpdated -= sym
+    if owner.isClass then updatedMembers += sym
+
+  /** The class members whose infos were updated in the current compilation unit */
+  private val updatedMembers = mutable.LinkedHashSet[Symbol]()
+
+  /** Once a compilation unit is checked, replace the capture set variables in the
+   *  infos of its members updated by Setup with constant capture sets of their
+   *  elements. These infos are seen when checking later compilation units, and in
+   *  later runs of the REPL, which bring forward the denotations of earlier lines.
+   *  These checks must not add elements to the variables, nor see variables of
+   *  an earlier run.
+   */
+  def freezeInfos()(using Context): Unit =
+    val freeze = new TypeMap:
+      def apply(t: Type) = t match
+        case t @ CapturingType(parent, refs) =>
+          val refs1 = refs match
+            case refs: CaptureSet.Const => refs
+            case _ => CaptureSet(refs.elems).withDescription(refs.description)
+          t.derivedCapturingType(this(parent), refs1)
+        case _ =>
+          mapOver(t)
+    for sym <- updatedMembers do
+      val denot = atPhase(thisPhase.next)(sym.denot)
+      if denot.isCompleted then denot.info = freeze(denot.info)
+    updatedMembers.clear()
 
   /** The info of `sym` at the CheckCaptures phase */
   extension (sym: Symbol) def nextInfo(using Context): Type =
@@ -760,7 +823,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   psymss.head.lazyZip(mt.paramInfos).map(localCapToGlobal),
                 resType = paramsToCap(psymss.tail, mt.resType))
           case mt: PolyType =>
-            mt.derivedLambdaType(resType = paramsToCap(psymss.tail, mt.resType))
+            mt.derivedLambdaType(
+              paramInfos = psymss.head.lazyZip(mt.paramInfos).map(localCapToGlobal(_, _).bounds),
+              resType = paramsToCap(psymss.tail, mt.resType))
           case _ => mt
 
         // If there's a change in the signature or owner, update the info of `sym`
@@ -1019,6 +1084,23 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    */
   def setupUnit(tree: Tree, checker: CheckerAPI)(using Context): Unit =
     setupTraverser(checker).traverse(tree)(using ctx.withPhase(thisPhase))
+
+  def externalType(tp: Type, sym: Symbol, keepCaps: Boolean)(using Context): Type = // TODO we should drop retains from inferred types before unpickling
+    inContext(ctx.withPhase(thisPhase)):
+      val tm = new TypeMap:
+        def apply(t: Type) = t match
+          case AnnotatedType(_, annot) if keepCaps && annot.symbol == defn.RetainsCapAnnot =>
+            transformExplicitType(t, sym, initialVariance = variance)
+          case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
+            apply(parent)
+          case AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
+            transformExplicitType(parent, sym, initialVariance = variance)
+          case _ =>
+            mapOver(t)
+        override protected def mapOverLambda(tp: LambdaType) = tp match
+          case tp: PolyType => derivedLambdaType(tp)(tp.paramInfos, this(tp.resultType))
+          case _ => super.mapOverLambda(tp)
+      tm(tp)
 
   // ------ Checks to run at Setup ----------------------------------------
 

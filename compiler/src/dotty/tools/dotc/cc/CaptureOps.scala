@@ -427,16 +427,6 @@ extension (tp: Type)
 
   def isArrayUnderStrictMut(using Context): Boolean = tp.classSymbol.isArrayUnderStrictMut
 
-  /** Drop @retains annotations everywhere */
-  def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
-    val tm = new TypeMap:
-      def apply(t: Type) = t match
-        case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
-          apply(parent)
-        case _ =>
-          mapOver(t)
-    tm(tp)
-
   private def containsGlobal(c: GlobalCap, directly: Boolean)(using Context): Boolean =
     val search = new TypeAccumulator[Boolean]:
       def apply(x: Boolean, t: Type) =
