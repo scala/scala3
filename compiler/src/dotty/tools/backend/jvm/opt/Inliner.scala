@@ -31,6 +31,9 @@ abstract class Inliner {
   def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit
 }
 
+// Invariant: any type that may be referenced by the optimized bytecode must be in `classBTypeCache` after optimization.
+// (For instance, if inlining brings references to types that weren't in the original bytecode,
+//  even if these types are otherwise not used, the optimizer must explicitly load them.)
 final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
                             heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
                             settings: OptimizerSettings) extends Inliner {
@@ -805,7 +808,7 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
           bTypesFromClassfile.bTypeForDescriptorFromClassfile(desc)
         res
       }
-    def isAccessibleMethod(owner: String, name: String, desc: String, descToLoad: => String | Null = null, isInvokeSpecial: Boolean = false): Either[OptimizerWarning, Boolean] =
+    def isAccessibleMethod(owner: String, name: String, desc: String, loadDescs: Option[() => Unit] = None, isInvokeSpecial: Boolean = false): Either[OptimizerWarning, Boolean] =
       for {
         methodRefClass <- bTypesFromClassfile.classBTypeFromParsedClassfile(owner)
         (methodNode, methodDeclClassNode) <- byteCodeRepository.methodNode(methodRefClass.internalName, name, desc)
@@ -818,10 +821,7 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
             destinationClass == calleeDeclarationClass
           else // INVOKEVIRTUAL, INVOKESTATIC, INVOKEINTERFACE and INVOKESPECIAL of constructors
             Inliner.memberIsAccessible(methodNode.access, methodDeclClass, methodRefClass, destinationClass)
-        if res then
-          // ensure the result ClassBType is cached (for stack map frame calculation)
-          val toLoad = descToLoad
-          if toLoad != null then bTypesFromClassfile.bTypeForDescriptorFromClassfile(toLoad)
+        if res then loadDescs.foreach(f => f())
         res
       }
 
@@ -864,7 +864,10 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
               // array methods are accessible
               Right(true)
             } else {
-              isAccessibleMethod(mi.owner, mi.name, mi.desc, Type.getReturnType(mi.desc).getDescriptor, mi.getOpcode == Opcodes.INVOKESPECIAL)
+              isAccessibleMethod(mi.owner, mi.name, mi.desc, Some(() => {
+                // ensure the types are cached (for stack map frame calculation)
+                bTypesFromClassfile.bTypeForDescriptorFromClassfile(Type.getReturnType(mi.desc).getDescriptor)
+              }), mi.getOpcode == Opcodes.INVOKESPECIAL)
             }
 
       case _: InvokeDynamicInsnNode if destinationClass == calleeDeclarationClass =>
@@ -919,7 +922,12 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
         // In the case of indyLambda, it depends on the visibility of the implMethod handle. If
         // the implMethod is public, lambdaMetaFactory doesn't use the Lookup object's extended
         // capability, and we can safely inline the instruction into a different class.
-        isAccessibleMethod(implMethod.getOwner, implMethod.getName, implMethod.getDesc, Type.getReturnType(indy.desc).getDescriptor)
+        isAccessibleMethod(implMethod.getOwner, implMethod.getName, implMethod.getDesc, Some(() => {
+          // ensure the types are cached (for stack map frame calculation)
+          bTypesFromClassfile.bTypeForDescriptorFromClassfile(Type.getReturnType(indy.desc).getDescriptor)
+          Type.getArgumentTypes(indy.bsm.getDesc).foreach(t => bTypesFromClassfile.bTypeForDescriptorFromClassfile(t.getDescriptor))
+          bTypesFromClassfile.bTypeForDescriptorFromClassfile(Type.getReturnType(indy.bsm.getDesc).getDescriptor)
+        }))
 
       case _: InvokeDynamicInsnNode => Left(UnknownInvokeDynamicInstruction)
 
