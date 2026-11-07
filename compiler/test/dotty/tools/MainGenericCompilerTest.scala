@@ -1,34 +1,34 @@
 package dotty.tools
 
 import java.io.ByteArrayOutputStream
-import java.nio.file.Files
+import dotty.tools.nio.*
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class MainGenericCompilerTest:
   @Test def targetScriptCanBeOpened(): Unit =
-    val script = Files.createTempFile("target-script", ".scala")
+    val script = File.createTemporaryOnDisk("target-script.scala")
     val initial = CompileSettings(scriptArgs = List("argument"))
     try
       assertEquals(
-        initial.copy(targetScript = script.toString),
-        initial.withTargetScript(script.toString)
+        initial.copy(targetScript = script.path),
+        initial.withTargetScript(script.path)
       )
-    finally Files.delete(script)
+    finally script.delete()
 
   @Test def targetScriptMustBeAnOpenableFile(): Unit =
-    val directory = Files.createTempDirectory("target-script")
+    val directory = FileContainer.createTemporaryOnDisk("target-script")
     val initial = CompileSettings(targetScript = "previous.scala")
     try
-      for path <- List(directory.resolve("missing.scala"), directory) do
+      for path <- List(directory.path + FileSystemEntry.separator + "missing.scala", directory.path) do
         val output = new ByteArrayOutputStream
         val settings = Console.withOut(output) {
-          initial.withTargetScript(path.toString)
+          initial.withTargetScript(path)
         }
         assertEquals(initial.copy(exitCode = 2), settings)
         assertEquals(s"not found $path${System.lineSeparator()}", output.toString)
-    finally Files.delete(directory)
+    finally directory.deleteRecursively()
 
   @Test def javaPropertyValuesAreParsedInFull(): Unit =
     val cases: List[(String, (String, String))] = List(

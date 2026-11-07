@@ -13,12 +13,12 @@
 
 package dotty.tools.dotc.profile
 
-import java.io.Closeable
 import java.lang.management.ManagementFactory
-import java.nio.file.Path
 import java.util.concurrent.TimeUnit
-
 import scala.collection.mutable
+import dotty.tools.nio.*
+
+import java.io.Closeable
 
 private [profile] object ChromeTrace {
   private object EventType {
@@ -37,7 +37,7 @@ private [profile] object ChromeTrace {
 
 /** Allows writing a subset of capture traces based on https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview#
   * Can be visualized using https://ui.perfetto.dev/, Chrome's about://tracing (outdated) or the tooling in https://www.google.com.au/search?q=catapult+tracing&oq=catapult+tracing+&aqs=chrome..69i57.3974j0j4&sourceid=chrome&ie=UTF-8 */
-private [profile] final class ChromeTrace(f: Path) extends Closeable {
+private [profile] final class ChromeTrace(f: File) extends Closeable {
   import ChromeTrace.EventType
   private val traceWriter = FileUtils.newAsyncBufferedWriter(f)
   private val context = mutable.Stack[JsonContext](TopContext)

@@ -17,7 +17,7 @@ class JrtClassPathTest {
     val jl_Object = cp.classes("java.lang").find(_.name == "Object").get
     val jl_Class = {
       val node = new ClassNode()
-      new ClassReader(jl_Object.file.toByteArray).accept(node, 0)
+      new ClassReader(jl_Object.file.readBytes()).accept(node, 0)
       node
     }
     assertEquals("java/lang/Object", jl_Class.name)

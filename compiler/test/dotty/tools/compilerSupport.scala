@@ -1,14 +1,13 @@
 package dotty.tools
 
 import javax.tools.*
-import java.io.*
-import java.nio.file.*
 import java.net.URI
 import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.*
 import core.*
 import core.Contexts.*
 import dotc.core.Comments.{ContextDoc, ContextDocstrings}
+import dotty.tools.nio.FileContainer
 
 /** Initialize a compiler context with the given `classpath`, compile all
  *  `scalaSources`, then run `op`.
@@ -36,23 +35,15 @@ private def initCtx(classpath: String): Context =
 /** Compile `javaSources` with javac, then pass the compilation output directory
  *  to `op`. This directory will be deleted when op returns.
  */
-def withJavaCompiled[T](javaSources: JavaFileObject*)(op: Path => T): T =
-  val javaOutputDir = Files.createTempDirectory("withJavaCompiled")
+def withJavaCompiled[T](javaSources: JavaFileObject*)(op: FileContainer => T): T =
+  val javaOutputDir = FileContainer.createTemporaryOnDisk("withJavaCompiled") // has to be on disk for javac
   try
     val javac = ToolProvider.getSystemJavaCompiler()
-    val options = List("-d", javaOutputDir.toString)
+    val options = List("-d", javaOutputDir.path)
     javac.getTask(null, null, null, options.asJava, null, javaSources.asJava).call()
     op(javaOutputDir)
   finally
-    deleteDirectory(javaOutputDir.toFile)
-
-/** Recursively delete a directory. */
-def deleteDirectory(directory: File): Unit =
-  directory.listFiles.toList.foreach { file =>
-    if (file.isDirectory)
-      deleteDirectory(file)
-    file.delete()
-  }
+    javaOutputDir.deleteRecursively()
 
 class VirtualJavaSource(fileName: String, code: String) extends SimpleJavaFileObject(
     URI.create("string:///" + fileName), JavaFileObject.Kind.SOURCE):

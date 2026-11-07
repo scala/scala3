@@ -2,43 +2,39 @@ package dotty.tools
 package dotc
 package fromtasty
 
-import dotty.tools.io.Directory
-
-import java.io.{File => JFile}
-import java.nio.file.{Files, Paths}
+import dotty.tools.dotc.classpath.ClassPath
+import dotty.tools.nio.*
 
 object Debug {
   def main(args: Array[String]): Unit = {
     assert(!args.contains("-d"))
 
-    val outPath = Paths.get("out")
-    Directory(outPath).createDirectory()
+    val outPath = FileContainer.getOrCreateOnDisk("out")
 
-    val tmpOut = Files.createTempDirectory(outPath.toAbsolutePath, "from-tasty-tmp")
+    val tmpOut = FileContainer.createTemporaryOnDisk("from-tasty-tmp")
 
-    val fromSourcesOut = Files.createDirectory(tmpOut.resolve("from-source"))
+    val fromSourcesOut = tmpOut.getOrCreateContainer("from-source")
 
     println("Compiling from .scala sources")
     val compilation1 = dotc.Main.process("-d" +: fromSourcesOut.toString +: args)
 
     if (compilation1.hasErrors) {
       println("Failed compilation from sources")
-      Directory(tmpOut).deleteRecursively()
+      tmpOut.deleteRecursively()
       sys.exit(1)
     }
 
-    val fromTastyOut = Files.createDirectory(tmpOut.resolve("from-tasty"))
+    val fromTastyOut = tmpOut.getOrCreateContainer("from-tasty")
 
     val tastyFiles =
-      Directory(fromSourcesOut).walk
-        .filter(x => x.isFile && x.ext.isTasty)
-        .map(_.toString)
+      fromSourcesOut.recursiveEntries
+        .collect { case f: File if f.extension.isTasty => f.path }
         .toList
 
     val fromTastyArgs =
       "-from-tasty" ::
-      "-d" :: fromTastyOut.toString ::
-      insertClasspathInArgs(args.filterNot(_.endsWith(".scala")).toList, fromSourcesOut.toString) :::
+      "-d" :: fromTastyOut.path ::
+      insertClasspathInArgs(args.filterNot(_.endsWith(".scala")).toList, fromSourcesOut.path) :::
       tastyFiles
 
     println("Compiling from .tasty sources")
@@ -46,7 +42,7 @@ object Debug {
 
     if (compilation2.hasErrors) {
       println("Failed compilation from TASTY")
-      println("Compilation input: " + fromSourcesOut)
+      println("Compilation input: " + fromSourcesOut.path)
       // In this case we do not delete the generated class files to allow further debugging.
       // For example `dotc -decompile` on one of the intermediate class files.
       sys.exit(1)
@@ -54,12 +50,12 @@ object Debug {
       println("Recompilation successful")
     }
 
-    Directory(tmpOut).deleteRecursively()
+    tmpOut.deleteRecursively()
   }
 
   private def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
     val (beforeCp, fromCp) = args.span(_ != "-classpath")
-    val classpath = fromCp.drop(1).headOption.fold(cp)(_ + JFile.pathSeparator + cp)
+    val classpath = fromCp.drop(1).headOption.fold(cp)(_ + ClassPath.pathSeparator + cp)
     "-classpath" :: classpath :: beforeCp ::: fromCp.drop(2)
   }
 }

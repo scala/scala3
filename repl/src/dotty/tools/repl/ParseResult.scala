@@ -457,7 +457,7 @@ object ParseResult {
         code.nonEmpty && {
           val reporter = newStoreReporter
           val source   = SourceFile.virtual("<incomplete-handler>", code, maybeIncomplete = true)
-          val unit     = CompilationUnit(source, mustExistIfNotNull = false)
+          val unit     = CompilationUnit(source)
           val localCtx = ctx.fresh
                             .setCompilationUnit(unit)
                             .setReporter(reporter)

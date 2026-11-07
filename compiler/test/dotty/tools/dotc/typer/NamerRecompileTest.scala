@@ -3,11 +3,12 @@ package dotty.tools.dotc.typer
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
-import dotty.tools.io.{Directory, File}
+import dotty.tools.nio.*
 import dotty.tools.vulpix.TestConfiguration
-
 import org.junit.Test
 import org.junit.Assert.{assertFalse, assertTrue}
+
+import scala.io.Codec
 
 /** Regression test for https://github.com/scala/scala3/issues/23043
   *
@@ -33,27 +34,28 @@ import org.junit.Assert.{assertFalse, assertTrue}
 class NamerRecompileTest:
 
   @Test def spuriousPackageDirectoryDoesNotConflictWithObject(): Unit =
-    Directory.inTempDirectory { tmp =>
-      val srcFile = tmp./(File("Test.scala")).toAbsolute
-      srcFile.writeAll(
+    val tmp = FileContainer.createTemporaryOnDisk("namer-recompile-test")
+    try
+      val srcFile = tmp.getOrCreateFile("Test.scala")
+      srcFile.writeText(
         """package testpkg
           |
           |object Scope:
           |  enum MyEnum:
           |    case A
           |    case B(x: Int)
-          |""".stripMargin
+          |""".stripMargin,
+        Codec.UTF8
       )
 
-      val out = tmp./("out")
-      out.createDirectory()
-      val outPath = out.toAbsolute.toString
+      val out = tmp.getOrCreateContainer("out")
+      val outPath = out.path
 
       val baseOptions = TestConfiguration.defaultOptions
         .and("-d", outPath)
 
       // First compilation: should succeed
-      val options1 = baseOptions.and(srcFile.toString)
+      val options1 = baseOptions.and(srcFile.path)
       val reporter1 = TestReporter.reporter(System.out, logLevel = ERROR)
       Main.process(options1.all, reporter1)
       assertFalse("First compilation failed.", reporter1.hasErrors)
@@ -64,19 +66,17 @@ class NamerRecompileTest:
       //   val dir   = parts.init.foldLeft(out)(_.subdirectoryNamed(_))
       //   dir.fileNamed(parts.last + ".sir")
       // will create  testpkg/Scope/  which the classpath scanner sees as a package.
-      val pluginDir = out./("testpkg")./("Scope")
-      pluginDir.createDirectory()
-      val pluginFile = pluginDir./(File("MyEnum.sir")).toAbsolute
-      pluginFile.writeAll("plugin data")
-      assertTrue("Plugin directory should exist", pluginDir.isDirectory)
+      val pluginDir = out.getOrCreateContainer("testpkg").getOrCreateContainer("Scope")
+      val pluginFile = pluginDir.getOrCreateFile("MyEnum.sir")
+      pluginFile.writeText("plugin data", Codec.UTF8)
 
       // Second compilation with output on classpath (as sbt does):
       // should still succeed despite the plugin-created directory
-      val options2 = baseOptions.withClasspath(outPath).and(srcFile.toString)
+      val options2 = baseOptions.withClasspath(outPath).and(srcFile.path)
       val reporter2 = TestReporter.reporter(System.out, logLevel = ERROR)
       Main.process(options2.all, reporter2)
       assertFalse(
         "Second compilation failed with spurious package conflict (i23043).",
         reporter2.hasErrors
       )
-    }
+    finally tmp.deleteRecursively()

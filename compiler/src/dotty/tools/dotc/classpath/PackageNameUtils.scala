@@ -1,18 +1,9 @@
-/*
- * Copyright (c) 2014 Contributor. All rights reserved.
- */
 package dotty.tools.dotc.classpath
 
 /**
  * Common methods related to package names represented as String
  */
 private object PackageNameUtils {
-
-  /** Like the full version below, when you only need the class name. */
-  def separateClassName(fullClassName: String): String =
-    val lastDotIndex = fullClassName.lastIndexOf('.')
-    if lastDotIndex == -1 then fullClassName
-    else fullClassName.substring(lastDotIndex + 1)
 
   /** Like the full version below, when you only need the package name. */
   def separatePackageName(fullClassName: String): String =
@@ -32,29 +23,14 @@ private object PackageNameUtils {
       (fullClassName.substring(0, lastDotIndex), fullClassName.substring(lastDotIndex + 1))
   }
 
-  def packagePrefix(inPackage: String): String = if (inPackage == ClassPath.RootPackage) "" else inPackage + "."
-
   /**
    * `true` if `packageDottedName` is a package directly nested in `inPackage`, for example:
    *   - `packageContains("scala", "scala.collection")`
    *   - `packageContains("", "scala")`
    */
-  def packageContains(inPackage: String, packageDottedName: String) = {
+  def packageContains(inPackage: String, packageDottedName: String): Boolean = {
     if (packageDottedName.contains("."))
       packageDottedName.startsWith(inPackage) && packageDottedName.lastIndexOf('.') == inPackage.length
     else inPackage == ""
-  }
-
-  def dirPathTrailingSlash(pkg: String): String =
-    FileUtils.dirPath(pkg) + java.io.File.separator
-
-  def entryName(pkg: String, entry: String): String = {
-    if (pkg == ClassPath.RootPackage) entry else {
-      val builder = new java.lang.StringBuilder(pkg.length + 1 + entry.length)
-      builder.append(pkg)
-      builder.append('.')
-      builder.append(entry)
-      builder.toString
-    }
   }
 }

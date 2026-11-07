@@ -202,15 +202,15 @@ class PublicInBinaryTests extends DottyBytecodeTest {
         |@publicInBinary protected object ProtectedObject
       """.stripMargin
     checkBCode(code) { dir =>
-      val privateObject = loadClassNode(lookupClass(dir.subdirectoryNamed("foo"), "PrivateObject$.class"), skipDebugInfo = false)
+      val privateObject = loadClassNode(lookupClass(dir.getContainer("foo").get, "PrivateObject$.class"), skipDebugInfo = false)
       checkPublicClass(privateObject)
       checkPublicField(privateObject, "MODULE$")
 
-      val packagePrivateObject = loadClassNode(lookupClass(dir.subdirectoryNamed("foo"), "PackagePrivateObject$.class"), skipDebugInfo = false)
+      val packagePrivateObject = loadClassNode(lookupClass(dir.getContainer("foo").get, "PackagePrivateObject$.class"), skipDebugInfo = false)
       checkPublicClass(packagePrivateObject)
       checkPublicField(packagePrivateObject, "MODULE$")
 
-      val protectedObject = loadClassNode(lookupClass(dir.subdirectoryNamed("foo"), "ProtectedObject$.class"), skipDebugInfo = false)
+      val protectedObject = loadClassNode(lookupClass(dir.getContainer("foo").get, "ProtectedObject$.class"), skipDebugInfo = false)
       checkPublicClass(protectedObject)
       checkPublicField(protectedObject, "MODULE$")
     }
@@ -285,7 +285,7 @@ class PublicInBinaryTests extends DottyBytecodeTest {
         |  @publicInBinary private[foo] object Baz
       """.stripMargin
     checkBCode(code) { dir =>
-      val barClass = loadClassNode(lookupClass(dir.subdirectoryNamed("foo"), "Bar.class"), skipDebugInfo = false)
+      val barClass = loadClassNode(lookupClass(dir.getContainer("foo").get, "Bar.class"), skipDebugInfo = false)
       checkPublicMethod(barClass, "testInlined", "()Lfoo/Baz$;")
     }
   }
@@ -301,7 +301,7 @@ class PublicInBinaryTests extends DottyBytecodeTest {
         |  @publicInBinary private object Baz
       """.stripMargin
     checkBCode(code) { dir =>
-      val barClass = loadClassNode(lookupClass(dir.subdirectoryNamed("foo"), "Bar.class"), skipDebugInfo = false)
+      val barClass = loadClassNode(lookupClass(dir.getContainer("foo").get, "Bar.class"), skipDebugInfo = false)
       checkPublicMethod(barClass, "testInlined", "()Lfoo/Baz$;")
     }
   }
@@ -338,7 +338,7 @@ class PublicInBinaryTests extends DottyBytecodeTest {
         |  @publicInBinary private[foo] def bazImpl = {}
       """.stripMargin
     checkBCode(code) { dir =>
-      val barClass = loadClassNode(lookupClass(dir.subdirectoryNamed("foo"), "C.class"), skipDebugInfo = false)
+      val barClass = loadClassNode(lookupClass(dir.getContainer("foo").get, "C.class"), skipDebugInfo = false)
       val testMethod = getMethod(barClass, "test")
       val testInstructions = instructionsFromMethod(testMethod).filter(_.isInstanceOf[Invoke])
       assertSameCode(testInstructions, List(
@@ -366,11 +366,11 @@ class PublicInBinaryTests extends DottyBytecodeTest {
         |}
       """.stripMargin
     checkBCode(code) { dir =>
-      val bClass = loadClassNode(lookupClass(dir.subdirectoryNamed("q"), "B.class"), skipDebugInfo = false)
+      val bClass = loadClassNode(lookupClass(dir.getContainer("q").get, "B.class"), skipDebugInfo = false)
       assert(bClass.methods.asScala.exists(_.name == "protected$a"))
       assert(bClass.methods.asScala.forall(_.name != "protected$b"))
 
-      val bInnerClass = loadClassNode(lookupClass(dir.subdirectoryNamed("q"), "B$BInner.class"), skipDebugInfo = false)
+      val bInnerClass = loadClassNode(lookupClass(dir.getContainer("q").get, "B$BInner.class"), skipDebugInfo = false)
 
       val test1Method = getMethod(bInnerClass, "test1")
       val test1Instructions = instructionsFromMethod(test1Method).filter(_.isInstanceOf[Invoke])

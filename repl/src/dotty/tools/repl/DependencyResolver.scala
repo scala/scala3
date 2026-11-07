@@ -1,10 +1,12 @@
 package dotty.tools.repl
 
-import java.io.File
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
-
 import coursierapi.{Dependency, IvyRepository, MavenRepository, Repository}
+import dotty.tools.dotc.classpath.{ClassPath, ClassPathFactory}
+import dotty.tools.dotc.core.SymbolLoaders
+import dotty.tools.dotc.core.Symbols.defn
+import dotty.tools.nio.*
 
 /** Handles dependency resolution using Coursier for the REPL */
 object DependencyResolver:
@@ -16,7 +18,7 @@ object DependencyResolver:
   // TODO: support every alias coursier does, once the Coursier Interface exposes its own
   // `parseRepository` and parsing can be delegated to it.
   private val repositoryAliases: Map[String, Repository] =
-    val m2Local = MavenRepository.of(File(sys.props("user.home"), ".m2/repository").toURI.toString)
+    val m2Local = MavenRepository.of(Array(sys.props("user.home"), ".m2", "repository").mkString(FileSystemEntry.separator.toString))
     Map(
       "central" -> Repository.central(),
       "ivy2Local" -> Repository.ivy2Local(),
@@ -36,8 +38,10 @@ object DependencyResolver:
             case Array(artifacts, metadata) => Some(IvyRepository.of(artifacts, metadata))
             case _ => Some(IvyRepository.of(pattern))
         case url if url.contains("://") => Some(MavenRepository.of(url))
-        case path if path.contains(File.separatorChar) && File(path).isDirectory =>
-          Some(MavenRepository.of(File(path).toURI.toString))
+        case path if path.contains(FileSystemEntry.separator) =>
+          FileContainer.getOnDisk(path) match
+            case Some(fc) => Some(MavenRepository.of(fc.path))
+            case None => None
         case _ => None
 
 
@@ -75,7 +79,7 @@ object DependencyResolver:
           .withRepositories(repos*)
           .withDependencies(deps*)
 
-        Right(fetch.fetch().asScala.toList)
+        Right(fetch.fetch().asScala.map(f => File.getOnDisk(f.getAbsolutePath).get).toList)
 
       catch
         case NonFatal(e) =>
@@ -86,16 +90,12 @@ object DependencyResolver:
    *  This follows the same pattern as the `:jar` command.
    */
   def addToCompilerClasspath(files: List[File])(using ctx: dotty.tools.dotc.core.Contexts.Context): Unit =
-    import dotty.tools.dotc.classpath.{ClassPath, ClassPathFactory}
-    import dotty.tools.dotc.core.SymbolLoaders
-    import dotty.tools.dotc.core.Symbols.defn
-    import dotty.tools.io.AbstractFile
-
     for file <- files do
-      val jarFile = AbstractFile.getDirectory(file.getAbsolutePath, ctx.settings.javaOutputVersion.value)
-      if jarFile != null then
-        val jarClassPath = ClassPathFactory.newClassPath(jarFile)
-        ctx.platform.addToClassPath(jarClassPath)
-        SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
+      FileContainer.getFromFile(file, ctx.settings.javaOutputVersion.value, ctx.settings.XjarCompressionLevel.value) match
+        case Some(jarFile) =>
+          val jarClassPath = ClassPathFactory.newClassPath(jarFile)
+          ctx.platform.addToClassPath(jarClassPath)
+          SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
+        case None => ()
 
 end DependencyResolver

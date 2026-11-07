@@ -8,8 +8,7 @@ import dotty.tools.vulpix.TestConfiguration
 import org.objectweb.asm
 import org.objectweb.asm.*
 import org.objectweb.asm.tree.*
-import dotty.tools.io
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.*
 
 import scala.jdk.CollectionConverters.*
 import java.io.InputStream
@@ -40,18 +39,18 @@ trait DottyBytecodeTest {
 
   def initCtx = {
     val ctx0 = (new ContextBase).initialCtx.fresh
-    val outputDir = io.virtualDirectory("<DottyBytecodeTest output>")
+    val outputDir = FileContainer.createInMemory("<DottyBytecodeTest output>")
     ctx0.setSetting(ctx0.settings.silentWarnings, true)
     ctx0.setSetting(ctx0.settings.classpath, TestConfiguration.basicClasspath)
     ctx0.setProperty(ContextDoc, new ContextDocstrings)
     ctx0.setSetting(ctx0.settings.outputDir, outputDir)
   }
 
-  def checkBCode(scalaSource: String)(checkOutput: AbstractFile => Unit): Unit =
+  def checkBCode(scalaSource: String)(checkOutput: FileContainer => Unit): Unit =
     checkBCode(List(scalaSource))(checkOutput)
 
   /** Checks source code from raw strings */
-  def checkBCode(scalaSources: List[String], javaSources: List[String] = Nil)(checkOutput: AbstractFile => Unit): Unit = {
+  def checkBCode(scalaSources: List[String], javaSources: List[String] = Nil)(checkOutput: FileContainer => Unit): Unit = {
     given Context = initCtx
 
     val compiler = new Compiler
@@ -61,7 +60,7 @@ trait DottyBytecodeTest {
     checkOutput(ctx.settings.outputDir.value)
   }
 
-  def compileCode(scalaSources: List[String], javaSources: List[String] = Nil): AbstractFile = {
+  def compileCode(scalaSources: List[String], javaSources: List[String] = Nil): FileContainer = {
     given Context = initCtx
 
     val compiler = new Compiler
@@ -70,21 +69,22 @@ trait DottyBytecodeTest {
     ctx.settings.outputDir.value
   }
 
-  def getGeneratedClassfiles(outDir: AbstractFile): List[(String, Array[Byte])] = {
+  def getGeneratedClassfiles(outDir: FileContainer): List[(String, Array[Byte])] = {
     import scala.collection.mutable.ListBuffer
-    def files(dir: AbstractFile): List[(String, Array[Byte])] = {
+    def files(dir: FileContainer): List[(String, Array[Byte])] = {
       val res = ListBuffer.empty[(String, Array[Byte])]
-      for (f <- dir.iterator) {
-        if (!f.isDirectory) res += ((f.name, f.toByteArray))
-        else if (f.name != "." && f.name != "..") res ++= files(f)
+      for (e <- dir.entries) {
+        e match
+          case f: File => res += ((f.name, f.readBytes()))
+          case fc: FileContainer => res ++= files(fc)
       }
       res.toList
     }
     files(outDir)
   }
 
-  protected def lookupClass(dir: AbstractFile, name: String): InputStream =
-    dir.lookupName(name, directory = false).nn.input
+  protected def lookupClass(dir: FileContainer, name: String): InputStream =
+    dir.getFile(name).get.input()
 
   protected def loadClassNode(input: InputStream, skipDebugInfo: Boolean = true): ClassNode = {
     val cr = new ClassReader(input)
@@ -94,7 +94,7 @@ trait DottyBytecodeTest {
   }
 
   /** Finds a class with `cls` as name in `dir`, throws if it can't find it */
-  def findClass(cls: String, dir: AbstractFile) = {
+  def findClass(cls: String, dir: FileContainer) = {
     val clsIn = lookupClass(dir, s"$cls.class")
     val clsNode = loadClassNode(clsIn)
     assert(clsNode.name == cls, s"inspecting wrong class: ${clsNode.name}")

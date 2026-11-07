@@ -148,7 +148,7 @@ object Formatting {
       given Show[TyperState]                          = ShowAny
       given Show[Unit]                                = ShowAny
       given Show[config.ScalaVersion]                 = ShowAny
-      given Show[io.AbstractFile]                     = ShowAny
+      given Show[nio.FileSystemEntry]                 = ShowAny
       given Show[parsing.Scanners.Scanner]            = ShowAny
       given Show[util.SourceFile]                     = ShowAny
       given Show[util.Spans.Span]                     = ShowAny
