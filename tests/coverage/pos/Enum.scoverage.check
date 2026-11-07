@@ -40,7 +40,7 @@ Enum.scala
 covtest
 Planet
 Class
-covtest.Planet
+covtest.EnumTypes.Planet
 <init>
 322
 333
@@ -57,7 +57,7 @@ Enum.scala
 covtest
 Planet
 Class
-covtest.Planet
+covtest.EnumTypes.Planet
 surfaceGravity
 359
 386
@@ -74,7 +74,7 @@ Enum.scala
 covtest
 Planet
 Class
-covtest.Planet
+covtest.EnumTypes.Planet
 surfaceGravity
 371
 386
@@ -91,7 +91,7 @@ Enum.scala
 covtest
 Planet
 Class
-covtest.Planet
+covtest.EnumTypes.Planet
 surfaceGravity
 338
 356
@@ -108,7 +108,7 @@ Enum.scala
 covtest
 Planet
 Class
-covtest.Planet
+covtest.EnumTypes.Planet
 surfaceWeight
 432
 458
@@ -125,7 +125,7 @@ Enum.scala
 covtest
 Planet
 Class
-covtest.Planet
+covtest.EnumTypes.Planet
 surfaceWeight
 444
 458
@@ -142,7 +142,7 @@ Enum.scala
 covtest
 Planet
 Class
-covtest.Planet
+covtest.EnumTypes.Planet
 surfaceWeight
 392
 409
