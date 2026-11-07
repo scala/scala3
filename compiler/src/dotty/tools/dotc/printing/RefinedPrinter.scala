@@ -1178,7 +1178,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ =>
         val annotSym = sym.orElse(tree.symbol.enclosingClass)
         if annotSym.exists then annotText(annotSym) else s"@${t.show}"
-    recur(tree)
+    // The pickler drops positions of annotation trees from another source file (see PositionPickler),
+    // so don't print them, to let -Ytest-pickler compare the trees before and after pickling.
+    if homogenizedView && (!tree.span.exists || tree.source != ctx.source) then withoutPos(recur(tree))
+    else recur(tree)
 
   protected override def annotText(sym: Symbol): Text =
     if sym == defn.ConsumeAnnot then "consume" else super.annotText(sym)
