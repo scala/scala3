@@ -31,13 +31,13 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     with IterableOps[A, CC, C] {
 
   // Optimized, push-based version of `partition`
-  override def partition(p: A => Boolean): (C, C) = {
+  override def partition(p: A => Boolean): (passed: C, rejected: C) = {
     val l, r = newSpecificBuilder
     iterator.foreach(x => (if (p(x)) l else r) += x)
     (l.result(), r.result())
   }
 
-  override def span(p: A => Boolean): (C, C) = {
+  override def span(p: A => Boolean): (takeWhile: C, dropWhile: C) = {
     val first = newSpecificBuilder
     val second = newSpecificBuilder
     val it = iterator
@@ -234,7 +234,7 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
   }
 
   // Optimized, push-based version of `partitionMap`
-  override def partitionMap[A1, A2](f: A => Either[A1, A2]): (CC[A1], CC[A2]) = {
+  override def partitionMap[A1, A2](f: A => Either[A1, A2]): (lefts: CC[A1], rights: CC[A2]) = {
     val l = iterableFactory.newBuilder[A1]
     val r = iterableFactory.newBuilder[A2]
     foreach { x =>

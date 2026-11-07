@@ -317,8 +317,8 @@ class LazyListLazinessTest {
   @Test
   def splitAt_properlyLazy(): Unit = {
     val split = lazyListOp(_ splitAt 4)
-    genericLazyOp_properlyLazy(split.andThen(_._1))
-    genericLazyOp_properlyLazy(split.andThen(_._2), DropProfile(dropCount = 4, repeatedDrops = false))
+    genericLazyOp_properlyLazy(split.andThen(_.taken))
+    genericLazyOp_properlyLazy(split.andThen(_.dropped), DropProfile(dropCount = 4, repeatedDrops = false))
   }
 
   @Test
@@ -604,8 +604,8 @@ class LazyListLazinessTest {
   @Test
   def span_properlyLazy(): Unit = {
     val span = lazyListOp(_.span(_ < 4))
-    val op1 = span.andThen(_._1)
-    val op2 = span.andThen(_._2)
+    val op1 = span.andThen(_.takeWhile)
+    val op2 = span.andThen(_.dropWhile)
 
     genericLazyOp_properlyLazy(op1)
     genericLazyOp_properlyLazy(op2, DropProfile(dropCount = 4, repeatedDrops = false))

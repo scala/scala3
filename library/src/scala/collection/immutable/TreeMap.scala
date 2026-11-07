@@ -264,12 +264,12 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
 
   override def takeWhile(p: ((K, V)) => Boolean): TreeMap[K, V] = take(countWhile(p))
 
-  override def span(p: ((K, V)) => Boolean): (TreeMap[K, V], TreeMap[K, V]) = splitAt(countWhile(p))
+  override def span(p: ((K, V)) => Boolean): (takeWhile: TreeMap[K, V], dropWhile: TreeMap[K, V]) = splitAt(countWhile(p)).toTuple
 
   override def filter(f: ((K, V)) => Boolean): TreeMap[K, V] =
     newMapOrSelf(RB.filterEntries[K, V](tree, (k, v) => f((k, v))))
 
-  override def partition(p: ((K, V)) => Boolean): (TreeMap[K, V], TreeMap[K, V]) = {
+  override def partition(p: ((K, V)) => Boolean): (passed: TreeMap[K, V], rejected: TreeMap[K, V]) = {
     val (l, r) = RB.partitionEntries[K, V](tree, (k, v) => p((k, v)))
     (newMapOrSelf(l), newMapOrSelf(r))
   }

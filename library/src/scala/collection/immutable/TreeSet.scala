@@ -116,7 +116,7 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
 
   override def takeWhile(p: A => Boolean): TreeSet[A] = take(countWhile(p))
 
-  override def span(p: A => Boolean): (TreeSet[A], TreeSet[A]) = splitAt(countWhile(p))
+  override def span(p: A => Boolean): (takeWhile: TreeSet[A], dropWhile: TreeSet[A]) = splitAt(countWhile(p)).toTuple
 
   override def foreach[U](f: A => U): Unit = RB.foreachKey(tree, f)
 
@@ -218,7 +218,7 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
 
   override def filter(f: A => Boolean): TreeSet[A] = newSetOrSelf(RB.filterEntries[A, Any](tree, {(k, _) => f(k)}))
 
-  override def partition(p: A => Boolean): (TreeSet[A], TreeSet[A]) = {
+  override def partition(p: A => Boolean): (passed: TreeSet[A], rejected: TreeSet[A]) = {
     val (l, r) = RB.partitionEntries(tree, {(a:A, _: Any) => p(a)})
     (newSetOrSelf(l), newSetOrSelf(r))
   }

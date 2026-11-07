@@ -336,7 +336,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *           is the same as in the original iterator.
    *  @note    Reuse: $consumesOneAndProducesTwoIterators
    */
-  def partition(p: A => Boolean): (Iterator[A]^{this, p}, Iterator[A]^{this, p}) = {
+  def partition(p: A => Boolean): (passed: Iterator[A]^{this, p}, rejected: Iterator[A]^{this, p}) = {
     val (a, b) = duplicate
     (a filter p, b filterNot p)
   }
@@ -717,7 +717,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *          elements all satisfy `p`, and the remainder of this iterator
    *          starting with the first element that does not satisfy `p`
    */
-  def span(p: A => Boolean): (Iterator[A]^{this, p}, Iterator[A]^{this, p}) = {
+  def span(p: A => Boolean): (takeWhile: Iterator[A]^{this, p}, dropWhile: Iterator[A]^{this, p}) = {
     /*
      * Giving a name to following iterator (as opposed to trailing) because
      * anonymous class is represented as a structural type that trailing

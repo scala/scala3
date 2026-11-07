@@ -464,7 +464,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     }
   }
 
-  override def partition(p: ((K, V)) => Boolean): (HashMap[K, V], HashMap[K, V]) = {
+  override def partition(p: ((K, V)) => Boolean): (passed: HashMap[K, V], rejected: HashMap[K, V]) = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     //
@@ -527,7 +527,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     super.drop(n)
   }
 
-  override def span(p: ((K, V)) => Boolean): (HashMap[K, V], HashMap[K, V]) = {
+  override def span(p: ((K, V)) => Boolean): (takeWhile: HashMap[K, V], dropWhile: HashMap[K, V]) = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     //

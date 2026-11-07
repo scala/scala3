@@ -149,7 +149,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
     }
   }
 
-  override def partition(p: A => Boolean): (Stream[A], Stream[A]) = (filter(p(_)), filterNot(p(_)))
+  override def partition(p: A => Boolean): (passed: Stream[A], rejected: Stream[A]) = (filter(p(_)), filterNot(p(_)))
 
   override def filter(pred: A => Boolean): Stream[A] = filterImpl(pred, isFlipped = false)
 

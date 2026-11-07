@@ -316,7 +316,7 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
 
   def collect(pf: PartialFunction[Int, Int]^): C = fromSpecific(super[SortedSetOps].collect(pf))
 
-  override def partition(p: Int => Boolean): (C, C) = {
+  override def partition(p: Int => Boolean): (passed: C, rejected: C) = {
     val left = filter(p)
     (left, this &~ left)
   }

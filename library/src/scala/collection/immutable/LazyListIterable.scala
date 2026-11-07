@@ -591,7 +591,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
    *  @param p the predicate used to test elements
    *  @return a pair of lazy lists, the first containing elements that satisfy `p` and the second containing those that do not
    */
-  override def partition(p: A => Boolean): (LazyListIterable[A]^{this, p}, LazyListIterable[A]^{this, p}) = (filter(p), filterNot(p))
+  override def partition(p: A => Boolean): (passed: LazyListIterable[A]^{this, p}, rejected: LazyListIterable[A]^{this, p}) = (filter(p), filterNot(p))
 
   /** @inheritdoc
    *
@@ -602,9 +602,9 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
    *  @param f the function applied to each element that returns `Left` or `Right`
    *  @return a pair of lazy lists, the first containing the values from `Left` results and the second containing the values from `Right` results
    */
-  override def partitionMap[A1, A2](f: A => Either[A1, A2]): (LazyListIterable[A1]^{this, f}, LazyListIterable[A2]^{this, f}) = {
-    val p: (LazyListIterable[Either[A1, A2]]^{this, f}, LazyListIterable[Either[A1, A2]]^{this, f}) = map(f).partition(_.isLeft)
-    (p._1.map(_.asInstanceOf[Left[A1, ?]].value), p._2.map(_.asInstanceOf[Right[?, A2]].value))
+  override def partitionMap[A1, A2](f: A => Either[A1, A2]): (lefts: LazyListIterable[A1]^{this, f}, rights: LazyListIterable[A2]^{this, f}) = {
+    val p: (passed: LazyListIterable[Either[A1, A2]]^{this, f}, rejected: LazyListIterable[Either[A1, A2]]^{this, f}) = map(f).partition(_.isLeft)
+    (p.passed.map(_.asInstanceOf[Left[A1, ?]].value), p.rejected.map(_.asInstanceOf[Right[?, A2]].value))
   }
 
   /** @inheritdoc

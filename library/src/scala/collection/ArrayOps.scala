@@ -494,7 +494,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *  @return  a pair consisting of the longest prefix of this array whose
    *           elements all satisfy `p`, and the rest of this array.
    */
-  def span(p: A => Boolean): (Array[A], Array[A]) = {
+  def span(p: A => Boolean): (takeWhile: Array[A], dropWhile: Array[A]) = {
     val i = indexWhere(x => !p(x))
     val idx = if(i < 0) xs.length else i
     (slice(0, idx), slice(idx, xs.length))
@@ -507,14 +507,14 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *  @return  a pair of arrays consisting of the first `n`
    *           elements of this array, and the other elements.
    */
-  def splitAt(n: Int): (Array[A], Array[A]) = (take(n), drop(n))
+  def splitAt(n: Int): (taken: Array[A], dropped: Array[A]) = (take(n), drop(n))
 
   /** A pair of, first, all elements that satisfy predicate `p` and, second, all elements that do not.
    *
    *  @param p the predicate used to partition the elements
    *  @return a pair of arrays: the first containing all elements that satisfy `p`, the second containing all elements that do not
    */
-  def partition(p: A => Boolean): (Array[A], Array[A]) = {
+  def partition(p: A => Boolean): (passed: Array[A], rejected: Array[A]) = {
     val res1, res2 = ArrayBuilder.make[A]
     var i = 0
     while(i < xs.length) {
@@ -546,7 +546,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *  @return     a pair of arrays: the first one made of those values returned by `f` that were wrapped in [[scala.util.Left]],
    *              and the second one made of those wrapped in [[scala.util.Right]].
    */
-  def partitionMap[A1: ClassTag, A2: ClassTag](f: A => Either[A1, A2]): (Array[A1], Array[A2]) = {
+  def partitionMap[A1: ClassTag, A2: ClassTag](f: A => Either[A1, A2]): (lefts: Array[A1], rights: Array[A2]) = {
     val res1 = ArrayBuilder.make[A1]
     val res2 = ArrayBuilder.make[A2]
     var i = 0

@@ -329,13 +329,13 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
       removedAllWithShallowMutations(that)
   }
 
-  override def partition(p: A => Boolean): (HashSet[A], HashSet[A]) = {
+  override def partition(p: A => Boolean): (passed: HashSet[A], rejected: HashSet[A]) = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.partition(p)
   }
 
-  override def span(p: A => Boolean): (HashSet[A], HashSet[A]) = {
+  override def span(p: A => Boolean): (takeWhile: HashSet[A], dropWhile: HashSet[A]) = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.span(p)

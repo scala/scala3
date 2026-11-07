@@ -105,17 +105,17 @@ class TreeSeqMapTest {
   def testSplitAt(): Unit = {
     val m = TreeSeqMap(3 -> 1, 2 -> 2, 1 -> 3, 4 -> 5, 5 -> 4)
     var t = m.splitAt(0)
-    assertEquals((List(), List(3 -> 1, 2 -> 2, 1 -> 3, 4 -> 5, 5 -> 4)), (t._1.iterator.toList, t._2.iterator.toList))
+    assertEquals((List(), List(3 -> 1, 2 -> 2, 1 -> 3, 4 -> 5, 5 -> 4)), (t.taken.iterator.toList, t.dropped.iterator.toList))
     t = m.splitAt(1)
-    assertEquals((List(3 -> 1), List(2 -> 2, 1 -> 3, 4 -> 5, 5 -> 4)), (t._1.iterator.toList, t._2.iterator.toList))
+    assertEquals((List(3 -> 1), List(2 -> 2, 1 -> 3, 4 -> 5, 5 -> 4)), (t.taken.iterator.toList, t.dropped.iterator.toList))
     t = m.splitAt(2)
-    assertEquals((List(3 -> 1, 2 -> 2), List(1 -> 3, 4 -> 5, 5 -> 4)), (t._1.iterator.toList, t._2.iterator.toList))
+    assertEquals((List(3 -> 1, 2 -> 2), List(1 -> 3, 4 -> 5, 5 -> 4)), (t.taken.iterator.toList, t.dropped.iterator.toList))
     t = m.splitAt(3)
-    assertEquals((List(3 -> 1, 2 -> 2, 1 -> 3), List(4 -> 5, 5 -> 4)), (t._1.iterator.toList, t._2.iterator.toList))
+    assertEquals((List(3 -> 1, 2 -> 2, 1 -> 3), List(4 -> 5, 5 -> 4)), (t.taken.iterator.toList, t.dropped.iterator.toList))
     t = m.splitAt(4)
-    assertEquals((List(3 -> 1, 2 -> 2, 1 -> 3, 4 -> 5), List(5 -> 4)), (t._1.iterator.toList, t._2.iterator.toList))
+    assertEquals((List(3 -> 1, 2 -> 2, 1 -> 3, 4 -> 5), List(5 -> 4)), (t.taken.iterator.toList, t.dropped.iterator.toList))
     t = m.splitAt(5)
-    assertEquals((List(3 -> 1, 2 -> 2, 1 -> 3, 4 -> 5, 5 -> 4), List()), (t._1.iterator.toList, t._2.iterator.toList))
+    assertEquals((List(3 -> 1, 2 -> 2, 1 -> 3, 4 -> 5, 5 -> 4), List()), (t.taken.iterator.toList, t.dropped.iterator.toList))
   }
 
   @Test

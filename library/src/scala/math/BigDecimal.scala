@@ -614,7 +614,7 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
    *
    *  @param that the `BigDecimal` divisor
    */
-  def /% (that: BigDecimal): (BigDecimal, BigDecimal) = {
+  def /% (that: BigDecimal): (quotient: BigDecimal, remainder: BigDecimal) = {
     val qr = this.bigDecimal.divideAndRemainder(that.bigDecimal, mc)
     (new BigDecimal(qr(0), mc), new BigDecimal(qr(1), mc))
   }

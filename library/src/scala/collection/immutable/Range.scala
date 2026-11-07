@@ -393,7 +393,7 @@ sealed abstract class Range(
     }
   }
 
-  final override def span(p: Int => Boolean): (Range, Range) = {
+  final override def span(p: Int => Boolean): (takeWhile: Range, dropWhile: Range) = {
     val border = argTakeWhile(p)
     if (border == start) (newEmptyRange(start), this)
     else {
@@ -422,7 +422,7 @@ sealed abstract class Range(
     }
 
   // Overridden only to refine the return type
-  final override def splitAt(n: Int): (Range, Range) = (take(n), drop(n))
+  final override def splitAt(n: Int): (taken: Range, dropped: Range) = (take(n), drop(n))
 
   // When one drops everything.  Can't ever have unchecked operations
   // like "end + 1" or "end - 1" because ranges involving Int.{ MinValue, MaxValue }

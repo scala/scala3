@@ -278,7 +278,7 @@ sealed class NumericRange[T](
     else copy(locationAfterN(n), end, step)
   }
 
-  override def splitAt(n: Int): (NumericRange[T], NumericRange[T]) = (take(n), drop(n))
+  override def splitAt(n: Int): (taken: NumericRange[T], dropped: NumericRange[T]) = (take(n), drop(n))
 
   override def reverse: NumericRange[T] =
     if (isEmpty) this

@@ -423,7 +423,7 @@ final class BigInt private (
    *
    *  @param that the divisor
    */
-  def /%(that: BigInt): (BigInt, BigInt) =
+  def /%(that: BigInt): (quotient: BigInt, remainder: BigInt) =
     if (this.longEncoding && that.longEncoding) {
       val x = this._long
       val y = that._long

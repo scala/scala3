@@ -9,6 +9,26 @@ class QueueTest {
   private val emptyQueue = Queue.empty[Int]
 
   @Test
+  def namedDequeueResults(): Unit = {
+    val queue = Queue(1, 2, 3)
+    val result = queue.dequeue
+    assertEquals(1, result.element)
+    assertEquals(Queue(2, 3), result.remaining)
+    assertEquals(Queue(1, 2, 3), queue)
+
+    val safe = queue.dequeueOption.get
+    assertEquals(1, safe.element)
+    assertEquals(Queue(2, 3), safe.remaining)
+
+    val pair: (Int, Queue[Int]) = result
+    val (element, remaining) = result
+    assertEquals((1, Queue(2, 3)), pair)
+    assertEquals(result.element, element)
+    assertEquals(result.remaining, remaining)
+    assertEquals(Some((1, Queue(2, 3))), queue.dequeueOption.map(_.toTuple))
+  }
+
+  @Test
   def dequeueOptionOnEmpty(): Unit = {
     assertEquals(None, emptyQueue.dequeueOption)
   }

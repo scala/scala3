@@ -563,7 +563,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  @return  a pair consisting of the longest prefix of this $coll whose
    *           elements all satisfy `p`, and the rest of this $coll.
    */
-  def span(p: A => Boolean): (C^{this, p}, C^{this, p})
+  def span(p: A => Boolean): (takeWhile: C^{this, p}, dropWhile: C^{this, p})
 
   /** Splits this $coll into a prefix/suffix pair at a given position.
    *
@@ -575,13 +575,13 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  @return  a pair of ${coll}s consisting of the first `n`
    *           elements of this $coll, and the other elements.
    */
-  def splitAt(n: Int): (C^{this}, C^{this}) = {
+  def splitAt(n: Int): (taken: C^{this}, dropped: C^{this}) = {
     class Spanner extends runtime.AbstractFunction1[A, Boolean] {
       var i = 0
       def apply(a: A) = i < n && { i += 1 ; true }
     }
     val spanner = new Spanner
-    span(spanner)
+    span(spanner).toTuple
   }
 
   /** Applies a side-effecting function to each element in this collection.

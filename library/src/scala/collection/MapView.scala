@@ -60,7 +60,7 @@ trait MapView[K, +V]
 
   override def filterNot(pred: ((K, V)) => Boolean): MapView[K, V]^{this, pred} = new MapView.Filter(this, isFlipped = true, pred)
 
-  override def partition(p: ((K, V)) => Boolean): (MapView[K, V]^{this, p}, MapView[K, V]^{this, p}) = (filter(p), filterNot(p))
+  override def partition(p: ((K, V)) => Boolean): (passed: MapView[K, V]^{this, p}, rejected: MapView[K, V]^{this, p}) = (filter(p), filterNot(p))
 
   override def tapEach[U](f: ((K, V)) => U): MapView[K, V]^{this, f} = new MapView.TapEach(this, f)
 
@@ -93,7 +93,7 @@ object MapView extends MapViewFactory {
     override def mapValues[W](f: Nothing => W): MapView[Any, W] = this // TODO: W is originally Nothing in return type, but breaks CC
     override def filter(pred: ((Any, Nothing)) => Boolean): MapView[Any, Nothing] = this
     override def filterNot(pred: ((Any, Nothing)) => Boolean): MapView[Any, Nothing] = this
-    override def partition(p: ((Any, Nothing)) => Boolean): (MapView[Any, Nothing], MapView[Any, Nothing]) = (this, this)
+    override def partition(p: ((Any, Nothing)) => Boolean): (passed: MapView[Any, Nothing], rejected: MapView[Any, Nothing]) = (this, this)
   }
 
   @SerialVersionUID(3L)

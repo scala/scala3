@@ -211,7 +211,7 @@ sealed abstract class List[+A]
 
   // dropRight is inherited from LinearSeq
 
-  override def splitAt(n: Int): (List[A], List[A]) = {
+  override def splitAt(n: Int): (taken: List[A], dropped: List[A]) = {
     val b = new ListBuffer[A]
     var i = 0
     var these = this
@@ -313,7 +313,7 @@ sealed abstract class List[+A]
     b.toList
   }
 
-  @inline final override def span(p: A => Boolean): (List[A], List[A]) = {
+  @inline final override def span(p: A => Boolean): (takeWhile: List[A], dropWhile: List[A]) = {
     val b = new ListBuffer[A]
     var these = this
     while (!these.isEmpty && p(these.head)) {
@@ -581,7 +581,7 @@ sealed abstract class List[+A]
     result
   }
 
-  override def partition(p: A => Boolean): (List[A], List[A]) = {
+  override def partition(p: A => Boolean): (passed: List[A], rejected: List[A]) = {
     if (isEmpty) List.TupleOfNil
     else super.partition(p) match {
       case (Nil, xs) => (Nil, this)

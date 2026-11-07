@@ -7,6 +7,19 @@ import tools.AssertUtil.assertThrows
 
 class BigIntTest {
 
+  @Test def namedDivisionResults(): Unit = {
+    val result = BigInt(-17) /% BigInt(5)
+    assertTrue(result.quotient == BigInt(-3))
+    assertTrue(result.remainder == BigInt(-2))
+
+    val large = (BigInt(10).pow(40) + 17) /% BigInt(10)
+    assertTrue(large.quotient == BigInt(10).pow(39) + 1)
+    assertTrue(large.remainder == BigInt(7))
+
+    val pair: (BigInt, BigInt) = result
+    assertTrue(pair == (BigInt(-3), BigInt(-2)))
+  }
+
   private val counter = new AtomicLong(Int.MaxValue)
   private def bigint = BigInt(counter.getAndIncrement)
   private def even = BigInt(42)

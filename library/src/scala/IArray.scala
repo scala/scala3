@@ -309,7 +309,7 @@ object IArray:
    *  @param p the predicate used to partition elements
    *  @return a pair of arrays, the first containing all elements that satisfy `p` and the second containing all elements that do not
    */
-  extension [T](arr: IArray[T]) def partition(p: T => Boolean): (IArray[T], IArray[T]) =
+  extension [T](arr: IArray[T]) def partition(p: T => Boolean): (passed: IArray[T], rejected: IArray[T]) =
     genericArrayOps(arr).partition(p)
 
   /** Returns a new array with the elements in reversed order. */
@@ -394,7 +394,7 @@ object IArray:
    *  @param p the predicate used to test elements
    *  @return a pair of arrays where the first is the longest prefix of elements satisfying `p` and the second contains the remaining elements
    */
-  extension [T](arr: IArray[T]) def span(p: T => Boolean): (IArray[T], IArray[T]) =
+  extension [T](arr: IArray[T]) def span(p: T => Boolean): (takeWhile: IArray[T], dropWhile: IArray[T]) =
     genericArrayOps(arr).span(p)
 
   /** Splits this array into two at a given position.
@@ -402,7 +402,7 @@ object IArray:
    *  @param n the position at which to split
    *  @return a pair of arrays containing the first `n` elements of this array and the remaining elements respectively
    */
-  extension [T](arr: IArray[T]) def splitAt(n: Int): (IArray[T], IArray[T]) =
+  extension [T](arr: IArray[T]) def splitAt(n: Int): (taken: IArray[T], dropped: IArray[T]) =
     genericArrayOps(arr).splitAt(n)
 
   /** The rest of the array without its first element. */
@@ -473,7 +473,7 @@ object IArray:
     def lazyZip[U](that: Iterable[U]^): LazyZip2[T, U, IArray[T]] = genericArrayOps(arr).lazyZip[U](that).asInstanceOf[LazyZip2[T, U, IArray[T]]]
     def lengthCompare(len: Int): Int = genericArrayOps(arr).lengthCompare(len)
     def padTo[U >: T: ClassTag](len: Int, elem: U): IArray[U] = genericArrayOps(arr).padTo(len, elem)
-    def partitionMap[T1: ClassTag, T2: ClassTag](f: T => Either[T1, T2]): (IArray[T1], IArray[T2]) = genericArrayOps(arr).partitionMap(f)
+    def partitionMap[T1: ClassTag, T2: ClassTag](f: T => Either[T1, T2]): (lefts: IArray[T1], rights: IArray[T2]) = genericArrayOps(arr).partitionMap(f)
     def patch[U >: T: ClassTag](from: Int, other: IterableOnce[U], replaced: Int): IArray[U] = genericArrayOps(arr).patch(from, other, replaced)
     def permutations: Iterator[IArray[T]] = genericArrayOps(arr).permutations
     def prepended[U >: T: ClassTag](x: U): IArray[U] = genericArrayOps(arr).prepended(x)

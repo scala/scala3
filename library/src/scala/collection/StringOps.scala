@@ -1564,7 +1564,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *           chars of this string, and the other chars.
    *  @note    $unicodeunaware
    */
-  def splitAt(n: Int): (String, String) = (take(n), drop(n))
+  def splitAt(n: Int): (taken: String, dropped: String) = (take(n), drop(n))
 
   /** Splits this string into a prefix/suffix pair according to a predicate.
    *
@@ -1576,7 +1576,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *  @return  a pair consisting of the longest prefix of this string whose
    *           chars all satisfy `p`, and the rest of this string.
    */
-  def span(p: Char => Boolean): (String, String) = indexWhere(c => !p(c)) match {
+  def span(p: Char => Boolean): (takeWhile: String, dropWhile: String) = indexWhere(c => !p(c)) match {
     case -1 => (s, "")
     case i => (s.substring(0, i), s.substring(i))
   }
@@ -1596,7 +1596,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *  @param p the predicate used to partition chars
    *  @return a pair of strings: the first containing all chars that satisfy `p`, and the second containing all chars that do not
    */
-  def partition(p: Char => Boolean): (String, String) = {
+  def partition(p: Char => Boolean): (passed: String, rejected: String) = {
     val res1, res2 = new JStringBuilder
     var i = 0
     val len = s.length
@@ -1625,7 +1625,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *  @return     a pair of strings: the first one made of those characters returned by `f` that were wrapped in [[scala.util.Left]],
    *              and the second one made of those wrapped in [[scala.util.Right]].
    */
-  def partitionMap(f: Char => Either[Char,Char]): (String, String) = {
+  def partitionMap(f: Char => Either[Char,Char]): (lefts: String, rights: String) = {
     val res1, res2 = new JStringBuilder
     var i = 0
     val len = s.length

@@ -176,7 +176,7 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
    *  @return the first element of the queue.
    *  @throws NoSuchElementException if the queue is empty
    */
-  def dequeue: (A, Queue[A]) = out match {
+  def dequeue: (element: A, remaining: Queue[A]) = out match {
     case Nil if !in.isEmpty => val rev = in.reverse ; (rev.head, new Queue(Nil, rev.tail))
     case x :: xs            => (x, new Queue(in, xs))
     case _                  => throw new NoSuchElementException("dequeue on empty queue")
@@ -187,7 +187,7 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
    *  @return A tuple of the first element of the queue, and a new queue with this element removed.
    *         If the queue is empty, `None` is returned.
    */
-  def dequeueOption: Option[(A, Queue[A])] = if(isEmpty) None else Some(dequeue)
+  def dequeueOption: Option[(element: A, remaining: Queue[A])] = if(isEmpty) None else Some(dequeue)
 
   /** Returns the first element in the queue, or throws an error if there
    *  is no element contained in the queue.

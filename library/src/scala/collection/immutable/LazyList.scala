@@ -569,7 +569,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
    *  @param p the predicate used to test elements
    *  @return a pair of lazy lists where the first contains elements satisfying `p` and the second contains the rest
    */
-  override def partition(p: A => Boolean): (LazyList[A], LazyList[A]) = (filter(p), filterNot(p))
+  override def partition(p: A => Boolean): (passed: LazyList[A], rejected: LazyList[A]) = (filter(p), filterNot(p))
 
   /** @inheritdoc
    *
@@ -580,7 +580,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
    *  @param f the function mapping elements to `Left` or `Right`
    *  @return a pair of lazy lists, the first containing the unwrapped `Left` values and the second the unwrapped `Right` values
    */
-  override def partitionMap[A1, A2](f: A => Either[A1, A2]): (LazyList[A1], LazyList[A2]) = {
+  override def partitionMap[A1, A2](f: A => Either[A1, A2]): (lefts: LazyList[A1], rights: LazyList[A2]) = {
     val (left, right) = map(f).partition(_.isLeft)
     (left.map(_.asInstanceOf[Left[A1, ?]].value), right.map(_.asInstanceOf[Right[?, A2]].value))
   }

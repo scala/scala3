@@ -444,13 +444,13 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  @param p the predicate used to test elements
    *  @return a pair of ${coll}s: the first containing all elements that satisfy `p`, the second containing those that do not
    */
-  def partition(p: A => Boolean): (C^{this, p}, C^{this, p}) = {
+  def partition(p: A => Boolean): (passed: C^{this, p}, rejected: C^{this, p}) = {
     val first = new View.Filter(this, p, isFlipped = false)
     val second = new View.Filter(this, p, isFlipped = true)
     (fromSpecific(first), fromSpecific(second))
   }
 
-  override def splitAt(n: Int): (C^{this}, C^{this}) = (take(n), drop(n))
+  override def splitAt(n: Int): (taken: C^{this}, dropped: C^{this}) = (take(n), drop(n))
 
   def take(n: Int): C^{this} = fromSpecific(new View.Take(this, n))
 
@@ -471,7 +471,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    */
   def takeWhile(p: A => Boolean): C^{this, p} = fromSpecific(new View.TakeWhile(this, p))
 
-  def span(p: A => Boolean): (C^{this, p}, C^{this, p}) = (takeWhile(p), dropWhile(p))
+  def span(p: A => Boolean): (takeWhile: C^{this, p}, dropWhile: C^{this, p}) = (takeWhile(p), dropWhile(p))
 
   def drop(n: Int): C^{this} = fromSpecific(new View.Drop(this, n))
 
@@ -732,7 +732,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  @return     a pair of ${coll}s: the first one made of those values returned by `f` that were wrapped in [[scala.util.Left]],
    *              and the second one made of those wrapped in [[scala.util.Right]].
    */
-  def partitionMap[A1, A2](f: A => Either[A1, A2]): (CC[A1]^{this, f}, CC[A2]^{this, f}) = {
+  def partitionMap[A1, A2](f: A => Either[A1, A2]): (lefts: CC[A1]^{this, f}, rights: CC[A2]^{this, f}) = {
     val left: View[A1]^{this, f} = new LeftPartitionMapped(this, f)
     val right: View[A2]^{this, f} = new RightPartitionMapped(this, f)
     (iterableFactory.from(left), iterableFactory.from(right))

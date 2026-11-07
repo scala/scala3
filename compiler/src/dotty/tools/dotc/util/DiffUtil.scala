@@ -14,7 +14,7 @@ object DiffUtil {
         acc.reverse
       else {
         val head = str.charAt(0)
-        val (token, rest) =
+        val tokens: (String, String) =
           if (head == ansiColorToken) { // ansi color token
             val splitIndex = str.indexOf('m') + 1
             (str.substring(0, splitIndex), str.substring(splitIndex))
@@ -28,6 +28,7 @@ object DiffUtil {
               !Character.isAlphabetic(c) && !Character.isDigit(c) &&
                 !Character.isMirrored(c) && !Character.isWhitespace(c) && c != ansiColorToken
             }
+        val (token, rest) = tokens
         splitTokens(rest, token :: acc)
       }
 
