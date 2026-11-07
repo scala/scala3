@@ -16,11 +16,16 @@ import scala.language.`2.13`
 import language.experimental.captureChecking
 import scala.collection.{IterableFactory, IterableFactoryDefaults}
 
+/** Base trait for mutable collections that can be iterated.
+ *
+ *  @tparam A the element type of the collection
+ */
 trait Iterable[A]
   extends collection.Iterable[A]
     with collection.IterableOps[A, Iterable, Iterable[A]]
     with IterableFactoryDefaults[A, Iterable] {
 
+  /** The factory used to build mutable collections, the [[Iterable$ `Iterable`]] companion object, which delegates to [[ArrayBuffer]]. */
   override def iterableFactory: IterableFactory[Iterable] = Iterable
 }
 
