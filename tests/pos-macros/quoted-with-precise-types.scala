@@ -6,17 +6,17 @@ def withType[T <: AnyKind, U](tpe: Type[T])(body: [X <: T] => Type[X] ?=> U)(usi
   body[X](using tpeX)
 
 def test1(t1: Type[?], t2: Type[? <: Any])(using Quotes) =
-  withType(t1) { [T <: AnyKind] => _ ?=> // TODO remove _ ?=> // Implementation restriction: polymorphic function literals must have a value parameter
+  withType(t1) { [T <: AnyKind] =>
     Type.of[T]
     Type.show[T]
   }
-  withType(t2) { [T] => _ ?=> // TODO remove _ ?=>
+  withType(t2) { [T] =>
     '{ val a: T = ??? }
     Type.of[T]
     Type.show[T]
   }
   withType(t2):
-    [T] => _ ?=> '{ val a: T = ??? } // TODO remove _ ?=>
+    [T] => '{ val a: T = ??? }
 
 def exprWithPreciseType[T, U](expr: Expr[T])(body: [X <: T] => Type[X] ?=> Expr[X] => U)(using Quotes): U =
   import quotes.reflect.*
@@ -26,12 +26,11 @@ def exprWithPreciseType[T, U](expr: Expr[T])(body: [X <: T] => Type[X] ?=> Expr[
   body[X](using tpeX)(exprX)
 
 def test2(x: Expr[Any])(using Quotes) =
-  // exprWithPreciseType(x) { [T] => x => // Inference limitation: x is assumed to be the Type[T] instead of the Expr[T]
-  exprWithPreciseType(x) { [T] => _ ?=> x => // TODO remove _ ?=>
+  exprWithPreciseType(x) { [T] => x =>
     Type.of[T]
     '{ val a: T = $x }
   }
-  exprWithPreciseType('{1}) { [T <: Int] => _ ?=> x => // TODO remove _ ?=>
+  exprWithPreciseType('{1}) { [T <: Int] => x =>
     Type.of[T]
     '{ val a: Int = $x }
     '{ val a: T = $x }
