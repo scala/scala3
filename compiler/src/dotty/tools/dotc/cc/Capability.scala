@@ -427,8 +427,14 @@ object Capabilities:
       case Classified(ref1, only, except) => mkClassified(ref1, only, except :+ cls)
       case self: (CoreCapability | RootCapability) => mkClassified(self, defn.AnyClass, cls :: Nil)
 
+    /** The parts of this capability that are covered by `that`, a projection
+     *  `b.only[O].except[E1, ..., En]`: `this.only[O].except[E1, ..., En]`.
+     */
+    final def partUnder(that: Classified)(using Context): Capability =
+      that.except.foldLeft(restrict(that.only))(_.exclude(_))
+
     /** The parts of this capability that are not covered by `that`, a projection
-     *  `b.only[O].except[E1, ..., En]` of the same underlying capability `b`. Since
+     *  `b.only[O].except[E1, ..., En]`. Since
      *
      *      A \ (O \ (E1 | ... | En))  =  (A \ O) | (A & E1) | ... | (A & En)
      *
@@ -710,9 +716,8 @@ object Capabilities:
      */
     def computeHiddenSet(f: Refs => Refs)(using Context): Refs = this match
       case self: LocalCap => f(self.hiddenSet.elems)
-      case Classified(elem1, only, except) =>
-        elem1.computeHiddenSet(f).map: r =>
-          except.foldLeft(r.restrict(only))(_.exclude(_))
+      case self @ Classified(elem1, _, _) =>
+        elem1.computeHiddenSet(f).map(_.partUnder(self))
       case ReadOnly(elem1) => elem1.computeHiddenSet(f).map(_.readOnly)
       case _ => emptyRefs
 
@@ -720,43 +725,48 @@ object Capabilities:
      *  derive from (following `captureSetOfInfo`). One of, per the `Classifiers` enum:
      *  `ClassifiedAs(cs)` (each part derives from some class in `cs`), `Unclassified`
      *  (a part has no known classifier), `UnknownClassifier` (an unsolved capture-set var).
-     *  Exclusions are transparent: `x.except[E]` has the same classifiers as `x`.
+     *  A projection `x.only[O].except[E..]` meets `O` with the classifiers of `x`.
+     *  Exclusions count only where they remove a whole classifier of `x`.
      */
     def transClassifiers(using Context): Classifiers =
       def toClassifiers(cls: ClassSymbol): Classifiers =
         if cls.isTopClassifier then Unclassified
         else ClassifiedAs(cls :: Nil)
-      if caches.classifiersValid != currentId then
-        caches.myClassifiers = this match
-          case self: LocalCap =>
-            toClassifiers(self.hiddenSet.classifier)
-          case self: RootCapability =>
-            Unclassified
-          case Classified(ref1, only, _) =>
-            // An exclusion only removes capabilities, so the transitive classifiers
-            // of the restricted underlying capability remain a sound upper bound.
-            if only.isTopClassifier then ref1.transClassifiers
-            else if only == defn.NothingClass then ClassifiedAs(Nil)
-            else ClassifiedAs(only :: Nil)
-          case ReadOnly(ref1) =>
-            ref1.transClassifiers
-          case Maybe(ref1) =>
-            ref1.transClassifiers
-          case self: CoreCapability =>
-            if self.derivesFromCapability then toClassifiers(self.inheritedClassifier)
-            else if caches.computingInfo then
-              // We are inside the computation of `captureSetOfInfo`, which reports the
-              // empty set in that case. That must not be taken as having no parts.
-              UnknownClassifier
-            else captureSetOfInfo.transClassifiers
-        if caches.myClassifiers != UnknownClassifier then
-          caches.classifiersValid = currentId
-      caches.myClassifiers
+      this match
+        case self: LocalCap =>
+          toClassifiers(self.hiddenSet.classifier) // not cached: narrowed until classified
+        case self: RootCapability =>
+          Unclassified
+        case Classified(_, only, _) if only == defn.NothingClass =>
+          ClassifiedAs(Nil)
+        case Classified(ref1, only, _) =>
+          ref1.transClassifiers match
+            case ClassifiedAs(cs) =>
+              ClassifiedAs(cs.filterNot(isProjectionDisjointFrom(_)).map(leastClassifier(only, _)))
+            case refClassifiers if only.isTopClassifier => refClassifiers
+            case _ => ClassifiedAs(only :: Nil)
+        case ReadOnly(ref1) =>
+          ref1.transClassifiers
+        case Maybe(ref1) =>
+          ref1.transClassifiers
+        case self: CoreCapability =>
+          if caches.classifiersValid != currentId then
+            caches.myClassifiers =
+              if self.derivesFromCapability then toClassifiers(self.inheritedClassifier)
+              else if caches.computingInfo then
+                // We are inside the computation of `captureSetOfInfo`, which reports the
+                // empty set in that case. That must not be taken as having no parts.
+                UnknownClassifier
+              else captureSetOfInfo.transClassifiers
+            // Setup sees infos before they are transformed, so cache only after it
+            if caches.myClassifiers != UnknownClassifier && isCaptureChecking then
+              caches.classifiersValid = currentId
+          caches.myClassifiers
     end transClassifiers
 
     /** May this capability be admitted into a capture set classified as `cls`? The
      *  classifier gate for adding an element to a classified variable. Permissive:
-     *  roots fit anywhere, a `.only[O]` fits iff `O <: cls`.
+     *  roots fit anywhere, a `.only[O]` fits if `O <: cls` or if its known classifiers do.
      */
     def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
       cls.isTopClassifier
@@ -767,8 +777,10 @@ object Capabilities:
         case self: RootCapability =>
           true
         case Classified(ref1, only, _) =>
-          if only.isTopClassifier then ref1.tryClassifyAs(cls)
-          else only.isSubClass(cls)
+          // Unlike `ref1.tryClassifyAs`, `isKnownClassifiedAs` does not narrow classifiers of
+          // variables, which would constrain parts of `ref1` that the projection removes.
+          only.isSubClass(cls) || isKnownClassifiedAs(cls)
+          || only.isTopClassifier && ref1.tryClassifyAs(cls)
         case ReadOnly(ref1) =>
           ref1.tryClassifyAs(cls)
         case Maybe(ref1) =>
@@ -780,8 +792,8 @@ object Capabilities:
           else captureSetOfInfo.tryClassifyAs(cls)
 
     /** Is every part of this capability provably classified as `cls` or a subclass? */
-    // Ignores exclusions: sound but loose. `CaptureSet.accountsFor` takes exclusions
-    // into account when it splits a capability across several projections.
+    // Ignores exclusions that remove only part of a classifier: sound but loose.
+    // `CaptureSet.accountsFor` handles these by splitting across projections.
     def isKnownClassifiedAs(cls: ClassSymbol)(using Context): Boolean =
       transClassifiers match
         case ClassifiedAs(cs) => cs.forall(_.isSubClass(cls))
@@ -811,13 +823,9 @@ object Capabilities:
 
     /** Is this capability provably the empty capture set? */
     def isKnownEmpty(using Context): Boolean = this match
-      case Classified(ref1, only, _) =>
+      case Classified(ref1, _, _) =>
         // empty if the projection removes every classifier of the underlying capability
-        only == defn.NothingClass
-        || (ref1.transClassifiers match
-              case ClassifiedAs(cs) => cs.forall(isProjectionDisjointFrom(_))
-              case _ => false)
-        || ref1.isKnownEmpty
+        transClassifiers == ClassifiedAs(Nil) || ref1.isKnownEmpty
       case ReadOnly(ref1) => ref1.isKnownEmpty
       case Maybe(ref1) => ref1.isKnownEmpty
       case _: RootCapability => false
@@ -1099,6 +1107,15 @@ object Capabilities:
     if cls1.isSubClass(cls2) then cls1
     else if cls2.isSubClass(cls1) then cls2
     else defn.NothingClass
+
+  /** The least of the classifiers `clss` inherited by a class or type, or `AnyClass` if
+   *  there is none or two of them are unrelated, as in `Control & IO` or in a class not
+   *  checked by Setup.checkClassifiedInheritance. `leastClassifier` would give
+   *  `NothingClass`, which would make such instances count as empty.
+   */
+  def leastInheritedClassifier(clss: List[ClassSymbol])(using Context): ClassSymbol =
+    val least = clss.foldLeft(defn.AnyClass)(leastClassifier)
+    if least == defn.NothingClass then defn.AnyClass else least
 
   /** The least classifier that both `cls1` and `cls2` extend, or `AnyClass`,
    *  if `cls1` and `cls2` don't have a common ancestor classifier. It is

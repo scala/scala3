@@ -34,8 +34,9 @@ def f(using async: Async^) = ()
 Then we have the guarantee that any actual `async` argument can only capture
 capabilities that have types extending `Control`. No other capabilities such as mutation or I/O are allowed.
 
-A class or trait becomes a classifier by extending directly the marker trait
+A capability class or trait becomes a classifier by extending directly the marker trait
 `caps.Classifier`. So with the definitions above, `Control` is a classifier trait, but `Async` is not, since it extends `Classifier` only indirectly, through `Control`.
+A class or trait that extends `Classifier` directly must also extend `caps.Capability`; otherwise it is rejected, since it would not classify any capability.
 
 Classifiers are unique: a class cannot extend directly or transitively at the same time two unrelated classifier traits. So if a class transitively extends two classifier traits `C1` and `C2` then one of them must be a subtrait of the other.
 

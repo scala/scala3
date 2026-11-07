@@ -6,3 +6,8 @@
 10 |class C3 extends Matrix, Async // error
    |      ^
    |      class C3 inherits two unrelated classifier traits: trait Control and trait Unscoped
+-- Error: tests/neg-custom-args/captures/classified-inheritance.scala:12:6 ---------------------------------------------
+12 |trait Weird extends caps.Classifier // error
+   |      ^
+   |      trait Weird extends `caps.Classifier` but not `caps.Capability`, so it cannot be a classifier.
+   |      A classifier class is a class extending `caps.Capability` and directly extending `caps.Classifier`.

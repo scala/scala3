@@ -8,3 +8,6 @@ trait Async extends caps.Control
 class Matrix extends caps.Unscoped
 
 class C3 extends Matrix, Async // error
+
+trait Weird extends caps.Classifier // error
+class Lbl extends caps.Control, Weird // OK
