@@ -22,6 +22,7 @@ type AnyKind = ´x´           // where ´x´ is the internal AnyKind type
 type Nothing = ´x´           // where ´x´ is the internal Nothing type
 type | = [A, B] =>> A ´｜´ B // where ｜ is the internal union type operator
 type & = [A, B] =>> A ´＆´ B // where ＆ is the internal intersection type operator
+type <FlexibleType>[T] >: T | Null <: T
 ```
 
 ## Root Classes
