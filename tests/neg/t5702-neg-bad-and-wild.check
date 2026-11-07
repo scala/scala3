@@ -57,7 +57,7 @@
 -- Error: tests/neg/t5702-neg-bad-and-wild.scala:22:10 -----------------------------------------------------------------
 22 |    val K(x @ _*) = k // error
    |          ^^^^^^
-   |          Sequence wildcard pattern is not allowed for unapply, only unapplySeq is allowed
+   |Sequence wildcard pattern is not allowed when the case class companion also defines unapply, only unapplySeq is allowed
 -- Warning: tests/neg/t5702-neg-bad-and-wild.scala:22:20 ---------------------------------------------------------------
 22 |    val K(x @ _*) = k // error
    |                    ^
