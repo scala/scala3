@@ -235,7 +235,7 @@ object SepCheck:
           val coreRef = ref.stripRestricted.stripExcluded.stripReadOnly
           val isCovered = refs2.exists: ref2 =>
             !(ref.isReadOnly && ref2.isReadOnly)
-            && ref2.stripRestricted.stripExcluded.stripReadOnly.coversLocalCap(coreRef)
+            && ref2.core.coversLocalCap(coreRef)
           if isCovered then acc += coreRef
         acc
       assert(refs.forall(_.isTerminalCapability))
