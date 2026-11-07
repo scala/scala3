@@ -1259,7 +1259,7 @@ object CaptureSet:
         // Allowing widening when pushing to the two operands only when
         // `elem` is terminal, or its context capture set is stable.
         // Otherwise, try widening here against the union first.
-        val widenInOperand = widen && (elem.isTerminalCapability || elem.captureSetOfInfo.isConst)
+        val widenInOperand = widen && elem.captureSetOfInfo.isConst
         !cs1.isConst && cs1.tryInclude(elem, origin, widenInOperand)
         || !cs2.isConst && cs2.tryInclude(elem, origin, widenInOperand)
         || widen && tryWiden(elem, origin)
