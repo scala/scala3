@@ -12,6 +12,14 @@ object Upperbound1:
   opaque type MyString[+T] <: String = String
   extension (arr: MyString[Byte]) def length: Int = 0 // warn
 
+object Upperbound1a:
+  trait MyList[+A]:
+    def add[B >: A](x: B): MyList[B]
+  class MyListImpl[+A] extends MyList[A]:
+    def add[B >: A](x: B): MyList[B] = ???
+  opaque type MyStuff[+T] <: MyList[T] = MyListImpl[T]
+  extension (arr: MyStuff[String]) def add(s: String): MyStuff[String] = ??? // warn
+
 object Upperbound2:
   opaque type MyString[+T] <: String = String
   extension [T <: MyString[Byte]](arr: T) def length: Int = 0 // warn
