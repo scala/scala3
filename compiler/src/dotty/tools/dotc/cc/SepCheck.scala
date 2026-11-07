@@ -232,7 +232,7 @@ object SepCheck:
       def common(refs1: Refs, refs2: Refs) =
         var acc: Refs = emptyRefs
         refs1.foreach: ref =>
-          val coreRef = ref.stripRestricted.stripExcluded.stripReadOnly
+          val coreRef = ref.core
           val isCovered = refs2.exists: ref2 =>
             !(ref.isReadOnly && ref2.isReadOnly)
             && ref2.core.coversLocalCap(coreRef)
