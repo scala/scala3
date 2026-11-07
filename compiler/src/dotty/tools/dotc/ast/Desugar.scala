@@ -413,6 +413,9 @@ object desugar {
     def defaultGetters(paramss: List[ParamClause], n: Int): List[DefDef] = paramss match
       case ValDefs(vparam :: vparams) :: paramss1 =>
         def defaultGetter: DefDef =
+          val inlineFlags = 
+            if vparam.mods.is(Inline) then Inline | (meth.mods.flags & Transparent)
+            else EmptyFlags
           DefDef(
             name = DefaultGetterName(meth.name, n),
             paramss = getterParamss(n),
@@ -420,7 +423,7 @@ object desugar {
             rhs = vparam.rhs
           )
           .withMods(Modifiers(
-            meth.mods.flags & (AccessFlags | Synthetic) | (vparam.mods.flags & Inline),
+            meth.mods.flags & (AccessFlags | Synthetic) | inlineFlags,
             meth.mods.privateWithin))
           .withSpan(vparam.rhs.span)
         val rest = defaultGetters(vparams :: paramss1, n + 1)
