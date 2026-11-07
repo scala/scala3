@@ -116,6 +116,14 @@ sealed abstract class <:<[-From, +To] extends (From => To) with Serializable {
     substituteCo[Id](f)
   }
 
+  /** Composes this coercion with the function `r`, widening `r`'s result from `From` to `To`.
+   *
+   *  Since the coercion is the identity function, the composition behaves exactly like `r`.
+   *
+   *  @tparam C the argument type of `r`
+   *  @param r a function producing a `From`
+   *  @return `r`, $sameDiff
+   */
   override def compose[C](r: C => From): C => To = {
     type G[+T] = C => T
     substituteCo[G](r)
@@ -129,6 +137,14 @@ sealed abstract class <:<[-From, +To] extends (From => To) with Serializable {
     type G[+T] = C <:< T
     substituteCo[G](r)
   }
+  /** Composes this coercion with the function `r`, narrowing `r`'s argument from `To` to `From`.
+   *
+   *  Since the coercion is the identity function, the composition behaves exactly like `r`.
+   *
+   *  @tparam C the result type of `r`
+   *  @param r a function accepting a `To`
+   *  @return `r`, $sameDiff
+   */
   override def andThen[C](r: To => C): From => C = {
     type G[-T] = T => C
     substituteContra[G](r)
@@ -229,12 +245,43 @@ object <:< {
 // Most of the notes on <:< above apply to =:= as well
 @implicitNotFound(msg = "Cannot prove that ${From} =:= ${To}.")
 sealed abstract class =:=[From, To] extends (From <:< To) with Serializable {
+  /** Substitutes `From` for `To` and `To` for `From` in the type `F[To, From]`, where `F` is $contraCo.
+   *  Essentially swaps `To` and `From` in `ftf`'s type.
+   *
+   *  Equivalent in power to each of [[substituteCo]] and [[substituteContra]].
+   *
+   *  $isProof
+   *
+   *  @tparam F $contraCo
+   *  @param ftf a value whose type mentions `To` in the first argument position and `From` in the second
+   *  @return `ftf`, but with a (potentially) different type
+   */
   override def substituteBoth[F[_, _]](ftf: F[To, From]): F[From, To]
+  /** Substitutes the `From` in the type `F[From]`, where `F` is $coCon, for `To`.
+   *
+   *  Equivalent in power to each of [[substituteBoth]] and [[substituteContra]].
+   *
+   *  $isProof
+   *
+   *  @tparam F $coCon
+   *  @param ff a value of type `F[From]`
+   *  @return `ff`, but with a (potentially) different type
+   */
   override def substituteCo[F[_]](ff: F[From]): F[To] = {
     type G[_, T] = F[T]
     substituteBoth[G](ff)
   }
   // = substituteContra[({type G[T] = F[T] => F[To]})#G](identity)(ff)
+  /** Substitutes the `To` in the type `F[To]`, where `F` is $contraCon, for `From`.
+   *
+   *  Equivalent in power to each of [[substituteBoth]] and [[substituteCo]].
+   *
+   *  $isProof
+   *
+   *  @tparam F $contraCon
+   *  @param ft a value of type `F[To]`
+   *  @return `ft`, but with a (potentially) different type
+   */
   override def substituteContra[F[_]](ft: F[To]): F[From] = {
     type G[T, _] = F[T]
     substituteBoth[G](ft)
@@ -271,6 +318,11 @@ sealed abstract class =:=[From, To] extends (From <:< To) with Serializable {
     substituteContra[G](r)
   }
 
+  /** Lifts this evidence over the type constructor `F`.
+   *
+   *  @tparam F $coCon to lift the evidence over
+   *  @return evidence that `F[From]` and `F[To]` are equal
+   */
   override def liftCo[F[_]]: F[From] =:= F[To] = {
     type G[T] = F[T] =:= F[To]
     substituteContra[G](implicitly[G[To]])

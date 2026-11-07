@@ -20,5 +20,6 @@ import scala.language.`2.13`
 // TODO undeprecated until Scala reflection becomes non-experimental
 // @deprecated("This notion doesn't have a corresponding concept in 2.10, because scala.reflect.runtime.universe.TypeTag can capture arbitrary types. Use type tags instead of manifests, and there will be no need in opt manifests.", "2.10.0")
 object NoManifest extends OptManifest[Nothing] with Serializable {
+  /** Returns `<?>`, indicating that no type information is available. */
   override def toString() = "<?>"
 }
