@@ -181,6 +181,18 @@ object DocOf extends ArgCommand[DocOf] {
   val command: String = ":doc"
 }
 
+/** `:completions <input>` prints the completion candidates for `input`, one
+ *  per line, each prefixed with `[completions] `. Every line holds the full
+ *  text that would replace `input` when that candidate is chosen. This is
+ *  intended for editors (e.g. emacs-sbt-mode) driving the REPL through a dumb
+ *  terminal, where JLine's TAB completion is not available.
+ */
+case class Completions(expr: String) extends Command:
+  override def replayLine = None
+object Completions extends ArgCommand[Completions] {
+  val command: String = ":completions"
+}
+
 /** `:imports` lists the imports that have been explicitly imported during the
  *  session
  */
