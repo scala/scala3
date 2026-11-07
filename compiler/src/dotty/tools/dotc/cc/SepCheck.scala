@@ -713,7 +713,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             then
               badParams += refSym
           case ref: ThisType =>
-            val encl = currentOwner.enclosingMethodOrClassOrObject
+            def enclMethod(sym: Symbol): Symbol =
+              val encl = sym.enclosingMethodOrClassOrObject
+              if encl.isAnonymousFunction then enclMethod(encl.owner) else encl
+            val encl = enclMethod(currentOwner)
             if !encl.is(Synthetic) && !encl.hasAnnotation(defn.ConsumeAnnot) then
               report.error(
                 em"""Separation failure: $descr enclosing instance of class ${ref.cls}.
