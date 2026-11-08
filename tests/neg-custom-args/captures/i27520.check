@@ -1,0 +1,15 @@
+-- Error: tests/neg-custom-args/captures/i27520.scala:8:23 -------------------------------------------------------------
+8 |  def poke(): Unit = c.bump()  // error
+  |                     ^^^^^^
+  |                     Cannot call update method bump of Cell^{Box1.this.rd}
+  |                     since its capture set {Box1.this.rd} is read-only.
+-- Error: tests/neg-custom-args/captures/i27520.scala:11:23 ------------------------------------------------------------
+11 |  def poke(): Unit = c.bump()  // error
+   |                     ^^^^^^
+   |                     Cannot call update method bump of Box2.this.c
+   |                     since the access is in method poke, which is not an update method.
+-- Error: tests/neg-custom-args/captures/i27520.scala:16:6 -------------------------------------------------------------
+16 |    d.bump()  // error
+   |    ^^^^^^
+   |    Cannot call update method bump of d
+   |    since its capture set {d} is read-only.
