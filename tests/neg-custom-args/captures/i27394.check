@@ -1,0 +1,27 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27394.scala:5:41 ----------------------------------------
+5 |  coerce[() ->{X} Unit, () ->{A, B} Unit](f)   // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Found:    ((() -> Unit) & (() -> Unit))^{X}
+  |  Required: () -> Unit
+  |
+  |  Note that capability `X` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27394.scala:8:2 -----------------------------------------
+8 |  g // error
+  |  ^
+  |  Found:    () ->{g} Unit
+  |  Required: () -> Unit
+  |
+  |  Note that capability `g` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27394.scala:10:40 ---------------------------------------
+10 |  coerceOr[() ->{a} Unit, () ->{b} Unit](f) // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Found:    ((() -> Unit) | (() -> Unit))^{a, b}
+   |  Required: () ->{a} Unit
+   |
+   |  Note that capability `b` cannot flow into capture set {a}.
+   |
+   | longer explanation available when compiling with `-explain`

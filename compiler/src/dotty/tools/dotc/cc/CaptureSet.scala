@@ -289,7 +289,6 @@ sealed abstract class CaptureSet extends Showable:
     // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
     def widened(y: Capability) =
       !y.isTerminalCapability
-      && !y.coreType.derivesFromCapSet
       && !(vs.isSeparating && y.captureSetOfInfo.containsTerminalCapability)
         // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
         // and might therefore insert an element that is too unspecific.

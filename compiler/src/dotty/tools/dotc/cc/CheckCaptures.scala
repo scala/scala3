@@ -2045,6 +2045,18 @@ class CheckCaptures extends Recheck, SymTransformer:
             if reduced.exists then
               val adapted = recur(reduced, expected, covariant)
               return if adapted eq reduced then actual else adapted
+          case AndType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2))
+          if tp1.isBoxed == tp2.isBoxed =>
+            // Pull out capture sets of intersections, so that they can be unboxed.
+            // E.g. `box () ->{x} Unit & box () ->{y} Unit` arises from instantiating `T & U`.
+            return recur(
+              CapturingType(AndType(parent1, parent2), refs1 ** refs2, tp1.isBoxed),
+              expected, covariant)
+          case actual @ OrType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2))
+          if tp1.isBoxed == tp2.isBoxed =>
+            return recur(
+              CapturingType(OrType(parent1, parent2, actual.isSoft), refs1 ++ refs2, tp1.isBoxed),
+              expected, covariant)
           case _ =>
 
         // Decompose the actual type into the inner shape type, the capture set and the box status
