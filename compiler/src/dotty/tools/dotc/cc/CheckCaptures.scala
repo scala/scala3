@@ -1774,7 +1774,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         finally
           ccState.ignoreClassifiers = saved
 
-    @annotation.tailrec
     private def findImpureUpperBound(tp: Type)(using Context): Type = tp match
       case _: SingletonType => findImpureUpperBound(tp.widen)
       case tp: TypeRef if tp.symbol.isAbstractOrParamType =>
@@ -1782,6 +1781,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           case TypeBounds(_, hi) if hi.isBoxed => hi
           case TypeBounds(_, hi) => findImpureUpperBound(hi)
           case _ => NoType
+      case AndType(tp1, tp2) =>
+        // Widen each operand that has an impure upper bound to that bound
+        val hi1 = findImpureUpperBound(tp1)
+        val hi2 = findImpureUpperBound(tp2)
+        if hi1.exists || hi2.exists then hi1.orElse(tp1) & hi2.orElse(tp2)
+        else NoType
       case _ => NoType
 
     inline def testAdapted(actual: Type, expected: Type, tree: Tree, notes: List[Note])
