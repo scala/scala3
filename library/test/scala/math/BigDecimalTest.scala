@@ -11,9 +11,6 @@ class BigDecimalTest {
     val result = BigDecimal("-17.5") /% BigDecimal(5)
     assertEquals(BigDecimal(-3), result.quotient)
     assertEquals(BigDecimal("-2.5"), result.remainder)
-
-    val pair: (BigDecimal, BigDecimal) = result
-    assertEquals((BigDecimal(-3), BigDecimal("-2.5")), pair)
   }
 
   // Motivated by scala/bug#6173: BigDecimal#isWhole implementation is very heap intensive

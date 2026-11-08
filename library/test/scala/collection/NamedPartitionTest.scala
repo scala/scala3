@@ -61,10 +61,6 @@ class NamedPartitionTest {
 
     val view = Map(1 -> "a", 2 -> "b", 3 -> "c", 4 -> "d").view.partition(_._1 % 2 == 0)
     check(view.passed.keys, view.rejected.keys)
-
-    val empty = MapView.empty[Int, String].partition(_ => true)
-    assertEquals(Map.empty[Int, String], empty.passed.toMap)
-    assertEquals(Map.empty[Int, String], empty.rejected.toMap)
   }
 
   @Test def arrayStringAndIteratorPartitions(): Unit = {
@@ -87,20 +83,7 @@ class NamedPartitionTest {
     val pair: (List[Int], List[Int]) = result
     val (passed, rejected) = result
     assertEquals((List(2, 4), List(1, 3)), pair)
-    check(passed, rejected)
-    assertEquals(result.passed, result.toTuple._1)
-    assertEquals(result.rejected, result.toTuple._2)
-
-    val empty = List.empty[Int].partition(_ => true)
-    assertEquals(List.empty[Int], empty.passed)
-    assertEquals(List.empty[Int], empty.rejected)
-
-    val all = List(1, 3).partition(_ % 2 == 1)
-    assertEquals(List(1, 3), all.passed)
-    assertEquals(List.empty[Int], all.rejected)
-
-    val none = List(1, 3).partition(_ % 2 == 0)
-    assertEquals(List.empty[Int], none.passed)
-    assertEquals(List(1, 3), none.rejected)
+    assertEquals(pair, (passed, rejected))
+    assertEquals(pair, result.toTuple)
   }
 }

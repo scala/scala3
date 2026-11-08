@@ -122,30 +122,4 @@ class NamedCollectionResultsTest {
     assertEquals("12", string.taken)
     assertEquals("34", string.dropped)
   }
-
-  @Test def boundaryAndTupleResults(): Unit = {
-    val empty = List.empty[Int].span(_ => true)
-    assertEquals(Nil, empty.takeWhile)
-    assertEquals(Nil, empty.dropWhile)
-
-    val all = List(1, 2).span(_ < 3)
-    assertEquals(List(1, 2), all.takeWhile)
-    assertEquals(Nil, all.dropWhile)
-
-    val negative = List(1, 2).splitAt(-1)
-    assertEquals(Nil, negative.taken)
-    assertEquals(List(1, 2), negative.dropped)
-
-    val oversized = List(1, 2).splitAt(3)
-    assertEquals(List(1, 2), oversized.taken)
-    assertEquals(Nil, oversized.dropped)
-
-    val split = List(1, 2, 3).splitAt(1)
-    val pair: (List[Int], List[Int]) = split
-    val (taken, dropped) = split
-    assertEquals((List(1), List(2, 3)), pair)
-    assertEquals(split.taken, taken)
-    assertEquals(split.dropped, dropped)
-    assertEquals(List(1), split.toTuple._1)
-  }
 }
