@@ -1,9 +1,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-glb.scala:7:19 ----------------------------------------
 7 |  val x2: Foo[T] = x1  // error
   |                   ^^
-  |                   Found:    (x1 : (Foo[T] & Foo[Any])^{io})
+  |                   Found:    (x1 : (Foo[T]^{any}) & (Foo[Any]^{io}))
   |                   Required: Foo[T]
   |
-  |                   Note that capability `io` cannot flow into capture set {}.
+  |                   Note that capability `any` cannot flow into capture set {io}.
+  |
+  |                   where:    any is a root capability in the type of value x1
   |
   | longer explanation available when compiling with `-explain`

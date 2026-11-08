@@ -25,14 +25,20 @@ import scala.collection.mutable
 def isCaptureChecking(using Context): Boolean =
   ctx.phaseId == Phases.checkCapturesPhaseId
 
-/** Are we in the CheckCaptures or Setup phase? */
+/** Are we in the Setup phase preceding CheckCaptures? */
+def isCaptureSetup(using Context): Boolean =
+  ctx.phaseId == Phases.checkCapturesPhaseId - 1 && ccState.iterationId > 0
+    // Note: just checking phase id is not enough since Setup would
+    // also be the phase after pattern matcher.
+
+/** Are we in the CheckCaptures or Setup phase?
+ *  Optimized version of `isCaptureChecking || isCaptureSetup
+ */
 def isCaptureCheckingOrSetup(using Context): Boolean =
   val ccId = Phases.checkCapturesPhaseId
   val ctxId = ctx.phaseId
-  ctxId == ccId
-  || ctxId == ccId - 1 && ccState.iterationId > 0
-    // Note: just checking phase id is not enough since Setup would
-    // also be the phase after pattern matcher.
+  ctxId == ccId || ctxId == ccId - 1 && ccState.iterationId > 0
+
 
 /** A dependent function type with given arguments and result type
  *  TODO Move somewhere else where we treat all function type related ops together.
