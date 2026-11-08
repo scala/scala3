@@ -1,0 +1,24 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27397.scala:9:40 ----------------------------------------
+9 |  val b: Both^{any.only[Control]} = Both()  // error
+  |                                    ^^^^^^
+  |Found:    Both^{any}
+  |Required: Both^{any².only[Control]}
+  |
+  |Note that capability `any` cannot flow into capture set {any².only[Control]}.
+  |
+  |where:    any  is a root capability created in value b when constructing instance Both with contributing fields value c, value r
+  |          any² is a root capability in the type of value b
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27397.scala:12:44 ---------------------------------------
+12 |  val s: Single^{any.only[Control]} = Single()  // error
+   |                                      ^^^^^^^^
+   |Found:    Single^{any}
+   |Required: Single^{any².only[Control]}
+   |
+   |Note that capability `any` cannot flow into capture set {any².only[Control]}.
+   |
+   |where:    any  is a root capability created in value s when constructing instance Single with contributing field val r
+   |          any² is a root capability in the type of value s
+   |
+   | longer explanation available when compiling with `-explain`

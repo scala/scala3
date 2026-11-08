@@ -1,0 +1,5 @@
+-- Error: tests/neg-custom-args/captures/i27397b.scala:16:18 -----------------------------------------------------------
+16 |class Sub extends Base, Stateful // error
+   |                  ^^^^
+   |                illegal inheritance: class Sub which extends `Stateful` is not allowed to also extend class Base
+   |                since class Base is an exclusive capability but does not extend `Stateful`.
