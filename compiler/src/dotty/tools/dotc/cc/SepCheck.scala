@@ -10,7 +10,6 @@ import CaptureSet.{Refs, emptyRefs, HiddenSet}
 import NameKinds.{WildcardParamName, PatMatStdBinderName}
 import config.Printers.capt
 import StdNames.nme
-import transform.LiftCoverage
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import tpd.*
 import reflect.ClassTag
@@ -625,22 +624,13 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
       case _ =>
   end checkAssign
 
-  /** Is `tree` a coverage-lifted local temp or a reference to one?
-   *  These aliases are identified through the attachment set by `LiftCoverage`,
-   *  not by broad synthetic checks.
-   */
-  private def isCoverageLiftedTemp(tree: Tree)(using Context): Boolean = tree match
-    case tree: ValDef => tree.symbol.exists && LiftCoverage.isCoverageLiftedTemp(tree.symbol)
-    case tree: Ident => tree.symbol.exists && LiftCoverage.isCoverageLiftedTemp(tree.symbol)
-    case _ => false
-
   /** 1. Check that the capabilities used at `tree` don't overlap with
    *     capabilities hidden by a previous definition.
    *  2. Also check that none of the used capabilities was consumed before.
    */
   def checkUse(tree: Tree, inPattern: Boolean = false)(using Context): Unit =
     val used = tree.markedFree.elems
-    if !used.isEmpty && !isCoverageLiftedTemp(tree) then
+    if !used.isEmpty then
       capt.println(i"check use $tree: $used")
       lazy val usedPeaks = used.allPeaks
       // Capabilities used in a pattern are accessed through the scrutinee, which
@@ -1020,15 +1010,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
           checkApply(tree, argss.flatten, app, deps, resultPeaks)
     recur(app, Nil)
 
-  /** Is `tree` an application of caps.unsafe.unsafeAssumeSeparate?
-   *  or a synthetic application of throw new MatchError(...)?
-   */
+  /** Is `tree` an application of caps.unsafe.unsafeAssumeSeparate? */
   def isAssumedSeparate(tree: Tree)(using Context): Boolean = tree match
-    case tree: Apply =>
-      tree.symbol == defn.Caps_unsafeAssumeSeparate
-      || tree.symbol == defn.throwMethod
-          && tree.span.isZeroExtent
-          && tree.args.head.tpe.classSymbol == defn.MatchErrorClass
+    case tree: Apply => tree.symbol == defn.Caps_unsafeAssumeSeparate
     case _ => false
 
   def pushDef(tree: ValOrDefDef, hiddenByDef: Refs)(using Context): Unit =
@@ -1087,8 +1071,6 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
   /** Check (result-) type of `tree` for separation conditions using `checkType`.
    *  Excluded are parameters and definitions that have an =unsafeAssumeSeparate
    *  application as right hand sides.
-   *  Also excluded are local temps marked by `LiftCoverage`, which are aliases
-   *  introduced solely to preserve coverage evaluation order.
    *  Hidden sets of checked definitions are added to `defsShadow`.
    */
   def checkValOrDefDef(tree: ValOrDefDef)(using Context): Unit =
@@ -1096,7 +1078,6 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
     if !sym.isOneOf(TermParamOrAccessor)
        && !sym.needsResultRefinement
        && !isAssumedSeparate(tree.rhs)
-       && !isCoverageLiftedTemp(tree)
     then
       capt.println(i"sep check def $sym: ${tree.tpt.nuType} with ${spanCaptures(tree.tpt).transHiddenSet.directFootprint}")
       checkType(tree.tpt, sym)

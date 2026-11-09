@@ -12,14 +12,13 @@ import core.Comments.Comment
 import core.Flags.*
 import core.Contexts.{Context, ctx, inContext}
 import core.DenotTransformers.IdentityDenotTransformer
-import core.Symbols.{defn, Symbol, TermSymbol}
+import core.Symbols.{defn, Symbol}
 import core.Constants.Constant
 import core.NameKinds.DefaultGetterName
 import core.NameOps.isContextFunction
 import core.StdNames.nme
 import core.Types.*
 import core.Decorators.*
-import cc.CapturingOrRetainsType
 import coverage.*
 import typer.LiftImpure
 import util.{Property, SourcePosition, SourceFile}
@@ -35,7 +34,6 @@ object LiftCoverage extends LiftImpure:
   // Property indicating whether we're currently lifting the arguments of an application
   private val LiftingArgs = new Property.Key[Boolean]
   private val SelectedReceiverApply = Property.StickyKey[tpd.Apply]()
-  val CoverageLiftedTemp = Property.StickyKey[Unit]()
 
   private inline def liftingArgs(using Context): Boolean =
     ctx.property(LiftingArgs).contains(true)
@@ -68,26 +66,11 @@ object LiftCoverage extends LiftImpure:
     case tpd.Typed(expr, _) => isUnsafeAssumeSeparate(expr)
     case _ => false
 
-  def isCoverageLiftedTemp(sym: Symbol)(using Context): Boolean =
-    sym.defTree.hasAttachment(CoverageLiftedTemp)
-
   def selectedReceiverApply(tree: tpd.Tree)(using Context): Option[tpd.Apply] =
     tree.getAttachment(SelectedReceiverApply)
 
   def markSelectedReceiverApply(tree: tpd.Apply)(using Context): Unit =
     tree.putAttachment(SelectedReceiverApply, tree)
-
-  override protected def onLiftedDef(tree: tpd.Tree)(using Context): Unit =
-    tree.putAttachment(CoverageLiftedTemp, ())
-
-  override protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: tpd.Tree)(using Context): tpd.Tree =
-    val liftedRef = tpd.ref(lifted.termRef)
-    val hasCaptures =
-      liftedType.existsPart:
-        case CapturingOrRetainsType(_, refs) => !refs.isAlwaysEmpty
-        case _ => false
-    if liftingArgs && hasCaptures then tpd.Typed(liftedRef, tpd.TypeTree(liftedType, inferred = true))
-    else liftedRef
 
   override def noLift(expr: tpd.Tree)(using Context) =
     if liftingArgs then noLiftArg(expr)

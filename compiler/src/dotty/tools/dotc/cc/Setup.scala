@@ -415,8 +415,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def innerApply(tp: Type) =
         tp match
           case AnnotatedType(parent, annot)
-          if annot.symbol.isRetains || annot.symbol == defn.InferredAnnot =>
-            // Drop explicit retains and @inferred annotations
+          if annot.symbol.isRetains =>
+            // Drop explicit retains annotations
             addVar(apply(parent), tp)
           case AnnotatedType(parent, annot)
           if annot.symbol == defn.DeclaredAnnot =>
@@ -547,9 +547,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case t @ AnnotatedType(parent, ann) =>
             if ann.symbol == defn.UncheckedCapturesAnnot then
               makeUnchecked(this(parent))
-            else if ann.symbol == defn.InferredAnnot then
-              transformInferredType(parent, sym, initialVariance = variance)
-                // typeArgFormal is NoType here since we are inferring inside an argument, not at the toplevel
             else
               t.derivedAnnotatedType(this(parent), ann)
           case throwsAlias(res, exc) =>

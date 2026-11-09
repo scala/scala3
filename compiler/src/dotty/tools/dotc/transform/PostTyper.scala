@@ -358,19 +358,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         }
     }
 
-    /** Under cc, mark the type of InferredTypeTree arguments of inline method
-     *  with a @caps.inferred annotation. This tells Setup to prepare the marked
-     *  types in the body of the inline expansion as inferred types.
-     */
-    private def markInferred(tpt: Tree)(using Context): Tree = tpt match
-      case NamedArg(id, arg) =>
-        cpy.NamedArg(tpt)(id, markInferred(arg))
-      case tpt: InferredTypeTree =>
-        TypeTree(AnnotatedType(tpt.tpe, Annotation(defn.InferredAnnot, tpt.span)))
-          .withSpan(tpt.span)
-      case _ =>
-        tpt
-
     def checkUsableAsValue(tree: Tree)(using Context): Tree =
       def unusable(msg: Symbol => Message) =
         errorTree(tree, msg(tree.symbol))
@@ -399,21 +386,17 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       if !tree.symbol.is(Package) then tree
       else errorTree(tree, em"${tree.symbol} cannot be used as a type")
 
-    /** Make result types of ValDefs and DefDefs that override some other definitions
-     *  declared types rather than InferredTypes. This is necessary since we otherwise
-     *  clean retains annotations from such types. But for an overriding symbol the
-     *  retains annotations come from the explicitly declared parent types, so should
-     *  be kept.
-     *  TODO: If the overridden type is an InferredType, we should probably clean retains
-     *  from both types as well.
+    /** The type trees of the value definitions seen so far, under ccEnabled */
+    private val seenTpts = util.EqHashSet[Tree]()
+
+    /** Under ccEnabled, make sure that the type tree `tpt` of a value definition is not
+     *  shared with another definition, as is the case for `val x, y: T = e`.
+     *  The capture checker associates the types of definitions with their type trees.
      */
-    private def makeOverrideTypeDeclared(symbol: Symbol, tpt: Tree)(using Context): Tree =
-      tpt match
-        case tpt: InferredTypeTree
-        if Feature.ccEnabled && symbol.allOverriddenSymbols.hasNext =>
-          TypeTree(tpt.tpe, inferred = false).withSpan(tpt.span).withAttachmentsFrom(tpt)
-        case _ =>
-          tpt
+    private def unsharedTpt(tpt: Tree)(using Context): Tree =
+      if Feature.ccEnabled && !tpt.isEmpty && !seenTpts.add(tpt)
+      then tpt.cloneIn(tpt.source)
+      else tpt
 
     /** Under ccEnabled, If the (return-) type of the ValDef or DefDef is an InferredType,
      *  make (some parts of) it non-inferred types so that embedded retains annotations
@@ -430,18 +413,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *       right hand side of a defininition meeting condition (2), also make
      *       its parameter types non-inferred as specified by (2).
      */
-    /** The type trees of the value definitions seen so far, under ccEnabled */
-    private val seenTpts = util.EqHashSet[Tree]()
-
-    /** Under ccEnabled, make sure that the type tree `tpt` of a value definition is not
-     *  shared with another definition, as it is the case for `val x, y: T = e`.
-     *  The capture checker associates the types of definitions with their type trees.
-     */
-    private def unsharedTpt(tpt: Tree)(using Context): Tree =
-      if Feature.ccEnabled && !tpt.isEmpty && !seenTpts.add(tpt)
-      then tpt.cloneIn(tpt.source)
-      else tpt
-
     private def explicifyTpt(tree: ValOrDefDef)(using Context): Tree = tree.tpt match
       case tpt: InferredTypeTree if Feature.ccEnabled =>
         if tree.symbol.allOverriddenSymbols.hasNext then // (1)
@@ -644,10 +615,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
-          val args1 =
-            if Feature.ccEnabled && fn.symbol.isInlineMethod
-            then transform(args).mapConserve(markInferred)
-            else transform(args)
+          val args1 = transform(args)
           val fn1 = fn match
             case sel: Select =>
               transformSelect(sel, args1) // skip the checkUsableAsValue of normal transform
