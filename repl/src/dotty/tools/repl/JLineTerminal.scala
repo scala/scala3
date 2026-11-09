@@ -127,8 +127,7 @@ class JLineTerminal(
       .highlighter(new Highlighter)
       .parser(new Parser)
       .variable(HISTORY_FILE, historyFile)      // Save history to file
-      .variable(HISTORY_IGNORE, s"\\${Completions.command}*") // Don't record editor completion queries.
-                                                              // `:` separates alternatives in JLine's pattern syntax, so escape it.
+      .variable(HISTORY_IGNORE, s"\\${Completions.command}*") // Skip editor queries; `:` must be escaped in JLine patterns
       .variable(SECONDARY_PROMPT_PATTERN, "%M") // A short word explaining what is "missing",
                                                 // this is supplied from the EOFError.getMissing() method
       .variable(LIST_MAX, 400)                  // Ask user when number of completions exceed this limit (default is 100).

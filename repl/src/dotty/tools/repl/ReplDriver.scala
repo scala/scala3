@@ -377,12 +377,9 @@ class ReplDriver(settings: Array[String],
   ): List[Completion] =
     completionsWithOffset(cursor, expr, state0, displayError, includeUniversal = true)._2
 
-  /** Extract possible completions at the index of `cursor` in `expr`, together
-   *  with the offset in `expr` at which the completed word starts, i.e. the
-   *  part of `expr` before the offset is kept and the rest is replaced by the
-   *  completion label. Unless `includeUniversal` is set, members every value
-   *  has (see [[isUniversal]]) are left out when nothing has been typed yet
-   *  after the qualifier, e.g. for `xs.` but not for `xs.toS`.
+  /** Like [[completions]], but also returns the offset in `expr` where the completed
+   *  word starts. Unless `includeUniversal` is set, [[withoutUniversalMembers]] is
+   *  applied when nothing has been typed after the qualifier (`xs.`, not `xs.toS`).
    */
   protected final def completionsWithOffset(
     cursor: Int,
@@ -419,7 +416,7 @@ class ReplDriver(settings: Array[String],
             val (offset, comps) = Completion.completions(srcPos)
             val typedPrefix = expr.substring(offset, cursor)
             if includeUniversal || typedPrefix.nonEmpty then (offset, comps)
-            else (offset, comps.filterNot(isUniversal))
+            else (offset, withoutUniversalMembers(comps))
           catch case NonFatal(_) =>
             displayError("Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues")
             (cursor, Nil)
@@ -436,22 +433,25 @@ class ReplDriver(settings: Array[String],
       result
   end completionsWithOffset
 
-  /** Is `completion` a member every value has, i.e. one inherited from `Any`/`AnyRef`
-   *  or added to every type by a `Predef` conversion or extension? `:completions`
-   *  leaves these out when no prefix has been typed, to reduce noise.
+  /** `completions` without the members every value has: those of `Any`/`AnyRef` and
+   *  those `Predef` adds to every type. Scala 2 detects the latter generically
+   *  (`isMemberUniversal`), but `Completion` doesn't record how a member was added,
+   *  so they are listed by hand and must be kept in sync with `Predef`.
    */
-  private def isUniversal(completion: Completion)(using Context): Boolean =
-    lazy val universalOwners = Set[Symbol](
-      defn.AnyClass, defn.ObjectClass,
-      requiredClass("scala.Predef.ArrowAssoc"),
-      requiredClass("scala.Predef.Ensuring"),
-      requiredClass("scala.Predef.StringFormat"))
-    lazy val universalMethods: Set[Symbol] =
-      List("nn", nme.runtimeChecked.toString, "->")
-        .flatMap(name => defn.ScalaPredefModule.info.member(name.toTermName).alternatives)
+  private def withoutUniversalMembers(completions: List[Completion])(using Context): List[Completion] =
+    val universalOwners: Set[Symbol] =
+      Set(defn.AnyClass, defn.ObjectClass) ++
+        List("Ensuring", "StringFormat")
+          .map(name => getClassIfDefined(s"scala.Predef.$name"))
+          .filter(_.exists)
+    val universalMethods: Set[Symbol] =
+      List(nme.nn, nme.runtimeChecked, "->".toTermName)
+        .flatMap(name => defn.ScalaPredefModule.info.member(name).alternatives)
         .map(_.symbol).toSet
-    completion.symbols.nonEmpty && completion.symbols.forall: sym =>
-      universalOwners.contains(sym.owner) || universalMethods.contains(sym)
+    def isUniversal(completion: Completion): Boolean =
+      completion.symbols.nonEmpty && completion.symbols.forall: sym =>
+        universalOwners.contains(sym.owner) || universalMethods.contains(sym)
+    completions.filterNot(isUniversal)
 
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
@@ -840,8 +840,7 @@ class ReplDriver(settings: Array[String],
       val expr = rawExpr.stripTrailing()
       val (offset, comps) = completionsWithOffset(expr.length, expr, state, includeUniversal = false)
       val lines = comps.map(c => s"[completions] ${expr.take(offset)}${c.label}").distinct.sorted
-      // Editors (e.g. emacs-sbt-mode) collect the output of a single command, so the
-      // candidates are echoed in one go rather than one `println` per candidate.
+      // A single `println`, so editors capturing one command's output get it in one chunk.
       if lines.nonEmpty then out.println(lines.mkString("\n"))
       state
 

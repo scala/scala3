@@ -143,6 +143,23 @@ class CompletionsCommandTests extends ReplTest, SessionFileHelpers:
     assertEquals(List("[completions] :completions"), completionLines())
   }
 
+  @Test def printsNothingWithoutInput = initially {
+    run(":completions")
+    assertEquals("", storedOutput())
+    run(":completions   ")
+    assertEquals("", storedOutput())
+  }
+
+  // Only command names are completed after `:`, not command arguments; same as TAB.
+  @Test def doesNotCompleteCommandArguments =
+    initially {
+      run(defineO)
+    } andThen {
+      storedOutput() // discard output
+      run(":completions :type O.x")
+      assertEquals("", storedOutput())
+    }
+
   @Test def doesNotChangeState = initially {
     val state = run(":completions List(1).ma")
     storedOutput() // discard output
