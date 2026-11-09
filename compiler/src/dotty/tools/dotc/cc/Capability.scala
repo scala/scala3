@@ -218,7 +218,7 @@ object Capabilities:
     /** A map from context owners to skolem TermRefs that were created by ensurePath
      *  TypeMap's mapCapability.
      */
-    var skolems: immutable.Map[Symbol, TermRef] = immutable.HashMap.empty
+    var skolems: immutable.Map[Symbol, TermRef] = immutable.Map.empty
 
     //assert(rootId != 4, i"any $prefix, $origin, ${ctx.owner}")
 
@@ -1106,8 +1106,8 @@ object Capabilities:
    *  is equal to AnyClass.
    */
   def greatestClassifier(cls1: ClassSymbol, cls2: ClassSymbol)(using Context): ClassSymbol =
-    if cls1.isSubClass(cls2) then cls1
-    else if cls2.isSubClass(cls1) then cls2
+    if cls1.isSubClass(cls2) then cls2
+    else if cls2.isSubClass(cls1) then cls1
     else
       cls1.classDenot.baseClasses
         .find: bc1 =>

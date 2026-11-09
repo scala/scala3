@@ -41,7 +41,7 @@ class SpecializeInlineTraits extends MiniPhase {
 
   private def inlineTraitCtx(using Context): Context = ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.InlineTraits))    
 
-  private val seen = mutable.HashSet.empty[Symbol] // Ensure we don't inline into the same child class multiple times even though we repeatedly check for nested inlines.
+  private val seen = mutable.Set.empty[Symbol] // Ensure we don't inline into the same child class multiple times even though we repeatedly check for nested inlines.
 
   private def inlineInlineTraitsIfNew(tree: Tree)(using Context) = 
     if !seen.contains(tree.symbol) then

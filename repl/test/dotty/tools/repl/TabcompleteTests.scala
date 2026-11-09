@@ -89,7 +89,7 @@ class TabcompleteTests extends ReplTest {
   @Test def tabClosureComplete = initially {
     assertEquals(List("map", "mapConserve"), tabComplete("Nil.map"))
     assertEquals(List("map", "mapConserve"), tabComplete("(x: Int => Int) => Nil.map"))
-    assertEquals(List("apply"), tabComplete("(x: Int => Int) => x.ap"))
+    assertEquals(List("apply", "applyUsing"), tabComplete("(x: Int => Int) => x.ap"))
   }
 
   @Test def importScala = initially {
@@ -207,6 +207,7 @@ class TabcompleteTests extends ReplTest {
   @Test def commands = initially {
     assertEquals(
       List(
+        ":completions",
         ":dep",
         ":doc",
         ":exit",

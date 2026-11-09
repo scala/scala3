@@ -67,7 +67,7 @@ class Namer { typer: Typer =>
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
    */
-  //lazy val expandedTree = new mutable.HashMap[DefTree, Tree]
+  //lazy val expandedTree = mutable.Map.empty[DefTree, Tree]
   /*{
     override def default(tree: DefTree) = tree // can't have defaults on HashMaps :-(
   }*/
@@ -77,12 +77,12 @@ class Namer { typer: Typer =>
    *  with the same symbol is created (this can be when the symbol is completed
    *  or at the latest when the tree is typechecked.
    */
-  //lazy val symOfTree = new mutable.HashMap[Tree, Symbol]
+  //lazy val symOfTree = mutable.Map.empty[Tree, Symbol]
 
   /** A map from expanded trees to their typed versions.
    *  Populated when trees are typechecked during completion (using method typedAhead).
    */
-  // lazy val typedTree = new mutable.HashMap[Tree, tpd.Tree]
+  // lazy val typedTree = mutable.Map.empty[Tree, tpd.Tree]
 
   /** A map from method symbols to nested typers.
    *  Populated when methods are completed. Emptied when they are typechecked.
@@ -90,7 +90,7 @@ class Namer { typer: Typer =>
    *  one, so that trees that are shared between different DefDefs can be independently
    *  used as indices. It also contains a scope that contains nested parameters.
    */
-  lazy val nestedTyper: mutable.HashMap[Symbol, Typer] = new mutable.HashMap
+  lazy val nestedTyper: mutable.Map[Symbol, Typer] = mutable.Map.empty
 
   /** We are entering symbols coming from a SourceLoader */
   private var lateCompile = false
@@ -1487,7 +1487,7 @@ class Namer { typer: Typer =>
           .foreach(addForwarder(name, _, span)) // ignore if any are not added
 
       def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
-        val nonContextual = mutable.HashSet(seen*)
+        val nonContextual = mutable.Set(seen*)
         val fromCaseClass = pathType.widen.classSymbols.exists(_.is(Case))
         def isCaseClassSynthesized(mbr: Symbol) =
           fromCaseClass && defn.caseClassSynthesized.contains(mbr)

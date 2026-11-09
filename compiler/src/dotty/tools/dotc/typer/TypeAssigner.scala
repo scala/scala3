@@ -349,7 +349,7 @@ trait TypeAssigner {
             val paramBoundsByName = paramNames.zip(pt.paramInfos).toMap
 
             // Type arguments which are specified by name (immutable after this first loop)
-            val namedArgMap = new mutable.HashMap[Name, Type]
+            val namedArgMap = mutable.Map.empty[Name, Type]
             for (case NamedArg(name, arg) <- args)
               if (namedArgMap.contains(name))
                 report.error(DuplicateNamedTypeParameter(name), arg.srcPos)

@@ -237,7 +237,9 @@ object EtaExpansion extends LiftImpure {
    *
    *  In each case, the result is an untyped tree, with `es` and `expr` as typed splices.
    *
+   *    ```
    *    F[V](x) ==> (x => F[X])
+   *    ```
    *
    *  Note: We allow eta expanding a method with a call by name parameter like
    *

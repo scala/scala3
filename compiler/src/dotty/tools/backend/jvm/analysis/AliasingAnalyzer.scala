@@ -357,7 +357,7 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
     super.init(src) // very quick (just an arraycopy)
     System.arraycopy(src.asInstanceOf[AliasingFrame[?]].aliases, 0, aliases, 0, aliases.length) // also quick
 
-    val newSets = mutable.HashMap.empty[AliasSet, AliasSet]
+    val newSets = mutable.Map.empty[AliasSet, AliasSet]
 
     // the rest of this method (cloning alias sets) is the second performance˙hotspot (next to
     // AliasingFrame.merge). for nullness, it takes ~20% of the analysis time.

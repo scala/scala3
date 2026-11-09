@@ -3,7 +3,7 @@ package dotc
 package config
 
 import io.*
-import classpath.{AggregateClassPath, ClassPath}
+import classpath.ClassPath
 import core.*
 import Symbols.*, Types.*, Contexts.*, StdNames.*
 import Flags.*
@@ -65,20 +65,12 @@ class JavaPlatform(precomputedSourcePackages: Option[LogicalPackage] = None) ext
       val constructor = d.symbol
       !constructor.is(Private) && !constructor.info.takesParams
 
-  def addToClassPath(cPath: ClassPath)(using Context): Unit = classPath match {
-    case AggregateClassPath(entries) =>
-      currentClassPath = Some(AggregateClassPath(entries :+ cPath))
-    case cp: ClassPath =>
-      currentClassPath = Some(AggregateClassPath(cp :: cPath :: Nil))
-  }
+  def addToClassPath(cPath: ClassPath)(using Context): Unit =
+    currentClassPath = Some(ClassPath.add(classPath, cPath))
 
   /** Update classpath with a substituted subentry */
-  def updateClassPath(subst: Map[ClassPath, ClassPath]): Unit = currentClassPath.get match {
-    case AggregateClassPath(entries) =>
-      currentClassPath = Some(AggregateClassPath(entries map (e => subst.getOrElse(e, e))))
-    case cp: ClassPath =>
-      currentClassPath = Some(subst.getOrElse(cp, cp))
-  }
+  def updateClassPath(subst: Map[ClassPath, ClassPath]): Unit =
+    currentClassPath = Some(ClassPath.replace(currentClassPath.get, subst))
 
   def rootLoader(root: TermSymbol)(using Context): SymbolLoader = new SymbolLoaders.PackageLoader(root, classPath)
 

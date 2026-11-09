@@ -66,7 +66,7 @@ class TreeUnpickler(reader: TastyReader,
   import tpd.*
 
   /** A map from addresses of definition entries to the symbols they define */
-  private val symAtAddr  = new mutable.HashMap[Addr, Symbol]
+  private val symAtAddr  = mutable.Map.empty[Addr, Symbol]
 
   private def addrOfSymbol(sym: Symbol): Option[Addr] = symAtAddr.iterator.collectFirst {
     case (addr, s) if s == sym => addr
@@ -81,13 +81,13 @@ class TreeUnpickler(reader: TastyReader,
    *  Used to remember trees of symbols that are created by a completion. Emptied
    *  once the tree is inlined into a larger tree.
    */
-  private val treeAtAddr = new mutable.HashMap[Addr, Tree]
+  private val treeAtAddr = mutable.Map.empty[Addr, Tree]
 
   /** A map from addresses of type entries to the types they define.
    *  Currently only populated for types that might be recursively referenced
    *  from within themselves (i.e. RecTypes, LambdaTypes).
    */
-  private val typeAtAddr = new mutable.HashMap[Addr, Type]
+  private val typeAtAddr = mutable.Map.empty[Addr, Type]
 
   /** If this is a pickled quote, the owner of the quote, otherwise NoSymbol. */
   private var rootOwner: Symbol = NoSymbol
@@ -1508,7 +1508,7 @@ class TreeUnpickler(reader: TastyReader,
                 extendOnly(namedArgs)
               else
                 // needs reordering, and possibly fill in holes for default arguments
-                val argsByName = mutable.HashMap.from(namedArgs.map(arg => arg.name -> arg))
+                val argsByName = mutable.Map.from(namedArgs.map(arg => arg.name -> arg))
                 val reconstructedArgs = formalNames.lazyZip(methType.paramInfos).map { (name, tpe) =>
                   argsByName.remove(name).getOrElse(makeDefault(name, tpe))
                 }

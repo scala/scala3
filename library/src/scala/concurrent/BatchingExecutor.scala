@@ -16,7 +16,7 @@ import scala.language.`2.13`
 import java.util.concurrent.Executor
 import java.util.Objects
 import scala.util.control.NonFatal
-import scala.annotation.{switch, tailrec}
+import scala.annotation.{nowarn, switch, tailrec}
 
 /** Marker trait to indicate that a Runnable is Batchable by BatchingExecutors */
 trait Batchable {
@@ -167,12 +167,13 @@ private[concurrent] trait BatchingExecutor extends Executor {
     }
 
     /* LOGIC FOR ASYNCHRONOUS BATCHES */
+    @nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
     override final def apply(prevBlockContext: BlockContext): Throwable | Null = try {
       parentBlockContext = prevBlockContext
       runN(BatchingExecutorStatics.runLimit)
       null
     } catch {
-      case NonFatal(t) => t // We are handling exceptions on the outside of this method
+      case t: Throwable => t // We are handling exceptions on the outside of this method
     } finally {
       parentBlockContext = BatchingExecutorStatics.MissingParentBlockContext
       _tasksLocal.remove()
@@ -183,13 +184,16 @@ private[concurrent] trait BatchingExecutor extends Executor {
      * Only attempt to resubmit when there are `Runnables` left to process.
      * Note that `cause` can be `null`.
      */
+    @nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
     private final def resubmit(cause: Throwable | Null): Throwable | Null =
       if (this.size > 0) {
         try { submitForExecution(this); cause } catch {
-          case NonFatal(inner) =>
-            val e = new ExecutionException("Non-fatal error occurred and resubmission failed, see suppressed exception.", cause)
-            e.addSuppressed(inner)
-            e
+          case inner: Throwable =>
+            if (NonFatal(inner)) {
+              val e = new ExecutionException("Non-fatal error occurred and resubmission failed, see suppressed exception.", cause)
+              e.addSuppressed(inner)
+              e
+            } else inner
         }
       } else cause // TODO: consider if NonFatals should simply be `reportFailure`:ed rather than rethrown
 

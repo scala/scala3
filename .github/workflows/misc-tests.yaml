@@ -23,7 +23,7 @@ jobs:
           - jdk: 17
             command: scala3-bootstrapped/scripted
           - jdk: 25
-            command: scala3-bootstrapped/scripted sbt-bridge/main-discovery sbt-bridge/main-discovery-scalajs
+            command: scala3-bootstrapped/scripted sbt-bridge/main-discovery sbt-bridge/main-discovery-scalajs java-compat/i27460
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,10 +31,10 @@ jobs:
       - name: Set up JDK ${{ matrix.jdk }}
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
-          distribution: 'temurin'
+          distribution: 'zulu'
           java-version: ${{ matrix.jdk }}
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Run SBT scripted tests
         run: ./project/scripts/sbt "${{ matrix.command }}"
 
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: coursier/cache-action@057d08c2f9a2c4e7a4d33df3aae657b7db88b8cc # v8.2.0
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
       - uses: VirtusLab/scala-cli-setup@3f5bf11a33bb88343238780c18257c8fa43789e1 # v1.18.0
         with:
           jvm: temurin:17

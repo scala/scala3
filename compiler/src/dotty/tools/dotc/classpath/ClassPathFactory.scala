@@ -17,24 +17,22 @@ import java.util.jar.{Attributes, JarInputStream}
  * Provides factory methods for classpath. When creating classpath instances for a given path,
  * it uses proper type of classpath depending on a types of particular files containing sources or classes.
  */
-class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None) {
+object ClassPathFactory {
 
   /**
    * Creators for sub classpaths which preserve this context.
    */
-  def sourcesInPath(path: String)(using Context): List[ClassPath] =
+  def sourcesInPath(path: String, precomputedSourcePackages: Option[LogicalPackage])(using Context): List[ClassPath] =
     precomputedSourcePackages match {
       // We also accept files in case of YlogicalPackageLoading
       case Some(rootPackage) if ctx.settings.YlogicalPackageLoading.value =>
         List(new LogicalSourcePath(path, rootPackage))
       case _ =>
         for
-          file <- expandPath(path, expandStar = false)
+          file <- ClassPath.expandPath(path, expandStar = false)
           dir <- Option(AbstractFile.getDirectory(file, ctx.settings.javaOutputVersion.value))
-        yield ClassPathFactory.newSourcePath(dir)
+        yield newSourcePath(dir)
     }
-
-  def expandPath(path: String, expandStar: Boolean = true): List[String] = ClassPath.expandPath(path, expandStar)
 
   /** Expand dir out to contents, a la extdir */
   private def expandDir(extdir: String)(using Context): List[String] =
@@ -44,28 +42,18 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
 
   def contentsOfDirsInPath(path: String)(using Context): List[ClassPath] =
     for {
-      dir <- expandPath(path, expandStar = false)
+      dir <- ClassPath.expandPath(path, expandStar = false)
       name <- expandDir(dir)
       entry <- Option(AbstractFile.getDirectory(name, ctx.settings.javaOutputVersion.value))
     }
-    yield ClassPathFactory.newClassPath(entry)
+    yield newClassPath(entry)
 
-  def classesInExpandedPath(path: String)(using Context): IndexedSeq[ClassPath] =
-    classesInPathImpl(path, expand = true).toIndexedSeq
-
-  def classesInPath(path: String)(using Context): List[ClassPath] = classesInPathImpl(path, expand = false)
-
-  private def classesInPathImpl(path: String, expand: Boolean)(using Context): List[ClassPath] =
-    val files: List[AbstractFile] = for {
-      file <- expandPath(path, expand)
-      dir <- {
-        def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file).nn) else None
-
-        Option(AbstractFile.getDirectory(file, ctx.settings.javaOutputVersion.value)).orElse(asImage)
-      }
-    }
-    yield dir
-
+  def classesInPath(path: String, expandStar: Boolean)(using Context): List[ClassPath] =
+    val files: List[AbstractFile] =
+      for
+        file <- ClassPath.expandPath(path, expandStar)
+        dir <- Option(AbstractFile.getDirectory(file, ctx.settings.javaOutputVersion.value))
+      yield dir
     val expanded =
       if scala.util.Properties.propOrFalse("scala.expandjavacp") then
         for
@@ -73,13 +61,10 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
           a <- expandManifestPath(file.path)
           if a.exists
         yield
-          ClassPathFactory.newClassPath(new PlainFile(a))
+          newClassPath(new PlainFile(a))
       else
         Seq.empty
-
-    files.map(ClassPathFactory.newClassPath) ++ expanded
-
-  end classesInPathImpl
+    files.map(newClassPath) ++ expanded
 
 
   /** Expand manifest jar classpath entries: these are either urls, or paths
@@ -117,9 +102,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
           case cp: String if cp.trim().nonEmpty =>
             cp.split("\\s+").toList.flatMap(elem => resolve(elem, baseDir))
           case _ => Nil
-}
 
-object ClassPathFactory {
   def newClassPath(file: AbstractFile)(using Context): ClassPath = file match {
     case vd: VirtualDirectory => VirtualDirectoryClassPath(vd)
     case _ =>

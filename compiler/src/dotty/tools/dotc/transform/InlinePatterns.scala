@@ -12,7 +12,9 @@ import scala.collection.mutable.ListBuffer
 
 /** Rewrite an application
  *
+ *    ```
  *    {new { def unapply[T1, ..., Tm](x0: X0)(x1: X1,..., xn: Xn) = b }}.unapply[S1, ..., Sm](y0)(y1, ..., yn)
+ *    ```
  *
  *  where
  *

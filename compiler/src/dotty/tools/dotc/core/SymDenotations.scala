@@ -1864,7 +1864,7 @@ object SymDenotations {
       @tailrec
       def findLvlN(
         explore: mutable.ArrayDeque[Symbol],
-        seen: util.HashSet[Symbol],
+        seen: mutable.Set[Symbol],
         acc: mutable.ListBuffer[Symbol]
       ): List[Symbol] =
         if explore.isEmpty then
@@ -1886,7 +1886,7 @@ object SymDenotations {
        */
       @tailrec
       def findLvl2(
-        lvl1: List[Symbol], explore: List[Symbol], seenOrNull: util.HashSet[Symbol] | Null
+        lvl1: List[Symbol], explore: List[Symbol], seenOrNull: mutable.Set[Symbol] | Null
       ): List[Symbol] = explore match
         case sym :: explore1 =>
           val lvl2 = sym.children
@@ -1895,7 +1895,7 @@ object SymDenotations {
           else // check if we have seen the children before
             val seen = // initialise the seen set if not already
               if seenOrNull != null then seenOrNull
-              else util.HashSet.from(lvl1)
+              else mutable.Set.from(lvl1)
             val notSeen = lvl2.filterConserve(!seen.contains(_))
             if notSeen.isEmpty then // we found children, but we had already seen them, scan the rest of explore1
               findLvl2(lvl1, explore1, seen)

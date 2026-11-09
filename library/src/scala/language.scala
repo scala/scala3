@@ -272,7 +272,7 @@ object language {
 
     /** Experimental support for specialized traits
      * 
-     * @see [[docs/_docs/internals/specialized-traits.md]]
+     * @see [[https://nightly.scala-lang.org/docs/reference/experimental/specialized-traits]]
      */
     @compileTimeOnly("`specializedTraits` can only be used at compile time in import statements")
     object specializedTraits
@@ -284,6 +284,13 @@ object language {
     @compileTimeOnly("`strictEqualityPatternMatching` can only be used at compile time in import statements")
     @deprecated("`strictEqualityPatternMatching` is now standard, no language import is needed", since = "3.10")
     object strictEqualityPatternMatching
+
+    /** Experimental support for relaxed null checks under strictEquality (SIP-79)
+     *
+     *  @see [[https://docs.scala-lang.org/scala3/reference/experimental/relaxed-null-checks.html]]
+     */
+    @compileTimeOnly("`relaxedNullChecks` can only be used at compile time in import statements")
+    object relaxedNullChecks
 
     /** Experimental support for using indentation for arguments
      */

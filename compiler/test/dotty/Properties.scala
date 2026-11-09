@@ -13,9 +13,10 @@ object Properties {
   /** Are we running on the CI? */
   val isRunByCI: Boolean = sys.env.isDefinedAt("CI")
 
-  /** Filter out tests not matching the regex supplied by "dotty.tests.filter"
-   *  define
-   */
+  /** Whether this is a "quick" run, i.e., slow tests are not run */
+  val isQuick: Boolean = propIsTrue("dotty.tests.quick")
+
+  /** Filter out tests not matching the regex supplied by "dotty.tests.filter" define */
   val testsFilter: List[String] = sys.props.get("dotty.tests.filter").fold(Nil)(_.split(',').toList)
 
   /** Run only failed tests */

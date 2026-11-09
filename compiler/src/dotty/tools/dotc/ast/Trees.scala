@@ -954,7 +954,7 @@ object Trees {
     def rhs(using Context): Tree[T] = { forceFields(); preRhs.asInstanceOf[Tree[T]] }
   }
 
-  /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
+  /** `mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs` */
   case class DefDef[+T <: Untyped] private[ast] (name: TermName,
       paramss: List[ParamClause[T]], tpt: Tree[T], private var preRhs: LazyTree[T])(implicit @constructorOnly src: SourceFile)
     extends ValOrDefDef[T] {

@@ -64,7 +64,7 @@ sealed abstract class CaptureSet extends Showable:
    *  CapturingType is formed. This is different from the setter `mutability_=`
    *  in that it can be defined with different behaviors:
    *
-   *   - set mutability to Writer (for normal Vars)
+   *   - set mutability to Writer unless it is already known (for normal Vars)
    *   - take mutability from the set's sources (for DerivedVars)
    *   - compute mutability on demand based on mutability of elements (for Consts)
    */
@@ -830,7 +830,7 @@ object CaptureSet:
     val deps: Deps = new MutableIdentitySet[CaptureSet]
 
     def associateWithStateful()(using Context): CaptureSet =
-      mutability = Writer
+      if mutability == Ignored then mutability = Writer
       this
 
     def isConst(using Context) = solved >= ccState.iterationId
@@ -1076,7 +1076,11 @@ object CaptureSet:
       def descr = getClass.getSimpleName.nn.take(1)
       val trail = this.match
         case dv: DerivedVar =>
-          def summary = if ctx.settings.YccVerbose.value then dv.summarize else descr
+          // A summary can show types with further variables; don't summarize those again
+          def summary =
+            if ctx.settings.YccVerbose.value && ctx.property(InSummary).isEmpty
+            then dv.summarize(using ctx.withProperty(InSummary, Some(())))
+            else descr
           s"$summary${dv.source.ids}"
         case _ => descr
       s"$id$trail"
@@ -1883,6 +1887,9 @@ object CaptureSet:
     ctx.property(AssumedContains).getOrElse(immutable.Map.empty)
 
   private val ShownVars: Property.Key[mutable.Set[Var]] = Property.Key()
+
+  /** Set while printing the summary of a derived variable's map */
+  private val InSummary: Property.Key[Unit] = Property.Key()
 
   /** Perform `op`. Under -Ycc-debug, collect and print info about all variables reachable
    *  via `(_.deps)*` from the variables that were shown in `op`.

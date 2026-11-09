@@ -357,7 +357,6 @@ function updatePath(elem, hide, first = true) {
   }
   updatePath(elem.parentElement, hide, false);
 }
-let updateMenu = null;
 function getRawLoc() {
   return document.documentElement.getAttribute("data-rawLocation")?.split("/")?.filter(c => c !== "");
 }
@@ -382,15 +381,18 @@ function render(el, { cls = null, id = null, href = null, loc = null } = {}, chl
 }
 function renderDynamicSideMenu() {
   const pathToRoot = document.documentElement.getAttribute("data-pathToRoot")
-  const path = pathToRoot + "dynamicSideMenu.json";
+  const path = pathToRoot + "scripts/dynamicSideMenu.js";
   const rawLocation = getRawLoc();
-  const baseUrl = window.location.pathname.split("/").slice(0,
-    -1 - pathToRoot.split("/").filter(c => c != "").length
-  );
+  // Relative, like the links of the statically rendered menu, so that they work wherever
+  // the docs are hosted (e.g. under `/api/3.x/`) and when browsed from `file://` URLs.
   function linkTo(loc) {
-    return `${baseUrl}/${loc.join("/")}.html`;
+    return `${pathToRoot}${loc.join("/")}.html`;
   }
-  fetch(path).then(r => r.json()).then(menu => {
+  // Loaded as a script rather than with `fetch`, which browsers refuse for `file://` URLs.
+  const script = document.createElement("script");
+  script.src = path;
+  script.onload = () => {
+    const menu = dynamicSideMenuData;
     function renderNested(item, nestLevel, prefix, isApi) {
       const name = item.name;
       const newName =
@@ -433,30 +435,22 @@ function renderDynamicSideMenu() {
       menu.api.children.map(item => renderNested(item, 0, "", true))
     );
 
-    document.getElementById("leftColumn").appendChild(d);
-    d1 && document.getElementById("leftColumn").appendChild(d1);
-    d2 && document.getElementById("leftColumn").appendChild(d2);
-    updateMenu = (oldLoc, newLoc) => {
-      if (oldLoc) {
-        const elem = document.querySelector(`[data-loc="${oldLoc.join("/")}"]`);
-        if (elem) updatePath(elem, true);
-      }
-      if (d1 && d2) {
-        if (newLoc[0] && newLoc[0] == menu.api.location[0]) {
-          d1.hidden = true;
-          d2.hidden = false;
-        } else {
-          d1.hidden = false;
-          d2.hidden = true;
-        }
-      }
-      const elem = document.querySelector(`[data-loc="${newLoc.join("/")}"]`);
-      if (elem) updatePath(elem, false)
-    }
-    updateMenu(null, rawLocation);
+    const find = (nav, loc) => nav?.querySelector(`[data-loc="${CSS.escape(loc.join("/"))}"]`);
+    // Like the statically rendered menu, include only one tree: the API tree iff the page
+    // is part of it. `attachAllListeners` expects that, e.g. to restore the scroll position.
+    const apiElem = find(d2, rawLocation);
+    const isApiRoot = !!menu.api && menu.api.location.join("/") === rawLocation.join("/");
+    const apiActive = !!d2 && (!!apiElem || isApiRoot || !d1);
+    const activeNav = apiActive ? d2 : d1;
+    document.getElementById("leftColumn").append(d, ...(activeNav ? [activeNav] : []));
+    document.getElementById("docs-nav-button")?.classList.toggle("selected", !apiActive);
+    document.getElementById("api-nav-button")?.classList.toggle("selected", apiActive);
+    const elem = apiElem ?? find(activeNav, rawLocation);
+    if (elem) updatePath(elem, false);
 
     window.dispatchEvent(new Event(DYNAMIC_PAGE_LOAD));
-  })
+  };
+  document.head.appendChild(script);
 }
 
 window.addEventListener("DOMContentLoaded", () => {

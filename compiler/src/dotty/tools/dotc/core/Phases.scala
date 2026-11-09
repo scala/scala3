@@ -22,6 +22,23 @@ import scala.compiletime.uninitialized
 
 object Phases {
 
+  /** A linked denotation transformer, as `SingleDenotation.current` sees it. Periods are of `NoRunId`.
+   *
+   *  @param transformerPeriod the phases of the transformer's phase: the context's period while it transforms
+   *  @param resultPeriod      the validity of a new version that the transformer returns
+   *  @param isIdentity        the transformer is an `IdentityDenotTransformer`: transforming returns the argument
+   *  @param lastPhaseId       `transformer.lastPhaseId`
+   *  @param nextNonIdentity   the first linked transformer at or after this one that is not an identity
+   *                           (`phases.length` if none)
+   */
+  final class DenotTransformerInfo(
+    val transformer: DenotTransformer,
+    val transformerPeriod: Period,
+    val resultPeriod: Period,
+    val isIdentity: Boolean,
+    val lastPhaseId: PhaseId,
+    val nextNonIdentity: PhaseId)
+
   inline def phaseOf(id: PhaseId)(using Context): Phase =
     ctx.base.phases(id)
 
@@ -147,7 +164,6 @@ object Phases {
       setSpecificPhases()
       var phasesAfter: Set[String] = Set.empty
       nextDenotTransformerId = new Array[Int](phases.length)
-      denotTransformers = new Array[DenotTransformer](phases.length)
 
       var phaseId: PhaseId = 0
       def nextPhaseId = {
@@ -199,13 +215,13 @@ object Phases {
         i -= 1
         val phase = phases(i)
         phase match {
-          case transformer: DenotTransformer =>
-            lastTransformerId = i
-            denotTransformers(i) = transformer
+          case _: DenotTransformer => lastTransformerId = i
           case _ =>
         }
         nextDenotTransformerId(i) = lastTransformerId
       }
+
+      computeDenotTransformers()(using runCtx)
 
       if (fuse)
         this.fusedPhases = (NoPhase :: phasess).toArray
@@ -226,6 +242,24 @@ object Phases {
       for i <- 0 until nextDenotTransformerId.length do
         if nextDenotTransformerId(i) == phase.id then
           nextDenotTransformerId(i) = nextDenotTransformerId(phase.id + 1)
+      computeDenotTransformers() // lastPhaseId depends on nextDenotTransformerId
+
+    /** Recompute `denotTransformers` from the current plan */
+    private def computeDenotTransformers()(using Context): Unit =
+      denotTransformers = new Array[DenotTransformerInfo](phases.length)
+      var nextNonIdentity = phases.length
+      var id = phases.length - 1
+      while id >= 0 do
+        phases(id) match
+          case transformer: DenotTransformer if nextDenotTransformerId(id) == id => // linked
+            val isIdentity = transformer.isInstanceOf[IdentityDenotTransformer]
+            if !isIdentity then nextNonIdentity = id
+            denotTransformers(id) = DenotTransformerInfo(transformer,
+              transformerPeriod = Period(NoRunId, transformer.start, transformer.end),
+              resultPeriod = Period(NoRunId, id + 1, transformer.lastPhaseId),
+              isIdentity, transformer.lastPhaseId, nextNonIdentity)
+          case _ =>
+        id -= 1
 
     private var myParserPhase: Phase = uninitialized
     private var myTyperPhase: Phase = uninitialized

@@ -42,8 +42,8 @@ class TreeChecker extends Phase with SymTransformer {
   import ast.tpd.*
   import TreeChecker.*
 
-  private val seenClasses = collection.mutable.HashMap.empty[String, Symbol]
-  private val seenModuleVals = collection.mutable.HashMap.empty[String, Symbol]
+  private val seenClasses = collection.mutable.Map.empty[String, Symbol]
+  private val seenModuleVals = collection.mutable.Map.empty[String, Symbol]
 
   val NoSuperClassFlags: FlagSet = Trait | Package
 
@@ -278,8 +278,8 @@ object TreeChecker {
   class Checker(phasesToCheck: Seq[Phase]) extends ReTyper {
     import ast.tpd.*
 
-    protected val nowDefinedSyms = util.HashSet[Symbol]()
-    private val patBoundSyms = util.HashSet[Symbol]()
+    protected val nowDefinedSyms = mutable.Set.empty[Symbol]
+    private val patBoundSyms = mutable.Set.empty[Symbol]
     private val everDefinedSyms = MutableSymbolMap[untpd.Tree]()
 
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform

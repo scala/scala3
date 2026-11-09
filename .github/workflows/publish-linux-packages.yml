@@ -1,0 +1,356 @@
+###################################################################################################
+###              THIS IS A WORKFLOW TO PUBLISH THE APT AND YUM REPOSITORIES                     ###
+### HOW TO USE:                                                                                 ###
+###   - RUN IT MANUALLY FROM THE ACTIONS TAB, OR CALL IT FROM ANOTHER WORKFLOW                  ###
+###   - IT UPLOADS THE .deb AND .rpm OF `version` TO THE HOST SERVING repo.scala-lang.org       ###
+###   - THE TARGET DIRECTORY AND ITS `rpm/` AND `debian/` SUBDIRECTORIES MUST ALREADY EXIST,    ###
+###     AS MUST KEY.gpg AND THE scala3.repo/scala3.list SNIPPETS. CREATE THEM ONCE BY HAND      ###
+###   - A VERSION ALREADY PRESENT IN A PUBLISHED INDEX IS LEFT ALONE: PUBLISHED PACKAGES ARE    ###
+###     NEVER REWRITTEN, SO RERUNNING AFTER A FAILURE IS SAFE                                   ###
+###################################################################################################
+
+name: Publish the APT and YUM repositories
+run-name: Publish Scala ${{ inputs.version }} to the APT and YUM repositories
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The Scala version to publish, i.e. the release tag'
+        required: true
+        type: string
+      bootstrap:
+        description: 'Allow creating an index that does not exist yet. Existing indexes are always merged into, never discarded.'
+        required: false
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      version:
+        description: 'The Scala version to publish, i.e. the release tag'
+        required: true
+        type: string
+      bootstrap:
+        description: 'Allow creating an index that does not exist yet. Existing indexes are always merged into, never discarded.'
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      SCALA_PGP_KEY:
+        required: true
+      SCALA_PGP_PASSPHRASE:
+        required: true
+      SYNCPKGS_KEY:
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: publish-linux-packages-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      VERSION     : ${{ inputs.version }}
+      BOOTSTRAP   : ${{ inputs.bootstrap }}
+      DEB         : scala3-${{ inputs.version }}-x86_64-pc-linux.deb
+      RPM         : scala3-${{ inputs.version }}-x86_64-pc-linux.rpm
+      BASE_URL    : ${{ vars.PACKAGES_BASE_URL }}
+      FINGERPRINT : ${{ vars.SCALA_PGP_FINGERPRINT }}
+      REMOTE      : ${{ vars.PACKAGES_USER }}@${{ vars.PACKAGES_HOST }}
+      REMOTE_USER : ${{ vars.PACKAGES_USER }}
+      REMOTE_HOST : ${{ vars.PACKAGES_HOST }}
+      REMOTE_PORT : ${{ vars.PACKAGES_PORT }}
+      REMOTE_DIR  : ${{ vars.PACKAGES_PATH }}
+      KNOWN_HOSTS : ${{ vars.PACKAGES_KNOWN_HOSTS }}
+      RSH         : ssh -p ${{ vars.PACKAGES_PORT }} -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -i ${{ github.workspace }}/.ssh-key -o UserKnownHostsFile=${{ github.workspace }}/.ssh-known-hosts
+      GPG_TTY     : /dev/null
+    steps:
+      - name: Check the configuration
+        shell: bash
+        env:
+          PGP_KEY       : ${{ secrets.SCALA_PGP_KEY }}
+          PGP_PASSPHRASE: ${{ secrets.SCALA_PGP_PASSPHRASE }}
+          SSH_KEY       : ${{ secrets.SYNCPKGS_KEY }}
+        run: |
+          for v in VERSION BASE_URL FINGERPRINT REMOTE_DIR REMOTE_USER REMOTE_HOST REMOTE_PORT \
+                   KNOWN_HOSTS PGP_KEY PGP_PASSPHRASE SSH_KEY; do
+            [ -n "${!v}" ] || { echo "$v is empty, check the PACKAGES_* variables and the secrets" >&2; exit 1; }
+          done
+          case "$BASE_URL" in */) echo "PACKAGES_BASE_URL must not end with a slash" >&2; exit 1 ;; esac
+          case "$VERSION" in
+            *[!0-9A-Za-z.+~-]*|-*|'') echo "VERSION is not a plain release tag: $VERSION" >&2; exit 1 ;;
+          esac
+
+      - name: Start from a clean workspace
+        shell: bash
+        run: rm -rf dl apt yum-new yum-old yum-merged published.Packages new.Packages
+             Release.tmp primary.cat merged.cat served.* .ssh-key .ssh-known-hosts
+
+      - name: Download the packages from the GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO : ${{ github.repository }}
+        run: |
+          gh release download "$VERSION" --dir dl --clobber \
+            --pattern "$DEB" --pattern "$RPM" \
+            --pattern "$DEB.sha256" --pattern "$RPM.sha256"
+          ( cd dl && sha256sum -c "$DEB.sha256" "$RPM.sha256" )
+
+      - name: Ensure the repository tooling
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends rpm createrepo-c dpkg-dev apt-utils zstd
+
+      - name: Import the signing key
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.SCALA_PGP_KEY }}
+          passphrase     : ${{ secrets.SCALA_PGP_PASSPHRASE }}
+          fingerprint    : ${{ env.FINGERPRINT }}
+
+      - name: Set up SSH
+        shell: bash
+        env:
+          SSH_KEY: ${{ secrets.SYNCPKGS_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$SSH_KEY"     > "$GITHUB_WORKSPACE/.ssh-key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$GITHUB_WORKSPACE/.ssh-known-hosts"
+
+      - name: Fetch the published indexes
+        shell: bash
+        run: |
+          count() {
+            local out
+            if out=$(rsync --list-only -e "$RSH" "$REMOTE:${REMOTE_DIR:?}/$1" 2>&1); then
+              printf '%s\n' "$out" | grep -c "$2" || true
+            elif printf '%s' "$out" | grep -q 'No such file or directory'; then
+              echo 0
+            else
+              printf '%s\n' "$out" >&2
+              echo "cannot list $1, refusing to continue" >&2
+              return 2
+            fi
+          }
+
+          exists() {
+            local out
+            if out=$(rsync --list-only -e "$RSH" "$REMOTE:${REMOTE_DIR:?}/$1" 2>&1); then
+              return 0
+            elif printf '%s' "$out" | grep -q 'No such file or directory'; then
+              return 1
+            else
+              printf '%s\n' "$out" >&2
+              echo "cannot tell whether $1 is published, refusing to continue" >&2
+              exit 1
+            fi
+          }
+
+          mkdir -p yum-old
+          if exists rpm/repodata/repomd.xml; then
+            rsync -rt -e "$RSH" "$REMOTE:${REMOTE_DIR:?}/rpm/repodata/" yum-old/repodata/
+            missing=
+            for h in $(grep -oE 'href="repodata/[^"]*"' yum-old/repodata/repomd.xml | cut -d'"' -f2); do
+              [ -f "yum-old/$h" ] || missing="$missing $h"
+            done
+            for f in yum-old/repodata/*; do
+              b=$(basename "$f")
+              [ "$b" = repomd.xml ] && continue
+              grep -qF "href=\"repodata/$b\"" yum-old/repodata/repomd.xml || rm -f "$f"
+            done
+            if [ -n "$missing" ]; then
+              echo "YUM: the published repodata is incomplete, repomd.xml references:$missing" >&2
+              echo "Neither this workflow nor mergerepo_c can rebuild those without the packages," >&2
+              echo "which are deliberately never downloaded. Rebuild the index by hand: fetch the" >&2
+              echo "published .rpm files over HTTP, run createrepo_c on them, upload repodata/." >&2
+              exit 1
+            fi
+            echo "YUM_PUBLISHED=true" >> "$GITHUB_ENV"
+            echo "YUM: found a published index"
+          elif [ "$BOOTSTRAP" = "true" ]; then
+            n=$(count rpm/ '\.rpm$') || exit 1
+            [ "$n" -eq 0 ] || { echo "YUM: no index but $n packages are published, refusing to bootstrap" >&2; exit 1; }
+            echo "YUM_PUBLISHED=false" >> "$GITHUB_ENV"
+            echo "YUM: no index yet, bootstrapping"
+          else
+            echo "YUM: no published index and bootstrap is false, refusing to continue." >&2
+            echo "Run with bootstrap=true only if this repository is genuinely empty." >&2
+            exit 1
+          fi
+
+          : > published.Packages
+          if exists debian/Packages; then
+            rsync -t -e "$RSH" "$REMOTE:${REMOTE_DIR:?}/debian/Packages" published.Packages
+          fi
+          if [ -s published.Packages ]; then
+            head -1 published.Packages | grep -q '^Package: ' \
+              || { echo "APT: the published Packages is not an index" >&2; exit 1; }
+            echo "APT: found a published index"
+          elif [ "$BOOTSTRAP" = "true" ]; then
+            n=$(count debian/ '\.deb$') || exit 1
+            [ "$n" -eq 0 ] || { echo "APT: no index but $n packages are published, refusing to bootstrap" >&2; exit 1; }
+            echo "APT: no index yet, bootstrapping"
+          else
+            echo "APT: no published index and bootstrap is false, refusing to continue." >&2
+            echo "Run with bootstrap=true only if this repository is genuinely empty." >&2
+            exit 1
+          fi
+
+      - name: Build the YUM repository
+        shell: bash
+        run: |
+          nvra=$(rpm -qp --qf '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}' "dl/$RPM")
+          echo "NVRA=$nvra" >> "$GITHUB_ENV"
+
+          if [ "$YUM_PUBLISHED" = "true" ]; then
+            href=$(awk 'BEGIN{RS="<"} /^data type="primary">/{f=1; next} f && /^location href="/ {sub(/^location href="/,""); sub(/".*/,""); print; exit}' yum-old/repodata/repomd.xml)
+            [ -n "$href" ] || { echo "YUM: the published repomd.xml references no primary index" >&2; exit 1; }
+            zstdcat -f "yum-old/$href" > primary.cat
+            grep -q '<metadata' primary.cat \
+              || { echo "YUM: the published primary index did not decompress to metadata" >&2; exit 1; }
+            if grep -qF "href=\"$nvra.rpm\"" primary.cat; then
+              echo "YUM_SKIP=true"              >> "$GITHUB_ENV"
+              echo "YUM_INDEX=yum-old/repodata" >> "$GITHUB_ENV"
+              echo "YUM: $nvra is already published, republishing the index only"
+              exit 0
+            fi
+          fi
+          echo "YUM_SKIP=false" >> "$GITHUB_ENV"
+
+          mkdir -p yum-new
+          cp "dl/$RPM" "yum-new/$nvra.rpm"
+          rpmsign --define "__gpg /usr/bin/gpg" --define "_gpg_name $FINGERPRINT" --addsign "yum-new/$nvra.rpm"
+          createrepo_c --quiet --unique-md-filenames yum-new
+
+          if [ "$YUM_PUBLISHED" = "true" ]; then
+            mergerepo_c --all --omit-baseurl --unique-md-filenames --repo=yum-new --repo=yum-old -o yum-merged
+            find yum-merged/repodata -name '*primary.xml*' -exec zstdcat -f {} + > merged.cat
+            before=$(grep -cF '<package type=' primary.cat || true)
+            after=$(grep -cF '<package type=' merged.cat || true)
+            [ "$after" -gt "$before" ] \
+              || { echo "YUM: merged index lists $after packages, the published one listed $before" >&2; exit 1; }
+            echo "YUM_INDEX=yum-merged/repodata" >> "$GITHUB_ENV"
+          else
+            echo "YUM_INDEX=yum-new/repodata" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build the APT repository
+        shell: bash
+        run: |
+          mkdir -p apt
+
+          if grep -qxF "Filename: ./$DEB" published.Packages; then
+            want=$(awk -v f="Filename: ./$DEB" '$0==f{found=1} found&&/^SHA256: /{print $2; exit}' published.Packages)
+            have=$(sha256sum "dl/$DEB" | cut -d' ' -f1)
+            [ "$want" = "$have" ] \
+              || { echo "the release asset for $VERSION differs from the published one." >&2
+                   echo "published sha256 $want, release asset $have." >&2
+                   echo "Publish under a new version, or remove the published payload by hand." >&2
+                   exit 1; }
+            echo "DEB_SKIP=true" >> "$GITHUB_ENV"
+            cp published.Packages apt/Packages
+            echo "APT: $DEB is already published, rebuilding the index only"
+          else
+            echo "DEB_SKIP=false" >> "$GITHUB_ENV"
+            cp "dl/$DEB" apt/
+            ( cd apt && dpkg-scanpackages --multiversion . ) > new.Packages
+            { [ -s published.Packages ] && { sed -e '$a\' published.Packages; printf '\n'; }
+              cat new.Packages; } | cat -s > apt/Packages
+            before=$(grep -c '^Package: ' published.Packages || true)
+            after=$(grep -c '^Package: ' apt/Packages || true)
+            [ "$after" -gt "$before" ] \
+              || { echo "APT: rebuilt index has $after stanzas, published one had $before" >&2; exit 1; }
+          fi
+
+          head -1 apt/Packages | grep -q '^Package: ' \
+            || { echo "APT: built an index that does not start with a stanza" >&2; exit 1; }
+
+          cd apt
+          gzip -k -f Packages
+          apt-ftparchive release . > ../Release.tmp
+          mv ../Release.tmp Release
+          gpg --batch --yes --local-user "$FINGERPRINT" -abs        -o Release.gpg Release
+          gpg --batch --yes --local-user "$FINGERPRINT" --clearsign -o InRelease  Release
+
+      - name: Upload
+        shell: bash
+        run: |
+          opts=(-rtp --chmod=D755,F644 -e "$RSH")
+          dst="$REMOTE:${REMOTE_DIR:?}"
+
+          [ -s "${YUM_INDEX:?}/repomd.xml" ] \
+            || { echo "refusing to publish a repodata directory without repomd.xml" >&2; exit 1; }
+          if [ "${YUM_SKIP:?}" != "true" ]; then
+            rsync "${opts[@]}" "yum-new/${NVRA:?}.rpm" "$dst/rpm/"
+          fi
+          rsync "${opts[@]}" --exclude repomd.xml "${YUM_INDEX:?}/" "$dst/rpm/repodata/"
+          rsync "${opts[@]}" "${YUM_INDEX:?}/repomd.xml"            "$dst/rpm/repodata/"
+          rsync "${opts[@]}" --delete --max-delete=100 "${YUM_INDEX:?}/" "$dst/rpm/repodata/" \
+            || echo "warning: stale repodata was left behind"
+
+          if [ "${DEB_SKIP:?}" != "true" ]; then
+            rsync "${opts[@]}" "apt/$DEB" "$dst/debian/"
+          fi
+          rsync "${opts[@]}" --delay-updates \
+            apt/Packages apt/Packages.gz apt/Release apt/Release.gpg "$dst/debian/"
+          rsync "${opts[@]}" apt/InRelease "$dst/debian/"
+
+          echo "Published scala3 $VERSION to $BASE_URL"
+
+      - name: Verify what is actually served
+        shell: bash
+        run: |
+          fetch() { curl -fsSL  --retry 3 --retry-all-errors -o "$2"      "$BASE_URL/$1"; }
+          probe() { curl -fsSLI --retry 3 --retry-all-errors -o /dev/null "$BASE_URL/$1"; }
+
+          fetch rpm/repodata/repomd.xml served.repomd.xml \
+            || { echo "rpm/repodata/repomd.xml is not served" >&2; exit 1; }
+          for h in $(grep -oE 'href="repodata/[^"]*"' served.repomd.xml | cut -d'"' -f2); do
+            probe "rpm/$h" || { echo "repomd.xml references rpm/$h, which is not served" >&2; exit 1; }
+          done
+          href=$(awk 'BEGIN{RS="<"} /^data type="primary">/{f=1; next} f && /^location href="/ {sub(/^location href="/,""); sub(/".*/,""); print; exit}' served.repomd.xml)
+          [ -n "$href" ] || { echo "the served repomd.xml references no primary index" >&2; exit 1; }
+          fetch "rpm/$href" served.primary.z || { echo "rpm/$href is not served" >&2; exit 1; }
+          zstdcat -f served.primary.z > served.primary.xml
+          grep -qF "href=\"${NVRA:?}.rpm\"" served.primary.xml \
+            || { echo "the served YUM index does not list $NVRA" >&2; exit 1; }
+          probe "rpm/$NVRA.rpm" || { echo "rpm/$NVRA.rpm is not served" >&2; exit 1; }
+
+          for f in Packages Packages.gz InRelease Release Release.gpg; do
+            fetch "debian/$f" "served.$f" || { echo "debian/$f is not served" >&2; exit 1; }
+          done
+          grep -qxF "Filename: ./$DEB" served.Packages \
+            || { echo "the served APT index does not list $DEB" >&2; exit 1; }
+          probe "debian/$DEB" || { echo "debian/$DEB is not served" >&2; exit 1; }
+
+          zstdcat -f served.Packages.gz > served.Packages.ungz
+          cmp -s served.Packages served.Packages.ungz \
+            || { echo "the served Packages.gz does not match Packages" >&2; exit 1; }
+          for f in Packages Packages.gz; do
+            want=$(sha256sum "served.$f" | cut -d' ' -f1)
+            for sig in InRelease Release; do
+              grep -qF "$want" "served.$sig" \
+                || { echo "$sig does not record the sha256 of the served $f" >&2; exit 1; }
+            done
+          done
+          gpg --verify served.Release.gpg served.Release \
+            || { echo "Release.gpg does not sign the served Release" >&2; exit 1; }
+          gpg --verify served.InRelease \
+            || { echo "the served InRelease is not correctly signed" >&2; exit 1; }
+
+          echo "Verified: both indexes list $VERSION, both packages are reachable,"
+          echo "every file repomd.xml references is served, and the APT index matches"
+          echo "the hashes in both of its signatures"
+
+      - name: Remove the credentials from the workspace
+        if: always()
+        shell: bash
+        run: rm -rf "$GITHUB_WORKSPACE/.ssh-key" "$GITHUB_WORKSPACE/.ssh-known-hosts" dl

@@ -440,7 +440,7 @@ object IArray:
       arr.clone.asInstanceOf[Array[T]]
 
   extension [T](arr: IArray[T])
-    def ++[U >: T: ClassTag](suffix: IArray[U]): IArray[U] = genericArrayOps(arr) ++ suffix.toSeq
+    def ++[U >: T: ClassTag](suffix: IArray[U]): IArray[U] = genericArrayOps(arr) ++ suffix
     def ++[U >: T: ClassTag](suffix: IterableOnce[U]): IArray[U] = genericArrayOps(arr) ++ suffix
     def :+ [U >: T: ClassTag](x: U): IArray[U] = genericArrayOps(arr) :+ x
     def :++ [U >: T: ClassTag](suffix: IArray[U]): IArray[U] = genericArrayOps(arr) :++ suffix

@@ -288,8 +288,14 @@ trait ClassLikeSupport:
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
 
     def getNonTrivialInheritedMemberTrees =
+      // order by owner linearization, then source position
+      val baseClasses = c.symbol.typeRef.baseClasses
+      def sourceStart(s: reflect.Symbol): Int = s.pos match
+        case Some(pos) if pos != dotty.tools.dotc.util.NoSourcePosition => pos.start
+        case _ => Int.MaxValue
       c.symbol.getmembers.filterNot(s => s.isHiddenByVisibility || s.maybeOwner == c.symbol)
         .filter(s => s.maybeOwner != defn.ObjectClass && s.maybeOwner != defn.AnyClass)
+        .sortBy(s => (baseClasses.indexOf(s.maybeOwner), sourceStart(s)))
         .map(_.tree)
 
   extension (c: ClassDef)

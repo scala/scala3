@@ -375,7 +375,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       * @return instrumentation result, with the preparation statement, coverage call and tree separated
       */
     private def tryInstrument(tree: Apply)(using Context): InstrumentedParts =
-      if LiftCoverage.isUnsafeAssumeSeparate(tree) then
+      if usesConstructorOnly(tree) then
+        InstrumentedParts.notCovered(tree)
+      else if LiftCoverage.isUnsafeAssumeSeparate(tree) then
         val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
         InstrumentedParts.notCovered(transformed)
       else if canInstrumentApply(tree) then
@@ -406,6 +408,11 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
         InstrumentedParts.notCovered(transformed)
     end tryInstrument
+
+    private def usesConstructorOnly(tree: Tree)(using Context): Boolean =
+      tree.existsSubTree:
+        case ref: RefTree => ref.symbol.hasAnnotation(defn.ConstructorOnlyAnnot)
+        case _ => false
 
     private def tryInstrument(tree: Ident)(using Context): InstrumentedParts =
       val sym = tree.symbol

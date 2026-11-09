@@ -67,6 +67,19 @@ extension (r: report.type)
 case class NavigationNode(name: String, dri: DRI, nested: Seq[NavigationNode])
 
 case class DocContext(args: Scaladoc.Args, compilerContext: CompilerContext):
+  // The project being documented: its symbols are documented by this run or not at all, so an
+  // external mapping that matches their files (e.g. `.*scala/.*` for the standard library) must
+  // not send their links elsewhere
+  private lazy val inputs: Set[String] =
+    args.tastyFiles.map(f => f.getCanonicalPath.stripSuffix(".tasty").stripSuffix(".jar")).toSet
+
+  // a `.tasty` or `.class` file in a directory, or `<jar>(<entry>)` for an entry of a JAR
+  def isInput(file: dotty.tools.io.AbstractFile): Boolean =
+    val path = file.path.indexOf(".jar(") match
+      case -1 => file.path
+      case i => file.path.substring(0, i + ".jar".length)
+    inputs.contains(File(path).getCanonicalPath.stripSuffix(".tasty").stripSuffix(".class").stripSuffix(".jar"))
+
   lazy val sourceLinks = SourceLinks.load(args.sourceLinks, args.revision)(using compilerContext)
 
   lazy val commentSyntaxArgs = tasty.comments.CommentSyntaxArgs.load(args.defaultSyntax)(using compilerContext)

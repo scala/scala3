@@ -140,22 +140,23 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   /** A set containing symbols whose denotation is in train of being updated
    *  Used to suppress transforming the denotations of these symbols.
    */
-  private val toBeUpdated = new mutable.HashSet[Symbol]
+  private val toBeUpdated = mutable.Set.empty[Symbol]
 
   /** Drops `private` from the flags of `symd` provided it is
    *  a parameter accessor that's not `constructorOnly` or `uncheckedCaptured`
    *  and that contains at least one @retains in co- or in-variant position.
    *  The @retains might be implicit for a type deriving from `Capability`.
+   *  `@retainsByName` counts as well.
    */
   private def newFlagsFor(symd: SymDenotation)(using Context): FlagSet =
 
     object containsCovarRetains extends TypeAccumulator[Boolean]:
-      val seen = util.HashSet[Symbol]()
+      val seen = mutable.Set.empty[Symbol]
       def apply(x: Boolean, tp: Type): Boolean =
         if x then true
         else if tp.derivesFromCapability && variance >= 0 then true
         else tp.dealiasKeepAnnots match
-          case AnnotatedType(_, ann) if ann.symbol.isRetains && variance >= 0 => true
+          case AnnotatedType(_, ann) if ann.symbol.isRetainsLike && variance >= 0 => true
           case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
             seen += t.symbol
             apply(x, t.info.bounds.hi)
@@ -589,9 +590,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   extension (sym: Symbol) def nextInfo(using Context): Type =
     atPhase(thisPhase.next)(sym.info)
 
-  val capturedBy: mutable.HashMap[Symbol, Symbol] = mutable.HashMap.empty
+  val capturedBy: mutable.Map[Symbol, Symbol] = mutable.Map.empty
 
-  val anonFunCallee: mutable.HashMap[Symbol, Symbol] = mutable.HashMap.empty
+  val anonFunCallee: mutable.Map[Symbol, Symbol] = mutable.Map.empty
 
   /** A traverser that adds knownTypes and updates symbol infos */
   def setupTraverser(checker: CheckerAPI) = new TreeTraverserWithPreciseImportContexts:

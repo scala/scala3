@@ -212,21 +212,21 @@ private[semanticdb] object ExtractSemanticDB:
     given converter: s.TypeOps = s.TypeOps()
 
     /** The bodies of synthetic locals */
-    private val localBodies = new mutable.HashMap[Symbol, Tree]()
+    private val localBodies = mutable.Map.empty[Symbol, Tree]
 
     /** The extracted symbol occurrences */
-    val occurrences = new mutable.ListBuffer[SymbolOccurrence]()
+    val occurrences = mutable.ListBuffer.empty[SymbolOccurrence]
 
     /** The extracted symbol infos */
-    val symbolInfos = new mutable.ListBuffer[SymbolInformation]()
+    val symbolInfos = mutable.ListBuffer.empty[SymbolInformation]
 
-    val synthetics = new mutable.ListBuffer[s.Synthetic]()
+    val synthetics = mutable.ListBuffer.empty[s.Synthetic]
 
     /** A cache of localN names */
-    val localNames = new mutable.HashSet[String]()
+    val localNames = mutable.Set.empty[String]
 
     /** The symbol occurrences generated so far, as a set */
-    private val generated = new mutable.HashSet[SymbolOccurrence]()
+    private val generated = mutable.Set.empty[SymbolOccurrence]
 
     def extract(tree: Tree)(using Context): Unit =
       traverse(tree)
@@ -641,7 +641,7 @@ private[semanticdb] object ExtractSemanticDB:
       if tree.symbol.isSelfSym then
         Set.empty
       else
-        val symkinds = mutable.HashSet.empty[SymbolKind]
+        val symkinds = mutable.Set.empty[SymbolKind]
         tree match
           case tree: ValDef =>
             if !tree.symbol.is(Param) then

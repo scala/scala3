@@ -292,7 +292,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
      *  name `x$field` instead of `FieldName(x).
      */
     def checkNoFieldClashes() =
-      val fieldNames = mutable.HashSet.empty[Name]
+      val fieldNames = mutable.Set.empty[Name]
       for case field: ValDef <- clsStats do
         field.symbol.name match
           case FieldName(_) =>

@@ -181,6 +181,16 @@ object DocOf extends ArgCommand[DocOf] {
   val command: String = ":doc"
 }
 
+/** `:completions <input>` prints a `[completions] <text>` line per candidate, where
+ *  `<text>` replaces `input`. Meant for editors driving the REPL through a dumb
+ *  terminal, where TAB completion is unavailable.
+ */
+case class Completions(expr: String) extends Command:
+  override def replayLine = None
+object Completions extends ArgCommand[Completions] {
+  val command: String = ":completions"
+}
+
 /** `:imports` lists the imports that have been explicitly imported during the
  *  session
  */

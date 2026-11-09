@@ -1,7 +1,6 @@
 package dotty.tools
 package repl
 
-
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -50,6 +49,7 @@ class AbstractFileClassLoaderTest:
   val noResourcesParent: ClassLoader = ScalaClassLoader.fromURLsParallelCapable(Nil)
 
   val defaultJavaVersion = ""
+  private def newClassLoader(root: AbstractFile, parent: ClassLoader) = AbstractFileClassLoader(root, defaultJavaVersion, parent, InterruptInstrumentation.fromString("true"))
 
   // virtual dir "fuzz" and "fuzz/buzz/booz.class"
   def fuzzBuzzBooz: (AbstractFile, AbstractFile) =
@@ -61,13 +61,13 @@ class AbstractFileClassLoaderTest:
   @Test def afclGetsParent(): Unit =
     val p = new URLClassLoader(Array.empty[URL])
     val d = io.virtualDirectory("vd")
-    val x = new AbstractFileClassLoader(d, defaultJavaVersion, p)
+    val x = newClassLoader(d, p)
     assertSame(p, x.getParent)
 
   @Test def afclGetsResource(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     booz.writeContent("hello, world")
-    val sut = new AbstractFileClassLoader(fuzz, defaultJavaVersion, noResourcesParent)
+    val sut = newClassLoader(fuzz, noResourcesParent)
     val res = sut.getResource("buzz/booz.class")
     assertNotNull("Find buzz/booz.class", res)
     assertEquals("hello, world", slurp(res))
@@ -77,8 +77,8 @@ class AbstractFileClassLoaderTest:
     val (fuzz_, booz_) = fuzzBuzzBooz
     booz.writeContent("hello, world")
     booz_.writeContent("hello, world_")
-    val p = new AbstractFileClassLoader(fuzz, defaultJavaVersion, noResourcesParent)
-    val sut = new AbstractFileClassLoader(fuzz_, defaultJavaVersion, p)
+    val p = newClassLoader(fuzz, noResourcesParent)
+    val sut = newClassLoader(fuzz_, p)
     val res = sut.getResource("buzz/booz.class")
     assertNotNull("Find buzz/booz.class", res)
     assertEquals("hello, world", slurp(res))
@@ -89,7 +89,7 @@ class AbstractFileClassLoaderTest:
     val bass = fuzz.fileNamed("bass")
     booz.writeContent("hello, world")
     bass.writeContent("lo tone")
-    val sut = new AbstractFileClassLoader(fuzz, defaultJavaVersion, noResourcesParent)
+    val sut = newClassLoader(fuzz, noResourcesParent)
     val res = sut.getResource("booz.class")
     assertNotNull(res)
     assertEquals("hello, world", slurp(res))
@@ -99,7 +99,7 @@ class AbstractFileClassLoaderTest:
   @Test def afclGetsResources(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     booz.writeContent("hello, world")
-    val sut = new AbstractFileClassLoader(fuzz, defaultJavaVersion, noResourcesParent)
+    val sut = newClassLoader(fuzz, noResourcesParent)
     val e = sut.getResources("buzz/booz.class")
     assertTrue("At least one buzz/booz.class", e.hasMoreElements)
     assertEquals("hello, world", slurp(e.nextElement))
@@ -110,8 +110,8 @@ class AbstractFileClassLoaderTest:
     val (fuzz_, booz_) = fuzzBuzzBooz
     booz.writeContent("hello, world")
     booz_.writeContent("hello, world_")
-    val p = new AbstractFileClassLoader(fuzz, defaultJavaVersion, noResourcesParent)
-    val x = new AbstractFileClassLoader(fuzz_, defaultJavaVersion, p)
+    val p = newClassLoader(fuzz, noResourcesParent)
+    val x = newClassLoader(fuzz_, p)
     val e = x.getResources("buzz/booz.class")
     assertTrue(e.hasMoreElements)
     assertEquals("hello, world", slurp(e.nextElement))
@@ -122,7 +122,7 @@ class AbstractFileClassLoaderTest:
   @Test def afclGetsResourceAsStream(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     booz.writeContent("hello, world")
-    val x = new AbstractFileClassLoader(fuzz, defaultJavaVersion, noResourcesParent)
+    val x = newClassLoader(fuzz, noResourcesParent)
     val r = x.getResourceAsStream("buzz/booz.class")
     assertNotNull(r)
     assertEquals("hello, world", closing(r.nn)(is => Source.fromInputStream(is).mkString))
@@ -130,7 +130,7 @@ class AbstractFileClassLoaderTest:
   @Test def afclGetsClassBytes(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     booz.writeContent("hello, world")
-    val sut = new AbstractFileClassLoader(fuzz, defaultJavaVersion, noResourcesParent)
+    val sut = newClassLoader(fuzz, noResourcesParent)
     val b = sut.classBytes("buzz/booz.class")
     assertEquals("hello, world", new String(b, UTF8.charSet))
 
@@ -139,9 +139,8 @@ class AbstractFileClassLoaderTest:
     val (fuzz_, booz_) = fuzzBuzzBooz
     booz.writeContent("hello, world")
     booz_.writeContent("hello, world_")
-
-    val p = new AbstractFileClassLoader(fuzz, defaultJavaVersion, noResourcesParent)
-    val sut = new AbstractFileClassLoader(fuzz_, defaultJavaVersion, p)
+    val p = newClassLoader(fuzz, noResourcesParent)
+    val sut = newClassLoader(fuzz_, p)
     val b = sut.classBytes("buzz/booz.class")
     assertEquals("hello, world", new String(b, UTF8.charSet))
 

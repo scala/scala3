@@ -169,6 +169,7 @@ subsection:
         hidden: true
       - page: reference/experimental/numeric-literals.md
       - page: reference/experimental/explicit-nulls.md
+      - page: reference/experimental/relaxed-null-checks.md
       - page: reference/experimental/main-annotation.md
       - title: Capture Checking
         index: reference/experimental/capture-checking/cc.md
@@ -446,3 +447,4 @@ subsection:
       - page: reference/error-codes/E233.md
       - page: reference/error-codes/E234.md
       - page: reference/error-codes/E235.md
+      - page: reference/error-codes/E236.md

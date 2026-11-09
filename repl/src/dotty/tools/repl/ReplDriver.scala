@@ -24,7 +24,7 @@ import dotc.core.NameKinds.DefaultGetterName
 import dotc.core.NameOps.*
 import dotc.core.Names.Name
 import dotc.core.StdNames.*
-import dotc.core.Symbols.{Symbol, defn}
+import dotc.core.Symbols.*
 import dotc.core.SymbolLoaders
 import dotc.interfaces
 import dotc.interactive.Completion
@@ -38,7 +38,6 @@ import dotc.config.{CompilerCommand, Feature}
 import dotty.tools.io
 import dotty.tools.io.*
 import dotty.tools.io.PlainFile.toPlainFile
-import dotty.tools.dotc.classpath.FileUtils.isClassContainer
 import dotty.tools.repl.ScalaClassLoader.*
 
 import org.jline.reader.*
@@ -374,11 +373,33 @@ class ReplDriver(settings: Array[String],
     cursor: Int,
     expr: String,
     state0: State,
-    displayLoadingErrors: String => Unit
+    displayError: String => Unit
   ): List[Completion] =
+    completionsWithOffset(cursor, expr, state0, displayError, includeUniversal = true)._2
+
+  /** Like [[completions]], but also returns the offset in `expr` where the completed
+   *  word starts. Unless `includeUniversal` is set, [[withoutUniversalMembers]] is
+   *  applied when nothing has been typed after the qualifier (`xs.`, not `xs.toS`).
+   */
+  protected final def completionsWithOffset(
+    cursor: Int,
+    expr: String,
+    state0: State,
+    includeUniversal: Boolean = true
+  ): (Int, List[Completion]) =
+    completionsWithOffset(cursor, expr, state0, out.println(_), includeUniversal)
+
+  private def completionsWithOffset(
+    cursor: Int,
+    expr: String,
+    state0: State,
+    displayError: String => Unit,
+    includeUniversal: Boolean
+  ): (Int, List[Completion]) =
     if expr.startsWith(":") then
-      ReplCommands.names.collect:
+      val comps = ReplCommands.names.collect:
         case command if command.startsWith(expr) => Completion(command, "", List())
+      (0, comps)
     else
       val typecheckReporter = newStoreReporter
       given state: State = newRun(state0)
@@ -392,21 +413,45 @@ class ReplDriver(settings: Array[String],
           given Context = state.context.fresh.setCompilationUnit(unit)
           val srcPos = SourcePosition(file, Span(cursor))
           try
-            Completion.completions(srcPos)._2
+            val (offset, comps) = Completion.completions(srcPos)
+            val typedPrefix = expr.substring(offset, cursor)
+            if includeUniversal || typedPrefix.nonEmpty then (offset, comps)
+            else (offset, withoutUniversalMembers(comps))
           catch case NonFatal(_) =>
-            List(Completion("<Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues>", "", Nil))
+            displayError("Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues")
+            (cursor, Nil)
         }
-        .getOrElse(Nil)
+        .getOrElse((cursor, Nil))
       // Candidate discovery can load symbols unrelated to the qualifier. Discard its
       // diagnostics; failed loads are retained and reported if the symbol is requested later.
-      state.context.reporter.removeBufferedMessages(using state.context)
-      val loadingErrors = typecheckReporter.removeBufferedMessages(using state.context).collect:
+      state.context.reporter.removeBufferedMessages
+      val loadingErrors = typecheckReporter.removeBufferedMessages.collect:
         case error: Diagnostic.LoadingError => error
       if loadingErrors.nonEmpty then
         given Context = state.context
-        displayLoadingErrors(loadingErrors.map(ReplConsoleReporter.messageAndPos).mkString("\n"))
+        displayError(loadingErrors.map(ReplConsoleReporter.messageAndPos).mkString("\n"))
       result
-  end completions
+  end completionsWithOffset
+
+  /** `completions` without the members every value has: those of `Any`/`AnyRef` and
+   *  those `Predef` adds to every type. Scala 2 detects the latter generically
+   *  (`isMemberUniversal`), but `Completion` doesn't record how a member was added,
+   *  so they are listed by hand and must be kept in sync with `Predef`.
+   */
+  private def withoutUniversalMembers(completions: List[Completion])(using Context): List[Completion] =
+    val universalOwners: Set[Symbol] =
+      Set(defn.AnyClass, defn.ObjectClass) ++
+        List("Ensuring", "StringFormat")
+          .map(name => getClassIfDefined(s"scala.Predef.$name"))
+          .filter(_.exists)
+    val universalMethods: Set[Symbol] =
+      List(nme.nn, nme.runtimeChecked, "->".toTermName)
+        .flatMap(name => defn.ScalaPredefModule.info.member(name).alternatives)
+        .map(_.symbol).toSet
+    def isUniversal(completion: Completion): Boolean =
+      completion.symbols.nonEmpty && completion.symbols.forall: sym =>
+        universalOwners.contains(sym.owner) || universalMethods.contains(sym)
+    completions.filterNot(isUniversal)
 
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
@@ -495,8 +540,7 @@ class ReplDriver(settings: Array[String],
             context = contextWithNewImports(newState.context, newImports)
           )
 
-          val warnings = newState.context.reporter
-            .removeBufferedMessages(using newState.context)
+          val warnings = newState.context.reporter.removeBufferedMessages
 
           inContext(newState.context):
             val (updatedState, definitions) =
@@ -716,7 +760,7 @@ class ReplDriver(settings: Array[String],
         state
       else
         def flatten(f: AbstractFile): Iterator[AbstractFile] =
-          if (f.isClassContainer) f.iterator.flatMap(flatten)
+          if (f.isDirectory || f.ext.isJarOrZip) f.iterator.flatMap(flatten)
           else Iterator(f)
 
         def tryClassLoad(classFile: AbstractFile): Option[String] = {
@@ -791,6 +835,14 @@ class ReplDriver(settings: Array[String],
           catch case NonFatal(ex) =>
             out.println(s"Error: ${ex.getMessage}")
           queryState
+
+    case Completions(rawExpr) =>
+      val expr = rawExpr.stripTrailing()
+      val (offset, comps) = completionsWithOffset(expr.length, expr, state, includeUniversal = false)
+      val lines = comps.map(c => s"[completions] ${expr.take(offset)}${c.label}").distinct.sorted
+      // A single `println`, so editors capturing one command's output get it in one chunk.
+      if lines.nonEmpty then out.println(lines.mkString("\n"))
+      state
 
     case Sh(expr) =>
       out.println(s"""The :sh command is deprecated. Use `import scala.sys.process._` and `"command".!` instead.""")

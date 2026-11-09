@@ -172,7 +172,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     myUnits = us
 
   var suspendedUnits: ListBuffer[CompilationUnit] = ListBuffer.empty
-  var suspendedHints: mutable.Map[CompilationUnit, (String, Boolean)] = mutable.HashMap.empty
+  var suspendedHints: mutable.Map[CompilationUnit, (String, Boolean)] = mutable.Map.empty
 
   /** Were any units suspended in the typer phase? if so then pipeline tasty can not complete. */
   var suspendedAtTyperPhase: Boolean = false

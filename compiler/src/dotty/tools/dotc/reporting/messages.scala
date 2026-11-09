@@ -367,8 +367,14 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
       if (found1 frozen_<:< expected1) || reported.fbounded then (found, expected)
       else (found1, expected1)
     val (foundStr, expectedStr) = Formatting.typeDiff(found2.normalized, expected2.normalized)
+    val extra =
+      if defn.isFunctionNType(found)
+        && SAMType.deconstruct(expected, ignoreFinalOrSealed = false).isEmpty
+        && SAMType.deconstruct(expected, ignoreFinalOrSealed = true).nonEmpty
+      then i"\nNote that conversion from a function to a single abstract method type is only possible if the type is neither ${hl("final")} nor ${hl("sealed")}"
+      else ""
     i"""|${preface}Found:    $foundStr
-        |Required: $expectedStr${reported.notes}"""
+        |Required: $expectedStr${reported.notes}$extra"""
   end msg
 
   override def msgPostscript(using Context): String =
@@ -655,6 +661,12 @@ extends SyntaxMsg(UnboundPlaceholderParameterID) {
         |${hl("trait A { this: B => ... ")}
         |"""
 }
+
+class BadErased()(implicit ctx:Context)
+extends SyntaxMsg(BadErasedID):
+  def msg(using Context) = i"${hl("erased")} cannot be used here"
+  def explain(using Context) =
+    i"|${hl("erased")} can be used only as a modifier in definitions or function parameters."
 
 class IllegalStartSimpleExpr(illegalToken: String)(using Context)
 extends SyntaxMsg(IllegalStartSimpleExprID) {

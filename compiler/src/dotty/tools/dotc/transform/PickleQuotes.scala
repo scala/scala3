@@ -105,7 +105,7 @@ class PickleQuotes extends MacroTransform {
   private def extractHolesContents(quote: tpd.Quote)(using Context): (List[Tree], tpd.Quote) =
     class HoleContentExtractor extends Transformer:
       private val holeContents = List.newBuilder[Tree]
-      private val stagedClasses = mutable.HashSet.empty[Symbol]
+      private val stagedClasses = mutable.Set.empty[Symbol]
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
         tree match
           case tree @ Hole(isTerm, _, _, content) =>
