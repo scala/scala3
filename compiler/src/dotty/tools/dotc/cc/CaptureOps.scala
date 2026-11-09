@@ -929,16 +929,12 @@ class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) ext
  *   argument if CC is enabled (we need to do that to keep by-name status).
  */
 class CleanupRetains(using Context) extends TypeMap:
-  var retainsFound: Boolean = false
   def apply(tp: Type): Type = tp match
     case tp @ AnnotatedType(parent, annot: RetainingAnnotation) =>
       if Feature.ccEnabled then
-        retainsFound = true
         if annot.symbol == defn.RetainsCapAnnot then tp
         else AnnotatedType(this(parent), RetainingAnnotation(annot.symbol.asClass, defn.NothingType))
       else this(parent)
-    case tp @ AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
-      tp
     case _ => mapOver(tp)
 
 /** A base class for extractors that match annotated types with a specific

@@ -418,9 +418,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           if annot.symbol.isRetains =>
             // Drop explicit retains annotations
             addVar(apply(parent), tp)
-          case AnnotatedType(parent, annot)
-          if annot.symbol == defn.DeclaredAnnot =>
-            transformExplicitType(parent, sym, initialVariance = variance)
           case tp @ RefinedType(parent, rname, rinfo) =>
             val saved = refiningNames
             refiningNames += rname

@@ -353,6 +353,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       needAnotherRun = false
       resetNuTypes()
       patternTempsOf.clear(resetToInitial = false)
+      curriedClosures.clear(resetToInitial = false)
       castTypes.clear(resetToInitial = false)
       byNameArgTypes.clear(resetToInitial = false)
       unapplyArgs.clear(resetToInitial = false)
@@ -1595,6 +1596,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *     does not refine what was known before capture checking.
      *   - Interpolate contravariant capture set variables in result type.
      *   - for lazy vals: create a nested environment to track captures (similar to methods)
+     *   - if the right-hand side is a closure, take the parameter types of an
+     *     inferred type from that closure, see `withFormalsOfClosure`.
      */
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type = {
       val savedEnv = curEnv
@@ -1634,7 +1637,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         else if runInConstructor then
           pushConstructorEnv()
 
-        checkInferredResult(super.recheckValDef(tree, sym), tree)
+        checkInferredResult(withFormalsOfClosure(tree)(super.recheckValDef(tree, sym)), tree)
       finally
         if !sym.is(Param) then
           // Parameters with inferred types belong to anonymous methods. We need to wait
@@ -1658,6 +1661,77 @@ class CheckCaptures extends Recheck, SymTransformer:
           }
     }
 
+    /** The anonymous functions of the closures whose parameter types are used
+     *  by `withFormalsOfClosure`.
+     */
+    private val curriedClosures = util.EqHashSet[Symbol]()
+
+    /** Recheck definition `tree` with `op`. Afterwards, if `tree` has an inferred
+     *  type and a closure as right-hand side, give that type the parameter types
+     *  of the closure. This applies to named definitions and, for curried closures
+     *  `x => y => e`, to the anonymous functions of such closures.
+     *
+     *  The inferred type of a definition has a capture set variable wherever the
+     *  type of the right-hand side can have a capture set. For the parameter types
+     *  of a closure that does not work: their capture sets are given, and a variable
+     *  could not stand for them, since they can refer to parameters of the function
+     *  type, as in
+     *
+     *      val f = [C^] => (x: File^{C}) => x
+     */
+    private def withFormalsOfClosure(tree: ValOrDefDef)(op: => Type)(using Context): Type =
+      val fromClosure = tree.tpt.isInstanceOf[InferredTypeTree] && tree.rhs.match
+        case closureDef(mdef)
+        if !tree.symbol.isAnonymousFunction || curriedClosures.contains(tree.symbol) =>
+          curriedClosures += mdef.symbol // before `op`, which rechecks the closure
+          true
+        case _ =>
+          false
+      val tp = op
+      if fromClosure then
+        tree.tpt.updNuType(withFormalsOf(tree.tpt.nuType, tree.rhs.nuType))
+      tp
+
+    /** The function type `declared` with its parameter types, and the bounds of its
+     *  type parameters, replaced by those of the function type `closure`. If the
+     *  result types are function types as well, they are treated in the same way.
+     */
+    private def withFormalsOf(declared: Type, closure: Type)(using Context): Type =
+
+      /** `fn` with the formals of `cinfo`, where `fn` is the method or polymorphic
+       *  type `dinfo`, or a function type refined with it.
+       */
+      def lambdas(fn: Type, dinfo: MethodOrPoly, cinfo: Type): Type = cinfo match
+        case cinfo: MethodOrPoly
+        if dinfo.isInstanceOf[PolyType] == cinfo.isInstanceOf[PolyType]
+            && dinfo.paramNames.hasSameLengthAs(cinfo.paramNames) =>
+          fn.derivedFunctionOrMethod(
+            cinfo.paramInfos.mapConserve(_.subst(cinfo, dinfo)),
+            results(dinfo.resType, cinfo.resType.subst(cinfo, dinfo)))
+        case _ =>
+          fn
+
+      def results(dres: Type, cres: Type): Type = dres match
+        case dres: MethodOrPoly => lambdas(dres, dres, cres)
+        case _ => withFormalsOf(dres, cres)
+
+      declared match
+        case declared @ CapturingType(parent, refs) =>
+          declared.derivedCapturingType(withFormalsOf(parent, closure), refs)
+        case _ =>
+          (declared, closure.stripCapturing) match
+            case (defn.RefinedFunctionOf(dinfo), defn.RefinedFunctionOf(cinfo)) =>
+              lambdas(declared, dinfo, cinfo)
+            case (FunctionOrMethod(dformals, dres), defn.RefinedFunctionOf(cinfo: MethodType))
+            if dformals.hasSameLengthAs(cinfo.paramInfos) && !cinfo.isParamDependent && !cinfo.isResultDependent =>
+              declared.derivedFunctionOrMethod(cinfo.paramInfos, withFormalsOf(dres, cinfo.resType))
+            case (FunctionOrMethod(dformals, dres), defn.FunctionOf(cformals, cres, _))
+            if dformals.hasSameLengthAs(cformals) =>
+              declared.derivedFunctionOrMethod(cformals, withFormalsOf(dres, cres))
+            case _ =>
+              declared
+    end withFormalsOf
+
     /** Capture checking runs before inlining, so calls of inline methods are
      *  checked against the signatures of these methods. Hence, their bodies have
      *  to be checked like the bodies of other methods. The exception are macros,
@@ -1674,6 +1748,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *     does not refine what was known before capture checking.
      *   - Interpolate contravariant capture set variables in result type unless
      *     def is anonymous.
+     *   - if the right-hand side is a closure, take the parameter types of an
+     *     inferred type from that closure, see `withFormalsOfClosure`.
      */
     override def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =
       if Synthetics.isExcluded(sym) then sym.info
@@ -1694,7 +1770,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           if ac.isEmpty then ctx
           else ctx.withProperty(CaptureSet.AssumedContains, Some(ac))
 
-        try checkInferredResult(super.recheckDefDef(tree, sym)(using bodyCtx), tree)
+        try
+          val tp = withFormalsOfClosure(tree)(super.recheckDefDef(tree, sym)(using bodyCtx))
+          checkInferredResult(tp, tree)
         finally
           if !sym.isAnonymousFunction then
             // Anonymous functions propagate their type to the enclosing environment
