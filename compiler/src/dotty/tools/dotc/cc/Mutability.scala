@@ -20,7 +20,9 @@ object Mutability:
   private enum Exclusivity derives CanEqual:
     case OK
 
-    /** Enclosing symbol `sym` is a method of class `cls`, but not an update method */
+    /** Enclosing symbol `sym` is a method or class nested in class `cls`,
+     *  but not an update method or update class
+     */
     case NotInUpdateMethod(sym: Symbol, cls: Symbol)
 
     /** Access to `this` from outside its class (not sure this can happen) */
@@ -42,7 +44,8 @@ object Mutability:
         else
           i"the capture set ${tp.captureSet} of its prefix $tp is read-only"
       case Exclusivity.NotInUpdateMethod(sym: Symbol, cls: Symbol) =>
-        i"the access is in $sym, which is not an update method"
+        val kind = if sym.isTerm then "method" else "class"
+        i"the access is in $sym, which is not an update $kind"
       case Exclusivity.OutsideClass(cls: Symbol) =>
         i"the access from is from ouside $cls"
 
@@ -58,6 +61,9 @@ object Mutability:
         && (!sym.is(Accessor) || (sym.isSetter && sym.owner.derivesFrom(defn.Caps_Stateful) && !sym.field.hasAnnotation(defn.UntrackedCapturesAnnot)))
       || sym.name == nme.update && sym.owner.isArrayUnderStrictMut
 
+    /** An update class is a class declared with an `update` modifier */
+    def isUpdateClass(using Context): Boolean = sym.is(UpdateClass)
+
     /** A read-only member is a lazy val or a method that is not an update method. */
     def isReadOnlyMember(using Context): Boolean =
       sym.isOneOf(MethodOrLazy) && !sym.isUpdateMethod
@@ -65,9 +71,12 @@ object Mutability:
     private def inExclusivePartOf(cls: Symbol)(using Context): Exclusivity =
       import Exclusivity.*
       if sym == cls then OK // we are directly in `cls` or in one of its constructors
-      else if sym.isUpdateMethod then OK
       else if sym.owner == cls then
-        if sym.isConstructor || !sym.isOneOf(MethodOrLazy) then OK
+        if sym.isUpdateMethod
+          || sym.isUpdateClass
+          || sym.isConstructor
+          || sym.isTerm && !sym.isOneOf(MethodOrLazy)
+        then OK
         else NotInUpdateMethod(sym, cls)
       else if sym.isRoot then OutsideClass(cls)
       else sym.owner.inExclusivePartOf(cls)

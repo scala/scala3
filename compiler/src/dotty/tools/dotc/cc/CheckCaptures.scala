@@ -785,6 +785,12 @@ class CheckCaptures extends Recheck, SymTransformer:
       if tree.symbol.isUpdateMethod then
         checkUpdate(qualType, tree.srcPos):
           i"Cannot call update ${tree.symbol} of ${qualType.showRef}"
+      else if tree.symbol.isConstructor && tree.symbol.owner.isUpdateClass then
+        // Creating an instance of an update class requires exclusive access
+        // to the enclosing object. 
+        val prefix = qualType.normalizedPrefix
+        checkUpdate(prefix, tree.srcPos):
+          i"Cannot create an instance of update ${tree.symbol.owner} of ${prefix.showRef}"
 
       val origSelType = recheckSelection(tree, qualType, name, disambiguate)
       val selType = mapResultRoots(origSelType, tree)

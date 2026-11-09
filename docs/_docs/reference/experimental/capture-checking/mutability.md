@@ -114,18 +114,24 @@ class CounterOps:
     to.incr(from.value)
 ```
 
-A slightly more elaborate example is to update a variable in an surrounding registry object by
-storing a reference to that registry in a constructor parameter:
+Classes nested in a `Stateful` class are treated like its ordinary methods:
+they may observe the state of the enclosing object, but they may not mutate it.
+An `update` modifier on a nested class or trait lifts that restriction.
+For instance, we can define counter objects that update a shared variable of
+an enclosing registry object:
 
 ```scala sc-compile-with:mut-caps-context
 object Registry extends Stateful:
   var sharedCount = 0
 
-  class CounterX(reg: Registry.type):
+  update class CounterX:
     def next: Int =
-      reg.sharedCount += 1
-      reg.sharedCount
+      sharedCount += 1
+      sharedCount
 ```
+
+Creating an instance of an `update` class counts as an update of the enclosing object.
+So it is only allowed where calling an `update` method of that object would be allowed.
 
 Normal methods of `Stateful` classes cannot call `update` methods. Otherwise, the exclusive accesses performed by the callee would also be charged to the caller, so the caller would no longer be read-only.
 
