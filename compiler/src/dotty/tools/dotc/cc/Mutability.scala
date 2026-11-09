@@ -117,6 +117,13 @@ object Mutability:
       case _ =>
         tp.exclusivity(required)
 
+    /** The capture set of `tp`, mapped to its read-only version if `tp`
+     *  is not exclusive in the current context.
+     */
+    def captureSetInContext(using Context): CaptureSet =
+      if tp.exclusivityInContext().isOK then tp.captureSet
+      else tp.captureSet.readOnly
+
     def expectsReadOnly(using Context): Boolean = tp match
       case tp: PathSelectionProto =>
         tp.selector.isReadOnlyMember || tp.selector.isMutableVar && tp.pt != LhsProto

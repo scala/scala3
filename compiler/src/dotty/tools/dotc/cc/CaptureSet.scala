@@ -64,7 +64,7 @@ sealed abstract class CaptureSet extends Showable:
    *  CapturingType is formed. This is different from the setter `mutability_=`
    *  in that it can be defined with different behaviors:
    *
-   *   - set mutability to Writer (for normal Vars)
+   *   - set mutability to Writer unless it is already known (for normal Vars)
    *   - take mutability from the set's sources (for DerivedVars)
    *   - compute mutability on demand based on mutability of elements (for Consts)
    */
@@ -830,7 +830,7 @@ object CaptureSet:
     val deps: Deps = new MutableIdentitySet[CaptureSet]
 
     def associateWithStateful()(using Context): CaptureSet =
-      mutability = Writer
+      if mutability == Ignored then mutability = Writer
       this
 
     def isConst(using Context) = solved >= ccState.iterationId
