@@ -1776,9 +1776,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // if expected parameter type(s) are wildcards, approximate from below.
           // if expected result type is a wildcard, approximate from above.
           // this can type the greatest set of admissible closures.
+          val retTypeHighBound = pt1.argInfos.last.hiBound
           ctx.property(EtaExpansionCtx) match
-            case Some(_, true) =>
-              (pt1.argInfos.init, untpd.TypeTree())
+            case Some(_, true) if(!defn.isFunctionType(retTypeHighBound)) =>
+                (pt1.argInfos.init, untpd.TypeTree())
             case _ => (pt1.argInfos.init, typeTree(interpolateWildcards(pt1.argInfos.last.hiBound)))
         case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
         if defn.isNonRefinedFunction(parent) && formals.length == defaultArity =>
