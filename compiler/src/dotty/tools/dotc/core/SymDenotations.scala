@@ -870,11 +870,11 @@ object SymDenotations {
       this.is(Method, butNot = Accessor) && !isAnonymousFunction
 
     /** A mutable variable (not a getter or setter for it) */
-    final def isMutableVar(using Context): Boolean = is(Mutable, butNot = Method)
+    final def isMutableVar(using Context): Boolean = is(MutableVal, butNot = Method)
 
     /** A mutable variable or its getter or setter */
     final def isMutableVarOrAccessor(using Context): Boolean =
-      is(Mutable) && (!is(Method) || is(Accessor))
+      is(MutableVal) && (!is(Method) || is(Accessor))
 
     /** Is this a getter? */
     final def isGetter(using Context): Boolean =
