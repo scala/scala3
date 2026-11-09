@@ -1093,6 +1093,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         includeCallCaptures(meth, res, tree)
         res
 
+    /** By-name parameters have function types, see `normalizeByName` */
+    override protected def normalizeFormal(formal: Type)(using Context): Type =
+      normalizeByName(formal)
+
     /** Recheck argument against an instantiated version of `formal` where toplevel `any`
      *  occurrences are replaced by LocalCap instances.
      */
@@ -1740,14 +1744,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             case _ =>
               declared
     end withFormalsOf
-
-    /** Capture checking runs before inlining, so calls of inline methods are
-     *  checked against the signatures of these methods. Hence, their bodies have
-     *  to be checked like the bodies of other methods. The exception are macros,
-     *  where we have to trust the signature.
-     */
-    override protected def skipBody(sym: Symbol)(using Context): Boolean =
-      sym.is(Macro)
 
     /** Recheck method definitions:
      *   - check body in a nested environment that tracks uses, in  a nested level,

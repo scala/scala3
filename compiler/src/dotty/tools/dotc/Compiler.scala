@@ -42,6 +42,8 @@ class Compiler {
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new cc.Setup) ::           // Preparations for check captures phase, enabled under captureChecking
     List(new cc.CheckCaptures) ::   // Check captures, enabled under captureChecking
+    List(new TestRecheck.Pre) ::    // Test only: prepare for rechecker, enabled under -Yrecheck-test
+    List(new TestRecheck) ::        // Test only: run rechecker, enabled under -Yrecheck-test
     List(new UnrollDefinitions) ::  // Unroll annotated methods if detected in PostTyper
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
@@ -89,8 +91,6 @@ class Compiler {
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
          new PruneInlineTraits) ::   // Remove right-hand side of definitions in inline traits
-    List(new TestRecheck.Pre) ::     // Test only: run rechecker, enabled under -Yrecheck-test
-    List(new TestRecheck) ::         // Test only: run rechecker, enabled under -Yrecheck-test
     List(CheckUnused.PostPatMat()) :: // Check for unused elements and report
     List(new semanticdb.AppendDiagnostics) :: // Attach warnings to extracted SemanticDB and write to .semanticdb file
     List(new ElimOpaque,             // Turn opaque into normal aliases
