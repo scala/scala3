@@ -9,31 +9,31 @@
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:18:13 ----------------------------------------------------
 18 |  val incr = () => // error
    |             ^
-   |             value incr needs an explicit type because the inferred type does not conform to
-   |             the type that is externally visible in other compilation units.
+   |             value incr needs an explicit type. It is visible in other source files,
+   |             so the capture sets in its type have to be written explicitly.
    |
-   |              Inferred type          : () ->{Counter.this.count} Unit
-   |              Externally visible type: () -> Unit
+   |              Inferred type            : () ->{Counter.this.count} Unit
+   |              Type without capture sets: () -> Unit
    |
 19 |    count.put(count.get + 1)
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:20:13 ----------------------------------------------------
 20 |  val decr = () => // error
    |             ^
-   |             value decr needs an explicit type because the inferred type does not conform to
-   |             the type that is externally visible in other compilation units.
+   |             value decr needs an explicit type. It is visible in other source files,
+   |             so the capture sets in its type have to be written explicitly.
    |
-   |              Inferred type          : () ->{Counter.this.count} Unit
-   |              Externally visible type: () -> Unit
+   |              Inferred type            : () ->{Counter.this.count} Unit
+   |              Type without capture sets: () -> Unit
    |
 21 |    count.put(count.get - 1)
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:24:14 ----------------------------------------------------
 24 |  val count = Ref(): Object^ // error // error
    |              ^^^^^^^^^^^^^^
-   |              value count needs an explicit type because the inferred type does not conform to
-   |              the type that is externally visible in other compilation units.
+   |              value count needs an explicit type. It is visible in other source files,
+   |              so the capture sets in its type have to be written explicitly.
    |
-   |               Inferred type          : Object^
-   |               Externally visible type: Object
+   |               Inferred type            : Object^
+   |               Type without capture sets: Object
    |
    |              where:    ^ refers to a root capability created in value count
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:24:11 ----------------------------------------------------

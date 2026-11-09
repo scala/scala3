@@ -1793,11 +1793,12 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Two tests for member definitions with inferred types:
      *
-     *   1. If val or def definition with inferred (result) type is visible
-     *      in other compilation units, check that the actual inferred type
-     *      conforms to the expected type where all inferred capture sets are dropped.
-     *      This ensures that if files compile separately, they will also compile
-     *      in a joint compilation.
+     *   1. If a val or def definition with an inferred (result) type is visible
+     *      in other compilation units, check that the inferred type conforms to
+     *      the same type with all capture sets dropped. So the capture sets of
+     *      such a definition have to be written explicitly. This is needed since
+     *      a unit that is checked before this one in the same run sees the type
+     *      that the typer inferred for the definition.
      *   2. If a val has an inferred type with a terminal capability in its capture set,
      *      check that this capability is subsumed by the capset that was inferred
      *      for the class from its other fields via `captureSetImpliedByFields`.
@@ -1814,22 +1815,12 @@ class CheckCaptures extends Recheck, SymTransformer:
       def fail(tree: Tree, expected: Type, notes: List[Note]): Unit =
         def maybeResult = if sym.is(Method) then " result" else ""
         report.error(
-          em"""$sym needs an explicit$maybeResult type because the inferred type does not conform to
-              |the type that is externally visible in other compilation units.
+          em"""$sym needs an explicit$maybeResult type. It is visible in other source files,
+              |so the capture sets in its type have to be written explicitly.
               |
-              | Inferred type          : ${tree.tpe}
-              | Externally visible type: $expected""",
+              | Inferred type            : ${tree.tpe}
+              | Type without capture sets: $expected""",
           tree.srcPos)
-
-      def addendum(expected: Type) = Note:
-        def result = if tree.isInstanceOf[ValDef] then"" else " result"
-        i"""
-          |
-          |Note that the expected type $expected
-          |is the previously inferred$result type of $sym
-          |which is also the type seen in separately compiled sources.
-          |The new inferred type $tp
-          |must conform to this type."""
 
       def covers(classCapset: CaptureSet, fieldClassifiers: List[ClassSymbol]): Boolean =
         fieldClassifiers.forall: cls =>
@@ -1842,11 +1833,11 @@ class CheckCaptures extends Recheck, SymTransformer:
           // Test point (1) of doc comment above
           if !sym.isExemptFromExplicitChecks // Symbols that can't be seen outside the compilation unit can have inferred types
               && !sym.needsResultRefinement  // If we refine the result type anyway, the inferred type does not matter
-          then // Symbols that can't be seen outside the compilation unit can have inferred types
+          then
             val expected = tpt.tpe.dropAllRetains
             todoAtPostCheck += { () =>
               withGlobalCapAsRoot:
-                testAdapted(tp, expected, tree.rhs, addendum(expected) :: Nil)(fail)
+                testAdapted(tp, expected, tree.rhs, Nil)(fail)
                 // The check that inferred <: expected is done after recheck so that it
                 // does not interfere with normal rechecking by constraining capture set variables.
             }
