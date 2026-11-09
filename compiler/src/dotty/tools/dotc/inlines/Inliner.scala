@@ -757,11 +757,11 @@ class Inliner(val call: tpd.Tree)(using Context):
         // reference to a private method is kept at runtime.
         cpy.Select(tree)(qual.asInstance(qual.tpe.widen), name)
 
-      case tree: TypeTree if Feature.ccEnabled =>
-        // cc.Setup.setupTraverser.transformTT creates scope-dependent capture types,
-        // cached by tree identity in transform.Recheck.Rechecker.nuTypes. Sharing a
-        // TypeTree would reuse the definition's (or another call's) capture roots
-        // in this expansion. See tests/pos-custom-args/captures/inline-result-captures.scala.
+      case tree: TypeTree if Feature.ccEnabled && !ctx.isAfterTyper =>
+        // Transparent inline methods are expanded before capture checking, which
+        // associates capture checked types with type trees by identity. A shared
+        // TypeTree would get the capture sets of the definition or of another call.
+        // See tests/pos-custom-args/captures/transparent-inline-shared-types.scala.
         tree.cloneIn(tree.source)
       case tree => tree
     }
