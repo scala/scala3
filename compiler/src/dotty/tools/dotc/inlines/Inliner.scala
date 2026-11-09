@@ -7,7 +7,7 @@ import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
 import StdNames.nme
 import typer.*
 import Names.Name
-import NameKinds.InlineBinderName
+import NameKinds.{InlineBinderName, DefaultGetterName}
 import ProtoTypes.shallowSelectionProto
 import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
@@ -1241,6 +1241,12 @@ class Inliner(val call: tpd.Tree)(using Context):
       }
 
     override def newLikeThis(nestingLevel: Int): Typer = new InlineTyper(initialErrorCount, nestingLevel)
+
+    def isDefaultGetterOfInlinedMethod(sym: Symbol)(using Context): Boolean =
+      sym.name match
+        case DefaultGetterName(methName, _) =>
+          methName == inlinedMethod.name && sym.owner == inlinedMethod.owner
+        case _ => false
 
     /** True if this inline typer has already issued errors */
     override def hasInliningErrors(using Context) = ctx.reporter.errorCount > initialErrorCount
