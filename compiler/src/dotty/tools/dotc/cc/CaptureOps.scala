@@ -937,6 +937,17 @@ class CleanupRetains(using Context) extends TypeMap:
       else this(parent)
     case _ => mapOver(tp)
 
+/** Maps capturing types to types with @retains annotations, which is how capture
+ *  sets are written in source and in TASTy. Setup maps such a type back when it
+ *  reads it as an explicitly given type.
+ */
+class CapturingToRetains(using Context) extends TypeMap:
+  def apply(tp: Type): Type = tp match
+    case AnnotatedType(parent, annot: CaptureAnnotation) =>
+      AnnotatedType(apply(parent), annot.toRetaining)
+    case _ =>
+      mapOver(tp)
+
 /** A base class for extractors that match annotated types with a specific
  *  Capability annotation.
  */

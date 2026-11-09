@@ -2686,9 +2686,73 @@ class CheckCaptures extends Recheck, SymTransformer:
         postCheck(unit.tpdTree)
         checkSelfTypes(unit.tpdTree)
         postCheckWF(unit.tpdTree)
+        if !ctx.reporter.errorsReported then setPickledTypes(unit.tpdTree)
         if ctx.settings.YccDebug.value then
           show(unit.tpdTree) // this does not print tree, but makes its variables visible for dependency printing
     end checkUnit
+
+// ----- Types seen by other compilation units --------------------------------
+
+    /** Give the inferred type trees of the members defined in `tree` their capture
+     *  checked types. These types then get pickled, so that other compilation
+     *  units see them. They are written with @retains annotations, like types
+     *  that are given explicitly. A type tree keeps its type if its capture checked
+     *  type has no capture sets, cannot be written in this way, or differs in more
+     *  than capture sets.
+     */
+    private def setPickledTypes(tree: Tree)(using Context): Unit = tree match
+      case tree: PackageDef =>
+        tree.stats.foreach(setPickledTypes)
+      case TypeDef(_, impl: Template) =>
+        impl.body.foreach(setPickledTypes)
+      case tree: ValOrDefDef =>
+        tree.tpt match
+          case tpt: InferredTypeTree if tpt.hasNuType =>
+            val tp = pickledType(tpt.nuType, tree.symbol)
+            if tp.exists && (tp =:= tpt.tpe)(using ctx.withPhase(Phases.typerPhase)) then
+              tpt.overwriteType(tp)
+          case _ =>
+      case _ =>
+
+    /** The capture checked type `tp` of member `sym`, written with @retains
+     *  annotations. NoType if all capture sets of `tp` are empty, or if `tp` cannot
+     *  be written in this way. The latter is the case if `tp` refers to
+     *   - a parameter of a function type that does not enclose the reference,
+     *   - a result capability of a function type other than the closest enclosing one,
+     *   - a maybe capability, or
+     *   - a local symbol that is not a parameter of `sym`.
+     */
+    private def pickledType(tp: Type, sym: Symbol)(using Context): Type =
+      var expressible = true
+      var hasCaptures = false
+      object check extends TypeTraverser:
+        var binders: List[Type] = Nil
+        def traverse(t: Type): Unit =
+          if expressible then t match
+            case t: ParamRef =>
+              if !binders.exists(_ eq t.binder) then expressible = false
+            case t: LambdaType =>
+              binders = t :: binders
+              traverseChildren(t)
+              binders = binders.tail
+            case defn.RefinedFunctionOf(rinfo) =>
+              traverse(rinfo)
+            case t: NamedType if t.prefix eq NoPrefix =>
+              if t.symbol.maybeOwner != sym then expressible = false
+            case AnnotatedType(parent, annot: CaptureAnnotation) =>
+              for c <- annot.refs.elems do
+                hasCaptures = true
+                if c.isInstanceOf[Maybe] then expressible = false
+                else c.core match
+                  case c: ResultCap =>
+                    if !binders.headOption.exists(_ eq c.binder) then expressible = false
+                  case c: Type => traverse(c)
+                  case _ =>
+              traverse(parent)
+            case _ =>
+              traverseChildren(t)
+      check.traverse(tp)
+      if expressible && hasCaptures then CapturingToRetains()(tp) else NoType
 
 // ----- Checks to do after the rechecking traversal --------------------------
 

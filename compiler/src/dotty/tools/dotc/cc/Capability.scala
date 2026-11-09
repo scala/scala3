@@ -1053,11 +1053,13 @@ object Capabilities:
     def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[Capability] =
       CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)
 
-    /** The type representing this capability.
-     *  Note this method does not distinguish different `RootCapability` instances,
-     *  and should only be used for printing or phases not related to CC.
+    /** The type that stands for this capability in a @retains annotation.
+     *  A ResultCap is written `caps.fresh`, like the global `fresh`, and every
+     *  other root capability `caps.any`. So the type does not tell which
+     *  ResultCap or LocalCap it stands for.
      */
     def toType(using Context): Type = this match
+      case _: ResultCap | GlobalFresh => defn.Caps_fresh.termRef
       case c: RootCapability => defn.Caps_any.termRef
       case c: CoreCapability => c
       case c: DerivedCapability =>
