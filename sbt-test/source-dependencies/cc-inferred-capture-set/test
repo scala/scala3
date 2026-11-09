@@ -1,0 +1,7 @@
+> compile
+
+# The inferred result type of `mk` now captures `io`
+$ copy-file changes/A.scala A.scala
+
+# B.scala needs to be recompiled, and fails since the result of `mk` is no longer pure
+-> compile

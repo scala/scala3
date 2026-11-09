@@ -2685,11 +2685,13 @@ class CheckCaptures extends Recheck, SymTransformer:
 // ----- Types seen by other compilation units --------------------------------
 
     /** Give the inferred type trees of the members defined in `tree` their capture
-     *  checked types. These types then get pickled, so that other compilation
-     *  units see them. They are written with @retains annotations, like types
-     *  that are given explicitly. A type tree keeps its type if its capture checked
-     *  type has no capture sets, cannot be written in this way, or differs in more
-     *  than capture sets.
+     *  checked types, written with @retains annotations like types that are given
+     *  explicitly. These types get pickled, so that separately compiled units see
+     *  them. They also become the infos of the members after this phase, so that
+     *  later phases see them. In particular, sbt then recompiles the users of a
+     *  member if its inferred capture sets change. A type tree keeps its type if
+     *  `pickledType` yields none, or if the capture checked type differs from it
+     *  in more than capture sets.
      */
     private def setPickledTypes(tree: Tree)(using Context): Unit = tree match
       case tree: PackageDef =>
@@ -2699,9 +2701,13 @@ class CheckCaptures extends Recheck, SymTransformer:
       case tree: ValOrDefDef =>
         tree.tpt match
           case tpt: InferredTypeTree if tpt.hasNuType =>
-            val tp = pickledType(tpt.nuType, tree.symbol)
+            val sym = tree.symbol
+            val tp = pickledType(tpt.nuType, sym)
             if tp.exists && (tp =:= tpt.tpe)(using ctx.withPhase(Phases.typerPhase)) then
               tpt.overwriteType(tp)
+              val info = atPhase(preRecheckPhase)(withResultType(sym.info, sym.paramSymss, tp))
+              atPhase(thisPhase.next)(sym.denot.copySymDenotation(info = info))
+                .installAfter(thisPhase)
           case _ =>
       case _ =>
 
@@ -2744,6 +2750,22 @@ class CheckCaptures extends Recheck, SymTransformer:
               traverseChildren(t)
       check.traverse(tp)
       if expressible && hasCaptures then CapturingToRetains()(tp) else NoType
+
+    /** The type `info` of a member with parameter symbols `psymss`, with its result
+     *  type replaced by `res`. References to the parameter symbols in `res` become
+     *  references to the parameters of `info`. To be called at a phase before
+     *  capture checking, since at the capture checking phase type maps treat
+     *  @retains annotations as capture sets.
+     */
+    private def withResultType(info: Type, psymss: List[List[Symbol]], res: Type)(using Context): Type =
+      info match
+        case info: MethodOrPoly =>
+          info.derivedLambdaType(resType =
+            withResultType(info.resType, psymss.tail, res).subst(psymss.head, info.paramRefs))
+        case info: ExprType =>
+          info.derivedExprType(res)
+        case _ =>
+          res
 
 // ----- Checks to do after the rechecking traversal --------------------------
 
