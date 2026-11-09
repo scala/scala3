@@ -121,6 +121,10 @@ class TreeUnpickler(reader: TastyReader,
 
   private val isOutline = attributes.isOutline
 
+  private val isPre310Tasty: Boolean =
+    val version = compilationUnitInfo.tastyInfo.get.version
+    version.major == 28 && version.minor < 10
+
   private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym
 
@@ -1540,11 +1544,14 @@ class TreeUnpickler(reader: TastyReader,
       /** Does `fn` in `Apply(fn, args)` need an extra `.apply` to typecheck now? This is the case
        *  when reading the pre 3.10 tree, which represented PolyFunctions differently (see `curryPolyFunction`).
        */
-      def isUncurriedPolyFunctionApply(fn: Tree): Boolean = fn match
-        case TypeApply(Select(qual, nme.apply), _) =>
-          !fn.tpe.widen.isInstanceOf[MethodType]
-          && qual.tpe.widen.derivesFrom(defn.PolyFunctionClass)
-        case _ => false
+      def isUncurriedPolyFunctionApply(fn: Tree): Boolean = 
+        if isPre310Tasty then
+          fn match
+            case TypeApply(Select(qual, nme.apply), _) =>
+              !fn.tpe.widen.isInstanceOf[MethodType]
+              && qual.tpe.widen.derivesFrom(defn.PolyFunctionClass)
+            case _ => false
+        else false
 
       /** Convert a polymorphic closure in the representation used before 3.10:
        *
@@ -1556,28 +1563,29 @@ class TreeUnpickler(reader: TastyReader,
        *      { def $anonfun[Ts]: (ps) => R = { def $anonfun(ps): R = body; closure($anonfun) }
        *        closure($anonfun) }
        */
-      def curryPolyClosure(tree: Block): Block = tree match
-        case Block(
-          (ddef @ DefDef(_, (tparams @ TypeDefs(_)) :: (vparams @ ValDefs(_)) :: Nil, _, _)) :: Nil,
-          closure @ Closure(Nil, meth, tpt))
-        if meth.symbol == ddef.symbol => // match the pre 3.10 shape
-          // mutate the ddef symbol and it's tree in place
-          val outer = ddef.symbol.asTerm
-          val poly = outer.info.asInstanceOf[PolyType]
-          val inner = newAnonFun(outer, poly.instantiate(tparams.map(_.symbol.typeRef)), outer.coord)
-          val innerClosure = tpd.Closure(inner, paramss =>
-            TreeTypeMap(
-              oldOwners = outer :: Nil, newOwners = inner :: Nil,
-              substFrom = vparams.map(_.symbol), substTo = paramss.head.map(_.symbol)
-            ).transform(ddef.rhs)
-          ).withSpan(ddef.span)
-          outer.info = poly.curryPolyFunction(defn.PolyFunctionClass)
-          outer.setParamss(tparams.map(_.symbol) :: Nil)
-          // reconstruct
-          val ddef1 = cpy.DefDef(ddef)(
-            paramss = tparams :: Nil, tpt = TypeTree(innerClosure.tpe), rhs = innerClosure)
-          cpy.Block(tree)(ddef1 :: Nil, tpd.Closure(Nil, meth, tpt).withSpan(closure.span))
-        case _ => tree
+      def curryPolyClosure(tree: Block): Block =
+        if isPre310Tasty then
+          tree match
+            // match the pre 3.10 shape
+            case closureDef(ddef @ DefDef(_, (tparams @ TypeDefs(_)) :: (vparams @ ValDefs(_)) :: Nil, _, _)) =>
+              // mutate the ddef symbol and its tree in place
+              val outer = ddef.symbol.asTerm
+              val poly = outer.info.asInstanceOf[PolyType]
+              val inner = newAnonFun(outer, poly.instantiate(tparams.map(_.symbol.typeRef)), outer.coord)
+              val innerClosure = tpd.Closure(inner, paramss =>
+                TreeTypeMap(
+                  oldOwners = outer :: Nil, newOwners = inner :: Nil,
+                  substFrom = vparams.map(_.symbol), substTo = paramss.head.map(_.symbol)
+                ).transform(ddef.rhs)
+              ).withSpan(ddef.span)
+              outer.info = poly.curryPolyFunction(defn.PolyFunctionClass)
+              outer.setParamss(tparams.map(_.symbol) :: Nil)
+              // reconstruct
+              val ddef1 = cpy.DefDef(ddef)(
+                paramss = tparams :: Nil, tpt = TypeTree(innerClosure.tpe), rhs = innerClosure)
+              cpy.Block(tree)(ddef1 :: Nil, tpd.Closure(Nil, Ident(outer.termRef), EmptyTree).withSpan(tree.span))
+            case _ => tree
+        else tree
 
       def simplifyLub(tree: Tree): Tree =
         tree.overwriteType(tree.tpe.simplified)
