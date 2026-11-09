@@ -124,7 +124,7 @@ an enclosing registry object:
 object Registry extends Stateful:
   var sharedCount = 0
 
-  update class CounterX:
+  update class CounterX uses Registry:
     def next: Int =
       sharedCount += 1
       sharedCount
@@ -157,6 +157,19 @@ an `update` method as non-private member.
 
 The idea is that when we upcast a reference to a type extending `Stateful` to a type that does not extend `Stateful`, we should not thereby gain access to methods that can use exclusive capabilities. By the previous restriction, such a class must be read-only, which means that none of the code it implements can on its own access exclusive capabilities. Nor can one override any of its methods with a method that does so, since such a method would have to be an `update` method, and `update` methods are not allowed to override regular methods.
 
+**Note:** One might think that we don't need a base trait `Stateful` since in any case
+a stateful type is defined by the presence of `update` methods, not by what it extends. In fact the importance of `Stateful` is that it defines _the other methods_ as read-only methods that _cannot_ access exclusive capabilities. For types not extending `Stateful`, this is not the case. For instance, the `apply` method of a function type is not an `update` method and the type itself does not extend `Stateful`. But `apply` may well be implemented by a method that accesses exclusive capabilities:
+
+```scala sc-compile-with:mut-counter-context
+def tick(c: Counter^): () ->{c} Int =
+  () =>
+    c.incr(c.value + 1)
+    c.value
+```
+
+A mutable class such as a reference cell or a mutable array or matrix is clearly a stateful type.
+But it also has two other aspects that are explained in the following: it is typically classified as `Unscoped`, and this common combination is expressed by the trait `Mutable`.
+<!--
 **Example:**
 
 Consider the traits `IterableOnce` and `Iterator` from the standard library. To make state and mutation tracking explicit, one could model them like this:
@@ -188,18 +201,8 @@ trait Iterable[+T] extends IterableOnce[T]:
 Here, `Iterable` is not a stateful type since it has no `update` method as member.
 All inherited `update` methods are (re-)implemented by normal methods.
 
-**Note:** One might think that we don't need a base trait `Stateful` since in any case
-a stateful type is defined by the presence of `update` methods, not by what it extends. In fact the importance of `Stateful` is that it defines _the other methods_ as read-only methods that _cannot_ access exclusive capabilities. For types not extending `Stateful`, this is not the case. For instance, the `apply` method of a function type is not an `update` method and the type itself does not extend `Stateful`. But `apply` may well be implemented by a method that accesses exclusive capabilities:
 
-```scala sc-compile-with:mut-counter-context
-def tick(c: Counter^): () ->{c} Int =
-  () =>
-    c.incr(c.value + 1)
-    c.value
-```
-
-A mutable class such as a reference cell or a mutable array or matrix is clearly a stateful type.
-But it also has two other aspects that are explained in the following: it is typically classified as `Unscoped`, and this common combination is expressed by the trait `Mutable`.
+-->
 
 <!--
 ## Separate Classes
