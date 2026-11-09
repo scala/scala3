@@ -340,19 +340,6 @@ abstract class Recheck extends Phase, SymTransformer:
       recheckStats(impl.body)
       sym.typeRef
 
-    /** Assuming `formals` are parameters of a Java-defined method, remap Object
-     *  to FromJavaObject since it got lost in ElimRepeated.
-     *  NOTE: It seems this is no longer true, and `mapJavaArgs` is not needed.
-     *  The invocation is currently disabled in recheckApply.
-     */
-    private def mapJavaArgs(formals: List[Type])(using Context): List[Type] =
-      val tm = new TypeMap:
-        def apply(t: Type) =
-          t match
-            case t: TypeRef if t.symbol == defn.ObjectClass => defn.FromJavaObjectType
-            case _ => mapOver(t)
-      formals.mapConserve(tm)
-
     /** Hook for method type instantiation */
     protected def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
       mt.instantiate(argTypes)
@@ -360,8 +347,28 @@ abstract class Recheck extends Phase, SymTransformer:
     /** A hook to massage the type of an applied method */
     protected def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType = funtpe
 
-    protected def recheckArg(arg: Tree, formal: Type, pref: ParamRef, app: Apply)(using Context): Type =
+    protected def recheckArg(arg: Tree, formal: Type, pref: ParamRef, meth: Symbol)(using Context): Type =
       recheck(arg, formal)
+
+    /** Recheck the arguments `args` of a method of type `mt` with `recheckOne`,
+     *  which is passed an argument, the type of its parameter, and a reference
+     *  to that parameter. If `mt` is parameter dependent, references to a
+     *  parameter in the types of later parameters are replaced by the type of
+     *  its argument.
+     */
+    private def recheckArgs(args: List[Tree], mt: MethodType)
+        (recheckOne: (Tree, Type, ParamRef) => Type)(using Context): List[Type] =
+      def recur(args: List[Tree], formals: List[Type], prefs: List[ParamRef]): List[Type] = args match
+        case arg :: args1 =>
+          val argType = recheckOne(arg, normalizeByName(formals.head), prefs.head)
+          val formals1 =
+            if mt.isParamDependent
+            then formals.tail.map(_.substParam(prefs.head, argType))
+            else formals.tail
+          argType :: recur(args1, formals1, prefs.tail)
+        case Nil =>
+          Nil
+      recur(args, mt.paramInfos, mt.paramRefs)
 
     /** A hook to check all the parts of an application:
      *   @param  tree      the application `fn(args)`
@@ -392,22 +399,7 @@ abstract class Recheck extends Phase, SymTransformer:
         case fntpe1: MethodType =>
           val fntpe = prepareFunction(fntpe1, tree.fun.symbol)
           assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
-          val formals =
-            if false && tree.symbol.is(JavaDefined) // see NOTE in mapJavaArgs
-            then mapJavaArgs(fntpe.paramInfos)
-            else fntpe.paramInfos
-          def recheckArgs(args: List[Tree], formals: List[Type], prefs: List[ParamRef]): List[Type] = args match
-            case arg :: args1 =>
-              val argType = recheckArg(arg, normalizeByName(formals.head), prefs.head, tree)
-              val formals1 =
-                if fntpe.isParamDependent
-                then formals.tail.map(_.substParam(prefs.head, argType))
-                else formals.tail
-              argType :: recheckArgs(args1, formals1, prefs.tail)
-            case Nil =>
-              assert(formals.isEmpty)
-              Nil
-          val argTypes = recheckArgs(tree.args, formals, fntpe.paramRefs)
+          val argTypes = recheckArgs(tree.args, fntpe)(recheckArg(_, _, _, tree.fun.symbol))
           recheckApplication(tree, qualType, fntpe, argTypes)
             //.showing(i"typed app $tree : $fntpe with ${tree.args}%, % : $argTypes%, % = $result")
         case tp =>
@@ -427,8 +419,19 @@ abstract class Recheck extends Phase, SymTransformer:
 
     def recheckTyped(tree: Typed)(using Context): Type =
       val tptType = recheck(tree.tpt)
-      recheck(tree.expr, tptType)
+      val exprProto =
+        if tptType.isRepeatedParam // a sequence argument `xs*`
+        then seqArgType(tptType, toArray = tree.expr.tpe.derivesFrom(defn.ArrayClass))
+        else tptType
+      recheck(tree.expr, exprProto)
       tptType
+
+    /** The expected type of a sequence argument `xs*` that is passed to a repeated
+     *  parameter of type `formal`. It is an array type if `toArray` is true and
+     *  a `Seq` type otherwise.
+     */
+    protected def seqArgType(formal: Type, toArray: Boolean)(using Context): Type =
+      formal.translateFromRepeated(toArray)
 
     def recheckAssign(tree: Assign)(using Context): Type =
       val lhsType = recheck(tree.lhs, LhsProto)
@@ -548,8 +551,7 @@ abstract class Recheck extends Phase, SymTransformer:
           def applyImplicits(tp: Type, implicits: List[Tree]): Type = tp match
             case mt: MethodType if implicits.nonEmpty =>
               val (args, rest) = implicits.splitAt(mt.paramInfos.length)
-              val argTypes = args.lazyZip(mt.paramInfos).map: (arg, formal) =>
-                recheck(arg, normalizeByName(formal))
+              val argTypes = recheckArgs(args, mt)(recheckArg(_, _, _, unapp))
               applyImplicits(instantiate(mt, argTypes, unapp), rest)
             case _ => tp
           val resultType = applyImplicits(instantiate(fntpe, argType :: Nil, unapp), tree.implicits)
@@ -888,9 +890,6 @@ abstract class Recheck extends Phase, SymTransformer:
 
     def isCompatible(actual: Type, expected: Type)(using Context): Boolean = printOnAssertionError(i"fail while $actual iscompat $expected"):
       actual <:< expected
-      || expected.isRepeatedParam
-          && isCompatible(actual,
-              expected.translateFromRepeated(toArray = actual.widen.isRef(defn.ArrayClass)))
       || {
         val widened = widenSkolems(expected)
         (widened ne expected) && isCompatible(actual, widened)

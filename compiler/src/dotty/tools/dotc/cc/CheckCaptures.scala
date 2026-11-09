@@ -1096,13 +1096,12 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Recheck argument against an instantiated version of `formal` where toplevel `any`
      *  occurrences are replaced by LocalCap instances.
      */
-    protected override def recheckArg(arg: Tree, formal: Type, pref: ParamRef, app: Apply)(using Context): Type =
-      val meth = app.fun.symbol
+    protected override def recheckArg(arg: Tree, formal: Type, pref: ParamRef, meth: Symbol)(using Context): Type =
       if meth.isPrimaryConstructor
           && meth.owner.asClass.refiningGetterNamed(pref.paramName).is(Tracked)
       then
         arg.putAttachment(NoWiden, ())
-      val instantiatedFormal = globalCapToLocal(formal, Origin.Formal(pref, app))
+      val instantiatedFormal = globalCapToLocal(formal, Origin.Formal(pref, meth))
       val byNameOwner = arg.byNameOwner
       val argType =
         if byNameOwner.exists then recheckByNameArg(arg, byNameOwner, instantiatedFormal)
@@ -1583,6 +1582,16 @@ class CheckCaptures extends Recheck, SymTransformer:
       val varMirrors = locals.collect:
         case local if local.termRef.isLocalMutable => local.varMirror
       super.avoidLocals(tp, varMirrors ++ locals)
+
+    /** An array that is passed as a sequence argument is only read: it is either
+     *  wrapped in an immutable sequence or passed to a Java method. So under
+     *  strict mutability the expected array type has a read-only capability.
+     */
+    override protected def seqArgType(formal: Type, toArray: Boolean)(using Context): Type =
+      val tp = super.seqArgType(formal, toArray)
+      if toArray && tp.isArrayUnderStrictMut then
+        globalCapToLocal(CapturingType(tp, CaptureSet(GlobalAny.readOnly)), Origin.Unknown)
+      else tp
 
     /** Elements of a SeqLiteral instantiate a Seq or Array parameter, so they
      *  should be boxed.

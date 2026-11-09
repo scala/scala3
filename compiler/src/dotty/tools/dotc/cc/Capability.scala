@@ -1143,7 +1143,7 @@ object Capabilities:
     case InDecl(sym: Symbol, fields: List[Symbol] = Nil)
     case TypeArg(tp: Type)
     case UnsafeAssumePure
-    case Formal(pref: ParamRef, app: tpd.Apply)
+    case Formal(pref: ParamRef, meth: Symbol)
     case ResultInstance(result: ResultCap, methType: Type, tree: Tree = EmptyTree)
     case UnapplyInstance(info: MethodType)
     case LocalInstance(restpe: Type)
@@ -1176,8 +1176,7 @@ object Capabilities:
         i" of type argument $tp"
       case UnsafeAssumePure =>
         " when instantiating argument of unsafeAssumePure"
-      case Formal(pref, app) =>
-        val meth = app.symbol
+      case Formal(pref, meth) =>
         if meth.exists
         then i" when checking argument to parameter ${pref.paramName} of $meth"
         else ""
