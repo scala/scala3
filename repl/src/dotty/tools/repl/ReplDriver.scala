@@ -377,12 +377,9 @@ class ReplDriver(settings: Array[String],
   ): List[Completion] =
     completionsWithOffset(cursor, expr, state0, displayError, includeUniversal = true)._2
 
-  /** Extract possible completions at the index of `cursor` in `expr`, together
-   *  with the offset in `expr` at which the completed word starts, i.e. the
-   *  part of `expr` before the offset is kept and the rest is replaced by the
-   *  completion label. Unless `includeUniversal` is set, members every value
-   *  has (see [[withoutUniversalMembers]]) are left out when nothing has been typed
-   *  yet after the qualifier, e.g. for `xs.` but not for `xs.toS`.
+  /** Like [[completions]], but also returns the offset in `expr` where the completed
+   *  word starts. Unless `includeUniversal` is set, [[withoutUniversalMembers]] is
+   *  applied when nothing has been typed after the qualifier (`xs.`, not `xs.toS`).
    */
   protected final def completionsWithOffset(
     cursor: Int,
@@ -436,24 +433,17 @@ class ReplDriver(settings: Array[String],
       result
   end completionsWithOffset
 
-  /** `completions` without the members every value has, i.e. ones inherited from
-   *  `Any`/`AnyRef` or added to every type by a `Predef` conversion or extension.
-   *  `:completions` leaves these out when no prefix has been typed, to reduce noise.
-   *
-   *  Scala 2 (`isMemberUniversal` in `PresentationCompilation`) detects members added
-   *  by an implicit view with an unbounded parameter type. `Completion` doesn't record
-   *  how a member was added, so the `Predef` ones are listed here by hand and have to
-   *  be kept in sync with `Predef`. The symbols are looked up once per call; classes
-   *  missing from the standard library are skipped.
+  /** `completions` without the members every value has: those of `Any`/`AnyRef` and
+   *  those `Predef` adds to every type. Scala 2 detects the latter generically
+   *  (`isMemberUniversal`), but `Completion` doesn't record how a member was added,
+   *  so they are listed by hand and must be kept in sync with `Predef`.
    */
   private def withoutUniversalMembers(completions: List[Completion])(using Context): List[Completion] =
-    // Implicit classes in `Predef` that apply to every value.
     val universalOwners: Set[Symbol] =
       Set(defn.AnyClass, defn.ObjectClass) ++
         List("Ensuring", "StringFormat")
           .map(name => getClassIfDefined(s"scala.Predef.$name"))
           .filter(_.exists)
-    // Extension methods in `Predef` that apply to every value.
     val universalMethods: Set[Symbol] =
       List(nme.nn, nme.runtimeChecked, "->".toTermName)
         .flatMap(name => defn.ScalaPredefModule.info.member(name).alternatives)
@@ -850,8 +840,7 @@ class ReplDriver(settings: Array[String],
       val expr = rawExpr.stripTrailing()
       val (offset, comps) = completionsWithOffset(expr.length, expr, state, includeUniversal = false)
       val lines = comps.map(c => s"[completions] ${expr.take(offset)}${c.label}").distinct.sorted
-      // Editors (e.g. emacs-sbt-mode) collect the output of a single command, so the
-      // candidates are echoed in one go rather than one `println` per candidate.
+      // A single `println`, so editors capturing one command's output get it in one chunk.
       if lines.nonEmpty then out.println(lines.mkString("\n"))
       state
 
