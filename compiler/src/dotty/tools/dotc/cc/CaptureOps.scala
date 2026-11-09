@@ -798,7 +798,7 @@ extension (sym: Symbol) {
    */
   def isExemptFromExplicitChecks(using Context): Boolean =
     sym.isLocalToCompilationUnit
-    || sym.isScalaDocSnippet
+    || sym.ownersIterator.exists(_.isScalaDocSnippet)
     || sym.name.isReplWrapperName
     || sym.isConstructor && sym.owner.name.isReplWrapperName
     || ctx.owner.enclosingPackageClass.isEmptyPackage
