@@ -207,6 +207,50 @@ class CompletionMatchSuite extends BaseCompletionSuite:
       filter = _.contains("exhaustive")
     )
 
+  @Test def `exhaustive-java-sealed` =
+    check(
+      """
+        |package example
+        |
+        |import java.lang.constant.ConstantDesc
+        |
+        |object Main {
+        |  (null: ConstantDesc) match@@
+        |}""".stripMargin,
+      """|match (exhaustive) ConstantDesc (6 cases)
+         |""".stripMargin,
+      filter = _.contains("exhaustive")
+    )
+
+  @Test def `exhaustive-java-sealed-edit` =
+    checkEdit(
+      """
+        |package example
+        |
+        |import java.lang.constant.ConstantDesc
+        |
+        |object Main {
+        |  (null: ConstantDesc) match@@
+        |}""".stripMargin,
+      s"""
+         |package example
+         |
+         |import java.lang.constant.ConstantDesc
+         |import java.lang.constant.DynamicConstantDesc
+         |
+         |object Main {
+         |  (null: ConstantDesc) match
+         |\tcase _: String => $$0
+         |\tcase _: java.lang.Long =>
+         |\tcase _: Integer =>
+         |\tcase _: java.lang.Float =>
+         |\tcase _: DynamicConstantDesc[?] =>
+         |\tcase _: java.lang.Double =>
+         |
+         |}""".stripMargin,
+      filter = _.contains("exhaustive")
+    )
+
   @Test def `exhaustive-scala-enum` =
     checkEdit(
       """
@@ -313,7 +357,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
         |case object Goo extends TestB
         |case object Both extends TestA with TestB
         |object Main {
-        |  def testExhaustive[T <: TestA with TestB](test: T): Boolean =
+        |  def testExhaustive[T <: TestA & TestB](test: T): Boolean =
         |    test m@@
         |}""".stripMargin,
       s"""
@@ -327,7 +371,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
          |case object Goo extends TestB
          |case object Both extends TestA with TestB
          |object Main {
-         |  def testExhaustive[T <: TestA with TestB](test: T): Boolean =
+         |  def testExhaustive[T <: TestA & TestB](test: T): Boolean =
          |    test match
          |\tcase Both => $$0
          |\t

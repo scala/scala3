@@ -53,6 +53,8 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
    *  May return `null`, in which case the current Stepper yields the same elements as before.
    *
    *  See method `trySplit` in [[java.util.Spliterator]].
+   *
+   *  @return a new `Stepper` containing a portion of the elements, or `null` if this stepper cannot be split
    */
   def trySplit(): Stepper[A]^{this} | Null
 
@@ -71,6 +73,9 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
    *  Note that the return type is `Spliterator[_]` instead of `Spliterator[A]` to allow returning
    *  a [[java.util.Spliterator.OfInt]] (which is a `Spliterator[Integer]`) in the subclass [[IntStepper]]
    *  (which is a `Stepper[Int]`).
+   *
+   *  @tparam B a supertype of the element type `A`
+   *  @return a `Spliterator` over the remaining elements of this stepper
    */
   def spliterator[B >: A]: Spliterator[?]^{this}
 
@@ -79,6 +84,9 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
    *  Note that the return type is `Iterator[_]` instead of `Iterator[A]` to allow returning
    *  a [[java.util.PrimitiveIterator.OfInt]] (which is a `Iterator[Integer]`) in the subclass
    *  [[IntStepper]] (which is a `Stepper[Int]`).
+   *
+   *  @tparam B a supertype of the element type `A`
+   *  @return a Java `Iterator` over the remaining elements of this stepper
    */
   def javaIterator[B >: A]: JIterator[?]^{this}
 
@@ -184,7 +192,10 @@ object Stepper {
   }
 }
 
-/** A `Stepper` for arbitrary element types. See [[Stepper]]. */
+/** A `Stepper` for arbitrary element types. See [[Stepper]].
+ *
+ *  @tparam A the element type of the stepper
+ */
 trait AnyStepper[+A] extends Stepper[A] {
   def trySplit(): AnyStepper[A]^{this} | Null
 

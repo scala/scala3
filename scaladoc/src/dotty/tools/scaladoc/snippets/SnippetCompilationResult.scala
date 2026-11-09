@@ -8,6 +8,7 @@ case class Position(srcPos: SourcePosition, relativeLine: Int)
 
 case class SnippetCompilerMessage(position: Option[Position], message: String, level: MessageLevel):
   def emit()(using CompilerContext): Unit =
+    given CompilerContext = position.fold(summon[CompilerContext])(pos => summon[CompilerContext].withSource(pos.srcPos.source))
     val pos: SrcPos = position.fold(dotty.tools.dotc.util.NoSourcePosition)(_.srcPos)
     level match
       case MessageLevel.Info => report.log(message, pos)

@@ -1,0 +1,16 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t2442/t2442.scala:4:21 
+4 |  def f(e: MyEnum) = e match {
+  |                     ^
+  |                     match may not be exhaustive.
+  |
+  |                     It would fail on pattern case: THREE
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t2442/t2442.scala:11:27 
+11 |  def g(e: MySecondEnum) = e match {
+   |                           ^
+   |                           match may not be exhaustive.
+   |
+   |                           It would fail on pattern case: BLUE
+   |
+   | longer explanation available when compiling with `-explain`

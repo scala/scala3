@@ -52,20 +52,20 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     super.render()
 
   private def serializeSideMenu() =
-    import com.fasterxml.jackson.databind.*
-    import com.fasterxml.jackson.databind.node.ObjectNode
-    import com.fasterxml.jackson.databind.node.TextNode
-    val mapper = new ObjectMapper();
+    import _root_.tools.jackson.databind.json.JsonMapper
+    import _root_.tools.jackson.databind.node.ObjectNode
+    import _root_.tools.jackson.databind.node.StringNode
+    val mapper = JsonMapper.builder().build()
 
     def serializePage(page: Page): ObjectNode =
       import scala.jdk.CollectionConverters.SeqHasAsJava
       val children = mapper.createArrayNode().addAll(page.children.filterNot(_.hidden).map(serializePage).asJava)
-      val location = mapper.createArrayNode().addAll(rawLocation(page.link.dri).map(TextNode(_)).asJava)
+      val location = mapper.createArrayNode().addAll(rawLocation(page.link.dri).map(StringNode(_)).asJava)
       val obj = mapper.createObjectNode()
-      obj.set("name", new TextNode(page.link.name))
+      obj.set("name", new StringNode(page.link.name))
       obj.set("location", location)
       obj.set("kind", page.content match
-        case m: Member if m.needsOwnPage => new TextNode(m.kind.name)
+        case m: Member if m.needsOwnPage => new StringNode(m.kind.name)
         case _ => null
       )
       obj.set("children", children)
@@ -75,7 +75,9 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     rootNode.set("docs", rootDocsPage.map(serializePage).orNull)
     rootNode.set("api", rootApiPage.map(serializePage).orNull)
     val jsonString = mapper.writer().writeValueAsString(rootNode);
-    renderResource(Resource.Text("dynamicSideMenu.json", jsonString))
+    // A script rather than plain JSON so that it can be loaded with a <script> tag,
+    // which unlike `fetch` also works when browsing the docs from `file://` URLs.
+    renderResource(Resource.Text("scripts/dynamicSideMenu.js", s"dynamicSideMenuData = $jsonString;"))
 
   private def renderResources(): Seq[String] =
     import scala.util.Using
@@ -92,7 +94,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
               .map(from => Resource.File(resourceFile.toPath.relativize(from).toString, from))
           }.fold (
             { t =>
-              report.warn(s"Error occured while processing _assets file.", t)
+              report.warn(s"Error occurred while processing _assets file.", t)
               Seq.empty
             },
             identity
@@ -105,9 +107,9 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
   def mkHead(page: Page): Seq[TagArg] =
     val resources = page.content match
       case t: ResolvedTemplate =>
-        t.resolved.resources ++ (if t.hasFrame then commonResourcesPaths ++ staticSiteOnlyResourcesPaths else Nil)
+        t.resolved.resources ++ (if t.hasFrame then commonResourcesPaths else Nil)
       case _ =>
-        commonResourcesPaths ++ apiOnlyResourcesPaths
+        commonResourcesPaths
 
     val earlyResources = page.content match
       case t: ResolvedTemplate => if t.hasFrame then earlyCommonResourcePaths else Nil
@@ -262,7 +264,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     div(id := "")(
       div(id := "header", cls := "body-small")(
         div(cls := "header-container-left")(
-          a(href := pathToRoot(link.dri), cls := "logo-container")(
+          // `index.html` rather than its directory, which `file://` URLs show as a listing
+          a(href := resolveRoot(link.dri, "index.html"), cls := "logo-container")(
             projectLogoElem.toSeq,
             darkProjectLogoElem.toSeq,
             span(cls := "project-name h300")(args.name)
@@ -316,16 +319,6 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
             .get
         )
       ),
-      div(id := "footer", cls := "body-small")(
-        div(cls := "left-container")(
-         "Generated with"
-        ),
-        div(cls := "right-container")(
-          socialLinks,
-          div(cls := "text")(textFooter)
-        ),
-        div(cls := "text-mobile")(textFooter)
-      ),
       div(id := "scaladoc-searchBar"),
       div(id := "main")(
         parentsHtml,
@@ -340,7 +333,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
             },
           ),
         ),
-        div(id := "footer", cls := "body-small mobile-footer")(
+        div(id := "footer", cls := "body-small")(
           div(cls := "left-container")(
             "Generated with"
           ),

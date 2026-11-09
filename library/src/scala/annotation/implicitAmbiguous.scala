@@ -12,6 +12,7 @@
 
 package scala.annotation
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** To customize the error message that's emitted when an implicit search finds
@@ -38,6 +39,8 @@ import scala.language.`2.13`
  *
  *  implicitly[Int =!= Int]
  *  ```
+ *
+ *  @param msg the error message template, with `\${Xi}` placeholders for type parameters
  */
 @meta.getter
 final class implicitAmbiguous(msg: String) extends scala.annotation.ConstantAnnotation

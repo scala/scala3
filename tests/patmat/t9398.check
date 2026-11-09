@@ -1,1 +1,8 @@
-11: Pattern Match Exhaustivity: CC(_, B2)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9398.scala:11:4 ----
+11 |    case CC(_, B) => ()
+   |    ^
+   |    match may not be exhaustive.
+   |
+   |    It would fail on pattern case: CC(_, B2)
+   |
+   | longer explanation available when compiling with `-explain`

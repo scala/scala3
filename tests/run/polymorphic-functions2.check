@@ -1,0 +1,90 @@
+--- FunctionN -> ErasedPolyFunction -> FunctionN, various arities
+f0
+42
+a1
+a1
+3
+1-true-c
+literal a1b
+--- explicit type arguments
+a1c
+--- ErasedPolyFunction result re-adapted to FunctionN
+f0
+42
+f0
+42
+h1
+h1 inferred
+7
+11
+7-false-h3
+8-true-h3 inferred
+30
+--- partial type application yields an ordinary function
+g1
+2
+1-true-g3
+2-false-g3 via idPoly2
+--- partial term application and eta-expansion
+101
+202
+1001
+2001
+eta
+--- non-idempotent arguments are evaluated exactly once
+counter = 1
+e1
+counter = 1
+counter = 2
+e2
+e2 again
+counter = 2
+--- boxing to Object, Any and type parameters
+from Any
+6
+true
+true
+identity
+list
+second list
+fromList
+opt
+opt.map
+true
+polyAny
+8
+--- overriding and bridges
+in Fun1Runner
+r1
+in Fun1Runner
+in Fun1Runner
+r1 twice
+3
+12
+3
+3
+14
+3
+16
+--- class with poly function field
+hold.get
+hold.ff
+hold.ff[Int]
+getAs
+getAs
+holdVar
+--- vars, lazy vals, by-name, defaults
+v
+v reassigned
+18
+byName
+byName[Int]
+byName
+byName[Int]
+20
+20
+--- poly functions returned from and matched in expressions
+picked
+3
+7
+matched

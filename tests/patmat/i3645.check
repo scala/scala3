@@ -1,1 +1,8 @@
-20: Pattern Match Exhaustivity: KInt
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i3645.scala:20:33 ---
+20 |    def get(k: K[Age]): String = k match {
+   |                                 ^
+   |                                 match may not be exhaustive.
+   |
+   |                                 It would fail on pattern case: KInt
+   |
+   | longer explanation available when compiling with `-explain`

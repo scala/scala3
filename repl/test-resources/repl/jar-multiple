@@ -1,7 +1,7 @@
 scala> val z = 1
 val z: Int = 1
 
-scala>:jar ../compiler/test-resources/jars/mylibrary.jar
+scala> :jar ../compiler/test-resources/jars/mylibrary.jar
 Added '../compiler/test-resources/jars/mylibrary.jar' to classpath.
 
 scala> import mylibrary.Utils
@@ -9,7 +9,7 @@ scala> import mylibrary.Utils
 scala> Utils.greet("Alice")
 val res0: String = "Hello, Alice!"
 
-scala>:jar ../compiler/test-resources/jars/mylibrary2.jar
+scala> :jar ../compiler/test-resources/jars/mylibrary2.jar
 Added '../compiler/test-resources/jars/mylibrary2.jar' to classpath.
 
 scala> import mylibrary2.Utils2

@@ -1,0 +1,12 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25863a.scala:16:28 --------------------------------------
+16 |    make[File^{file}](file, fun) // error
+   |                            ^^^
+   |Found:    File^{any} ->{file} Unit
+   |Required: File^{file} => Unit
+   |
+   |Note that capability `file` cannot flow into capture set {any}.
+   |
+   |where:    =>  refers to a root capability created in anonymous function of type (file²: File): () -> Unit when checking argument to parameter f of method make
+   |          any is the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`

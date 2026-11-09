@@ -10,8 +10,9 @@ import dotty.tools.dotc.core.Mode.GadtConstraintInference
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.util.optional
 import dotty.tools.dotc.ast.TreeTypeMap
+
+import scala.util.boundary
 
 /** Matches a quoted tree against a quoted pattern tree.
  *  A quoted pattern tree may have type and term holes in addition to normal terms.
@@ -115,6 +116,9 @@ class QuoteMatcher(debug: Boolean) {
    */
   private type MatchingExprs = Seq[MatchResult]
 
+  /** Return type that indicates that the method returns a T or aborts to the enclosing boundary with a `None` */
+  private type optional[T] = boundary.Label[None.type] ?=> T
+
   /** TODO-18271: update
    *  A map relating equivalent symbols from the scrutinee and the pattern
    *  For example in
@@ -133,10 +137,10 @@ class QuoteMatcher(debug: Boolean) {
   def treeMatch(scrutinee: Tree, pattern: Tree)(using Context): Option[Tuple] = {
     val (pat1, typeHoles, ctx1) = instrumentTypeHoles(pattern)
     inContext(ctx1) {
-      optional {
+      boundary(Some {
         given Env = new Env(Map.empty, Map.empty)
         scrutinee =?= pat1
-      }.map { matchings =>
+      }).map { matchings =>
         lazy val spliceScope = SpliceScope.getCurrent
         // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found, seal them in a quoted.Type and add them to the result
@@ -643,21 +647,15 @@ class QuoteMatcher(debug: Boolean) {
         else
           val typeArgs1 = PolyType.syntheticParamNames(typeArgs.length)
           val bounds = typeArgs map (_ => TypeBounds.empty)
-          val resultTypeExp = (pt: PolyType) => {
+          val resultTypeExp = (pt: PolyType) =>
             val argTypes1 = paramTypes.map(_.subst(ptTypeVarSymbols, pt.paramRefs))
             val resultType1 = mapTypeHoles(patternTpe).subst(ptTypeVarSymbols, pt.paramRefs)
-            MethodType(argTypes1, resultType1)
-          }
+            defn.FunctionNOf(argTypes1, resultType1)
           PolyType(typeArgs1)(_ => bounds, resultTypeExp)
 
         val meth = newAnonFun(ctx.owner, methTpe)
 
-        def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
-          val (typeParams, params) = if isNotPoly then
-              (List.empty, lambdaArgss.head)
-            else
-              (lambdaArgss.head.map(_.tpe), lambdaArgss.tail.head)
-
+        def mkBody(typeParams: List[Type], params: List[Tree], owner: Symbol): Tree = {
           val typeArgsMap = ptTypeVarSymbols.zip(typeParams).toMap
           val argsMap = argIds.view.map(_.symbol).zip(params).toMap
 
@@ -683,13 +681,23 @@ class QuoteMatcher(debug: Boolean) {
             }.transform
           ).transform(tree)
 
-          TreeOps(body).changeNonLocalOwners(meth)
+          TreeOps(body).changeNonLocalOwners(owner)
         }
+
+        def bodyFn(lambdaArgss: List[List[Tree]]): Tree =
+          if isNotPoly then mkBody(Nil, lambdaArgss.head, meth)
+          else
+            val typeParams = lambdaArgss.head.map(_.tpe)
+            val defn.FunctionOf(argTypes1, resultType1, _) =
+              methTpe.asInstanceOf[PolyType].instantiate(typeParams).runtimeChecked
+            val innerMeth = newAnonFun(meth, MethodType(names)(_ => argTypes1, _ => resultType1))
+            Closure(innerMeth, paramss => mkBody(typeParams, paramss.head, innerMeth))
+
         val hoasClosure = Closure(meth, bodyFn).withSpan(tree.span)
         new ExprImpl(hoasClosure, spliceScope)
 
   private inline def notMatched[T]: optional[T] =
-    optional.break()
+    boundary.break(None)
 
   private inline def matched: MatchingExprs =
     Seq.empty

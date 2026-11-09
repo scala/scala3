@@ -1,1 +1,4 @@
-8: Match case Unreachable
+-- [E030] Match case Unreachable Warning: tests/patmat/i13342.scala:8:9 --------
+8 |    case false => 2 // was: no reachability warning on this case
+  |         ^^^^^
+  |         Unreachable case

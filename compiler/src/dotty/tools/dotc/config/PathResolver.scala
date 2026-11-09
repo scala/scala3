@@ -3,13 +3,13 @@ package dotc
 package config
 
 import WrappedProperties.AccessControl
-import io.{ClassPath, Directory, Path}
-import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath}
-import ClassPath.split
+import io.Directory
+import classpath.{ClassPath, ClassPathFactory}
 import PartialFunction.condOpt
 import core.Contexts.*
 import Settings.*
 import dotty.tools.io.File
+import dotty.tools.dotc.interactive.LogicalPackage
 
 object PathResolver {
 
@@ -17,15 +17,9 @@ object PathResolver {
   // security exceptions.
   import AccessControl.*
 
-  def firstNonEmpty(xs: String*): String = xs find (_ != "") getOrElse ""
-
-  /** Map all classpath elements to absolute paths and reconstruct the classpath.
-   */
-  def makeAbsolute(cp: String): String = ClassPath.map(cp, x => Path(x).toAbsolute.path)
-
   /** pretty print class path
    */
-  def ppcp(s: String): String = split(s) match {
+  def ppcp(s: String): String = ClassPath.split(s) match {
     case Nil      => ""
     case Seq(x)   => x
     case xs       => xs.map("\n" + _).mkString
@@ -33,7 +27,7 @@ object PathResolver {
 
   /** Values found solely by inspecting environment or property variables.
    */
-  object Environment {
+  private object Environment {
     private def searchForBootClasspath = {
       import scala.jdk.CollectionConverters.*
       val props = System.getProperties
@@ -134,13 +128,6 @@ object PathResolver {
       )
   }
 
-  def fromPathString(path: String)(using Context): ClassPath = {
-    val settings = ctx.settings.classpath.update(path)
-    inContext(ctx.fresh.setSettings(settings)) {
-      new PathResolver().result
-    }
-  }
-
   /** Show values in Environment and Defaults when no argument is provided.
    *  Otherwise, show values in Calculated as if those options had been given
    *  to a scala runner.
@@ -159,20 +146,14 @@ object PathResolver {
       }
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))
       println("RESIDUAL: 'scala %s'\n".format(rest.mkString(" ")))
-
-      pr.result match {
-        case cp: AggregateClassPath =>
-          println(s"ClassPath has ${cp.aggregates.size} entries and results in:\n${cp.asClassPathStrings}")
-      }
+      println(pr.result)
     }
 }
 
 import PathResolver.{Defaults, ppcp}
 
-class PathResolver(using c: Context) {
+class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(using c: Context) {
   import c.base.settings
-
-  private val classPathFactory = new ClassPathFactory
 
   private def cmdLineOrElse(name: String, alt: String) =
     commandLineFor(name) match {
@@ -213,21 +194,18 @@ class PathResolver(using c: Context) {
       if (!settings.classpath.isDefault) settings.classpath.value
       else sys.env.getOrElse("CLASSPATH", ".")
 
-    import classPathFactory.*
-
     // Assemble the elements!
     def basis: List[Iterable[ClassPath]] =
       val release = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
-
       List(
-        JrtClassPath(release),                        // 1. The Java 9+ classpath (backed by the jrt:/ virtual system, if available)
-        classesInPath(javaBootClassPath),             // 2. The Java bootstrap class path.
-        contentsOfDirsInPath(javaExtDirs),            // 3. The Java extension class path.
-        classesInExpandedPath(javaUserClassPath),     // 4. The Java application class path.
-        classesInPath(scalaBootClassPath),            // 5. The Scala boot class path.
-        contentsOfDirsInPath(scalaExtDirs),           // 6. The Scala extension class path.
-        classesInExpandedPath(userClassPath),         // 7. The Scala application class path.
-        sourcesInPath(sourcePath)                     // 8. The Scala source path.
+        ClassPath.jrt(release),                                                 // 1. The Java 9+ classpath (backed by the jrt:/ virtual system, if available)
+        ClassPathFactory.classesInPath(javaBootClassPath, expandStar = false),  // 2. The Java bootstrap class path.
+        ClassPathFactory.contentsOfDirsInPath(javaExtDirs),                     // 3. The Java extension class path.
+        ClassPathFactory.classesInPath(javaUserClassPath, expandStar = true),   // 4. The Java application class path.
+        ClassPathFactory.classesInPath(scalaBootClassPath, expandStar = false), // 5. The Scala boot class path.
+        ClassPathFactory.contentsOfDirsInPath(scalaExtDirs),                    // 6. The Scala extension class path.
+        ClassPathFactory.classesInPath(userClassPath, expandStar = true),       // 7. The Scala application class path.
+        ClassPathFactory.sourcesInPath(sourcePath, precomputedSourcePackages)   // 8. The Scala source path.
       )
 
     lazy val containers: List[ClassPath] = basis.flatten.distinct
@@ -252,13 +230,11 @@ class PathResolver(using c: Context) {
       )
   }
 
-  def containers: List[ClassPath] = Calculated.containers
-
   lazy val result: ClassPath = {
-    val cp = AggregateClassPath(containers.toIndexedSeq)
+    val cp = ClassPath.aggregate(Calculated.containers)
 
     if (settings.YlogClasspath.value) {
-      Console.println("Classpath built from " + settings.toConciseString(ctx.settingsState))
+      Console.println("Classpath built from " + settings.userSetSettings(ctx.settingsState).mkString("(", " ", ")"))
       Console.println("Defaults: " + PathResolver.Defaults)
       Console.println("Calculated: " + Calculated)
 
@@ -268,6 +244,4 @@ class PathResolver(using c: Context) {
     }
     cp
   }
-
-  def asURLs: Seq[java.net.URL] = result.asURLs
 }

@@ -1,0 +1,36 @@
+import scala.language.higherKinds
+
+class Category[M[_, _]]
+
+trait M1[F] {
+  type X[a, b] = F
+  def category: Category[X] = null
+  def category1: Category[Tuple2] = null
+  type Tuple2Alias = Tuple2
+  def category1b: Category[Tuple2Alias] = null
+}
+
+// The second trait is needed to make sure there's a forwarder generated in C.
+// otherwise the trait methods are just the inherited default methods from M1.
+trait M2[F] { self: M1[F] =>
+  override def category: Category[X] = null
+  override def category1: Category[Tuple2] = null
+
+  type T[A, B]
+  def category2: Category[T]
+  def category3: Category[[A, B] =>> T[B, A]]
+}
+
+abstract class C extends M1[Float] with M2[Float]
+
+object Test {
+  def t(c: Class[?]) = {
+    val ms = c.getMethods.filter(_.getName.startsWith("category"))
+    println(ms.map(_.toGenericString).sorted.mkString("\n"))
+  }
+  def main(args: Array[String]): Unit = {
+    t(classOf[C])
+    t(classOf[M1[?]])
+    t(classOf[M2[?]])
+  }
+}

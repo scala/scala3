@@ -8,7 +8,7 @@ object That {
         trait J {}
      }
      trait C extends A with B {
-         type T <: I with J;
+         type T <: I & J;
      }
 }
 

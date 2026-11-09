@@ -6,7 +6,7 @@ trait GenSetTemplate[A, +CC[X] <: GenSet[X]] {
   def empty: CC[A] = ???
 }
 
-trait SetLike[A, +This <: SetLike[A, This] with Set[A]] {
+trait SetLike[A, +This <: SetLike[A, This] & Set[A]] {
   def empty: This
 }
 

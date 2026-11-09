@@ -12,7 +12,9 @@
 
 package scala.runtime
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
+import scala.annotation.unused
 import java.lang.invoke._
 import java.lang.ref.SoftReference
 import java.lang.reflect.Method
@@ -40,7 +42,7 @@ final class StructuralCallSite private (callType: MethodType) {
 }
 
 object StructuralCallSite {
-  def bootstrap(lookup: MethodHandles.Lookup, invokedName: String, invokedType: MethodType, reflectiveCallType: MethodType): CallSite = {
+  def bootstrap(@unused lookup: MethodHandles.Lookup, @unused invokedName: String, @unused invokedType: MethodType, reflectiveCallType: MethodType): CallSite = {
     val structuralCallSite = new StructuralCallSite(reflectiveCallType)
     new ConstantCallSite(MethodHandles.constant(classOf[StructuralCallSite], structuralCallSite))
   }

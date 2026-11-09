@@ -14,14 +14,14 @@ import core.Decorators.em
 
 object JavaScanners {
 
-  class JavaScanner(source: SourceFile, override val startFrom: Offset = 0)(using Context) extends ScannerCommon(source) {
+  class JavaScanner(
+      source: SourceFile,
+      override val startFrom: Offset = 0,
+      limit: Offset = -1)(using Context) extends ScannerCommon(source, limit) {
 
     override def decodeUni: Boolean = true
 
-    def toToken(name: SimpleName): Token = {
-      val idx = name.start
-      if (idx >= 0 && idx <= lastKeywordStart) kwArray(idx) else IDENTIFIER
-    }
+    def toToken(name: SimpleName): Token = kwMap.getOrElse(name, IDENTIFIER)
 
     private class JavaTokenData0 extends TokenData
 
@@ -562,11 +562,7 @@ object JavaScanners {
 
         // Remove the last N characters from the buffer */
         def popNChars(n: Int): Unit =
-          if n > 0 then
-            val text = litBuf.toString
-            litBuf.clear()
-            val trimmed = text.substring(0, text.length - (n min text.length))
-            trimmed.nn.foreach(litBuf.append)
+          litBuf.setLength(litBuf.length() - n)
 
         // Drop the line's trailing whitespace
         popNChars(trailingWhitespaceLength)
@@ -632,6 +628,7 @@ object JavaScanners {
     /** convert name to long value
      */
     def intVal(negated: Boolean): Long =
+      val strVal = this.strVal.nn
       if (token == CHARLIT && !negated)
         if (strVal.length > 0) strVal.charAt(0).toLong else 0
       else {
@@ -729,7 +726,7 @@ object JavaScanners {
       case COMMA =>
         ","
       case _ =>
-        tokenString(token)
+        tokenString(token).nn
     }
 
     /* Initialization: read first char, then first token */
@@ -739,5 +736,5 @@ object JavaScanners {
     initialize()
   }
 
-  private val (lastKeywordStart, kwArray) = buildKeywordArray(keywords)
+  private val kwMap = buildKeywordMap(keywords)
 }

@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A slightly more specific conversion trait for classes which
@@ -27,7 +28,7 @@ trait ScalaNumericConversions extends ScalaNumber with ScalaNumericAnyConversion
  */
 trait ScalaNumericAnyConversions extends Any {
   /**
-   *  @return `**true**` if this number has no decimal component, `**false**` otherwise.
+   *  @return `true` if this number has no decimal component, `false` otherwise.
    */
   def isWhole: Boolean
 
@@ -112,6 +113,8 @@ trait ScalaNumericAnyConversions extends Any {
    *  in its lower 64 bits.  Or a BigDecimal with more precision
    *  than Double can hold: same thing.  There's no way given the
    *  interface available here to prevent this error.
+   *
+   *  @param x the value to compare against this numeric value for primitive equality
    */
   protected def unifiedPrimitiveEquals(x: Any) = x match {
     case x: Char    => isValidChar && (toInt == x.toInt)

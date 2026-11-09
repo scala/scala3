@@ -2,15 +2,15 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.language.unsafeNulls
-import scala.collection.immutable
-import scala.tools.asm
-import dotty.tools.dotc.CompilationUnit
+import scala.collection.{immutable, mutable}
+import org.objectweb.asm
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import tpd.*
+import dotty.tools.dotc.core.TypeComparer
+import dotty.tools.dotc.transform.TryCatchPatterns
 
 /*
  *
@@ -18,25 +18,26 @@ import tpd.*
  *  @version 1.0
  *
  */
-trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
+trait BCodeSyncAndTry extends BCodeBodyBuilder {
   /*
    * Functionality to lower `synchronized` and `try` expressions.
    */
-  class SyncAndTryBuilder(cunit: CompilationUnit) extends PlainBodyBuilder(cunit) {
+  class SyncAndTryBuilder extends PlainBodyBuilder {
 
-    def genSynchronized(tree: Apply, expectedType: BType): BType = (tree: @unchecked) match {
-      case Apply(TypeApply(fun, _), args) =>
-      val monitor = locals.makeLocal(ts.ObjectRef, "monitor", defn.ObjectType, tree.span)
+    /** Precondition: the target of the 'synchronized' call must already be on the stack. (`tree` is only used for positions) */
+    def genSynchronized(tree: Tree, args: List[Tree], expectedType: BType)(using Context): BType = {
+      val monitor = locals.makeLocal(bTypes.ObjectRef, "monitor", defn.ObjectType, tree.span)
       val monCleanup = new asm.Label
 
       // if the synchronized block returns a result, store it in a local variable.
       // Just leaving it on the stack is not valid in MSIL (stack is cleaned when leaving try-blocks).
       val hasResult = expectedType != UNIT
-      val monitorResult: Symbol = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", defn.ObjectType, tree.span) else null
+      val monitorResult: Symbol | Null = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", defn.ObjectType, tree.span) else null
 
-      /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
-      genLoadQualifier(fun)
-      bc.dup(ts.ObjectRef)
+      /* ------ (0) the monitor itself has been pushed to stack already, precondition of this method. ------ */
+
+      /* ------ (1) entering the monitor, also keeping a reference to it in a local var. ------ */
+      bc.dup(bTypes.ObjectRef)
       locals.store(monitor)
       emit(asm.Opcodes.MONITORENTER)
 
@@ -51,7 +52,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
       registerCleanup(monCleanup)
       genLoad(args.head, expectedType /* toTypeKind(tree.tpe.resultType) */)
       unregisterCleanup(monCleanup)
-      if (hasResult) { locals.store(monitorResult) }
+      if (monitorResult ne null) { locals.store(monitorResult) }
       nopIfNeeded(startProtected)
       val endProtected = currProgramPoint()
 
@@ -62,7 +63,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
        */
       locals.load(monitor)
       emit(asm.Opcodes.MONITOREXIT)
-      if (hasResult) { locals.load(monitorResult) }
+      if (monitorResult ne null) { locals.load(monitorResult) }
       val postHandler = new asm.Label
       bc.goTo(postHandler)
 
@@ -178,16 +179,36 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
      *    - "exception-handler-version-of-finally-block" respectively.
      *
      */
-    def genLoadTry(tree: Try): BType = tree match {
+    def genLoadTry(tree: Try)(using Context): BType = tree match {
       case Try(block, catches, finalizer) =>
       val kind = tpeTK(tree)
 
       val caseHandlers: List[EHClause] =
-        for (CaseDef(pat, _, caseBody) <- catches) yield {
+        for (cdef @ CaseDef(pat, _, caseBody) <- catches) yield {
+          val maybeSimpleMultiMatchTypes = cdef
+            .getAttachment(TryCatchPatterns.SimpleMultiCatch)
           pat match {
-            case Typed(Ident(nme.WILDCARD), tpt)  => NamelessEH(tpeTK(tpt).asClassBType, caseBody)
-            case Ident(nme.WILDCARD)              => NamelessEH(ts.jlThrowableRef,  caseBody)
-            case Bind(_, _)                       => BoundEH   (pat.symbol, caseBody)
+            case Typed(Ident(nme.WILDCARD), tpt) =>
+              maybeSimpleMultiMatchTypes match {
+                case Some(types) =>
+                  val lubType = TypeComparer.lub(types)
+                  val classBTypes = types.map(it => symInfoTK(it.typeSymbol).asClassBType)
+                  NamelessEH(symInfoTK(lubType.typeSymbol).asClassBType, classBTypes,caseBody)
+                case None =>
+                  val t = tpeTK(tpt).asClassBType
+                  NamelessEH(t, List(t),caseBody)
+              }
+            case Ident(nme.WILDCARD)              =>
+              NamelessEH(bTypes.jlThrowableRef, List(bTypes.jlThrowableRef),caseBody)
+            case Bind(_, _)                       =>
+              maybeSimpleMultiMatchTypes match {
+                case Some(types) =>
+                  val classBTypes = types.map(it => symInfoTK(it.typeSymbol).asClassBType)
+                  BoundEH   (pat.symbol, classBTypes, caseBody)
+                case None =>
+                  val t0 = symInfoTK(pat.symbol).asClassBType
+                  BoundEH   (pat.symbol,List(t0), caseBody)
+              }
           }
         }
 
@@ -209,7 +230,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
       val acquiredStack = if needStackStash then stack.acquireFullStack() else null
       val stashLocals =
         if acquiredStack == null then null
-        else acquiredStack.uncheckedNN.filter(_ != UNIT).map(btpe => locals.makeTempLocal(btpe))
+        else acquiredStack.filter(_ != UNIT).map(btpe => locals.makeTempLocal(btpe))
 
       val hasFinally   = finalizer != tpd.EmptyTree
 
@@ -236,9 +257,8 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
        */
 
       if stashLocals != null then
-        val stashLocalsNN = stashLocals.uncheckedNN // why is this necessary?
-        for i <- (stashLocalsNN.length - 1) to 0 by -1 do
-          val local = stashLocalsNN(i)
+        for i <- (stashLocals.length - 1) to 0 by -1 do
+          val local = stashLocals(i)
           bc.store(local.idx, local.tk)
 
       /* ------ (1) try-block, protected by:
@@ -277,10 +297,10 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
        * here makes sure that `shouldEmitCleanup` is only propagated outwards, not inwards to
        * nested `finally` blocks.
        */
-      def withFreshCleanupScope(body: => Unit): Unit = {
+      def withFreshCleanupScope(body: () => Unit): Unit = {
         val savedShouldEmitCleanup = shouldEmitCleanup
         shouldEmitCleanup = false
-        body
+        body()
         shouldEmitCleanup = savedShouldEmitCleanup || shouldEmitCleanup
       }
 
@@ -292,22 +312,22 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
        * ------
        */
 
-      for (ch <- caseHandlers) withFreshCleanupScope {
+      for (ch <- caseHandlers) withFreshCleanupScope { () =>
 
         // (2.a) emit case clause proper
         val startHandler = currProgramPoint()
-        var endHandler: asm.Label = null
-        var excType: ClassBType = null
+        var endHandler: asm.Label | Null = null
+        val excTypes = mutable.ArrayBuffer.empty[ClassBType]
         registerCleanup(finCleanup)
         ch match {
-          case NamelessEH(typeToDrop, caseBody) =>
+          case NamelessEH(typeToDrop, exs, caseBody) =>
             bc.drop(typeToDrop)
             genLoad(caseBody, kind) // adapts caseBody to `kind`, thus it can be stored, if `guardResult`, in `tmp`.
             nopIfNeeded(startHandler)
             endHandler = currProgramPoint()
-            excType = typeToDrop
+            excTypes ++= exs
 
-          case BoundEH   (patSymbol,  caseBody) =>
+          case BoundEH   (patSymbol, exs, caseBody) =>
             // test/files/run/contrib674.scala , a local-var already exists for patSymbol.
             // rather than creating on first-access, we do it right away to emit debug-info for the created local var.
             val Local(patTK, _, patIdx, _) = locals.getOrMakeLocal(patSymbol)
@@ -316,11 +336,13 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
             nopIfNeeded(startHandler)
             endHandler = currProgramPoint()
             emitLocalVarScope(patSymbol, startHandler, endHandler)
-            excType = patTK.asClassBType
+            excTypes ++= exs
         }
         unregisterCleanup(finCleanup)
         // (2.b)  mark the try-body as protected by this case clause.
-        protect(startTryBody, endTryBody, startHandler, excType)
+        for(excType <- excTypes) {
+          protect(startTryBody, endTryBody, startHandler, excType)
+        }
         // (2.c) emit jump to the program point where the finally-clause-for-normal-exit starts, or in effect `after` if no finally-clause was given.
         bc.goTo(postHandlers)
 
@@ -339,11 +361,11 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
 
       // a note on terminology: this is not "postHandlers", despite appearances.
       // "postHandlers" as in the source-code view. And from that perspective, both (3.A) and (3.B) are invisible implementation artifacts.
-      if (hasFinally) withFreshCleanupScope {
+      if (hasFinally) withFreshCleanupScope { () =>
         nopIfNeeded(startTryBody)
         val finalHandler = currProgramPoint() // version of the finally-clause reached via unhandled exception.
         protect(startTryBody, finalHandler, finalHandler, null)
-        val Local(eTK, _, eIdx, _) = locals(locals.makeLocal(ts.jlThrowableRef, "exc", defn.ThrowableType, finalizer.span))
+        val Local(eTK, _, eIdx, _) = locals(locals.makeLocal(bTypes.jlThrowableRef, "exc", defn.ThrowableType, finalizer.span))
         bc.store(eIdx, eTK)
         emitFinalizer(finalizer, null, isDuplicate = true)
         bc.load(eIdx, eTK)
@@ -368,7 +390,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
       // `shouldEmitCleanup` can be set, and at the same time this try expression may lack a finally-clause.
       // In other words, all combinations of (hasFinally, shouldEmitCleanup) are valid.
       if (hasFinally && currentFinallyBlockNeedsCleanup) {
-        markProgramPoint(finCleanup)
+        markProgramPoint(finCleanup.nn)
         // regarding return value, the protocol is: in place of a `return-stmt`, a sequence of `adapt, store, jump` are inserted.
         emitFinalizer(finalizer, null, isDuplicate = true)
         pendingCleanups()
@@ -394,8 +416,6 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
        */
 
       if stashLocals != null then
-        val stashLocalsNN = stashLocals.uncheckedNN // why is this necessary?
-
         val resultLoc =
           if kind == UNIT then null
           else if tmp != null then locals(tmp) // reuse the same local
@@ -403,11 +423,11 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
         if resultLoc != null then
           bc.store(resultLoc.idx, kind)
 
-        for i <- 0 until stashLocalsNN.size do
-          val local = stashLocalsNN(i)
+        for i <- 0 until stashLocals.size do
+          val local = stashLocals(i)
           bc.load(local.idx, local.tk)
           if local.tk.isRef then
-            bc.emit(asm.Opcodes.ACONST_NULL)
+            bc.nullconst()
             bc.store(local.idx, local.tk)
 
         stack.restoreFullStack(acquiredStack.nn)
@@ -415,7 +435,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
         if resultLoc != null then
           bc.load(resultLoc.idx, kind)
           if kind.isRef then
-            bc.emit(asm.Opcodes.ACONST_NULL)
+            bc.nullconst()
             bc.store(resultLoc.idx, kind)
       end if // stashLocals != null
 
@@ -427,8 +447,8 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
       cleanups match {
         case Nil =>
           if (earlyReturnVar != null) {
-            locals.load(earlyReturnVar)
-            bc.emitRETURN(locals(earlyReturnVar).tk)
+            locals.load(earlyReturnVar.nn)
+            bc.emitRETURN(locals(earlyReturnVar.nn).tk)
           } else {
             bc.emitRETURN(UNIT)
           }
@@ -439,8 +459,8 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
       }
     }
 
-    private def protect(start: asm.Label, end: asm.Label, handler: asm.Label, excType: ClassBType): Unit = {
-      val excInternalName: String =
+    private def protect(start: asm.Label, end: asm.Label, handler: asm.Label, excType: ClassBType | Null): Unit = {
+      val excInternalName: String | Null =
         if (excType == null) null
         else excType.internalName
       assert(start != end, "protecting a range of zero instructions leads to illegal class format. Solution: add a NOP to that range.")
@@ -448,8 +468,8 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
     }
 
     /* `tmp` (if non-null) is the symbol of the local-var used to preserve the result of the try-body, see `guardResult` */
-    private def emitFinalizer(finalizer: Tree, tmp: Symbol, isDuplicate: Boolean): Unit = {
-      var saved: immutable.Map[ /* Labeled */ Symbol, (BType, LoadDestination) ] = null
+    private def emitFinalizer(finalizer: Tree, tmp: Symbol | Null, isDuplicate: Boolean)(using Context): Unit = {
+      var saved: immutable.Map[ /* Labeled */ Symbol, (BType, LoadDestination) ] | Null = null
       if (isDuplicate) {
         saved = jumpDest
       }
@@ -457,21 +477,20 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
       if (tmp != null) { locals.store(tmp) }
       genLoad(finalizer, UNIT)
       if (tmp != null) { locals.load(tmp)  }
-      if (isDuplicate) {
+      if (saved ne null) {
         jumpDest = saved
       }
     }
 
     /* Does this tree have a try-catch block? */
-    private def mayCleanStack(tree: Tree): Boolean = tree.find { // TODO: use existsSubTree
+    private def mayCleanStack(tree: Tree)(using Context): Boolean = tree.find { // TODO: use existsSubTree
       case Try(_, _, _) => true
       case _ => false
     }.isDefined
 
     private trait EHClause
-    private case class NamelessEH(typeToDrop: ClassBType,  caseBody: Tree) extends EHClause
-    private case class BoundEH    (patSymbol: Symbol, caseBody: Tree) extends EHClause
-
+    private case class NamelessEH(typeToDrop: ClassBType, excTypes: List[ClassBType], caseBody: Tree) extends EHClause
+    private case class BoundEH    (patSymbol: Symbol,excTypes: List[ClassBType], caseBody: Tree) extends EHClause
   }
 
 }

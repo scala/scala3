@@ -1,6 +1,5 @@
 import scala.collection.mutable.AbstractSet
 import scala.collection.mutable.BitSet
-import scala.language.experimental.clauseInterleaving
 
 class Params{
     type U

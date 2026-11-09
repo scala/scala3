@@ -1,4 +1,3 @@
-import caps.use
 object Test:
   class C
   type Proc[CS^] = () ->{CS} Unit

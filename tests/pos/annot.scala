@@ -20,7 +20,7 @@ class Test {
   class A
   trait B
 
-  val x: A @uncheckedVariance with B @uncheckedVariance = ???
+  val x: A @uncheckedVariance & B @uncheckedVariance = ???
 
   class C extends A @uncheckedVariance () with B @uncheckedVariance { val x = 10 }
 

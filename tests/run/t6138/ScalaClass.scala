@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 class Foo {
   class Bar {
     override def toString: String = "Foo$Bar was instantiated!"

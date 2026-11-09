@@ -1,5 +1,7 @@
 package scala.annotation
 
+import language.experimental.captureChecking
+
 /** An annotation that can be used to mark a mutable field as trackable for nullability.
  *  With explicit nulls, a normal mutable field cannot be tracked for nullability by flow typing,
  *  since it can be updated to a null value at the same time.
@@ -7,4 +9,4 @@ package scala.annotation
  *  prefix is a stable path.
  *  See `tests/explicit-nulls/pos/force-track-var-fields.scala` for an example.
  */
-private[scala] final class stableNull extends StaticAnnotation
+final class stableNull extends StaticAnnotation

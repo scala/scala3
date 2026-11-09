@@ -22,6 +22,10 @@ import language.experimental.captureChecking
  *  @define willNotTerminateInf
  *
  *              Note: will not terminate for infinite-sized collections.
+ *
+ *  @tparam El1 the element type of the first collection
+ *  @tparam El2 the element type of the second collection
+ *  @tparam C1 the type of the source collection, used to determine the result type of strict operations
  */
 final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterable[El1]^, coll2: Iterable[El2]^) {
 
@@ -147,6 +151,11 @@ object LazyZip2 {
  *  @define willNotTerminateInf
  *
  *              Note: will not terminate for infinite-sized collections.
+ *
+ *  @tparam El1 the element type of the first collection
+ *  @tparam El2 the element type of the second collection
+ *  @tparam El3 the element type of the third collection
+ *  @tparam C1 the type of the source collection, used to determine the result type of strict operations
  */
 final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
                                                                coll1: Iterable[El1]^,
@@ -288,6 +297,12 @@ object LazyZip3 {
  *  @define willNotTerminateInf
  *
  *              Note: will not terminate for infinite-sized collections.
+ *
+ *  @tparam El1 the element type of the first collection
+ *  @tparam El2 the element type of the second collection
+ *  @tparam El3 the element type of the third collection
+ *  @tparam El4 the element type of the fourth collection
+ *  @tparam C1 the type of the source collection, used to determine the result type of strict operations
  */
 final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
                                                                      coll1: Iterable[El1]^,

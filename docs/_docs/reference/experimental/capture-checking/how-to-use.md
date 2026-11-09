@@ -17,9 +17,9 @@ import language.experimental.captureChecking
 
 Requires the import above:
 ```scala
-import language.experimental.captureChecking
 import language.experimental.separationChecking
 ```
+This will implicitly enable capture checking as well.
 
 ### SBT Project Template
 
@@ -48,6 +48,9 @@ scala foo.scala
 
 Scaladoc supports capture checking. The nightly standard library API docs have it enabled by default:
 https://nightly.scala-lang.org/api/
+
+Pages containing capture-checking syntax have a *Show tracked capabilities* switch below their signature.
+Turning it off renders signatures the way code without capture checking sees them, e.g. pure arrows `->` as `=>` and without capture sets. Your browser remembers the choice.
 
 ## Compilation Options
 

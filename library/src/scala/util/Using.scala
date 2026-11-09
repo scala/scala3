@@ -13,6 +13,7 @@
 package scala.util
 
 import scala.language.`2.13`
+import scala.annotation.nowarn
 import scala.util.control.{ControlThrowable, NonFatal}
 import scala.runtime.ScalaRunTime.nullForGC
 
@@ -27,7 +28,7 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  resource opening, operation, and resource releasing in a `Try`.
  *
  *  Example:
- *  ```
+ *  ```scala sc:compile
  *  import java.io.{BufferedReader, FileReader}
  *  import scala.util.{Try, Using}
  *
@@ -42,7 +43,7 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  release are all wrapped in a `Try`.
  *
  *  Example:
- *  ```
+ *  ```scala sc:compile
  *  import java.io.{BufferedReader, FileReader}
  *  import scala.util.{Try, Using}
  *
@@ -62,13 +63,19 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  Composed or "wrapped" resources may be acquired in order of construction,
  *  if "underlying" resources are not closed. Although redundant in this case,
  *  here is the previous example with a wrapped call to `use`:
- *  ```
+ *  ```scala sc:compile
+ *  import java.io.{BufferedReader, FileReader}
+ *  import scala.util.Using
+ *
+ *  Using.Manager { use =>
  *   def mkreader(filename: String) = use(new BufferedReader(use(new FileReader(filename))))
+ *   mkreader("file.txt")
+ *  }
  *  ```
  *
  *  Custom resources can be registered on construction by requiring an implicit `Manager`.
  *  This ensures they will be released even if composition fails:
- *  ```
+ *  ```scala sc:compile
  *  import scala.util.Using
  *
  *  case class X(x: String)(implicit mgr: Using.Manager) extends AutoCloseable {
@@ -79,7 +86,7 @@ import scala.runtime.ScalaRunTime.nullForGC
  *   val xres = X(x)
  *   override def close() = println(s"CLOSE $y")
  *   // an error during construction releases previously acquired resources
- *   require(y != null, "y is null")
+ *   require(y != "", "y is empty")
  *   mgr.acquire(this)
  *  }
  *
@@ -89,16 +96,16 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  }
  *  println {
  *   Using.Manager { implicit mgr =>
- *     Y(null)("X")
+ *     Y("")("X")
  *   }
- *  } // Failure(java.lang.IllegalArgumentException: requirement failed: y is null)
+ *  } // Failure(java.lang.IllegalArgumentException: requirement failed: y is empty)
  *  ```
  *
  *  If you wish to avoid wrapping management and operations in a `Try`, you can use
  *  [[Using.resource `Using.resource`]], which throws any exceptions that occur.
  *
  *  Example:
- *  ```
+ *  ```scala sc:compile
  *  import java.io.{BufferedReader, FileReader}
  *  import scala.util.Using
  *
@@ -137,12 +144,17 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  @define suppressionBehavior See the main doc for [[Using `Using`]] for full details of
  *                             suppression behavior.
  */
+@nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
 object Using {
   /** Performs an operation using a resource, and then releases the resource,
    *  even if the operation throws an exception.
    *
    *  $suppressionBehavior
    *
+   *  @tparam R the type of the resource
+   *  @tparam A the return type of the operation
+   *  @param resource the resource to be used and then released
+   *  @param f the operation to perform using the resource
    *  @return a [[Try]] containing an exception if one or more were thrown,
    *         or the result of the operation if no exceptions were thrown
    */
@@ -183,6 +195,10 @@ object Using {
     /** Registers the specified resource with this manager, so that
      *  the resource is released when the manager is closed, and then
      *  returns the (unmodified) resource.
+     *
+     *  @tparam R the type of the resource, which must have a `Releasable` instance
+     *  @param resource the resource to register with this manager
+     *  @return the same `resource`, unmodified, to allow fluent use at the call site
      */
     def apply[R: Releasable](resource: R): resource.type = {
       acquire(resource)
@@ -191,6 +207,9 @@ object Using {
 
     /** Registers the specified resource with this manager, so that
      *  the resource is released when the manager is closed.
+     *
+     *  @tparam R the type of the resource, which must have a `Releasable` instance
+     *  @param resource the resource to register, must be non-null
      */
     def acquire[R: Releasable](resource: R): Unit = {
       if (resource == null) throw new NullPointerException("null resource")
@@ -285,8 +304,9 @@ object Using {
    *
    *  @tparam R the type of the resource
    *  @tparam A the return type of the operation
-   *  @param resource the resource
+   *  @param resource the resource to be used and then released
    *  @param body     the operation to perform with the resource
+   *  @param releasable the implicit `Releasable` instance used to release the resource
    *  @return the result of the operation, if neither the operation nor
    *         releasing the resource throws
    */
@@ -319,8 +339,8 @@ object Using {
    *  @tparam R1 the type of the first resource
    *  @tparam R2 the type of the second resource
    *  @tparam A  the return type of the operation
-   *  @param resource1 the first resource
-   *  @param resource2 the second resource
+   *  @param resource1 the first resource (eagerly evaluated)
+   *  @param resource2 the second resource (by-name, evaluated after the first is acquired)
    *  @param body      the operation to perform using the resources
    *  @return the result of the operation, if neither the operation nor
    *         releasing the resources throws
@@ -418,7 +438,10 @@ object Using {
    *  @tparam R the type of the resource
    */
   trait Releasable[-R] {
-    /** Releases the specified resource. */
+    /** Releases the specified resource.
+     *
+     *  @param resource the resource to release
+     */
     def release(resource: R): Unit
   }
 

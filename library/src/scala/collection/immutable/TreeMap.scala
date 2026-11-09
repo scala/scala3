@@ -34,7 +34,7 @@ import scala.runtime.AbstractFunction2
  *  consider a * [[scala.collection.immutable.SeqMap]], which does not need to
  *  have an ordering supplied.
  *
- *  @example ```
+ *  @example ```scala sc:compile
  *  import scala.collection.immutable.TreeMap
  *
  *  // Make a TreeMap via the companion object factory
@@ -155,7 +155,7 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
     newMapOrSelf(that match {
       case tm: TreeMap[K, V] @unchecked if ordering == tm.ordering =>
         RB.union(tree, tm.tree)
-      case ls: LinearSeq[(K,V1)] =>
+      case ls: LinearSeq[(K,V1) @unchecked] =>
         if (ls.isEmpty) tree //to avoid the creation of the adder
         else {
           val adder = new Adder[V1]

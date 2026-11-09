@@ -1,0 +1,6 @@
+> compile
+# Recompile Test.scala while Schema.tasty is read from disk. Without the fix
+# for issue #21383 the re-typing of the annotation tree returned by the macro
+# asserts on a missing position.
+$ copy-file changes/Test.scala Test.scala
+> compile

@@ -1,5 +1,3 @@
-//> using options -Werror
-
 object O1:
   sealed trait A
   case class B() extends A
@@ -9,7 +7,7 @@ object O1:
   def bigMatch(x: A) = x match
     case B() =>
     case C() =>
-    case _ => // error
+    case _ => // warning
 
 object O2:
   sealed trait A
@@ -18,7 +16,7 @@ object O2:
 
   def bigMatch(x: A) = x match
     case B() =>
-    case _ => // error // was: no "unreachable but for null" warning
+    case _ => // warning // was: no "unreachable but for null" warning
 
 object O3:
   sealed trait A
@@ -29,7 +27,7 @@ object O3:
   def bigMatch(x: A) = x match
     case _: B =>
     case _: C =>
-    case _ => // error
+    case _ => // warning
 
 object O4:
   sealed trait A
@@ -38,4 +36,4 @@ object O4:
 
   def bigMatch(x: A) = x match
     case _: B =>
-    case _ => // error
+    case _ => // warning

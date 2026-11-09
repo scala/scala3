@@ -18,7 +18,8 @@ class ExpressionCompilerConfig private[debug] (
   private[debug] val expression: String,
   private[debug] val localVariables: ju.Set[String],
   private[debug] val errorReporter: Consumer[String],
-  private[debug] val testMode: Boolean
+  private[debug] val testMode: Boolean,
+  private[debug] val oldSyntax: Boolean
 ):
   def this() = this(
     packageName = "",
@@ -28,6 +29,7 @@ class ExpressionCompilerConfig private[debug] (
     localVariables = ju.Collections.emptySet,
     errorReporter = _ => (),
     testMode = false,
+    oldSyntax = false,
   )
 
   def withPackageName(packageName: String): ExpressionCompilerConfig = copy(packageName = packageName)
@@ -61,5 +63,6 @@ class ExpressionCompilerConfig private[debug] (
     expression,
     localVariables,
     errorReporter,
-    testMode
+    testMode,
+    oldSyntax
   )

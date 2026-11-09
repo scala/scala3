@@ -1,0 +1,20 @@
+-- [E173] Reference Error: tests/neg/java-protected-statics/Test.scala:10:27 -------------------------------------------
+10 |  def companion = foo.Task.poll() // error: the companion of a subclass is not a subclass
+   |                  ^^^^^^^^^^^^^
+   |method poll cannot be accessed as a member of foo.Task.type from object Sub.
+   |  protected[foo] method poll can only be accessed from package foo, or class Task in package foo or one of its subclasses.
+-- [E173] Reference Error: tests/neg/java-protected-statics/Test.scala:4:25 --------------------------------------------
+4 |def unrelated = foo.Task.poll() // error
+  |                ^^^^^^^^^^^^^
+  |method poll cannot be accessed as a member of foo.Task.type from the top-level definitions in package bar.
+  |  protected[foo] method poll can only be accessed from package foo, or class Task in package foo or one of its subclasses.
+-- [E173] Reference Error: tests/neg/java-protected-statics/Test.scala:5:34 --------------------------------------------
+5 |def unrelatedInherited = foo.JSub.poll() // error
+  |                         ^^^^^^^^^^^^^
+  |method poll in object Task cannot be accessed as a member of foo.JSub.type from the top-level definitions in package bar.
+  |  protected[foo] method poll can only be accessed from package foo, or class Task in package foo or one of its subclasses.
+-- [E173] Reference Error: tests/neg/java-protected-statics/Test.scala:6:30 --------------------------------------------
+6 |def unrelatedField = foo.Task.counter // error
+  |                     ^^^^^^^^^^^^^^^^
+  |variable counter cannot be accessed as a member of foo.Task.type from the top-level definitions in package bar.
+  |  protected[foo] variable counter can only be accessed from package foo, or class Task in package foo or one of its subclasses.

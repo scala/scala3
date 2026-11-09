@@ -6,13 +6,13 @@
     |-------------------------------------------------------------------------------------------------------------------
     |Inline stack trace
     |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    |This location contains code that was inlined from Predef.scala:151
-151 |  inline def valueOf[T]: T = summonFrom {
+    |This location contains code that was inlined from Predef.scala:160
+160 |  inline def valueOf[T]: T = summonFrom {
     |                             ^
-152 |    case ev: ValueOf[T] => ev.value
-153 |  }
+161 |    case ev: ValueOf[T] => ev.value
+162 |  }
     |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    |This location contains code that was inlined from Predef.scala:151
+    |This location contains code that was inlined from Predef.scala:160
   7 |      case _: (h *: t) => valueOf[`h` & T] +: singletons[T, t]
     |                          ^^^^^^^^^^^^^^^^
      -------------------------------------------------------------------------------------------------------------------

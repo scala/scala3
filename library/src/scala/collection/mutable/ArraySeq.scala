@@ -58,7 +58,11 @@ sealed abstract class ArraySeq[T]
    */
   def elemTag: ClassTag[?]
 
-  /** Updates element at given index. */
+  /** Updates element at given index.
+   *
+   *  @param index the zero-based position of the element to update
+   *  @param elem the new value to store at the given index
+   */
   def update(@deprecatedName("idx", "2.13.0") index: Int, elem: T): Unit
 
   /** The underlying array. Its element type does not have to be equal to the element type of this ArraySeq. A primitive
@@ -121,6 +125,10 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
    *  boxed, the resulting instance is an [[ArraySeq.ofRef]]. Writing
    *  `ArraySeq.make(a.asInstanceOf[Array[Int]])` does not work, it throws a `ClassCastException`
    *  at runtime.
+   *
+   *  @tparam T the element type of the array
+   *  @param x the array to wrap
+   *  @return an `ArraySeq` wrapping the given array using the appropriate primitive specialization, or `null` if `x` is `null`
    */
   def make[T](x: Array[T]): ArraySeq[T] = ((x: @unchecked) match {
     case null              => null

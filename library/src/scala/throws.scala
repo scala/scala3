@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** Annotation for specifying the exceptions thrown by a method.
@@ -23,6 +24,9 @@ import scala.language.`2.13`
  *   def read() = in.read()
  *  }
  *  ```
+ *
+ *  @tparam T the type of exception that the annotated method may throw
+ *  @param cause a description of the condition under which the exception is thrown
  */
 final class throws[T <: Throwable](cause: String = "") extends scala.annotation.StaticAnnotation {
   def this(clazz: Class[T]) = this("")

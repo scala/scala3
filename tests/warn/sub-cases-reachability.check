@@ -1,0 +1,32 @@
+-- [E030] Match case Unreachable Warning: tests/warn/sub-cases-reachability.scala:15:10 --------------------------------
+15 |  case AB.A => "unreachable" // warn
+   |       ^^^^
+   |       Unreachable case
+-- [E030] Match case Unreachable Warning: tests/warn/sub-cases-reachability.scala:21:14 --------------------------------
+21 |  case Wrapper(Color.Red)  => "unreachable" // warn
+   |       ^^^^^^^^^^^^^^^^^^
+   |       Unreachable case
+-- [E030] Match case Unreachable Warning: tests/warn/sub-cases-reachability.scala:30:14 --------------------------------
+30 |  case Wrapper(_) => "unreachable" // warn
+   |       ^^^^^^^^^^
+   |       Unreachable case
+-- [E030] Match case Unreachable Warning: tests/warn/sub-cases-reachability.scala:37:14 --------------------------------
+37 |  case Wrapper(_) => "unreachable" // warn
+   |       ^^^^^^^^^^
+   |       Unreachable case
+-- [E030] Match case Unreachable Warning: tests/warn/sub-cases-reachability.scala:45:13 --------------------------------
+45 |  case Color.Blue => "unreachable" // warn
+   |       ^^^^^^^^^^
+   |       Unreachable case
+-- [E030] Match case Unreachable Warning: tests/warn/sub-cases-reachability.scala:50:13 --------------------------------
+50 |  case Color.Red => "unreachable" // warn
+   |       ^^^^^^^^^
+   |       Unreachable case
+-- [E030] Match case Unreachable Warning: tests/warn/sub-cases-reachability.scala:63:7 ---------------------------------
+63 |  case (Color.Red, _) => "unreachable" // warn
+   |       ^^^^^^^^^^^^^^
+   |       Unreachable case
+-- [E030] Match case Unreachable Warning: tests/warn/sub-cases-reachability.scala:69:15 --------------------------------
+69 |  case Document(_, Version.Legacy) => "unreachable" // warn
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       Unreachable case

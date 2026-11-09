@@ -118,6 +118,8 @@ the implicit search for `Q` fails.
 **5.** The treatment of divergence errors has also changed. A divergent implicit is treated as a normal failure, after which alternatives are still tried. This also makes sense: Encountering a divergent implicit means that we assume that no finite solution can be found on the corresponding path, but another path can still be tried. By contrast,
 most (but not all) divergence errors in Scala 2 would terminate the implicit search as a whole.
 
+The divergence check that compares the in-progress search history against a new candidate also recognises sibling givens declared in the same owner that share a declared type as the same candidate. Such siblings demand identical context parameters, so exploring one and then another under the same prototype shape cannot make any new progress; without this rule, a group of look-alike givens (say several type-class instances each requiring the same enclosing type class) would force the search to enumerate every permutation before the expression-count limit kicks in.
+
 **6.** Scala 2 gives a lower level of priority to implicit conversions with call-by-name parameters relative to implicit conversions with call-by-value parameters. Scala 3 drops this distinction. So the following code snippet would be ambiguous in Scala 3:
 
 ```scala
@@ -158,10 +160,10 @@ The new rules are as follows: An implicit `a` defined in `A` is more specific th
  - `A` extends `B`, or
  - `A` is an object and the companion class of `A` extends `B`, or
  - `A` and `B` are objects,
-    `B` does not inherit any implicit members from base classes (*),
+    `B` does not inherit any implicit members from base classes[^1],
     and the companion class of `A` extends the companion class of `B`.
 
-Condition (*) is new. It is necessary to ensure that the defined relation is transitive.
+[^1]: This condition is new. It is necessary to ensure that the defined relation is transitive.
 
 [//]: # todo: expand with precise rules
 

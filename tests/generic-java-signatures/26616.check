@@ -1,0 +1,8 @@
+public scala.PartialFunction MyAbstract.MyTrait$$handler()
+public scala.PartialFunction MyAbstract.MyTrait$$handler()
+public void MyAbstract.MyTrait$_setter_$MyTrait$$handler_$eq(scala.PartialFunction)
+public void MyAbstract.MyTrait$_setter_$MyTrait$$handler_$eq(scala.PartialFunction)
+public scala.PartialFunction MyAbstract2.MyTrait$$handler()
+public scala.PartialFunction MyAbstract2.MyTrait$$handler()
+public void MyAbstract2.MyTrait$_setter_$MyTrait$$handler_$eq(scala.PartialFunction)
+public void MyAbstract2.MyTrait$_setter_$MyTrait$$handler_$eq(scala.PartialFunction)

@@ -1,16 +1,13 @@
 package dotty.tools
 package dotc
 
-import reporting.StoreReporter
 import vulpix.TestConfiguration
 
-import core.Contexts.{Context, ContextBase}
 import dotty.tools.Useables.given
 import dotty.tools.dotc.config.Settings.*
 import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
 import dotty.tools.dotc.config.ScalaSettingCategories.*
 import dotty.tools.dotc.config.ScalaSettings
-import dotty.tools.vulpix.TestConfiguration.mkClasspath
 import dotty.tools.io.PlainDirectory
 import dotty.tools.io.Directory
 import dotty.tools.dotc.config.ScalaVersion
@@ -139,11 +136,11 @@ class SettingsTests:
   @Test def validateChoices: Unit =
     object Settings extends SettingGroup:
       val foo = ChoiceSetting(RootSetting, "foo", "foo", "Foo", List("a", "b"), "a")
-      val bar = IntChoiceSetting(RootSetting, "bar", "Bar", List(0, 1, 2), 0)
-      val baz = IntChoiceSetting(RootSetting, "baz", "Baz", 0 to 10, 10)
+      val bar = IntChoiceSetting(RootSetting, "bar", "b", "Bar", List(0, 1, 2), 0)
+      val baz = IntChoiceSetting(RootSetting, "baz", "c", "Baz", 0 to 10, 10)
 
-      val quux = ChoiceSetting(RootSetting, "quux", "quux", "Quux", List(), "")
-      val quuz = IntChoiceSetting(RootSetting, "quuz", "Quuz", List(), 0)
+      val quux = ChoiceSetting(RootSetting, "quux", "quuquux", "Quux", List("x", "y"), "")
+      val quuz = IntChoiceSetting(RootSetting, "quuz", "thingy", "Quuz", List(42), 0)
 
     locally {
       val args = List("-foo", "b", "-bar", "1", "-baz", "5")
@@ -169,8 +166,8 @@ class SettingsTests:
       val args = List("-foo", "c", "-bar", "3", "-baz", "-1")
       val summary = Settings.processArguments(args, true)
       val expectedErrors = List(
-        "c is not a valid choice for -foo",
-        "3 is not a valid choice for -bar",
+        "c is not a valid choice for -foo.\nExpected a foo.\nAvailable choices: a, b",
+        "3 is not a valid choice for -bar.\nExpected a b.\nAvailable choices: 0, 1, 2",
         "-1 is out of legal range 0..10 for -baz"
       )
       assertEquals(expectedErrors, summary.errors)
@@ -179,7 +176,9 @@ class SettingsTests:
     locally {
       val args = List("-foo:c")
       val summary = Settings.processArguments(args, true)
-      val expectedErrors = List("c is not a valid choice for -foo")
+      val expectedErrors = List(
+        "c is not a valid choice for -foo.\nExpected a foo.\nAvailable choices: a, b"
+      )
       assertEquals(expectedErrors, summary.errors)
     }
 
@@ -187,8 +186,8 @@ class SettingsTests:
       val args = List("-quux", "a", "-quuz", "0")
       val summary = Settings.processArguments(args, true)
       val expectedErrors = List(
-        "a is not a valid choice for -quux",
-        "0 is not a valid choice for -quuz",
+        "a is not a valid choice for -quux.\nExpected a quuquux.\nAvailable choices: x, y",
+        "0 is not a valid choice for -quuz.\nExpected a thingy.\nAvailable choices: 42",
       )
       assertEquals(expectedErrors, summary.errors)
     }
@@ -254,9 +253,8 @@ class SettingsTests:
     assertTrue(summary.warnings.forall(_.contains("updated")))
 
   @Test def `dir option also warns`: Unit =
-    val abc: PlainFile = Paths.get("a", "b", "c").toPlainFile
     object Settings extends SettingGroup:
-      val option = OutputSetting(RootSetting, "option", "out", "A file", Paths.get("a", "b", "c").toPlainFile)
+      val option = FileContainerSetting(RootSetting, "option", false, "A file", Paths.get("a", "b", "c").toPlainFile)
     Using.resource(createTempDirectory("i13887")) { dir =>
       val target = createDirectory(dir.resolve("x"))
       val mistake = createDirectory(dir.resolve("y"))
@@ -301,7 +299,7 @@ class SettingsTests:
     val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
-        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir)
+        val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir)
 
       import Settings.*
       Files.write(file, "test".getBytes())
@@ -309,7 +307,7 @@ class SettingsTests:
       val args = List(s"-testOutput:${file.toString}")
       val summary = processArguments(args, processAll = true)
 
-      assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overriden")
+      assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overridden")
 
   @Test def `Output setting respects previous setting`: Unit =
     val result = Using.resources(
@@ -317,7 +315,7 @@ class SettingsTests:
     ): (file1, file2) =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
-        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true)
+        val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir, preferPrevious = true)
 
       import Settings.*
 
@@ -340,7 +338,7 @@ class SettingsTests:
     val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
-        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
+        val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
 
       import Settings.*
 
@@ -361,9 +359,9 @@ class SettingsTests:
       val multiChoiceSetting = MultiChoiceSetting(RootSetting, "multiChoiceSetting", "multiChoiceSetting", Help, choices = List("a", "b"), legacyChoices = List("c"))
       val multiChoiceHelpSetting=  MultiChoiceHelpSetting(RootSetting, "multiChoiceHelpSetting", "multiChoiceHelpSetting", Help, List(ChoiceWithHelp("a", "a"), ChoiceWithHelp("b", "b")), List(), legacyChoices = List("c"))
       val intSetting = IntSetting(RootSetting, "intSetting", "intSetting", 0)
-      val intChoiceSetting = IntChoiceSetting(RootSetting, "intChoiceSetting", "intChoiceSetting", List(1,2,3), 1)
+      val intChoiceSetting = IntChoiceSetting(RootSetting, "intChoiceSetting", "int choice", "intChoiceSetting", List(1,2,3), 1)
       val multiStringSetting = MultiStringSetting(RootSetting, "multiStringSetting", "multiStringSetting", Help, default = List("a", "b"))
-      val outputSetting = OutputSetting(RootSetting, "outputSetting", "outputSetting", Help, new PlainDirectory(Directory(".")))
+      val outputSetting = FileContainerSetting(RootSetting, "outputSetting", true, Help, new PlainDirectory(Directory(".")))
       val pathSetting = PathSetting(RootSetting, "pathSetting", "pathSetting", ".")
       val phasesSetting = PhasesSetting(RootSetting, "phasesSetting", "phasesSetting", "all")
       val versionSetting= VersionSetting(RootSetting, "versionSetting", "versionSetting")
@@ -477,7 +475,7 @@ class SettingsTests:
     object Settings extends SettingGroup:
       val foo = BooleanSetting(RootSetting, "foo", "foo", ignoreInvalidArgs = true, preferPrevious = true)
       val bar = BooleanSetting(RootSetting, "bar", "bar")
-      val baz = OutputSetting(RootSetting, "out", "dir", "A file", default = Paths.get("out", "baz").toPlainFile,
+      val baz = FileContainerSetting(RootSetting, "out", false, "A file", default = Paths.get("out", "baz").toPlainFile,
         ignoreInvalidArgs = true, preferPrevious = true)
     import Settings.*
     Using.resource(createTempDirectory("testDir")): dir =>

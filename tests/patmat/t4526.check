@@ -1,3 +1,24 @@
-3: Pattern Match Exhaustivity: _: Int
-8: Pattern Match Exhaustivity: (_, _)
-13: Pattern Match Exhaustivity: (true, true), (false, false)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t4526.scala:3:20 ----
+3 |  def foo(a: Int) = a match {
+  |                    ^
+  |                    match may not be exhaustive.
+  |
+  |                    It would fail on pattern case: _: Int
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t4526.scala:8:27 ----
+8 |  def bar(a: (Int, Int)) = a match {
+  |                           ^
+  |                           match may not be exhaustive.
+  |
+  |                           It would fail on pattern case: (_, _)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t4526.scala:13:35 ---
+13 |  def baz(a: (Boolean, Boolean)) = a match {
+   |                                   ^
+   |             match may not be exhaustive.
+   |
+   |             It would fail on pattern case: (true, true), (false, false)
+   |
+   | longer explanation available when compiling with `-explain`

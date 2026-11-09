@@ -13,8 +13,10 @@
 package scala
 package runtime
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
+@deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
 final class RichDouble(val self: Double) extends AnyVal with FractionalProxy[Double] {
   protected def num: Fractional[Double] = scala.math.Numeric.DoubleIsFractional
   protected def ord: Ordering[Double]   = scala.math.Ordering.Double.TotalOrdering

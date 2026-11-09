@@ -1,4 +1,3 @@
-import caps.use
 
 def foo[C^](x: List[() ->{C} Unit]): Unit =
   println(x.head)

@@ -12,7 +12,7 @@ object Example extends App {
   trait ZLayer[-RIn, +ROut <: Has[_]] {
     def ++[RIn2, ROut1 >: ROut <: Has[_], ROut2 <: Has[_]](
         that: ZLayer[RIn2, ROut2]
-    ): ZLayer[RIn with RIn2, ROut1 with ROut2] = ???
+    ): ZLayer[RIn & RIn2, ROut1 & ROut2] = ???
   }
 
   trait RandomService
@@ -24,7 +24,7 @@ object Example extends App {
   def random: ZLayer[Random, Random] = ???
   def sized: ZLayer[Any, Sized] = ???
 
-  lazy val zio: ZIO[Random with Sized] = ???
+  lazy val zio: ZIO[Random & Sized] = ???
 
   // Okay on Scala 2, does not compile on Dotty
   lazy val eliminated: ZIO[Random] =
@@ -32,7 +32,7 @@ object Example extends App {
 
   // Compiles on Dotty with an explicit type annotation
   lazy val eliminated2: ZIO[Random] =
-    zio.provideLayer[Random, Random with Sized](random ++ sized)
+    zio.provideLayer[Random, Random & Sized](random ++ sized)
 
   println("It compiles!")
 }

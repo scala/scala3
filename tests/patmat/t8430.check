@@ -1,1 +1,8 @@
-15: Pattern Match Exhaustivity: LetL(IntLit), LetL(BooleanLit), LetL(UnitLit), LetP, LetC, LetF
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t8430.scala:15:36 ---
+15 |  def transform(tree: Tree) : Any = tree match {
+   |                                    ^^^^
+   |match may not be exhaustive.
+   |
+   |It would fail on pattern case: LetL(IntLit), LetL(BooleanLit), LetL(UnitLit), LetP, LetC, LetF
+   |
+   | longer explanation available when compiling with `-explain`

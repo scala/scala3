@@ -1,8 +1,8 @@
 scala> @annotation.nowarn def f = try 1 // @nowarn doesn't work on first line, ctx.run is null in issueIfNotSuppressed
 1 warning found
 -- [E002] Syntax Warning: ------------------------------------------------------
-1 | @annotation.nowarn def f = try 1 // @nowarn doesn't work on first line, ctx.run is null in issueIfNotSuppressed
-  |                            ^^^^^
+1 |@annotation.nowarn def f = try 1 // @nowarn doesn't work on first line, ctx.run is null in issueIfNotSuppressed
+  |                           ^^^^^
   |                   A try without catch or finally is equivalent to putting
   |                   its body in a block; no exceptions are handled.
   |
@@ -13,10 +13,10 @@ def f: Int
 scala> def f = try 1
 1 warning found
 -- [E002] Syntax Warning: ------------------------------------------------------
-1 | def f = try 1
-  |         ^^^^^
-  |         A try without catch or finally is equivalent to putting
-  |         its body in a block; no exceptions are handled.
+1 |def f = try 1
+  |        ^^^^^
+  |        A try without catch or finally is equivalent to putting
+  |        its body in a block; no exceptions are handled.
   |
   | longer explanation available when compiling with `-explain`
 def f: Int
@@ -25,9 +25,9 @@ def f: Int
 scala> def f = { 1; 2 }
 1 warning found
 -- [E129] Potential Issue Warning: ---------------------------------------------
-1 | def f = { 1; 2 }
-  |           ^
-  |           A pure expression does nothing in statement position
+1 |def f = { 1; 2 }
+  |          ^
+  |          A pure expression does nothing in statement position
   |
   | longer explanation available when compiling with `-explain`
 def f: Int

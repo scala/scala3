@@ -12,6 +12,7 @@
 
 package scala.annotation
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** To customize the error message that's emitted when an implicit of type
@@ -53,5 +54,7 @@ import scala.language.`2.13`
  *   k.n[String]
  *      ^
  *  </pre>
+ *
+ *  @param msg the error message template, with `\${Xi}` placeholders for type parameters
  */
 final class implicitNotFound(msg: String) extends scala.annotation.ConstantAnnotation

@@ -10,10 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-// GENERATED CODE: DO NOT EDIT. See scala.Function0 for timestamp.
-
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 object Product1 {

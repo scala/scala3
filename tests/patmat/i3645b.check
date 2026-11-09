@@ -1,1 +1,8 @@
-21: Pattern Match Exhaustivity: K2, K3
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i3645b.scala:21:31 --
+21 |    def get(k: K[Int]): Unit = k match {
+   |                               ^
+   |                               match may not be exhaustive.
+   |
+   |                               It would fail on pattern case: K2, K3
+   |
+   | longer explanation available when compiling with `-explain`

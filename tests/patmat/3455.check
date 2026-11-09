@@ -1,1 +1,8 @@
-11: Pattern Match Exhaustivity: Decimal
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/3455.scala:11:27 ----
+11 |   def test( f: Format ) = f match {
+   |                           ^
+   |                           match may not be exhaustive.
+   |
+   |                           It would fail on pattern case: Decimal
+   |
+   | longer explanation available when compiling with `-explain`

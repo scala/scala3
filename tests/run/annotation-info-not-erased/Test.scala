@@ -1,4 +1,3 @@
-// scalajs: --skip
 import scala.annotation.meta.getter
 
 class C {

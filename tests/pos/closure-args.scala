@@ -1,4 +1,4 @@
-import language.experimental.relaxedLambdaSyntax
+//> using options -preview
 
 val z = List(1).map: + => // ok
   ???
@@ -10,7 +10,7 @@ val b: Int = xs
   (0)
 
 val d2: String = xs
-  .map: x => x.toString + xs.dropWhile: y => y > 0
+  .map: x => x.toString + xs.dropWhile { y => y > 0 }
   .filter: z => !z.isEmpty
   (0)
 

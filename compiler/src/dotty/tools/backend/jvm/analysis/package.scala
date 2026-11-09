@@ -90,7 +90,7 @@ package dotty.tools.backend.jvm
  *   import backend.jvm.*
  *   import backend.jvm.opt.ByteCodeUtils.*
  *   import scala.collection.convert.decorateAsScala.*
- *   import scala.tools.asm.tree.analysis.*
+ *   import org.objectweb.asm.tree.analysis.*
  *
  *   val cn = AsmUtils.readClass("/Users/luc/scala/scala/sandbox/A.class")
  *   val m = cn.methods.iterator.asScala.find(_.name == "f").head
@@ -171,7 +171,7 @@ package dotty.tools.backend.jvm
  * alias set representation that is used in the current implementation (see class AliasingFrame)
  * makes alias set merging more efficient.
  *
- * [1] https://github.com/scala-opt/scala/blob/opt/rebase/src/compiler/scala/tools/nsc/backend/bcode/NullnessPropagator.java
+ * [1] `NullnessPropagator.java` on the `opt/rebase` branch of the scala-opt/scala fork (no longer online)
  *
  *
  * Complexity and scaling of analysis
@@ -235,6 +235,18 @@ package dotty.tools.backend.jvm
  *
  * When running a BasicValue analysis, the complexity observation is the same (time is proportional
  * to #ins * #loc^2).
+ *
+ *
+ * Producer/consumer analysis and the analysis budget
+ * --------------------------------------------------
+ *
+ * The model above misses SourceValue (producer/consumer) analysis, where values are producer sets
+ * that grow at control flow joins, especially exception handlers. Nested try/finally after inlining
+ * (e.g. `Using.resources`) can take hundreds of milliseconds while passing the `opt.Limits` checks.
+ *
+ * So a SourceValue analysis charges its merge work to a per-method `AnalysisBudget`
+ * (`-Yopt-analysis-budget`); once spent, the method's remaining analysis-based optimizations are
+ * skipped. Unlike a timeout this is deterministic. `Limits` remains a cheap upfront gate.
  *
  *
  * Measuring analysis execution time
@@ -371,7 +383,7 @@ object Test {
     // analysis runs 3.5x faster. Most likely because the call to Interpreter.merge inside
     // Frame.merge is no longer megamorphic.
 
-    import scala.tools.asm.tree.analysis._
+    import org.objectweb.asm.tree.analysis._
     val ba = new Analyzer(new BasicInterpreter)
     ba.analyze(cn.name, m) // warm up
 

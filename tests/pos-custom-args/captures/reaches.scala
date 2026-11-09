@@ -1,7 +1,7 @@
 class C
-def f(xs: List[C^]) =
+def f[c^](xs: List[C^{c}]) =
   val y = xs
-  val z: List[C^{xs*}] = y
+  val z: List[C^{c}] = y
 
 type Proc = () => Unit
 
@@ -28,15 +28,15 @@ def runAll[C^](xs: List[() ->{C} Unit]): Unit =
     cur = cur.tail: List[() ->{C} Unit]
 
 def id1(x: Proc): () ->{x} Unit = x
-def id2(xs: List[Proc]): List[() ->{xs*} Unit] = xs
+def id2[c^](xs: List[() ->{c} Unit]): List[() ->{c} Unit] = xs
 
-def cons(x: Proc, xs: List[Proc]): List[() ->{x, xs*} Unit] =
+def cons[c^](x: () ->{c} Unit, xs: List[() ->{c} Unit]): List[() ->{c} Unit] =
   val y = x :: xs
   y
 
 def addOneProc(consume xs: List[Proc]): List[Proc] =
   val x: Proc = () => println("hello")
-  val result: List[() ->{x, xs*} Unit] = x :: xs
+  val result = x :: xs
   result // OK, we can widen () ->{x, xs*} Unit to any here.
 
 def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
@@ -44,9 +44,6 @@ def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
 
 def compose2[A, B, C](consume f: A => B, consume g: B => C): A => C =
   z => g(f(z))
-
-//def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
-//  ps.map((x, y) => compose1(x, y)) // Does not work, see neg-customargs/../reaches2.scala
 
 class IO extends caps.SharedCapability
 

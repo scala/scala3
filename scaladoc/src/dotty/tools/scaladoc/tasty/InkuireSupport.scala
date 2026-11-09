@@ -95,7 +95,7 @@ trait InkuireSupport(using DocContext) extends Resources:
             case TypeDef(name, _) => name
           }
           val vars = variableNames ++ methodVars
-          val (receiver, preArgs): (Option[Inkuire.TypeLike], Seq[Inkuire.TypeLike]) = Some(classType).filter(_ => !isModule) match {
+          val (receiver: Option[Inkuire.TypeLike], preArgs: Seq[Inkuire.TypeLike]) = Some(classType).filter(_ => !isModule) match {
             case None => (methodSymbol.extendedSymbol.flatMap(s => partialAsInkuire(vars).lift(s.tpt)), Seq.empty)
             case rcvr => (rcvr, methodSymbol.extendedSymbol.flatMap(s => partialAsInkuire(vars).lift(s.tpt)).toSeq)
           }

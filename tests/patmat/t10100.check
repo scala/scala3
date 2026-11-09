@@ -1,1 +1,8 @@
-12: Pattern Match Exhaustivity: (_, NonExhaustive#FancyFoo(_))
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t10100.scala:12:6 ---
+12 |      case (acc, basic: BasicFoo) => acc :+ basic.index
+   |      ^
+   |      match may not be exhaustive.
+   |
+   |      It would fail on pattern case: (_, NonExhaustive#FancyFoo(_))
+   |
+   | longer explanation available when compiling with `-explain`

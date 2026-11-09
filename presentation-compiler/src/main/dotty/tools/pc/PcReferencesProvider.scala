@@ -7,7 +7,6 @@ import scala.meta.internal.pc.PcReferencesResult
 import scala.meta.pc.ReferencesRequest
 import scala.meta.pc.ReferencesResult
 
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.InteractiveDriver

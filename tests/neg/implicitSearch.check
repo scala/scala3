@@ -4,7 +4,7 @@
    |      No given instance of type Test.Ord[List[List[T]]] was found for parameter o of method sort in object Test.
    |      I found:
    |
-   |          Test.listOrd[List[T]](Test.listOrd[T](/* missing */summon[Test.Ord[T]]))
+   |          Test.listOrd[List[T]](using Test.listOrd[T](using /* missing */summon[Test.Ord[T]]))
    |
    |      But no implicit values were found that match type Test.Ord[T].
 -- [E172] Type Error: tests/neg/implicitSearch.scala:15:38 -------------------------------------------------------------

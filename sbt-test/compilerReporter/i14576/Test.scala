@@ -6,7 +6,7 @@ class Text(val str: String)
 
 object Test:
   // lampepfl/dotty#14500, requires implicitConversions feature
-  given Conversion[String, Text] = Text(_)
+  implicit def f(x: String): Int = x.length
   def f(x: Text) = println(x.str)
   f("abc")
 

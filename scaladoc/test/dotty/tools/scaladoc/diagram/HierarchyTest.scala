@@ -4,9 +4,11 @@ package diagram
 import dotty.tools.scaladoc.ScaladocTest
 import scala.jdk.CollectionConverters.{ListHasAsScala, SeqHasAsJava}
 import org.junit.Assert.{assertSame, assertTrue, assertEquals}
+import org.junit.Test
 
 class HierarchyTest extends ScaladocTest("hierarchy"):
-  override def runTest = withModule(_.visitMembers(checkMember))
+  @Test
+  def runTest(): Unit = withModule(_.visitMembers(checkMember))
 
   def checkMember(x: Member) = x.name match
     case "C1" =>

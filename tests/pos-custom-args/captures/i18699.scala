@@ -1,5 +1,4 @@
 import language.experimental.captureChecking
-import caps.use
 
 trait Cap:
   def use: Int = 42

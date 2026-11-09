@@ -18,7 +18,13 @@ import java.util.Spliterator
 
 import scala.collection.Stepper.EfficientSplit
 
-/** Abstracts all the generic operations of stepping over an indexable collection. */
+/** Abstracts all the generic operations of stepping over an indexable collection.
+ *
+ *  @tparam Sub the concrete stepper subtype
+ *  @tparam Semi the type returned by splitting, a subtype of `Sub`
+ *  @param i0 the starting index (inclusive) into the underlying collection
+ *  @param iN the ending index (exclusive) into the underlying collection
+ */
 private[convert] abstract class IndexedStepperBase[Sub, Semi <: Sub](protected var i0: Int, protected var iN: Int)
   extends EfficientSplit {
   protected def semiclone(half: Int): Semi

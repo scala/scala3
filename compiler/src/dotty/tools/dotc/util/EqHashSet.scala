@@ -1,7 +1,5 @@
 package dotty.tools.dotc.util
 
-import dotty.tools.uncheckedNN
-
 object EqHashSet:
 
   def from[T](xs: IterableOnce[T]): EqHashSet[T] =
@@ -9,8 +7,7 @@ object EqHashSet:
     set ++= xs
     set
 
-/** A hash set that allows some privileged protected access to its internals
- *  @param  initialCapacity  Indicates the initial number of slots in the hash table.
+/** @param  initialCapacity  Indicates the initial number of slots in the hash table.
  *                           The actual number of slots is always a power of 2, so the
  *                           initial size of the table will be the smallest power of two
  *                           that is equal or greater than the given `initialCapacity`.
@@ -21,7 +18,7 @@ object EqHashSet:
  *                           However, a table of size up to DenseLimit will be re-sized only
  *                           once the number of elements reaches the table's size.
  */
-class EqHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends GenericHashSet[T](initialCapacity, capacityMultiple) {
+final class EqHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends GenericHashSet[T](initialCapacity, capacityMultiple) {
   import GenericHashSet.DenseLimit
 
   /** System's identity hashcode left shifted by 1 */
@@ -47,7 +44,7 @@ class EqHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends 
     var idx = firstIndex(x)
     var e: T | Null = entryAt(idx)
     while e != null do
-      if isEqual(e.uncheckedNN, x) then return e
+      if isEqual(e, x) then return e
       idx = nextIndex(idx)
       e = entryAt(idx)
     null
@@ -66,7 +63,7 @@ class EqHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends 
     var idx = firstIndex(x)
     var e: T | Null = entryAt(idx)
     while e != null do
-      if isEqual(e.uncheckedNN, x) then return false // already entered
+      if isEqual(e, x) then return false // already entered
       idx = nextIndex(idx)
       e = entryAt(idx)
     addEntryAt(idx, x)
@@ -77,8 +74,7 @@ class EqHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends 
     var idx = firstIndex(x)
     var e: T | Null = entryAt(idx)
     while e != null do
-      // TODO: remove uncheckedNN when explicit-nulls is enabled for regule compiling
-      if isEqual(e.uncheckedNN, x) then return e.uncheckedNN
+      if isEqual(e, x) then return e
       idx = nextIndex(idx)
       e = entryAt(idx)
     addEntryAt(idx, x)
@@ -101,6 +97,6 @@ class EqHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends 
       var idx = 0
       while idx < oldTable.length do
         val e: T | Null = oldTable(idx).asInstanceOf[T | Null]
-        if e != null then addOld(e.uncheckedNN)
+        if e != null then addOld(e)
         idx += 1
 }

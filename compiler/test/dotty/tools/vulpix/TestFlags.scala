@@ -1,7 +1,5 @@
 package dotty.tools.vulpix
 
-import scala.language.unsafeNulls
-
 import java.io.{File => JFile}
 
 final case class TestFlags(
@@ -31,18 +29,6 @@ final case class TestFlags(
 
   private val languageFeatureFlag = "-language:"
   private def withoutLanguageFeaturesOptions = options.filterNot(_.startsWith(languageFeatureFlag))
-
-  def andLanguageFeature(feature: String) =
-    copy(options = options ++ Array(s"$languageFeatureFlag$feature"))
-
-  def withoutLanguageFeature(feature: String) =
-    val (languageFeatures, rest) = options.partition(_.startsWith(languageFeatureFlag))
-    val existingFeatures = languageFeatures.flatMap(_.stripPrefix(languageFeatureFlag).split(","))
-    val filteredFeatures = existingFeatures.filterNot(_ == feature)
-    val newOptions =
-      if filteredFeatures.isEmpty then rest
-      else rest ++ Array(languageFeatureFlag + filteredFeatures.mkString(","))
-    copy(options = newOptions)
 
   /** Subset of the flags that should be passed to javac. */
   def javacFlags: Array[String] = {

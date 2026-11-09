@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 import Specializable._
@@ -27,6 +28,8 @@ import Specializable._
  *  ```
  *    class MyList[@specialized(Int, Double, Boolean) T] ..
  *  ```
+ *
+ *  @param group the group of primitive types for which specialization should be performed (typically constructed implicitly via the varargs constructor)
  */
 // class tspecialized[T](group: Group[T]) extends scala.annotation.StaticAnnotation {
 

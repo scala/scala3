@@ -1,7 +1,5 @@
 package dotty.tools.dotc.util
 
-import scala.language.unsafeNulls
-
 import scala.annotation.tailrec
 import scala.collection.mutable
 
@@ -126,8 +124,8 @@ object DiffUtil {
   def mkColoredHorizontalLineDiff(expected: String, actual: String): String = {
     val indent = 2
     val tab = " " * indent
-    val insertIndent = "+" ++ (" " * (indent - 1))
-    val deleteIndent = "-" ++ (" " * (indent - 1))
+    val insertIndent = "+" + (" " * (indent - 1))
+    val deleteIndent = "-" + (" " * (indent - 1))
 
     if actual.isEmpty then
       (expected.linesIterator.map(line => added(insertIndent + line)).toList :+ deleted("--- EMPTY OUTPUT ---"))
@@ -296,4 +294,3 @@ object DiffUtil {
     builder ++= alignment
   }
 }
-

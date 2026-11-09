@@ -5,6 +5,7 @@ import Contexts.*
 import Symbols.*
 
 import dotty.tools.backend.sjs.JSDefinitions
+import dotty.tools.dotc.interactive.LogicalPackage
 
 object SJSPlatform {
   /** The `SJSPlatform` for the current context. */
@@ -12,10 +13,12 @@ object SJSPlatform {
     ctx.platform.asInstanceOf[SJSPlatform]
 }
 
-class SJSPlatform extends JavaPlatform {
+class SJSPlatform(precomputedSourcePackages: Option[LogicalPackage] = None) extends JavaPlatform(precomputedSourcePackages) {
 
   /** Scala.js-specific definitions. */
   val jsDefinitions: JSDefinitions = new JSDefinitions()
+
+  override protected def supportsJava25MainClassDiscovery: Boolean = false
 
   override def init()(using Context): Unit =
     jsDefinitions.init()

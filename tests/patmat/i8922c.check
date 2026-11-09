@@ -1,1 +1,9 @@
-26: Pattern Match Exhaustivity: (_: Int, _: String, _), (_: Int, _: Int, BANG), (_: Int, _: Int, BANG_EQUAL), (_: Int, _: Int, EQUAL), (_: Int, _: Int, EQUAL_EQUAL), (_: Int, true, _)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i8922c.scala:26:16 --
+26 |                (l, r, op.tokenType) match
+   |                ^^^^^^^^^^^^^^^^^^^^
+   |match may not be exhaustive.
+   |
+   |It would fail on pattern case: (_: Int, _: String, _), (_: Int, _: Int, BANG), (_: Int, _: Int, BANG_EQUAL), (_: Int, _: Int, EQUAL), (_: Int, _: Int, EQUAL_EQUAL), (_: Int, true, _)
+   |(More unmatched cases are elided)
+   |
+   | longer explanation available when compiling with `-explain`

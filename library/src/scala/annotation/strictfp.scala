@@ -12,10 +12,12 @@
 
 package scala.annotation
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** If this annotation is present on a method or its enclosing class,
  *  the strictfp flag will be emitted.
  */
 @deprecatedInheritance("Scheduled for being final in the future", "2.13.0")
+@deprecated("As of JDK 17, all floating-point expressions are evaluated strictly and 'strictfp' is not required", "3.8.0")
 class strictfp extends scala.annotation.StaticAnnotation

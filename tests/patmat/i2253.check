@@ -1,3 +1,24 @@
-28: Pattern Match Exhaustivity: HasIntXStringM, HasIntXIntM
-29: Pattern Match Exhaustivity: HasIntXIntM
-30: Pattern Match Exhaustivity: HasIntXIntM
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i2253.scala:28:38 ---
+28 |  def onlyIntX(s: S { val x: Int }) = s match { case _: T => ; }
+   |                                      ^
+   |              match may not be exhaustive.
+   |
+   |              It would fail on pattern case: HasIntXStringM, HasIntXIntM
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i2253.scala:29:64 ---
+29 |  def exposeAlias1[I <: Int](s: S { type M = I; val x: Int }) = s match { case _: T => ; }
+   |                                                                ^
+   |                              match may not be exhaustive.
+   |
+   |                              It would fail on pattern case: HasIntXIntM
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i2253.scala:30:64 ---
+30 |  def exposeAlias2[I <: Int](s: S { val x: Int; type M = I }) = s match { case _: T => ; }
+   |                                                                ^
+   |                              match may not be exhaustive.
+   |
+   |                              It would fail on pattern case: HasIntXIntM
+   |
+   | longer explanation available when compiling with `-explain`

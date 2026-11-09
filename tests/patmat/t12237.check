@@ -1,1 +1,8 @@
-21: Pattern Match Exhaustivity: Root, PathAndQuery./(_, _), PathAndQuery.===(_, _), PathAndQuery.:&(_, PathAndQuery.===(_, _)), PathAndQuery.+?(_, PathAndQuery.===(_, _))
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t12237.scala:21:3 ---
+21 |  (pq: PathAndQuery) match {
+   |   ^^^^^^^^^^^^^^^^
+   |match may not be exhaustive.
+   |
+   |It would fail on pattern case: Root, PathAndQuery./(_, _), PathAndQuery.===(_, _), PathAndQuery.:&(_, PathAndQuery.===(_, _)), PathAndQuery.+?(_, PathAndQuery.===(_, _))
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 package org.junit;
 
 import java.lang.annotation.ElementType;

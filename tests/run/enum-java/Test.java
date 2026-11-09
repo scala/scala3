@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 public class Test {
   public static void log(String x) { System.out.println(x); }
   public static void check(Boolean p, String message) {

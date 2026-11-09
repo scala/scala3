@@ -1,1 +1,8 @@
-8: Pattern Match Exhaustivity: Foo()
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i6490.scala:8:2 -----
+8 |  x match {
+  |  ^
+  |  match may not be exhaustive.
+  |
+  |  It would fail on pattern case: Foo()
+  |
+  | longer explanation available when compiling with `-explain`

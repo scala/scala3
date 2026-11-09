@@ -1,7 +1,9 @@
 package dotty.tools.dotc.quoted
 
+import java.io.{ByteArrayInputStream, SequenceInputStream}
+import java.nio.charset.StandardCharsets
 import java.util.Base64
-import java.nio.charset.StandardCharsets.UTF_8
+import scala.jdk.CollectionConverters.*
 
 /** Utils for String representation of TASTY */
 object TastyString {
@@ -11,19 +13,22 @@ object TastyString {
 
   /** Encode TASTY bytes into a List of String */
   def pickle(bytes: Array[Byte]): List[String] = {
-    val str = new String(Base64.getEncoder().encode(bytes), UTF_8)
+    val str = Base64.getEncoder().encodeToString(bytes)
     str.toSeq.sliding(maxStringSize, maxStringSize).map(_.unwrap).toList
   }
 
   /** Decode the List of Strings into TASTY bytes */
   def unpickle(strings: List[String]): Array[Byte] = {
-    val string = new StringBuilder
-    strings.foreach(string.append)
-    Base64.getDecoder().decode(string.result().getBytes(UTF_8))
+    val stream = new SequenceInputStream(
+      strings.map(s => new ByteArrayInputStream(s.getBytes(StandardCharsets.UTF_8))).iterator.asJavaEnumeration
+    )
+    val result = Base64.getDecoder().wrap(stream)
+    try result.readAllBytes()
+    finally result.close()
   }
 
   /** Decode the Strings into TASTY bytes */
   def unpickle(string: String): Array[Byte] =
-    Base64.getDecoder().decode(string.getBytes(UTF_8))
+    Base64.getDecoder().decode(string)
 
 }

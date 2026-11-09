@@ -92,7 +92,7 @@ function attachAllListeners() {
         expanderChild !== null
       ) {
         expanderChild.onclick = function (e) {
-          if (!$(e.target).is("a") && e.fromSnippet !== true) {
+          if (!e.target.tagName === "A" && e.fromSnippet !== true) {
             this.parentElement.classList.toggle("expand");
             this.children[0].classList.toggle("expanded");
             this.querySelector(".show-content").classList.toggle("expand");
@@ -127,7 +127,7 @@ function attachAllListeners() {
   var memberLists = document.getElementsByClassName("tab");
   if (memberLists) {
     for (i = 0; i < memberLists.length; i++) {
-      if ($(memberLists[i].children[0].children[0]).is("button")) {
+      if (memberLists[i].children[0].children[0].tagName === "BUTTON") {
         memberLists[i].children[0].onclick = function (e) {
           this.classList.toggle("expand");
           this.children[0].classList.toggle("expand");
@@ -147,56 +147,6 @@ function attachAllListeners() {
       brief.parentElement.parentElement.parentElement.previousElementSibling.children[0].classList.add(
         "expanded",
       );
-    });
-  });
-
-  document.querySelectorAll("a").forEach((el) => {
-    const href = el.href;
-    if (href === "") {
-      return;
-    }
-    const url = new URL(href);
-    if (attachedElements.has(el)) return;
-    attachedElements.add(el);
-    el.addEventListener("click", (e) => {
-      if (
-        url.href.replace(/#.*/, "") === window.location.href.replace(/#.*/, "")
-      ) {
-        return;
-      }
-      if (url.origin !== window.location.origin) {
-        return;
-      }
-      // ISSUE-19208, treat as normal link when lacking HTTP server,
-      // otherwise GET request blocked by CORS protections.
-      if (window.location.protocol.startsWith("file")) {
-        return;
-      }
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
-        return;
-      }
-      e.preventDefault();
-      e.stopPropagation();
-      $.get(href, function (data) {
-        const oldLoc = getRawLoc();
-        if (window.history.state === null) {
-          window.history.replaceState(savePageState(document), "");
-        }
-        const parser = new DOMParser();
-        const parsedDocument = parser.parseFromString(data, "text/html");
-        const state = savePageState(parsedDocument);
-        window.history.pushState(state, "", href);
-        loadPageState(document, state);
-        const newLoc = getRawLoc();
-        if (dynamicSideMenu) {
-          updateMenu(oldLoc, newLoc);
-        }
-
-        window.dispatchEvent(new Event(DYNAMIC_PAGE_LOAD));
-        document
-          .querySelector("#main")
-          .scrollTo({ top: 0, left: 0, behavior: "instant" });
-      });
     });
   });
 
@@ -407,7 +357,6 @@ function updatePath(elem, hide, first = true) {
   }
   updatePath(elem.parentElement, hide, false);
 }
-let updateMenu = null;
 function getRawLoc() {
   return document.documentElement.getAttribute("data-rawLocation")?.split("/")?.filter(c => c !== "");
 }
@@ -432,15 +381,18 @@ function render(el, { cls = null, id = null, href = null, loc = null } = {}, chl
 }
 function renderDynamicSideMenu() {
   const pathToRoot = document.documentElement.getAttribute("data-pathToRoot")
-  const path = pathToRoot + "dynamicSideMenu.json";
+  const path = pathToRoot + "scripts/dynamicSideMenu.js";
   const rawLocation = getRawLoc();
-  const baseUrl = window.location.pathname.split("/").slice(0,
-    -1 - pathToRoot.split("/").filter(c => c != "").length
-  );
+  // Relative, like the links of the statically rendered menu, so that they work wherever
+  // the docs are hosted (e.g. under `/api/3.x/`) and when browsed from `file://` URLs.
   function linkTo(loc) {
-    return `${baseUrl}/${loc.join("/")}.html`;
+    return `${pathToRoot}${loc.join("/")}.html`;
   }
-  fetch(path).then(r => r.json()).then(menu => {
+  // Loaded as a script rather than with `fetch`, which browsers refuse for `file://` URLs.
+  const script = document.createElement("script");
+  script.src = path;
+  script.onload = () => {
+    const menu = dynamicSideMenuData;
     function renderNested(item, nestLevel, prefix, isApi) {
       const name = item.name;
       const newName =
@@ -483,30 +435,22 @@ function renderDynamicSideMenu() {
       menu.api.children.map(item => renderNested(item, 0, "", true))
     );
 
-    document.getElementById("leftColumn").appendChild(d);
-    d1 && document.getElementById("leftColumn").appendChild(d1);
-    d2 && document.getElementById("leftColumn").appendChild(d2);
-    updateMenu = (oldLoc, newLoc) => {
-      if (oldLoc) {
-        const elem = document.querySelector(`[data-loc="${oldLoc.join("/")}"]`);
-        if (elem) updatePath(elem, true);
-      }
-      if (d1 && d2) {
-        if (newLoc[0] && newLoc[0] == menu.api.location[0]) {
-          d1.hidden = true;
-          d2.hidden = false;
-        } else {
-          d1.hidden = false;
-          d2.hidden = true;
-        }
-      }
-      const elem = document.querySelector(`[data-loc="${newLoc.join("/")}"]`);
-      if (elem) updatePath(elem, false)
-    }
-    updateMenu(null, rawLocation);
+    const find = (nav, loc) => nav?.querySelector(`[data-loc="${CSS.escape(loc.join("/"))}"]`);
+    // Like the statically rendered menu, include only one tree: the API tree iff the page
+    // is part of it. `attachAllListeners` expects that, e.g. to restore the scroll position.
+    const apiElem = find(d2, rawLocation);
+    const isApiRoot = !!menu.api && menu.api.location.join("/") === rawLocation.join("/");
+    const apiActive = !!d2 && (!!apiElem || isApiRoot || !d1);
+    const activeNav = apiActive ? d2 : d1;
+    document.getElementById("leftColumn").append(d, ...(activeNav ? [activeNav] : []));
+    document.getElementById("docs-nav-button")?.classList.toggle("selected", !apiActive);
+    document.getElementById("api-nav-button")?.classList.toggle("selected", apiActive);
+    const elem = apiElem ?? find(activeNav, rawLocation);
+    if (elem) updatePath(elem, false);
 
     window.dispatchEvent(new Event(DYNAMIC_PAGE_LOAD));
-  })
+  };
+  document.head.appendChild(script);
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -556,9 +500,24 @@ window.addEventListener("popstate", (e) => {
 var zoom;
 var transform;
 
+/* The diagram's node sizes are measured when it is first rendered, so a
+ * feature toggle changing the visible fragments of its labels invalidates
+ * the layout: drop it and re-render if it is currently shown. */
+window.addEventListener("feature-toggled", (e) => {
+  const graph = document.querySelector("svg#graph");
+  const diagram = document.getElementById("inheritance-diagram");
+  if (graph != null && graph.querySelector(`.feature-${e.detail.feature}`) != null) {
+    graph.innerHTML = "";
+    if (diagram != null && diagram.classList.contains("shown")) {
+      showGraph();
+    }
+  }
+});
+
 function showGraph() {
   document.getElementById("inheritance-diagram").classList.add("shown");
-  if ($("svg#graph").children().length == 0) {
+  const graph = document.querySelector("svg#graph");
+  if (graph != null && graph.children.length == 0) {
     var dotNode = document.querySelector("#dot");
 
     if (dotNode) {

@@ -49,4 +49,30 @@ class CompletionErrorSuite extends BaseCompletionSuite {
          |""".stripMargin,
       topLines = Option(2)
     )
+
+  @Test def `broken-string-before` =
+    check(
+      """|object M {
+         |  val myName = "x"
+         |  val a = "
+         |  val b = myNa@@
+         |}
+         |""".stripMargin,
+      """|myName: String
+         |""".stripMargin,
+      filter = _.contains("myName")
+    )
+
+  @Test def `broken-interpolation-before` =
+    check(
+      """|object M {
+         |  val myName = "x"
+         |  val a = s"$"
+         |  val b = myNa@@
+         |}
+         |""".stripMargin,
+      """|myName: String
+         |""".stripMargin,
+      filter = _.contains("myName")
+    )
 }

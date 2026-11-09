@@ -1,0 +1,14 @@
+-- [E040] Syntax Error: tests/neg/i12406.scala:3:8 ---------------------------------------------------------------------
+3 |    val this = "shadow" // error
+  |        ^
+  |        an identifier expected, but 'this' found
+  |
+  | longer explanation available when compiling with `-explain`
+-- Warning: tests/neg/i12406.scala:3:15 --------------------------------------------------------------------------------
+3 |    val this = "shadow" // error
+  |               ^^^^^^^^
+  |pattern's type (ShadowIt.this : ShadowIt) does not match the right hand side expression's type ("shadow" : String)
+  |
+  |If the narrowing is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
+  |which may result in a MatchError at runtime.
+  |This patch can be rewritten automatically under -rewrite -source 3.8-migration.

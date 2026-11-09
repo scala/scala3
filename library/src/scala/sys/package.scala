@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.collection.immutable.ArraySeq
 import scala.jdk.CollectionConverters._
@@ -23,19 +24,21 @@ import scala.jdk.CollectionConverters._
 package object sys {
   /** Throws a new RuntimeException with the supplied message.
    *
-   *  @return   Nothing.
+   *  @param message the detail message for the `RuntimeException`
+   *  @return   this method never returns normally (return type is `Nothing`)
    */
   def error(message: String): Nothing = throw new RuntimeException(message)
 
   /** Exits the JVM with the default status code.
    *
-   *  @return   Nothing.
+   *  @return   this method never returns normally (return type is `Nothing`)
    */
   def exit(): Nothing = exit(0)
 
   /** Exits the JVM with the given status code.
    *
-   *  @return   Nothing.
+   *  @param status the exit status code passed to `System.exit` (0 for success, non-zero for failure)
+   *  @return   this method never returns normally (return type is `Nothing`)
    */
   def exit(status: Int): Nothing = {
     java.lang.System.exit(status)
@@ -50,7 +53,7 @@ package object sys {
 
   /** A bidirectional, mutable Map representing the current system Properties.
    *
-   *  @return   a SystemProperties.
+   *  @return   a `SystemProperties` instance wrapping the current system properties
    *  @see      [[scala.sys.SystemProperties]]
    */
   def props: SystemProperties = new SystemProperties
@@ -78,11 +81,13 @@ package object sys {
    *
    *  Note that shutdown hooks are NOT guaranteed to be run.
    *
+   *  **Capture Checking notes**: at the moment, shutdown hooks are required to be pure. See [[scala.sys.ShutdownHookThread#apply ShutdownHookThread]].
+   *
    *  @param    body  the body of code to run at shutdown
-   *  @return   the   Thread which will run the shutdown hook.
+   *  @return   the `ShutdownHookThread` which will run the shutdown hook
    *  @see      [[scala.sys.ShutdownHookThread]]
    */
-  def addShutdownHook(body: => Unit): ShutdownHookThread = ShutdownHookThread(body)
+  def addShutdownHook(body: -> Unit): ShutdownHookThread = ShutdownHookThread(body)
 
   /** Returns all active thread in the current thread's thread group and subgroups.
    *

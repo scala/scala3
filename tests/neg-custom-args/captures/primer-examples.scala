@@ -30,15 +30,3 @@ def logged[T](op: Logger^ => T): T =
 
 val bad = logged(l => () => l.log("too late!")) // error
 val _ = bad()
-
-def test =
-  var counter: Int = 0
-  def incr = () => { counter += 1; counter }
-  def current = () => counter
-  type Proc = () => Int
-  def par(p: Proc, q: Proc) = ()
-  par(incr, current) // error
-  par(current, current)
-  incr()
-  current()
-

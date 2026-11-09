@@ -1,4 +1,4 @@
--- Error: tests/neg/i9329.scala:8:6 ------------------------------------------------------------------------------------
+-- [E231] Declaration Error: tests/neg/i9329.scala:8:6 -----------------------------------------------------------------
 8 |class GrandSon extends Son // error
   |      ^^^^^^^^
   |class GrandSon needs to be abstract, since def name: String in trait Parent is not defined 

@@ -13,6 +13,7 @@
 package scala.annotation
 package meta
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** This internal meta annotation is used by the compiler to support default annotation arguments.
@@ -25,6 +26,8 @@ import scala.language.`2.13`
  *  `AnnotationInfo`.
  *
  *  For details, see `scala.reflect.internal.AnnotationInfos.AnnotationInfo`.
+ *
+ *  @param arg the default expression for the annotation parameter, stored as a syntax tree in the classfile
  */
 @meta.param class defaultArg(arg: Any) extends StaticAnnotation {
   def this() = this(null)

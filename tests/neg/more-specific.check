@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg/more-specific.scala:9:17 ------------------------------------------------------
+9 |        if (x eq y) // error
+  |                 ^
+  |                 Found:    (y : T)
+  |                 Required: Object
+  |                 Note that implicit conversions were not tried because the result of an implicit conversion
+  |                 must be more specific than Object
+  |
+  | longer explanation available when compiling with `-explain`

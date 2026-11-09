@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package transform.localopt
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Constants.Constant
@@ -49,7 +47,10 @@ class StringInterpolatorOpt extends MiniPhase:
     def unapply(tree: Select)(using Context): Boolean =
       (tree.symbol eq defn.StringContextModule_apply) && (tree.qualifier.symbol eq defn.StringContextModule)
 
-  /** Matches an s or raw string interpolator */
+  /** Matches an s or raw string interpolator.
+   *
+   *  The `List[Literal]` in the result is always non-empty (but not the `List[Tree]`).
+   */
   private object SOrRawInterpolator:
     def unapply(tree: Tree)(using Context): Option[(List[Literal], List[Tree])] =
       tree match
@@ -79,7 +80,7 @@ class StringInterpolatorOpt extends MiniPhase:
           if tree.symbol == defn.StringContext_raw then Some(strs, elems)
           else // tree.symbol == defn.StringContextS
             import dotty.tools.dotc.util.SourcePosition
-            var stringPosition: SourcePosition = null
+            var stringPosition: SourcePosition = strs.head.sourcePos // ok because strs is non-empty
             try
               val escapedStrs = strs.map { str =>
                 stringPosition = str.sourcePos

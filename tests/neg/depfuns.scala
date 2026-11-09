@@ -2,6 +2,6 @@ import language.experimental.erasedDefinitions
 
 object Test {
 
-  type T = (erased x: Int)
+  type T = (erased x: Int) // error
 
-}  // error: `=>' expected
+}

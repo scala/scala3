@@ -61,7 +61,7 @@ class ScalaSignatureProvider:
         .typeParamList(kind.typeParams)
         .functionTermParameters(kind.argsLists)
         .parentsSignature(member)
-        .usesClauses(member)
+        .usesClause(member)
     )
 
 

@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import vulpix.TestConfiguration
 import vulpix.FileDiff
 import dotty.tools.ToolName
@@ -15,6 +13,7 @@ import java.nio.charset.StandardCharsets
 
 import scala.io.Source
 import scala.util.Using
+import scala.util.control.NonFatal
 import scala.collection.mutable.ArrayBuffer
 
 import dotc.core.Contexts.Context
@@ -47,6 +46,10 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   def tabComplete(src: String)(implicit state: State): List[String] =
     completions(src.length, src, state).map(_.label).sorted.distinct
 
+  /** The signatures offered under `label`, i.e. all of its overloads */
+  def tabCompleteSignatures(src: String, label: String)(implicit state: State): List[String] =
+    completions(src.length, src, state).filter(_.label == label).map(_.description).sorted
+
   extension [A](state: State)
     infix def andThen(op: State ?=> A): A = op(using state)
 
@@ -63,7 +66,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
 
   /** Returns failures: None if all is well, Some for an error */
   private def testScript(name: => String, lines: List[String], scriptFile: Option[JFile] = None): Option[String] = {
-    val prompt = "scala>"
+    val prompt = "scala> "
 
     def evaluate(state: State, input: String) =
       try {
@@ -72,7 +75,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         (out, nstate)
       }
       catch {
-        case ex: Throwable =>
+        case NonFatal(ex) =>
           System.err.println(s"failed while running script: $name, on:\n$input")
           throw ex
       }
@@ -91,7 +94,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
       resetToInitial(opts)
 
       assert(inputLines.head.startsWith(prompt),
-        s"""Each script must start with the prompt: "$prompt"""")
+        s"""[$name]: Each script must start with the prompt: "$prompt"""")
       val inputRes = inputLines.filter(_.startsWith(prompt))
 
       val buf = new ArrayBuffer[String]
@@ -113,13 +116,24 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         println(s"Wrote updated script file to $checkFile")
         None
       else
-        println(dotty.tools.dotc.util.DiffUtil.mkColoredHorizontalLineDiff(actualOutput.mkString(EOL), expectedOutput.mkString(EOL)))
+        val diff = dotty.tools.dotc.util.DiffUtil.mkColoredHorizontalLineDiff(actualOutput.mkString(EOL), expectedOutput.mkString(EOL))
 
-        Some(s"Error in script $name, expected output did not match actual")
+        Some(s"Error in script $name, expected output did not match actual:\n$diff")
     end if
   }
 
 object ReplTest:
-  val commonOptions = Array("-color:never", "-pagewidth", "80", "-Ydebug")
-  val defaultOptions = commonOptions ++ Array("-classpath", TestConfiguration.replClassPath)
-  lazy val withStagingOptions = commonOptions ++ Array("-classpath", TestConfiguration.replWithStagingClasspath)
+  // Because we test REPL features like completion,
+  // we don't want other test stuff to get in the way,
+  // e.g., "Pred" should complete to "Predef" and not "PredefTest" just because some dependency has a test named like that
+  private val classpath =
+    System.getProperty("java.class.path")
+      .split(JFile.pathSeparator)
+      .filter(!_.contains("test-classes"))
+      .mkString(JFile.pathSeparator)
+
+  def createOptions(extraClasspath: String*): Array[String] =
+    Array("-color:never", "-pagewidth", "80", "-Ydebug",
+          "-classpath", classpath + JFile.pathSeparator + extraClasspath.mkString(JFile.pathSeparator))
+
+  val defaultOptions: Array[String] = createOptions()

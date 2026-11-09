@@ -16,13 +16,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:11:29 -------------------
 11 |  val z: A -> (x: A) -> B^ = y // error
    |                             ^
-   |                             Found:    A -> A -> B^{y*}
+   |                             Found:    (y : A -> A -> B^{any})
    |                             Required: A -> (x: A) -> B^
    |
-   |                             Note that capability `y*` cannot flow into capture set {any}.
+   |                             Note that capability `any` cannot flow into capture set {any²}.
    |
-   |                             where:    ^   refers to a root capability in the type of value z
-   |                                       any is the root capability caps.any
+   |                             where:    ^    refers to a root capability in the type of value z
+   |                                       any  is a root capability in the type of value y
+   |                                       any² is the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:15:19 -------------------
@@ -43,12 +44,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:16:24 -------------------
 16 |  val z: (x: A) -> B^ = y // error
    |                        ^
-   |                        Found:    A -> B^{y*}
+   |                        Found:    (y : A -> B^{any})
    |                        Required: (x: A) -> B^
    |
-   |                        Note that capability `y*` cannot flow into capture set {any}.
+   |                        Note that capability `any` cannot flow into capture set {any²}.
    |
-   |                        where:    ^   refers to a root capability in the type of value z
-   |                                  any is the root capability caps.any
+   |                        where:    ^    refers to a root capability in the type of value z
+   |                                  any  is a root capability in the type of value y
+   |                                  any² is the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`

@@ -1,5 +1,5 @@
-//> using options -preview
-// preview needed for into in 3.8
+// placeholder for directives line
+//
 
 into class Test
 
@@ -12,4 +12,3 @@ object Test:
   into val x = 33   // error
   into type T = Int // error
   into opaque type U = Int // ok
-

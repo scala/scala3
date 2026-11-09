@@ -97,6 +97,7 @@ class ListBuffer[A]
   /** Prepends the elements of this buffer to a given list
    *
    *  @param xs   the list to which elements are prepended
+   *  @return a list consisting of the elements of this buffer followed by `xs`, or `xs` itself if this buffer is empty
    */
   def prependToList(xs: List[A]): List[A] = {
     if (isEmpty) xs
@@ -182,6 +183,8 @@ class ListBuffer[A]
 
   /** Reduces the length of the buffer, and nulls out last0
    *  if this reduces the length to 0.
+   *
+   *  @param num the number of elements by which to reduce the length
    */
   private def reduceLengthBy(num: Int): Unit = {
     len -= num
@@ -393,7 +396,7 @@ class ListBuffer[A]
    *
    *  Runs in constant time.
    *
-   *  @return The last element of this $coll.
+   *  @return the last element of this $coll.
    *  @throws NoSuchElementException If the $coll is empty.
    */
   override def last: A = if (last0 eq null) throw new NoSuchElementException("last of empty ListBuffer") else last0.head
@@ -402,7 +405,7 @@ class ListBuffer[A]
    *
    *  Runs in constant time.
    *
-   *  @return the last element of this $coll$ if it is nonempty, `None` if it is empty.
+   *  @return the last element of this $coll if it is nonempty, `None` if it is empty.
    */
   override def lastOption: Option[A] = if (last0 eq null) None else Some(last0.head)
 

@@ -12,7 +12,7 @@ trait FooBar { self: Foo =>
 }
 
 object Foo {
-  type Bar = Foo with FooBar
+  type Bar = Foo & FooBar
 
   def bar(vs: String*): Bar = new Foo(vs) with FooBar
 }

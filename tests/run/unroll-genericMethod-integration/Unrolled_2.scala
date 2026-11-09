@@ -1,4 +1,4 @@
-//> using options -experimental
+//> using options -preview
 package unroll
 
 import scala.annotation.unroll

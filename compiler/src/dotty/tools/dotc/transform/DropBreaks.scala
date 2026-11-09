@@ -222,7 +222,9 @@ class DropBreaks extends MiniPhase:
 
   /** Rewrite a break call
    *
+   *     ```
    *     break.apply[...](value)(using lbl)
+   *     ```
    *
    *  where `lbl` is a label defined in the current method and is not included in
    *  ShadowedLabels to

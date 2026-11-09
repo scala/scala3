@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 package scalapackage:
   object Foo extends javapackage.Base_1
 end scalapackage

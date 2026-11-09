@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** An interface containing operations for equality.
@@ -32,6 +33,8 @@ trait Equals extends Any {
 
   /** Checks whether this instance is equal to `that`.
    *  This universal equality method is defined in `AnyRef`.
+   *
+   *  @param that the object to compare for equality with this instance
    */
   def equals(that: Any): Boolean
 }

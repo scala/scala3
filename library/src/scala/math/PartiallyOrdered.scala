@@ -13,9 +13,13 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
-/** A class for partially ordered data. */
+/** A class for partially ordered data.
+ *
+ *  @tparam A the type of the elements being ordered
+ */
 trait PartiallyOrdered[+A] extends Any {
 
   type AsPartiallyOrdered[B] = B => PartiallyOrdered[B]
@@ -26,6 +30,10 @@ trait PartiallyOrdered[+A] extends Any {
    *  - `x < 0`    iff   `**this** &lt; that`
    *  - `x == 0`   iff   `**this** == that`
    *  - `x > 0`    iff   `**this** &gt; that`
+   *
+   *  @tparam B a supertype of `A` for which an implicit conversion to `PartiallyOrdered[B]` exists
+   *  @param that the value to compare against
+   *  @return `Some(x)` where `x < 0` means this is less than `that`, `x == 0` means they are equal, and `x > 0` means this is greater than `that`; `None` if the operands are not comparable
    */
   def tryCompareTo [B >: A: AsPartiallyOrdered](that: B): Option[Int]
 

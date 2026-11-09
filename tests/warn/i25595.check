@@ -1,0 +1,15 @@
+-- Warning: tests/warn/i25595.scala:3:4 --------------------------------------------------------------------------------
+3 |val ((x1, f1), (x2, f2)): ( // warn
+  |    ^^^^^^^^^^^^^^^^^^^^
+  |    Type ascriptions after patterns other than:
+  |      * variable pattern, e.g. `case x: String =>`
+  |      * number literal pattern, e.g. `case 10.5: Double =>`
+  |    are no longer supported. Remove the type ascription or move it to a separate variable pattern.
+-- Warning: tests/warn/i25595.scala:9:7 --------------------------------------------------------------------------------
+9 |  case X: Int => X // warn
+  |       ^
+  |       Typed pattern is not a variable pattern but could be written `X @ (_: Int)`
+-- Warning: tests/warn/i25595.scala:12:7 -------------------------------------------------------------------------------
+12 |  case `Int`: Int => `Int` // warn
+   |       ^^^^^
+   |       Typed pattern is not a variable pattern but could be written `Int @ (_: Int)`

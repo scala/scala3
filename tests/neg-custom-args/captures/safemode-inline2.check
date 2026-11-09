@@ -1,0 +1,8 @@
+-- Error: tests/neg-custom-args/captures/safemode-inline2/B.scala:5:29 -------------------------------------------------
+5 |  val _ = g2("a".asInstanceOf[Int]) // error
+  |             ^^^^^^^^^^^^^^^^^^^^^
+  |             Cannot use asInstanceOf in safe mode
+-- Error: tests/neg-custom-args/captures/safemode-inline2/B.scala:6:29 -------------------------------------------------
+6 |  val _ = g2("a".asInstanceOf[Int]) // error
+  |             ^^^^^^^^^^^^^^^^^^^^^
+  |             Cannot use asInstanceOf in safe mode

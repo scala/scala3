@@ -2,8 +2,6 @@ package dotty.tools.dotc
 package parsing
 package xml
 
-import scala.language.unsafeNulls
-
 import scala.collection.mutable
 
 /**
@@ -29,12 +27,12 @@ object Utility {
    *
    * @return    `'''null'''` if `ref` was not a predefined entity.
    */
-  private final def unescape(ref: String, s: StringBuilder): StringBuilder =
+  private final def unescape(ref: String, s: StringBuilder): StringBuilder | Null =
     ((unescMap get ref) map (s append _)).orNull
 
   def parseAttributeValue[T](value: String, text: String => T, entityRef: String => T): List[T] = {
     val sb  = new StringBuilder
-    var rfb: StringBuilder = null
+    var rfb: StringBuilder | Null = null
     val nb = new mutable.ListBuffer[T]()
 
     val it = value.iterator
@@ -170,4 +168,3 @@ object Utility {
     s.nonEmpty && isNameStart(s.head) && (s.tail forall isNameChar)
 
 }
-

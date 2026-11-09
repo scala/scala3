@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.collection.StringParsers
 import scala.language.implicitConversions
@@ -25,9 +26,16 @@ object Numeric {
     /** These implicits create conversions from a value for which an implicit Numeric
      *  exists to the inner class which creates infix operations.  Once imported, you
      *  can write methods as follows:
-     *  ```
+     *  ```scala sc:compile
+     *  import scala.math.Numeric.Implicits.*
      *  def plus[T: Numeric](x: T, y: T) = x + y
      *  ```
+     *
+     *  @tparam T the numeric type for which a `Numeric` instance exists
+     *  @param x the value to wrap with numeric infix operations
+     *  @param num the implicit `Numeric` instance that provides the arithmetic operations
+     *
+     *  @return a `NumericOps` wrapper around `x` that exposes infix arithmetic operators and numeric conversion methods
      */
     implicit def infixNumericOps[T](x: T)(implicit num: Numeric[T]): Numeric[T]#NumericOps = new num.NumericOps(x)
   }

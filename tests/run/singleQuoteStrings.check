@@ -1,0 +1,13 @@
+[hello
+world!]
+[3.5 is
+three]
+[this is a
+''' string]
+[this is a
+''' string 3.5]
+["
+    this is a
+    ''' string 3.5
+    "]
+[]

@@ -1,0 +1,12 @@
+-- [E007] Type Mismatch Error: tests/neg/transparent-inline-nested-note.scala:12:11 ------------------------------------
+12 |val i: 1 = id // error
+   |           ^^
+   |           Found:    Int
+   |           Required: (1 : Int)
+   |
+   |           Note: `method id` is transparent inline, but its precise type may not be available here.
+   |           This can happen when:
+   |           - It is used inside another inline body.
+   |           - Its result type depends on another inline expansion or on an inline parameter.
+   |
+   | longer explanation available when compiling with `-explain`

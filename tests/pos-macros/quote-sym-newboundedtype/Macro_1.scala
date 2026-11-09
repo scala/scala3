@@ -36,7 +36,7 @@ def testImpl(using Quotes): Expr[Object] = {
     val typeDef = TypeDef(makeBasicType(Symbol.spliceOwner))
     // Expr printer does not work here, see comment:
     // https://github.com/scala/scala3/pull/20347#issuecomment-2096824617
-    println(typeDef.toString)
+    // println(typeDef.toString)
     assert(typeDef.toString == "TypeDef(tpe,TypeTree[TypeBounds(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class java)),object lang),String),TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Any))])")
 
     val clsSymbol = Symbol.newClass(Symbol.spliceOwner, "CLS", List(TypeRepr.of[Object]), sym => makeTypesForClass(sym), None)

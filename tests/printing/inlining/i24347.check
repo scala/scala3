@@ -1,12 +1,11 @@
 [[syntax trees at end of                  inlining]] // tests/printing/inlining/i24347.scala
 package <empty> {
-  @SourceFile("tests/printing/inlining/i24347.scala") class Box(value: Int)
-     extends Object() {
+  class Box(value: Int) extends Object() {
     val value: Int
   }
   final lazy module val i24347$package: i24347$package = new i24347$package()
-  @SourceFile("tests/printing/inlining/i24347.scala") final module class
-    i24347$package() extends Object() { this: i24347$package.type =>
+  final module class i24347$package() extends Object() {
+    this: i24347$package.type =>
     private def writeReplace(): AnyRef =
       new scala.runtime.ModuleSerializationProxy(classOf[i24347$package.type])
     inline def unbox(b: Box): Int =
@@ -25,8 +24,7 @@ package <empty> {
         }:Int
       }
   }
-  @SourceFile("tests/printing/inlining/i24347.scala") final class Test() extends
-     Object() {
+  final class Test() extends Object() {
     <static> def main(args: Array[String]): Unit =
       try
         {

@@ -7,7 +7,7 @@ object Y {
 }
 
 object Test {
-  "" match { case X(b) => b } // should warn under -Xlint. Not an error because of SI-6111
+  "" match { case X(b) => b } // should warn under -Wshadow. Not an error because of SI-6111
 
   "" match { case Y(b) => b } // no warning
 }

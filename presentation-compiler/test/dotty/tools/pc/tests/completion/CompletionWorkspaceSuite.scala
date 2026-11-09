@@ -886,7 +886,9 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """|method - demo.O(i: Int): Int
-         |""".stripMargin
+         |""".stripMargin,
+      // `scala.language.experimental.methodBlockEndMarkers` also matches the `meth` prefix
+      filter = !_.startsWith("methodBlockEndMarkers")
     )
 
   @Test def `implicit-class-val` =

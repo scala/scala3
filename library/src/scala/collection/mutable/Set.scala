@@ -16,7 +16,10 @@ import scala.language.`2.13`
 import language.experimental.captureChecking
 import scala.collection.{IterableFactory, IterableFactoryDefaults, IterableOps}
 
-/** Base trait for mutable sets. */
+/** Base trait for mutable sets.
+ *
+ *  @tparam A the element type of the set
+ */
 trait Set[A]
   extends Iterable[A]
     with collection.Set[A]
@@ -29,6 +32,10 @@ trait Set[A]
 /**
  *  @define coll mutable set
  *  @define Coll `mutable.Set`
+ *
+ *  @tparam A the element type of the set
+ *  @tparam CC the type constructor for the collection (e.g., `Set`)
+ *  @tparam C the concrete collection type
  */
 transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
   extends collection.SetOps[A, CC, C]
@@ -55,7 +62,11 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
    *  This method allows one to add or remove an element `elem`
    *  from this set depending on the value of parameter `included`.
    *  Typically, one would use the following syntax:
+   *  ```scala sc-name:set-update-context sc-hidden
+   *     val set = scala.collection.mutable.Set(1)
+   *     val elem = 1
    *  ```
+   *  ```scala sc-compile-with:set-update-context
    *     set(elem) = true  // adds element
    *     set(elem) = false // removes element
    *  ```
@@ -86,9 +97,11 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
   @inline final def retain(p: A => Boolean): Unit = filterInPlace(p)
 
   /** Removes all elements from the set for which do not satisfy a predicate.
+   *
    *  @param  p  the predicate used to test elements. Only elements for
    *             which `p` returns `true` are retained in the set; all others
    *             are removed.
+   *  @return this set after removing elements that do not satisfy `p`
    */
   def filterInPlace(p: A => Boolean): this.type = {
     if (nonEmpty) {
@@ -119,5 +132,8 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
 object Set extends IterableFactory.Delegate[Set](HashSet)
 
 
-/** Explicit instantiation of the `Set` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Set` trait to reduce class file size in subclasses.
+ *
+ *  @tparam A the element type of the set
+ */
 abstract class AbstractSet[A] extends scala.collection.AbstractSet[A] with Set[A]

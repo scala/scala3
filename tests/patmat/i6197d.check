@@ -1,1 +1,8 @@
-6: Pattern Match Exhaustivity: _: Array[String]
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i6197d.scala:6:28 ---
+6 |def bar(x: Array[String]) = x match {
+  |                            ^
+  |                           match may not be exhaustive.
+  |
+  |                           It would fail on pattern case: _: Array[String]
+  |
+  | longer explanation available when compiling with `-explain`

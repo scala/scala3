@@ -16,7 +16,7 @@ import scala.language.`2.13`
 import java.util.concurrent.Executor
 import java.util.Objects
 import scala.util.control.NonFatal
-import scala.annotation.{switch, tailrec}
+import scala.annotation.{nowarn, switch, tailrec}
 
 /** Marker trait to indicate that a Runnable is Batchable by BatchingExecutors */
 trait Batchable {
@@ -60,30 +60,38 @@ private[concurrent] object BatchingExecutorStatics {
  *  When you implement this trait for async executors like thread pools,
  *  you're going to need to implement it something like the following:
  *
- *  ```
- *  final override def submitAsync(runnable: Runnable): Unit =
- *    super[SuperClass].execute(runnable) // To prevent reentrancy into `execute`
+ *  ```scala sc:compile
+ *  import java.util.concurrent.Executor
  *
- *  final override def execute(runnable: Runnable): Unit =
- *    if (runnable.isInstanceOf[Batchable]) // Or other logic
- *      submitAsyncBatched(runnable)
- *    else
- *      submitAsync(runnable)
+ *  final class AsyncBatchingExecutor(delegate: Executor)
+ *      extends ExecutionContextExecutor
+ *      with BatchingExecutor {
+ *    final override def submitForExecution(runnable: Runnable): Unit =
+ *      delegate.execute(runnable)
  *
- *  final override def reportFailure(cause: Throwable): Unit = …
+ *    final override def execute(runnable: Runnable): Unit =
+ *      if (runnable.isInstanceOf[Batchable])
+ *        submitAsyncBatched(runnable)
+ *      else
+ *        submitForExecution(runnable)
+ *
+ *    final override def reportFailure(cause: Throwable): Unit = ()
+ *  }
  *  ```
  *
  *  And if you want to implement if for a sync, trampolining, executor you're
  *  going to implement it something like this:
  *
- *  ```
- *  final override def submitAsync(runnable: Runnable): Unit = ()
+ *  ```scala sc:compile
+ *  final class TrampoliningExecutor extends ExecutionContextExecutor with BatchingExecutor {
+ *    final override def submitForExecution(runnable: Runnable): Unit = ()
  *
- *  final override def execute(runnable: Runnable): Unit =
- *    submitSyncBatched(runnable) // You typically will want to batch everything
+ *    final override def execute(runnable: Runnable): Unit =
+ *      submitSyncBatched(runnable)
  *
- *  final override def reportFailure(cause: Throwable): Unit =
- *    ExecutionContext.defaultReporter(cause) // Or choose something more fitting
+ *    final override def reportFailure(cause: Throwable): Unit =
+ *      ExecutionContext.defaultReporter(cause)
+ *  }
  *  ```
  */
 private[concurrent] trait BatchingExecutor extends Executor {
@@ -159,6 +167,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
     }
 
     /* LOGIC FOR ASYNCHRONOUS BATCHES */
+    @nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
     override final def apply(prevBlockContext: BlockContext): Throwable | Null = try {
       parentBlockContext = prevBlockContext
       runN(BatchingExecutorStatics.runLimit)
@@ -175,6 +184,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
      * Only attempt to resubmit when there are `Runnables` left to process.
      * Note that `cause` can be `null`.
      */
+    @nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
     private final def resubmit(cause: Throwable | Null): Throwable | Null =
       if (this.size > 0) {
         try { submitForExecution(this); cause } catch {
@@ -221,16 +231,22 @@ private[concurrent] trait BatchingExecutor extends Executor {
   /** MUST throw a NullPointerException when `runnable` is null
    *  When implementing a sync BatchingExecutor, it is RECOMMENDED
    *  to implement this method as `runnable.run()`
+   *
+   *  @param runnable the `Runnable` to submit for execution; must not be null
    */
   protected def submitForExecution(runnable: Runnable): Unit
 
   /** Reports that an asynchronous computation failed.
    *  See `ExecutionContext.reportFailure(throwable: Throwable)`
+   *
+   *  @param throwable the `Throwable` that caused the computation to fail
    */
   protected def reportFailure(throwable: Throwable): Unit
 
   /** WARNING: Never use both `submitAsyncBatched` and `submitSyncBatched` in the same
    *  implementation of `BatchingExecutor`
+   *
+   *  @param runnable the `Runnable` to add to the current async batch, or to submit as a new batch if no batch is active
    */
   protected final def submitAsyncBatched(runnable: Runnable): Unit = {
     val b = _tasksLocal.get
@@ -240,6 +256,8 @@ private[concurrent] trait BatchingExecutor extends Executor {
 
   /** WARNING: Never use both `submitAsyncBatched` and `submitSyncBatched` in the same
    *  implementation of `BatchingExecutor`
+   *
+   *  @param runnable the `Runnable` to submit for synchronous execution, either directly or via a sync batch; must not be null
    */
   protected final def submitSyncBatched(runnable: Runnable): Unit = {
     Objects.requireNonNull(runnable, "runnable is null")

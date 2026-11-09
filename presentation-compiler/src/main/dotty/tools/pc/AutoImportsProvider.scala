@@ -1,6 +1,7 @@
 package dotty.tools.pc
 
 import java.nio.file.Paths
+import java.util.Optional
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
@@ -43,10 +44,7 @@ final class AutoImportsProvider(
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
     val path =
       Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
-
-    val indexedContext = IndexedContext(pos)(
-      using Interactive.contextOfPath(path)(using newctx)
-    )
+    val indexedContext = IndexedContext(pos, path, newctx)
     import indexedContext.ctx
 
     def correctInTreeContext(sym: Symbol) = path match
@@ -108,7 +106,8 @@ final class AutoImportsProvider(
         yield (
           AutoImportsResultImpl(
             sym.owner.showFullName,
-            edits.asJava
+            edits.asJava,
+            Optional.of(SemanticdbSymbols.symbolName(sym))
           ),
           sym
         )

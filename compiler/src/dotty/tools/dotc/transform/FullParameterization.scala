@@ -31,18 +31,24 @@ import ast.*
  *  Note: The scheme does not handle yet methods where type parameter bounds
  *  depend on value parameters of the enclosing class, as in:
  *
+ *  ```
  *      class C(val a: String) extends AnyVal {
  *        def foo[U <: a.type]: Unit = ...
  *      }
+ *  ```
  *
  *  The expansion of method `foo` would lead to
  *
+ *  ```
  *      def foo$extension[U <: $this.a.type]($this: C): Unit = ...
+ *  ```
  *
  *  which is not typable. Not clear yet what to do. Maybe allow PolyTypes
  *  to follow method parameters and translate to the following:
  *
+ *  ```
  *      def foo$extension($this: C)[U <: $this.a.type]: Unit = ...
+ *  ```
  *
  *  @see class-dependent-extension-method.scala in pending/pos.
  */
@@ -71,21 +77,25 @@ trait FullParameterization {
    *  takes the `this` of the class and any type parameters of the class
    *  as additional parameters. Example:
    *
+   *  ```
    *    class Foo[+A <: AnyRef](val xs: List[A]) extends AnyVal {
    *      def baz[B >: A](x: B): List[B] = ...
    *    }
+   *  ```
    *
    *  leads to:
    *
+   *  ```
    *    object Foo {
    *      def extension$baz[B >: A <: Any, A >: Nothing <: AnyRef]($this: Foo[A])(x: B): List[B]
    *    }
+   *  ```
    *
-   *  If a self type is present, $this has this self type as its type.
+   *  If a self type is present, `$this` has this self type as its type.
    *
    *  @param abstractOverClass  if true, include the type parameters of the class in the method's list of type parameters.
-   *  @param liftThisType       if true, require created $this to be $this: (Foo[A] & Foo,this).
-   *                            This is needed if created member stays inside scope of Foo(as in tailrec)
+   *  @param liftThisType       if true, require created `$this` to be `$this: (Foo[A] & Foo,this)`.
+   *                            This is needed if created member stays inside scope of `Foo` (as in tailrec)
    */
   def fullyParameterizedType(info: Type, clazz: ClassSymbol, abstractOverClass: Boolean = true, liftThisType: Boolean = false)(using Context): Type = {
     val (mtparamCount, origResult) = info match {

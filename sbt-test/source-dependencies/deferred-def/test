@@ -1,0 +1,7 @@
+> compile
+
+# remove the body of A.m
+$ copy-file changes/A.scala A.scala
+
+# B must be recompiled: it no longer implements A.m
+-> compile

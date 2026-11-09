@@ -8,7 +8,6 @@ import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.UntypedTreeTraverser
-import dotty.tools.dotc.core.Comments
 import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.util.SourcePosition
@@ -138,7 +137,7 @@ object KeywordsCompletions:
       case Ident(_) :: (_: Template) :: _ => true
       case Ident(_) :: (_: ValOrDefDef) :: _ => true
       case Ident(_) :: t :: _ if t.isTerm => true
-      case other => false
+      case _ => false
 
   case class TemplateKeywordAvailability(
       `extends`: Boolean,

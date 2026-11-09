@@ -17,11 +17,11 @@ object IsOn:
   inline given IsOn[On]()
 
 class Machine[S <: State]:
-  def turnOn(using erased IsOff[S]): Machine[On] =
+  def turnOn(using erased isoff: IsOff[S]): Machine[On] =
     println("turnedOn")
     new Machine[On]
 
-  def turnOff (using erased IsOn[S]): Machine[Off] =
+  def turnOff (using erased ison: IsOn[S]): Machine[Off] =
     println("turnedOff")
     new Machine[Off]
 

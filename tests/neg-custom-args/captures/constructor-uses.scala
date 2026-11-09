@@ -6,13 +6,13 @@ class A extends caps.ExclusiveCapability {
   val f: File^ = File()
   val g: File^ = File()
 
-  class B uses_init A.this.f:
+  class B uses A.this.f initially:
     val u = f.toString
 
   class C:
     val u = f.toString // error
 
-  class D uses A.this.f uses_init A.this.f:
+  class D uses A.this.f initially, A.this.f:
     val u = f.toString
     val v = g.toString // error
     def m = f.toString

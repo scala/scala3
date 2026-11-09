@@ -4,7 +4,6 @@ package core
 
 import Periods.*
 import Contexts.*
-import dotty.tools.backend.jvm.GenBCode
 import DenotTransformers.*
 import Denotations.*
 import Decorators.*
@@ -19,10 +18,26 @@ import cc.CheckCaptures
 import typer.ImportInfo.withRootImports
 import ast.{tpd, untpd}
 import scala.annotation.internal.sharable
-import scala.util.control.NonFatal
 import scala.compiletime.uninitialized
 
 object Phases {
+
+  /** A linked denotation transformer, as `SingleDenotation.current` sees it. Periods are of `NoRunId`.
+   *
+   *  @param transformerPeriod the phases of the transformer's phase: the context's period while it transforms
+   *  @param resultPeriod      the validity of a new version that the transformer returns
+   *  @param isIdentity        the transformer is an `IdentityDenotTransformer`: transforming returns the argument
+   *  @param lastPhaseId       `transformer.lastPhaseId`
+   *  @param nextNonIdentity   the first linked transformer at or after this one that is not an identity
+   *                           (`phases.length` if none)
+   */
+  final class DenotTransformerInfo(
+    val transformer: DenotTransformer,
+    val transformerPeriod: Period,
+    val resultPeriod: Period,
+    val isIdentity: Boolean,
+    val lastPhaseId: PhaseId,
+    val nextNonIdentity: PhaseId)
 
   inline def phaseOf(id: PhaseId)(using Context): Phase =
     ctx.base.phases(id)
@@ -69,16 +84,15 @@ object Phases {
     final def phasePlan: List[List[Phase]] = this.phasesPlan
     final def setPhasePlan(phasess: List[List[Phase]]): Unit = this.phasesPlan = phasess
 
-    /** Squash TreeTransform's beloning to same sublist to a single TreeTransformer
+    /** Squash TreeTransform's belonging to same sublist to a single TreeTransformer
       * Each TreeTransform gets own period,
       * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
       */
     final def fusePhases(phasess: List[List[Phase]],
-                           phasesToSkip: List[String],
-                           stopBeforePhases: List[String],
-                           stopAfterPhases: List[String],
-                           YCheckAfter: List[String])(using Context): List[Phase] = {
-      val fusedPhases = ListBuffer[Phase]()
+                         phasesToSkip: List[String],
+                         stopBeforePhases: List[String],
+                         YCheckAfter: List[String])(using Context): List[Phase] = {
+      val fusedPhases: ListBuffer[Phase] = ListBuffer.empty
       var prevPhases: Set[String] = Set.empty
 
       var stop = false
@@ -91,7 +105,7 @@ object Phases {
 
       val filteredPhases = phasess.map(_.filter { p =>
         try isEnabled(p)
-        finally stop |= stopBeforePhases.contains(p.phaseName) | stopAfterPhases.contains(p.phaseName)
+        finally stop |= stopBeforePhases.contains(p.phaseName)
       })
 
       var i = 0
@@ -139,18 +153,17 @@ object Phases {
      */
     final def usePhases(phasess: List[Phase], runCtx: FreshContext, fuse: Boolean = true): Unit = {
       myRecheckPhaseIds = 0L
-      val flatPhases = collection.mutable.ListBuffer[Phase]()
-
-      phasess.foreach(p => p match {
+      val flatPhases = collection.mutable.ArrayBuilder.make[Phase]
+      flatPhases += NoPhase
+      phasess.foreach {
         case p: MegaPhase => flatPhases ++= p.miniPhases
-        case _ => flatPhases += p
-      })
-
-      phases = (NoPhase :: flatPhases.toList ::: new TerminalPhase :: Nil).toArray
+        case p => flatPhases += p
+      }
+      flatPhases += new TerminalPhase
+      phases = flatPhases.result()
       setSpecificPhases()
       var phasesAfter: Set[String] = Set.empty
       nextDenotTransformerId = new Array[Int](phases.length)
-      denotTransformers = new Array[DenotTransformer](phases.length)
 
       var phaseId: PhaseId = 0
       def nextPhaseId = {
@@ -202,13 +215,13 @@ object Phases {
         i -= 1
         val phase = phases(i)
         phase match {
-          case transformer: DenotTransformer =>
-            lastTransformerId = i
-            denotTransformers(i) = transformer
+          case _: DenotTransformer => lastTransformerId = i
           case _ =>
         }
         nextDenotTransformerId(i) = lastTransformerId
       }
+
+      computeDenotTransformers()(using runCtx)
 
       if (fuse)
         this.fusedPhases = (NoPhase :: phasess).toArray
@@ -229,6 +242,24 @@ object Phases {
       for i <- 0 until nextDenotTransformerId.length do
         if nextDenotTransformerId(i) == phase.id then
           nextDenotTransformerId(i) = nextDenotTransformerId(phase.id + 1)
+      computeDenotTransformers() // lastPhaseId depends on nextDenotTransformerId
+
+    /** Recompute `denotTransformers` from the current plan */
+    private def computeDenotTransformers()(using Context): Unit =
+      denotTransformers = new Array[DenotTransformerInfo](phases.length)
+      var nextNonIdentity = phases.length
+      var id = phases.length - 1
+      while id >= 0 do
+        phases(id) match
+          case transformer: DenotTransformer if nextDenotTransformerId(id) == id => // linked
+            val isIdentity = transformer.isInstanceOf[IdentityDenotTransformer]
+            if !isIdentity then nextNonIdentity = id
+            denotTransformers(id) = DenotTransformerInfo(transformer,
+              transformerPeriod = Period(NoRunId, transformer.start, transformer.end),
+              resultPeriod = Period(NoRunId, id + 1, transformer.lastPhaseId),
+              isIdentity, transformer.lastPhaseId, nextNonIdentity)
+          case _ =>
+        id -= 1
 
     private var myParserPhase: Phase = uninitialized
     private var myTyperPhase: Phase = uninitialized
@@ -237,6 +268,8 @@ object Phases {
     private var mySbtExtractAPIPhase: Phase = uninitialized
     private var myPicklerPhase: Phase = uninitialized
     private var mySetRootTreePhase: Phase = uninitialized
+    private var mySpecializeInlineTraitsPhase: Phase = uninitialized
+    private var myDesugarSpecializedTraitsPhase: Phase = uninitialized
     private var myInliningPhase: Phase = uninitialized
     private var myStagingPhase: Phase = uninitialized
     private var mySplicingPhase: Phase = uninitialized
@@ -256,7 +289,6 @@ object Phases {
     private var myMixinPhase: Phase = uninitialized
     private var myCountOuterAccessesPhase: Phase = uninitialized
     private var myFlattenPhase: Phase = uninitialized
-    private var myGenBCodePhase: Phase = uninitialized
     private var myCheckCapturesPhase: Phase = uninitialized
 
     private var myCheckCapturesPhaseId: PhaseId = -2
@@ -270,6 +302,8 @@ object Phases {
     final def sbtExtractAPIPhase: Phase = mySbtExtractAPIPhase
     final def picklerPhase: Phase = myPicklerPhase
     final def setRootTreePhase: Phase = mySetRootTreePhase
+    final def specializeInlineTraitsPhase: Phase = mySpecializeInlineTraitsPhase
+    final def desugarSpecializedTraitsPhase: Phase = myDesugarSpecializedTraitsPhase
     final def inliningPhase: Phase = myInliningPhase
     final def stagingPhase: Phase = myStagingPhase
     final def splicingPhase: Phase = mySplicingPhase
@@ -289,7 +323,6 @@ object Phases {
     final def lambdaLiftPhase: Phase = myLambdaLiftPhase
     final def countOuterAccessesPhase = myCountOuterAccessesPhase
     final def flattenPhase: Phase = myFlattenPhase
-    final def genBCodePhase: Phase = myGenBCodePhase
     final def checkCapturesPhase: Phase = myCheckCapturesPhase
     final def checkCapturesPhaseId: PhaseId = myCheckCapturesPhaseId
 
@@ -303,6 +336,8 @@ object Phases {
       mySbtExtractAPIPhase = phaseOfClass(classOf[sbt.ExtractAPI])
       mySetRootTreePhase = phaseOfClass(classOf[SetRootTree])
       myPicklerPhase = phaseOfClass(classOf[Pickler])
+      mySpecializeInlineTraitsPhase = phaseOfClass(classOf[SpecializeInlineTraits])
+      myDesugarSpecializedTraitsPhase = phaseOfClass(classOf[DesugarSpecializedTraits])
       myInliningPhase = phaseOfClass(classOf[Inlining])
       myStagingPhase = phaseOfClass(classOf[Staging])
       mySplicingPhase = phaseOfClass(classOf[Splicing])
@@ -322,7 +357,6 @@ object Phases {
       myFlattenPhase = phaseOfClass(classOf[Flatten])
       myExplicitOuterPhase = phaseOfClass(classOf[ExplicitOuter])
       myGettersPhase = phaseOfClass(classOf[Getters])
-      myGenBCodePhase = phaseOfClass(classOf[GenBCode])
       myCheckCapturesPhase = phaseOfClass(classOf[CheckCaptures])
     }
 
@@ -413,7 +447,7 @@ object Phases {
           catch
             case _: CompilationUnit.SuspendException => // this unit will be run again in `Run#compileSuspendedUnits`
               unitCtx.typerState.resetTo(previousTyperState)
-            case ex: Throwable if !ctx.run.enrichedErrorMessage =>
+            case ex: Exception if !ctx.run.enrichedErrorMessage =>
               println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
               throw ex
           finally ctx.run.advanceUnit()
@@ -537,7 +571,7 @@ object Phases {
       ctx.run.enterUnit(ctx.compilationUnit)
       && {
         try {body; true}
-        catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+        catch case ex: Exception if !ctx.run.enrichedErrorMessage =>
           report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
           throw ex
         finally ctx.run.advanceUnit()
@@ -566,6 +600,8 @@ object Phases {
   def sbtExtractDependenciesPhase(using Context): Phase = ctx.base.sbtExtractDependenciesPhase
   def sbtExtractAPIPhase(using Context): Phase          = ctx.base.sbtExtractAPIPhase
   def picklerPhase(using Context): Phase                = ctx.base.picklerPhase
+  def specializeInlineTraitsPhase(using Context): Phase = ctx.base.specializeInlineTraitsPhase
+  def desugarSpecializedTraitsPhase(using Context): Phase = ctx.base.desugarSpecializedTraitsPhase
   def inliningPhase(using Context): Phase               = ctx.base.inliningPhase
   def stagingPhase(using Context): Phase                = ctx.base.stagingPhase
   def splicingPhase(using Context): Phase               = ctx.base.splicingPhase
@@ -582,7 +618,6 @@ object Phases {
   def mixinPhase(using Context): Phase                  = ctx.base.mixinPhase
   def lambdaLiftPhase(using Context): Phase             = ctx.base.lambdaLiftPhase
   def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
-  def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase
   def checkCapturesPhase(using Context): Phase          = ctx.base.checkCapturesPhase
   def checkCapturesPhaseId(using Context): PhaseId      = ctx.base.checkCapturesPhaseId
 

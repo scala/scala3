@@ -14,6 +14,6 @@ def foo(x: Boxed[IO^]): Unit =
 // slightly different way.
 // But, no type error reported.
 def bar(x: Boxed[IO^]): Unit =
-  val x1: Boxed[IO^] = x // error
+  val x1: Boxed[IO^] = x // ok aftre reach drop
   val io = x1.unbox // error
   io.use()

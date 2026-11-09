@@ -18,13 +18,10 @@ object BestEffortTastyWriter:
         val parts = clz.fullName.mangledString.split('.')
         val outPath = outputPath(parts.toList, dir)
         val outTastyFile = new File(outPath)
-        val outstream = new DataOutputStream(new PlainFile(outTastyFile).bufferedOutput)
+        val outstream = new PlainFile(outTastyFile).output
         try outstream.write(binary())
         catch case ex: ClosedByInterruptException =>
-          try
-            outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
-          catch
-            case _: Throwable =>
+          outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
           throw ex
         finally outstream.close()
       }

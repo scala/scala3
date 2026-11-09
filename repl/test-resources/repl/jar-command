@@ -1,7 +1,7 @@
 scala> val z = 1
 val z: Int = 1
 
-scala>:jar ../sbt-test/source-dependencies/canon/actual/a.jar
+scala> :jar ../sbt-test/source-dependencies/canon/actual/a.jar
 Added '../sbt-test/source-dependencies/canon/actual/a.jar' to classpath.
 
 scala> import A.x

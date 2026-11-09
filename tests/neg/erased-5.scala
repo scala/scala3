@@ -2,7 +2,7 @@
 
 object Test {
 
-  type UU[T] = (erased T) => Int
+  type UU[T] = (erased x: T) => Int
 
   def main(args: Array[String]): Unit = {
     fun { x => // error: `Int => Int` not compatible with `(erased Int) => Int`

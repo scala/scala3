@@ -4,6 +4,6 @@ trait LoadedOver[@specialized(Int) A] {
 }
 
 object Test {
-  def loaded: AnyRef with LoadedOver[Int] = sys.error("")
+  def loaded: AnyRef & LoadedOver[Int] = sys.error("")
   loaded.foo("")
 }

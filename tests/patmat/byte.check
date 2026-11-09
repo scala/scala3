@@ -1,1 +1,4 @@
-5: Match case Unreachable
+-- [E030] Match case Unreachable Warning: tests/patmat/byte.scala:5:9 ----------
+5 |    case 33 =>
+  |         ^^
+  |         Unreachable case

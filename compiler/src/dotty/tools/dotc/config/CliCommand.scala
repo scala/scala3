@@ -40,7 +40,7 @@ trait CliCommand:
   """
 
   /** Distill arguments into summary detailing settings, errors and files to main */
-  def distill(args: Array[String], sg: Settings.SettingGroup)(ss: SettingsState = sg.defaultState)(using Context): ArgsSummary =
+  def distill(args: Array[String], sg: Settings.SettingGroup)(ss: SettingsState = sg.defaultState): ArgsSummary =
 
     // expand out @filename to the contents of that filename
     def expandedArguments = args.toList flatMap {
@@ -52,15 +52,11 @@ trait CliCommand:
   end distill
 
   /** Creates a help message for a subset of options based on cond */
-  protected def availableOptionsMsg(p: Setting[?] => Boolean, showArgFileMsg: Boolean = true)(using settings: ConcreteSettings)(using SettingsState): String =
+  protected def availableOptionsMsg(p: Setting[?] => Boolean, shortDescription: Boolean = true, showArgFileMsg: Boolean = true)(using settings: ConcreteSettings)(using SettingsState): String =
     // result is (Option Name, descrption\ndefault: value\nchoices: x, y, z
     def help(s: Setting[?]): (String, String) =
-      // For now, skip the default values that do not make sense for the end user, such as 'false' for the version command.
-      def defaultValue = s.default match
-        case _: Int | _: String => s.default.toString
-        case _ => ""
-      val deprecationMessage = s.deprecation.map(d => s"Option deprecated.\n${d.msg}").getOrElse("")
-      val info = List(deprecationMessage, shortHelp(s), if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices : ${s.legalChoices}" else "")
+      val defaultValue = s.defaultValueToDisplay
+      val info = List(s.deprecationMessage, s.description(shortDescription), if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices: ${s.legalChoices}" else "")
       (s.name, info.filter(_.nonEmpty).mkString("\n"))
     end help
 
@@ -94,12 +90,10 @@ trait CliCommand:
     s.name.startsWith("-X") && s.name != "-X"
   protected def isPrivate(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
     s.name.startsWith("-Y") && s.name != "-Y"
-  protected def shortHelp(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): String =
-    s.description.linesIterator.next()
   protected def isHelping(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
     cond(s.value) {
-      case ss: List[?] if s.isMultivalue => ss.contains("help")
-      case s: String                     => "help" == s
+      case ss: List[?] => ss.contains("help")
+      case s: String   => "help" == s
     }
 
   /** Messages explaining usage and options */

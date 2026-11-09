@@ -14,4 +14,5 @@ object Test extends App {
   println(emptyTuple.map(f))
   println(tuple.map(f))
   println(tupleXXL.map(f))
+  println("DONE")
 }

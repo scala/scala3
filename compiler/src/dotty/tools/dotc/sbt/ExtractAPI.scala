@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package sbt
 
-import scala.language.unsafeNulls
-
 import ExtractDependencies.internalError
 import ast.{Positioned, Trees, tpd}
 import core.*
@@ -20,7 +18,7 @@ import NameOps.*
 import inlines.Inlines
 import transform.ValueClasses
 import transform.Pickler
-import dotty.tools.io.{File, FileExtension, JarArchive}
+import dotty.tools.io.{File, FileExtension}
 import util.{Property, SourceFile}
 import java.io.PrintWriter
 
@@ -70,7 +68,7 @@ class ExtractAPI extends Phase {
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val doZincCallback = ctx.runZincPhases
-    val nonLocalClassSymbols = new mutable.HashSet[Symbol]
+    val nonLocalClassSymbols = mutable.Set.empty[Symbol]
     val units0 =
       if doZincCallback then
         val ctx0 = ctx.withProperty(NonLocalClassSymbolsInCurrentUnits, Some(nonLocalClassSymbols))
@@ -85,27 +83,26 @@ class ExtractAPI extends Phase {
       units0
   end runOn
 
-  private def recordNonLocalClasses(nonLocalClassSymbols: mutable.HashSet[Symbol], cb: interfaces.IncrementalCallback)(using Context): Unit =
+  private def recordNonLocalClasses(nonLocalClassSymbols: mutable.Set[Symbol], cb: interfaces.IncrementalCallback)(using Context): Unit =
     for cls <- nonLocalClassSymbols do
       val sourceFile = cls.source
       if sourceFile.exists && cls.isDefinedInCurrentRun then
         recordNonLocalClass(cls, sourceFile, cb)
-    ctx.run.nn.asyncTasty.foreach(_.signalAPIComplete())
+    ctx.run.nn.asyncTasty.foreach(_.signalAPISent())
 
   private def recordNonLocalClass(cls: Symbol, sourceFile: SourceFile, cb: interfaces.IncrementalCallback)(using Context): Unit =
     def registerProductNames(fullClassName: String, binaryClassName: String) =
       val pathToClassFile = s"${binaryClassName.replace('.', java.io.File.separatorChar)}.class"
 
+      val outDir = ctx.settings.outputDir.value
       val classFile = {
-        ctx.settings.outputDir.value match {
-          case jar: JarArchive =>
+        if outDir.ext.isJar then
             // important detail here, even on Windows, Zinc expects the separator within the jar
             // to be the system default, (even if in the actual jar file the entry always uses '/').
             // see https://github.com/sbt/zinc/blob/dcddc1f9cfe542d738582c43f4840e17c053ce81/internal/compiler-bridge/src/main/scala/xsbt/JarUtils.scala#L47
-            new java.io.File(s"$jar!$pathToClassFile")
-          case outputDir =>
-            new java.io.File(outputDir.file, pathToClassFile)
-        }
+            new java.io.File(s"${outDir.path}!$pathToClassFile")
+        else
+            new java.io.File(outDir.file, pathToClassFile)
       }
 
       cb.generatedNonLocalClass(sourceFile, classFile.toPath(), binaryClassName, fullClassName)
@@ -137,7 +134,9 @@ class ExtractAPI extends Phase {
 
     if (ctx.settings.YdumpSbtInc.value) {
       // Append to existing file that should have been created by ExtractDependencies
-      val pw = new PrintWriter(File(sourceFile.file.jpath).changeExtension(FileExtension.Inc).toFile
+      val sourceFileJPath = sourceFile.jfile
+      assert(sourceFileJPath.isPresent, s"unexpected null jpath for $sourceFile")
+      val pw = new PrintWriter(File(sourceFileJPath.get().toPath).changeExtension(FileExtension.Inc).toFile
         .bufferedWriter(append = true), true)
       try {
         classes.foreach(source => pw.println(DefaultShowAPI(source)))
@@ -155,7 +154,7 @@ object ExtractAPI:
   val name: String = "sbt-api"
   val description: String = "sends a representation of the API of classes to sbt"
 
-  private val NonLocalClassSymbolsInCurrentUnits: Property.Key[mutable.HashSet[Symbol]] = Property.Key()
+  private val NonLocalClassSymbolsInCurrentUnits: Property.Key[mutable.Set[Symbol]] = Property.Key()
 
 /** Extracts full (including private members) API representation out of Symbols and Types.
  *
@@ -199,36 +198,36 @@ object ExtractAPI:
  *  without going through an intermediate representation, see
  *  http://www.scala-sbt.org/0.13/docs/Understanding-Recompilation.html#Hashing+an+API+representation
  */
-private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])(using Context) extends ThunkHolder {
+private class ExtractAPICollector(nonLocalClassSymbols: mutable.Set[Symbol])(using Context) extends ThunkHolder {
   import tpd.*
   import xsbti.api
 
   /** This cache is necessary for correctness, see the comment about inherited
    *  members in `apiClassStructure`
    */
-  private val classLikeCache = new mutable.HashMap[ClassSymbol, api.ClassLikeDef]
+  private val classLikeCache = mutable.Map.empty[ClassSymbol, api.ClassLikeDef]
   /** This cache is optional, it avoids recomputing representations */
-  private val typeCache = new mutable.HashMap[Type, api.Type]
+  private val typeCache = mutable.Map.empty[Type, api.Type]
   /** This cache is necessary to avoid unstable name hashing when `typeCache` is present,
    *  see the comment in the `RefinedType` case in `computeType`
    *  The cache key is (api of RefinedType#parent, api of RefinedType#refinedInfo).
    */
-  private val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition), api.Structure]
+  private val refinedTypeCache = mutable.Map.empty[(api.Type, api.Definition | Null), api.Structure]
 
   /** This cache is necessary to avoid infinite loops when hashing an inline "Body" annotation.
    *  Its values are transitively seen inline references within a call chain starting from a single "origin" inline
    *  definition. Avoid hashing an inline "Body" annotation if its associated definition is already in the cache.
    *  Precondition: the cache is empty whenever we hash a new "origin" inline "Body" annotation.
    */
-  private val seenInlineCache = mutable.HashSet.empty[Symbol]
+  private val seenInlineCache = mutable.Set.empty[Symbol]
 
   /** This cache is optional, it avoids recomputing hashes of inline "Body" annotations,
    *  e.g. when a concrete inline method is inherited by a subclass.
    */
-  private val inlineBodyCache = mutable.HashMap.empty[Symbol, Int]
+  private val inlineBodyCache = mutable.Map.empty[Symbol, Int]
 
-  private val allNonLocalClassesInSrc = new mutable.HashSet[xsbti.api.ClassLike]
-  private val _mainClasses = new mutable.HashSet[String]
+  private val allNonLocalClassesInSrc = mutable.Set.empty[xsbti.api.ClassLike]
+  private val _mainClasses = mutable.Set.empty[String]
 
   private object Constants {
     val emptyStringArray = Array[String]()
@@ -320,10 +319,8 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     if !sym.isLocal then
       nonLocalClassSymbols += sym
 
-    if (sym.isStatic && !sym.is(Trait) && ctx.platform.hasMainMethod(sym)) {
-       // If sym is an object, all main methods count, otherwise only @static ones count.
+    if ctx.platform.isMainClass(sym) then
       _mainClasses += name
-    }
 
     api.ClassLikeDef.of(name, acc, modifiers, anns, tparams, defType)
   }
@@ -492,11 +489,15 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     val vparamss = paramLists(sym.info, sym.paramSymss)
     val retTp = sym.info.finalResultType.widenExpr
 
-    val tparamsExtraAnnot = Option.when(tparamsExtras.nonEmpty) {
-      marker(s"${hashTparamsExtras(tparamsExtras)("tparamsExtra".hashCode)}")
+    val tparamsExtraAnnots = tparamsExtras.map { (index, tparams) =>
+      // Let Zinc hash the parameters structurally: TypeParameter.hashCode includes
+      // identity-based enum hashes, which are not stable across JVMs.
+      api.Annotation.of(
+        api.Polymorphic.of(api.Constant.of(Constants.emptyType, s"tparamsExtra$index"), tparams.toArray),
+        Array())
     }
 
-    val annotations = inlineExtrasAnnot ++: tparamsExtraAnnot ++: apiAnnotations(sym, inlineOrigin)
+    val annotations = inlineExtrasAnnot ++: tparamsExtraAnnots ++: apiAnnotations(sym, inlineOrigin)
 
     api.Def.of(sym.zincMangledName.toString, apiAccess(sym), apiModifiers(sym),
       annotations.toArray, tparams.toArray, vparamss.toArray, apiType(retTp))
@@ -551,6 +552,8 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
         else
           tp.prefix
         api.Projection.of(apiType(prefix), sym.name.toString)
+      case FlexibleType(hi) =>
+        apiType(hi)
       case AppliedType(tycon, args) =>
         def processArg(arg: Type): api.Type = arg match {
           case arg @ TypeBounds(lo, hi) => // Handle wildcard parameters
@@ -630,8 +633,6 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
       case tp: OrType =>
         val s = combineApiTypes(apiType(tp.tp1), apiType(tp.tp2))
         withMarker(s, orMarker)
-      case tp: FlexibleType =>
-        apiType(tp.underlying)
       case ExprType(resultType) =>
         withMarker(apiType(resultType), byNameMarker)
       case MatchType(bound, scrut, cases) =>
@@ -713,7 +714,8 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
 
   def apiModifiers(sym: Symbol): api.Modifiers = {
     val absOver = sym.is(AbsOverride)
-    val abs = absOver || sym.isOneOf(Trait | Abstract | Deferred)
+    // `Trait | Abstract | Deferred` would be a type-only flag set, missing deferred terms
+    val abs = absOver || sym.isOneOf(Trait | Abstract) || sym.is(Deferred)
     val over = absOver || sym.is(Override)
     new api.Modifiers(abs, over, sym.is(Final), sym.is(Sealed),
       sym.isOneOf(GivenOrImplicit), sym.is(Lazy), sym.is(Macro), sym.isSuperAccessor)
@@ -754,7 +756,10 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     //   `IncOptions#useOptimizedSealed`.
     s.annotations.foreach { annot =>
       val sym = annot.symbol
-      if sym.exists && sym != defn.BodyAnnot && sym != defn.ChildAnnot then
+      // Ignore annotations of type Any, this means we couldn't actually load it,
+      // because it's no longer on the classpath compared to when the code we're loading was compiled.
+      // See the i25722 special test in explicitNullsPos for an example.
+      if sym.exists && sym != defn.BodyAnnot && sym != defn.ChildAnnot && !sym.typeRef.isAny then
         annots += apiAnnotation(annot)
     }
 
@@ -798,7 +803,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
           // representation.
           h = MurmurHash3.mix(h, apiType(c.typeValue).hashCode)
         case _ =>
-          h = MurmurHash3.mix(h, c.value.hashCode)
+          h = MurmurHash3.mix(h, java.util.Objects.hashCode(c.value))
       h
     end constantHash
 
@@ -816,10 +821,14 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
         p match
           case ref: RefTree @unchecked =>
             val sym = ref.symbol
-            if sym.is(Inline, butNot = Param) && !seenInlineCache.contains(sym) then
+            if sym.is(Inline, butNot = Param) && !sym.is(Trait) && !seenInlineCache.contains(sym) then
               // An inline method that calls another inline method will eventually inline the call
               // at a non-inline callsite, in this case if the implementation of the nested call
               // changes, then the callsite will have a different API, we should hash the definition
+              // In contrast, if an inline trait A extends an inline trait B, B's body is inlined into
+              // A, so a change to B will cause a change to A directly, so we can skip this, and if 
+              // an inline method accesses a parameter of an inline trait it doesn't care about the definition
+              // of the trait.
               h = MurmurHash3.mix(h, apiDefinition(sym, inlineOrigin).hashCode)
           case _ =>
 
@@ -855,32 +864,6 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     val h = positionedHash(tree, seed)
     MurmurHash3.finalizeHash(h, 0)
   end treeHash
-
-  /** Hash secondary type parameters in separate marker annotation.
-   *  We hash them separately because the position of type parameters is important.
-   */
-  private def hashTparamsExtras(tparamsExtras: List[(Int, List[api.TypeParameter])])(initHash: Int): Int =
-
-    def mixTparams(tparams: List[api.TypeParameter])(initHash: Int) =
-      var h = initHash
-      var elems = tparams
-      while elems.nonEmpty do
-        h = MurmurHash3.mix(h, elems.head.hashCode)
-        elems = elems.tail
-      h
-
-    def mixIndexAndTparams(index: Int, tparams: List[api.TypeParameter])(initHash: Int) =
-      mixTparams(tparams)(MurmurHash3.mix(initHash, index))
-
-    var h = initHash
-    var extras = tparamsExtras
-    var len = 0
-    while extras.nonEmpty do
-      h = mixIndexAndTparams(index = extras.head(0), tparams = extras.head(1))(h)
-      extras = extras.tail
-      len += 1
-    MurmurHash3.finalizeHash(h, len)
-  end hashTparamsExtras
 
   /** Mix in the name hash also because otherwise switching which
    *  parameter is inline will not affect the hash.

@@ -61,7 +61,7 @@ object Nullables:
   case class NotNullInfo(asserted: Set[TermRef] | Null, retracted: Set[TermRef]):
     def isEmpty = this eq NotNullInfo.empty
 
-    def retractedInfo = NotNullInfo(Set(), retracted)
+    def retractedInfo = NotNullInfo(Set.empty, retracted)
 
     def terminatedInfo = NotNullInfo(null, retracted)
 
@@ -89,7 +89,7 @@ object Nullables:
   end NotNullInfo
 
   object NotNullInfo:
-    val empty = new NotNullInfo(Set(), Set())
+    val empty = new NotNullInfo(Set.empty, Set.empty)
     def apply(asserted: Set[TermRef] | Null, retracted: Set[TermRef]): NotNullInfo =
       if asserted != null && asserted.isEmpty && retracted.isEmpty then empty
       else new NotNullInfo(asserted, retracted)
@@ -100,7 +100,7 @@ object Nullables:
     def isEmpty = this eq NotNullConditional.empty
 
   object NotNullConditional:
-    val empty = new NotNullConditional(Set(), Set())
+    val empty = new NotNullConditional(Set.empty, Set.empty)
     def apply(ifTrue: Set[TermRef], ifFalse: Set[TermRef]): NotNullConditional =
       if ifTrue.isEmpty && ifFalse.isEmpty then empty
       else new NotNullConditional(ifTrue, ifFalse)

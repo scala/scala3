@@ -43,8 +43,8 @@
    |
    |  Hidden set of current argument        : {a}
    |  Hidden footprint of current argument  : {a}
-   |  Capture set of function prefix        : {f7*}
-   |  Footprint set of function prefix      : {f7*, a, b}
+   |  Capture set of function prefix        : {a, b}
+   |  Footprint set of function prefix      : {a, b}
    |  The two sets overlap at               : {a}
    |
    |where:    ^  refers to a root capability classified as Unscoped in the type of value a

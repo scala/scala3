@@ -13,6 +13,7 @@
 package scala
 package io
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import java.nio.charset.{CharacterCodingException, Charset, CharsetDecoder, CharsetEncoder, CodingErrorAction => Action}
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
@@ -30,10 +31,13 @@ import scala.language.implicitConversions
 // MacRoman vs. UTF-8: see https://groups.google.com/d/msg/jruby-developers/-qtwRhoE1WM/whSPVpTNV28J
 // -Dfile.encoding: see https://bugs.java.com/view_bug.do?bug_id=4375816
 
-/** A class for character encoding/decoding preferences. */
+/** A class for character encoding/decoding preferences.
+ *
+ *  @param charSet the character set used for encoding and decoding operations
+ */
 class Codec(val charSet: Charset) {
-  type Configure[T] = (T => T, Boolean)
-  type Handler      = CharacterCodingException => Int
+  type Configure[T] = (T -> T, Boolean)
+  type Handler      = CharacterCodingException -> Int
 
   // these variables allow configuring the Codec object, and then
   // all decoders and encoders retrieved from it will use these settings.

@@ -38,3 +38,11 @@ class PeriodsTest:
 
   @Test def overlapsDifferentRunIsFalse() =
     assertFalse(Period(1, 2, 7).overlaps(Period(2, 6, 9)))
+
+  @Test def withLastPhaseIdKeepsRunAndFirstPhase() =
+    assertEquals(Period(1, 2, 9), Period(1, 2, 7).withLastPhaseId(9))
+    assertEquals(Period(1, 2, 2), Period(1, 2, 7).withLastPhaseId(2))
+    assertEquals(Period(3, 4, MaxPossiblePhaseId), Period(3, 4, 4).withLastPhaseId(MaxPossiblePhaseId))
+
+  @Test def inRunSetsRunId() =
+    assertEquals(Period(5, 2, 7), Period(NoRunId, 2, 7).inRun(5))

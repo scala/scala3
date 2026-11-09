@@ -19,7 +19,7 @@ class ScannerTest extends DottyTest {
 
   def scan(file: PlainFile): Unit = {
     //println("***** scanning " + file)
-    val source = SourceFile(file, Codec.UTF8)
+    val source = SourceFile(file, new PlainDirectory(Directory(".")), Codec.UTF8)
     val scanner = new Scanner(source)
     var i = 0
     while (scanner.token != EOF) {
@@ -48,7 +48,6 @@ class ScannerTest extends DottyTest {
 
   @Test
   def scanList() = {
-    println(System.getProperty("user.dir"))
     scan("compiler/src/dotty/tools/dotc/core/Symbols.scala")
     scan("compiler/src/dotty/tools/dotc/core/Symbols.scala")
   }

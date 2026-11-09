@@ -247,6 +247,32 @@ class StreamConvertersTest {
   }
 
   @Test
+  def boxedPrimitiveAccumulatorFactoryInfo(): Unit = {
+    import java.{lang => jl}
+    import scala.collection.convert.StreamExtensions.AccumulatorFactoryInfo
+
+    def assertCompanion[A, C](expected: AnyRef | Null, info: AccumulatorFactoryInfo[A, C]): Unit =
+      assertEq(info.companion, expected)
+
+    assertCompanion(IntAccumulator, implicitly[AccumulatorFactoryInfo[Int, IntAccumulator]])
+    assertCompanion(LongAccumulator, implicitly[AccumulatorFactoryInfo[Long, LongAccumulator]])
+    assertCompanion(DoubleAccumulator, implicitly[AccumulatorFactoryInfo[Double, DoubleAccumulator]])
+    // The boxed infos must select the accumulator matching their element type,
+    // otherwise the implicit search silently falls back to `noAccumulatorFactoryInfo`
+    // and the conversion loses the non-boxing specialized path.
+    assertCompanion(IntAccumulator, implicitly[AccumulatorFactoryInfo[jl.Integer, IntAccumulator]])
+    assertCompanion(LongAccumulator, implicitly[AccumulatorFactoryInfo[jl.Long, LongAccumulator]])
+    assertCompanion(DoubleAccumulator, implicitly[AccumulatorFactoryInfo[jl.Double, DoubleAccumulator]])
+
+    val boxedInts: IntAccumulator = newIntStream(3).boxed.toScala(Accumulator)
+    val boxedLongs: LongAccumulator = newLongStream(3).boxed.toScala(Accumulator)
+    val boxedDoubles: DoubleAccumulator = newDoubleStream(3).boxed.toScala(Accumulator)
+    assertEq(6, boxedInts.sum)
+    assertEq(6L, boxedLongs.sum)
+    assertEq(6.0, boxedDoubles.sum)
+  }
+
+  @Test
   def primitiveStreamTypes(): Unit = {
     // Unboxed native + widening Steppers available:
     assertEquals(Vector[Int](1, 2, 3), (Array[Int](1, 2, 3).asJavaSeqStream: IntStream).toScala(Vector))

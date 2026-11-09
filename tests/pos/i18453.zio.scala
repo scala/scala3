@@ -9,7 +9,7 @@ class Cov[+W]:
 
 class Test:
   def a1[A, B, C](a: Cov[A], b: Cov[B], c: Cov[C]): Cov[A & B & C]       = a.add(b).add(c)
-  def a2[A, B, C](a: Cov[A], b: Cov[B], c: Cov[C]): Cov[A with B with C] = a.add(b).add(c) // would-error
+  def a2[A, B, C](a: Cov[A], b: Cov[B], c: Cov[C]): Cov[A & B & C] = a.add(b).add(c) // would-error
 
   def b1[A, B, C](a: Cov[A], b: Cov[B], c: Cov[C]): Cov[A & (B & C)] = a.add(b).add(c) // would-error (a2)
   def b2[A, B, C](a: Cov[A], b: Cov[B], c: Cov[C]): Cov[(A & B) & C] = a.add(b).add(c)
@@ -18,7 +18,7 @@ class Test:
 
 
   def c3[A, B, C](a: Cov[A], b: Cov[B], c: Cov[C]): Cov[A & B & C]       = a.pre(b).pre(c)
-  def c4[A, B, C](a: Cov[A], b: Cov[B], c: Cov[C]): Cov[A with B with C] = a.pre(b).pre(c) // would-error
+  def c4[A, B, C](a: Cov[A], b: Cov[B], c: Cov[C]): Cov[A & B & C] = a.pre(b).pre(c) // would-error
 
   def d1[A, B, C](a: Cov[A], b: Cov[B], c: Cov[C]): Cov[A & (B & C)] = a.pre(b).pre(c) // would-error (c4)
   def d2[A, B, C](a: Cov[A], b: Cov[B], c: Cov[C]): Cov[(A & B) & C] = a.pre(b).pre(c)

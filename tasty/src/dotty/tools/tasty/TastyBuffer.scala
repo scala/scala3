@@ -64,25 +64,32 @@ class TastyBuffer(initialSize: Int) {
     length += n
   }
 
-  /** Write a natural number in big endian format, base 128.
-   *  All but the last digits have bit 0x80 set.
+  /** Write a 31-bit natural (nonnegative) integer number in big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset.
    */
-  def writeNat(x: Int): Unit =
+  def writeNat(x: Int): Unit = {
+    if (x < 0) {
+      throw new IllegalArgumentException(s"Expected a natural (nonnegative) number to write, but got: $x")
+    }
     writeLongNat(x.toLong & 0x00000000FFFFFFFFL)
+  }
 
-  /** Write a natural number in 2's complement big endian format, base 128.
-   *  All but the last digits have bit 0x80 set.
+  /** Write a 32-bit integer number in 2's complement big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset.
    */
   def writeInt(x: Int): Unit =
     writeLongInt(x)
 
   /**
-   * Like writeNat, but for longs. Note that the
-   * binary representation of LongNat is identical to Nat
-   * if the long value is in the range Int.MIN_VALUE to
-   * Int.MAX_VALUE.
+   * Write a 63-bit natural (nonnegative) number in big endian format, base 128, each digit being a byte.
+   * All bytes except the last one have bit 0x80 unset.
+   * Note that the binary representation of LongNat is identical to Nat
+   * if the long value is in the range 0 to Int.MAX_VALUE.
    */
   def writeLongNat(x: Long): Unit = {
+    if (x < 0) {
+      throw new IllegalArgumentException(s"Expected a natural (nonnegative) number to write, but got: $x")
+    }
     def writePrefix(x: Long): Unit = {
       val y = x >>> 7
       if (y != 0L) writePrefix(y)
@@ -93,7 +100,8 @@ class TastyBuffer(initialSize: Int) {
     writeByte(((x & 0x7f) | 0x80).toInt)
   }
 
-  /** Like writeInt, but for longs */
+  /** Write a 64-bit long integer number in 2's complement big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset. */
   def writeLongInt(x: Long): Unit = {
     def writePrefix(x: Long): Unit = {
       val y = x >> 7

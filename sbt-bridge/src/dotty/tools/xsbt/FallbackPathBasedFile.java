@@ -9,12 +9,15 @@ import dotty.tools.dotc.util.SourceFile;
  */
 public class FallbackPathBasedFile extends FallbackVirtualFile implements xsbti.PathBasedFile {
 
-  public FallbackPathBasedFile(SourceFile sourceFile) {
+  private final java.nio.file.Path path;
+
+  public FallbackPathBasedFile(SourceFile sourceFile, java.nio.file.Path path) {
     super(sourceFile);
+    this.path = path;
   }
 
   public java.nio.file.Path toPath() {
-    return sourceFile.file().jpath();
+    return path;
   }
 
 }

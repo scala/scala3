@@ -1,0 +1,5 @@
+object Empty:
+  def main(args: Array[String]): Unit = ()
+
+object EmptyBraces:
+  def main(args: Array[String]): Unit = ()

@@ -1,0 +1,5 @@
+[31m[31m-- Error: sep-i15772.scala:6:10 ------------------------------------------------[0m[0m
+[31m6 |[0m  [33mdef[0m [36mc[0m : [32mC[0m^ = [33mnew[0m [32mC[0m(x) [34m// error[0m
+[31m[31m  |[0m          ^^[0m
+[31m  |[0m Separation failure: [33mmethod[0m [32mc[0m's result type C^ hides non-local [33mparameter[0m [32mx[0m
+1 error found

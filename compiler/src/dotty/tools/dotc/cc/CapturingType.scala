@@ -27,14 +27,14 @@ import Decorators.i
 object CapturingType:
 
   /** Smart constructor that
-   *   - drops empty capture sets
+   *   - drops empty capture sets, except on Any
    *   - fuses compatible capturing types.
    *  An outer type capturing type A can be fused with an inner capturing type B if their
    *  boxing status is the same or if A is boxed.
    */
   def apply(parent: Type, refs: CaptureSet, boxed: Boolean = false)(using Context): Type =
     assert(!boxed || !parent.derivesFromCapSet)
-    if refs.isAlwaysEmpty && !refs.keepAlways && !parent.derivesFromCapability then
+    if refs.isAlwaysEmpty && !parent.isAny && !refs.keepAlways && !parent.derivesFromCapability then
       parent
     else parent match
       case parent @ CapturingType(parent1, refs1) if refs == CaptureSet.Fluid =>

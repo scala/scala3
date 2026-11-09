@@ -16,6 +16,7 @@ package util
 import scala.language.`2.13`
 import scala.reflect.ClassTag
 import scala.math.Ordering
+import language.experimental.captureChecking
 
 /** The `Sorting` object provides convenience wrappers for `java.util.Arrays.sort`.
  *  Methods that defer to `java.util.Arrays.sort` say that they do or under what
@@ -37,20 +38,32 @@ import scala.math.Ordering
  *  other libraries that cover this use case.
  */
 object Sorting {
-  /** Sorts an array of Doubles using `java.util.Arrays.sort`. */
-  def quickSort(a: Array[Double]): Unit = java.util.Arrays.sort(a)
+  /** Sorts an array of Doubles using `java.util.Arrays.sort`.
+   *
+   *  @param a the array of `Double`s to sort in place
+   */
+  def quickSort(a: Array[Double]^): Unit = java.util.Arrays.sort(a)
 
-  /** Sorts an array of Ints using `java.util.Arrays.sort`. */
-  def quickSort(a: Array[Int]): Unit    = java.util.Arrays.sort(a)
+  /** Sorts an array of Ints using `java.util.Arrays.sort`.
+   *
+   *  @param a the array of `Int`s to sort in place
+   */
+  def quickSort(a: Array[Int]^): Unit    = java.util.Arrays.sort(a)
 
-  /** Sorts an array of Floats using `java.util.Arrays.sort`. */
-  def quickSort(a: Array[Float]): Unit  = java.util.Arrays.sort(a)
+  /** Sorts an array of Floats using `java.util.Arrays.sort`.
+   *
+   *  @param a the array of `Float`s to sort in place
+   */
+  def quickSort(a: Array[Float]^): Unit  = java.util.Arrays.sort(a)
 
   private final val qsortThreshold = 16
 
   /** Sorts array `a` with quicksort, using the Ordering on its elements.
    *  This algorithm sorts in place, so no additional memory is used aside from
    *  what might be required to box individual elements during comparison.
+   *
+   *  @tparam K the element type of the array, which must have an `Ordering`
+   *  @param a the array to sort in place
    */
   def quickSort[K: Ordering](a: Array[K]): Unit = {
     // Must have iN >= i0 or math will fail.  Also, i0 >= 0.
@@ -145,76 +158,79 @@ object Sorting {
 
   // Ordering[T] might be slow especially for boxed primitives, so use binary search variant of insertion sort
   // Caller must pass iN >= i0 or math will fail.  Also, i0 >= 0.
-  private def insertionSort[@specialized T](a: Array[T], i0: Int, iN: Int, ord: Ordering[T]): Unit = {
+  private inline def insertionSort[T](a: Array[T], i0: Int, iN: Int, ord: Ordering[T]): Unit = {
     val n = iN - i0
-    if (n < 2) return
-    if (ord.compare(a(i0), a(i0+1)) > 0) {
-      val temp = a(i0)
-      a(i0) = a(i0+1)
-      a(i0+1) = temp
-    }
-    var m = 2
-    while (m < n) {
-      // Speed up already-sorted case by checking last element first
-      val next = a(i0 + m)
-      if (ord.compare(next, a(i0+m-1)) < 0) {
-        var iA = i0
-        var iB = i0 + m - 1
-        while (iB - iA > 1) {
-          val ix = (iA + iB) >>> 1    // Use bit shift to get unsigned div by 2
-          if (ord.compare(next, a(ix)) < 0) iB = ix
-          else iA = ix
-        }
-        val ix = iA + (if (ord.compare(next, a(iA)) < 0) 0 else 1)
-        var i = i0 + m
-        while (i > ix) {
-          a(i) = a(i-1)
-          i -= 1
-        }
-        a(ix) = next
+    if (n >= 2) {
+      if (ord.compare(a(i0), a(i0+1)) > 0) {
+        val temp = a(i0)
+        a(i0) = a(i0+1)
+        a(i0+1) = temp
       }
-      m += 1
+      var m = 2
+      while (m < n) {
+        // Speed up already-sorted case by checking last element first
+        val next = a(i0 + m)
+        if (ord.compare(next, a(i0+m-1)) < 0) {
+          var iA = i0
+          var iB = i0 + m - 1
+          while (iB - iA > 1) {
+            val ix = (iA + iB) >>> 1    // Use bit shift to get unsigned div by 2
+            if (ord.compare(next, a(ix)) < 0) iB = ix
+            else iA = ix
+          }
+          val ix = iA + (if (ord.compare(next, a(iA)) < 0) 0 else 1)
+          var i = i0 + m
+          while (i > ix) {
+            a(i) = a(i-1)
+            i -= 1
+          }
+          a(ix) = next
+        }
+        m += 1
+      }
     }
   }
 
   // Caller is required to pass iN >= i0, else math will fail.  Also, i0 >= 0.
-  private def mergeSort[@specialized T: ClassTag](a: Array[T], i0: Int, iN: Int, ord: Ordering[T], scratch: Array[T] | Null = null): Unit = {
-    if (iN - i0 < mergeThreshold) insertionSort(a, i0, iN, ord)
-    else {
-      val iK = (i0 + iN) >>> 1   // Bit shift equivalent to unsigned math, no overflow
-      val sc = if (scratch eq null) new Array[T](iK - i0) else scratch
-      mergeSort(a, i0, iK, ord, sc)
-      mergeSort(a, iK, iN, ord, sc)
-      mergeSorted(a, i0, iK, iN, ord, sc)
-    }
-  }
-
-  // Must have 0 <= i0 < iK < iN
-  private def mergeSorted[@specialized T](a: Array[T], i0: Int, iK: Int, iN: Int, ord: Ordering[T], scratch: Array[T]): Unit = {
-    // Check to make sure we're not already in order
-    if (ord.compare(a(iK-1), a(iK)) > 0) {
-      var i = i0
-      val jN = iK - i0
-      var j = 0
-      while (i < iK) {
-        scratch (j) = a(i)
-        i += 1
-        j += 1
+  private inline def mergeSort[T: ClassTag](a: Array[T], i0: Int, iN: Int, ord: Ordering[T], scratch: Array[T] | Null = null): Unit = {
+    // Must have 0 <= i0 < iK < iN
+    def mergeSorted(a: Array[T], i0: Int, iK: Int, iN: Int, ord: Ordering[T], scratch: Array[T]): Unit = {
+      // Check to make sure we're not already in order
+      if (ord.compare(a(iK-1), a(iK)) > 0) {
+        var i = i0
+        val jN = iK - i0
+        var j = 0
+        while (i < iK) {
+          scratch (j) = a(i)
+          i += 1
+          j += 1
+        }
+        var k = i0
+        j = 0
+        while (i < iN && j < jN) {
+          if (ord.compare(a(i), scratch(j)) < 0) { a(k) = a(i); i += 1 }
+          else { a(k) = scratch(j); j += 1 }
+          k += 1
+        }
+        while (j < jN) { a(k) = scratch(j); j += 1; k += 1 }
+        // Don't need to finish a(i) because it's already in place, k = i
       }
-      var k = i0
-      j = 0
-      while (i < iN && j < jN) {
-        if (ord.compare(a(i), scratch(j)) < 0) { a(k) = a(i); i += 1 }
-        else { a(k) = scratch(j); j += 1 }
-        k += 1
-      }
-      while (j < jN) { a(k) = scratch(j); j += 1; k += 1 }
-      // Don't need to finish a(i) because it's already in place, k = i
     }
+    def core(a: Array[T], i0: Int, iN: Int, ord: Ordering[T], scratch: Array[T] | Null): Unit = {
+      if (iN - i0 < mergeThreshold) insertionSort(a, i0, iN, ord)
+      else {
+        val iK = (i0 + iN) >>> 1 // Bit shift equivalent to unsigned math, no overflow
+        val sc = if (scratch eq null) new Array[T](iK - i0) else scratch
+        core(a, i0, iK, ord, sc)
+        core(a, iK, iN, ord, sc)
+        mergeSorted(a, i0, iK, iN, ord, sc)
+      }
+    }
+    core(a, i0, iN, ord, scratch)
   }
 
   // Why would you even do this?
-  private def booleanSort(a: Array[Boolean], from: Int, until: Int): Unit = {
+  private def booleanSort(a: Array[Boolean]^, from: Int, until: Int): Unit = {
     var i = from
     var n = 0
     while (i < until) {
@@ -234,7 +250,7 @@ object Sorting {
 
   // TODO: add upper bound: T <: AnyRef, propagate to callers below (not binary compatible)
   // Maybe also rename all these methods to `sort`.
-  @inline private def sort[T](a: Array[T], from: Int, until: Int, ord: Ordering[T]): Unit = (a: @unchecked) match {
+  private def sort[T](a: Array[T], from: Int, until: Int, ord: Ordering[T]): Unit = (a: @unchecked) match {
     case a: Array[AnyRef]  =>
       // Note that runtime matches are covariant, so could actually be any Array[T] s.t. T is not primitive (even boxed value classes)
       if (a.length > 1 && (ord eq null)) throw new NullPointerException("Ordering")
@@ -252,52 +268,79 @@ object Sorting {
   }
 
   /** Sorts array `a` using the Ordering on its elements, preserving the original ordering where possible.
-   *  Uses `java.util.Arrays.sort` unless `K` is a primitive type. This is the same as `stableSort(a, 0, a.length)`. 
+   *  Uses `java.util.Arrays.sort` unless `K` is a primitive type. This is the same as `stableSort(a, 0, a.length)`.
+   *
+   *  @tparam K the element type of the array, which must have an `Ordering`
+   *  @param a the array to sort in place
    */
-  @`inline` def stableSort[K: Ordering](a: Array[K]): Unit = stableSort(a, 0, a.length)
+  def stableSort[K: Ordering](a: Array[K]): Unit = stableSort(a, 0, a.length)
 
   /** Sorts array `a` or a part of it using the Ordering on its elements, preserving the original ordering where possible.
    *  Uses `java.util.Arrays.sort` unless `K` is a primitive type.
    *
-   *  @param a The array to sort
-   *  @param from The first index in the array to sort
-   *  @param until The last index (exclusive) in the array to sort
+   *  @tparam K the element type of the array, which must have an `Ordering`
+   *  @param a the array to sort in place
+   *  @param from the first index in the array to sort
+   *  @param until the last index (exclusive) in the array to sort
    */
   def stableSort[K: Ordering](a: Array[K], from: Int, until: Int): Unit = sort(a, from, until, Ordering[K])
 
   /** Sorts array `a` using function `f` that computes the less-than relation for each element.
-   *  Uses `java.util.Arrays.sort` unless `K` is a primitive type. This is the same as `stableSort(a, f, 0, a.length)`. 
+   *  Uses `java.util.Arrays.sort` unless `K` is a primitive type. This is the same as `stableSort(a, f, 0, a.length)`.
+   *
+   *  @tparam K the element type of the array
+   *  @param a the array to sort in place
+   *  @param f a function that returns `true` if its first argument is less than its second
    */
-  @`inline` def stableSort[K](a: Array[K], f: (K, K) => Boolean): Unit = stableSort(a, f, 0, a.length)
+  def stableSort[K](a: Array[K], f: (K, K) -> Boolean): Unit = stableSort(a, f, 0, a.length)
 
   // TODO: make this fast for primitive K (could be specialized if it didn't go through Ordering)
   /** Sorts array `a` or a part of it using function `f` that computes the less-than relation for each element.
    *  Uses `java.util.Arrays.sort` unless `K` is a primitive type.
    *
-   *  @param a The array to sort
-   *  @param f A function that computes the less-than relation for each element
-   *  @param from The first index in the array to sort
-   *  @param until The last index (exclusive) in the array to sort
+   *  @tparam K the element type of the array
+   *  @param a the array to sort in place
+   *  @param f a function that returns `true` if its first argument is less than its second
+   *  @param from the first index in the array to sort
+   *  @param until the last index (exclusive) in the array to sort
    */
-  def stableSort[K](a: Array[K], f: (K, K) => Boolean, from: Int, until: Int): Unit = sort(a, from, until, Ordering fromLessThan f)
+  def stableSort[K](a: Array[K], f: (K, K) -> Boolean, from: Int, until: Int): Unit = sort(a, from, until, Ordering fromLessThan f)
 
-  /** A sorted Array, using the Ordering for the elements in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type. */
-  def stableSort[K: ClassTag: Ordering](a: scala.collection.Seq[K]): Array[K] = {
+  /** A sorted Array, using the Ordering for the elements in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type.
+   *
+   *  @tparam K the element type, which must have a `ClassTag` and an `Ordering`
+   *  @param a the sequence of elements to sort
+   *  @return a new array containing the elements of `a` sorted according to the `Ordering` for `K`
+   */
+  def stableSort[K: {ClassTag, Ordering}](a: scala.collection.Seq[K]): Array[K] = {
     val ret = a.toArray
     sort(ret, 0, ret.length, Ordering[K])
     ret
   }
 
   // TODO: make this fast for primitive K (could be specialized if it didn't go through Ordering)
-  /** A sorted Array, given a function `f` that computes the less-than relation for each item in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type. */
-  def stableSort[K: ClassTag](a: scala.collection.Seq[K], f: (K, K) => Boolean): Array[K] = {
+  /** A sorted Array, given a function `f` that computes the less-than relation for each item in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type.
+   *
+   *  @tparam K the element type, which must have a `ClassTag`
+   *  @param a the sequence of elements to sort
+   *  @param f a function that returns `true` if its first argument is less than its second
+   *  @return a new array containing the elements of `a` sorted according to the less-than relation `f`
+   */
+  def stableSort[K: ClassTag](a: scala.collection.Seq[K], f: (K, K) -> Boolean): Array[K] = {
     val ret = a.toArray
     sort(ret, 0, ret.length, Ordering fromLessThan f)
     ret
   }
 
-  /** A sorted Array, given an extraction function `f` that returns an ordered key for each item in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type. */
-  def stableSort[K: ClassTag, M: Ordering](a: scala.collection.Seq[K], f: K => M): Array[K] = {
+  /** A sorted Array, given an extraction function `f` that returns an ordered key for each item in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type.
+   *
+   *  @tparam K the element type, which must have a `ClassTag`
+   *  @tparam M the key type returned by the extraction function, which must have an `Ordering`
+   *  @param a the sequence of elements to sort
+   *  @param f a function that extracts a comparable key from each element
+   *  @return a new array containing the elements of `a` sorted by comparing the keys produced by `f`
+   */
+  def stableSort[K: ClassTag, M: Ordering](a: scala.collection.Seq[K], f: K -> M): Array[K] = {
     val ret = a.toArray
     sort(ret, 0, ret.length, Ordering[M] on f)
     ret

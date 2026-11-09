@@ -13,8 +13,10 @@
 package scala
 package runtime
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
+@deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
 final class RichLong(val self: Long) extends AnyVal with IntegralProxy[Long] {
   protected def num: scala.math.Numeric.LongIsIntegral.type = scala.math.Numeric.LongIsIntegral
   protected def ord: scala.math.Ordering.Long.type = scala.math.Ordering.Long

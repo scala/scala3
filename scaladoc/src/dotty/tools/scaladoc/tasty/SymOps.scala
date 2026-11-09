@@ -64,6 +64,7 @@ object SymOps:
       }
       else None
 
+    @scala.annotation.nowarn
     def source =
       val path = sym.pos.flatMap(_.sourceFile.getJPath).map(_.toAbsolutePath)
       path.map(TastyMemberSource(_, sym.pos.get.startLine))
@@ -247,7 +248,8 @@ class SymOpsWithLinkCache:
             val paramSigs = sym.paramSymss.flatten.map(_.tree).collect {
               case v: ValDef => v.tpt.tpe
             }.map(getJavadocType)
-            "#" + sym.name + paramSigs.mkString("-","-","-")
+            // The anchors of javadoc since JDK 10, e.g. `#subList(int,int)`; JDK 8 used `#subList-int-int-`
+            "#" + sym.name + paramSigs.mkString("(", ",", ")")
           else
             "#" + sym.name
         } else ""
@@ -275,6 +277,7 @@ class SymOpsWithLinkCache:
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
     def dri(using dctx: DocContext): DRI =
       import reflect.*
+
       if sym == Symbol.noSymbol then topLevelDri
       else
         val method =
@@ -287,24 +290,24 @@ class SymOpsWithLinkCache:
         else
           (sym.className, sym.anchor)
 
-        val location = (sym.packageNameSplitted ++ className).map(escapeFilename(_))
-
-        val externalLink = {
-            import reflect._
-            import dotty.tools.dotc
-            given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-            val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
-            val extLink = if externalLinkCache.contains(csym.associatedFile)
-              then externalLinkCache(csym.associatedFile)
-              else {
-                def calculatePath(file: AbstractFile): String = file.underlyingSource.filter(_ != file).fold("")(f => calculatePath(f) + "/") + file.path
-                val calculatedLink = Option(csym.associatedFile).map(f => calculatePath(f)).flatMap { path =>
-                  dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path)))
+        val location = (sym.packageNameSplitted ++ className).map(escapeFilename)
+        // Parameters have no page or anchor of their own in external documentation either,
+        // so linking them would point at their owner's page with an anchor that doesn't exist.
+        val externalLink = if sym.flags.is(Flags.Param) || sym.isTypeParam then None else {
+          import dotty.tools.dotc
+          given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+          val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
+          val file = csym.associatedFile
+          val extLink =
+            externalLinkCache.get(file) match
+              case Some(s) => s
+              case None =>
+                val calculatedLink = Option(file).filterNot(dctx.isInput).flatMap { f =>
+                  dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(f.path)))
                 }
-                externalLinkCache += (csym.associatedFile -> calculatedLink)
+                externalLinkCache += (file -> calculatedLink)
                 calculatedLink
-              }
-            extLink.map(link => sym.constructPath(location, anchor, link))
+          extLink.map(link => sym.constructPath(location, anchor, link))
         }
 
         DRI(

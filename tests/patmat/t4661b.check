@@ -1,2 +1,12 @@
-11: Pattern Match Exhaustivity: _: c.Foo
-14: Match case Unreachable
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t4661b.scala:11:21 --
+11 |  def test(f: Foo) = f match { // not exhaustive
+   |                     ^
+   |                     match may not be exhaustive.
+   |
+   |                     It would fail on pattern case: _: c.Foo
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E030] Match case Unreachable Warning: tests/patmat/t4661b.scala:14:9 -------
+14 |    case f: Bla => // unreachable case
+   |         ^^^^^^
+   |         Unreachable case

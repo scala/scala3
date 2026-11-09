@@ -1,5 +1,3 @@
-// scalajs: --skip
-// test.scala
 import repro.*
 import scala.util.Try
 

@@ -62,12 +62,20 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
 
   override def size: Int = contentSize
 
-  /** Performs the inverse operation of improveHash. In this case, it happens to be identical to improveHash. */
+  /** Performs the inverse operation of improveHash. In this case, it happens to be identical to improveHash.
+   *
+   *  @param improvedHash the improved hash value to convert back to the original `any.##` hash
+   *  @return the original `any.##` hash code corresponding to `improvedHash`
+   */
   @`inline` private[collection] def unimproveHash(improvedHash: Int): Int = improveHash(improvedHash)
 
-  /** Computes the improved hash of an original (`any.##`) hash. */
+  /** Computes the improved hash of an original (`any.##`) hash.
+   *
+   *  @param originalHash the original hash code from `any.##`
+   *  @return the improved hash with the high 16 bits XORed into the low 16 bits
+   */
   @`inline` private def improveHash(originalHash: Int): Int = {
-    // Improve the hash by xoring the high 16 bits into the low 16 bits just in case entropy is skewed towards the
+    // Improve the hash by XORing the high 16 bits into the low 16 bits just in case entropy is skewed towards the
     // high-value bits. We only use the lowest bits to determine the hash bucket. This is the same improvement
     // algorithm as in java.util.HashMap.
     //
@@ -77,7 +85,11 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     originalHash ^ (originalHash >>> 16)
   }
 
-  /** Computes the improved hash of this key. */
+  /** Computes the improved hash of this key.
+   *
+   *  @param o the key for which to compute the improved hash
+   *  @return the improved hash code of `o` (i.e., `improveHash(o.##)`)
+   */
   @`inline` private def computeHash(o: K): Int = improveHash(o.##)
 
   @`inline` private def index(hash: Int) = hash & (table.length - 1)
@@ -226,6 +238,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
    *  @param value the value to add
    *  @param hash the **improved** hashcode of `key` (see computeHash)
    *  @param getOld if true, then the previous value for `key` will be returned, otherwise, false
+   *  @return `Some` wrapping the previous value if `getOld` is true and `key` was already present; `null` otherwise (i.e., when `getOld` is false or `key` was not in the map)
    */
   private def put0(key: K, value: V, hash: Int, getOld: Boolean): Some[V] | Null = {
     if(contentSize + 1 >= threshold) growTable(table.length * 2)

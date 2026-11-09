@@ -1,1 +1,8 @@
-2: Pattern Match Exhaustivity: Some(_)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i8708.scala:2:33 ----
+2 |  def foo(x: Option[Int]): Int = x match {
+  |                                 ^
+  |                                 match may not be exhaustive.
+  |
+  |                                 It would fail on pattern case: Some(_)
+  |
+  | longer explanation available when compiling with `-explain`

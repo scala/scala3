@@ -115,7 +115,7 @@ class AnnotationsTest:
         val cls = requiredClass("Foo")
         val param = requiredClass("Param")
         val annots = cls.annotations
-        assert(annots.size == 2, i"$annots") // includes SourceFile
+        assert(annots.size == 1, i"$annots")
         val annot = annots.find(_.symbol == param).getOrElse(assert(false, s"Missing $param"))
         assert(annot.arguments.size == 1, i"${annot.arguments}")
         extension (t: tpd.Tree)

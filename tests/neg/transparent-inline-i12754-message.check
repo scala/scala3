@@ -1,0 +1,16 @@
+-- [E008] Not Found Error: tests/neg/transparent-inline-i12754-message.scala:11:15 -------------------------------------
+11 |  transform(a) < b // error
+   |  ^^^^^^^^^^^^^^
+   |  value < is not a member of Any, but could be made available as an extension method.
+   |
+   |  One of the following imports might make progress towards fixing the problem:
+   |
+   |    import scala.math.Ordered.orderingToOrdered
+   |    import scala.math.Ordering.Implicits.infixOrderingOps
+   |
+   |
+   |
+   |  Note: `method transform` is transparent inline, but its precise type may not be available here.
+   |  This can happen when:
+   |  - It is used inside another inline body.
+   |  - Its result type depends on another inline expansion or on an inline parameter.

@@ -84,6 +84,7 @@ class SymUtils:
       !d.isRefinementClass &&
       d.isValueClass &&
       (d.initial.symbol ne defn.AnyValClass) && // Compare the initial symbol because AnyVal does not exist after erasure
+      (d.initial.symbol ne defn.NullClass) &&
       !d.isPrimitiveValueClass
     }
 
@@ -252,6 +253,15 @@ class SymUtils:
       else if (self.exists) self.owner.enclosingMethodOrClass
       else NoSymbol
 
+    /** The closest enclosing method, class or object of this symbol.
+     *  Module references get mapped to their moduleClasses.
+     */
+    @tailrec final def enclosingMethodOrClassOrObject(using Context): Symbol =
+      if self.is(Method) || self.isClass then self
+      else if self.is(ModuleVal) then self.moduleClass
+      else if self.exists then self.owner.enclosingMethodOrClassOrObject
+      else NoSymbol
+
     /** Apply symbol/symbol substitution to this symbol */
     def subst(from: List[Symbol], to: List[Symbol]): Symbol = {
       @tailrec def loop(from: List[Symbol], to: List[Symbol]): Symbol =
@@ -404,6 +414,8 @@ class SymUtils:
       self.hasAnnotation(checkAnnotation)
       || isDefaultArgumentOfCheckedMethod
       || (!self.is(Package) && checkOwner(self.owner))
+
+    def isJavaRecord(using Context) = self.is(JavaDefined) && self.derivesFrom(defn.JavaRecordClass)
 
     /** The declared self type of this class, as seen from `site`, stripping
     *  all refinements for opaque types.

@@ -1,4 +1,20 @@
-16: Pattern Match Exhaustivity: false
-18: Match case Unreachable
-19: Match case Unreachable
-20: Match case Unreachable
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/virtpatmat_reach_sealed_unsealed.scala:16:3 
+16 |  (true: Boolean) match { case true => } // not exhaustive, but reachable
+   |   ^^^^^^^^^^^^^
+   |   match may not be exhaustive.
+   |
+   |   It would fail on pattern case: false
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E030] Match case Unreachable Warning: tests/patmat/virtpatmat_reach_sealed_unsealed.scala:18:59 
+18 |  (true: Boolean) match { case true => case false =>  case _ => } // exhaustive, last case is unreachable
+   |                                                           ^
+   |                                                        Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/virtpatmat_reach_sealed_unsealed.scala:19:59 
+19 |  (true: Boolean) match { case true => case false =>  case _: Boolean => } // exhaustive, last case is unreachable
+   |                                                           ^^^^^^^^^^
+   |                                                        Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/virtpatmat_reach_sealed_unsealed.scala:20:59 
+20 |  (true: Boolean) match { case true => case false =>  case _: Any => } // exhaustive, last case is unreachable
+   |                                                           ^^^^^^
+   |                                                        Unreachable case

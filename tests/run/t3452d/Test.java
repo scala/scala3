@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 public class Test {
 	public static void main(String[] args) {
 		C<String> c = new C<String>();

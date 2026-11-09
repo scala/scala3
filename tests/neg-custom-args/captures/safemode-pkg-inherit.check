@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/safemode-pkg-inherit.scala:4:13 -----------------------------------------------
+4 |val result = Seq("sh", "-c", "echo 'oh no'").!! // error
+  |             ^
+  |Cannot refer to method stringSeqToProcess in trait ProcessImplicits from safe code since it is neither compiled in safe mode nor tagged with @assumedSafe

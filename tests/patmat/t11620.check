@@ -1,1 +1,8 @@
-36: Pattern Match Exhaustivity: B(A2(_, _))
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t11620.scala:36:23 --
+36 |def foo4[T](b: B[T]) = b match {
+   |                       ^
+   |                       match may not be exhaustive.
+   |
+   |                       It would fail on pattern case: B(A2(_, _))
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,5 +1,3 @@
-import scala.language.experimental.clauseInterleaving
-
 class A{
 
     def f1[T](x: Any)[U] = ???

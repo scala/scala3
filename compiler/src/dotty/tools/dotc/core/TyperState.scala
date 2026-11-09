@@ -50,7 +50,7 @@ class TyperState() {
   private var myId: Int = uninitialized
   def id: Int = myId
 
-  private var previous: TyperState | Null = uninitialized
+  private var previous: TyperState | Null = null
 
   private var myReporter: Reporter = uninitialized
 
@@ -80,7 +80,9 @@ class TyperState() {
     this
 
   def isGlobalCommittable: Boolean =
-    isCommittable && (previous == null || previous.uncheckedNN.isGlobalCommittable)
+    isCommittable && (previous match
+      case null => true
+      case p => p.isGlobalCommittable)
 
   private var isCommitted: Boolean = uninitialized
 
@@ -139,7 +141,10 @@ class TyperState() {
    *  which is not yet committed, or which does not have a parent.
    */
   def uncommittedAncestor: TyperState =
-    if (isCommitted && previous != null) previous.uncheckedNN.uncommittedAncestor else this
+    previous match
+      case null => this
+      case p if isCommitted => p.uncommittedAncestor
+      case _ => this
 
   /** Commit `this` typer state by copying information into the current typer state,
    *  where "current" means contextual, so meaning `ctx.typerState`.
@@ -188,10 +193,21 @@ class TyperState() {
       else
         targetState.mergeConstraintWith(this)
 
-    upLevels.foreachBinding { (tv, level) =>
-      if level < targetState.nestingLevel(tv) then
-        targetState.setNestingLevel(tv, level)
-    }
+    // Fast path: a fresh typer state shares its `upLevels` map by reference with
+    // the state it was forked from (see `fresh`, which does `ts.upLevels = upLevels`).
+    // If the speculative typing committed here did not lower any type variable's
+    // nesting level, `upLevels` and `targetState.upLevels` are backed by the same
+    // storage and this merge is a guaranteed no-op (every binding already holds the
+    // level the target has). Skipping it avoids an O(n^2) rescan on every commit --
+    // `foreachBinding` over the whole map times a linear-scan `nestingLevel`/
+    // `setNestingLevel` per binding -- which otherwise dominates typer time for
+    // macro/inline-heavy code that forks and commits many typer states while
+    // carrying many level-lowered type variables.
+    if !upLevels.sameBindings(targetState.upLevels) then
+      upLevels.foreachBinding { (tv, level) =>
+        if level < targetState.nestingLevel(tv) then
+          targetState.setNestingLevel(tv, level)
+      }
 
     targetState.gc()
     isCommitted = true
@@ -279,7 +295,9 @@ class TyperState() {
     ownedVars += tvar
 
   private def isOwnedAnywhere(ts: TyperState, tvar: TypeVar): Boolean =
-    ts.ownedVars.contains(tvar) || ts.previous != null && isOwnedAnywhere(ts.previous.uncheckedNN, tvar)
+    ts.ownedVars.contains(tvar) || (ts.previous match
+      case null => false
+      case tp => isOwnedAnywhere(tp, tvar))
 
   /** Make type variable instances permanent by assigning to `inst` field if
    *  type variable instantiation cannot be retracted anymore. Then, remove
@@ -304,9 +322,9 @@ class TyperState() {
   override def toString: String = {
     def ids(state: TyperState): List[String] =
       s"${state.id}${if (state.isCommittable) "" else "X"}" ::
-        (if (state.previous == null) Nil else ids(state.previous.uncheckedNN))
+        (state.previous match { case null => Nil; case sp => ids(sp) })
     s"TS[${ids(this).mkString(", ")}]"
   }
 
-  def stateChainStr: String = s"$this${if (previous == null) "" else previous.uncheckedNN.stateChainStr}"
+  def stateChainStr: String = s"$this${previous match { case null => ""; case p => p.stateChainStr }}"
 }

@@ -15,15 +15,16 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:11:32 ----------------------------------
 11 |  val _: (x: A^) -> B^{fresh} = g // error
    |                                ^
-   |Found:    A^ -> B^{g*}
-   |Required: (x: A^) -> B^{fresh}
+   |                     Found:    (g : A^ -> B^{any})
+   |                     Required: (x: A^) -> B^{fresh}
    |
-   |Note that capability `g*` cannot flow into capture set {fresh}
-   |because `fresh`, which is existentially bound in B^{fresh²}, cannot subsume `g*` since that capability is not a SharedCapability.
+   |                     Note that capability `any` cannot flow into capture set {fresh}
+   |                     because `fresh`, which is existentially bound in B^{fresh²}, cannot subsume `any`.
    |
-   |where:    ^      refers to the root capability caps.any
-   |          fresh  is a root capability associated with the result type of (x: A^): B^{fresh}
-   |          fresh² is the root capability caps.fresh
+   |                     where:    ^      refers to the root capability caps.any
+   |                               any    is a root capability in the type of value g
+   |                               fresh  is a root capability associated with the result type of (x: A^): B^{fresh}
+   |                               fresh² is the root capability caps.fresh
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:12:20 ----------------------------------
@@ -40,18 +41,47 @@
    |                              fresh is a root capability associated with the result type of (x: A^): B^{fresh}
    |
    | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:15:26 ----------------------------------
+15 |  val _: A^ -> B^ = x => g(x)      // error after reach drop
+   |                         ^^^^
+   |Found:    B^{x}
+   |Required: B^{any}
+   |
+   |Note that capability `x` cannot flow into capture set {any}
+   |because (x : A^) in an enclosing function is not visible from any in value _$6.
+   |
+   |where:    ^   refers to a root capability created in anonymous function of type (x²: A^²): B^² of parameter parameter x of method $anonfun
+   |          any is a root capability in the type of value _$6
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:19:31 ----------------------------------
 19 |  val _: (x: S) -> B^{fresh} = h          // error: direct conversion fails
    |                               ^
-   |Found:    S^ -> B^{h*}
-   |Required: (x: S^) -> B^{fresh}
+   |                     Found:    (h : S -> B^{any})
+   |                     Required: (x: S^) -> B^{fresh}
    |
-   |Note that capability `h*` cannot flow into capture set {fresh}
-   |because `fresh`, which is existentially bound in B^{fresh²}, cannot subsume `h*` since that capability is not a SharedCapability.
+   |                     Note that capability `any` cannot flow into capture set {fresh}
+   |                     because `fresh`, which is existentially bound in B^{fresh²}, cannot subsume `any`.
    |
-   |where:    ^      refers to the root capability caps.any
-   |          fresh  is a root capability associated with the result type of (x: S^): B^{fresh}
-   |          fresh² is the root capability caps.fresh
+   |                     where:    ^      refers to the root capability caps.any
+   |                               any    is a root capability in the type of value h
+   |                               fresh  is a root capability associated with the result type of (x: S^): B^{fresh}
+   |                               fresh² is the root capability caps.fresh
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:23:31 ----------------------------------
+23 |  val _: (x: S) -> S^{fresh} = h2               // error after reach drop: direct conversion no longer OK for shared S after reach drop
+   |                               ^^
+   |                    Found:    (h2 : S -> S)
+   |                    Required: (x: S^) -> S^{fresh}
+   |
+   |                    Note that capability `any` cannot flow into capture set {fresh}
+   |                    because `fresh`, which is existentially bound in S^{fresh²}, cannot subsume `any`.
+   |
+   |                    where:    ^      refers to the root capability caps.any
+   |                              any    is a root capability classified as SharedCapability in the type of value h2
+   |                              fresh  is a root capability associated with the result type of (x: S^): S^{fresh}
+   |                              fresh² is the root capability caps.fresh
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:28:30 ----------------------------------
@@ -92,5 +122,17 @@
    |
    |where:    any  is a root capability created in anonymous function of type (x: S): B^ when instantiating function value j's type (x: S^): B^{fresh}
    |          any² is a root capability in the type of value _$16
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:36:4 -----------------------------------
+36 |    y // error after reach drop
+   |    ^
+   |    Found:    B^{y}
+   |    Required: B^{any}
+   |
+   |    Note that capability `y` cannot flow into capture set {any}
+   |    because (y : B^{g2, x}) in an enclosing function is not visible from any in value _$17.
+   |
+   |    where:    any is a root capability in the type of value _$17
    |
    | longer explanation available when compiling with `-explain`

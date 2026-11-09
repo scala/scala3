@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 object Test {
   def main(args: Array[String]): Unit = {
     val hasBridge1 = classOf[other.ScalaChild].getDeclaredMethods.exists { m =>

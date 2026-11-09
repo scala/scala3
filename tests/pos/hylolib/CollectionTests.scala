@@ -33,7 +33,7 @@ class CollectionTests extends munit.FunSuite:
 
     val one = AnyCollection(HyArray[Int](1))
     val Some((h0, t0)) = one.headAndTail: @unchecked
-    assert(h0 eq 1)
+    assertEquals(h0, 1)
     assert(t0.isEmpty)
 
     val two = AnyCollection(HyArray[Int](1, 2))

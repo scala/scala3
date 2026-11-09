@@ -3,7 +3,7 @@ scala> abstract class F { def f(arg: Any): Unit; override def toString = "F" }
 scala> val f: F = println
 1 warning found
 -- Warning: --------------------------------------------------------------------
-1 | val f: F = println
-  |            ^^^^^^^
+1 |val f: F = println
+  |           ^^^^^^^
   |method println is eta-expanded even though F does not have the @FunctionalInterface annotation.
 val f: F = F

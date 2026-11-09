@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.language.implicitConversions
 
@@ -35,6 +36,11 @@ object Integral {
     /** The regrettable design of Numeric/Integral/Fractional has them all
      *  bumping into one another when searching for this implicit, so they
      *  are exiled into their own companions.
+     *
+     *  @tparam T the numeric type for which an `Integral` instance exists
+     *  @param x the value to wrap with integral operator syntax (`/`, `%`, `/%`)
+     *  @param num the implicit `Integral` instance for type `T`
+     *  @return an `IntegralOps` instance providing integral operators on `x`
      */
     implicit def infixIntegralOps[T](x: T)(implicit num: Integral[T]): Integral[T]#IntegralOps = new num.IntegralOps(x)
   }

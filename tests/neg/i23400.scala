@@ -1,5 +1,5 @@
-//> using options -preview
-// preview needed for into in 3.8
+// placeholder for directives line
+//
 
 import Conversion.into
 

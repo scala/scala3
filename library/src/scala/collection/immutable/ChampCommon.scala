@@ -105,6 +105,7 @@ private[collection] abstract class Node[T <: Node[T]] {
  *  node before traversing sub-nodes (left to right).
  *
  *  @tparam T the trie node type we are iterating over
+ *  @tparam A the element type produced by the iterator
  */
 private[immutable] abstract class ChampBaseIterator[A, T <: Node[T]] extends AbstractIterator[A] {
 
@@ -191,6 +192,7 @@ private[immutable] abstract class ChampBaseIterator[A, T <: Node[T]] extends Abs
  *  iterator performs a depth-first post-order traversal, traversing sub-nodes (right to left).
  *
  *  @tparam T the trie node type we are iterating over
+ *  @tparam A the element type produced by the iterator
  */
 private[immutable] abstract class ChampBaseReverseIterator[A, T <: Node[T]] extends AbstractIterator[A] {
 

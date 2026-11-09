@@ -42,6 +42,9 @@ import java.lang.InheritableThreadLocal
  *
  *  @author  Lex Spoon
  *  @since   2.6
+ *
+ *  @tparam T the type of the dynamic variable's value
+ *  @param init the initial value of the variable
  */
 class DynamicVariable[T](init: T) {
   /* Scala.js: replaced InheritableThreadLocal by a simple var.
@@ -56,8 +59,10 @@ class DynamicVariable[T](init: T) {
   /** Sets the value of the variable while executing the specified
    *  thunk.
    *
+   *  @tparam S the result type of the thunk, also the return type of this method
    *  @param newval The value to which to set the variable
    *  @param thunk The code to evaluate under the new setting
+   *  @return the result of evaluating `thunk` with the variable temporarily bound to `newval`
    */
   def withValue[S](newval: T)(thunk: => S): S = {
     val oldval = v

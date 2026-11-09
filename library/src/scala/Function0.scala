@@ -10,9 +10,6 @@
  * additional information regarding copyright ownership.
  */
 
-// GENERATED CODE: DO NOT EDIT.
-// genprod generated these sources at: 2025-08-11T16:44:44.712777821Z
-
 package scala
 
 import scala.language.`2.13`
@@ -41,4 +38,14 @@ trait Function0[@specialized(Specializable.Primitives) +R] extends AnyRef {
   def apply(): R
 
   override def toString(): String = "<function0>"
+}
+
+object Function0 {
+
+  extension [R](f: () => R)
+    /** Applies this function.
+     *  @return the result of the function application
+     */
+    def applyUsing: R = f()
+
 }

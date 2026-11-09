@@ -22,6 +22,8 @@ import scala.annotation.nowarn
  *
  *  @define coll buffer
  *  @define Coll `Buffer`
+ *
+ *  @tparam A the element type of the buffer
  */
 trait Buffer[A]
   extends Seq[A]
@@ -311,5 +313,8 @@ object Buffer extends SeqFactory.Delegate[Buffer](ArrayBuffer)
 @SerialVersionUID(3L)
 object IndexedBuffer extends SeqFactory.Delegate[IndexedBuffer](ArrayBuffer)
 
-/** Explicit instantiation of the `Buffer` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Buffer` trait to reduce class file size in subclasses.
+ *
+ *  @tparam A the element type of the buffer
+ */
 abstract class AbstractBuffer[A] extends AbstractSeq[A] with Buffer[A]

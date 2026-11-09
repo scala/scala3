@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.annotation.meta._
 
@@ -20,8 +21,6 @@ import scala.annotation.meta._
  *  Using this name in a named argument generates a deprecation warning.
  *
  *  If the `name` is omitted, then using the canonical name is deprecated.
- *  In that case, lints such as `-Xlint:named-booleans` which encourage
- *  the use of a name will not warn.
  *
  *  Library authors should state the library's deprecation policy in their documentation to give
  *  developers guidance on how long a deprecated name will be preserved.

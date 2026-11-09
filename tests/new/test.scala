@@ -1,12 +1,5 @@
-package test
+class Test {
 
-object Console:
-  val out: java.io.PrintStream^ = System.out
-  def println(s: String) = out.println(s)
-
-
-object Test:// uses Console uses_init Console:
-  Console.println("hello")
-
-  def f() =
-    Console.println("hello")
+  val x: [X] => X = ???
+  val y = [X] => (x: X) => x
+}

@@ -1,4 +1,4 @@
-import language.experimental.relaxedLambdaSyntax
+//> using options -preview
 
 case class Foo(x: Int, y: Int)
 @main def Test =

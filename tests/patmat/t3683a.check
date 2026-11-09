@@ -1,1 +1,8 @@
-14: Pattern Match Exhaustivity: XX()
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t3683a.scala:14:4 ---
+14 |    w match {
+   |    ^
+   |    match may not be exhaustive.
+   |
+   |    It would fail on pattern case: XX()
+   |
+   | longer explanation available when compiling with `-explain`

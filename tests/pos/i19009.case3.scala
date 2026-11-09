@@ -5,7 +5,7 @@ object SegmentT:
   trait WithPrev[E, +S] extends SegmentT[E, S]
 
 trait SegmentSeqT[E, +S]:
-  def getSegmentForBound(bound: Bound[E]): SegmentT[E, S] with S
+  def getSegmentForBound(bound: Bound[E]): SegmentT[E, S] & S
 
 abstract class AbstractSegmentSeq[E, +S] extends SegmentSeqT[E, S]
 
@@ -14,7 +14,7 @@ trait MappedSegmentBase[E, S]
 type MappedSegment[E, S] = AbstractMappedSegmentSeq.MappedSegment[E, S]
 
 object AbstractMappedSegmentSeq:
-  type MappedSegment[E, S] = SegmentT[E, MappedSegmentBase[E, S]] with MappedSegmentBase[E, S]
+  type MappedSegment[E, S] = SegmentT[E, MappedSegmentBase[E, S]] & MappedSegmentBase[E, S]
 
 abstract class AbstractMappedSegmentSeq[E, S]
     extends AbstractSegmentSeq[E, MappedSegmentBase[E, S]]:

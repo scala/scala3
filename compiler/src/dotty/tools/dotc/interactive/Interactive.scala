@@ -64,71 +64,6 @@ object Interactive {
   def isDefinition(tree: Tree): Boolean =
     tree.isInstanceOf[NamedDefTree]
 
-  /** The type of the closest enclosing tree with a type containing position `pos`. */
-  def enclosingType(trees: List[SourceTree], pos: SourcePosition)(using Context): Type = {
-    val path = pathTo(trees, pos)
-    if (path.isEmpty) NoType
-    else path.head.tpe
-  }
-
-  /** The closest enclosing tree with a symbol containing position `pos`, or the `EmptyTree`.
-   */
-  def enclosingTree(trees: List[SourceTree], pos: SourcePosition)(using Context): Tree =
-    enclosingTree(pathTo(trees, pos))
-
-  /** The closest enclosing tree with a symbol, or the `EmptyTree`.
-   */
-  def enclosingTree(path: List[Tree])(using Context): Tree =
-    path.dropWhile(!_.symbol.exists).headOption.getOrElse(tpd.EmptyTree)
-
-  /**
-   * The source symbols that are the closest to `path`.
-   *
-   * If this path ends in an import, then this returns all the symbols that are imported by this
-   * import statement.
-   *
-   * @param path The path to the tree whose symbols to extract.
-   * @return The source symbols that are the closest to `path`.
-   *
-   * @see sourceSymbol
-   */
-  def enclosingSourceSymbols(path: List[Tree], pos: SourcePosition)(using Context): List[Symbol] = {
-    val syms = path match {
-      // For a named arg, find the target `DefDef` and jump to the param
-      case NamedArg(name, _) :: Apply(fn, _) :: _ =>
-        val funSym = fn.symbol
-        if (funSym.name == StdNames.nme.copy
-          && funSym.is(Synthetic)
-          && funSym.owner.is(CaseClass))
-            List(funSym.owner.info.member(name).symbol)
-        else {
-          val classTree = funSym.topLevelClass.asClass.rootTree
-          val paramSymbol =
-            for {
-              case DefDef(_, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
-              param <- paramss.flatten.find(_.name == name)
-            }
-            yield param.symbol
-          List(paramSymbol.getOrElse(fn.symbol))
-        }
-
-      // For constructor calls, return the `<init>` that was selected
-      case _ :: (_:  New) :: (select: Select) :: _ =>
-        List(select.symbol)
-
-      case (_: untpd.ImportSelector) :: (imp: Import) :: _ =>
-        importedSymbols(imp, _.span.contains(pos.span))
-
-      case (imp: Import) :: _ =>
-        importedSymbols(imp, _.span.contains(pos.span))
-
-      case _ =>
-        List(enclosingTree(path).symbol)
-    }
-
-    syms.map(_.sourceSymbol).filter(_.exists)
-  }
-
   /** Check if `tree` matches `sym`.
    *  This is the case if the symbol defined by `tree` equals `sym`,
    *  or the source symbol of tree equals sym,
@@ -320,106 +255,6 @@ object Interactive {
       }
   }
 
-  /** The first tree in the path that is a definition. */
-  def enclosingDefinitionInPath(path: List[Tree])(using Context): Tree =
-    path.find(_.isInstanceOf[DefTree]).getOrElse(EmptyTree)
-
-  /**
-   * Find the definitions of the symbol at the end of `path`. In the case of an import node,
-   * all imported symbols will be considered.
-   *
-   * @param path   The path to the symbol for which we want the definitions.
-   * @param driver The driver responsible for `path`.
-   * @return The definitions for the symbol at the end of `path`.
-   */
-  def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver): List[SourceTree] = {
-    given Context = driver.currentCtx
-    val enclTree = enclosingTree(path)
-    val includeOverridden = enclTree.isInstanceOf[MemberDef]
-    val symbols = enclosingSourceSymbols(path, pos)
-    val includeExternal = symbols.exists(!_.isLocal)
-    findDefinitions(symbols, driver, includeOverridden, includeExternal)
-  }
-
-  /**
-   * Find the definitions of `symbols`.
-   *
-   * @param symbols           The list of symbols for which to find a definition.
-   * @param driver            The driver responsible for the given symbols.
-   * @param includeOverridden If true, also include the symbols overridden by any of `symbols`.
-   * @param includeExternal   If true, also look for definitions on the classpath.
-   * @return The definitions for the symbols in `symbols`, and if `includeOverridden` is set, the
-   *         definitions for the symbols that they override.
-   */
-  def findDefinitions(symbols: List[Symbol],
-                      driver: InteractiveDriver,
-                      includeOverridden: Boolean,
-                      includeExternal: Boolean): List[SourceTree] = {
-    given Context = driver.currentCtx
-    val include = Include.definitions | Include.overriding |
-      (if (includeOverridden) Include.overridden else Include.empty)
-    symbols.flatMap { sym =>
-      val name = sym.name.sourceModuleName.toString
-      val includeLocal = if (sym.exists && sym.isLocal) Include.local else Include.empty
-      val trees =
-        if (includeExternal) driver.allTreesContaining(name)
-        else driver.sourceTreesContaining(name)
-      findTreesMatching(trees, include | includeLocal, sym)
-    }
-  }
-
-  /**
-   * Given `sym`, originating from `sourceDriver`, find its representation in
-   * `targetDriver`.
-   *
-   * @param symbol The symbol to expression in the new driver.
-   * @param sourceDriver The driver from which `symbol` originates.
-   * @param targetDriver The driver in which we want to get a representation of `symbol`.
-   * @return A representation of `symbol` in `targetDriver`.
-   */
-  def localize(symbol: Symbol, sourceDriver: InteractiveDriver, targetDriver: InteractiveDriver): Symbol = {
-
-    def in[T](driver: InteractiveDriver)(fn: Context ?=> T): T =
-      fn(using driver.currentCtx)
-
-    if (sourceDriver == targetDriver) symbol
-    else {
-      val owners = in(sourceDriver) {
-        symbol.ownersIterator.toList.reverse.map(_.name)
-      }
-      in(targetDriver) {
-        val base: Symbol = defn.RootClass
-        owners.tail.foldLeft(base) { (prefix, symbolName) =>
-          if (prefix.exists) prefix.info.member(symbolName).symbol
-          else NoSymbol
-        }
-      }
-    }
-  }
-
-  /**
-   * Return a predicate function that determines whether a given `NameTree` is an implementation of
-   * `sym`.
-   *
-   * @param sym The symbol whose implementations to find.
-   * @return A function that determines whether a `NameTree` is an implementation of `sym`.
-   */
-  def implementationFilter(sym: Symbol)(using Context): NameTree => Boolean =
-    if (sym.isClass) {
-      case td: TypeDef =>
-        val treeSym = td.symbol
-        (treeSym != sym || !treeSym.isOneOf(AbstractOrTrait)) && treeSym.derivesFrom(sym)
-      case _ =>
-        false
-    }
-    else {
-      case md: MemberDef =>
-        matchSymbol(md, sym, Include.overriding) && !md.symbol.is(Deferred)
-      case _ =>
-        false
-    }
-
-
   /** Some information about the trees is lost after Typer such as Extension method construct
    *  is expanded into methods. In order to support completions in those cases
    *  we have to rely on untyped trees and only when types are necessary use typed trees.
@@ -433,22 +268,6 @@ object Interactive {
       case (_: Bind) :: _ => tpdPath
       case (_: untpd.TypTree) :: _ => tpdPath
       case _ => untpdPath
-
-  /**
-   * Is this tree using a renaming introduced by an import statement or an alias for `this`?
-   *
-   * @param tree The tree to inspect
-   * @return True, if this tree's name is different than its symbol's name, indicating that
-   *         it uses a renaming introduced by an import statement or an alias for `this`.
-   */
-  def isRenamed(tree: NameTree)(using Context): Boolean = {
-    val symbol = tree.symbol
-    symbol.exists && !sameName(tree.name, symbol.name)
-  }
-
-  /** Are the two names the same? */
-  def sameName(n0: Name, n1: Name): Boolean =
-    n0.stripModuleClassSuffix.toTermName eq n1.stripModuleClassSuffix.toTermName
 
   /** https://scala-lang.org/files/archive/spec/3.4/02-identifiers-names-and-scopes.html
    * import java.lang.*

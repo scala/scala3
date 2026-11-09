@@ -69,6 +69,7 @@ sealed abstract class <:<[-From, +To] extends (From => To) with Serializable {
    *
    *  $isProof
    *
+   *  @tparam F a type constructor that is $contraCo
    *  @return `ftf`, $sameDiff
    */
   def substituteBoth[F[-_, +_]](ftf: F[To, From]): F[From, To]
@@ -80,6 +81,7 @@ sealed abstract class <:<[-From, +To] extends (From => To) with Serializable {
    *
    *  $isProof
    *
+   *  @tparam F $coCon
    *  @return `ff`, $sameDiff
    */
   def substituteCo[F[+_]](ff: F[From]): F[To] = {
@@ -93,6 +95,7 @@ sealed abstract class <:<[-From, +To] extends (From => To) with Serializable {
    *
    *  $isProof
    *
+   *  @tparam F $contraCon
    *  @return `ft`, $sameDiff
    */
   def substituteContra[F[-_]](ft: F[To]): F[From] = {
@@ -117,7 +120,11 @@ sealed abstract class <:<[-From, +To] extends (From => To) with Serializable {
     type G[+T] = C => T
     substituteCo[G](r)
   }
-  /** If `From <: To` and `C <: From`, then `C <: To` (subtyping is transitive). */
+  /** If `From <: To` and `C <: From`, then `C <: To` (subtyping is transitive).
+   *
+   *  @tparam C a type proved to be a subtype of `From`
+   *  @param r evidence that `C <: From`
+   */
   def compose[C](r: C <:< From): C <:< To = {
     type G[+T] = C <:< T
     substituteCo[G](r)
@@ -126,18 +133,28 @@ sealed abstract class <:<[-From, +To] extends (From => To) with Serializable {
     type G[-T] = T => C
     substituteContra[G](r)
   }
-  /** If `From <: To` and `To <: C`, then `From <: C` (subtyping is transitive). */
+  /** If `From <: To` and `To <: C`, then `From <: C` (subtyping is transitive).
+   *
+   *  @tparam C a type proved to be a supertype of `To`
+   *  @param r evidence that `To <: C`
+   */
   def andThen[C](r: To <:< C): From <:< C = {
     type G[-T] = T <:< C
     substituteContra[G](r)
   }
 
-  /** Lift this evidence over $coCon `F`. */
+  /** Lift this evidence over $coCon `F`.
+   *
+   *  @tparam F $coCon to lift the evidence over
+   */
   def liftCo[F[+_]]: F[From] <:< F[To] = {
     type G[+T] = F[From] <:< F[T]
     substituteCo[G](implicitly[G[From]])
   }
-  /** Lift this evidence over $contraCon `F`. */
+  /** Lift this evidence over $contraCon `F`.
+   *
+   *  @tparam F $contraCon to lift the evidence over
+   */
   def liftContra[F[-_]]: F[To] <:< F[From] = {
     type G[-T] = F[To] <:< F[T]
     substituteContra[G](implicitly[G[To]])
@@ -165,11 +182,19 @@ object <:< {
 
   /** `A =:= A` for all `A` (equality is reflexive). This also provides implicit views `A <:< B`
    *  when `A <: B`, because `(A =:= A) <: (A <:< A) <: (A <:< B)`.
+   *
+   *  @tparam A the type for which to provide reflexive equality evidence
    */
   implicit def refl[A]: A =:= A = singleton.asInstanceOf[A =:= A]
   // = new =:=[A, A] { override def substituteBoth[F[_, _]](faa: F[A, A]): F[A, A] = faa }
 
-  /** If `A <: B` and `B <: A`, then `A = B` (subtyping is antisymmetric). */
+  /** If `A <: B` and `B <: A`, then `A = B` (subtyping is antisymmetric).
+   *
+   *  @tparam A a type proved equal to `B` by mutual subtyping
+   *  @tparam B a type proved equal to `A` by mutual subtyping
+   *  @param l evidence that `A <: B`
+   *  @param r evidence that `B <: A`
+   */
   def antisymm[A, B](implicit l: A <:< B, r: B <:< A): A =:= B = singleton.asInstanceOf[A =:= B]
   // = ??? (I don't think this is possible to implement "safely")
 }
@@ -216,7 +241,10 @@ sealed abstract class =:=[From, To] extends (From <:< To) with Serializable {
   }
   // = substituteCo[({type G[T] = F[T] => F[From]})#G](identity)(ft)
 
-  /** @inheritdoc */ override def apply(f: From) = super.apply(f)
+ /** @inheritdoc
+  *
+  *  @param f some value of type `From`
+  */ override def apply(f: From) = super.apply(f)
 
   /** If `From = To` then `To = From` (equality is symmetric). */
   def flip: To =:= From = {
@@ -224,12 +252,20 @@ sealed abstract class =:=[From, To] extends (From <:< To) with Serializable {
     substituteBoth[G](this)
   }
 
-  /** If `From = To` and `C = From`, then `C = To` (equality is transitive). */
+  /** If `From = To` and `C = From`, then `C = To` (equality is transitive).
+   *
+   *  @tparam C a type proved equal to `From`
+   *  @param r evidence that `C =:= From`
+   */
   def compose[C](r: C =:= From): C =:= To = {
     type G[T] = C =:= T
     substituteCo[G](r)
   }
-  /** If `From = To` and `To = C`, then `From = C` (equality is transitive). */
+  /** If `From = To` and `To = C`, then `From = C` (equality is transitive).
+   *
+   *  @tparam C a type proved equal to `To`
+   *  @param r evidence that `To =:= C`
+   */
   def andThen[C](r: To =:= C): From =:= C = {
     type G[T] = T =:= C
     substituteContra[G](r)
@@ -239,6 +275,9 @@ sealed abstract class =:=[From, To] extends (From <:< To) with Serializable {
     type G[T] = F[T] =:= F[To]
     substituteContra[G](implicitly[G[To]])
   }
-  /** Lift this evidence over the type constructor `F`, but flipped. */
+  /** Lift this evidence over the type constructor `F`, but flipped.
+   *
+   *  @tparam F $coCon to lift the evidence over
+   */
   override def liftContra[F[_]]: F[To] =:= F[From] = liftCo[F].flip
 }

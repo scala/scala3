@@ -162,7 +162,7 @@ abstract class RangeProps(kind: String) extends Properties("Range "+kind) {
         def compare(x: Int, y: Int): Int = ???
       }
 
-    val rSum = r.sum(mynum)
+    val rSum = r.sum(using mynum)
     val expected = mynum.toInt(r.sum)
 
     (rSum == expected) :| str(r)
@@ -238,7 +238,7 @@ object NormalRangeTest extends RangeProps("normal") {
     start <- arbitrary[Int]
     end <- arbitrary[Int]
     if (start.toLong - end.toLong).abs < Int.MaxValue.toLong
-  } yield Range(start, end, if (start < end) 1 else - 1)
+  } yield Range(start, end, if (start < end) 1 else -1)
   property("by 1.size + 1 == inclusive.size") = forAll(genOne) { r =>
     (r.size + 1 == r.inclusive.size) :| str(r)
   }

@@ -11,7 +11,7 @@ object Test {
     case _              => 4
   }
   def g(x: Bippy) = x match {
-    case _: Immutable with Immortal => 1
+    case _: (Immutable & Immortal) => 1
     case _                          => 2
   }
   def h(x: Immutable) = x match {

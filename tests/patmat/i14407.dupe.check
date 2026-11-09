@@ -1,2 +1,4 @@
-6: Match case Unreachable
-0: No Kind
+-- [E030] Match case Unreachable Warning: tests/patmat/i14407.dupe.scala:5:9 ---
+5 |    case `it` => println("dupe") // warning
+  |         ^^^^
+  |         Unreachable case

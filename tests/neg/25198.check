@@ -1,0 +1,15 @@
+-- Error: tests/neg/25198/Main_2.scala:5:11 ----------------------------------------------------------------------------
+5 |    Macros.foo // error - the closure does not refer to an anonymous function
+  |    ^^^^^^^^^^
+  |    Exception occurred while executing macro expansion.
+  |    java.lang.AssertionError: Closures must refer to anonymous functions
+  |    	at Macros$.fooImpl(Macros_1.scala:32)
+  |    	at Macros$.inline$fooImpl(Macros_1.scala:8)
+  |
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from Macros_1.scala:5
+5 |    ${ fooImpl }
+  |    ^^^^^^^^^^^^
+   ---------------------------------------------------------------------------------------------------------------------

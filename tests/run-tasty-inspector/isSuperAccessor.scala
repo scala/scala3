@@ -4,7 +4,7 @@ import scala.tasty.inspector.*
 @main def Test = {
   // Artefact of the current test infrastructure
   // TODO improve infrastructure to avoid needing this code on each test
-  val classpath = dotty.tools.dotc.util.ClasspathFromClassloader(this.getClass.getClassLoader).split(java.io.File.pathSeparator).find(_.contains("runWithCompiler")).get
+  val classpath = dotty.tools.dotc.util.ClasspathFromClassloader(getClass.getClassLoader).split(java.io.File.pathSeparator).find(_.contains("runWithCompiler")).get
   val allTastyFiles = dotty.tools.io.Path(classpath).walkFilter(_.ext == dotty.tools.io.FileExtension.Tasty).map(_.toString).toList
   val tastyFiles = allTastyFiles.filter(_.contains("SyncIterator"))
 

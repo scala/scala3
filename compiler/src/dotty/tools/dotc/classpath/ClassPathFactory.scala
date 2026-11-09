@@ -3,99 +3,122 @@
  */
 package dotty.tools.dotc.classpath
 
-import dotty.tools.io.{AbstractFile, VirtualDirectory}
-import FileUtils.*
-import dotty.tools.io.ClassPath
+import dotty.tools.io.{AbstractFile, Directory, File, Path, PlainFile, VirtualDirectory}
+import dotty.tools.dotc.classpath.FileUtils.isClassContainer
 import dotty.tools.dotc.core.Contexts.*
-import java.nio.file.Files
+import dotty.tools.dotc.interactive.LogicalSourcePath
+import dotty.tools.dotc.interactive.LogicalPackage
+
+import java.net.{URI, URISyntaxException}
+import java.util.Locale
+import java.util.jar.{Attributes, JarInputStream}
 
 /**
  * Provides factory methods for classpath. When creating classpath instances for a given path,
  * it uses proper type of classpath depending on a types of particular files containing sources or classes.
  */
-class ClassPathFactory {
-  /**
-    * Create a new classpath based on the abstract file.
-    */
-  def newClassPath(file: AbstractFile)(using Context): ClassPath = ClassPathFactory.newClassPath(file)
+object ClassPathFactory {
 
   /**
-    * Creators for sub classpaths which preserve this context.
-    */
-  def sourcesInPath(path: String)(using Context): List[ClassPath] =
-    for
-      file <- expandPath(path, expandStar = false)
-      dir <- Option(AbstractFile.getDirectory(file))
-    yield createSourcePath(dir)
+   * Creators for sub classpaths which preserve this context.
+   */
+  def sourcesInPath(path: String, precomputedSourcePackages: Option[LogicalPackage])(using Context): List[ClassPath] =
+    precomputedSourcePackages match {
+      // We also accept files in case of YlogicalPackageLoading
+      case Some(rootPackage) if ctx.settings.YlogicalPackageLoading.value =>
+        List(new LogicalSourcePath(path, rootPackage))
+      case _ =>
+        for
+          file <- ClassPath.expandPath(path, expandStar = false)
+          dir <- Option(AbstractFile.getDirectory(file, ctx.settings.javaOutputVersion.value))
+        yield newSourcePath(dir)
+    }
 
-
-  def expandPath(path: String, expandStar: Boolean = true): List[String] = dotty.tools.io.ClassPath.expandPath(path, expandStar)
-
-  def expandDir(extdir: String): List[String] = dotty.tools.io.ClassPath.expandDir(extdir)
+  /** Expand dir out to contents, a la extdir */
+  private def expandDir(extdir: String)(using Context): List[String] =
+    AbstractFile.getDirectory(extdir, ctx.settings.javaOutputVersion.value) match
+      case null => Nil
+      case dir => dir.iterator.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).toList
 
   def contentsOfDirsInPath(path: String)(using Context): List[ClassPath] =
     for {
-      dir <- expandPath(path, expandStar = false)
+      dir <- ClassPath.expandPath(path, expandStar = false)
       name <- expandDir(dir)
-      entry <- Option(AbstractFile.getDirectory(name))
+      entry <- Option(AbstractFile.getDirectory(name, ctx.settings.javaOutputVersion.value))
     }
     yield newClassPath(entry)
 
-  def classesInExpandedPath(path: String)(using Context): IndexedSeq[ClassPath] =
-    classesInPathImpl(path, expand = true).toIndexedSeq
-
-  def classesInPath(path: String)(using Context): List[ClassPath] = classesInPathImpl(path, expand = false)
-
-  def classesInManifest(useManifestClassPath: Boolean)(using Context): List[ClassPath] =
-    if useManifestClassPath
-    then dotty.tools.io.ClassPath.manifests.map(url => newClassPath(AbstractFile.getResources(url)))
-    else Nil
-
-  // Internal
-  protected def classesInPathImpl(path: String, expand: Boolean)(using Context): List[ClassPath] =
-    val files = for {
-      file <- expandPath(path, expand)
-      dir <- {
-        def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file)) else None
-        Option(AbstractFile.getDirectory(file)).orElse(asImage)
-      }
-    }
-    yield dir
-
+  def classesInPath(path: String, expandStar: Boolean)(using Context): List[ClassPath] =
+    val files: List[AbstractFile] =
+      for
+        file <- ClassPath.expandPath(path, expandStar)
+        dir <- Option(AbstractFile.getDirectory(file, ctx.settings.javaOutputVersion.value))
+      yield dir
     val expanded =
       if scala.util.Properties.propOrFalse("scala.expandjavacp") then
         for
           file <- files
-          a <- ClassPath.expandManifestPath(file.absolutePath)
-          path = java.nio.file.Paths.get(a.toURI())
-          if Files.exists(path)
+          a <- expandManifestPath(file.path)
+          if a.exists
         yield
-          newClassPath(AbstractFile.getFile(path))
+          newClassPath(new PlainFile(a))
       else
         Seq.empty
-
     files.map(newClassPath) ++ expanded
 
-  end classesInPathImpl
 
-  private def createSourcePath(file: AbstractFile)(using Context): ClassPath =
-    if (file.isJarOrZip)
-      ZipAndJarSourcePathFactory.create(file)
-    else if (file.isDirectory)
-      new DirectorySourcePath(file.file.nn)
-    else
-      sys.error(s"Unsupported sourcepath element: $file")
-}
+  /** Expand manifest jar classpath entries: these are either urls, or paths
+   *  relative to the location of the jar.
+   */
+  private def expandManifestPath(jarPath: String): List[Path] =
+    def resolve(entry: String, baseDir: Directory): Option[Path] =
+      // Class-Path may only contain relative URLs, except for the 'file' scheme for compatibility reasons, per
+      // https://docs.oracle.com/en/java/javase/17/docs/specs/jar/jar.html#class-path-attribute
+      val uri =
+        try new URI(entry)
+        catch case _: URISyntaxException => return None
+      if uri.getScheme == null then
+        Some(baseDir.resolve(Path(uri.getPath)))
+      else if uri.getScheme.toLowerCase(Locale.ROOT) == "file" then
+        Some(Path(java.nio.file.Path.of(uri)))
+      else
+        None
 
-object ClassPathFactory {
+    val file = File(jarPath)
+    if !file.isFile then
+      return Nil
+
+    val baseDir = file.parent
+    val in = new JarInputStream(file.inputStream())
+    val manifest =
+      try Option(in.getManifest)
+      finally in.close()
+
+    manifest match
+      case None => Nil
+      case Some(m) =>
+        val attrs = m.getMainAttributes.asInstanceOf[java.util.Map[Attributes.Name, String]]
+        attrs.get(Attributes.Name.CLASS_PATH) match
+          case cp: String if cp.trim().nonEmpty =>
+            cp.split("\\s+").toList.flatMap(elem => resolve(elem, baseDir))
+          case _ => Nil
+
   def newClassPath(file: AbstractFile)(using Context): ClassPath = file match {
     case vd: VirtualDirectory => VirtualDirectoryClassPath(vd)
     case _ =>
-      if (file.isJarOrZip)
+      if (file.ext.isJarOrZip)
         ZipAndJarClassPathFactory.create(file)
       else if (file.isDirectory)
         new DirectoryClassPath(file.file.nn)
       else
         sys.error(s"Unsupported classpath element: $file")
   }
+
+  def newSourcePath(file: AbstractFile)(using Context): ClassPath =
+    if (file.ext.isJarOrZip)
+      ZipAndJarSourcePathFactory.create(file)
+    else if (file.isDirectory)
+      new DirectorySourcePath(file.file.nn)
+    else
+      sys.error(s"Unsupported sourcepath element: $file")
 }

@@ -10,15 +10,25 @@
  * additional information regarding copyright ownership.
  */
 
-// GENERATED CODE: DO NOT EDIT. See scala.Function0 for timestamp.
-
 package scala
 
 import scala.language.`2.13`
 
-/** A function of 4 parameters. */
+/** A function of 4 parameters.
+ *
+ *  @tparam T1 the type of the 1st argument
+ *  @tparam T2 the type of the 2nd argument
+ *  @tparam T3 the type of the 3rd argument
+ *  @tparam T4 the type of the 4th argument
+ *  @tparam R the return type of the function
+ */
 trait Function4[-T1, -T2, -T3, -T4, +R] extends AnyRef {
   /** Applies the body of this function to the arguments.
+   *
+   *  @param v1 the 1st argument
+   *  @param v2 the 2nd argument
+   *  @param v3 the 3rd argument
+   *  @param v4 the 4th argument
    *  @return   the result of function application.
    */
   def apply(v1: T1, v2: T2, v3: T3, v4: T4): R
@@ -39,4 +49,14 @@ trait Function4[-T1, -T2, -T3, -T4, +R] extends AnyRef {
     case ((x1, x2, x3, x4)) => apply(x1, x2, x3, x4)
   }
   override def toString(): String = "<function4>"
+}
+
+object Function4 {
+
+  extension [T1, T2, T3, T4, R](f: (T1, T2, T3, T4) => R)
+    /** Applies this function to the arguments taken from the context.
+     *  @return the result of the function application
+     */
+    def applyUsing(using v1: T1, v2: T2, v3: T3, v4: T4): R = f(v1, v2, v3, v4)
+
 }

@@ -7,7 +7,6 @@ import scala.compiletime.uninitialized
  *  can be obtained by index using `key(index)` and `value(index)`. Values
  *  can also be stored using `setValue(index, value)`.
  *
- *  ome privileged protected access to its internals
  *  @param  initialCapacity  Indicates the initial number of slots in the hash table.
  *                           The actual number of slots is always a power of 2, so the
  *                           initial size of the table will be the smallest power of two

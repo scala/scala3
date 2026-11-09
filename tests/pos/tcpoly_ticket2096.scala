@@ -5,7 +5,7 @@ trait MBrace[C[X] <: MBrace[C,X],A] {
 }
 
 // a monad that is a Seq
-trait MBraceSeq[C[X] <: MBrace[C,X] with Seq[X],A] extends MBrace[C,A]
+trait MBraceSeq[C[X] <: MBrace[C,X] & Seq[X],A] extends MBrace[C,A]
 
 // one of the simplest witnesses of monad i can find
 case class MSequitor[A]( a_ : A* ) extends Seq[A] with MBrace[MSequitor,A]

@@ -20,7 +20,7 @@ import language.experimental.captureChecking
   *  This class is typically used as a mixin. It turns maps which map `K`
   *  to `Set[V]` objects into multimaps that map `K` to `V` objects.
   *
-  *  @example ```
+  *  @example ```scala sc:compile
   *  // first import all necessary types from package `collection.mutable`
   *  import collection.mutable.{ HashMap, MultiMap, Set }
   *

@@ -8,6 +8,7 @@ import com.vladsch.flexmark.util.{ast => mdu, sequence}
 import com.vladsch.flexmark.{ast => mda}
 
 import wiki.WikiDocElement
+import org.junit.Test
 
 abstract class MemberGroupingTests(syntax: String) extends ScaladocTest("groups") {
   import MemberGroupingTests._
@@ -31,7 +32,8 @@ abstract class MemberGroupingTests(syntax: String) extends ScaladocTest("groups"
     "bazz" -> 10
   )
 
-  override def runTest = withModule { module =>
+  @Test
+  def runTest(): Unit = withModule { module =>
     val memberGroups = module.members.values.flatMap { member =>
       member.docs.flatMap(_.group).map(g => member.name -> g)
     }.toMap

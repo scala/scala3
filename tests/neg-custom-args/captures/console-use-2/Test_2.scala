@@ -6,7 +6,7 @@ object Test:
   def f() =
     Console.println("hello") // error
 
-object Good uses Console uses_init Console:
+object Good uses Console initially, Console:
   Console.println("hello")
 
   def f() =

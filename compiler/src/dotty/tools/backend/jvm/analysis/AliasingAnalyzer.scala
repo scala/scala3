@@ -17,9 +17,9 @@ package analysis
 import scala.annotation.switch
 import scala.collection.AbstractIterator
 import scala.collection.mutable
-import scala.tools.asm.Opcodes
-import scala.tools.asm.tree.*
-import scala.tools.asm.tree.analysis.*
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.tree.analysis.*
 import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
 
 /**
@@ -52,7 +52,7 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
    *  - If `aliases(i) contains j` then `aliases(i) eq aliases(j)`, i.e., they are references to the
    *    same (mutable) AliasSet.
    */
-  val aliases: Array[AliasSet | Null] = new Array[AliasSet | Null](getLocals + getMaxStackSize)
+  val aliases: Array[AliasSet | Null] = new Array[AliasSet | Null](nLocals + nStack)
 
   /**
    * The set of aliased values for a given entry in the `values` array.
@@ -357,7 +357,7 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
     super.init(src) // very quick (just an arraycopy)
     System.arraycopy(src.asInstanceOf[AliasingFrame[?]].aliases, 0, aliases, 0, aliases.length) // also quick
 
-    val newSets = mutable.HashMap.empty[AliasSet, AliasSet]
+    val newSets = mutable.Map.empty[AliasSet, AliasSet]
 
     // the rest of this method (cloning alias sets) is the second performance˙hotspot (next to
     // AliasingFrame.merge). for nullness, it takes ~20% of the analysis time.
@@ -412,12 +412,8 @@ class AliasingAnalyzer[V <: Value](interpreter: Interpreter[V]) extends Analyzer
   override def newFrame(src: Frame[? <: V]): AliasingFrame[V] = new AliasingFrame(src)
 }
 
-// Marker trait for AsmAnalyzers that use AliasingFrame
-trait AliasingAsmAnalyzerMarker
-
 class BasicAliasingAnalyzer(methodNode: MethodNode, classInternalName: String)
   extends AsmAnalyzer[BasicValue](methodNode, classInternalName, new AliasingAnalyzer(new BasicInterpreter))
-    with AliasingAsmAnalyzerMarker
 
 /**
  * An iterator over Int (required to prevent boxing the result of next).
@@ -512,9 +508,7 @@ object AliasSet {
     else {
       var newLength = set.length
       while (index >= newLength) newLength *= 2
-      val newSet = new Array[Long](newLength)
-      Array.copy(set, 0, newSet, 0, set.length)
-      newSet
+      Array.copyOf(set, newLength)
     }
   }
 

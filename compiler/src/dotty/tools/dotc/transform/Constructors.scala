@@ -45,10 +45,10 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     // to more symbols being retained as parameters. Test case in run/capturing.scala.
 
   /** The private vals that are known to be retained as class fields */
-  private val retainedPrivateVals = mutable.Set[Symbol]()
+  private val retainedPrivateVals = mutable.Set.empty[Symbol]
 
   /** The private vals whose definition comes before the current focus */
-  private val seenPrivateVals = mutable.Set[Symbol]()
+  private val seenPrivateVals = mutable.Set.empty[Symbol]
 
   // Collect all private parameter accessors and value definitions that need
   // to be retained. There are several reasons why a parameter accessor or
@@ -66,19 +66,30 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     if (sym.exists && sym.owner.isClass && mightBeDropped(sym)) {
       val owner = sym.owner.asClass
 
-        tree match {
-          case Ident(_) | Select(This(_), _) =>
-            def inConstructor = {
-              val method = ctx.owner.enclosingMethod
-              method.isPrimaryConstructor && ctx.owner.enclosingClass == owner
+      tree match {
+        case Ident(_) | Select(This(_), _) =>
+          val method = ctx.owner.enclosingMethod
+          // template exprs are moved below to constructor; lifted anonfun takes captured env as an arg
+          def checkAnonFun(meth: Symbol): Boolean =
+            meth.isAnonymousFunction
+            && {
+              val owner = meth.owner
+                 owner.isLocalDummy
+              || owner.owner == sym.owner && !owner.isOneOf(MethodOrLazy)
+              || checkAnonFun(owner.enclosingMethod)
             }
-            if (inConstructor &&
-                (sym.is(ParamAccessor) || seenPrivateVals.contains(sym))) {
-              // used inside constructor, accessed on this,
-              // could use constructor argument instead, no need to retain field
-            }
-            else retain()
-          case _ => retain()
+          // restriction on module because lambdalift doesn't transform correctly (to do)
+          val inConstructor =
+               (method.isPrimaryConstructor || !sym.owner.is(Module) && !sym.is(Mutable) && checkAnonFun(method))
+            && ctx.owner.enclosingClass == sym.owner
+          val noField =
+               inConstructor
+            && (sym.is(ParamAccessor) || seenPrivateVals.contains(sym))
+            // used inside constructor, accessed on this,
+            // could use constructor argument instead, no need to retain field
+          if !noField then
+            retain()
+        case _ => retain()
       }
     }
   }
@@ -209,7 +220,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       }
     }
 
-    val dropped = mutable.Set[Symbol]()
+    val dropped = mutable.Set.empty[Symbol]
 
     // Split class body into statements that go into constructor and
     // definitions that are kept as members of the class.
@@ -231,7 +242,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
               constrStats += intoConstr(stat, sym)
             } else
               dropped += sym
-          case stat @ DefDef(name, _, tpt, _) if stat.symbol.isGetter && !stat.symbol.is(Lazy) =>
+          case stat @ DefDef(name, _, tpt, _) if stat.symbol.isGetter && !stat.symbol.is(Lazy) && !stat.symbol.owner.isInlineTrait =>
             val sym = stat.symbol
             assert(isRetained(sym), sym)
             if sym.isConstExprFinalVal then
@@ -281,7 +292,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
      *  name `x$field` instead of `FieldName(x).
      */
     def checkNoFieldClashes() =
-      val fieldNames = mutable.HashSet[Name]()
+      val fieldNames = mutable.Set.empty[Name]
       for case field: ValDef <- clsStats do
         field.symbol.name match
           case FieldName(_) =>

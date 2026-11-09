@@ -1,0 +1,10 @@
+-- Error: tests/neg-custom-args/captures/except-top.scala:7:33 ---------------------------------------------------------
+7 |def onlyCap(c: Object^): Object^{c.only[Capability]} = ??? // error
+  |                                 ^^^^^^^^^^^^^^^^^^
+  |               c.only[Capability] is not well-formed since trait Capability is not a classifier class.
+  |               A classifier class is a class extending `caps.Capability` and directly extending `caps.Classifier`.
+-- Error: tests/neg-custom-args/captures/except-top.scala:8:35 ---------------------------------------------------------
+8 |def exceptCap(c: Object^): Object^{c.except[Capability]} = ??? // error
+  |                                   ^^^^^^^^^^^^^^^^^^^^
+  |               c.except[Capability] is not well-formed since trait Capability is not a classifier class.
+  |               A classifier class is a class extending `caps.Capability` and directly extending `caps.Classifier`.

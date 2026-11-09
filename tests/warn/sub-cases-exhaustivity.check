@@ -14,7 +14,59 @@
    |  It would fail on pattern case: E.B(_)
    |
    | longer explanation available when compiling with `-explain`
--- [E030] Match case Unreachable Warning: tests/warn/sub-cases-exhaustivity.scala:32:9 ---------------------------------
-32 |    case A(_) => 3 // warn: unreacheable
-   |         ^^^^
-   |         Unreachable case
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/sub-cases-exhaustivity.scala:40:2 -----------------------------
+40 |  w match // warn: match may not be exhaustive: It would fail on pattern case: Wrapper(Red)
+   |  ^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: Wrapper(Red)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/sub-cases-exhaustivity.scala:46:2 -----------------------------
+46 |  c match // warn: match may not be exhaustive: It would fail on pattern case: Color.Blue
+   |  ^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: Blue
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/sub-cases-exhaustivity.scala:53:2 -----------------------------
+53 |  c match // warn: match may not be exhaustive: It would fail on pattern case: Color.Blue
+   |  ^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: Blue
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/sub-cases-exhaustivity.scala:61:54 ----------------------------
+61 |def tupleFirstMissing(pair: (Color, Color)): String = pair match // warn
+   |                                                      ^^^^
+   |                                                      match may not be exhaustive.
+   |
+   |                                                      It would fail on pattern case: (Blue, _)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/sub-cases-exhaustivity.scala:66:55 ----------------------------
+66 |def tupleSecondMissing(pair: (Color, Color)): String = pair match // warn
+   |                                                       ^^^^
+   |                                                       match may not be exhaustive.
+   |
+   |                                                       It would fail on pattern case: (_, Blue)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/sub-cases-exhaustivity.scala:71:45 ----------------------------
+71 |def typedGuardedSubcases(s: Shape): String = s match // warn
+   |                                             ^
+   |                                             match may not be exhaustive.
+   |
+   |                                             It would fail on pattern case: Circle(_)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/sub-cases-exhaustivity.scala:82:46 ----------------------------
+82 |def fieldAccessMissing(d: Document): String = d match // warn
+   |                                              ^
+   |                                              match may not be exhaustive.
+   |
+   |                                              It would fail on pattern case: Document(_, Legacy)
+   |
+   | longer explanation available when compiling with `-explain`

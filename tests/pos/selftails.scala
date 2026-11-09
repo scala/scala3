@@ -5,7 +5,7 @@ package net.liftweb.util
 /**
 * This trait adds functionality to Scala standard types
 */
-trait BasicTypesHelpers { self: StringHelpers with ControlHelpers =>
+trait BasicTypesHelpers { self: StringHelpers & ControlHelpers =>
 
   /**
    * Compare two arrays of Byte for byte equality.

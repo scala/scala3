@@ -34,28 +34,36 @@ object PositionPickler:
       addrOfTree: TreeToAddr,
       treeAnnots: untpd.MemberDef => List[tpd.Tree],
       typeAnnots: List[tpd.Tree],
-      relativePathReference: String,
       source: SourceFile,
       roots: List[Tree],
-      warnings: mutable.ListBuffer[Message],
       buf: TastyBuffer = new TastyBuffer(5000),
       pickledIndices: mutable.BitSet = new mutable.BitSet) =
 
     pickler.newSection(PositionsSection, buf)
 
-    /** Pickle the number of lines followed by the length of each line */
-    def pickleLineOffsets(): Unit = {
-      val content = source.content()
-      buf.writeNat(content.count(_ == '\n') + 1) // number of lines
-      var lastIndex = content.indexOf('\n', 0)
-      buf.writeNat(lastIndex) // size of first line
+    /** Pickle the number of lines followed by the size of each line */
+    def pickleLinesSizes(): Unit = {
+      val content = source.textContent()
+      // Inlined and simplified version of `count` because this is hot,
+      // and we can't have the optimizer inline the stdlib into the compiler as it may run under a different stdlib.
+      // Note that we start at 1 since #lines = #separators + 1.
+      var lineCount = 1
+      var idx = -1
+      while
+        idx = content.indexOf('\n', idx + 1)
+        idx != -1
+      do
+        lineCount += 1
+      buf.writeNat(lineCount)
+      var lastIndex = content.indexOf('\n')
+      buf.writeNat(if lastIndex != -1 then lastIndex else content.length) // size of first line
       while lastIndex != -1 do
         val nextIndex = content.indexOf('\n', lastIndex + 1)
         val end = if nextIndex != -1 then nextIndex else content.length
         buf.writeNat(end - lastIndex - 1) // size of the next line
         lastIndex = nextIndex
     }
-    pickleLineOffsets()
+    pickleLinesSizes()
 
     var lastIndex = 0
     var lastSpan = Span(0, 0)
@@ -79,8 +87,7 @@ object PositionPickler:
 
     def pickleSource(source: SourceFile): Unit = {
       buf.writeInt(SOURCE)
-      val relativePath = SourceFile.relativePath(source, relativePathReference)
-      buf.writeInt(pickler.nameBuffer.nameIndex(relativePath.toTermName).index)
+      buf.writeInt(pickler.nameBuffer.nameIndex(source.pathRelativeToSourceRoot.toTermName).index)
     }
 
     /** True if x's position shouldn't be reconstructed automatically from its initial span

@@ -19,7 +19,6 @@ import printing.Printer
 import SymDenotations.NoDenotation
 
 import collection.mutable
-import scala.compiletime.uninitialized
 
 object Scopes {
 
@@ -31,7 +30,7 @@ object Scopes {
    *  This value must be a power of two, so that the index of an element can
    *  be computed as element.hashCode & (hashTable.length - 1)
    */
-  inline val MinHashedScopeSize = 8
+  private inline val MinHashedScopeSize = 8
 
   /** The maximal permissible number of recursions when creating
    *  a hashtable
@@ -42,7 +41,7 @@ object Scopes {
    *  the given name in the given context. Returns `NoSymbol` if the
    *  no symbol should be synthesized for the given name.
    */
-  type SymbolSynthesizer = Name => Context ?=> Symbol
+  private type SymbolSynthesizer = Name => Context ?=> Symbol
 
   class ScopeEntry private[Scopes] (val name: Name, _sym: Symbol, val owner: Scope) {
 
@@ -94,26 +93,13 @@ object Scopes {
     def foreach[U](f: Symbol => U)(using Context): Unit = toList.foreach(f)
 
     /** Selects all Symbols of this Scope which satisfy a predicate. */
-    def filter(p: Symbol => Boolean)(using Context): List[Symbol] = {
-      ensureComplete()
-      var syms: List[Symbol] = Nil
-      var e = lastEntry
-      while ((e != null) && e.owner == this) {
-        val sym = e.sym
-        if (p(sym)) syms = sym :: syms
-        e = e.prev
-      }
-      syms
-    }
+    def filter(p: Symbol => Boolean)(using Context): List[Symbol] = toList.filter(p)
 
     /** Tests whether a predicate holds for at least one Symbol of this Scope. */
-    def exists(p: Symbol => Boolean)(using Context): Boolean = filter(p).nonEmpty
+    def exists(p: Symbol => Boolean)(using Context): Boolean = toList.exists(p)
 
     /** Finds the first Symbol of this Scope satisfying a predicate, if any. */
-    def find(p: Symbol => Boolean)(using Context): Symbol = filter(p) match {
-      case sym :: _ => sym
-      case _ => NoSymbol
-    }
+    def find(p: Symbol => Boolean)(using Context): Symbol = toList.find(p).getOrElse(NoSymbol)
 
     /** Returns a new mutable scope with the same content as this one. */
     def cloneScope(using Context): MutableScope
@@ -135,7 +121,11 @@ object Scopes {
     final def lookupAll(name: Name)(using Context): Iterator[Symbol] = new Iterator[Symbol] {
       var e = lookupEntry(name)
       def hasNext: Boolean = e != null
-      def next(): Symbol = { val r = e.nn.sym; e = lookupNextEntry(e.uncheckedNN); r }
+      def next(): Symbol = e match
+        case null => throw new NoSuchElementException()
+        case ee =>
+          e = lookupNextEntry(ee)
+          ee.sym
     }
 
     /** Does this scope contain a reference to `sym` when looking up `name`? */
@@ -179,8 +169,10 @@ object Scopes {
             result.nn.enter(newName, sym)
         else
           drop()
-      // TODO: improve flow typing to handle this case
-      if result == null then this else result.uncheckedNN
+      // TODO: `if result == null then this else result` should work here, improve flow typing to handle it
+      result match
+        case null => this
+        case r => r
 
     def implicitDecls(using Context): List[TermRef] = Nil
 
@@ -199,9 +191,7 @@ object Scopes {
 
   /** A subclass of Scope that defines methods for entering and
    *  unlinking entries.
-   *  Note: constructor is protected to force everyone to use the factory methods newScope or newNestedScope instead.
-   *  This is necessary because when run from reflection every scope needs to have a
-   *  SynchronizedScope as mixin.
+   *  Note: constructor is protected to force everyone to use the factory methods instead.
    */
   class MutableScope protected[Scopes](initElems: ScopeEntry | Null, initSize: Int, val nestingLevel: Int)
       extends Scope {
@@ -219,7 +209,6 @@ object Scopes {
     private var _size = initSize
 
     override final def size: Int = _size
-    private def size_= (x: Int) = _size = x
 
     /** the hash table
      */
@@ -257,21 +246,22 @@ object Scopes {
 
     /** create and enter a scope entry with given name and symbol */
     protected def newScopeEntry(name: Name, sym: Symbol)(using Context): ScopeEntry = {
-      ensureCapacity(if (hashTable != null) hashTable.uncheckedNN.length else MinHashedScopeSize)
+      ensureCapacity(hashTable match { case null => MinHashedScopeSize; case ht => ht.length })
       val e = new ScopeEntry(name, sym, this)
       e.prev = lastEntry
       lastEntry = e
       if (hashTable != null) enterInHash(e)
-      size += 1
+      _size += 1
       elemsCache = null
       e
     }
 
     private def enterInHash(e: ScopeEntry)(using Context): Unit = {
-      val idx = e.name.hashCode & (hashTable.nn.length - 1)
-      e.tail = hashTable.nn(idx)
+      val ht = hashTable.nn // cannot be null here
+      val idx = e.name.hashCode & (ht.length - 1)
+      e.tail = ht(idx)
       assert(e.tail != e)
-      hashTable.nn(idx) = e
+      ht(idx) = e
     }
 
     /** enter a symbol in this scope. */
@@ -329,18 +319,19 @@ object Scopes {
         while (e1.prev != e) e1 = e1.prev.nn
         e1.prev = e.prev
       }
-      if (hashTable != null) {
-        val index = e.name.hashCode & (hashTable.nn.length - 1)
-        var e1 = hashTable.nn(index)
+      val ht = hashTable
+      if (ht != null) {
+        val index = e.name.hashCode & (ht.length - 1)
+        var e1 = ht(index)
         if (e1 == e)
-          hashTable.nn(index) = e.tail
+          ht(index) = e.tail
         else {
           while (e1.nn.tail != e) e1 = e1.nn.tail
           e1.nn.tail = e.tail
         }
       }
       elemsCache = null
-      size -= 1
+      _size -= 1
     }
 
     /** remove symbol from this scope if it is present */
@@ -373,8 +364,9 @@ object Scopes {
      */
     override def lookupEntry(name: Name)(using Context): ScopeEntry | Null = {
       var e: ScopeEntry | Null = null
-      if (hashTable != null) {
-        e = hashTable.nn(name.hashCode & (hashTable.nn.length - 1))
+      val ht = hashTable
+      if (ht != null) {
+        e = ht(name.hashCode & (ht.length - 1))
         while ((e != null) && e.name != name)
           e = e.tail
       }
@@ -383,21 +375,24 @@ object Scopes {
         while ((e != null) && e.name != name)
           e = e.prev
       }
-      if ((e == null) && (synthesize != null)) {
-        val sym = synthesize.uncheckedNN(name)
-        if (sym.exists) newScopeEntry(sym.name, sym) else e
-      }
-      else e
+      if e != null then e
+      else synthesize match
+        case null => null
+        case s =>
+          val sym = s(name)
+          if (sym.exists) newScopeEntry(sym.name, sym) else e
     }
 
     /** lookup next entry with same name as this one */
     override final def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry | Null = {
-      var e: ScopeEntry | Null = entry
-      if (hashTable != null)
-        while ({ e = e.nn.tail ; (e != null) && e.uncheckedNN.name != entry.name }) ()
+      if hashTable != null then
+        var e: ScopeEntry | Null = entry.tail
+        while e != null && e.name != entry.name do e = e.tail
+        e
       else
-        while ({ e = e.nn.prev ; (e != null) && e.uncheckedNN.name != entry.name }) ()
-      e
+        var e: ScopeEntry | Null = entry.prev
+        while e != null && e.name != entry.name do e = e.prev
+        e
     }
 
     /** Returns all symbols as a list in the order they were entered in this scope.
@@ -418,7 +413,7 @@ object Scopes {
 
     override def implicitDecls(using Context): List[TermRef] = {
       ensureComplete()
-      var irefs = new mutable.ListBuffer[TermRef]
+      val irefs = new mutable.ListBuffer[TermRef]
       var e = lastEntry
       while (e != null) {
         if (e.sym.isOneOf(GivenOrImplicitVal)) {
@@ -455,20 +450,12 @@ object Scopes {
 
   def newScope(nestingLevel: Int): MutableScope = new MutableScope(nestingLevel)
 
-  /** Create a new scope nested in another one with which it shares its elements */
-  def newNestedScope(outer: Scope)(using Context): MutableScope = new MutableScope(outer)
-
   /** Create a new scope with given initial elements */
   def newScopeWith(elems: Symbol*)(using Context): MutableScope = {
     val scope = newScope
     elems foreach scope.enter
     scope
   }
-
-  /** Transform scope of members of `owner` using operation `op`
-   *  This is overridden by the reflective compiler to avoid creating new scopes for packages
-   */
-  def scopeTransform(owner: Symbol)(op: => MutableScope): MutableScope = op
 
   /** The empty scope (immutable).
    */

@@ -4,7 +4,8 @@ package transform
 
 import core.*
 import Annotations.Annotation
-import Symbols.*, Types.*, Contexts.*, Flags.*, Decorators.*, reporting.*
+import Symbols.*, Types.*, Contexts.*, Flags.*, Decorators.*, StdNames.*, reporting.*
+import NullOpsDecorator.*
 import util.SrcPos
 import config.{ScalaVersion, NoScalaVersion, Feature}
 import MegaPhase.MiniPhase
@@ -32,15 +33,18 @@ class CrossVersionChecks extends MiniPhase:
       checkMigration(sym, pos, xMigrationValue)
   end checkUndesiredProperties
 
-  private def checkExperimentalAnnots(sym: Symbol)(using Context): Unit =
-    if sym.exists && !sym.isInExperimentalScope then
-      for annot <- sym.annotations if annot.symbol.isExperimental do
-        Feature.checkExperimentalDef(annot.symbol, annot.tree)
-
-  private def checkDeprecatedAnnots(sym: Symbol)(using Context): Unit =
+  private def checkExperimentalAndDeprecatedAnnots(sym: Symbol)(using Context): Unit =
     if sym.exists then
-      for annot <- sym.annotations if annot.symbol.isDeprecated do
-        checkDeprecatedRef(annot.symbol, annot.tree.srcPos)
+      for annot <- sym.annotations do
+        // Check whether the annotation itself is deprecated,
+        if annot.symbol.isDeprecated then
+          checkDeprecatedRef(annot.symbol, annot.tree.srcPos)
+        // and whether the annotation constructor is.
+        if annot.tree.symbol.isDeprecated then
+          checkDeprecatedRef(annot.tree.symbol, annot.tree.srcPos)
+      if !sym.isInExperimentalScope then
+        for annot <- sym.annotations if annot.symbol.isExperimental do
+          Feature.checkExperimentalDef(annot.symbol, annot.tree)
 
   /** If @migration is present (indicating that the symbol has changed semantics between versions),
    *  emit a warning.
@@ -106,22 +110,19 @@ class CrossVersionChecks extends MiniPhase:
   override def transformValDef(tree: ValDef)(using Context): ValDef =
     checkUnrollMemberDef(tree)
     checkDeprecatedOvers(tree)
-    checkExperimentalAnnots(tree.symbol)
-    checkDeprecatedAnnots(tree.symbol)
+    checkExperimentalAndDeprecatedAnnots(tree.symbol)
     tree
 
   override def transformDefDef(tree: DefDef)(using Context): DefDef =
     checkUnrollMemberDef(tree)
     checkDeprecatedOvers(tree)
-    checkExperimentalAnnots(tree.symbol)
-    checkDeprecatedAnnots(tree.symbol)
+    checkExperimentalAndDeprecatedAnnots(tree.symbol)
     tree
 
   override def transformTypeDef(tree: TypeDef)(using Context): TypeDef =
     // TODO do we need to check checkDeprecatedOvers(tree)?
     checkUnrollMemberDef(tree)
-    checkExperimentalAnnots(tree.symbol)
-    checkDeprecatedAnnots(tree.symbol)
+    checkExperimentalAndDeprecatedAnnots(tree.symbol)
     tree
 
   override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree =
@@ -183,6 +184,28 @@ end CrossVersionChecks
 object CrossVersionChecks:
   val name: String = "crossVersionChecks"
   val description: String = "check issues related to deprecated and experimental"
+
+  /** In `sigPoly(args).asInstanceOf[T]`, the call returns Object unless the cast's expected type set its
+   *  result type, which is deprecated. Unlike in Java, the cast itself does not set the result type.
+   */
+  def checkSignaturePolymorphicCast(tree: tpd.TypeApply)(using Context): Unit = tree match
+    case tpd.TypeApply(tpd.Select(app @ tpd.Apply(fn, _), nme.asInstanceOf_), targ :: Nil) =>
+      val sigPoly = fn.symbol.originalSignaturePolymorphic
+      if sigPoly.exists && sigPoly.info.resultType.stripNull().isRef(defn.ObjectClass) then
+        def erasesToObject(tp: Type) = TypeErasure.erasure(tp).isRef(defn.ObjectClass)
+        val name = sigPoly.symbol.name
+        val resTp = app.tpe.widen
+        if !erasesToObject(resTp) then
+          report.deprecationWarning(
+            em"""using the cast to set the result type of signature polymorphic method $name is deprecated;
+                |use a type ascription instead: `(... : ${resTp.stripNull()})`""",
+            app.srcPos)
+        else if !erasesToObject(targ.tpe) then
+          report.warning(
+            em"""the cast does not set the result type of signature polymorphic method $name, the call returns Object;
+                |use a type ascription instead: `(... : ${targ.tpe})`""",
+            app.srcPos)
+    case _ =>
 
   /** Check that a reference to an experimental definition with symbol `sym` meets cross-version constraints
    *  for `@deprecated`, `@experimental` and `@preview`.

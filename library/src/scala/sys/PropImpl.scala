@@ -13,10 +13,16 @@
 package scala
 package sys
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.collection.mutable
 
-/** The internal implementation of scala.sys.Prop. */
+/** The internal implementation of scala.sys.Prop.
+ *
+ *  @tparam T the type of the property value after conversion from `String`
+ *  @param key the system property key used to look up the value
+ *  @param valueFn the function that converts the raw `String` property value to type `T`
+ */
 private[sys] class PropImpl[+T](val key: String, valueFn: String => T) extends Prop[T] {
   def value: T = if (isSet) valueFn(get) else zero
   def isSet    = underlying contains key
@@ -43,9 +49,9 @@ private[sys] class PropImpl[+T](val key: String, valueFn: String => T) extends P
   protected def underlying: mutable.Map[String, String | Null] = scala.sys.props
   protected def zero: T = null.asInstanceOf[T]
   private def getString = if (isSet) "currently: " + get else "unset"
-  override def toString() = "%s (%s)".format(key, getString)
+  override def toString() = s"$key ($getString)"
 }
 
 private[sys] abstract class CreatorImpl[+T](f: String => T) extends Prop.Creator[T] {
-  def apply(key: String): Prop[T] = new PropImpl[T](key, f)
+  def apply(key: String): Prop[T]^{f} = new PropImpl[T](key, f)
 }

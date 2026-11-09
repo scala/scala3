@@ -1,7 +1,7 @@
 
 package t8013
 
-// perverse macro to confuse Xlint
+// perverse macro to confuse Wshadow
 
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context

@@ -1,4 +1,4 @@
-//> using options -language:experimental.packageObjectValues
+//> using options -preview
 
 package object p { }
 

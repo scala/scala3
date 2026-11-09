@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import java.util.Comparator
 import scala.annotation.migration
@@ -30,10 +31,16 @@ import scala.annotation.migration
  *    1. symmetric: `equiv(x, y) == equiv(y, x)` for any `x` and `y` of type `T`.
  *    1. transitive: if `equiv(x, y) == true` and `equiv(y, z) == true`, then
  *       `equiv(x, z) == true` for any `x`, `y`, and `z` of type `T`.
+ *
+ *  @tparam T the type of values being compared for equivalence
  */
 
 trait Equiv[T] extends Any with Serializable {
-  /** Returns `true` iff `x` is equivalent to `y`. */
+  /** Returns `true` iff `x` is equivalent to `y`.
+   *
+   *  @param x the first value to compare
+   *  @param y the second value to compare
+   */
   def equiv(x: T, y: T): Boolean
 }
 
@@ -59,10 +66,10 @@ object Equiv extends LowPriorityEquiv {
   def fromComparator[T](cmp: Comparator[T]): Equiv[T] = {
     (x, y) => cmp.compare(x, y) == 0
   }
-  def fromFunction[T](cmp: (T, T) => Boolean): Equiv[T] = {
+  def fromFunction[T](cmp: (T, T) -> Boolean): Equiv[T] = {
     (x, y) => cmp(x, y)
   }
-  def by[T, S: Equiv](f: T => S): Equiv[T] =
+  def by[T, S: Equiv](f: T -> S): Equiv[T] =
     ((x, y) => implicitly[Equiv[S]].equiv(f(x), f(y)))
 
   @inline def apply[T: Equiv]: Equiv[T] = implicitly[Equiv[T]]
@@ -72,7 +79,7 @@ object Equiv extends LowPriorityEquiv {
   private final val optionSeed   = 43
   private final val iterableSeed = 47
 
-  private final class IterableEquiv[CC[X] <: Iterable[X], T](private val eqv: Equiv[T]) extends Equiv[CC[T]] {
+  private final class IterableEquiv[CC[X] <: Iterable[X]^, T](private val eqv: Equiv[T]) extends Equiv[CC[T]] {
     def equiv(x: CC[T], y: CC[T]): Boolean = {
       val xe = x.iterator
       val ye = y.iterator
@@ -89,16 +96,27 @@ object Equiv extends LowPriorityEquiv {
       case that: IterableEquiv[?, ?]     => this.eqv == that.eqv
       case _                             => false
     }
-    override def hashCode(): Int = eqv.hashCode() * iterableSeed
+    override def hashCode(): Int = eqv.## * iterableSeed
   }
 
   trait ExtraImplicits {
     /** Not in the standard scope due to the potential for divergence:
      *  For instance `implicitly[Equiv[Any]]` diverges in its presence.
+     *
+     *  @tparam CC the collection type constructor, a subtype of `Seq` (e.g., `List`, `Vector`)
+     *  @tparam T the element type of the collection
+     *  @param eqv the `Equiv` instance used to compare individual elements of type `T`
+     *  @return an `Equiv` for sequences of type `CC[T]` that compares them element-by-element using `eqv`
      */
     implicit def seqEquiv[CC[X] <: scala.collection.Seq[X], T](implicit eqv: Equiv[T]): Equiv[CC[T]] =
       new IterableEquiv[CC, T](eqv)
 
+    /**
+     *  @tparam CC the collection type constructor, a subtype of `SortedSet`
+     *  @tparam T the element type of the collection
+     *  @param eqv the `Equiv` instance used to compare individual elements of type `T`
+     *  @return an `Equiv` for sorted sets of type `CC[T]` that compares them element-by-element in iteration order using `eqv`
+     */
     implicit def sortedSetEquiv[CC[X] <: scala.collection.SortedSet[X], T](implicit eqv: Equiv[T]): Equiv[CC[T]] =
       new IterableEquiv[CC, T](eqv)
   }
@@ -258,7 +276,7 @@ object Equiv extends LowPriorityEquiv {
       case that: OptionEquiv[?]         => this.eqv == that.eqv
       case _                            => false
     }
-    override def hashCode(): Int = eqv.hashCode() * optionSeed
+    override def hashCode(): Int = eqv.## * optionSeed
   }
 
   implicit def Tuple2[T1, T2](implicit eqv1: Equiv[T1], eqv2: Equiv[T2]): Equiv[(T1, T2)] =

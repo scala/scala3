@@ -77,10 +77,18 @@ object NameOps {
     def isAnonymousFunctionName: Boolean = name.startsWith(str.ANON_FUN)
     def isUnapplyName: Boolean = name == nme.unapply || name == nme.unapplySeq
     def isRightAssocOperatorName: Boolean = name.lastPart.last == ':'
+    def isSpecializedTraitInterfaceName: Boolean = name.toString.contains(str.SPECIALIZED_TRAIT_SUFFIX)
+    def isSpecializedTraitImplementationName: Boolean = name.toString.contains(str.SPECIALIZED_TRAIT_IMPL_SUFFIX)
+    def isRawSpecializedTraitImplementationName: Boolean = name.toString.endsWith(str.SPECIALIZED_TRAIT_IMPL_SUFFIX)
+
+    /** Optionally, if name is a selector name `_i`, its index i - 1 */
+    def selectorIndex: Option[Int] =
+      if isSelectorName then name.toString.tail.toIntOption.map(_ - 1)
+      else None
 
     /** Does this name match `[{letter | digit} '_'] op`?
       *
-      * See examples in [[NameOpsTest]].
+      * See examples in NameOpsTest.
       */
     def isOperatorName: Boolean =
       name match
@@ -89,7 +97,7 @@ object NameOps {
           // Ends with operator characters
           while i >= 0 && isOperatorPart(name(i)) do i -= 1
           if i == -1 then return true
-          // Optionnally prefixed with alpha-numeric characters followed by `_`
+          // Optionally prefixed with alpha-numeric characters followed by `_`
           if name(i) != '_' then return false
           while i >= 0 && isIdentifierPart(name(i)) do i -= 1
           i == -1
@@ -188,9 +196,9 @@ object NameOps {
       }
     }
 
-    /** Do two target names match? An empty target name matchws any other name. */
+    /** Do two target names match? An empty target name matches any other name. */
     def matchesTargetName(other: Name) =
-      name == other || name.isEmpty || other.isEmpty
+      name.isEmpty || other.isEmpty || name == other
 
     private def functionSuffixStart: Int =
       val first = name.firstPart
@@ -200,14 +208,7 @@ object NameOps {
           idx = idx - 1
           idx >= 8 && first(idx).isDigit
         do ()
-        if    first(idx - 7) == 'F'
-           && first(idx - 6) == 'u'
-           && first(idx - 5) == 'n'
-           && first(idx - 4) == 'c'
-           && first(idx - 3) == 't'
-           && first(idx - 2) == 'i'
-           && first(idx - 1) == 'o'
-           && first(idx)     == 'n'
+        if first.startsWith("Function", idx - 7)
         then idx - 7
         else -1
       else -1

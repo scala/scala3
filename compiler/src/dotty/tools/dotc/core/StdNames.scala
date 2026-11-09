@@ -26,6 +26,9 @@ object StdNames {
     inline val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks
     inline val ANON_CLASS               = "$anon"
     inline val ANON_FUN                 = "$anonfun"
+    inline val SPECIALIZED_TRAIT_SUFFIX = "$$sp"
+    inline val SPECIALIZED_TRAIT_IMPL_SUFFIX = "$impl"
+    inline val SPECIALIZED_TRAIT_TYPE_SEP = "$"
 
     inline val REPL_SESSION_LINE  = "rs$line$"
     inline val REPL_ASSIGN_SUFFIX = "$assign"
@@ -49,7 +52,7 @@ object StdNames {
     protected implicit def fromString(s: String): N
     protected def fromName(name: Name): N = fromString(name.toString)
 
-    private val kws = mutable.Set[N]()
+    private val kws = mutable.Set.empty[N]
     protected def kw(name: N): N = { kws += name; name }
 
     final val keywords: collection.Set[N] = kws
@@ -134,7 +137,9 @@ object StdNames {
     val OPS_PACKAGE: N                = "<special-ops>"
     val OVERLOADED: N                 = "<overloaded>"
     val PACKAGE: N                    = "package"
+    val PACKAGE_INFO: N               = "package-info"
     val ROOT: N                       = "<root>"
+    val SPEC: N                       = "$spec"
     val SPECIALIZED_SUFFIX: N         = "$sp"
     val SUPER_PREFIX: N               = "super$"
     val WHILE_PREFIX: N               = "while$"
@@ -202,6 +207,7 @@ object StdNames {
     final val NotNull: N             = "NotNull"
     final val Null: N                = "Null"
     final val Object: N              = "Object"
+    final val FlexibleType : N       = "<FlexibleType>"
     final val FromJavaObject: N      = "<FromJavaObject>"
     final val Record: N              = "Record"
     final val Product: N             = "Product"
@@ -271,16 +277,19 @@ object StdNames {
     final val MethodParametersATTR: N             = "MethodParameters"
     final val LineNumberTableATTR: N              = "LineNumberTable"
     final val LocalVariableTableATTR: N           = "LocalVariableTable"
+    final val RecordATTR: N                       = "Record"
     final val RuntimeVisibleAnnotationATTR: N     = "RuntimeVisibleAnnotations"   // RetentionPolicy.RUNTIME
     final val RuntimeInvisibleAnnotationATTR: N   = "RuntimeInvisibleAnnotations" // RetentionPolicy.CLASS
     final val RuntimeParamAnnotationATTR: N       = "RuntimeVisibleParameterAnnotations" // RetentionPolicy.RUNTIME (annotations on parameters)
+    final val RuntimeVisibleTypeAnnotationATTR: N   = "RuntimeVisibleTypeAnnotations"   // RetentionPolicy.RUNTIME (annotations on types)
+    final val RuntimeInvisibleTypeAnnotationATTR: N = "RuntimeInvisibleTypeAnnotations" // RetentionPolicy.CLASS (annotations on types)
     final val ScalaATTR: N                        = "Scala"
     final val ScalaSignatureATTR: N               = "ScalaSig"
     final val TASTYATTR: N                        = "TASTY"
     final val SignatureATTR: N                    = "Signature"
     final val SourceFileATTR: N                   = "SourceFile"
     final val SyntheticATTR: N                    = "Synthetic"
-
+    final val PermittedSubclassesATTR: N          = "PermittedSubclasses"
 
 // ----- Term names -----------------------------------------
 
@@ -405,6 +414,7 @@ object StdNames {
     val annotation: N           = "annotation"
     val any: N                  = "any"
     val any2stringadd: N        = "any2stringadd"
+    val anyClass: N             = "anyClass"
     val anyHash: N              = "anyHash"
     val anyValClass: N          = "anyValClass"
     val append: N               = "append"
@@ -488,6 +498,8 @@ object StdNames {
     val eval: N                 = "eval"
     val eqlAny: N               = "eqlAny"
     val ex: N                   = "ex"
+    val except: N               = "except"
+    val exceptCapability: N     = "exceptCapability"
     val extension: N            = "extension"
     val experimental: N         = "experimental"
     val f: N                    = "f"
@@ -520,6 +532,7 @@ object StdNames {
     val implicitConversions: N  = "implicitConversions"
     val implicitly: N           = "implicitly"
     val in: N                   = "in"
+    val initially: N            = "initially"
     val inline: N               = "inline"
     val infix: N                = "infix"
     val info: N                 = "info"
@@ -593,7 +606,6 @@ object StdNames {
     val productPrefix: N        = "productPrefix"
     val quotes : N              = "quotes"
     val raw_ : N                = "raw"
-    val reachCapability: N      = "reachCapability"
     val readOnlyCapability: N   = "readOnlyCapability"
     val rd: N                   = "rd"
     val refl: N                 = "refl"
@@ -608,6 +620,7 @@ object StdNames {
     val run: N                  = "run"
     val runOrElse: N            = "runOrElse"
     val runtime: N              = "runtime"
+    val runtimeChecked: N       = "runtimeChecked"
     val runtimeClass: N         = "runtimeClass"
     val runtimeMirror: N        = "runtimeMirror"
     val s: N                    = "s"
@@ -661,7 +674,6 @@ object StdNames {
     val update: N               = "update"
     val updateDynamic: N        = "updateDynamic"
     val uses: N                 = "uses"
-    val uses_init: N            = "uses_init"
     val using: N                = "using"
     val value: N                = "value"
     val valueOf : N             = "valueOf"
@@ -714,7 +726,7 @@ object StdNames {
       final val MINUS_USCORE: N = "-_"
       final val PLUS_USCORE : N = "+_"
 
-      final val isUnary: Set[Name] = Set(MINUS, PLUS, TILDE, BANG)
+      final val isUnary: Set[Name | Null] = Set(MINUS, PLUS, TILDE, BANG)
     }
 
     object specializedTypeNames {

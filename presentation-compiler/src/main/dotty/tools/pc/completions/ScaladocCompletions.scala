@@ -2,7 +2,6 @@ package dotty.tools.pc.completions
 
 import scala.meta.pc.PresentationCompilerConfig
 
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.*
@@ -123,7 +122,7 @@ object ScaladocCompletions:
                   !param.name.is(ContextBoundParamName) =>
               param.name.show
           }
-        case other =>
+        case _ =>
           Nil
 
 end ScaladocCompletions

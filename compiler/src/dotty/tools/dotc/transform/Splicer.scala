@@ -20,9 +20,7 @@ import dotty.tools.dotc.core.Constants.Constant
 
 import dotty.tools.dotc.quoted.Interpreter
 
-import scala.util.control.NonFatal
 import dotty.tools.dotc.util.SrcPos
-import dotty.tools.io.AbstractFileClassLoader
 
 import scala.reflect.ClassTag
 
@@ -76,7 +74,7 @@ object Splicer {
         case ex: StopInterpretation =>
           report.error(ex.msg, ex.pos)
           ref(defn.Predef_undefined).withType(ErrorType(ex.msg))
-        case NonFatal(ex) =>
+        case ex: Exception =>
           val msg =
             em"""Failed to evaluate macro.
                 |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
@@ -87,7 +85,10 @@ object Splicer {
       }
   }
 
-  /** Checks that no symbol that was generated within the macro expansion has an out of scope reference */
+  /** Checks that no symbol that was generated within the macro expansion has an out of scope reference
+   *  and that a class's primary constructor parameter is not referenced outside of that primary constructor
+   *  within the macro expansion.
+  */
   def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(using Context): tree.type =
     new TreeTraverser {
       private var locals = Set.empty[Symbol]
@@ -105,6 +106,18 @@ object Splicer {
           case tree: Ident if isEscapedVariable(tree.symbol) =>
             val sym = tree.symbol
             report.error(em"While expanding a macro, a reference to $sym was used outside the scope where it was defined", tree.srcPos)
+          case tree: Ident if isEscapedConstructorParam(tree.symbol) =>
+            val sym = tree.symbol
+            val msg = em"""While expanding a macro, a reference to primary constructor $sym of ${sym.owner.owner} was used outside of the primary constructor.
+              |
+              |Hint: Instead of using `Symbol.primaryConstructor.paramSymss` directly, get the analogous field members with `Symbol.fieldMembers`.
+              |"""
+            report.error(msg, tree.srcPos)
+          case tree @ DefDef(_, params, _, _) =>
+            markDef(tree)
+            val last = locals
+            params.flatten.foreach(markDef)
+            traverseOver(last)
           case Block(stats, _) =>
             val last = locals
             stats.foreach(markDef)
@@ -126,6 +139,12 @@ object Splicer {
           }
         )
         && !locals.contains(sym) // symbol is not in current scope
+      private def isEscapedConstructorParam(sym: Symbol)(using Context): Boolean =
+        sym.exists
+        && sym.is(Param)
+        && sym.owner.isPrimaryConstructor
+        && !locals.contains(sym)
+        && !ctx.owner.ownersIterator.exists(_.isLocalDummy) // in top level of class's body
     }.traverse(tree)
     tree
 

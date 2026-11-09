@@ -19,16 +19,18 @@ class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
     val classNames = files.flatMap { file =>
       file.ext match
         case FileExtension.Jar =>
-          JarArchive.open(Path(file.path), create = false).allFileNames()
-            .map(_.stripPrefix("/")) // change paths from absolute to relative
-            .filter(e => Path.fileExtension(e).isTasty && !fromTastyIgnoreList(e.replace("/", File.separator)))
+          JarArchive.open(Path(file.path))
+            .deepIterator
+            .filter(_.ext.isTasty)
+            .map(_.path.stripPrefix("/")) // change paths from absolute to relative
+            .filter(p => !fromTastyIgnoreList(p.replace("/", File.separator)))
             .map(e => e.stripSuffix(".tasty").replace("/", "."))
             .toList
         case FileExtension.Tasty => TastyFileUtil.getClassName(file)
         case FileExtension.Betasty if ctx.withBestEffortTasty =>
           TastyFileUtil.getClassName(file, withBestEffortTasty = true)
         case _ =>
-          report.error(em"File extension is not `tasty` or `jar`: ${file.path}")
+          report.error(em"File extension given to TASTY compiler is not `tasty` or `jar`: ${file.path}")
           Nil
     }
     classNames.map(new TASTYCompilationUnit(_))

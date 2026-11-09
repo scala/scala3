@@ -13,8 +13,10 @@
 package scala
 package runtime
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
+@deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
 final class RichBoolean(val self: Boolean) extends AnyVal with OrderedProxy[Boolean] {
   protected def ord: scala.math.Ordering.Boolean.type = scala.math.Ordering.Boolean
 }

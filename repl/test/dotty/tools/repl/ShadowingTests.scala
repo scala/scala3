@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import java.io.File
 import java.nio.file.{Path, Files}
 import java.util.Comparator
@@ -25,19 +23,18 @@ import vulpix.{TestConfiguration, TestFlags}
  *  and running scripted REPL tests with them on the claspath.
  */
 object ShadowingTests:
-  def classpath = TestConfiguration.replClassPath + File.pathSeparator + shadowDir
-  def options = ReplTest.commonOptions ++ Array("-classpath", classpath)
-  def shadowDir = dir.toAbsolutePath.toString
+  // The directory on the classpath containing artifacts to be shadowed
+  private var dir: Path | Null = null
+
+  def shadowDir = dir.nn.toAbsolutePath.toString
+  def options = ReplTest.createOptions(shadowDir)
 
   def createSubDir(name: String): Path =
-    val subdir = dir.resolve(name)
+    val subdir = dir.nn.resolve(name)
     try Files.createDirectory(subdir)
     catch case _: java.nio.file.FileAlreadyExistsException =>
       assert(Files.isDirectory(subdir), s"failed to create shadowed subdirectory $subdir")
     subdir
-
-  // The directory on the classpath containing artifacts to be shadowed
-  private var dir: Path = null
 
   @BeforeClass def setupDir: Unit =
     dir = Files.createTempDirectory("repl-shadow")
@@ -93,19 +90,19 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
     script =
       """|scala> new C().c
          |-- [E171] Type Error: ----------------------------------------------------------
-         |1 | new C().c
-         |  | ^^^^^^^
-         |  | missing argument for parameter c of constructor C in class C: (c: Int): C
+         |1 |new C().c
+         |  |^^^^^^^
+         |  |missing argument for parameter c of constructor C in class C: (c: Int): C
          |1 error found
          |
          |scala> new C(13).c
-         |val res1: Int = 13
+         |val res0: Int = 13
          |
          |scala> class C { val c = 42 }
          |// defined class C
          |
          |scala> new C().c
-         |val res2: Int = 42
+         |val res1: Int = 42
          |""".stripMargin
   )
 
@@ -142,9 +139,9 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
     testScript(name = "<shadow-subdir-util>",
       """|scala> import util.Try
          |-- [E008] Not Found Error: -----------------------------------------------------
-         |1 | import util.Try
-         |  |             ^^^
-         |  |             value Try is not a member of util
+         |1 |import util.Try
+         |  |            ^^^
+         |  |            value Try is not a member of util
          |1 error found
          |
          |scala> object util { class Try { override def toString = "you've gotta try!" }  }

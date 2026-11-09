@@ -60,8 +60,8 @@ object Test {
     val superType3 = C.super[M].m
 
     val compoundType1: { def k: Int } = ???
-    val compoundType2: M with N = ???
-    val compoundType3: M with N { def k: Int } = ???
+    val compoundType2: M & N = ???
+    val compoundType3: M & N { def k: Int } = ???
     val compoundType4 = new { def k: Int = ??? }
     val compoundType5 = new M with N
     val compoundType6 = new M with N { def k: Int = ??? }
@@ -70,8 +70,8 @@ object Test {
     val annType2: T @ann1 @ann2 = ???
 
     val existentialType2: List[_] = ???
-    val existentialType3 = Class.forName("foo.Bar")
-    val existentialType4 = Class.forName("foo.Bar")
+    val existentialType3: Class[?] = Class.forName("foo.Bar")
+    val existentialType4: Class[?] = Class.forName("foo.Bar")
 
     def typeLambda1[M[_]] = ???
     typeLambda1[({ type L[T] = List[T] })#L]

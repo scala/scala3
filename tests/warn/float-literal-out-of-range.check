@@ -1,0 +1,5 @@
+-- [E167] Lossy Conversion Warning: tests/warn/float-literal-out-of-range.scala:7:4 ------------------------------------
+7 |    0.12345678901234567 // warn - too precise for a float
+  |    ^^^^^^^^^^^^^^^^^^^
+  |    Widening conversion from Double to Float loses precision.
+  |    Write `.toFloat` instead.

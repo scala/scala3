@@ -1,14 +1,17 @@
 package dotty.tools.scaladoc
 package translators
 
+import dotty.tools.dotc.util.chaining.*
+
 case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtils:
+  assert(content != null)
   def plain(str: String): SignatureBuilder = copy(content = content :+ Plain(str))
   def name(str: String, dri: DRI, isCaptureVar: Boolean = false/*under CC*/): SignatureBuilder =
-    val suffix = if isCaptureVar then List(Keyword("^")) else Nil
-    copy(content = content ++ (Name(str, dri) :: suffix))
+    copy(content = content ++ (Name(str, dri) :: captureVarSuffix(isCaptureVar)))
   def tpe(text: String, dri: Option[DRI], isCaptureVar: Boolean = false/*under CC*/): SignatureBuilder =
-    val suffix = if isCaptureVar then List(Keyword("^")) else Nil
-    copy(content = content ++ (Type(text, dri) :: suffix))
+    copy(content = content ++ (Type(text, dri) :: captureVarSuffix(isCaptureVar)))
+  private def captureVarSuffix(isCaptureVar: Boolean): List[SignaturePart] =
+    if isCaptureVar then ccToggle(List(Keyword("^")), hint = CaptureHints.captureSetParameter) else Nil
   def keyword(str: String): SignatureBuilder = copy(content = content :+ Keyword(str))
   def tpe(text: String, dri: DRI): SignatureBuilder = copy(content = content :+ Type(text, Some(dri)))
   def signature(s: Signature): SignatureBuilder = copy(content = content ++ s)
@@ -24,7 +27,10 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
   ): SignatureBuilder = elements match {
     case Nil => if forcePrefixAndSuffix then signature(prefix).signature(suffix) else this
     case head :: tail =>
-      tail.foldLeft(elemOp(signature(prefix), head))((b, e) => elemOp(b.signature(separator), e)).signature(suffix)
+      tail.foldLeft(elemOp(signature(prefix), head)): (b, e) =>
+        val sepped = b.signature(separator)
+        elemOp(sepped, e)
+      .signature(suffix)
   }
 
   def annotationsBlock(d: Member): SignatureBuilder =
@@ -69,16 +75,25 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
         val extendPart = keyword(" extends ").signature(extendType.signature)
         withTypes.foldLeft(extendPart)((bdr2, tpe) => bdr2.keyword(", ").signature(tpe.signature))
 
-  def usesClauses(member: Member): SignatureBuilder =
-    member.usesClauses.foldLeft(this) { (bdr, clause) =>
-      bdr.keyword(s" ${clause.keyword} ").signature(clause.signature)
-    }
+  def usesClause(member: Member): SignatureBuilder =
+    member.usesClause match
+      case None => this
+      case Some(clause) =>
+        signature(ccToggle(Keyword(" uses ") :: clause.signature, hint = CaptureHints.uses))
 
   def modifiersAndVisibility(t: Member) =
-    val (prefixMods, suffixMods) = t.modifiers.partition(_.prefix)
+    // Capture-checking-specific modifiers are wrapped in a Toggleable so they
+    // can be hidden interactively; they always come last, right before the kind.
+    val isCCModifier: Modifier => Boolean = m => m == Modifier.Update || m == Modifier.Consume
+    val (ccMods, mods) = t.modifiers.partition(isCCModifier)
+    val (prefixMods, suffixMods) = mods.partition(_.prefix)
     val all = prefixMods.map(_.name) ++ Seq(t.visibility.asSignature) ++ suffixMods.map(_.name)
     val filtered = all.filter(_.trim.nonEmpty)
-    if filtered.nonEmpty then keyword(filtered.toSignatureString()) else this
+    val bdr = if filtered.nonEmpty then keyword(filtered.toSignatureString()) else this
+    if ccMods.isEmpty then bdr
+    else
+      val hint = if ccMods.contains(Modifier.Consume) then CaptureHints.consumeMethod else CaptureHints.update
+      bdr.signature(ccToggle(List(Keyword(ccMods.map(_.name).toSignatureString())), hint = hint))
 
   def kind(k: Kind) =
     keyword(k.name + " ")
@@ -92,9 +107,14 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
 
   def termParamList(params: TermParameterList) =
     this.list(params.parameters, prefix = List(Plain("("), Keyword(params.modifiers)), suffix = List(Plain(")")), forcePrefixAndSuffix = true) { (bld, p) =>
-      val annotationsAndModifiers = bld.annotationsInline(p)
-        .keyword(p.modifiers)
-      val name = p.name.fold(annotationsAndModifiers)(annotationsAndModifiers.name(_, p.dri).plain(": "))
+      val annotationsAndModifiers =
+        bld.annotationsInline(p)
+          .signature(ccToggle(Option.when(p.ccModifiers.nonEmpty)(Keyword(p.ccModifiers)).toList, hint = CaptureHints.consumeParameter))
+          .keyword(p.modifiers)
+      val name = p.name match {
+        case Some(name) => annotationsAndModifiers.name(name, p.dri).plain(": ")
+        case none => annotationsAndModifiers
+      }
       name.signature(p.signature)
     }
 

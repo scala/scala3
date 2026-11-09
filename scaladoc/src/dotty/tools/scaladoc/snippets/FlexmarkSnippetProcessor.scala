@@ -3,7 +3,6 @@ package snippets
 
 import com.vladsch.flexmark.util.{ast => mdu, sequence}
 import com.vladsch.flexmark.{ast => mda}
-import com.vladsch.flexmark.formatter.Formatter
 import scala.jdk.CollectionConverters._
 
 import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
@@ -20,7 +19,7 @@ object FlexmarkSnippetProcessor:
     nodes.foldLeft[Map[String, SnippetSource]](Map()) { (snippetMap, node) =>
       val lineOffset = node.getStartLineNumber + preparsed.fold(0)(_.strippedLinesBeforeNo)
       val codeStartLine = lineOffset + SnippetChecker.codeFenceContentLineOffset
-      val info = node.getInfo.toString.split(" ")
+      val info = node.getInfo.toString.split(" ").filter(_.nonEmpty)
       if info.contains("scala") then {
         val flagOverride = info
           .find(_.startsWith("sc:"))
@@ -30,7 +29,7 @@ object FlexmarkSnippetProcessor:
             case Right(flags) => Some(flags)
             case Left(error) =>
               report.warning(
-                s"""|Error occured during parsing flags in snippet:
+                s"""|Error occurred during parsing flags in snippet:
                     |$error""".stripMargin
               )
               None
@@ -63,7 +62,7 @@ object FlexmarkSnippetProcessor:
             val snippet = snippetMap.get(id)
             if snippet.isEmpty then
               report.warning(
-                s"""|Error occured during parsing compile-with in snippet:
+                s"""|Error occurred during parsing compile-with in snippet:
                     |Snippet with id: $id not found.
                     |Remember that you cannot use forward reference to snippets""".stripMargin
               )

@@ -7,7 +7,7 @@ trait C
 trait ZLayer[-RIn, +E, +ROut]
 
 object ZLayer {
-  def fromServices[A0, A1, B](f: (A0, A1) => B): ZLayer[Has[A0] with Has[A1], Nothing, Has[B]] =
+  def fromServices[A0, A1, B](f: (A0, A1) => B): ZLayer[Has[A0] & Has[A1], Nothing, Has[B]] =
     ???
 }
 

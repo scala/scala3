@@ -449,6 +449,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |package
          |import
          |final
+         |into
          |private
          |protected
          |abstract class

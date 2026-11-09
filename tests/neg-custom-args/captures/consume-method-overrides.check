@@ -1,0 +1,28 @@
+-- [E164] Declaration Error: tests/neg-custom-args/captures/consume-method-overrides.scala:7:14 ------------------------
+7 |  consume def f(): A^ = this    // error
+  |              ^
+  |        error overriding method f in trait A of type (): A^{fresh};
+  |          method f of type (): A^{fresh²} is a consume method, but the overridden definition is not marked consume
+  |
+  |        where:    fresh  is a root capability associated with the result type of (): A^{fresh}
+  |                  fresh² is a root capability associated with the result type of (): A^{fresh²}
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E164] Declaration Error: tests/neg-custom-args/captures/consume-method-overrides.scala:8:6 -------------------------
+8 |  def g(consume x: A^): A^ = x  // error
+  |      ^
+  |error overriding method g in trait A of type (x: A^): A^{fresh};
+  |  method g of type (consume x: A^): A^{fresh²} has a consume parameter x but the corresponding parameter in the overridden definition is not marked consume
+  |
+  |where:    ^      refers to the root capability caps.any
+  |          fresh  is a root capability associated with the result type of (x: A^): A^{fresh}
+  |          fresh² is a root capability associated with the result type of (consume x: A^): A^{fresh²}
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E164] Declaration Error: tests/neg-custom-args/captures/consume-method-overrides.scala:10:14 -----------------------
+10 |  consume def productElement(n: Int): Any = ??? // error
+   |              ^
+   |error overriding method productElement in trait Product of type (n: Int): Any;
+   |  method productElement of type (n: Int): Any is a consume method, but the overridden definition is not marked consume
+   |
+   | longer explanation available when compiling with `-explain`

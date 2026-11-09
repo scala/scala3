@@ -35,7 +35,7 @@ public class DottydocRunner {
   public void run() {
     log.debug(() -> {
       StringBuilder msg =
-        new StringBuilder("Calling Dottydoc with arguments  (ScaladocInterface):");
+        new StringBuilder("Calling Scaladoc with arguments (ScaladocInterface):");
       for (String arg : args0) {
         msg.append("\n\t");
         msg.append(arg);
@@ -53,14 +53,14 @@ public class DottydocRunner {
     args = retained.toArray(new String[retained.size()]);
 
     Context ctx = new ContextBase().initialCtx().fresh()
-      .setReporter(new DelegatingReporter(delegate, source -> source.file().absolutePath()));
+      .setReporter(new DelegatingReporter(delegate, source -> source.path()));
 
     try {
       Class<?> dottydocMainClass = Class.forName("dotty.tools.dottydoc.Main");
       Method processMethod = dottydocMainClass.getMethod("process", args.getClass(), Context.class); // args.getClass() is String[]
       Reporter reporter = (Reporter) processMethod.invoke(null, args, ctx);
       if (reporter.hasErrors())
-        throw new InterfaceCompileFailed(args, new xsbti.Problem[0], "DottyDoc Compilation Failed");
+        throw new InterfaceCompileFailed(args, new xsbti.Problem[0], "Scaladoc Compilation Failed");
     } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
       throw new RuntimeException(e);
     }

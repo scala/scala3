@@ -1,11 +1,22 @@
 package dotty.tools.pc
 
+import java.io.File
 import java.net.URI
+import java.nio.file.Path
 import java.util as ju
 
 import scala.compiletime.uninitialized
+import scala.jdk.CollectionConverters.*
+import scala.meta.pc.SemanticdbFileManager
+import scala.meta.pc.SourcePathMode
 
-import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.interactive.{
+  CachedLogicalPackage,
+  InteractiveDriver,
+  LogicalPackagesProvider,
+  ParsedLogicalPackage
+}
 import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.util.SourceFile
 
@@ -27,22 +38,40 @@ import dotty.tools.dotc.util.SourceFile
  *  the complexity related to currentCtx, we decided to cache only when the
  *  target URI only if the same as the previous run.
  */
-class CachingDriver(override val settings: List[String]) extends InteractiveDriver(settings):
+class CachingDriver private (
+    override val settings: List[String],
+    sourcePackage: CachedLogicalPackage
+) extends InteractiveDriver(settings, sourcePackage):
 
   private var lastCompiledURI: URI = uninitialized
   private var previousDiags = List.empty[Diagnostic]
 
-  private def alreadyCompiled(uri: URI, content: Array[Char]): Boolean =
-    compilationUnits.get(uri) match
-      case Some(unit)
-          if lastCompiledURI == uri &&
-            ju.Arrays.equals(unit.source.content(), content) =>
-        true
-      case _ => false
+  private def alreadyCompiled(uri: URI, content: String): Boolean =
+    lastCompiledURI == uri && compilationUnits.get(uri).forall(_.source.textContent() == content)
 
   override def run(uri: URI, source: SourceFile): List[Diagnostic] =
-    if !alreadyCompiled(uri, source.content) then previousDiags = super.run(uri, source)
+    if !alreadyCompiled(uri, source.textContent()) then previousDiags = super.run(uri, source)
     lastCompiledURI = uri
     previousDiags
 
+  def freshDriver(): InteractiveDriver =
+    new InteractiveDriver(settings, sourcePackage)
+
 end CachingDriver
+
+object CachingDriver:
+  def apply(
+      settings: List[String],
+      sourcePath: ju.function.Supplier[ju.List[Path]],
+      semanticdbFileManager: SemanticdbFileManager,
+      sourcePathMode: SourcePathMode
+  ): CachingDriver =
+    def sourcePackagesExtractor(using Context) = sourcePathMode match
+      case SourcePathMode.DISABLED => None
+      case SourcePathMode.PRUNED | SourcePathMode.FULL =>
+        val sourcePathFiles = sourcePath.get().asScala.toSeq
+        val logicalSourcePath = sourcePathFiles.mkString(File.pathSeparator)
+        if sourcePathFiles.nonEmpty then Some(new LogicalPackagesProvider(logicalSourcePath).root) else None
+      case SourcePathMode.MBT =>
+        Some(ParsedLogicalPackage.fromMbtIndex(semanticdbFileManager.listAllPackages()))
+    new CachingDriver(settings, CachedLogicalPackage(sourcePackagesExtractor))

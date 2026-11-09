@@ -35,6 +35,10 @@ object Seq extends SeqFactory.Delegate[Seq](ArrayBuffer)
 /**
  *  @define coll mutable sequence
  *  @define Coll `mutable.Seq`
+ *
+ *  @tparam A the element type of the sequence
+ *  @tparam CC the type constructor for the resulting collection
+ *  @tparam C the full sequence type
  */
 transparent trait SeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
   extends collection.SeqOps[A, CC, C]
@@ -65,5 +69,8 @@ transparent trait SeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
   }
 }
 
-/** Explicit instantiation of the `Seq` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Seq` trait to reduce class file size in subclasses.
+ *
+ *  @tparam A the element type of the sequence
+ */
 abstract class AbstractSeq[A] extends scala.collection.AbstractSeq[A] with Seq[A]

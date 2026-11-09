@@ -8,7 +8,7 @@ object NamedApplyBlockMethods/*<-example::NamedApplyBlockMethods.*/ {
 }
 
 object NamedApplyBlockCaseClassConstruction/*<-example::NamedApplyBlockCaseClassConstruction.*/ {
-  case class Msg/*<-example::NamedApplyBlockCaseClassConstruction.Msg#*/(body/*<-example::NamedApplyBlockCaseClassConstruction.Msg#body.*/: String/*->scala::Predef.String#*/, head/*<-example::NamedApplyBlockCaseClassConstruction.Msg#head.*/: String/*->scala::Predef.String#*/ = "default", tail/*<-example::NamedApplyBlockCaseClassConstruction.Msg#tail.*/: String/*->scala::Predef.String#*/)
+  case class Msg/*<-example::NamedApplyBlockCaseClassConstruction.Msg#*/(body/*<-example::NamedApplyBlockCaseClassConstruction.Msg#body.*//*<-example::NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(body)*/: String/*->scala::Predef.String#*/, head/*<-example::NamedApplyBlockCaseClassConstruction.Msg#head.*//*<-example::NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(head)*/: String/*->scala::Predef.String#*/ = "default", tail/*<-example::NamedApplyBlockCaseClassConstruction.Msg#tail.*//*<-example::NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(tail)*/: String/*->scala::Predef.String#*/)
   val bodyText/*<-example::NamedApplyBlockCaseClassConstruction.bodyText.*/ = "body"
   val msg/*<-example::NamedApplyBlockCaseClassConstruction.msg.*/ = Msg/*->example::NamedApplyBlockCaseClassConstruction.Msg.*/(bodyText/*->example::NamedApplyBlockCaseClassConstruction.bodyText.*/, tail/*->example::NamedApplyBlockCaseClassConstruction.Msg.apply().(tail)*/ = "tail")
 }

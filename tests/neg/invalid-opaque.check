@@ -1,0 +1,6 @@
+-- [E095] Syntax Error: tests/neg/invalid-opaque.scala:2:23 ------------------------------------------------------------
+2 |  opaque type TestCases: Int // error: used to crash the compiler
+  |                       ^
+  |                       =, >:, or <: expected, but ':' found
+  |
+  | longer explanation available when compiling with `-explain`

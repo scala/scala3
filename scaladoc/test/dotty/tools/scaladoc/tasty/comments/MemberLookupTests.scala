@@ -16,6 +16,7 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
     testOwnerlessLookupOfInherited()
     testOwnerlessLookupOfClassWithinPackageWithPackageObject()
     testOwnedLookup()
+    testLookupFromNearestPackage()
     testStrictMemberLookup()
     testOverloadedMethodLookup()
   }
@@ -159,6 +160,20 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
       cls("tests.D") -> "bar" -> cls("tests.tests$package$").fld("bar"),
       cls("tests.inner.A$") -> "foo" -> cls("tests.package$").fld("foo"),
       cls("tests.inner.A$") -> "bar" -> cls("tests.tests$package$").fld("bar"),
+    )
+
+    cases.foreach { case ((Sym(owner), query), Sym(target)) =>
+      val Some((lookedUp, _, _)) = MemberLookup.lookup(parseQuery(query), owner): @unchecked
+      assertSame(s"$owner / $query", target, lookedUp)
+    }
+  }
+
+  def testLookupFromNearestPackage(): Unit = {
+    val cases = List[((Sym, String), Sym)](
+      cls("scala.concurrent.Awaitable").fun("ready") -> "Await.ready" ->
+        cls("scala.concurrent.Await$").fun("ready"),
+      cls("scala.concurrent.Awaitable").fun("result") -> "Await.result" ->
+        cls("scala.concurrent.Await$").fun("result"),
     )
 
     cases.foreach { case ((Sym(owner), query), Sym(target)) =>

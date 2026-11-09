@@ -1,1 +1,8 @@
-3: Pattern Match Exhaustivity: _: scala.quoted.Expr[Int]
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i6255b.scala:3:66 ---
+3 |  def foo(x: quoted.Expr[Int])(using scala.quoted.Quotes): Unit = x match {
+  |                                                                  ^
+  |                  match may not be exhaustive.
+  |
+  |                  It would fail on pattern case: _: scala.quoted.Expr[Int]
+  |
+  | longer explanation available when compiling with `-explain`

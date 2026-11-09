@@ -5,6 +5,8 @@ import language.experimental.captureChecking
 /** Quoted expression of type `T`.
  *
  *  `Expr` has extension methods that are defined in `scala.quoted.Quotes`.
+ *
+ *  @tparam T the type of the quoted expression
  */
 abstract class Expr[+T] private[scala] ()
 
@@ -51,6 +53,10 @@ object Expr {
    *  ...
    *  f[X1, Y1, ..., Xn, Yn, ...](x1, y1, ..., xn, yn, ...)
    *  ```
+   *
+   *  @tparam T the type of the expression to beta-reduce
+   *  @param expr the expression to beta-reduce
+   *  @return the beta-reduced expression, or `expr` unchanged if no reduction is possible
    */
   def betaReduce[T](expr: Expr[T])(using Quotes): Expr[T] =
     import quotes.reflect.*
@@ -61,13 +67,23 @@ object Expr {
   /** Returns an expression containing a block with the given statements and ending with the expression
    *  Given list of statements `s1 :: s2 :: ... :: Nil` and an expression `e` the resulting expression
    *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
+   *
+   *  @tparam T the type of the final expression, which determines the block's result type
+   *  @param statements the statements to execute before the final expression in the block
+   *  @param expr the final expression whose value becomes the result of the block
+   *  @return an expression of type `T` representing a block of the given `statements` followed by `expr`, equivalent to `'{ $s1; $s2; ...; $expr }`
    */
   def block[T](statements: List[Expr[Any]], expr: Expr[T])(using Quotes): Expr[T] = {
     import quotes.reflect.*
     Block(statements.map(asTerm), expr.asTerm).asExpr.asInstanceOf[Expr[T]]
   }
 
-  /** Creates an expression that will construct the value `x`. */
+  /** Creates an expression that will construct the value `x`.
+   *
+   *  @tparam T the type of the value to be lifted into an expression
+   *  @param x the value to lift into a quoted expression
+   *  @return an expression that, when spliced, will construct the value `x`
+   */
   def apply[T](x: T)(using ToExpr[T])(using Quotes): Expr[T] =
     scala.Predef.summon[ToExpr[T]].apply(x)
 
@@ -82,6 +98,10 @@ object Expr {
    *  ```
    *
    *  To directly get the value of an expression `expr: Expr[T]` consider using `expr.value`/`expr.valueOrError` instead.
+   *
+   *  @tparam T the type of the value to extract from the expression
+   *  @param x the expression to extract a value from
+   *  @return `Some` containing the extracted value if `x` is a literal constant or known constructor, `None` otherwise
    */
   def unapply[T](x: Expr[T])(using FromExpr[T])(using Quotes): Option[T] =
     scala.Predef.summon[FromExpr[T]].unapply(x)
@@ -92,6 +112,10 @@ object Expr {
    *    `Seq(e1, e2, ...)` where `ei: Expr[T]`
    *  to an expression equivalent to
    *    `'{ Seq($e1, $e2, ...) }` typed as an `Expr[Seq[T]]`
+   *
+   *  @tparam T the element type of the sequence
+   *  @param xs the sequence of expressions to combine
+   *  @return an expression representing a `Seq[T]` constructed from the given element expressions
    */
   def ofSeq[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[Seq[T]] =
     Varargs(xs)
@@ -102,6 +126,10 @@ object Expr {
    *    `List(e1, e2, ...)` where `ei: Expr[T]`
    *  to an expression equivalent to
    *    `'{ List($e1, $e2, ...) }` typed as an `Expr[List[T]]`
+   *
+   *  @tparam T the element type of the list
+   *  @param xs the sequence of expressions to combine into a list expression
+   *  @return an expression representing a `List[T]` constructed from the given element expressions
    */
   def ofList[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[List[T]] =
     if xs.isEmpty then Expr(Nil) else '{ List(${Varargs(xs)}*) }
@@ -112,6 +140,9 @@ object Expr {
    *    `Seq(e1, e2, ...)` where `ei: Expr[Any]`
    *  to an expression equivalent to
    *    `'{ ($e1, $e2, ...) }` typed as an `Expr[Tuple]`
+   *
+   *  @param seq the sequence of element expressions to combine into a tuple expression
+   *  @return an expression representing a tuple constructed from the given element expressions
    */
   def ofTupleFromSeq(seq: Seq[Expr[Any]])(using Quotes): Expr[Tuple] = {
     seq.size match {
@@ -262,7 +293,12 @@ object Expr {
       AppliedType(consRef, expr.asTerm.tpe :: ts :: Nil)
     }
 
-  /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
+  /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`.
+   *
+   *  @tparam T the tuple type where each element is wrapped in `Expr`, e.g., `(Expr[A1], ..., Expr[An])`
+   *  @param tup the tuple of expressions to combine into a single tuple expression
+   *  @return an expression representing the tuple `(A1, ..., An)` constructed from the given element expressions
+   */
   def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T)(using Quotes): Expr[Tuple.InverseMap[T, Expr]] = {
     val elems: Seq[Expr[Any]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[Any]]]
     ofTupleFromSeq(elems).asExprOf[Tuple.InverseMap[T, Expr]]
@@ -273,6 +309,7 @@ object Expr {
    *  `None` if implicit resolution failed.
    *
    *  @tparam T type of the implicit parameter
+   *  @return `Some` containing the found implicit expression, or `None` if implicit resolution failed
    */
   def summon[T](using Type[T])(using Quotes): Option[Expr[T]] = {
     import quotes.reflect.*
@@ -289,6 +326,8 @@ object Expr {
    *
    *  @tparam T type of the implicit parameter
    *  @param ignored Symbols ignored during the initial implicit search
+   *  @param quotes the `Quotes` context used for the implicit search, named so that `ignored` can refer to its path-dependent `reflect.Symbol` type
+   *  @return `Some` containing the found implicit expression, or `None` if implicit resolution failed
    *
    *  @note if the found given requires additional search for other given instances,
    *  this additional search will NOT exclude the symbols from the `ignored` list.

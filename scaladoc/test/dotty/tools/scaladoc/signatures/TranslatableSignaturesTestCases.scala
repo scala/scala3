@@ -28,7 +28,7 @@ class FieldsSignatures extends SignatureTest("fieldsSignatures", SignatureTest.a
 
 class NestedSignatures extends SignatureTest("nested", SignatureTest.all)
 
-class TypeAppliacneSignatures extends SignatureTest("typeAppliance", SignatureTest.all)
+class TypeApplianceSignatures extends SignatureTest("typeAppliance", SignatureTest.all)
 
 class CompanionObjectSignatures extends SignatureTest("companionObjectSignatures", SignatureTest.all)
 

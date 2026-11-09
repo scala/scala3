@@ -13,6 +13,7 @@
 package scala
 package sys
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.collection.{mutable, Iterator}
 import scala.jdk.CollectionConverters._
@@ -67,6 +68,10 @@ extends mutable.AbstractMap[String, String | Null] {
 object SystemProperties {
   /** An unenforceable, advisory only place to do some synchronization when
    *  mutating system properties.
+   *
+   *  @tparam T the return type of the body expression
+   *  @param body the code to execute while holding the lock
+   *  @return the result of evaluating `body` while holding the lock
    */
   def exclusively[T](body: => T): T = this.synchronized:
     body

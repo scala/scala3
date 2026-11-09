@@ -1,4 +1,3 @@
-//> using options -preview
 import Conversion.into
 
 class BigInt(x: Int):
@@ -19,4 +18,3 @@ object BigInt:
   val a2 = y * x // uses conversion on `y`
   val a3 = x * x
   val a4 = y + y
-

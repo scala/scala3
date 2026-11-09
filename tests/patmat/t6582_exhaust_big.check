@@ -1,1 +1,8 @@
-27: Pattern Match Exhaustivity: Z.Z11()
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t6582_exhaust_big.scala:27:18 
+27 |  def foo(z: Z) = z match {
+   |                  ^
+   |                  match may not be exhaustive.
+   |
+   |                  It would fail on pattern case: Z.Z11()
+   |
+   | longer explanation available when compiling with `-explain`

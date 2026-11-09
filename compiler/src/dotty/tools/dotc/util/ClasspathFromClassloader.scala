@@ -1,7 +1,5 @@
 package dotty.tools.dotc.util
 
-import scala.language.unsafeNulls
-
 import java.net.URLClassLoader
 import java.nio.file.Paths
 
@@ -28,6 +26,9 @@ object ClasspathFromClassloader {
             // classpath.
             classpathBuff ++=
               cl.getURLs.iterator.map(url => Paths.get(url.toURI).toAbsolutePath.toString)
+          case af: AbstractFileClassLoader =>
+            collectClassLoaderPaths(cl.getParent)
+            classpathBuff ++= af.searchLocations.filter(!_.isVirtual).map(_.path)
           case _ =>
             if cl.getClass.getName == classOf[AbstractFileClassLoader].getName then
               // HACK: We can't just collect the classpath from arbitrary parent

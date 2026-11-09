@@ -34,7 +34,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:19:12 -------------------------------------
 19 |    f => Box(f) // error
    |         ^^^^^^
-   |Found:    Test2.Box[Test2.File^{f}]^'s7
+   |Found:    Test2.Box[Test2.File^{f}]^'s5
    |Required: Test2.Box[Test2.File^{any}]
    |
    |Note that capability `f` cannot flow into capture set {any}

@@ -1,0 +1,5 @@
+public default Factory Map.mapFactory()
+public default Factory<Map> Map.mapFactory()
+---
+public Factory Other.tupleFactory()
+public Factory<scala.Tuple2> Other.tupleFactory()

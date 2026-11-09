@@ -42,6 +42,6 @@ class TypeTestsCastsTest extends DottyTest:
 
   def checkFound(found: List[Type], tp: Type) =
     val expected = found.map(_.classSymbol)
-    val obtained = TypeTestsCasts.foundClasses(tp)
+    val obtained = TypeTestsCasts.effectiveClassSymbols(tp)
     assertEquals(expected, obtained)
 end TypeTestsCastsTest

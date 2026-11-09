@@ -1,2 +1,16 @@
-9: Pattern Match Exhaustivity: module.LetR()
-20: Pattern Match Exhaustivity: module.LetR()
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9289.scala:9:34 ----
+9 |  def patmat(tree: module.Tree) = tree match {
+  |                                  ^^^^
+  |                              match may not be exhaustive.
+  |
+  |                              It would fail on pattern case: module.LetR()
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9289.scala:20:34 ---
+20 |  def patmat(tree: module.Tree) = tree match {
+   |                                  ^^^^
+   |                            match may not be exhaustive.
+   |
+   |                            It would fail on pattern case: module.LetR()
+   |
+   | longer explanation available when compiling with `-explain`

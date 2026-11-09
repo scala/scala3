@@ -4,7 +4,7 @@ package transform
 package sjs
 
 import scala.compiletime.uninitialized
-
+import scala.collection.mutable
 import MegaPhase.*
 import core.Annotations.*
 import core.Constants.*
@@ -19,13 +19,10 @@ import core.StdNames.nme
 import core.SymDenotations.SymDenotation
 import core.Names.*
 import core.NameKinds.*
-
-
 import util.Store
-
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
-
 import JSSymUtils.*
+import dotty.tools.dotc.core.Phases.picklerPhase
 
 /** This phase makes all JS classes explicit (their definitions and references to them).
  *
@@ -265,9 +262,13 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Is the given symbol a JS class (that is not a trait nor an object)? */
   private def isJSClass(sym: Symbol)(using Context): Boolean = {
-    sym.isClass &&
-    !sym.isOneOf(Trait | Module) &&
-    sym.hasAnnotation(jsdefn.JSTypeAnnot)
+    sym.isClass && {
+      // This is used while computing the latest denot, so we cannot use the latest denot as that may lead to an infinite cycle;
+      // we also cannot use `lastKnownDenotation` since while it would be okay to check for traits and modules,
+      // `JSTypeAnnot` is synthetic and added by a previous phase.
+      val denot = atPhase(picklerPhase) { sym.denot }
+      !denot.isOneOf(Trait | Module) && denot.hasAnnotation(jsdefn.JSTypeAnnot)
+    }
   }
 
   /** Is the given symbol a Module that should be exposed? */
@@ -729,6 +730,6 @@ object ExplicitJSClasses {
   private final class MyState {
     val nestedObject2superTypeConstructor = new MutableSymbolMap[Type]
     val localClass2jsclassVal = new MutableSymbolMap[TermSymbol]
-    val notYetReferencedLocalClasses = new util.HashSet[Symbol]
+    val notYetReferencedLocalClasses = mutable.Set.empty[Symbol]
   }
 }

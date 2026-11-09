@@ -29,6 +29,7 @@ object JavaParsers {
   import ast.untpd.*
 
 
+  val nonName = termName("non")
   val fakeFlags = Flags.JavaDefined | Flags.PrivateLocal | Flags.Invisible
 
   class JavaParser(source: SourceFile)(using Context) extends ParserCommon(source) {
@@ -214,7 +215,7 @@ object JavaParsers {
     def identForType(): TypeName = ident().toTypeName
     def ident(): Name =
       if (in.token == IDENTIFIER) {
-        val name = in.name
+        val name = in.name.nn
         in.nextToken()
         name
       }
@@ -317,7 +318,8 @@ object JavaParsers {
 
     def typeArgs(t: Tree): Tree = {
       var wildnum = 0
-      def typeArg(): Tree =
+      def typeArg(): Tree = {
+        val annots = annotations()
         if (in.token == QMARK) {
           val offset = in.offset
           in.nextToken()
@@ -335,7 +337,8 @@ object JavaParsers {
           }
         }
         else
-          typ()
+          annots.foldLeft(typ())((tp, ann) => Annotated(tp, ann))
+      }
       if (in.token == LT) {
         in.nextToken()
         val t1 = convertToTypeId(t)
@@ -513,7 +516,7 @@ object JavaParsers {
             flags |= Flags.Sealed
             in.nextToken()
           // JEP-409: Special trick for the 'non-sealed' java keyword
-          case IDENTIFIER if in.name.toString == "non" =>
+          case IDENTIFIER if in.name == nonName =>
             val lookahead = in.LookaheadScanner()
             ({lookahead.nextToken(); lookahead.token}, {lookahead.nextToken(); lookahead.name.toString}) match
               case (MINUS, "sealed") =>
@@ -603,7 +606,7 @@ object JavaParsers {
       * in particular when a `parentToken` is passed to some functions.
       */
     def adaptRecordIdentifier(): Unit =
-      if in.token == IDENTIFIER && in.name == jnme.RECORDid then
+      if in.token == IDENTIFIER && in.name.nn == jnme.RECORDid then
         in.token = RECORD
 
     def termDecl(start: Offset, mods: Modifiers, parentToken: Int): List[Tree] = {
@@ -894,6 +897,11 @@ object JavaParsers {
         fieldsByName -= name
       end for
 
+      def isVarargComponent(tpt: Tree) = tpt match
+        case PostfixOp(_, Ident(tpnme.raw.STAR)) => true
+        case _ => false
+      val isVararg = header.lastOption.exists(v => isVarargComponent(v.tpt))
+
       // accessor for record's vararg field  (T...) returns array type (T[])
       def adaptVarargsType(tpt: Tree) = tpt match
         case PostfixOp(tpt2, Ident(tpnme.raw.STAR)) => arrayOf(tpt2)
@@ -919,8 +927,12 @@ object JavaParsers {
             tparams = tparams,
             needsDummyConstr = true
           )
-        ).withMods(mods.withFlags(Flags.JavaDefined | Flags.Final))
+        ).withMods(mods
+          .withFlags(Flags.JavaDefined | Flags.Final)
+          // Record the component names and whether it's vararg, see `Applications.javaRecordFields`
+          .withAddedAnnotation(ast.untpd.JavaRecordFieldsAnnot(isVararg, header.map(_.name.toString))))
       }
+
       addCompanionObject(statics, recordTypeDef)
     end recordDecl
 
@@ -1034,7 +1046,7 @@ object JavaParsers {
           unimplementedExpr).withMods(Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method)),
         DefDef(
           nme.valueOf,
-          List(List(makeParam("x".toTermName, TypeTree(StringType)))),
+          List(List(makeParam("name".toTermName, TypeTree(StringType)))), // as named by javac (JLS 8.9.3)
           enumType,
           unimplementedExpr).withMods(Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method)))
       accept(RBRACE)
@@ -1086,22 +1098,20 @@ object JavaParsers {
         case MINUS | BANG => in.nextToken(); true
         case _ => false
       }
-      val l = in.token match {
-        case TRUE      => !negate
-        case FALSE     => negate
-        case CHARLIT   => in.strVal.charAt(0)
-        case INTLIT    => in.intVal(negate).toInt
-        case LONGLIT   => in.intVal(negate)
-        case FLOATLIT  => in.floatVal(negate).toFloat
-        case DOUBLELIT => in.floatVal(negate)
-        case STRINGLIT => in.strVal
-        case _         => null
+      val constant = in.token match {
+        case TRUE      => Some(Constant(!negate))
+        case FALSE     => Some(Constant(negate))
+        case CHARLIT   => Some(Constant(in.strVal.nn.charAt(0)))
+        case INTLIT    => Some(Constant(in.intVal(negate).toInt))
+        case LONGLIT   => Some(Constant(in.intVal(negate)))
+        case FLOATLIT  => Some(Constant(in.floatVal(negate).toFloat))
+        case DOUBLELIT => Some(Constant(in.floatVal(negate)))
+        case STRINGLIT => Some(Constant(in.strVal.nn))
+        case _         => None
       }
-      if (l == null) None
-      else {
+      if constant.isDefined then
         in.nextToken()
-        Some(Constant(l))
-      }
+      constant
     }
 
     /** CompilationUnit ::= {Annotation} [package QualId semi] {Import} {TypeDecl}
@@ -1110,10 +1120,12 @@ object JavaParsers {
       val buf = ListBuffer.empty[Tree]
       var start = in.offset
       val leadingAnnots = if (in.token == AT) annotations() else Nil
+      var packageAnnots: List[Tree] = Nil
       val pkg: RefTree =
         if in.token == PACKAGE then
           if leadingAnnots.nonEmpty then
             start = in.offset
+            packageAnnots = leadingAnnots
           accept(PACKAGE)
           val pkg = qualId()
           accept(SEMI)
@@ -1136,6 +1148,14 @@ object JavaParsers {
       if buf.isEmpty then
         while (in.token == IMPORT)
           buf ++= importDecl()
+      // Annotations of a package declaration (in `package-info.java`) are kept on a synthetic
+      // `package-info` interface, which is how they are represented in class files. It comes
+      // after the imports, which the annotations may refer to.
+      if packageAnnots.nonEmpty then
+        buf += atSpan(start) {
+          TypeDef(tpnme.PACKAGE_INFO, makeTemplate(List(ObjectTpt()), Nil, Nil, needsDummyConstr = false))
+            .withMods(Modifiers(Flags.JavaInterface).withAnnotations(packageAnnots))
+        }
       while (in.token != EOF && in.token != RBRACE) {
         while (in.token == SEMI) in.nextToken()
         if (in.token != EOF) {
