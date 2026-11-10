@@ -1,0 +1,10 @@
+-- Error: tests/neg-custom-args/captures/i27519.scala:11:4 -------------------------------------------------------------
+11 |  p.add(1)  // error
+   |  ^^^^^
+   |  Cannot call update method add of p
+   |  since its capture set {p} is read-only.
+-- Error: tests/neg-custom-args/captures/i27519.scala:12:4 -------------------------------------------------------------
+12 |  m.add(1)  // error
+   |  ^^^^^
+   |  Cannot call update method add of m
+   |  since its capture set {m} is read-only.

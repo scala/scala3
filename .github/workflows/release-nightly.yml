@@ -53,7 +53,7 @@ jobs:
           distribution: 'zulu'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Generate The Website
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
       - name: Generate GitHub App Token

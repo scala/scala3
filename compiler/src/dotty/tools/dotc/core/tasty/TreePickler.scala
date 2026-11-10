@@ -884,10 +884,11 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     if flags.is(Given) then writeModTag(GIVEN)
     if flags.is(Implicit) then writeModTag(IMPLICIT)
     if flags.is(Tracked) then writeModTag(TRACKED)
+    if flags.is(Mutable) then writeModTag(MUTABLE)
+    if flags.is(Open) then writeModTag(OPEN)
     if isTerm then
       if flags.is(Lazy, butNot = Module) then writeModTag(LAZY)
       if flags.is(AbsOverride) then { writeModTag(ABSTRACT); writeModTag(OVERRIDE) }
-      if flags.is(Mutable) then writeModTag(MUTABLE)
       if flags.is(Accessor) then writeModTag(FIELDaccessor)
       if flags.is(CaseAccessor) then writeModTag(CASEaccessor)
       if flags.is(HasDefault) then writeModTag(HASDEFAULT)
@@ -903,7 +904,6 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       if flags.is(Covariant) then writeModTag(COVARIANT)
       if flags.is(Contravariant) then writeModTag(CONTRAVARIANT)
       if flags.is(Opaque) then writeModTag(OPAQUE)
-      if flags.is(Open) then writeModTag(OPEN)
       if flags.is(Into) then writeModTag(INTO)
   end pickleFlags
 

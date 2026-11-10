@@ -2,8 +2,10 @@ package dotty.tools
 package repl
 
 import scala.io.AnsiColor
+import scala.jdk.CollectionConverters.*
 
 import java.io.{InputStream, InterruptedIOException}
+import java.nio.file.{Path, Paths}
 import dotc.core.Contexts.*
 import dotc.parsing.Scanners.Scanner
 import dotc.parsing.Tokens.*
@@ -27,7 +29,14 @@ import org.jline.utils.NonBlockingReader
 private enum InputState:
   case Monitoring, ForegroundRead, Closed
 
-class JLineTerminal(providedTerminal: org.jline.terminal.Terminal | Null = null) extends java.io.Closeable {
+object JLineTerminal:
+  /** Where the REPL persists its input history. */
+  def defaultHistoryFile: Path = Paths.get(System.getProperty("user.home"), ".dotty_history")
+
+class JLineTerminal(
+  providedTerminal: org.jline.terminal.Terminal | Null = null,
+  historyFile: Path = JLineTerminal.defaultHistoryFile
+) extends java.io.Closeable {
   def this() = this(null)
   private val terminal: org.jline.terminal.Terminal =
     if providedTerminal != null then providedTerminal
@@ -49,6 +58,10 @@ class JLineTerminal(providedTerminal: org.jline.terminal.Terminal | Null = null)
   terminal.enterRawMode()
 
   private val history = new DefaultHistory
+
+  /** The lines recorded in history so far, oldest first. For tests. */
+  private[repl] def historyLines: List[String] =
+    history.iterator.asScala.map(_.line).toList
   @volatile private var monitoringThread: Thread | Null = null
 
   private val userLineReader =
@@ -106,7 +119,6 @@ class JLineTerminal(providedTerminal: org.jline.terminal.Terminal | Null = null)
   )(using Context): String = {
     import LineReader.Option.*
     import LineReader.*
-    val userHome = System.getProperty("user.home")
     val lineReader = LineReaderBuilder
       .builder()
       .terminal(terminal)
@@ -114,7 +126,8 @@ class JLineTerminal(providedTerminal: org.jline.terminal.Terminal | Null = null)
       .completer(completer)
       .highlighter(new Highlighter)
       .parser(new Parser)
-      .variable(HISTORY_FILE, s"$userHome/.dotty_history") // Save history to file
+      .variable(HISTORY_FILE, historyFile)      // Save history to file
+      .variable(HISTORY_IGNORE, s"\\${Completions.command}*") // Skip editor queries; `:` must be escaped in JLine patterns
       .variable(SECONDARY_PROMPT_PATTERN, "%M") // A short word explaining what is "missing",
                                                 // this is supplied from the EOFError.getMissing() method
       .variable(LIST_MAX, 400)                  // Ask user when number of completions exceed this limit (default is 100).

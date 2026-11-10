@@ -23,7 +23,7 @@ import config.Config
 import reporting.*
 import reporting.Diagnostic.LoadingFailure
 import collection.mutable
-import cc.{CapturingType, derivedCapturingType, stripCapturing}
+import cc.{CapturingType, derivedCapturingType, stripCapturing, isCaptureCheckingOrSetup, captureSet}
 
 import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized
@@ -679,9 +679,9 @@ object SymDenotations {
     final def isSpecializedTraitImplementationClass(using Context): Boolean =
       isClass && name.isSpecializedTraitImplementationName
 
-    /** Is this symbol a specialized trait implementation class that 
+    /** Is this symbol a specialized trait implementation class that
      * was generated from a specialization using only top classes / Nothing
-     * and is therefore not subject to a specialized interface */ 
+     * and is therefore not subject to a specialized interface */
     final def isRawSpecializedTraitImplementationClass(using Context): Boolean =
       isClass && name.isSpecializedTraitImplementationName
 
@@ -870,11 +870,11 @@ object SymDenotations {
       this.is(Method, butNot = Accessor) && !isAnonymousFunction
 
     /** A mutable variable (not a getter or setter for it) */
-    final def isMutableVar(using Context): Boolean = is(Mutable, butNot = Method)
+    final def isMutableVar(using Context): Boolean = is(MutableVal, butNot = Method)
 
     /** A mutable variable or its getter or setter */
     final def isMutableVarOrAccessor(using Context): Boolean =
-      is(Mutable) && (!is(Method) || is(Accessor))
+      is(MutableVal) && (!is(Method) || is(Accessor))
 
     /** Is this a getter? */
     final def isGetter(using Context): Boolean =
@@ -1108,11 +1108,11 @@ object SymDenotations {
 
     def isInlineTrait(using Context): Boolean =
       isAllOf(InlineTrait)
-    
-    def isSpecializedMethod(using Context): Boolean = 
+
+    def isSpecializedMethod(using Context): Boolean =
       Specialization.isSpecializedMethod(symbol)
 
-    def isSpecializedTrait(using Context): Boolean = 
+    def isSpecializedTrait(using Context): Boolean =
       Specialization.isSpecializedTrait(symbol)
 
     /** Does this method or field need to be retained at runtime */
@@ -2487,7 +2487,9 @@ object SymDenotations {
                 if tp1.isBottomType && (tp1 frozen_<:< tp2) then return recur(tp2)
                 if tp2.isBottomType && (tp2 frozen_<:< tp1) then return recur(tp1)
               val baseTp =
-                if symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty then
+                if symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty
+                    && !isCaptureCheckingOrSetup // the shortcut would drop capture sets of baseTp1 and baseTp2
+                then
                   symbol.typeRef
                 else
                   val baseTp1 = recur(tp1)

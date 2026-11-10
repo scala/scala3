@@ -13,7 +13,7 @@
 package scala
 
 import scala.language.`2.13`
-import scala.annotation.unused
+import scala.annotation.{experimental, unused}
 
 /** A module defining utility methods for higher-order functional programming. */
 object Function {
@@ -200,4 +200,14 @@ object Function {
   def untupled[T1, T2, T3, T4, T5, R](f: ((T1, T2, T3, T4, T5)) => R): (T1, T2, T3, T4, T5) => R = {
     (x1, x2, x3, x4, x5) => f((x1, x2, x3, x4, x5))
   }
+
+  // applyUsing ---------------------------------------------------------
+
+  extension [F, Args <: Tuple, R](f: F)(using tf: scala.util.TupledFunction[F, Args => R], arityAbove22: compiletime.ops.int.>[Tuple.Size[Args], 22] =:= true)
+    /** Applies this function of more than 22 parameters to the arguments taken from the context.
+     *  Functions of arity up to 22 use the non-experimental extension methods in the companion objects of `Function0` to `Function22`,
+     *  even when this method is imported.
+     *  @return the result of the function application
+     */
+    @experimental inline def applyUsing: R = tf.tupled(f)(compiletime.summonAll[Args])
 }

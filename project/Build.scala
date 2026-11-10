@@ -1028,6 +1028,7 @@ object Build {
       commonMiMaSettings,
       mimaForwardIssueFilters := MiMaFilters.ScalaLibrary.ForwardsBreakingChanges,
       mimaBackwardIssueFilters := MiMaFilters.ScalaLibrary.BackwardsBreakingChanges,
+      mimaBinaryApi ++= MiMaFilters.ScalaLibrary.BinaryApiTracking,
       customMimaReportBinaryIssues("MiMaFilters.ScalaLibrary"),
       scala2LibraryClasspath := Vector((`scala2-library` / Compile / packageBin).value),
       // Generate library.properties, used by scala.util.Properties
@@ -1119,6 +1120,7 @@ object Build {
       commonMiMaSettings,
       mimaForwardIssueFilters := MiMaFilters.ScalaLibrary.ForwardsBreakingChanges,
       mimaBackwardIssueFilters := MiMaFilters.ScalaLibrary.BackwardsBreakingChanges,
+      mimaBinaryApi ++= MiMaFilters.ScalaLibrary.BinaryApiTracking,
       customMimaReportBinaryIssues("MiMaFilters.ScalaLibrary"),
       scala2LibraryClasspath := Vector((`scala2-library` / Compile / packageBin).value),
       // Generate Scala 3 runtime properties overlay

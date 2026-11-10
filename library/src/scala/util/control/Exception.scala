@@ -19,6 +19,7 @@ import scala.language.`2.13`
 import scala.annotation.tailrec
 import scala.reflect.{ClassTag, classTag}
 import scala.language.implicitConversions
+import caps.unsafe.unsafeAssumePure
 
 /** Classes representing the components of exception handling.
  *
@@ -218,7 +219,7 @@ object Exception {
   class Finally private[Exception](body: => Unit) extends Described {
     protected val name = "Finally"
 
-    def and(other: => Unit): Finally = new Finally({ body ; other })
+    def and(other: => Unit): Finally^{this, other} = new Finally({ body ; other })
     def invoke(): Unit = { body }
   }
 
@@ -270,8 +271,13 @@ object Exception {
      *  @return a new `Catch` with the same catch logic and `body` appended to the finally logic
      */
     def andFinally(body: => Unit): Catch[T]^{this, body} = {
-      val appendedFin = fin map(_ and body) getOrElse new Finally(body)
-      new Catch(pf, Some(appendedFin), rethrow)
+      val appendedFin: Finally^{this, body} = fin match {
+        case Some(f) => f and body
+        case None => new Finally(body)
+      }
+      // escape-hatch: `fin` is declared as `Option[Finally]` without captures, so storing a
+      // capturing `Finally` in it needs an unsafe cast.
+      new Catch(pf, Some(appendedFin.unsafeAssumePure), rethrow)
     }
 
     /** Applies this catch logic to the supplied body, mapping the result

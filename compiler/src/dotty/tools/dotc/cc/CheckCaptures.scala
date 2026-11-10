@@ -785,6 +785,12 @@ class CheckCaptures extends Recheck, SymTransformer:
       if tree.symbol.isUpdateMethod then
         checkUpdate(qualType, tree.srcPos):
           i"Cannot call update ${tree.symbol} of ${qualType.showRef}"
+      else if tree.symbol.isConstructor && tree.symbol.owner.isUpdateClass then
+        // Creating an instance of an update class requires exclusive access
+        // to the enclosing object. 
+        val prefix = qualType.normalizedPrefix
+        checkUpdate(prefix, tree.srcPos):
+          i"Cannot create an instance of update ${tree.symbol.owner} of ${prefix.showRef}"
 
       val origSelType = recheckSelection(tree, qualType, name, disambiguate)
       val selType = mapResultRoots(origSelType, tree)
@@ -810,7 +816,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       then
         selType
       else
-        val qualCs = qualType.captureSet
+        val qualCs = qualType.captureSetInContext
         val selCs = selType.captureSet
         capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs ${selWiden.captureSet} in $tree")
 
@@ -1774,7 +1780,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         finally
           ccState.ignoreClassifiers = saved
 
-    @annotation.tailrec
     private def findImpureUpperBound(tp: Type)(using Context): Type = tp match
       case _: SingletonType => findImpureUpperBound(tp.widen)
       case tp: TypeRef if tp.symbol.isAbstractOrParamType =>
@@ -1782,6 +1787,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           case TypeBounds(_, hi) if hi.isBoxed => hi
           case TypeBounds(_, hi) => findImpureUpperBound(hi)
           case _ => NoType
+      case AndType(tp1, tp2) =>
+        // Widen each operand that has an impure upper bound to that bound
+        val hi1 = findImpureUpperBound(tp1)
+        val hi2 = findImpureUpperBound(tp2)
+        if hi1.exists || hi2.exists then hi1.orElse(tp1) & hi2.orElse(tp2)
+        else NoType
       case _ => NoType
 
     inline def testAdapted(actual: Type, expected: Type, tree: Tree, notes: List[Note])
@@ -2045,6 +2056,18 @@ class CheckCaptures extends Recheck, SymTransformer:
             if reduced.exists then
               val adapted = recur(reduced, expected, covariant)
               return if adapted eq reduced then actual else adapted
+          case AndType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2))
+          if tp1.isBoxed == tp2.isBoxed =>
+            // Pull out capture sets of intersections, so that they can be unboxed.
+            // E.g. `box () ->{x} Unit & box () ->{y} Unit` arises from instantiating `T & U`.
+            return recur(
+              CapturingType(AndType(parent1, parent2), refs1 ** refs2, tp1.isBoxed),
+              expected, covariant)
+          case actual @ OrType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2))
+          if tp1.isBoxed == tp2.isBoxed =>
+            return recur(
+              CapturingType(OrType(parent1, parent2, actual.isSoft), refs1 ++ refs2, tp1.isBoxed),
+              expected, covariant)
           case _ =>
 
         // Decompose the actual type into the inner shape type, the capture set and the box status

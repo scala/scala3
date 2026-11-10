@@ -404,7 +404,7 @@ trait StrictOptimizedSeqFactory[+CC[A] <: SeqOps[A, Seq, Seq[A]] & caps.Pure] ex
 trait SpecificIterableFactory[-A, +C] extends Factory[A, C] {
   def empty: C
   def apply(xs: A*): C = fromSpecific(xs)
-  def fill(n: Int)(elem: => A): C = fromSpecific(new View.Fill(n)(elem))
+  def fill(n: Int)(elem: => A): C^{elem} = fromSpecific(new View.Fill(n)(elem))
   def newBuilder: Builder[A, C]
 
   implicit def specificIterableFactory: Factory[A, C] = this

@@ -46,6 +46,7 @@ private[repl] object ReplCommands:
     command(Quit,        "exit the interpreter", aliases = List(Quit.alias)),
     command(TypeOf,      "evaluate the type of the given expression", "<expression>"),
     command(DocOf,       "print the documentation for the given expression", "<expression>"),
+    command(Completions, "print completions for the given input", "<input>"),
     command(Imports,     "show import history"),
     command(Reset,       "clear the session and start fresh with the given compiler options", "[options]"),
     command(Replay,      "reset, then re-run the session with the given compiler options", "[options]"),

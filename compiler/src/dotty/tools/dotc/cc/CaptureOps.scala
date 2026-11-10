@@ -25,14 +25,20 @@ import scala.collection.mutable
 def isCaptureChecking(using Context): Boolean =
   ctx.phaseId == Phases.checkCapturesPhaseId
 
-/** Are we in the CheckCaptures or Setup phase? */
+/** Are we in the Setup phase preceding CheckCaptures? */
+def isCaptureSetup(using Context): Boolean =
+  ctx.phaseId == Phases.checkCapturesPhaseId - 1 && ccState.iterationId > 0
+    // Note: just checking phase id is not enough since Setup would
+    // also be the phase after pattern matcher.
+
+/** Are we in the CheckCaptures or Setup phase?
+ *  Optimized version of `isCaptureChecking || isCaptureSetup
+ */
 def isCaptureCheckingOrSetup(using Context): Boolean =
   val ccId = Phases.checkCapturesPhaseId
   val ctxId = ctx.phaseId
-  ctxId == ccId
-  || ctxId == ccId - 1 && ccState.iterationId > 0
-    // Note: just checking phase id is not enough since Setup would
-    // also be the phase after pattern matcher.
+  ctxId == ccId || ctxId == ccId - 1 && ccState.iterationId > 0
+
 
 /** A dependent function type with given arguments and result type
  *  TODO Move somewhere else where we treat all function type related ops together.
@@ -496,14 +502,14 @@ extension (tp: Type)
     tp.spanCaptureSet.elems.filter(_.core.isInstanceOf[LocalCap]).toList
 
   /** If classifier `clsfier` exists: A localCap instance with this classifier,
-   *  possibly wrapped in a readOnly.
+   *  possibly wrapped in a readOnly. The classifier is frozen, so that it
+   *  cannot be narrowed later by comparisons with classified capture sets.
    */
   def impliedCaptures(clsfier: Symbol, contributing: List[Symbol], readOnly: => Boolean)(using Context): CaptureSet =
     clsfier match
     case clsfier: ClassSymbol =>
       val lcap = LocalCap(Origin.NewInstance(tp, contributing))
-      if !clsfier.isTopClassifier then
-        lcap.hiddenSet.adoptClassifier(clsfier)
+      lcap.adoptClassifier(clsfier, freeze = true)
       (if readOnly then lcap.readOnly else lcap).singletonCaptureSet
     case _ =>
       CaptureSet.empty
@@ -642,8 +648,10 @@ extension (cls: ClassSymbol) {
   }
 
   def creationCapset(using Context)(core: Type = cls.appliedRef): CaptureSet =
-    if cls.derivesFromCapability
-    then LocalCap(Origin.NewInstance(core, Nil)).singletonCaptureSet
+    if cls.derivesFromCapability then
+      val lcap = LocalCap(Origin.NewInstance(core, Nil))
+      lcap.adoptClassifier(cls.classifier, freeze = true)
+      lcap.singletonCaptureSet
     else cls.capturesImpliedByFields(core).refs
 
   /** Map locals set with an as-seen-from relative to the prefix path of the created class
@@ -798,7 +806,7 @@ extension (sym: Symbol) {
    */
   def isExemptFromExplicitChecks(using Context): Boolean =
     sym.isLocalToCompilationUnit
-    || sym.isScalaDocSnippet
+    || sym.ownersIterator.exists(_.isScalaDocSnippet)
     || sym.name.isReplWrapperName
     || sym.isConstructor && sym.owner.name.isReplWrapperName
     || ctx.owner.enclosingPackageClass.isEmptyPackage
