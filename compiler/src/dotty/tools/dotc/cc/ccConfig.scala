@@ -48,7 +48,7 @@ object ccConfig:
 
   /** Not used currently. Handy for trying out new features */
   def newScheme(using ctx: Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.10`)
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.11`)
 
   /** Treat arrays as mutable types and force all mutable fields to be in Stateful
    *  classes, unless they are annotated with @untrackedCaptures.

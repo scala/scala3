@@ -217,6 +217,7 @@ sealed abstract class CaptureSet extends Showable:
     addThisElem(elem)
     || !elem.isTerminalCapability
         && vs.isOpen
+        && !isCaptureSetup
         && {
           val underlying = elem.captureSetOfInfo
           val res = ifNotTried(elem)(tryInclude(underlying.elems, this))
@@ -289,6 +290,7 @@ sealed abstract class CaptureSet extends Showable:
     // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
     def widened(y: Capability) =
       !y.isTerminalCapability
+      && !isCaptureSetup
       && !(vs.isSeparating && y.captureSetOfInfo.containsTerminalCapability)
         // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
         // and might therefore insert an element that is too unspecific.
@@ -321,6 +323,7 @@ sealed abstract class CaptureSet extends Showable:
           elems.exists(_.subsumes(y)(using ctx)(using VarState.ClosedUnrecorded))
     def widened(y: Capability) =
       !y.isTerminalCapability
+      && !isCaptureSetup
       && ifNotTried(y):
         val yelems = y.captureSetOfInfo.elems
         !yelems.isEmpty && yelems.forall(mightAccountFor(_))
@@ -378,9 +381,6 @@ sealed abstract class CaptureSet extends Showable:
     else if that.subCaptures(this, VarState.HardSeparate) then this
     else if this.isConst && that.isConst then Const(this.elems ++ that.elems)
     else Union(this, that)
-
-  def ++ (that: CaptureSet.Const)(using Context): CaptureSet.Const =
-    Const(this.elems ++ that.elems)
 
   /** The smallest superset (via <:<) of this capture set that also contains `ref`.
    */
