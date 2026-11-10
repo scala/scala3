@@ -10,10 +10,10 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27394.scala:8:2 -----------------------------------------
 8 |  g // error
   |  ^
-  |  Found:    () ->{g} Unit
+  |  Found:    () ->{X} Unit
   |  Required: () -> Unit
   |
-  |  Note that capability `g` cannot flow into capture set {}.
+  |  Note that capability `X` cannot flow into capture set {}.
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27394.scala:10:40 ---------------------------------------
