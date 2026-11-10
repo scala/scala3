@@ -965,13 +965,13 @@ object Capabilities:
         case _: GlobalCap =>
           def globalCapSubsumes =
             canAddHidden && vs != VarState.HardSeparate && CCState.globalCapIsRoot
-          y match
+          y.core match
             case _: GlobalCap => this eq y
             case _: ResultCap => false
             case _: LocalCap if CCState.collapseLocalCaps || globalCapSubsumes => true
             case _ => globalCapSubsumes
               // also had: || y.derivesFromCapTrait(defn.Caps_SharedCapability)
-              // but this fails i25863a.scala, i.e compilers without errors where there should be
+              // but this fails i25863a.scala, i.e compiles without errors where there should be
         case Classified(x1, only, except) =>
           (only.isTopClassifier || y.isKnownClassifiedAs(only))
           && except.forall(e => y.isKnownDisjointFrom(e))
