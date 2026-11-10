@@ -46,6 +46,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
   private val xCheckMacro: Boolean = ctx.settings.XcheckMacros.value
   private val yDebugMacro: Boolean = ctx.settings.XdebugMacros.value
 
+  /** Records that the macro being expanded reads the annotations of `sym`, so that incremental
+   *  compilation expands it again when they change (see
+   *  `DependencyRecorder.addMacroInspectionDependency`).
+   */
+  private def recordAnnotationsInspection(sym: dotc.core.Symbols.Symbol): Unit =
+    val unit = ctx.compilationUnit
+    if ctx.runZincPhases && unit != null && (unit ne NoCompilationUnit) then
+      unit.depRecorder.addMacroInspectionDependency(sym)
+
   extension [T](self: scala.quoted.Expr[T])
     def show: String =
       reflect.Printer.TreeCode.show(reflect.asTerm(self))
@@ -3001,12 +3010,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def tree: Tree = FromSymbol.definitionFromSym(self)
 
         def hasAnnotation(annotSym: Symbol): Boolean =
+          recordAnnotationsInspection(self)
           self.denot.hasAnnotation(annotSym)
 
         def getAnnotation(annotSym: Symbol): Option[Term] =
+          recordAnnotationsInspection(self)
           self.denot.getAnnotation(annotSym).map(_.tree)
 
         def annotations: List[Term] =
+          recordAnnotationsInspection(self)
           self.denot.annotations.flatMap {
             case _: dotc.core.Annotations.BodyAnnotation => Nil
             case annot if annot.symbol.exists => annot.tree :: Nil

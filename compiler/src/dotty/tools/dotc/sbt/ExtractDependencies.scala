@@ -102,6 +102,12 @@ object ExtractDependencies {
     if isJava(sym) then javaClassNameAsString(sym)
     else classNameAsString0(sym)
 
+  // Only reference DependencyByMacroExpansion if it an be found on the classpath,
+  // as it was added later to the zinc.apiinfo DependencyContext enum
+  // e.g. pre 1.10.x sbt would throw java.lang.NoSuchFieldError errors here
+  lazy val allowsDependencyByMacroExpansion: Boolean =
+    classOf[DependencyContext].getFields().exists(_.getName() == "DependencyByMacroExpansion")
+
   /** Report an internal error in incremental compilation. */
   def internalError(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     report.error(em"Internal error in the incremental compiler while compiling ${ctx.compilationUnit.source}: $msg", pos)
@@ -157,6 +163,7 @@ end ExtractDependenciesCollector
  */
 trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.TreeTraverser { thisTreeTraverser =>
   import tpd.*
+  import ExtractDependencies.allowsDependencyByMacroExpansion
 
   private def addMemberRefDependency(sym: Symbol)(using Context): Unit =
     if (!ignoreDependency(sym)) {
@@ -182,12 +189,6 @@ trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
       for parent <- tree.parents do
         rec.addClassDependency(parent.tpe.classSymbol, depContext)
     }
-
-  // Only reference DependencyByMacroExpansion if it an be found on the classpath,
-  // as it was added later to the zinc.apiinfo DependencyContext enum
-  // e.g. pre 1.10.x sbt would throw java.lang.NoSuchFieldError errors here
-  lazy val allowsDependencyByMacroExpansion =
-    classOf[DependencyContext].getFields().exists(_.getName() == "DependencyByMacroExpansion")
 
   private def addMacroDependency(trees: List[Tree])(using Context): Unit =
     if (allowsDependencyByMacroExpansion) {
@@ -498,6 +499,19 @@ class DependencyRecorder {
     val lastFoundCache = resolveDependencyFromClass
     if (lastFoundCache != null)
       lastFoundCache.addDependency(toClass, context)
+
+  /** Record that a macro expanded from the current non-local enclosing class inspected `sym`,
+   *  by reading its annotations for example.
+   *
+   *  The output of the macro can depend on things that aren't referenced from it (annotations
+   *  are typically turned into literals), so the class of `sym` is recorded as a macro
+   *  expansion dependency: Zinc then recompiles the current class upon any change in its API.
+   */
+  def addMacroInspectionDependency(sym: Symbol)(using Context): Unit =
+    if allowsDependencyByMacroExpansion && sym.exists then
+      val cls = if sym.is(ModuleVal) then sym.moduleClass else sym.enclosingClass
+      if cls.exists && !cls.is(Package) && !cls.isEffectiveRoot then
+        addClassDependency(cls, DependencyByMacroExpansion)
 
   private val _foundDeps = new util.EqHashMap[Symbol, FoundDepsInClass]
 

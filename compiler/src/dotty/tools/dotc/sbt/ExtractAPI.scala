@@ -440,6 +440,23 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.Set[Symbol])(usi
         seenInlineExtras = true
         inlineExtras = hashInlineParam(p, inlineExtras)
 
+    // Zinc's `MethodParameter` has no annotations, so we add those of the parameters to
+    // synthetic annotations of the method. Macros can read them (like the annotations of the
+    // parameters of the primary constructor of case classes, when deriving type class instances
+    // from them), and their reverse dependencies need to be recompiled when they change.
+    // Like for `tparamsExtra` below, we let Zinc hash them structurally: the `hashCode` of
+    // Zinc API objects is not stable across JVMs.
+    val paramAnnotsAnnots = mutable.ListBuffer.empty[api.Annotation]
+
+    def addParamAnnots(p: Symbol): Unit =
+      val annots = p.annotations.filter(isApiAnnotation)
+      if annots.nonEmpty then
+        paramAnnotsAnnots += api.Annotation.of(
+          api.Annotated.of(
+            api.Constant.of(Constants.emptyType, s"paramAnnots:${p.name}"),
+            annots.map(apiAnnotation).toArray),
+          Array())
+
     def inlineExtrasAnnot: Option[api.Annotation] =
       val h = inlineExtras
       Option.when(seenInlineExtras) {
@@ -454,6 +471,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.Set[Symbol])(usi
     def paramList(mt: MethodType, params: List[Symbol]): api.ParameterList =
       val apiParams = params.lazyZip(mt.paramInfos).map((param, ptype) =>
         mixInlineParam(param)
+        addParamAnnots(param)
         api.MethodParameter.of(
           param.name.toString, apiType(ptype), param.is(HasDefault), api.ParameterModifier.Plain))
       api.ParameterList.of(apiParams.toArray, mt.isImplicitMethod)
@@ -497,7 +515,8 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.Set[Symbol])(usi
         Array())
     }
 
-    val annotations = inlineExtrasAnnot ++: tparamsExtraAnnots ++: apiAnnotations(sym, inlineOrigin)
+    val annotations =
+      inlineExtrasAnnot ++: paramAnnotsAnnots.toList ++: tparamsExtraAnnots ++: apiAnnotations(sym, inlineOrigin)
 
     api.Def.of(sym.zincMangledName.toString, apiAccess(sym), apiModifiers(sym),
       annotations.toArray, tparams.toArray, vparamss.toArray, apiType(retTp))
@@ -755,16 +774,20 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.Set[Symbol])(usi
     //   lead to overcompilation when using zinc's
     //   `IncOptions#useOptimizedSealed`.
     s.annotations.foreach { annot =>
-      val sym = annot.symbol
-      // Ignore annotations of type Any, this means we couldn't actually load it,
-      // because it's no longer on the classpath compared to when the code we're loading was compiled.
-      // See the i25722 special test in explicitNullsPos for an example.
-      if sym.exists && sym != defn.BodyAnnot && sym != defn.ChildAnnot && !sym.typeRef.isAny then
+      if isApiAnnotation(annot) then
         annots += apiAnnotation(annot)
     }
 
     annots.toList
   }
+
+  /** Whether `annot` is part of the API of the definition it annotates */
+  private def isApiAnnotation(annot: Annotation): Boolean =
+    val sym = annot.symbol
+    // Ignore annotations of type Any, this means we couldn't actually load it,
+    // because it's no longer on the classpath compared to when the code we're loading was compiled.
+    // See the i25722 special test in explicitNullsPos for an example.
+    sym.exists && sym != defn.BodyAnnot && sym != defn.ChildAnnot && !sym.typeRef.isAny
 
   /** Produce a hash for a tree that is as stable as possible:
    *  it should stay the same across compiler runs, compiler instances,
