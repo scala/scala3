@@ -105,7 +105,7 @@ class ClosureOptimizer(byteCodeRepository: BCodeRepository, callGraph: Optimizer
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
-        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, bTypesFromClassfile)
+        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, bTypesFromClassfile, ts)
 
         val closureInits = callGraph.getClosureInstantiations(method)
           val prodCons = new ProdConsAnalyzer(method, ownerClass)

@@ -297,7 +297,7 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
       traceIfChanged("storeLoadPairs")
 
       // STALE HANDLERS
-      val removeHandlersResult = if (runDCE) removeEmptyExceptionHandlers(method, bTypesFromClassfile) else RemoveHandlersResult.NoneRemoved
+      val removeHandlersResult = if (runDCE) removeEmptyExceptionHandlers(method, bTypesFromClassfile, ts) else RemoveHandlersResult.NoneRemoved
       traceIfChanged("staleHandlers")
 
       // SIMPLIFY JUMPS
@@ -659,7 +659,7 @@ object LocalOptImpls {
    *
    * @return A set containing the eliminated instructions
    */
-  def minimalRemoveUnreachableCode(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph, bTypesFromClassfile: BTypesFromClassfile): Boolean = {
+  def minimalRemoveUnreachableCode(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph, bTypesFromClassfile: BTypesFromClassfile, ts: OptimizerKnownBTypes): Boolean = {
     // In principle, for the inliner, a single removeUnreachableCodeImpl would be enough. But that
     // would potentially leave behind stale handlers (empty try block) which is not legal in the
     // classfile. So we run both removeUnreachableCodeImpl and removeEmptyExceptionHandlers.
@@ -672,7 +672,7 @@ object LocalOptImpls {
     def removalRound(): Boolean = {
       val insnsRemoved = removeUnreachableCodeImpl(method, ownerClassName, callGraph)
       if (insnsRemoved) {
-        val removeHandlersResult = removeEmptyExceptionHandlers(method, bTypesFromClassfile)
+        val removeHandlersResult = removeEmptyExceptionHandlers(method, bTypesFromClassfile, ts)
         if (removeHandlersResult.liveHandlerRemoved) removalRound()
       }
       // Note that `removeUnreachableCodeImpl` adds `LABEL_REACHABLE_STATUS` to label.status fields. We don't clean up
@@ -851,7 +851,7 @@ object LocalOptImpls {
    * The `liveHandlerRemoved` result depends on `removeUnreachableCode` being executed
    * before, so that `OptimizerUtils.isLabelReachable` gives a correct answer.
    */
-  def removeEmptyExceptionHandlers(method: MethodNode, bTypes: BTypesFromClassfile): RemoveHandlersResult = {
+  def removeEmptyExceptionHandlers(method: MethodNode, bTypesFromClassfile: BTypesFromClassfile, knownBTypes: OptimizerKnownBTypes): RemoveHandlersResult = {
     /* True if there exists code between start and end. */
     @tailrec
     def containsExecutableCode(start: AbstractInsnNode, end: LabelNode, mayHandleVMError: Boolean): Boolean = {
@@ -872,11 +872,9 @@ object LocalOptImpls {
       val mayHandleVMError =
         if handler.`type` == null then true
         else
-          def inheritsFromException(bt: ClassBType): Boolean =
-            bt.internalName == "java/lang/Exception" || bt.info.superClass.exists(inheritsFromException)
-          bTypes.bTypeForDescriptorFromClassfile("L" + handler.`type` + ";") match
+          bTypesFromClassfile.bTypeForDescriptorFromClassfile("L" + handler.`type` + ";") match
             case Left(_) => true
-            case Right(bt) => !inheritsFromException(bt.asClassBType)
+            case Right(bt) => !bt.asClassBType.isSubtypeOf(knownBTypes.ExceptionRef)
       if !containsExecutableCode(handler.start, handler.end, mayHandleVMError) then
         if (!result.handlerRemoved) result = RemoveHandlersResult.HandlerRemoved
         if (!result.liveHandlerRemoved && OptimizerUtils.isLabelReachable(handler.start))

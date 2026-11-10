@@ -17,6 +17,7 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
 
   val ObjectRef: ClassBType = ts.classBTypeFromSymbol(defn.ObjectClass)
   val StringRef: ClassBType = ts.classBTypeFromSymbol(defn.StringClass)
+  val ExceptionRef: ClassBType = ts.classBTypeFromSymbol(defn.ExceptionClass)
 
   val srNothingRef: ClassBType = ts.classBTypeFromSymbol(defn.RuntimeNothingClass)
   val srNullRef: ClassBType = ts.classBTypeFromSymbol(defn.RuntimeNullClass)
