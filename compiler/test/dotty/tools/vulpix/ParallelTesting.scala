@@ -2,8 +2,8 @@ package dotty
 package tools
 package vulpix
 
-import java.io.{PrintStream, File as JFile}
-import java.lang.management.ManagementFactory
+
+import java.io.{File as JFile, PrintStream}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Paths}
 import java.nio.charset.{Charset, StandardCharsets}
@@ -16,6 +16,7 @@ import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Random, Try, Using}
 import scala.util.Properties.{isJavaAtLeast, javaSpecVersion}
+import scala.util.control.NonFatal
 import dotc.{Compiler, Driver}
 import dotty.tools.dotc.CoverageSupport
 import dotc.core.Contexts.*
@@ -23,9 +24,8 @@ import dotc.report
 import dotc.interfaces.Diagnostic.{ERROR, WARNING}
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
-import dotc.util.{NoSourcePosition, SourceFile, SourcePosition, Spans}
+import dotc.util.{SourceFile, SourcePosition, Spans, NoSourcePosition}
 import io.{AbstractFile, Directory, PlainDirectory}
-import util.chaining.*
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
@@ -36,23 +36,6 @@ import util.chaining.*
 trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   import ParallelTesting.*
   import Status.{Failure, Success, Timeout}
-
-  /** If the running environment supports an interactive terminal, each `Test`
-   *  will be run with a progress bar and real time feedback
-   */
-  def isInteractive: Boolean
-
-  /** A list of strings which is used to filter which tests to run, if `Nil` will run
-   *  all tests. All absolute paths that contain any of the substrings in `testFilter`
-   *  will be run
-   */
-  def testFilter: List[String]
-
-  /** Tests should override the checkfiles with the current output */
-  def updateCheckFiles: Boolean
-
-  /** Contains a list of failed tests to run, if list is empty no tests will run */
-  def failedTests: Option[List[String]]
 
   protected def testPlatform: TestPlatform = TestPlatform.JVM
 
@@ -243,7 +226,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
           files.exists(f => SeparateCompilationSource.HasCompilerVersion.matches(f.getName))
 
   protected def shouldReRun(testSource: TestSource): Boolean =
-    failedTests.forall(rerun => testSource match {
+    TestReporter.lastRunFailedTests.forall(rerun => testSource match {
       case JointCompilationSource(_, files, _, _, _, _) =>
         rerun.exists(filter => files.exists(file => file.getPath.contains(filter)))
       case SeparateCompilationSource(_, dir, _, _) =>
@@ -297,7 +280,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
      */
     final def diffTest(testSource: TestSource, checkFile: JFile, actual: List[String], reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       for (msg <- FileDiff.check(testSource.title, actual, checkFile.getPath)) {
-        if (updateCheckFiles) {
+        if (Properties.testsUpdateCheckfile) {
           FileDiff.dump(checkFile.toPath.toString, actual)
           echo("Updated checkfile: " + checkFile.getPath)
         } else {
@@ -329,7 +312,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
               case None => onSuccess(testSource, reporters, logger)
             }
           case _ =>
-      catch case ex: Throwable =>
+      catch case NonFatal(ex) =>
         echo(s"Exception thrown onComplete (probably by a reporter) in $testSource: ${ex.getClass}")
         Try(ex.printStackTrace())
           .recover{ _ =>
@@ -396,19 +379,19 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
       final def run(): Unit = {
         checkTestSource()
-        summaryReport.echoToLog(logBuffer.iterator)
+        summaryReport.echoToLog(logBuffer)
       }
     }
 
     /** All testSources left after filtering out */
     private val filteredSources =
       val filteredByName =
-        if (testFilter.isEmpty) testSources
+        if (Properties.testsFilter.isEmpty) testSources
         else testSources.filter {
           case JointCompilationSource(_, files, _, _, _, _) =>
-            testFilter.exists(filter => files.exists(file => file.getPath.contains(filter)))
+            Properties.testsFilter.exists(filter => files.exists(file => file.getPath.contains(filter)))
           case SeparateCompilationSource(_, dir, _, _) =>
-            testFilter.exists(dir.getPath.contains)
+            Properties.testsFilter.exists(dir.getPath.contains)
         }
       filteredByName.filterNot(shouldSkipTestSource(_)).filter(shouldReRun(_))
 
@@ -501,7 +484,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     protected def tryCompile(testSource: TestSource)(op: => Unit): Unit =
       try op
       catch
-        case e: Throwable =>
+        case NonFatal(e) =>
           // if an exception is thrown during compilation, the complete test
           // run should fail
           failTestSource(testSource)
@@ -568,7 +551,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
             ntimes(times) { run =>
               val start = System.nanoTime()
               val rep = super.doCompile(comp, files)
-              report.echo(s"\ntime run $run: ${(System.nanoTime - start) / 1000000}ms")
+              report.echoToLog(List(s"\ntime run $run: ${(System.nanoTime - start) / 1000000}ms"))
               rep
             }
         }
@@ -774,9 +757,10 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       if filteredSources.nonEmpty then
         val pool = JExecutors.newWorkStealingPool(threadLimit.getOrElse(Runtime.getRuntime.availableProcessors()))
         val timer = new Timer()
-        val logProgress = sourceCount > 1 && isInteractive && !suppressAllOutput
+        val logProgress = !Properties.isRunByCI && sourceCount > 1 && !suppressAllOutput
         val start = System.currentTimeMillis()
         if logProgress then
+          realStdout.println(s"Testing ${Console.BOLD}${Console.BLUE}${filteredSources.head.name}${Console.RESET}")
           timer.schedule((() => updateProgressMonitor(start)): TimerTask, 100/*ms*/, 200/*ms*/)
 
         val eventualResults = for target <- filteredSources yield
@@ -813,11 +797,11 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         else reportPassed()
       else
         val groupInfo = testSources.map(_.group).distinct.mkString(",")
-        if testFilter.isEmpty then
+        if Properties.testsFilter.isEmpty then
           reportFailed()
           addFailedTest(FailedTestInfo(groupInfo, "No tests available under target - erroneous test?"))
         else
-          addSkippedTest(FailedTestInfo(groupInfo, s"""No files matched "${testFilter.mkString(",")}" in test"""))
+          addSkippedTest(FailedTestInfo(groupInfo, s"""No files matched "${Properties.testsFilter.mkString(",")}" in test"""))
 
       this
     }
@@ -845,9 +829,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] =
       lazy val (expected, expCount) = getWarnMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
-      lazy val obtCount = reporters.foldLeft(0)(_ + _.warningCount)
       lazy val diagnostics = reporters.flatMap(_.diagnostics.toSeq.sortBy(_.pos.line))
-      lazy val (unfulfilled, unexpected) = getMissingExpectedWarnings(expected, diagnostics.iterator.filter(_.level >= WARNING))
+      lazy val (unfulfilled, unexpected) = getMissingExpectedWarnings(expected, diagnostics.iterator)
+      lazy val obtCount = expCount - unfulfilled.length + unexpected.length
       lazy val messages = diagnostics.map(d => s" at ${d.pos.line + 1}: ${d.message}")
       def showLines(title: String, lines: Seq[String]) = if lines.isEmpty then "" else lines.mkString(s"$title\n", "\n", "")
       def hasMissingAnnotations = unfulfilled.nonEmpty || unexpected.nonEmpty
@@ -950,36 +934,22 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
   protected class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
-    private var didAddNoRunWarning = false
-    protected def addNoRunWarning() = if (!didAddNoRunWarning) {
-      didAddNoRunWarning = true
-      summaryReport.addStartingMessage {
-        """|WARNING
-           |-------
-           |Run and debug tests were only compiled, not run - this is due to the `dotty.tests.norun`
-           |property being set
-           |""".stripMargin
-      }
-    }
-
     private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) =
       import testSource.{allToolArgs, runClassPath, title}
-      if Properties.testsNoRun then addNoRunWarning()
-      else
-        runMain(runClassPath, allToolArgs) match
-          case Success(output) =>
-            for file <- checkFile if file.exists do
-              diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
-          case Failure("") =>
-            echo(s"Test '$title' failed with no output")
-            failTestSource(testSource)
-          case Failure(output) =>
-            echo(s"Test '$title' failed with output:")
-            echo(output)
-            failTestSource(testSource)
-          case Timeout =>
-            echo(s"failed because test '$title' timed out")
-            failTestSource(testSource, TimeoutFailure(title))
+      runMain(runClassPath, allToolArgs) match
+        case Success(output) =>
+          for file <- checkFile if file.exists do
+            diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
+        case Failure("") =>
+          echo(s"Test '$title' failed with no output")
+          failTestSource(testSource)
+        case Failure(output) =>
+          echo(s"Test '$title' failed with output:")
+          echo(output)
+          failTestSource(testSource)
+        case Timeout =>
+          echo(s"failed because test '$title' timed out")
+          failTestSource(testSource, TimeoutFailure(title))
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
       verifyOutput(testSource.checkFile, testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
@@ -1238,6 +1208,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       shouldSuppressOutput: Boolean = shouldSuppressOutput): CompilationTest =
         CompilationTest(targets, times, shouldDelete, threadLimit, shouldFail, shouldSuppressOutput)
 
+    def name: String =
+      targets.headOption.map(_.name).getOrElse("???")
+
     /** Creates a "pos" test run, which makes sure that all tests pass
      *  compilation without generating errors and that they do not crash the
      *  compiler
@@ -1398,9 +1371,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     /** Builds a `CompilationTest` which keeps the generated output files
      *
-     *  This is needed for tests like `tastyBootstrap` which relies on first
-     *  compiling a certain part of the project and then compiling a second
-     *  part which depends on the first
+     *  This is needed for tests like idempotency tests that rely on checking output files.
      */
     def keepOutput: CompilationTest =
       new CompilationTest(targets, times, false, threadLimit, shouldFail, shouldSuppressOutput)
@@ -1453,11 +1424,12 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     def aggregateTests(tests: CompilationTest*): CompilationTest =
       assert(tests.nonEmpty)
       def aggregate(test1: CompilationTest, test2: CompilationTest) =
+        require(test1.name == test2.name, s"can't combine tests that have different names (${test1.name} ${test2.name})")
         require(test1.times == test2.times, "can't combine tests that are meant to be benchmark compiled")
         require(test1.shouldDelete == test2.shouldDelete, "can't combine tests that differ on deleting output")
         require(test1.shouldFail == test2.shouldFail, "can't combine tests that have different expectations on outcome")
         require(test1.shouldSuppressOutput == test2.shouldSuppressOutput, "can't combine tests that both suppress and don't suppress output")
-        test1.copy(test1.targets ++ test2.targets) // what if thread limit differs? currently threads are limited on aggregate only
+        test1.copy(test1.targets ++ test2.targets)
       tests.reduce(aggregate)
   end CompilationTest
 
@@ -1542,7 +1514,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     val targetDir = new JFile(outDir, sourceDir.getName)
     targetDir.mkdirs()
 
-    val target = JointCompilationSource(s"compiling '$f' in test '$testGroup'", randomized, flags, targetDir)
+    val target = JointCompilationSource(testGroup.name, randomized, flags, targetDir)
     new CompilationTest(target)
   }
 
@@ -1556,7 +1528,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     targetDir.mkdirs()
     assert(targetDir.exists, s"couldn't create target directory: $targetDir")
 
-    val target = JointCompilationSource(s"$testName from $testGroup", files.map(new JFile(_)).toArray, flags, targetDir)
+    val target = JointCompilationSource(testGroup.name, files.map(new JFile(_)).toArray, flags, targetDir)
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(target)
@@ -1606,78 +1578,6 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(targets)
-  }
-
-  /** This function compiles the files and folders contained within directory
-   *  `f` in a specific way. Once compiled, they are recompiled/run from tasty as sources.
-   *
-   *  - Each file is compiled separately as a single compilation run
-   *  - Each directory is compiled as a `SeparateCompilationTarget`, in this
-   *    target all files are grouped according to the file suffix `_X` where `X`
-   *    is a number. These groups are then ordered in ascending order based on
-   *    the value of `X` and each group is compiled one after the other.
-   *
-   *  For this function to work as expected, we use the same convention for
-   *  directory layout as the old partest. That is:
-   *
-   *  - Single files can have an associated check-file with the same name (but
-   *    with file extension `.check`)
-   *  - Directories can have an associated check-file, where the check file has
-   *    the same name as the directory (with the file extension `.check`)
-   *
-   *  Tests in the first part of the tuple must be executed before the second.
-   *  Both testsRequires explicit delete().
-   */
-  def compileTastyInDir(f: String, flags0: TestFlags, fromTastyFilter: FileFilter)(implicit testGroup: TestGroup): TastyCompilationTest = {
-    val outDir = new JFile(defaultOutputDir, testGroup.name)
-    val flags = flags0 `and` "-Yretain-trees"
-    val sourceDir = new JFile(f)
-    checkRequirements(f, sourceDir, outDir)
-
-    val (dirs, files) = compilationTargets(sourceDir, fromTastyFilter)
-
-    val filteredFiles = testFilter match
-      case _ :: _ => files.filter(f => testFilter.exists(f.getPath.contains))
-      case _      => Nil
-
-    class JointCompilationSourceFromTasty(
-       name: String,
-       file: JFile,
-       flags: TestFlags,
-       outDir: JFile,
-       fromTasty: Boolean = false,
-    ) extends JointCompilationSource(name, Array(file), flags, outDir, if (fromTasty) FromTasty else NotFromTasty) {
-
-      override def buildInstructions(errors: Int, warnings: Int): String = {
-        val runOrPos = if (file.getPath.startsWith(s"tests${JFile.separator}run${JFile.separator}")) "run" else "pos"
-        val listName = if (fromTasty) "from-tasty" else "decompilation"
-        s"""|
-            |Test '$title' compiled with $errors error(s) and $warnings warning(s),
-            |the test can be reproduced by running:
-            |
-            |  sbt "testCompilation --from-tasty $file"
-            |
-            |This tests can be disabled by adding `${file.getName}` to `compiler${JFile.separator}test${JFile.separator}dotc${JFile.separator}$runOrPos-$listName.excludelist`
-            |
-            |""".stripMargin
-      }
-
-    }
-
-    val targets = filteredFiles.map { f =>
-      val classpath = createOutputDirsForFile(f, sourceDir, outDir)
-      new JointCompilationSourceFromTasty(testGroup.name, f, flags.withClasspath(classpath.getPath), classpath, fromTasty = true)
-    }
-    // TODO add SeparateCompilationSource from tasty?
-
-    // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
-    val generateClassFiles = compileFilesInDir(f, flags0, fromTastyFilter)
-
-    new TastyCompilationTest(
-      generateClassFiles.keepOutput,
-      new CompilationTest(targets).keepOutput,
-      shouldDelete = true
-    )
   }
 
   /** A two step compilation test for best effort compilation pickling and unpickling.
@@ -1821,32 +1721,6 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   }
 
 
-  class TastyCompilationTest(step1: CompilationTest, step2: CompilationTest, shouldDelete: Boolean)(implicit testGroup: TestGroup) {
-
-    def keepOutput: TastyCompilationTest =
-      new TastyCompilationTest(step1, step2, shouldDelete)
-
-    def checkCompile()(using SummaryReporting): this.type = {
-      step1.checkCompile() // Compile all files to generate the class files with tasty
-      step2.checkCompile() // Compile from tasty
-
-      if (shouldDelete)
-        CompilationTest.aggregateTests(step1, step2).delete()
-
-      this
-    }
-
-    def checkRuns()(using SummaryReporting): this.type = {
-      step1.checkCompile() // Compile all files to generate the class files with tasty
-      step2.checkRuns() // Compile from tasty
-
-      if (shouldDelete)
-        CompilationTest.aggregateTests(step1, step2).delete()
-
-      this
-    }
-  }
-
   class BestEffortOptionsTest(step1: CompilationTest, step2: CompilationTest, bestEffortDirs: List[JFile], shouldDelete: Boolean)(implicit testGroup: TestGroup) {
 
     def checkNoCrash()(using SummaryReporting): this.type = {
@@ -1899,11 +1773,6 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     flags.options.sliding(2).collectFirst {
       case Array("-encoding", encoding) => Charset.forName(encoding)
     }.getOrElse(StandardCharsets.UTF_8)
-
-  /** checks if the current process is being debugged */
-  def isUserDebugging: Boolean =
-    val mxBean = ManagementFactory.getRuntimeMXBean
-    mxBean.getInputArguments.asScala.exists(_.contains("jdwp"))
 
 object ParallelTesting:
 

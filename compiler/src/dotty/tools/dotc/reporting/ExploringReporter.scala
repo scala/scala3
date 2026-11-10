@@ -6,7 +6,7 @@ import collection.mutable
 import core.Contexts.Context
 import Diagnostic.*
 
-/** A re-usable Reporter used in Contexts#test */
+/** A re-usable Reporter used in Contexts#explore */
 class ExploringReporter extends StoreReporter(null, fromTyperState = false):
   infos = new mutable.ListBuffer[Diagnostic]
 

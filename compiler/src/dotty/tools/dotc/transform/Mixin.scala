@@ -37,19 +37,27 @@ object Mixin {
  *
  *   1. (done in `traitDefs` and `transformSym`) For every concrete trait getter
  *
+ *  ```
  *       <mods> def x(): T = expr
+ *  ```
  *
  *   make it non-private, and add the definition of its trait setter:
  *
+ *  ```
  *       <mods> def TraitName$_setter_$x(v: T): Unit
+ *  ```
  *
  *   2. (done in `traitDefs`) Make every concrete trait setter
  *
+ *  ```
  *      <mods> def x_=(y: T) = ()
+ *  ```
  *
  *     deferred by mapping it to
  *
+ *  ```
  *      <mods> def x_=(y: T)
+ *  ```
  *
  *   3. (done in `transformSym`) For every module class constructor in traits,
  *      remove its Private flag (but do not expand its name), since it will have
@@ -63,7 +71,9 @@ object Mixin {
  *          4.1 (done in `traitInits`) For every parameter accessor `<mods> def x(): T` in M,
  *              in order of textual occurrence, add
  *
+ *  ```
  *               <mods> def x() = e
+ *  ```
  *
  *              where `e` is the constructor argument in C that corresponds to `x`. Issue
  *              an error if no such argument exists.
@@ -73,30 +83,42 @@ object Mixin {
  *
  *              4.2.1 If `x` is also a member of `C`, and is a lazy val,
  *
+ *  ```
  *                <mods> lazy val x: T = super[M].x
+ *  ```
  *
  *              4.2.2 If `x` is also a member of `C`, and is a module,
  *
+ *  ```
  *                <mods> lazy module val x: T = new T$(this)
+ *  ```
  *
  *              4.2.3 If `x` is also a member of `C`, and is something else:
  *
+ *  ```
  *                <mods> def x(): T = _
+ *  ```
  *
  *              4.2.5 If `x` is not a member of `C`, nothing gets added.
  *
  *          4.3 (done in `superCallOpt`) The call:
  *
+ *  ```
  *                super[M].$init$()
+ *  ```
  *
  *          4.4 (done in `setters`) For every concrete setter `<mods> def x_=(y: T)` in M:
  *
+ *  ```
  *                <mods> def x_=(y: T) = ()
+ *  ```
  *
  *          4.5 (done in `mixinForwarders`) For every method
  *          `<mods> def f[Ts](ps1)...(psN): U` in M that needs to be disambiguated:
  *
+ *  ```
  *                <mods> def f[Ts](ps1)...(psN): U = super[M].f[Ts](ps1)...(psN)
+ *  ```
  *
  *          A method in M needs to be disambiguated if it is concrete, not overridden in C,
  *          and if it overrides another concrete method.

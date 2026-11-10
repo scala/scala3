@@ -2,7 +2,7 @@ package dotty.tools
 
 import scala.annotation.tailrec
 import scala.io.Source
-import scala.util.{Try, Success, Failure}
+import scala.util.{Using, Success, Failure}
 import java.io.File
 
 enum CompileMode:
@@ -43,7 +43,7 @@ case class CompileSettings(
     this.copy(scriptArgs = scriptArgs.appendedAll(args.toList.filter(_.nonEmpty)))
 
   def withTargetScript(file: String): CompileSettings =
-    Try(Source.fromFile(file)) match
+    Using(Source.fromFile(file))(_ => ()) match
       case Success(_) => this.copy(targetScript = file)
       case Failure(_) =>
         println(s"not found $file")
@@ -54,7 +54,7 @@ case class CompileSettings(
 object MainGenericCompiler {
 
   private val classpathSeparator: String = File.pathSeparator
-  private val javaPropOption = raw"""-D(.+?)=(.?)""".r
+  private val javaPropOption = raw"""-D([^=]+)=(.*)""".r
 
   private def processClasspath(cp: String, tail: List[String]): (List[String], List[String]) =
     val cpEntries = cp.split(classpathSeparator).toList

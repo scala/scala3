@@ -2,20 +2,23 @@ package dotty
 package tools
 package vulpix
 
-import java.io.{File as JFile, InputStreamReader, IOException, BufferedReader, PrintStream}
+import org.junit.AfterClass
+import java.io.{BufferedReader, IOException, InputStreamReader, PrintStream, File as JFile}
 import java.nio.file.Paths
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.TimeoutException
-
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
-
 import ChildJVMMain.{MessageEnd, MessageStart}
 import Status.*
+import dotty.tools.debug.{Debugger, ExpressionEvaluator}
 
-/** Vulpix spawns JVM subprocesses (`numberOfWorkers`) in order to run tests
+import java.lang.management.ManagementFactory
+import scala.jdk.CollectionConverters.ListHasAsScala
+
+/** Vulpix spawns JVM subprocesses in order to run tests
  *  without compromising the main JVM
  *
  *  These need to be orchestrated in a safe manner with a simple protocol. This
@@ -35,17 +38,8 @@ import Status.*
  *  child process is destroyed and a new child is spawned.
  */
 trait RunnerOrchestration:
-
-  /** The maximum amount of active runners, which contain a child JVM */
-  def numberOfWorkers: Int
-
-  /** The maximum duration the child process is allowed to consume before
-   *  getting destroyed
-   */
-  def maxDuration: Duration
-
-  /** Destroy and respawn process after each test */
-  def safeMode: Boolean
+  protected val report: SummaryReporting = SummaryReport() // so it's overrideable by the Vulpix self-tests
+  given summaryReport: SummaryReporting = report
 
   /** Open JDI connection for testing the debugger */
   def debugMode: Boolean = false
@@ -59,13 +53,23 @@ trait RunnerOrchestration:
     /** wait until the end of the main method */
     def exit(): Status
 
-  /** Kill all processes */
-  def cleanup() = monitor.killAll()
+  @AfterClass
+  def cleanup(): Unit =
+    monitor.killAll()
+    summaryReport.echoSummary()
 
   private val monitor = new RunnerMonitor
   export monitor.debugMain
   def runMain(classPath: String, toolArgs: ToolArgs)(using SummaryReporting): Status =
     monitor.runMain(classPath, toolArgs) // scala-js overrides and requires toolArgs
+
+  /** checks if the current process is being debugged */
+  def isUserDebugging: Boolean =
+    val mxBean = ManagementFactory.getRuntimeMXBean
+    mxBean.getInputArguments.asScala.exists(_.contains("jdwp"))
+
+  def testTimeout: Duration =
+    if isUserDebugging then 3.hours else 60.seconds
 
   /** The runner monitor object keeps track of child JVM processes by keeping
    *  them in two structures - one for free, and one for busy children.
@@ -84,8 +88,8 @@ trait RunnerOrchestration:
     /** Provide a Debuggee for debugging the Test class's main method.
      *  @param f the debugging flow: set breakpoints, launch main class, pause, step, evaluate, exit etc
      */
-    def debugMain(classPath: String)(f: Debuggee => Unit)(using SummaryReporting): Unit =
-      withRunner(_.debugMain(classPath)(f))
+    def debugMain(classPath: String, expressionEvaluator: ExpressionEvaluator)(f: (Debugger, Debuggee) => Unit)(using SummaryReporting): Status =
+      withRunner(_.debugMain(classPath, expressionEvaluator)(f))
 
     private class RunnerProcess(p: Process):
       private val stdout = BufferedReader(InputStreamReader(p.getInputStream(), UTF_8))
@@ -122,15 +126,22 @@ trait RunnerOrchestration:
       /** Blocks less than `maxDuration` while running `Test.main` from `dir`. */
       def runMain(classPath: String): Status = awaitStatus(startMain(classPath))
 
-      def debugMain(classPath: String)(f: Debuggee => Unit): Status =
+      def debugMain(classPath: String, expressionEvaluator: ExpressionEvaluator)(f: (Debugger, Debuggee) => Unit): Status =
         val debuggee = new Debuggee:
           private var mainFuture: Future[Status] | Null = null
           def readJdiPort(): Int = process.getJdiPort()
           def launch(): Unit = mainFuture = startMain(classPath)
           def exit(): Status = awaitStatus(mainFuture.nn)
 
-        f(debuggee)
-        debuggee.exit()
+        val debugger = Debugger(debuggee.readJdiPort(), expressionEvaluator, testTimeout /* , verbose = true */)
+        try
+          f(debugger, debuggee)
+          debuggee.exit()
+        finally
+          // closing the debugger must be done at the very end so that the
+          // 'Listening for transport dt_socket at address: <port>' message is ready to be read
+          // by the next DebugTest
+          debugger.dispose()
       end debugMain
 
       private def startMain(classPath: String): Future[Status] = {
@@ -169,7 +180,7 @@ trait RunnerOrchestration:
 
       // wait status of the main class execution
       private def awaitStatus(future: Future[Status]): Status =
-        try Await.result(future, maxDuration)
+        try Await.result(future, testTimeout)
         catch case _: TimeoutException => Timeout
     end Runner
 
@@ -192,6 +203,7 @@ trait RunnerOrchestration:
 
     private val freeRunners = mutable.Queue.empty[Runner]
     private val busyRunners = mutable.Set.empty[Runner]
+    private val numberOfWorkers = Runtime.getRuntime.availableProcessors()
 
     private def getRunner(): Runner = synchronized {
       while freeRunners.isEmpty && busyRunners.size >= numberOfWorkers
@@ -221,7 +233,7 @@ trait RunnerOrchestration:
     private def withRunner(op: Runner => Status)(using SummaryReporting): Status =
       val runner = getRunner()
       val status = op(runner)
-      if safeMode || !status.isSuccess then
+      if !status.isSuccess then
         discardRunner(runner)
       else
         freeRunner(runner)

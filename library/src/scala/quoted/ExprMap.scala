@@ -1,6 +1,7 @@
 package scala.quoted
 
 import language.experimental.captureChecking
+import scala.annotation.unused
 
 trait ExprMap:
 
@@ -130,7 +131,7 @@ trait ExprMap:
           case _ =>
             transformTermChildren(tree, tpe)(owner)
 
-      def transformTypeTree(tree: TypeTree)(owner: Symbol): TypeTree = tree
+      def transformTypeTree(tree: TypeTree)(@unused owner: Symbol): TypeTree = tree
 
       def transformCaseDef(tree: CaseDef, tpe: TypeRepr)(owner: Symbol): CaseDef =
         CaseDef.copy(tree)(tree.pattern, tree.guard.map(x => transformTerm(x, TypeRepr.of[Boolean])(owner)), transformTerm(tree.rhs, tpe)(owner))

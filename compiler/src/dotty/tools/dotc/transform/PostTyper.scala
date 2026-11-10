@@ -560,8 +560,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         .appliedToNone
     end flattenSpreads
 
-    override def transform(tree: Tree)(using Context): Tree =
-      try tree match {
+    override def transform(tree: Tree)(using Context): Tree = printOnAssertionError(i"error while transforming $tree"):
+      tree match {
         // TODO move CaseDef case lower: keep most probable trees first for performance
         case CaseDef(pat, _, _) =>
           val gadtCtx =
@@ -786,11 +786,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           super.transform(tree)
         case tree =>
           super.transform(tree)
-      }
-      catch {
-        case ex : AssertionError =>
-          println(i"error while transforming $tree")
-          throw ex
       }
 
     override def transformStats[T](trees: List[Tree], exprOwner: Symbol, wrapResult: List[Tree] => Context ?=> T)(using Context): T =

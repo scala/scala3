@@ -420,7 +420,8 @@ val escaped: () => File^ = withFile[() => File^]("test.txt")(f => () => f) // er
 escaped().read()  // Use-after-close!
 ```
 
-By keeping result `fresh`s isolated, the capture checker ensures that an existential cannot hide `f` and smuggle it out of its scope.
+By keeping result `fresh`s isolated, the capture checker ensures that an existential cannot hide `f` and
+smuggle it out of its scope.
 
 Beyond preventing escaping capabilities, the principle of isolating result `fresh`s is important for
 [tracking mutation and allocation effects](mutability.md) and

@@ -581,10 +581,10 @@ trait Applications extends Compatibility {
     protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
 
     /** Signal failure with given message at position of given argument */
-    protected def fail(msg: Message, arg: Arg): Unit
+    protected def fail(msg: => Message, arg: Arg): Unit
 
     /** Signal failure with given message at position of the application itself */
-    protected def fail(msg: Message): Unit
+    protected def fail(msg: => Message): Unit
 
     protected def appPos: SrcPos
 
@@ -711,7 +711,7 @@ trait Applications extends Compatibility {
 
       extension (dna: Annotation)
         def deprecatedName: Name =
-          dna.argumentConstantString(0).map(_.toTermName).getOrElse(nme.NO_NAME)
+          dna.argumentConstantStringOrSymbol(0).map(_.toTermName).getOrElse(nme.NO_NAME)
         def since: String =
           val version = dna.argumentConstantString(1).filter(!_.isEmpty)
           version.map(v => s" (since $v)").getOrElse("")
@@ -1013,9 +1013,9 @@ trait Applications extends Compatibility {
         // However, for overload resolution, we want to check applicability:
         // "could this work with some type instantiation?" (yes, if ? = String)
         def wildcardArgOK =
-          argtpe match
+          argtpe.stripNull() match
             case at @ AppliedType(tycon1, args1) if at.hasWildcardArg =>
-              formal match
+              formal.stripNull() match
                 case AppliedType(tycon2, args2)
                 if tycon1 =:= tycon2 && args1.length == args2.length =>
                   // We need to handle all 4 cases, in addition to
@@ -1081,9 +1081,9 @@ trait Applications extends Compatibility {
     def typedArg(arg: Arg, formal: Type): Arg = arg
     final def addArg(arg: TypedArg, formal: Type): Unit = ok = ok & argOK(arg, formal)
     def makeVarArg(n: Int, elemFormal: Type): Unit = {}
-    def fail(msg: Message, arg: Arg): Unit =
+    def fail(msg: => Message, arg: Arg): Unit =
       ok = false
-    def fail(msg: Message): Unit =
+    def fail(msg: => Message): Unit =
       ok = false
     def appPos: SrcPos = NoSourcePosition
     @threadUnsafe lazy val normalizedFun: Tree = ref(methRef, needLoad = false)
@@ -1155,12 +1155,12 @@ trait Applications extends Compatibility {
 
     override def appPos: SrcPos = app.srcPos
 
-    def fail(msg: Message, arg: Trees.Tree[T]): Unit = {
+    def fail(msg: => Message, arg: Trees.Tree[T]): Unit = {
       report.error(msg, arg.srcPos)
       ok = false
     }
 
-    def fail(msg: Message): Unit = {
+    def fail(msg: => Message): Unit = {
       report.error(msg, app.srcPos)
       ok = false
     }
@@ -1665,18 +1665,21 @@ trait Applications extends Compatibility {
 
   /** Is `tp` a unary function type or an overloaded type with only unary function
    *  types as alternatives?
+   *  If `skipImplicit` is true, leading implicit parameter sections are
+   *  skipped first.
    */
-  def isUnary(tp: Type)(using Context): Boolean = tp match {
-    case tp: MethodicType =>
-      tp.firstParamTypes match {
-        case ptype :: Nil => !ptype.isRepeatedParam
-        case _ => false
-      }
+  def isUnary(tp: Type, skipImplicit: Boolean)(using Context): Boolean = tp.stripPoly match
+    case mt: MethodType =>
+      if skipImplicit && mt.isImplicitMethod then
+        isUnary(tp.resultType, skipImplicit)
+      else
+        mt.paramInfos match
+          case ptype :: Nil => !ptype.isRepeatedParam
+          case _ => false
     case tp: TermRef =>
-      tp.denot.alternatives.forall(alt => isUnary(alt.info))
+      tp.denot.alternatives.forall(alt => isUnary(alt.info, skipImplicit))
     case _ =>
       false
-  }
 
   /** Should we tuple or untuple the argument before application?
     *  If auto-tupling is enabled then
@@ -1687,14 +1690,15 @@ trait Applications extends Compatibility {
     *     does not consist only of unary alternatives.
     */
   def needsTupledDual(funType: Type, pt: FunProto)(using Context): Boolean =
+    val skipImplicit = pt.applyKind != ApplyKind.Using
     pt.args match
       case untpd.Tuple(elems) :: Nil =>
         elems.length > 1
         && pt.applyKind == ApplyKind.InfixTuple
-        && !isUnary(funType)
+        && !isUnary(funType, skipImplicit)
       case args =>
         args.lengthCompare(1) > 0
-        && isUnary(funType)
+        && isUnary(funType, skipImplicit)
         && Feature.autoTuplingEnabled
 
   /** If `tree` is a complete application of a compiler-generated `apply`
@@ -1916,7 +1920,7 @@ trait Applications extends Compatibility {
           // For `Rec()` we do `Boolean`
           if componentTypes.isEmpty then defn.BooleanType
           else if isVararg then
-            val defn.ArrayOf(elemType) = componentTypes.last.runtimeChecked
+            val defn.ArrayOf(elemType) = componentTypes.last.stripNull().runtimeChecked
             val wrapperType = defn.Array_UnapplySeqWrapper.typeRef.appliedTo(elemType)
             // For `Rec(T*)` we do `Array.UnapplySeqWrapper[T]`
             if componentTypes.length == 1 then wrapperType
@@ -1944,7 +1948,7 @@ trait Applications extends Compatibility {
           if fields.isEmpty then Literal(Constant(true))
           else if isVararg then
             val lastField = accessor(fields.last)
-            val defn.ArrayOf(lastElemType) = lastField.tpe.runtimeChecked
+            val defn.ArrayOf(lastElemType) = lastField.tpe.stripNull().runtimeChecked
             val lastFieldSeq = ref(defn.ArrayModule.requiredMethod(nme.unapplySeq))
               .appliedToType(lastElemType).appliedTo(lastField)
             if fields.length == 1 then lastFieldSeq

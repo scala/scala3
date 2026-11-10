@@ -10,6 +10,10 @@ import java.lang.System.currentTimeMillis
 
 object report:
 
+  /** What kind of diagnostics to give for a feature warning */
+  enum Severity:
+    case FeatureWarning, Warning, Error, WarningThenError
+
   /** For sending messages that are printed only if -verbose is set */
   def inform(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     if ctx.settings.verbose.value then echo(msg, pos)
@@ -36,11 +40,11 @@ object report:
     issueWarning(new FeatureWarning(msg, pos.sourcePos))
 
   def featureWarning(feature: String, featureDescription: => String,
-      featureUseSite: Symbol, required: Boolean, pos: SrcPos)(using Context): Unit =
-    val req = if required then "needs to" else "should"
-    val fqname = s"scala.language.$feature"
+      featureUseSite: Symbol, severity: Severity, pos: SrcPos)(using Context): Unit = {
+    val req = if severity == Severity.FeatureWarning then "should" else "needs to"
+    def fqname = s"scala.language.$feature"
 
-    val explain =
+    def explain =
       if ctx.reporter.isReportedFeatureUseSite(featureUseSite) then ""
       else
         ctx.reporter.reportNewFeatureUseSite(featureUseSite)
@@ -48,16 +52,26 @@ object report:
            |See the Scala docs for value $fqname for a discussion
            |why the feature $req be explicitly enabled.""".stripMargin
 
+    def postscript =
+      if severity == Severity.WarningThenError
+      then "\n(This will be an error in later Scala versions)"
+      else ""
+
     def msg = em"""$featureDescription $req be enabled
                   |by adding the import clause 'import $fqname'
-                  |or by setting the compiler option -language:$feature.$explain"""
-    if required then error(msg, pos)
-    else issueWarning(new FeatureWarning(msg, pos.sourcePos))
-  end featureWarning
+                  |or by setting the compiler option -language:$feature.$explain$postscript"""
+    severity match
+      case Severity.FeatureWarning =>
+        issueWarning(new FeatureWarning(msg, pos.sourcePos))
+      case Severity.Warning | Severity.WarningThenError =>
+        warning(msg, pos)
+      case Severity.Error =>
+        error(msg, pos)
+  }
 
   def optimizerWarning(msg: String, site: String, pos: SrcPos)(using Context): Unit =
     issueWarning(new OptimizerWarning(em"$msg", site, addInlineds(pos)))
-  
+
   def warning(msg: Message, pos: SrcPos, origin: String)(using Context): Unit =
     issueWarning(LintWarning(msg, addInlineds(pos), origin))
 

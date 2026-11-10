@@ -13,7 +13,7 @@ def f2(s: String | Null) =
 
 def f3(s: String | Null) = s match
   case s2: String =>
-  case _ => // warn: null only
+  case _ => // ok
 
 def f5(s: String) = s match
   case _: String =>

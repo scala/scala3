@@ -5,7 +5,7 @@ import org.eclipse.lsp4j.Range
 
 /** @param suffixes which we should insert
  *  @param prefixes which we should insert
- *  @param snippet which suffix should we insert the snippet $0
+ *  @param snippet which suffix should we insert the snippet \$0
  */
 case class CompletionAffix(
     suffixes: Set[Suffix],

@@ -2,14 +2,13 @@ package dotty.tools.dotc
 package transform
 
 import ast.*, desugar.{ForArtifact, PatternVar}, tpd.*, untpd.ImportSelector
-import config.ScalaSettings
 import core.*, Contexts.*, Decorators.*, Flags.*
 import Names.{Name, SimpleName, DerivedName, TermName, termName}
-import NameKinds.{BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
-import NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
+import NameKinds.{BodyRetainerName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
+import NameOps.{isReplWrapperName, setterName}
 import Scopes.newScope
 import StdNames.nme
-import Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
+import Symbols.{NoSymbol, Symbol, defn, isDeprecated}
 import Types.*
 import reporting.{CodeAction, Diagnostic, UnusedSymbol}
 import rewrites.Rewrites.ActionPatch
@@ -17,14 +16,14 @@ import rewrites.Rewrites.ActionPatch
 import MegaPhase.MiniPhase
 import typer.{ImportInfo, Typer, TyperPhase}
 import typer.Deriving.OriginalTypeClass
-import typer.Implicits.{ContextualImplicits, RenamedImplicitRef}
+import typer.Implicits.RenamedImplicitRef
 import util.{Property, Spans, SrcPos}, Spans.Span
 import util.Chars.{isLineBreakChar, isWhitespace}
 import util.chaining.*
 
 import java.util.IdentityHashMap
 
-import scala.collection.mutable, mutable.{ArrayBuilder, ListBuffer, Stack}
+import scala.collection.mutable, mutable.ArrayBuilder
 
 import CheckUnused.*
 
@@ -485,9 +484,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
    *  Avoid cached ctx.implicits because it needs the precise import context that introduces the given.
    */
   def resolveScoped(tp: Type, pos: SrcPos)(using Context): Unit =
-    var done = false
     val ctxs = ctx.outersIterator
-    while !done && ctxs.hasNext do
+    while ctxs.hasNext do
       val cur = ctxs.next()
       val importInfo = cur.importInfoIfImportContext
       val implicitRefs: List[ImplicitRef] =
@@ -689,6 +687,7 @@ object CheckUnused:
            m.isDeprecated
         || m.is(Synthetic) && !m.isAnonymousFunction
         || m.hasAnnotation(defn.UnusedAnnot) // param of unused method
+        || sym.name.startsWith("_") // convenient syntax to avoid needing @unused
         || sym.info.isSingleton
         || m.isConstructor && m.owner.thisType.baseClasses.contains(defn.AnnotationClass)
         || sym.isErased // erased param may be unused by design
@@ -826,7 +825,7 @@ object CheckUnused:
         def editPosAt(srcPos: SrcPos, forDeletion: Boolean): SrcPos =
           val start = srcPos.span.start
           val end = srcPos.span.end
-          val content = srcPos.sourcePos.source.content()
+          val content = srcPos.sourcePos.source.textContent()
           val prev = content.lastIndexWhere(c => !isWhitespace(c), end = start - 1)
           val emptyLeft = prev < 0 || isLineBreakChar(content(prev))
           val next = content.indexWhere(c => !isWhitespace(c), from = end)
@@ -858,8 +857,8 @@ object CheckUnused:
         def deletion(editPos: SrcPos): List[CodeAction] = actionsOf(editPos -> "")
         def textFor(impsel: ImpSel): String =
           val (imp, sel) = impsel
-          val content = imp.srcPos.sourcePos.source.content()
-          def textAt(pos: SrcPos) = String(content.slice(pos.span.start, pos.span.end))
+          val content = imp.srcPos.sourcePos.source.textContent()
+          def textAt(pos: SrcPos) = content.substring(pos.span.start, pos.span.end)
           val qual = textAt(imp.expr.srcPos) // keep original
           val selector = textAt(sel.srcPos)  // keep original
           s"$qual.$selector"                 // don't succumb to vagaries of show
@@ -898,9 +897,9 @@ object CheckUnused:
               for imp <- lostClauses do
                 val actions =
                   if imp == existing.last then
-                    val content = imp.srcPos.sourcePos.source.content()
+                    val content = imp.srcPos.sourcePos.source.textContent()
                     val prev = existing.lastIndexWhere(i0 => keeping.exists((i, _) => i == i0))
-                    val comma = content.indexOf(',', from = existing(prev).srcPos.span.end)
+                    val comma = content.indexOf(',', /*fromIndex =*/ existing(prev).srcPos.span.end)
                     val commaPos = imp.srcPos.sourcePos.withSpan:
                       Span(start = comma, end = existing(prev + 1).srcPos.span.start)
                     val srcPos = imp.srcPos
@@ -930,9 +929,9 @@ object CheckUnused:
                 else if !lostClauses.contains(imp) then
                   val actions =
                     if sel == imp.selectors.last then
-                      val content = sel.srcPos.sourcePos.source.content()
+                      val content = sel.srcPos.sourcePos.source.textContent()
                       val prev = imp.selectors.lastIndexWhere(s0 => keeping.exists((_, s) => s == s0))
-                      val comma = content.indexOf(',', from = imp.selectors(prev).srcPos.span.end)
+                      val comma = content.indexOf(',', /*fromIndex =*/ imp.selectors(prev).srcPos.span.end)
                       val commaPos = sel.srcPos.sourcePos.withSpan:
                         Span(start = comma, end = imp.selectors(prev + 1).srcPos.span.start)
                       val editPos = sel.srcPos
@@ -1115,7 +1114,7 @@ object CheckUnused:
     def namePos: SrcPos =
       sym.srcPos.sourcePos.withSpan:
         val span = sym.span
-        Span(span.start, span.start + sym.name.toString.length)
+        Span(span.start, span.start + sym.name.length)
 
   extension (sel: ImportSelector)
     def boundTpe: Type = sel.bound match

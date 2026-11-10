@@ -9,8 +9,10 @@ import java.io.File
 import dotc.config.ScalaSettingsProperties.supportedReleaseVersions
 
 object TestConfiguration {
+  /** Default target of the generated class files */
+  private val defaultTarget: String = "17"
 
-  val usingBaselineJava = javaSpecVersion.startsWith(supportedReleaseVersions.headOption.getOrElse("17"))
+  val usingBaselineJava = javaSpecVersion.startsWith(supportedReleaseVersions.headOption.getOrElse(defaultTarget))
 
   val pageWidth = 120
 
@@ -94,6 +96,4 @@ object TestConfiguration {
   val oldSyntax = defaultOptions `and` "-old-syntax"
   val newSyntax = defaultOptions `and` "-new-syntax"
 
-  /** Default target of the generated class files */
-  private def defaultTarget: String = "17"
 }

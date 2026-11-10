@@ -14,7 +14,7 @@ import org.junit.Ignore
 class ScalaJSCompilationTests {
   import ParallelTesting._
   import TestConfiguration._
-  import ScalaJSCompilationTests._
+  import ScalaJSCompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
   // Negative tests ------------------------------------------------------------
@@ -35,20 +35,6 @@ class ScalaJSCompilationTests {
 }
 
 object ScalaJSCompilationTests extends ParallelTesting {
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-
-  // Test suite configuration --------------------------------------------------
-  def maxDuration = 60.seconds
-  def numberOfWorkers = 5
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
-
-  @AfterClass def tearDown(): Unit =
-    cleanup()
-    summaryReport.echoSummary()
 
   // Run tests -----------------------------------------------------------------
 

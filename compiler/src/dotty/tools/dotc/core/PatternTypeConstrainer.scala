@@ -167,7 +167,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         // additional trait - argument-less enum cases desugar to vals.
         // See run/enum-Tree.scala.
         if tp.classSymbol.exists then tp else tp.info
-      case tp: FlexibleType => dealiasDropNonmoduleRefs(tp.underlying)
+      case FlexibleType(hi) => dealiasDropNonmoduleRefs(hi)
       case tp => tp
     }
 

@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import java.nio.file.{Path, Files}
 import java.util.Comparator
 import java.util.regex.Pattern
@@ -98,7 +96,7 @@ class LoadTests extends ReplTest {
 
 object LoadTests {
 
-  private var dir: Path = null
+  private var dir: Path | Null = null
 
   @BeforeClass def setupDir: Unit =
     dir = Files.createTempDirectory("repl_load_src")

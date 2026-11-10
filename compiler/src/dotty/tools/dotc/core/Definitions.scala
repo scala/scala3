@@ -449,6 +449,17 @@ class Definitions {
     newPermanentSymbol(OpsPackageClass, tpnme.FromJavaObject, JavaDefined, TypeAlias(ObjectType)).entered
   def FromJavaObjectType: TypeRef = FromJavaObjectSymbol.typeRef
 
+  @tu lazy val FlexibleTypeSymbol: TypeSymbol =
+    newPermanentSymbol(ScalaPackageClass, tpnme.FlexibleType, EmptyFlags, TypeBounds(
+      HKTypeLambda(TypeBounds.empty :: Nil)(
+        tl => OrNull(tl.paramRefs(0))
+      ),
+      HKTypeLambda(TypeBounds.empty :: Nil)(
+        tl => tl.paramRefs(0)
+      )
+    )).entered
+  def FlexibleTypeType: TypeRef = FlexibleTypeSymbol.typeRef
+
   @tu lazy val AnyRefAlias: TypeSymbol = enterAliasType(tpnme.AnyRef, ObjectType)
   def AnyRefType: TypeRef = AnyRefAlias.typeRef
 
@@ -759,6 +770,7 @@ class Definitions {
   def ThrowableClass(using Context): ClassSymbol  = ThrowableType.symbol.asClass
   @tu lazy val ExceptionClass: ClassSymbol        = requiredClass("java.lang.Exception")
   @tu lazy val RuntimeExceptionClass: ClassSymbol = requiredClass("java.lang.RuntimeException")
+  @tu lazy val ErrorType: TypeRef                 = requiredClassRef("java.lang.Error")
 
   @tu lazy val SerializableType: TypeRef       = JavaSerializableClass.typeRef
   def SerializableClass(using Context): ClassSymbol = SerializableType.symbol.asClass
@@ -1189,6 +1201,7 @@ class Definitions {
   @tu lazy val NoInlineAnnot: ClassSymbol = requiredClass("scala.noinline")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
+  @tu lazy val JdkInternalValueBasedAnnot: Symbol = getClassIfDefined("jdk.internal.ValueBased")
 
   // Initialization annotations
   @tu lazy val InitModule: Symbol = requiredModule("scala.annotation.init")
@@ -1633,9 +1646,7 @@ class Definitions {
     private var classRefs: Array[TypeRef | Null] = new Array(22)
     def apply(n: Int): TypeRef =
       while n >= classRefs.length do
-        val classRefs1 = new Array[TypeRef | Null](classRefs.length * 2)
-        Array.copy(classRefs, 0, classRefs1, 0, classRefs.length)
-        classRefs = classRefs1
+        classRefs = Array.copyOf(classRefs, classRefs.length * 2)
       if classRefs(n) == null then
         val funName = s"scala.$prefix$n"
         classRefs(n) =
@@ -2024,8 +2035,8 @@ class Definitions {
         asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
       case tp1 @ PolyFunctionOf(mt: MethodType) if mt.isContextualMethod =>
         tp1
-      case tp: FlexibleType =>
-        asContextFunctionType(tp.hi)
+      case FlexibleType(hi) =>
+        asContextFunctionType(hi)
       case tp1 =>
         if tp1.typeSymbol.name.isContextFunction && isFunctionNType(tp1) then tp1
         else NoType

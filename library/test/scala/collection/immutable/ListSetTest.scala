@@ -1,8 +1,8 @@
 package scala.collection.immutable
 
-import tools.AssertUtil.{assertSameElements, fail}
+import tools.AssertUtil.assertSameElements
 
-import org.junit.Assert.{assertEquals, assertSame, fail => _}
+import org.junit.Assert.{assertEquals, assertSame}
 import org.junit.Test
 
 class ListSetTest {
@@ -22,9 +22,7 @@ class ListSetTest {
   @Test
   def hasTailRecursiveDelete(): Unit = {
     val s = ListSet(1 to 50000*)
-    try s - 25000 catch {
-      case e: StackOverflowError => fail("A stack overflow occurred")
-    }
+    s - 25000 // should not stack overflow
   }
 
   @Test

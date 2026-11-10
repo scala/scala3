@@ -7,6 +7,7 @@ import java.nio.file.Files
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.emoji.EmojiExtension
+import com.vladsch.flexmark.ext.footnotes.FootnoteExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
 import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
 import com.vladsch.flexmark.ext.tables.TablesExtension
@@ -33,6 +34,8 @@ def defaultMarkdownOptions(showSnippetName: Boolean = true)(using ctx: StaticSit
       TaskListExtension.create(),
       AutolinkExtension.create(),
       EmojiExtension.create(),
+      FootnoteExtension.create(),
+      tasty.comments.markdown.FootnoteSeparatorExtension,
       YamlFrontMatterExtension.create(),
       StrikethroughExtension.create(),
       WikiLinkExtension.create(),

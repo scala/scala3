@@ -106,11 +106,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** A function def
    *
+   *  ```
    *    vparams => expr
+   *  ```
    *
    *  gets expanded to
    *
+   *  ```
    *    { def $anonfun(vparams) = expr; Closure($anonfun) }
+   *  ```
    *
    *  where the closure's type is the target type of the expression (FunctionN, unless
    *  otherwise specified).
@@ -1086,11 +1090,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       // e.g. `null.ne(null)` doesn't type, but `(null: AnyRef).ne(null)` does.
       val receiver =
         if tree.tpe.isBottomType then
-          if ctx.explicitNulls then tree.cast(defn.AnyRefType)
+          if ctx.mode.is(Mode.SafeNulls) then tree.cast(defn.AnyRefType)
           else Typed(tree, TypeTree(defn.AnyRefType))
         else tree.ensureConforms(defn.ObjectType)
       // also need to cast the null literal to AnyRef in explicit nulls
-      val nullLit = if ctx.explicitNulls then nullLiteral.cast(defn.AnyRefType) else nullLiteral
+      val nullLit = if ctx.mode.is(Mode.SafeNulls) then nullLiteral.cast(defn.AnyRefType) else nullLiteral
       receiver.select(defn.Object_ne).appliedTo(nullLit).withSpan(tree.span)
     }
 
@@ -1402,7 +1406,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   // convert a numeric with a toXXX method
   def primitiveConversion(tree: Tree, numericCls: Symbol)(using Context): Tree =
-    val mname      = "to".concat(numericCls.name)
+    val mname      = termName("to" + numericCls.name.toString)
     val conversion = tree.tpe.member(mname)
     if conversion.symbol.exists then
       tree.select(conversion.symbol.termRef).ensureApplied
@@ -1421,8 +1425,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   @tailrec
   def sameTypes(trees: List[tpd.Tree], trees1: List[tpd.Tree]): Boolean =
-    if (trees.isEmpty) trees1.isEmpty
-    else if (trees1.isEmpty) trees.isEmpty
+    if trees eq trees1 then true
+    else if trees.isEmpty then trees1.isEmpty
+    else if trees1.isEmpty then trees.isEmpty
     else (trees.head.tpe eq trees1.head.tpe) && sameTypes(trees.tail, trees1.tail)
 
   /** If `tree`'s purity level is less than `level`, let-bind it so that it gets evaluated

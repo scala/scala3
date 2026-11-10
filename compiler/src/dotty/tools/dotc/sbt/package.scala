@@ -14,16 +14,14 @@ inline val TermNameHash = 1987 // 300th prime
 inline val TypeNameHash = 1993 // 301st prime
 inline val InlineParamHash = 1997 // 302nd prime
 
-def asyncZincPhasesCompleted(cb: IncrementalCallback, pending: Option[BufferingReporter]): BufferingReporter =
+def asyncZincPhaseCompleted(pending: Option[BufferingReporter], phase: String)(signal: => Unit): BufferingReporter =
   val zincReporter = pending match
     case Some(buffered) => buffered
     case None => BufferingReporter()
-  try
-    cb.apiPhaseCompleted()
-    cb.dependencyPhaseCompleted()
+  try signal
   catch
     case t: Exception =>
-      zincReporter.exception(em"signaling API and Dependencies phases completion", t)
+      zincReporter.exception(em"signaling $phase phase completion", t)
   zincReporter
 
 extension (sym: Symbol)
@@ -37,6 +35,6 @@ extension (sym: Symbol)
       // names in the global chars array. But we would need to restructure
       // ExtractDependencies caches to avoid expensive `toString` on
       // each member reference.
-      termName(sym.owner.fullName.mangledString.replace(".", ";") ++ ";init;")
+      termName(sym.owner.fullName.mangledString.replace(".", ";") + ";init;")
     else
       sym.name.stripModuleClassSuffix

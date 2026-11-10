@@ -521,7 +521,6 @@ class CodeActionTest extends DottyTest:
 
   private def checkCodeAction(code: String, title: String, expected: String, afterPhase: String = "typer", ctxx: Context = newContext) =
     ctx = ctxx
-    val source = SourceFile.virtual("test", code).content
     val runCtx = checkCompile(afterPhase, code) { (_, _) => () }
     val diagnostics = runCtx.reporter.removeBufferedMessages
     assertEquals("Expected exactly one diagnostic", 1, diagnostics.size)

@@ -783,7 +783,7 @@ object Semantic:
 
         case Fun(body, thisV, klass) =>
           // meth == NoSymbol for poly functions
-          if meth.name.toString == "tupled" then value // a call like `fun.tupled`
+          if meth.name == nme.tupled then value // a call like `fun.tupled`
           else
             promoteArgs()
             eval(body, thisV, klass, cacheResult = true)

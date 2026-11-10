@@ -4,7 +4,7 @@ package repl
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 import org.junit.Test
 
-import ReplDirectives.ReplDirective.{Dependency, Jar}
+import ReplDirectives.ReplDirective.{Dependency, Jar, Repository, Resource}
 import ReplDirectives.Warning
 
 class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
@@ -24,7 +24,7 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
     aliases.foreach: alias =>
       val result = ReplDirectives.classify(s"//> using $alias ${dependencies.mkString(" ")}")
       assertEquals(dependencies.map(Dependency(_)), result.directives)
-      assertEquals(List(Warning.NoSeparateTestScope), result.warnings)
+      assertEquals(List(Warning.NoSeparateTestScope("Dependencies")), result.warnings)
     assertTrue(ReplDirectives.helpText.contains("Aliases: test.deps, test.dependency, test.dependencies"))
 
   @Test def `jar directive aliases are supported`: Unit =
@@ -35,8 +35,32 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
       assertEquals(Nil, result.warnings)
     assertTrue(ReplDirectives.helpText.contains("Aliases: jars"))
 
+  @Test def `resource directive aliases are supported`: Unit =
+    val paths = List("res", "conf.json")
+    List("resourceDir", "resourceDirs", "resource").foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${paths.mkString(" ")}")
+      assertEquals(alias, paths.map(Resource(_)), result.directives)
+      assertEquals(alias, Nil, result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: resourceDirs, resource"))
+
+  @Test def `test resource directive aliases are supported with a warning`: Unit =
+    val paths = List("res", "conf.json")
+    List("test.resourceDir", "test.resourceDirs", "test.resource").foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${paths.mkString(" ")}")
+      assertEquals(alias, paths.map(Resource(_)), result.directives)
+      assertEquals(alias, List(Warning.NoSeparateTestScope("Resources")), result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: test.resourceDirs, test.resource"))
+
+  @Test def `repository directive aliases are supported`: Unit =
+    val repositories = List("m2Local", "https://jitpack.io")
+    List("repository", "repositories").foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${repositories.mkString(" ")}")
+      assertEquals(repositories.map(Repository(_)), result.directives)
+      assertEquals(Nil, result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: repositories"))
+
   @Test def `directives without a value are reported and act on nothing`: Unit =
-    List("dep", "test.dep", "jar", "toolkit", "test.toolkit").foreach: key =>
+    List("dep", "test.dep", "jar", "toolkit", "test.toolkit", "repository").foreach: key =>
       val result = ReplDirectives.classify(s"//> using $key")
       assertEquals(key, Nil, result.directives)
       assertEquals(key, List(Warning.ValueMissing(key)), result.warnings)
@@ -84,6 +108,14 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
            |Added '$secondJar' to classpath.""".stripMargin,
         storedOutput().trim
       )
+
+  @Test def `resourceDir directive applies to the code that follows it`: Unit =
+    val dir = resourceDir("greeting.txt", "hello")
+    initially:
+      run(s"""//> using resourceDir $dir
+             |val greeting = scala.io.Source.fromResource("greeting.txt").mkString""".stripMargin)
+      val output = storedOutput()
+      assertTrue(output, output.contains("""val greeting: String = "hello""""))
 
   @Test def `test dependency directive warns about the shared REPL scope`: Unit =
     initially:

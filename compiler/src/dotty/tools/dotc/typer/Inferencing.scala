@@ -225,7 +225,7 @@ object Inferencing {
     private var toMaximize: List[TypeVar] = Nil
 
     def apply(x: Boolean, tp: Type): Boolean = trace(i"isFullyDefined($tp, $force)", typr) {
-      ctx.handleRecursive("check fully defined", () => tp.showSummary(20)):
+      ctx.handleRecursive("check fully defined", tp):
         val tpd = tp.dealias
         if tpd ne tp then apply(x, tpd)
         else tp match
@@ -260,7 +260,7 @@ object Inferencing {
       && (
         toMaximize.isEmpty
         || { maximize(toMaximize)
-             toMaximize = Nil       // Do another round since the maximixing instances
+             toMaximize = Nil       // Do another round since the maximizing instances
              process(tp)            // might have type uninstantiated variables themselves.
            }
       )
@@ -584,7 +584,7 @@ object Inferencing {
               constraint.upper(param).foreach(p => traverse(constraint.typeVarOfParam(p)))
           case _ =>
       }
-      if (vmap1 eq vmap) vmap else propagate(vmap1)
+      if (vmap1 == vmap) vmap else propagate(vmap1)
     }
 
     propagate(accu(accu(VarianceMap.empty, tp), pt.finalResultType))
@@ -599,8 +599,8 @@ object Inferencing {
   }
 
   /** Replace every top-level occurrence of a wildcard type argument by
-   *  a fresh skolem type. The skolem types are of the form $i.CAP, where
-   *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
+   *  a fresh skolem type. The skolem types are of the form \$i.CAP, where
+   *  \$i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
    *  type member. See the documentation of `TypeBox` for a rationale why we do this.
    */
   def captureWildcards(tp: Type)(using Context): Type = derivedOnDealias(tp) {
@@ -619,13 +619,13 @@ object Inferencing {
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
     case tp: LazyRef => captureWildcards(tp.ref)
     case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
-    case tp: FlexibleType => tp.derivedFlexibleType(captureWildcards(tp.hi))
+    case tp @ FlexibleType(hi) => tp.derivedFlexibleType(captureWildcards(hi))
     case _ => tp
   }
 
   def hasCaptureConversionArg(tp: Type)(using Context): Boolean = tp match
+    case FlexibleType(hi) => hasCaptureConversionArg(hi)
     case tp: AppliedType => tp.args.exists(_.typeSymbol == defn.TypeBox_CAP)
-    case tp: FlexibleType => hasCaptureConversionArg(tp.hi)
     case _ => false
 }
 
@@ -663,7 +663,7 @@ trait Inferencing { this: Typer =>
     // `qualifying`.
 
     val ownedVars = state.ownedVars
-    if (ownedVars ne locked) && !ownedVars.isEmpty then
+    if (ownedVars != locked) && !ownedVars.isEmpty then
       val qualifying = (ownedVars -- locked).toList
       if (!qualifying.isEmpty) {
         typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, pt = $pt, owned vars = ${state.ownedVars.toList}%, %, qualifying = ${qualifying.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
@@ -742,7 +742,7 @@ trait Inferencing { this: Typer =>
     end toInstantiate
 
     def typeVarsIn(xs: ToInstantiate): TypeVars =
-      xs.foldLeft(SimpleIdentitySet.empty: TypeVars)((tvs, tvi) => tvs + tvi._1)
+      SimpleIdentitySet(xs.iterator.map(_._1))
 
     /** Filter list of proposed instantiations so that they don't constrain further
      *  the current constraint.

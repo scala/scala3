@@ -402,7 +402,7 @@ trait TypesSupport:
       case t: dotty.tools.dotc.core.Types.LazyRef => try {
         inner(t.ref(using ctx.compilerContext).asInstanceOf[TypeRepr], skipThisTypePrefix)
       } catch {
-        case e: AssertionError => tpe("LazyRef(...)").l
+        case NonFatal(_) => tpe("LazyRef(...)").l
       }
 
       case tpe =>

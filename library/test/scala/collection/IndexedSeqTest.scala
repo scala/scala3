@@ -226,7 +226,6 @@ abstract class IndexedTest[T, E] {
       val res = fn
       fail(s"expected exception was not thrown: $res")
     } catch {
-      case failed: AssertionError => throw failed
       case e: Exception if manifest[EX].runtimeClass.isAssignableFrom(e.getClass) =>
     }
   }

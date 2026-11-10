@@ -88,7 +88,7 @@ class ExtractAPI extends Phase {
       val sourceFile = cls.source
       if sourceFile.exists && cls.isDefinedInCurrentRun then
         recordNonLocalClass(cls, sourceFile, cb)
-    ctx.run.nn.asyncTasty.foreach(_.signalAPIComplete())
+    ctx.run.nn.asyncTasty.foreach(_.signalAPISent())
 
   private def recordNonLocalClass(cls: Symbol, sourceFile: SourceFile, cb: interfaces.IncrementalCallback)(using Context): Unit =
     def registerProductNames(fullClassName: String, binaryClassName: String) =
@@ -489,11 +489,15 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     val vparamss = paramLists(sym.info, sym.paramSymss)
     val retTp = sym.info.finalResultType.widenExpr
 
-    val tparamsExtraAnnot = Option.when(tparamsExtras.nonEmpty) {
-      marker(s"${hashTparamsExtras(tparamsExtras)("tparamsExtra".hashCode)}")
+    val tparamsExtraAnnots = tparamsExtras.map { (index, tparams) =>
+      // Let Zinc hash the parameters structurally: TypeParameter.hashCode includes
+      // identity-based enum hashes, which are not stable across JVMs.
+      api.Annotation.of(
+        api.Polymorphic.of(api.Constant.of(Constants.emptyType, s"tparamsExtra$index"), tparams.toArray),
+        Array())
     }
 
-    val annotations = inlineExtrasAnnot ++: tparamsExtraAnnot ++: apiAnnotations(sym, inlineOrigin)
+    val annotations = inlineExtrasAnnot ++: tparamsExtraAnnots ++: apiAnnotations(sym, inlineOrigin)
 
     api.Def.of(sym.zincMangledName.toString, apiAccess(sym), apiModifiers(sym),
       annotations.toArray, tparams.toArray, vparamss.toArray, apiType(retTp))
@@ -548,6 +552,8 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
         else
           tp.prefix
         api.Projection.of(apiType(prefix), sym.name.toString)
+      case FlexibleType(hi) =>
+        apiType(hi)
       case AppliedType(tycon, args) =>
         def processArg(arg: Type): api.Type = arg match {
           case arg @ TypeBounds(lo, hi) => // Handle wildcard parameters
@@ -627,8 +633,6 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
       case tp: OrType =>
         val s = combineApiTypes(apiType(tp.tp1), apiType(tp.tp2))
         withMarker(s, orMarker)
-      case tp: FlexibleType =>
-        apiType(tp.underlying)
       case ExprType(resultType) =>
         withMarker(apiType(resultType), byNameMarker)
       case MatchType(bound, scrut, cases) =>
@@ -859,32 +863,6 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     val h = positionedHash(tree, seed)
     MurmurHash3.finalizeHash(h, 0)
   end treeHash
-
-  /** Hash secondary type parameters in separate marker annotation.
-   *  We hash them separately because the position of type parameters is important.
-   */
-  private def hashTparamsExtras(tparamsExtras: List[(Int, List[api.TypeParameter])])(initHash: Int): Int =
-
-    def mixTparams(tparams: List[api.TypeParameter])(initHash: Int) =
-      var h = initHash
-      var elems = tparams
-      while elems.nonEmpty do
-        h = MurmurHash3.mix(h, elems.head.hashCode)
-        elems = elems.tail
-      h
-
-    def mixIndexAndTparams(index: Int, tparams: List[api.TypeParameter])(initHash: Int) =
-      mixTparams(tparams)(MurmurHash3.mix(initHash, index))
-
-    var h = initHash
-    var extras = tparamsExtras
-    var len = 0
-    while extras.nonEmpty do
-      h = mixIndexAndTparams(index = extras.head(0), tparams = extras.head(1))(h)
-      extras = extras.tail
-      len += 1
-    MurmurHash3.finalizeHash(h, len)
-  end hashTparamsExtras
 
   /** Mix in the name hash also because otherwise switching which
    *  parameter is inline will not affect the hash.

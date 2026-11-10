@@ -22,6 +22,21 @@ class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationPro
   )
 )
 
+class JavadocExplicitNullsExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
+  "externalJavadoc",
+  List(".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"),
+  List(
+    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#forEach-java.util.function.Consumer-",
+    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#subList-int-int-",
+    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#printf-java.lang.String-java.lang.Object...-",
+    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#write-byte:A-int-int-"
+  )
+):
+  override protected def compilerContext =
+    val ctx = testContext
+    ctx.setSetting(ctx.settings.YexplicitNulls, true)
+    ctx
+
 class JavadocStaticFieldExternalLocationProviderReproTest extends ExternalLocationProviderIntegrationTest(
   "externalJavadoc",
   List(".*java.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/java.base/"),
