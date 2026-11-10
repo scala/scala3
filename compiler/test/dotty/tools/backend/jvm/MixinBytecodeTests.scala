@@ -1,6 +1,6 @@
 package dotty.tools.backend.jvm
 
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.*
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -16,7 +16,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
     ctx0.setSetting(ctx0.settings.XmixinForceForwarders, "false")
   }
 
-  private def getClass(dir: AbstractFile, name: String) =
+  private def getClass(dir: FileContainer, name: String) =
     loadClassNode(lookupClass(dir, name + ".class"))
 
   private def checkForwarder(clazz: ClassNode, target: String) = {
@@ -303,7 +303,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
 }
 
 class MixinBytecodeTestsWithForwarders extends DottyBytecodeTest {
-  private def getClass(dir: AbstractFile, name: String) =
+  private def getClass(dir: FileContainer, name: String) =
     loadClassNode(lookupClass(dir, name + ".class"))
 
   @Test

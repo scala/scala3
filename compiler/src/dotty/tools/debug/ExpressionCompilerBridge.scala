@@ -1,6 +1,5 @@
 package dotty.tools.debug
 
-import java.nio.file.Path
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.Driver
 
@@ -8,10 +7,10 @@ import dotty.tools.dotc.Driver
 //            and calls `run` via reflection!
 class ExpressionCompilerBridge:
   def run(
-      outputDir: Path,
+      outputDir: java.nio.file.Path, // TODO: make this AnyRef to avoid nio and remain compatible since all we do is .toString on it?
       classPath: String,
       options: Array[String],
-      sourceFile: Path,
+      sourceFile: java.nio.file.Path, // TODO: ditto
       config: ExpressionCompilerConfig
   ): Boolean =
     val args = Array(

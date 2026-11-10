@@ -6,7 +6,7 @@ package dotc.classpath
 
 import scala.collection.mutable
 
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.*
 
 /**
  * A classpath unifying multiple class- and sourcepath entries.
@@ -20,7 +20,7 @@ private final case class AggregateClassPath(aggregates: List[ClassPath]) extends
   // Implementation note:
   // This class is used a lot. It's important to keep it efficient and low-allocation.
 
-  override def findClassFile(className: String): Option[AbstractFile] = {
+  override def findClassFile(className: String): Option[File] = {
     val pkg = PackageNameUtils.separatePackageName(className)
     val iterator = aggregatesForPackage(pkg).iterator
     while iterator.hasNext do
@@ -52,7 +52,7 @@ private final case class AggregateClassPath(aggregates: List[ClassPath]) extends
 
   override def hasPackage(pkg: String): Boolean = aggregates.exists(_.hasPackage(pkg))
 
-  override def searchLocations: Iterable[AbstractFile] =
+  override def searchLocations: Iterable[String] =
     aggregates.flatMap(_.searchLocations)
 
   private inline def getDistinctEntries[EntryType <: ClassRepresentation](inline getEntries: ClassPath => Iterable[EntryType]): Iterable[EntryType] =
@@ -69,5 +69,5 @@ private final case class AggregateClassPath(aggregates: List[ClassPath]) extends
 
   // for debugging
   override def toString: String =
-    s"ClassPath has ${aggregates.size} entries and results in:\n${searchLocations.map(_.path).mkString("\n")}"
+    s"ClassPath has ${aggregates.size} entries and results in:\n${searchLocations.mkString("\n")}"
 }

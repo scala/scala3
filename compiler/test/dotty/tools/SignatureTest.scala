@@ -20,9 +20,6 @@ import dotc.typer.Inferencing.isFullyDefined
 import dotc.typer.ForceDegree
 import dotc.util.NoSourcePosition
 
-import java.io.File
-import java.nio.file.*
-
 class SignatureTest:
   @Test def signatureCaching: Unit =
     inCompilerContext(TestConfiguration.basicClasspath, separateRun = true, "case class Foo(value: Unit)") {

@@ -3,7 +3,7 @@ package dotc
 
 import core.Contexts.*
 import reporting.Reporter
-import io.AbstractFile
+import nio.File
 
 import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized
@@ -20,7 +20,7 @@ object Bench extends Driver:
   @sharable private var curCompiler = 0
   @sharable private var times: Array[Int] = uninitialized
 
-  override def doCompile(compiler: Compiler, files: List[AbstractFile])(using Context): Reporter =
+  override def doCompile(compiler: Compiler, files: List[File])(using Context): Reporter =
     var reporter: Reporter = emptyReporter
     for i <- 0 until numRuns do
       val curRun = curCompiler * numRuns + i

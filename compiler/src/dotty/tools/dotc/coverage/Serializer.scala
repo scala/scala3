@@ -1,11 +1,10 @@
 package dotty.tools.dotc
 package coverage
 
-import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.{Path, Paths, Files}
-import java.io.Writer
 import scala.collection.mutable.StringBuilder
-import scala.io.Source
+import scala.io.Codec
+import java.io.Writer
+import dotty.tools.nio.*
 
 /**
  * Serializes scoverage data.
@@ -13,19 +12,12 @@ import scala.io.Source
  */
 object Serializer:
 
-  private val CoverageFileName = "scoverage.coverage"
+  val CoverageFileName = "scoverage.coverage"
   private val CoverageDataFormatVersion = "3.0"
 
-  def coverageFilePath(dataDir: String): Path =
-    Paths.get(dataDir, CoverageFileName)
-
-  /** Write out coverage data to the given data directory, using the default coverage filename */
-  def serialize(coverage: Coverage, dataDir: String): Unit =
-    serialize(coverage, coverageFilePath(dataDir))
-
   /** Write out coverage data to a file. */
-  def serialize(coverage: Coverage, file: Path): Unit =
-    val writer = Files.newBufferedWriter(file)
+  def serialize(coverage: Coverage, file: File): Unit =
+    val writer = file.writer(Codec.UTF8)
     try
       serialize(coverage, writer)
     finally
@@ -84,10 +76,8 @@ object Serializer:
       .sortBy(_.id)
       .foreach(stmt => writeStatement(stmt, writer))
 
-  def deserialize(file: Path): Coverage =
-    val source = Source.fromFile(file.toFile(), UTF_8.name())
-    try deserialize(source.getLines())
-    finally source.close()
+  def deserialize(file: File): Coverage =
+    deserialize(file.readLines(Codec.UTF8).iterator)
 
   def deserialize(lines: Iterator[String]): Coverage =
     def toStatement(lines: Iterator[String]): Statement =

@@ -1,33 +1,32 @@
 package dotty.tools
 package repl
 
-import java.io.File
-import java.nio.file.Files
-
 import org.junit.{ After, AfterClass, BeforeClass, Test }
-import org.junit.Assert._
-import dotty.tools.io.{ Directory, PlainDirectory }
-import dotc.core.Contexts._
+import org.junit.Assert.*
+import dotty.tools.nio.*
+import dotc.core.Contexts.*
+import dotc.classpath.ClassPath
 import dotc.reporting.{ ErrorMessagesTest, StoreReporter }
+import scala.compiletime.uninitialized
 
 object ShadowingBatchTests:
-  val dir = Directory(Files.createTempDirectory("batch-shadow"))
+  private var dir: FileContainer = uninitialized
 
-  @BeforeClass def suiteStarting: Unit = dir.createDirectory()
+  @BeforeClass def suiteStarting: Unit = dir = FileContainer.createTemporaryOnDisk("batch-shadow")
   @AfterClass  def suiteFinished: Unit = dir.deleteRecursively()
 
 class ShadowingBatchTests extends ErrorMessagesTest:
   import ShadowingBatchTests._
 
-  @After def testFinished: Unit = dir.list.foreach(_.deleteRecursively())
+  @After def testFinished: Unit = dir.deleteRecursively()
 
   val compiler = new dotty.tools.dotc.Compiler()
 
   override def initializeCtx(ictx: FreshContext) = inContext(ictx) {
     super.initializeCtx(ictx)
     val settings = ictx.settings; import settings._
-    ictx.setSetting(outputDir, new PlainDirectory(dir))
-    ictx.setSetting(classpath, classpath.value + File.pathSeparator + dir.jpath.toAbsolutePath)
+    ictx.setSetting(outputDir, dir)
+    ictx.setSetting(classpath, classpath.value + ClassPath.pathSeparator + dir.path)
   }
 
   @Test def io =

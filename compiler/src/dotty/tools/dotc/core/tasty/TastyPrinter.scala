@@ -10,9 +10,7 @@ import Names.Name
 import TastyUnpickler.*
 import util.Spans.offsetToInt
 import dotty.tools.tasty.TastyFormat.{ASTsSection, AttributesSection, CommentsSection, PositionsSection}
-
-import java.nio.file.{Files, Paths}
-import dotty.tools.io.{AbstractFile, JarArchive, Path}
+import dotty.tools.nio.*
 
 import scala.collection.immutable.BitSet
 import scala.compiletime.uninitialized
@@ -50,18 +48,22 @@ object TastyPrinter:
       else if arg == betastyOpt then () // skip
       else if arg.startsWith("-") then println(s"bad option '$arg' was ignored")
       else if arg.endsWith(".tasty") || (allowBetasty && arg.endsWith(".betasty")) then
-        val path = Paths.get(arg)
-        if Files.exists(path) then
-          printTasty(arg, Files.readAllBytes(path), arg.endsWith(".betasty"))
-        else
-          println("File not found: " + arg)
-          System.exit(1)
+        File.getOnDisk(arg) match
+          case Some(f) =>
+            printTasty(arg, f.readBytes(), arg.endsWith(".betasty"))
+          case None =>
+            println("File not found: " + arg)
+            System.exit(1)
       else if arg.endsWith(".jar") then
-        val jar = JarArchive.open(Path(arg))
-        try
-          for file <- jar.deepIterator.filter(_.ext.isTasty) do
-            printTasty(s"$arg ${file.path}", file.toByteArray, isBestEffortTasty = false)
-        finally jar.close()
+        FileContainer.getOnDiskIncludingFromFile(arg, FileContainer.DefaultJarVersion, FileContainer.DefaultCompressionLevel) match
+          case Some(jar) =>
+            try
+              for file <- jar.recursiveEntries.collect { case f: File if f.extension.isTasty => f } do
+                printTasty(s"$arg ${file.path}", file.readBytes(), isBestEffortTasty = false)
+            finally jar.close()
+          case None =>
+            println("File not found: " + arg)
+            System.exit(1)
       else
         println(s"Not a '.tasty' or '.jar' file: $arg")
         System.exit(1)

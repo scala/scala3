@@ -1,9 +1,9 @@
 package dotty.tools.dotc.util
 
-import java.net.URLClassLoader
-import java.nio.file.Paths
+import dotty.tools.nio.AbstractFileClassLoader
+import dotty.tools.dotc.classpath.ClassPath
 
-import dotty.tools.io.AbstractFileClassLoader
+import java.net.URLClassLoader
 
 object ClasspathFromClassloader {
 
@@ -25,10 +25,10 @@ object ClasspathFromClassloader {
             // the classpath coming from the child is added at the _end_ of the
             // classpath.
             classpathBuff ++=
-              cl.getURLs.iterator.map(url => Paths.get(url.toURI).toAbsolutePath.toString)
+              cl.getURLs.iterator.map(url => java.nio.file.Path.of(url.toURI).toAbsolutePath.toString)
           case af: AbstractFileClassLoader =>
             collectClassLoaderPaths(cl.getParent)
-            classpathBuff ++= af.searchLocations.filter(!_.isVirtual).map(_.path)
+            classpathBuff ++= af.searchLocations
           case _ =>
             if cl.getClass.getName == classOf[AbstractFileClassLoader].getName then
               // HACK: We can't just collect the classpath from arbitrary parent
@@ -49,6 +49,6 @@ object ClasspathFromClassloader {
       }
     }
     collectClassLoaderPaths(cl)
-    classpathBuff.result().mkString(java.io.File.pathSeparator)
+    classpathBuff.result().mkString(ClassPath.pathSeparator)
   }
 }

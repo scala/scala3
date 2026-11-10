@@ -5,7 +5,6 @@ import dotty.tools.backend.jvm.opt.*
 import dotty.tools.dotc.{CompilationUnit, report}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.io.JarArchive
 
 import scala.annotation.stableNull
 
@@ -67,15 +66,12 @@ final class GenBCode extends Phase:
       if codeGen != null then codeGen.finish(result)
       result
     finally
-      ctx.settings.outputDir.value match
-        case jar: JarArchive =>
-          if (ctx.run.nn.suspendedUnits.nonEmpty)
-            // If we close the jar the next run will not be able to write on the jar.
-            // But if we do not close it we cannot use it as part of the macro classpath of the suspended files.
-            report.error("Cannot suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
-          jar.close()
-        case _ => ()
-      if codeGen != null then codeGen.close()
+      if codeGen != null then
+        val outputNeededClosing = codeGen.close()
+        if outputNeededClosing && ctx.run.nn.suspendedUnits.nonEmpty then
+          // If we close the jar the next run will not be able to write on the jar.
+          // But if we do not close it we cannot use it as part of the macro classpath of the suspended files.
+          report.error("Cannot suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
 
 object GenBCode:
   val name: String = "genBCode"

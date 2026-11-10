@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package parsing
 
-import dotty.tools.io.*
+import dotty.tools.nio.*
 import util.*
 import scala.io.Codec
 import Tokens.*, Parsers.*
@@ -11,7 +11,7 @@ import scala.collection.mutable.ListBuffer
 
 class ParserTest extends DottyTest {
 
-  def parse(name: String): Tree = parse(new PlainFile(File(name)))
+  def parse(name: String): Tree = parse(File.getOnDisk(name).get)
 
   var parsed = 0
   val parsedTrees = new ListBuffer[Tree]
@@ -21,7 +21,7 @@ class ParserTest extends DottyTest {
     parsedTrees.clear()
   }
 
-  def parse(file: PlainFile): Tree = parseSource(SourceFile(file, new PlainDirectory(Directory(".")), Codec.UTF8))
+  def parse(file: File): Tree = parseSource(SourceFile(file, FileContainer.getOnDisk(".").get, Codec.UTF8))
 
   private def parseSource(source: SourceFile): Tree = {
     //println("***** parsing " + source.file)
@@ -32,13 +32,13 @@ class ParserTest extends DottyTest {
     tree
   }
 
-  def parseDir(path: String): Unit = parseDir(Directory(path))
+  def parseDir(path: String): Unit = parseDir(FileContainer.getOnDisk(path).get)
 
-  def parseDir(dir: Directory): Unit = {
-    for (f <- dir.files)
-      if (f.name.endsWith(".scala")) parse(new PlainFile(f))
-    for (d <- dir.dirs)
-      parseDir(d.path)
+  def parseDir(dir: FileContainer): Unit = {
+    for e <- dir.entries do
+      e match
+        case f: File => if f.extension.isScala then parse(f)
+        case fc: FileContainer => parseDir(fc)
   }
 
   def parseText(code: String): Tree = parseSource(SourceFile.virtual("<code>", code))

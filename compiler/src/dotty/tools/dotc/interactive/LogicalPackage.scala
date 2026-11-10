@@ -1,6 +1,6 @@
 package dotty.tools.dotc.interactive
 
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.File
 
 /**
  * A logical package representation. This is disconnected from the file system, and faithfully
@@ -16,7 +16,7 @@ trait LogicalPackage {
    * Return all sources contained by this package. Only direct members are returned, and there are no duplicates.
    *
    */
-  def sources: Seq[AbstractFile]
+  def sources: Seq[File]
 
   def getPackage(name: String): Option[LogicalPackage]
 

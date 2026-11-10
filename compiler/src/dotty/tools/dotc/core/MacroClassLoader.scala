@@ -1,11 +1,11 @@
 package dotty.tools.dotc.core
 
-import dotty.tools.io.{AbstractFile, AbstractFileClassLoader}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.reporting.trace
 import dotty.tools.dotc.classpath.ClassPath
+import dotty.tools.nio.AbstractFileClassLoader
 
 object MacroClassLoader {
 
@@ -26,10 +26,9 @@ object MacroClassLoader {
     ctx.setProperty(MacroClassLoaderKey, makeMacroClassLoader(using ctx))
 
   private def makeMacroClassLoader(using Context): ClassLoader = trace("new macro class loader") {
-    val dirs: List[AbstractFile] =
-      def settingsUrls: List[AbstractFile] =
-        val entries = ClassPath.expandPath(ctx.settings.classpath.value, expandStar=true)
-        entries.map(cp => dotty.tools.io.PlainFile(dotty.tools.io.Path(cp))) // may not exist, that's OK
+    val dirs: List[String] =
+      def settingsUrls: List[String] =
+        ClassPath.expandPath(ctx.settings.classpath.value)
 
       if ctx.mode.is(Mode.Interactive) then
         try

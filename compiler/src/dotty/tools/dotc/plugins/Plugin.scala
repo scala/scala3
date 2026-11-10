@@ -4,7 +4,8 @@ package plugins
 import core.*
 import Contexts.*
 import Phases.*
-import dotty.tools.io.*
+import dotty.tools.dotc.classpath.ClassPath
+import dotty.tools.nio.*
 import transform.MegaPhase.MiniPhase
 
 import java.io.InputStream
@@ -89,11 +90,11 @@ object Plugin {
   /** Create a class loader with the specified locations plus
    *  the loader that loaded the Scala compiler.
    */
-  private def loaderFor(locations: Seq[Path]): ClassLoader = {
+  private def loaderFor(locations: Seq[String]): ClassLoader = {
     val compilerLoader = classOf[Plugin].getClassLoader
 
     // we assume plugins don't use multi-release JARs
-    new AbstractFileClassLoader(locations.map(PlainFile(_)), "", compilerLoader)
+    new AbstractFileClassLoader(locations, "", compilerLoader)
   }
 
   type AnyClass = Class[?]
@@ -119,11 +120,11 @@ object Plugin {
    *  A classloader is created to load each plugin.
    */
   def loadAllFrom(
-    paths: List[List[Path]],
-    dirs: List[Path],
+    paths: List[List[String]],
+    dirs: List[String],
     ignoring: List[String]): List[Try[Plugin]] = {
 
-    def fromFile(inputStream: InputStream, path: Path): String = {
+    def fromFile(inputStream: InputStream, path: String): String = {
       val props = new Properties
       props.load(inputStream)
       inputStream.close()
@@ -134,46 +135,37 @@ object Plugin {
       else pluginClass
     }
 
-    def loadDescriptionFromDir(f: Path): Try[String] = {
-      val path = f / PluginFile
-      Try(fromFile(new java.io.FileInputStream(path.jpath.toFile), path))
-    }
-
-    def loadDescriptionFromJar(jarp: Path): Try[String] = {
-      // XXX Return to this once we have more ARM support
-      def read(is: InputStream | Null) =
-        if (is == null) throw new PluginLoadException(jarp.path, s"Missing $PluginFile in $jarp")
-        else fromFile(is, jarp)
-
-      val jarArchive = JarArchive.open(jarp)
-      Try(read(jarArchive.fileNamed(PluginFile).input))
-    }
+    def loadDescription(f: FileContainer): Try[String] =
+      f.getFile(PluginFile) match
+        case Some(f) => Try(fromFile(f.input(), f.path))
+        case None => Failure(new RuntimeException("Missing plugin descriptor: " + f.path))
 
     // List[(jar, Try(descriptor))] in dir
-    def scan(d: Directory) =
-      d.files.toList
-        .filter(_.ext.isJarOrZip)
+    def scan(d: FileContainer) =
+      d.entries.toList
+        .collect { case f: File => f }
         .sortBy(_.name)
-        .map(j => (j, loadDescriptionFromJar(j)))
+        .flatMap(FileContainer.getFromFile(_, FileContainer.DefaultJarVersion, FileContainer.DefaultCompressionLevel))
+        .map(j => (j, loadDescription(j)))
 
     type PDResults = List[Try[(String, ClassLoader)]]
 
     // scan plugin dirs for jars containing plugins, ignoring dirs with none and other jars
-    val fromDirs: PDResults = dirs filter (_.isDirectory) flatMap { d =>
-      scan(d.toDirectory) collect {
-        case (j, Success(pd)) => Success((pd, loaderFor(Seq(j))))
+    val fromDirs: PDResults = dirs.flatMap(FileContainer.getOnDisk).flatMap { d =>
+      scan(d) collect {
+        case (j, Success(pd)) => Success((pd, loaderFor(Seq(j.path))))
       }
     }
 
     // scan jar paths for plugins, taking the first plugin you find.
     // a path element can be either a plugin.jar or an exploded dir.
-    def findDescriptor(ps: List[Path]) = {
-      def loop(qs: List[Path]): Try[String] = qs match {
+    def findDescriptor(ps: List[String]) = {
+      def loop(qs: List[String]): Try[String] = qs match {
         case Nil       => Failure(new MissingPluginException(ps))
         case p :: rest =>
-          if (p.isDirectory) loadDescriptionFromDir(p.toDirectory) `orElse` loop(rest)
-          else if (p.isFile) loadDescriptionFromJar(p.toFile) `orElse` loop(rest)
-          else loop(rest)
+          FileContainer.getOnDiskIncludingFromFile(p, FileContainer.DefaultJarVersion, FileContainer.DefaultCompressionLevel) match
+            case Some(c) => loadDescription(c) `orElse` loop(rest)
+            case None => loop(rest)
       }
       loop(ps)
     }
@@ -212,5 +204,5 @@ class PluginLoadException(val path: String, message: String, cause: Exception | 
 }
 
 class MissingPluginException(path: String) extends PluginLoadException(path, s"No plugin in path $path") {
-  def this(paths: List[Path]) = this(paths mkString File.pathSeparator)
+  def this(paths: List[String]) = this(paths.mkString(ClassPath.pathSeparator))
 }

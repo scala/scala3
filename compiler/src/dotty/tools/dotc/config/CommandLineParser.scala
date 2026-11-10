@@ -1,10 +1,11 @@
 package dotty.tools.dotc.config
 
 import java.lang.Character.isWhitespace
-import java.nio.file.{Files, Paths}
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
+import scala.io.Codec
 import scala.jdk.CollectionConverters.*
+import dotty.tools.nio.*
 
 /** Split a line of text using shell conventions.
  */
@@ -112,14 +113,15 @@ object CommandLineParser:
   /** Expands all arguments starting with @ to the contents of the file named like each argument.
    */
   def expandArg(arg: String): List[String] =
-    val path = Paths.get(arg.stripPrefix("@"))
-    if !Files.exists(path) then
-      System.err.println(s"Argument file ${path.getFileName} could not be found")
-      Nil
-    else
-      def stripComment(s: String) = s.indexOf('#') match { case -1 => s case i => s.substring(0, i) }
-      val lines = Files.readAllLines(path)
-      val params = lines.asScala.map(stripComment).filter(!_.isEmpty).mkString(" ")
-      tokenize(params)
+    val path = arg.stripPrefix("@")
+    File.getOnDisk(path) match
+      case None =>
+        System.err.println(s"Argument file $path could not be found")
+        Nil
+      case Some(f) =>
+        def stripComment(s: String) = s.indexOf('#') match { case -1 => s case i => s.substring(0, i) }
+        val lines = f.readLines(Codec.UTF8)
+        val params = lines.map(stripComment).filter(_.nonEmpty).mkString(" ")
+        tokenize(params)
 
   class ParseException(msg: String) extends RuntimeException(msg)

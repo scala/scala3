@@ -1555,7 +1555,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(scalaSources = List(cC), javaSources = List(aC, bC, iC, jC)) { dir =>
-      val clsIn = lookupClass(dir.subdirectoryNamed("b"), "C.class")
+      val clsIn = lookupClass(dir.getContainer("b").get, "C.class")
       val c = loadClassNode(clsIn)
 
       assertInvoke(getMethod(c, "f1"), "a/B", "f") // receiver needs to be B (A is not accessible in class C, package b)

@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Contexts.ctx
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.Run
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.io
+import dotty.tools.nio.FileContainer
 import dotty.tools.dotc.NoCompilationUnit
 
 final class ProgressCallbackTest extends DottyTest:
@@ -206,7 +206,7 @@ final class ProgressCallbackTest extends DottyTest:
   override protected def initializeCtx(fc: FreshContext): Unit =
     super.initializeCtx(
       fc.setProgressCallback(TestProgressCallback())
-        .setSetting(fc.settings.outputDir, io.virtualDirectory("<TestProgressCallbackOutput>"))
+        .setSetting(fc.settings.outputDir, FileContainer.createInMemory("<TestProgressCallbackOutput>"))
     )
 
 object ProgressCallbackTest:

@@ -18,7 +18,6 @@ import dotty.tools.backend.jvm.opt.*
 import dotty.tools.backend.jvm.ClassNode1
 import dotty.tools.backend.jvm.analysis.AnalysisUtils.LambdaMetaFactoryCall
 import dotty.tools.dotc.classpath.ClassPath
-import dotty.tools.io
 
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
@@ -281,7 +280,7 @@ class BCodeRepository(classPath: ClassPath) {
       classPath.findClassFile(fullName) match
         case Some(classFile) =>
           val classNode = new ClassNode1
-          val classReader = new ClassReader(classFile.toByteArray)
+          val classReader = new ClassReader(classFile.readBytes())
           // Passing the InlineInfoAttributePrototype makes the ClassReader invoke the specific `read`
           // method of the InlineInfoAttribute class, instead of putting the byte array into a generic
           // Attribute.
@@ -298,7 +297,7 @@ class BCodeRepository(classPath: ClassPath) {
           removeLineNumbers(classNode)
           val moduleNode = classPath.findClassFile("module-info.class").map(f =>
             val node = new ClassNode1
-            val moduleReader = new ClassReader(f.toByteArray)
+            val moduleReader = new ClassReader(f.readBytes())
             moduleReader.accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES)
             node.module
           )
