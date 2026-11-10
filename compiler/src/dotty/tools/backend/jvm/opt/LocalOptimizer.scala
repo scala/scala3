@@ -179,7 +179,9 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
    */
   private def methodOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
     if (method.instructions.size == 0) return false // fast path for abstract methods
-    if (!Limits.sizeOKForLocalOpt(method)) return false
+
+    // We still want to run "cheap" local optimizations that don't depend on an Analyzer even if this is false
+    val withinLimits = Limits.sizeOKForLocalOpt(method)
 
     // unreachable-code also removes unused local variable nodes and empty exception handlers.
     // This is required for correctness, for example:
@@ -250,8 +252,8 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
 
       traceIfChanged("beforeMethodOpt")
 
-      // NULLNESS OPTIMIZATIONS
-      val runNullness = settings.optNullnessTracking && requestNullness
+      // NULLNESS OPTIMIZATIONS (requires nullness analysis)
+      val runNullness = withinLimits && settings.optNullnessTracking && requestNullness
       val nullnessOptChanged = runNullness && nullnessOptimizations(method, ownerClassName)
       traceIfChanged("nullness")
 
@@ -264,28 +266,28 @@ final class LocalOptimizer(callGraph: CallGraph, inliner: Inliner,
       val codeRemoved = if (runDCE) LocalOptImpls.removeUnreachableCodeImpl(method, ownerClassName, callGraph) else false
       traceIfChanged("dce")
 
-      // BOX-UNBOX
-      val runBoxUnbox = settings.optBoxUnbox && (requestBoxUnbox || nullnessOptChanged)
+      // BOX-UNBOX (requires prod-cons analysis)
+      val runBoxUnbox = withinLimits && settings.optBoxUnbox && (requestBoxUnbox || nullnessOptChanged)
       val boxUnboxChanged = runBoxUnbox && withinBudget(false)(boxUnbox.boxUnboxElimination(method, ownerClassName, budget))
       traceIfChanged("boxUnbox")
 
-      // COPY PROPAGATION
-      val runCopyProp = settings.optCopyPropagation && (requestCopyProp || boxUnboxChanged)
+      // COPY PROPAGATION (requires aliasing analysis)
+      val runCopyProp = withinLimits && settings.optCopyPropagation && (requestCopyProp || boxUnboxChanged)
       val copyPropChanged = runCopyProp && copyProp.copyPropagation(method, ownerClassName)
       traceIfChanged("copyProp")
 
-      // STALE STORES
-      val runStaleStores = settings.optCopyPropagation && (requestStaleStores || nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged)
+      // STALE STORES (requires prod-cons analysis)
+      val runStaleStores = withinLimits && settings.optCopyPropagation && (requestStaleStores || nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged)
       val (storesRemoved, intrinsicRewrittenByStaleStores, callInlinedByStaleStores) = if (!runStaleStores) (false, false, false) else withinBudget((false, false, false))(copyProp.eliminateStaleStoresAndRewriteSomeIntrinsics(method, ownerClassName, budget))
       traceIfChanged("staleStores")
 
-      // REDUNDANT CASTS
-      val runRedundantCasts = settings.optRedundantCasts && (requestRedundantCasts || boxUnboxChanged || intrinsicRewrittenByStaleStores || callInlinedByStaleStores)
+      // REDUNDANT CASTS (requires nullness analysis)
+      val runRedundantCasts = withinLimits && settings.optRedundantCasts && (requestRedundantCasts || boxUnboxChanged || intrinsicRewrittenByStaleStores || callInlinedByStaleStores)
       val (typeInsnChanged, intrinsicRewrittenByCasts) = if (!runRedundantCasts) (false, false) else eliminateRedundantCastsAndRewriteSomeIntrinsics(method, ownerClassName)
       traceIfChanged("redundantCasts")
 
-      // PUSH-POP
-      val runPushPop = settings.optCopyPropagation && (requestPushPop || storesRemoved || typeInsnChanged)
+      // PUSH-POP (requires prod-cons analysis)
+      val runPushPop = withinLimits && settings.optCopyPropagation && (requestPushPop || storesRemoved || typeInsnChanged)
       val (pushPopRemoved, pushPopCastAdded, pushPopNullCheckAdded) = if (!runPushPop) (false, false, false) else withinBudget((false, false, false))(copyProp.eliminatePushPop(method, ownerClassName, budget))
       traceIfChanged("pushPop")
 
@@ -751,7 +753,7 @@ object LocalOptImpls {
      */
 
     enq(0)
-    while (top != -1) { // TODO suspicious: top never updated in the loop...
+    while (top != -1) {
       val insnIndex = deq()
       val insn = method.instructions.get(insnIndex)
       visited.addOne(insnIndex)
