@@ -156,11 +156,12 @@ object DesugarEnums {
         def default(ordinal: Tree) =
           CaseDef(Ident(nme.WILDCARD), EmptyTree, throwArg(ordinal))
         if constraints.isEnumeration then
-          // not a catch-all: see i27548
-          def outOfBounds(ordinal: Tree) =
-            CaseDef(Typed(Ident(nme.WILDCARD), TypeTree(defn.IndexOutOfBoundsExceptionType)), EmptyTree, throwArg(ordinal))
+          // if (ordinal ^ Int.MinValue) >= (count ^ Int.MinValue) then throw ... else $values(ordinal)
+          val bound = Literal(Constant(constraints.enumCases.length ^ Int.MinValue))
+          def outOfRange(ordinal: Tree) =
+            Apply(Select(Apply(Select(ordinal, nme.XOR), Literal(Constant(Int.MinValue)) :: Nil), nme.GE), bound :: Nil)
           fromOrdinalMeth(ordinal =>
-            Try(Apply(valuesDot(nme.apply), ordinal), outOfBounds(ordinal) :: Nil, EmptyTree))
+            If(outOfRange(ordinal), throwArg(ordinal), Apply(valuesDot(nme.apply), ordinal)))
         else
           fromOrdinalMeth(ordinal =>
             Match(ordinal,
