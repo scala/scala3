@@ -112,9 +112,7 @@ object SepCheck:
     var directPeaks : Refs = emptyRefs
 
     private def double[T <: AnyRef : ClassTag](xs: Array[T]): Array[T] =
-      val xs1 = new Array[T](xs.length * 2)
-      xs.copyToArray(xs1)
-      xs1
+      Array.copyOf(xs, xs.length * 2)
 
     private def ensureCapacity(added: Int): Unit =
       if size + added > refs.length then

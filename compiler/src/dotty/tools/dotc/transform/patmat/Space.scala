@@ -742,7 +742,7 @@ object SpaceEngine {
           val refined = trace(i"refineUsingParent($tp, $sym1, $mixins)")(TypeOps.refineUsingParent(tp, sym1, mixins))
 
           def containsUninhabitedField(tp: Type): Boolean =
-            !tp.typeSymbol.is(ModuleClass) && tp.fields.exists { field =>
+            !sym.is(JavaDefined) && !tp.typeSymbol.is(ModuleClass) && tp.fields.exists { field =>
               !field.symbol.flags.is(Lazy) && field.info.dealias.isBottomType
             }
 
@@ -971,7 +971,7 @@ object SpaceEngine {
     case tp: SingletonType                          => toUnderlying(tp.underlying)
     case tp: ExprType                               => toUnderlying(tp.resultType)
     case AnnotatedType(tp, annot)                   => AnnotatedType(toUnderlying(tp), annot)
-    case tp: FlexibleType                           => tp.derivedFlexibleType(toUnderlying(tp.underlying))
+    case tp @ FlexibleType(hi)                      => tp.derivedFlexibleType(toUnderlying(hi))
     case _                                          => tp
   })
 
@@ -1081,7 +1081,7 @@ object SpaceEngine {
     val (space, maybePartial) = resolveCaseDef(c, project)
     if maybePartial then Empty else space
 
-  def checkExhaustivity(m: Match)(using Context): Unit = trace(i"checkExhaustivity($m)") {
+  def checkExhaustivity(m: Match)(using Context): Boolean = trace(i"checkExhaustivity($m)") {
     val selTyp = toUnderlying(m.selector.tpe.stripUnsafeNulls()).dealias
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
@@ -1100,6 +1100,9 @@ object SpaceEngine {
     if uncovered.nonEmpty then
       val deduped = dedup(uncovered)
       report.warning(PatternMatchExhaustivity(deduped, m), m.selector)
+      false
+    else
+      true
   }
 
   private def reachabilityCheckable(sel: Tree)(using Context): Boolean =
@@ -1115,7 +1118,7 @@ object SpaceEngine {
 
   def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)"):
     val selTyp = toUnderlying(m.selector.tpe).dealias
-    val isNullable = selTyp.isInstanceOf[FlexibleType] || selTyp.classSymbol.isNullableClass
+    val isNullable = FlexibleType.isInstance(selTyp) || selTyp.classSymbol.isNullableClass
     val targetSpace = trace(i"targetSpace($selTyp)"):
       if isNullable && !ctx.mode.is(Mode.SafeNulls)
       then project(OrType(selTyp, ConstantType(Constant(null)), soft = false))
@@ -1143,9 +1146,14 @@ object SpaceEngine {
             then
               if isSubspace(covered, prev) then
                 report.warning(MatchCaseUnreachable(), pat.srcPos)
-              else if isNullable && !hadNullOnly && isWildcardArg(pat)
-                && isSubspace(covered, Or(prev :: nullSpace :: Nil)) then
+              else if isNullable
+                && (!ctx.mode.is(Mode.SafeNulls) || FlexibleType.isInstance(selTyp))
+                && isWildcardArg(pat)
+                && isSubspace(covered, Or(prev :: nullSpace :: Nil))
+                && !hadNullOnly
+              then
                 // Issue OnlyNull warning only if:
+                // 0. Explicit nulls are disabled or the type of the selector is a flexible type;
                 // 1. The target space is nullable;
                 // 2. OnlyNull warning has not been issued before;
                 // 3. The pattern is a wildcard pattern;
@@ -1161,12 +1169,14 @@ object SpaceEngine {
     recur(m.cases, Nil, Nil)
   end checkReachability
 
-  def checkMatch(m: Match)(using Context): Unit =
+  /** Returns `true` if the match is definitely exhaustive. */
+  def checkMatch(m: Match)(using Context): Boolean =
     inContext(ctx.withProperty(IsSubspaceCacheKey, Some(mutable.HashMap.empty))) {
-      if exhaustivityCheckable(m.selector) then
+      val isExhaustive = exhaustivityCheckable(m.selector) &&
         inContext(ctx.withProperty(ExpandingCaseClassesKey, Some(mutable.Set.empty))) {
           checkExhaustivity(m)
         }
       if reachabilityCheckable(m.selector) then checkReachability(m)
+      isExhaustive
     }
 }

@@ -1383,7 +1383,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     if (xs.length == 0) bb.result()
     else {
       def mkRowBuilder() = ArrayBuilder.make[B](using ClassTag[B](aClass.getComponentType))
-      val bs = new ArrayOps(asArray(xs(0))).map((x: B) => mkRowBuilder())
+      val bs = new ArrayOps(asArray(xs(0))).map((_: B) => mkRowBuilder())
       for (xs <- this) {
         var i = 0
         for (x <- new ArrayOps(asArray(xs))) {

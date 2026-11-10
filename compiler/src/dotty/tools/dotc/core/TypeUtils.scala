@@ -290,5 +290,10 @@ class TypeUtils:
         pt.resType.hasMeaningfulParamNames
       case _ =>
         false
+
+  extension (self: AppliedType)
+    def derivedFlexibleType(hi: Type)(using Context): Type = self match
+      case FlexibleType(hi0) if hi eq hi0 => self
+      case _ => FlexibleType.make(hi)
 end TypeUtils
 

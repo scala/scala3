@@ -300,6 +300,7 @@
 ./error-codes/E232.html
 ./error-codes/E233.html
 ./error-codes/E234.html
+./error-codes/E235.html
 ./error-codes/index.html
 ./experimental/better-fors.html
 ./experimental/canthrow.html
@@ -330,6 +331,7 @@
 ./experimental/inline-traits.html
 ./experimental/into.html
 ./experimental/main-annotation.html
+./experimental/method-block-end-markers.html
 ./experimental/modularity.html
 ./experimental/named-tuples.html
 ./experimental/named-typeargs-spec.html

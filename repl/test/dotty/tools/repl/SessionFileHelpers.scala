@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import java.io.FileOutputStream
 import java.nio.file.{Path, Files}
 import java.util.jar.JarOutputStream
@@ -18,6 +16,14 @@ trait SessionFileHelpers:
     val jar = tempFile(".jar")
     new JarOutputStream(new FileOutputStream(jar.toFile)).close()
     jar
+
+  protected def resourceDir(name: String, contents: String): Path =
+    val dir = Files.createTempDirectory("repl_resources")
+    dir.toFile.deleteOnExit()
+    val file = dir.resolve(name)
+    Files.writeString(file, contents)
+    file.toFile.deleteOnExit()
+    dir
 
   protected def contentOf(f: Path): String = Files.readString(f)
 

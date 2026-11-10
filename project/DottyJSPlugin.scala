@@ -30,11 +30,11 @@ object DottyJSPlugin extends AutoPlugin {
 
   override def requires: Plugins = ScalaJSPlugin
 
-  override def globalSettings: Seq[Setting[_]] = Def.settings(
+  override def globalSettings: Seq[Setting[?]] = Def.settings(
     enableWebAssembly := false,
   )
 
-  override def projectSettings: Seq[Setting[_]] = Def.settings(
+  override def projectSettings: Seq[Setting[?]] = Def.settings(
 
     /* #11709 Remove the dependency on scala3-library that ScalaJSPlugin adds.
      * Instead, in this build, we use `.dependsOn` relationships to depend on

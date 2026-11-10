@@ -21,6 +21,7 @@ import java.util.stream.Collectors
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class CoverageTests:
   import CoverageTests.{*, given}
+  given TestGroup = TestGroup("instrumentCoverage")
 
   private val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
   private val rootSrc = Paths.get(userDir, "tests", "coverage")
@@ -69,7 +70,7 @@ class CoverageTests:
 
       val targetFile = targetDir.resolve(s"scoverage.coverage")
 
-      if updateCheckFiles then
+      if Properties.testsUpdateCheckfile then
         Files.copy(targetFile, expectFile, StandardCopyOption.REPLACE_EXISTING)
       else
         val expected = fixWindowsPaths(Files.readAllLines(expectFile).asScala)
@@ -84,7 +85,7 @@ class CoverageTests:
         // if that is not the case then this will have to be adjusted
         val targetMeasurementFile = findMeasurementFile(targetDir)
 
-        if updateCheckFiles then
+        if Properties.testsUpdateCheckfile then
           Files.copy(targetMeasurementFile, expectMeasurementFile, StandardCopyOption.REPLACE_EXISTING)
 
         else
@@ -122,7 +123,7 @@ class CoverageTests:
 
     Files.walk(dir, 1).filter(runOnFile).forEach { path =>
       val target = Files.createTempDirectory("coverage-warning")
-      val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", target.toString, "-sourceroot", rootSrc.toString)
+      val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-Ylog:instrumentCoverage", "-coverage-out", target.toString, "-sourceroot", rootSrc.toString)
       val relativePath = Paths.get(userDir).relativize(path).toString
       compileFile(relativePath, options).checkWarnings()
     }
@@ -200,21 +201,4 @@ class CoverageTests:
       assertEquals(Set("file2.scala"), filesWithCoverage)
     }
 
-object CoverageTests extends ParallelTesting:
-  import scala.concurrent.duration.*
-
-  def maxDuration = 30.seconds
-  def numberOfWorkers = 1
-
-  def safeMode = Properties.testsSafeMode
-  def testFilter = Properties.testsFilter
-  def isInteractive = SummaryReport.isInteractive
-  def updateCheckFiles = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
-
-  given summaryReport: SummaryReporting = SummaryReport()
-  @AfterClass def tearDown(): Unit =
-    super.cleanup()
-    summaryReport.echoSummary()
-
-  given TestGroup = TestGroup("instrumentCoverage")
+object CoverageTests extends ParallelTesting

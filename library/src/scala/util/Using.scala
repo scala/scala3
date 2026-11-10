@@ -13,6 +13,7 @@
 package scala.util
 
 import scala.language.`2.13`
+import scala.annotation.nowarn
 import scala.util.control.{ControlThrowable, NonFatal}
 import scala.runtime.ScalaRunTime.nullForGC
 
@@ -143,6 +144,7 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  @define suppressionBehavior See the main doc for [[Using `Using`]] for full details of
  *                             suppression behavior.
  */
+@nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
 object Using {
   /** Performs an operation using a resource, and then releases the resource,
    *  even if the operation throws an exception.

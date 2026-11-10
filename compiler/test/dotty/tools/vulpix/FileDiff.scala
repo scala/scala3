@@ -4,7 +4,6 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Properties.{javaSpecVersion, versionNumberString}
 
 import java.io.File
-import java.lang.System.{lineSeparator => EOL}
 import java.nio.file.{Files, Paths}
 
 
@@ -47,7 +46,7 @@ object FileDiff {
         None
       else
         // Do not use a """ literal here with .stripMargin since `outputLines` may begin with |
-        Some(s"Output from '$sourceTitle' did not match check file. Actual output:\n${outputLines.mkString(EOL)}\n")
+        Some(s"Output from '$sourceTitle' did not match check file. Actual output:\n${outputLines.mkString(System.lineSeparator())}\n")
     else
       assert(tolerateMissing, "Missing check file: " + path.toString)
       None
@@ -68,7 +67,7 @@ object FileDiff {
 
   def dump(path: String, content: Seq[String]): Unit = {
     val outFile = dotty.tools.io.File(path)
-    outFile.writeAll(content.mkString("", EOL, EOL))
+    outFile.writeAll(content.mkString("", System.lineSeparator(), System.lineSeparator()))
   }
 
   def checkAndDumpOrUpdate(sourceTitle: String, actualLines: Seq[String], checkFilePath: String, tolerateMissingCheckFile: Boolean = true): Boolean = {

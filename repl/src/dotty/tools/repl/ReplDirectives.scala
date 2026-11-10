@@ -10,7 +10,7 @@ private[repl] object ReplDirectives:
     handlersByKey.get(key).fold("")(handler => s"\nUsage: ${handler.usage}")
 
   enum Warning:
-    case NoSeparateTestScope
+    case NoSeparateTestScope(what: String)
     case TestToolkitSameAsToolkit
     case ValueMissing(key: String)
     case TooManyValues(key: String)
@@ -18,9 +18,9 @@ private[repl] object ReplDirectives:
     case UnsupportedDirective(key: String)
 
     override def toString: String = this match
-      case NoSeparateTestScope =>
-        """[warn] The REPL does not have a separate test scope. Dependencies that would only be
-          |available to tests are added to the current REPL session.""".stripMargin
+      case NoSeparateTestScope(what) =>
+        s"""[warn] The REPL does not have a separate test scope. $what that would only be
+           |available to tests are added to the current REPL session.""".stripMargin
       case TestToolkitSameAsToolkit =>
         """[warn] The REPL does not have a separate test scope, so `using test.toolkit` adds
           |exactly what `using toolkit` does.""".stripMargin
@@ -37,6 +37,8 @@ private[repl] object ReplDirectives:
   enum ReplDirective:
     case Dependency(coordinate: String)
     case Jar(path: String)
+    case Repository(repository: String)
+    case Resource(path: String)
 
   case class DirectiveClassification(
     directives: List[ReplDirective],
@@ -61,7 +63,10 @@ private[repl] object ReplDirectives:
 
   def toolkitCoordinates(coords: String): Option[List[String]] =
     val flavorAndVersion = coords.split(":", -1).toList match
-      case version :: Nil if version.nonEmpty => Some((ScalaToolkit.alias, version))
+      // e.g. //> using toolkit typelevel would otherwise be treated as version `typelevel`
+      // and fail during resolution with a cryptic error, so we reject it early
+      case version :: Nil if version.nonEmpty && !toolkitsByFlavor.keySet.contains(version) =>
+        Some((ScalaToolkit.alias, version))
       case flavor :: version :: Nil if flavor.nonEmpty && version.nonEmpty => Some((flavor, version))
       case _ => None
     flavorAndVersion.map: (flavor, rawVersion) =>
@@ -93,7 +98,7 @@ private[repl] object ReplDirectives:
       usage = "//> using test.dep <group>::<artifact>:<version> ...",
       description = "Resolve dependencies and make them available in the REPL.",
       toDirectives = coords => List(ReplDirective.Dependency(coords)),
-      warnings = List(Warning.NoSeparateTestScope)
+      warnings = List(Warning.NoSeparateTestScope("Dependencies"))
     )
 
     case Jar extends DirectiveHandler(
@@ -101,6 +106,21 @@ private[repl] object ReplDirectives:
       usage = "//> using jar <path> ...",
       description = "Add JARs to the REPL classpath.",
       toDirectives = path => List(ReplDirective.Jar(path))
+    )
+
+    case Resource extends DirectiveHandler(
+      keys = List("resourceDir", "resourceDirs", "resource"),
+      usage = "//> using resourceDir <path> ...",
+      description = "Add resource files or directories to the REPL classpath.",
+      toDirectives = path => List(ReplDirective.Resource(path))
+    )
+
+    case TestResource extends DirectiveHandler(
+      keys = List("test.resourceDir", "test.resourceDirs", "test.resource"),
+      usage = "//> using test.resourceDir <path> ...",
+      description = "Add resource files or directories to the REPL classpath.",
+      toDirectives = path => List(ReplDirective.Resource(path)),
+      warnings = List(Warning.NoSeparateTestScope("Resources"))
     )
 
     case Toolkit extends DirectiveHandler(
@@ -111,7 +131,7 @@ private[repl] object ReplDirectives:
            |  Known flavors: scala (default, ${ScalaToolkit.defaultVersion}),
            |  typelevel (${TypelevelToolkit.defaultVersion}).""".stripMargin,
       toDirectives = toolkitDependencies,
-      warnings = List(Warning.NoSeparateTestScope),
+      warnings = List(Warning.NoSeparateTestScope("Dependencies")),
       acceptsMultipleValues = false
     )
 
@@ -122,6 +142,13 @@ private[repl] object ReplDirectives:
       toDirectives = toolkitDependencies,
       warnings = List(Warning.TestToolkitSameAsToolkit),
       acceptsMultipleValues = false
+    )
+
+    case Repository extends DirectiveHandler(
+      keys = List("repository", "repositories"),
+      usage = "//> using repository <url>|<alias> ...",
+      description = "Add repositories, consulted before the default ones, to dependency resolution.",
+      toDirectives = repository => List(ReplDirective.Repository(repository))
     )
 
     def process(values: Seq[DirectiveValue]): List[ReplDirective] =

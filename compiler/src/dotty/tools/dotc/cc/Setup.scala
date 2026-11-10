@@ -405,14 +405,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             addVar(mapFollowingAliases(tp), tp)
     }
 
-    try
+    printOnAssertionError(i"error while mapping inferred $tp"):
       ccState.withNoVarsMapped:
         mapInferred(inCaptureRefinement = false)(tp)
       .tap: tp1 =>
         if tp1 ne tp then capt.println(i"expanded inferred in ${ctx.owner}: $tp  -->  $tp1")
-    catch case ex: AssertionError =>
-      println(i"error while mapping inferred $tp")
-      throw ex
   }
 
   /** Transform an explicitly given type by performing the following transformation
@@ -756,14 +753,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         def paramsToCap(psymss: List[List[Symbol]], mt: Type)(using Context): Type = mt match
           case mt: MethodType =>
-            try
+            printOnAssertionError(i"error while mapping params ${mt.paramInfos} of $sym"):
               mt.derivedLambdaType(
                 paramInfos =
                   psymss.head.lazyZip(mt.paramInfos).map(localCapToGlobal),
                 resType = paramsToCap(psymss.tail, mt.resType))
-            catch case ex: AssertionError =>
-              println(i"error while mapping params ${mt.paramInfos} of $sym")
-              throw ex
           case mt: PolyType =>
             mt.derivedLambdaType(resType = paramsToCap(psymss.tail, mt.resType))
           case _ => mt

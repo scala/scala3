@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import vulpix.TestConfiguration
 import vulpix.FileDiff
 import dotty.tools.ToolName
@@ -15,6 +13,7 @@ import java.nio.charset.StandardCharsets
 
 import scala.io.Source
 import scala.util.Using
+import scala.util.control.NonFatal
 import scala.collection.mutable.ArrayBuffer
 
 import dotc.core.Contexts.Context
@@ -47,6 +46,10 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   def tabComplete(src: String)(implicit state: State): List[String] =
     completions(src.length, src, state).map(_.label).sorted.distinct
 
+  /** The signatures offered under `label`, i.e. all of its overloads */
+  def tabCompleteSignatures(src: String, label: String)(implicit state: State): List[String] =
+    completions(src.length, src, state).filter(_.label == label).map(_.description).sorted
+
   extension [A](state: State)
     infix def andThen(op: State ?=> A): A = op(using state)
 
@@ -72,7 +75,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         (out, nstate)
       }
       catch {
-        case ex: Throwable =>
+        case NonFatal(ex) =>
           System.err.println(s"failed while running script: $name, on:\n$input")
           throw ex
       }

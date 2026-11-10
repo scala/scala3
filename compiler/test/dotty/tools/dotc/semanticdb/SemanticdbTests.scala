@@ -13,6 +13,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.experimental.categories.Category
 import dotty.BootstrappedOnlyTests
+import dotty.tools.TestSources
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.Scala3.given
@@ -51,7 +52,7 @@ class SemanticdbTests:
   val javaFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.java")
   val scalaFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.scala")
   val expectFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
-  val rootSrc: Path = Paths.get(System.getProperty("dotty.tools.dotc.semanticdb.test"))
+  val rootSrc: Path = TestSources.getPath("tests/semanticdb")
   val expectSrc: Path = rootSrc.resolve("expect")
   val javaRoot: Path = rootSrc.resolve("javacp")
   val metacExpectFile: Path = rootSrc.resolve("metac.expect")
@@ -140,9 +141,10 @@ class SemanticdbTests:
       "-usejavacp",
       "-Wunused:all",
       "-Yreporter:dotty.tools.dotc.reporting.Reporter$SilentReporter",
+      "-language:experimental.genericNumberLiterals",
     ) ++ inputFiles().map(_.toString)
     val exit = Main.process(args)
-    assertFalse(s"dotc errors: ${exit.errorCount}", exit.hasErrors)
+    assertFalse(s"dotc errors: ${exit.errorCount}:\n${exit.allErrors.mkString("\n")}", exit.hasErrors)
     target
 
 end SemanticdbTests

@@ -8,7 +8,7 @@ import java.lang.reflect.{ InvocationTargetException, UndeclaredThrowableExcepti
 
 import scala.annotation.internal.sharable
 import scala.annotation.tailrec
-import scala.util.control.Exception.catching
+import scala.util.control.NonFatal
 
 object ScalaClassLoader {
   def setContext(cl: ClassLoader) = Thread.currentThread.setContextClassLoader(cl)
@@ -20,7 +20,7 @@ object ScalaClassLoader {
     if scala.util.Properties.isJavaAtLeast("9") then
       try
         ClassLoader.getSystemClassLoader.getParent
-      catch case _: Throwable => null
+      catch case NonFatal(_) => null
     else null
 
   extension (classLoader: ClassLoader)

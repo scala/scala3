@@ -273,7 +273,15 @@ object Erasure {
     final def box(tree: Tree, target: => String = "")(using Context): Tree = trace(i"boxing ${tree.showSummary()}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
         case ErasedValueType(tycon, _) =>
-          New(tycon, cast(tree, underlyingOfValueClass(tycon.symbol.asClass)) :: Nil) // todo: use adaptToType?
+          val cls = tycon.symbol.asClass
+          val underlying = underlyingOfValueClass(cls)
+          val ctor = cls.primaryConstructor
+          val arg = cast(tree, underlying)
+          transformInfo(ctor, ctor.info) match
+            case mt: MethodType if mt.paramInfos.nonEmpty =>
+              New(tycon, adaptToType(arg, mt.paramInfos.head) :: Nil)
+            case _ =>
+              New(tycon, arg :: Nil)
         case tp =>
           val cls = tp.classSymbol
           if (cls eq defn.UnitClass) constant(tree, ref(defn.BoxedUnit_UNIT))
@@ -409,17 +417,23 @@ object Erasure {
 
     /** The following code:
      *
+     *  ```
      *      val f: Function1[Int, Any] = x => ...
+     *  ```
      *
      *  results in the creation of a closure and an implementation method in the typer:
      *
-     *      def $anonfun(x: Int): Any = ...
-     *      val f: Function1[Int, Any] = closure($anonfun)
+     *  ```
+     *      def \$anonfun(x: Int): Any = ...
+     *      val f: Function1[Int, Any] = closure(\$anonfun)
+     *  ```
      *
-     *  Notice that `$anonfun` takes a primitive as argument, but the SAM (Single Abstract Method)
+     *  Notice that `\$anonfun` takes a primitive as argument, but the SAM (Single Abstract Method)
      *  of `Function1` after erasure is:
      *
+     *  ```
      *      def apply(x: Object): Object
+     *  ```
      *
      *  which takes a reference as argument. Hence, some form of adaptation is
      *  required. The most reliable way to do this adaptation is to replace the
@@ -427,8 +441,10 @@ object Erasure {
      *  original method with appropriate boxing/unboxing. For our example above,
      *  this would be:
      *
-     *      def $anonfun$adapted(x: Object): Object = $anonfun(BoxesRunTime.unboxToInt(x))
-     *      val f: Function1 = closure($anonfun$adapted)
+     *  ```
+     *      def \$anonfun$adapted(x: Object): Object = \$anonfun(BoxesRunTime.unboxToInt(x))
+     *      val f: Function1 = closure(\$anonfun\$adapted)
+     *  ```
      *
      *  But in some situations we can avoid generating this bridge, either
      *  because the runtime can perform auto-adaptation, or because we can
@@ -758,6 +774,9 @@ object Erasure {
               val specializedInterfaceSym = qual1.tpe.widenDealias.classSymbol.asClass
               val newSym = inContext(preErasureCtx) { sym.overridingSymbol(specializedInterfaceSym) }
               qual1.select(newSym)
+            case qual1 if sym.owner.isJavaStaticsClass && qual1.tpe.typeSymbol.isJavaStaticsClass =>
+              // a Java static, possibly inherited by the qualifier, needs no receiver
+              select(qual1, sym)
             case qual1 if !isJvmAccessible(qual1.tpe.typeSymbol)
                 || !qual1.tpe.derivesFrom(sym.owner) =>
               val castTarget = // Avoid inaccessible cast targets, see i8661

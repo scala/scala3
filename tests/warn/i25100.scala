@@ -13,8 +13,8 @@ def main(): Unit = {
   val i: Foo | Bar.type = Foo("Foo")
 
   i match {
+    case Bar => println("i is a Bar")
     case i: Foo => println("i is a Foo")
-    case Bar => println("i is a Long")
   }
 }
 

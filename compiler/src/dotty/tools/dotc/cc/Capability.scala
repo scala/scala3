@@ -823,7 +823,8 @@ object Capabilities:
         case info: OrType => viaInfo(info.tp1)(test) && viaInfo(info.tp2)(test)
         case _ => false
 
-      try (this eq y)
+      printOnAssertionError(i"error while subsumes $this >> $y"):
+        (this eq y)
       || maxSubsumes(y, canAddHidden = !vs.isOpen)
           // if vs is open, we should add new elements to the set containing `this`
           // instead of adding them to the hidden set of of `this`.
@@ -882,9 +883,6 @@ object Capabilities:
           case x: ThisType if x.cls.is(Module) =>
             x.cls.sourceModule.termRef.subsumes(y)
           case _ => false
-      catch case ex: AssertionError =>
-        println(i"error while subsumes $this >> $y")
-        throw ex
     end subsumes
 
     /** This is a maximal capability that subsumes `y` in given context and VarState.

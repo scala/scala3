@@ -12,3 +12,13 @@ final class Into(val source: String)
 
 transparent inline def into(source: String): Into =
   new Into(source)
+
+object Lib:
+  inline def plain: List[Int] = List(1)
+
+  transparent inline def noLocals: Any = List(1)
+
+  transparent inline def withLocals: Any =
+    val tmp = List(1)
+    val doubled = tmp.map(_ * 2)
+    doubled

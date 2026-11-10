@@ -4,6 +4,7 @@ package dotc
 
 import org.junit.{Test, AfterClass}
 import org.junit.Assume.*
+import org.junit.experimental.categories.Category
 
 import java.nio.file.*
 import scala.concurrent.duration.*
@@ -19,8 +20,8 @@ class CompilationTests {
 
   // Positive tests ------------------------------------------------------------
 
-  @Test def pos: Unit = {
-    given TestGroup = TestGroup("compilePos")
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def pos: Unit = {
+    given TestGroup = TestGroup("pos")
     val tests = List(
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
@@ -46,7 +47,7 @@ class CompilationTests {
     runWithCoverageOrFallback[PosTestWithCoverage](compilationTest)
   }
 
-  @Test def rewrites: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def rewrites: Unit = {
     implicit val testGroup: TestGroup = TestGroup("rewrites")
 
     withCoverage(aggregateTests(
@@ -147,8 +148,8 @@ class CompilationTests {
 
   // Warning tests ------------------------------------------------------------
 
-  @Test def warn: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileWarn")
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def warn: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("warn")
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/warn", defaultOptions),
     ))
@@ -158,8 +159,8 @@ class CompilationTests {
   // Negative tests ------------------------------------------------------------
 
   @Test def negAll: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileNeg")
-    withCoverage(aggregateTests(
+    implicit val testGroup: TestGroup = TestGroup("neg")
+    aggregateTests(
       compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.negScala2LibraryTastyExcludelisted)),
       compileFilesInDir("tests/neg-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
@@ -176,11 +177,11 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/missing-java-outer-dependency/TestImportSuggestion.scala",
           defaultOptions.withClasspath("tests/neg-custom-args/missing-java-outer-dependency/cp")),
       compileFile("tests/neg-custom-args/empty-compiled-with-dir.scala", defaultOptions.and("tests"))
-    )).checkExpectedErrors()
+    ).checkExpectedErrors()
   }
 
   @Test def fuzzyAll: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileFuzzy")
+    implicit val testGroup: TestGroup = TestGroup("fuzzy")
     compileFilesInDir("tests/fuzzy", defaultOptions).checkNoCrash()
   }
 
@@ -196,8 +197,8 @@ class CompilationTests {
 
   // Run tests -----------------------------------------------------------------
 
-  @Test def runAll: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("runAll")
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def runAll: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("run")
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
@@ -208,9 +209,28 @@ class CompilationTests {
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
+  @Test def runSpecial(): Unit = {
+    // TODO: this test should be much simpler if we used source roots correctly in Vulpix and in Context.getSource,
+    // because then we could switch the source root instead of moving the file
+    val firstFilePath = "tests/run-special/typecheck-boom/Macro_1.scala"
+    val tmpPath = java.nio.file.Files.createTempFile("typecheck-boom", ".scala")
+    val firstPath = TestSources.rootPath().resolve(firstFilePath)
+    try special(
+      defaultOptions,
+      "tests/run-special/typecheck-boom",
+      expectError = false,
+      o => compileFile(firstFilePath, o),
+      ("Macro_1/typecheck-boom/Macro_1/", o => {
+        java.nio.file.Files.move(firstPath, tmpPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        compileFile("tests/run-special/typecheck-boom/Use_2.scala", o)
+      })
+    )
+    finally java.nio.file.Files.move(tmpPath, firstPath)
+  }
+
   // Generic java signatures tests ---------------------------------------------
 
-  @Test def genericJavaSignatures: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def genericJavaSignatures: Unit = {
     implicit val testGroup: TestGroup = TestGroup("genericJavaSignatures")
     val compilationTest = withCoverage(compileFilesInDir("tests/generic-java-signatures", defaultOptions))
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
@@ -219,7 +239,7 @@ class CompilationTests {
   // Pickling Tests ------------------------------------------------------------
 
   @Test def pickling: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("testPickling")
+    implicit val testGroup: TestGroup = TestGroup("pickling")
     aggregateTests(
       compileFilesInDir("tests/pos", picklingOptions, FileFilter.exclude(TestSources.posTestPicklingExcludelisted)),
       compileFilesInDir("tests/run", picklingOptions, FileFilter.exclude(TestSources.runTestPicklingExcludelisted))
@@ -227,7 +247,7 @@ class CompilationTests {
   }
 
   // Pattern matching tests
-  @Test def patmat: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def patmat: Unit = {
     given TestGroup = TestGroup("patmat")
     // pagewidth/color: for a stable diff as the defaults are based on the terminal (e.g size)
     // stop-after: patmatexhaust-huge.scala crash compiler (but also hides other warnings..)
@@ -268,7 +288,7 @@ class CompilationTests {
     // }
   }
 
-  @Test def explicitNullsPos: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def explicitNullsPos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsPos")
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
@@ -296,13 +316,13 @@ class CompilationTests {
     // }
   }
 
-  @Test def explicitNullsWarn: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def explicitNullsWarn: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsWarn")
     val compilationTest = withCoverage(compileFilesInDir("tests/explicit-nulls/warn", explicitNullsOptions))
     runWithCoverageOrFallback[WarnTestWithCoverage](compilationTest)
   }
 
-  @Test def explicitNullsRun: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def explicitNullsRun: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsRun")
     val compilationTest = withCoverage(compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions))
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
@@ -340,10 +360,11 @@ class CompilationTests {
   }
 
   // initialization tests
-  @Test def safeInit: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def safeInit: Unit = {
     given TestGroup = TestGroup("safeInit")
     val options = defaultOptions.and("-Wsafe-init", "-Werror")
-    compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
+    if !Properties.testsInstrumentCoverage then
+      compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
     val initWarnTest = withCoverage(compileFilesInDir("tests/init/warn", defaultOptions.and("-Wsafe-init")))
     runWithCoverageOrFallback[WarnTestWithCoverage](initWarnTest)
     val initPosTest = withCoverage(compileFilesInDir("tests/init/pos", options))
@@ -378,7 +399,8 @@ class CompilationTests {
       )
       tests.foreach(t => runWithCoverageOrFallback[PosTestWithCoverage](t))
 
-      compileFile("tests/init/tasty-error/val-or-defdef/Main.scala", tastyErrorOptions.withClasspath(classA0).withClasspath(classB1))(using tastyErrorGroup).checkExpectedErrors()
+      if !Properties.testsInstrumentCoverage then
+        compileFile("tests/init/tasty-error/val-or-defdef/Main.scala", tastyErrorOptions.withClasspath(classA0).withClasspath(classB1))(using tastyErrorGroup).checkExpectedErrors()
 
       tests.foreach(_.delete())
     }
@@ -404,42 +426,49 @@ class CompilationTests {
       )
       tests.foreach(t => runWithCoverageOrFallback[PosTestWithCoverage](t))
 
-      compileFile("tests/init/tasty-error/typedef/Main.scala", tastyErrorOptions.withClasspath(classC).withClasspath(classA0).withClasspath(classB1))(using tastyErrorGroup).checkExpectedErrors()
+      if !Properties.testsInstrumentCoverage then
+        compileFile("tests/init/tasty-error/typedef/Main.scala", tastyErrorOptions.withClasspath(classC).withClasspath(classA0).withClasspath(classB1))(using tastyErrorGroup).checkExpectedErrors()
 
       tests.foreach(_.delete())
     }
   }
 
-  // parallel backend tests
   @Test def parallelBackend: Unit = {
-    given TestGroup = TestGroup("parallelBackend")
     val parallelism = Runtime.getRuntime().availableProcessors().min(16)
     assumeTrue("Not enough available processors to run parallel tests", parallelism > 1)
 
     val options = defaultOptions.and(s"-Ybackend-parallelism:${parallelism}")
-    def parCompileDir(directory: String) = compileDir(directory, options)
+    def parCompileDir(directory: String)(using TestGroup) = compileDir(directory, options)
 
     // Compilation units containing more than 1 source file
-    aggregateTests(
-      parCompileDir("tests/pos/i10477"),
-      parCompileDir("tests/pos/i4758"),
-      parCompileDir("tests/pos/scala2traits"),
-      parCompileDir("tests/pos/class-gadt"),
-      parCompileDir("tests/pos/tailcall"),
-      parCompileDir("tests/pos/reference"),
-      parCompileDir("tests/pos/pos_valueclasses")
-    ).checkCompile()
+    {
+      given TestGroup = TestGroup("parallelBackend pos")
+      aggregateTests(
+        parCompileDir("tests/pos/i10477"),
+        parCompileDir("tests/pos/i4758"),
+        parCompileDir("tests/pos/scala2traits"),
+        parCompileDir("tests/pos/class-gadt"),
+        parCompileDir("tests/pos/tailcall"),
+        parCompileDir("tests/pos/reference"),
+        parCompileDir("tests/pos/pos_valueclasses")
+      ).checkCompile()
+    }
 
-    aggregateTests(
-      parCompileDir("tests/neg/package-implicit"),
-      parCompileDir("tests/neg/package-export")
-    ).checkExpectedErrors()
+    {
+      given TestGroup = TestGroup("parallelBackend neg")
+      aggregateTests(
+        parCompileDir("tests/neg/package-implicit"),
+        parCompileDir("tests/neg/package-export")
+      ).checkExpectedErrors()
+    }
 
-    aggregateTests(
-      parCompileDir("tests/run/decorators"),
-      parCompileDir("tests/run/generic")
-    ).checkRuns()
-
+    {
+      given TestGroup = TestGroup("parallelBackend run")
+      aggregateTests(
+        parCompileDir("tests/run/decorators"),
+        parCompileDir("tests/run/generic")
+      ).checkRuns()
+    }
   }
 
   /**
@@ -481,22 +510,4 @@ class CompilationTests {
   }
 }
 
-object CompilationTests extends ParallelTesting with CoverageSupport {
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 45.seconds
-  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
-
-  given summaryReport: SummaryReporting = new SummaryReport
-
-  @AfterClass def tearDown(): Unit = {
-    super.cleanup()
-    summaryReport.echoSummary()
-  }
-
-}
+object CompilationTests extends ParallelTesting with CoverageSupport

@@ -2,7 +2,6 @@ package dotty.tools
 package repl
 
 import scala.jdk.CollectionConverters.*
-import scala.language.unsafeNulls
 import org.objectweb.asm.*
 import org.objectweb.asm.Opcodes.*
 import org.objectweb.asm.tree.*

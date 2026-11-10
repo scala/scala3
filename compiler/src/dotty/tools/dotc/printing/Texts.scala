@@ -103,9 +103,14 @@ object Texts {
       case Fluid(relems) => Fluid(relems map (_.indented))
       case Vertical(relems) => Vertical(relems map (_.indented))
 
+    private def stripTrailingSpaces(s: String): String =
+      var end = s.length
+      while end > 0 && s.charAt(end - 1) == ' ' do end -= 1
+      if end == s.length then s else s.substring(0, end)
+
     def print(sb: StringBuilder): Unit = this match
       case Str(s) =>
-        sb.append(s.replaceAll("[ ]+$", ""))
+        sb.append(stripTrailingSpaces(s))
       case _ =>
         var follow = false
         for elem <- relems.reverse do

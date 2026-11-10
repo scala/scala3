@@ -93,11 +93,10 @@ class DottyUnpickler(
   private var ids: Array[String] | Null = null
 
   override def mightContain(id: String)(using Context): Boolean = {
-    if (ids == null)
-      ids =
-        unpickler.nameAtRef.contents.toArray.collect {
+    initialize(ids, ids = _,
+        unpickler.nameAtRef.toArray.collect {
           case name: SimpleName => name.toString
         }.sorted
-    ids.nn.binarySearch(id) >= 0
+    ).binarySearch(id) >= 0
   }
 }

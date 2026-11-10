@@ -12,7 +12,7 @@ object Versions {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.9.0"
+  val referenceVersion = "3.10.0"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -23,7 +23,7 @@ object Versions {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.10.0"
+  val developedVersion = "3.10.1"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -32,7 +32,7 @@ object Versions {
    *  During release candidate cycle incremented by the release officer before publishing a subsequent RC version;
    *  During final, stable release is set exactly to `developedVersion`.
   */
-  val baseVersion = s"$developedVersion"
+  val baseVersion = developedVersion
 
   /** The version of TASTY that should be emitted, checked in runtime test
    *  For details on how TASTY version should be set see related discussions:
@@ -83,11 +83,18 @@ object Versions {
   /** Minor version against which we check binary compatibility.
    *
    *  This must be the earliest published release in the same versioning line.
-   *  For a developedVersion `3.M.P` the mimaPreviousDottyVersion should be set to:
+   *  For a developedVersion `3.M.P` the mimaPreviousVersion should be set to:
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.9.0"
+  val mimaPreviousVersion = "3.10.0"
+
+  /** LTS version against which we check binary compatibility.
+   *
+   *  This must be the earliest published release in the LTS versioning line.
+   *  For example, if the latest LTS release is 3.3.4, then this must be set to 3.3.0.
+   */
+  val mimaPreviousLTSVersion = "3.9.0"
 
   /* Tests TASTy version invariants during NIGHLY, RC or Stable releases */
   def checkReleasedTastyVersion(): Unit = {

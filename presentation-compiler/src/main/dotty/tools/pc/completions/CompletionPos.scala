@@ -42,7 +42,7 @@ object CompletionPos:
       wasCursorApplied: Boolean
   )(using Context): CompletionPos =
     def hasBacktickAt(offset: Int): Boolean =
-      sourcePos.source.content().lift(offset).contains('`')
+      sourcePos.source.textContent().lift(offset).contains('`')
 
     val (identEnd, hasTrailingBacktick) = adjustedPath match
       case (refTree: RefTree) :: _ if refTree.name.toString.contains(Cursor.value) =>
