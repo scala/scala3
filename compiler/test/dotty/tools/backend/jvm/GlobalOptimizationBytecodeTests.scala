@@ -311,26 +311,37 @@ class GlobalOptimizationBytecodeTests extends OptimizationBytecodeTest {
       "val x = new Array[Int](123); 1"
     )
 
+  @Test def deadNewArrayOfReference =
+    assertEquivalence(
+      "1",
+      "val x = new Array[String](123); 1"
+    )
+
   @Test def deadNewMultidimArrayOfPrimitive =
     assertEquivalence(
       "1",
       "val x = new Array[Array[Int]](123); 1"
     )
 
-  @Test def deadNewArrayOfRefIsNotElided =
-    // there may be a static constructor
+  @Test def deadNewMultidimArrayOfReference =
+    assertEquivalence(
+      "1",
+      "val x = new Array[Array[String]](123); 1"
+    )
+
+  @Test def deadNewArrayOfUnknownSizeIsNotElided =
+    // it could throw an exception if x < 0
     val source =
       f"""
-         |class Bar
          |class Foo:
-         |    def foo(): Unit = { new Array[Bar](1); () }
+         |    def foo(x: Int): Unit = { new Array[Int](x); () }
          """.stripMargin
     checkBCode(source) { dir =>
       val clsIn = lookupClass(dir, "Foo.class")
       val clsNode = loadClassNode(clsIn)
       val meth1 = getMethod(clsNode, "foo")
       val instructions = instructionsFromMethod(meth1)
-      assert(instructions.exists(_.opcode == Opcodes.ANEWARRAY), instructions.mkString("\n"))
+      assert(instructions.exists(_.opcode == Opcodes.NEWARRAY), instructions.mkString("\n"))
     }
 
   @Test def deadTryCatch =
