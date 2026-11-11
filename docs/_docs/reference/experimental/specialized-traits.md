@@ -171,6 +171,7 @@ Replacement of specializations with their corresponding specialized interface tr
 
  - If, for all n, `Cn` is one of the top classes `Any`/`AnyRef`/`AnyVal`/`Object`, or `Cn` is `Nothing`, the usual erased trait `Vec`.
  - If for at least one n, `Cn` is some other class, the corresponding specialized interface trait `SpecTrait$sp$C1$C2$C3`.
+ - If `SpecTrait` has a variant specialized type parameter, the usual erased trait `SpecTrait`, except in the parents of a class or trait.
 
 We also erase `new SpecTrait[T1, T2, T3, ....]` to:
  - `SpecTrait$impl()` if all type arguments are top classes or nothing.
@@ -238,44 +239,53 @@ The bodies of the interface traits and instance classes are completed by inlinin
 ## Relationship to other language features 
 
 ### Variance and Specialized Traits
-Specialized traits may define variance parameters e.g.:
+Specialized traits may declare variant specialized type parameters, e.g.:
 ```scala
 inline trait MyFunction1[-T1: Specialized, +R: Specialized]
 ```
-However, variance works in Scala because type parameters are erased, and so we can freely cast e.g. List[Lion] to List[Animal] at runtime. Because specialized traits have a special erasure (and necessarily, because this is how we get the specialization), a couple of variance patterns that are possible with standard traits are not possible with specialized traits. This concerns the top classes and `Nothing`.
+Usually specialized traits will have a special erasure, which breaks this for a couple of variance patterns involving the top classes and `Nothing`. With the erasure described above:
+ - Contravariance: a `RecyclingBin[Any]` (erased to `RecyclingBin`) can be used as a `RecyclingBin[Int]` (erased to `RecyclingBin$sp$Int`), but `RecyclingBin$impl` does not implement `RecyclingBin$sp$Int`.
+ - Covariance: a `MyList[Nothing]` (erased to `MyList`) can be used as a `MyList[Int]` (erased to `MyList$sp$Int`), but `MyList` is a supertype of `MyList$sp$Int`.
 
-In the contravariance case:
+Therefore, specialization `A[T1, ..., Tn]` of a trait `A` that has at least one variant specialized type parameter erases to the unspecialized trait `A` everywhere except in the parents of a class or trait. For example:
+
 ```scala
 inline trait RecyclingBin[-T: Specialized]:
-    def recycle(x: T) = println(s"Recycling ${x}")
+  def recycle(x: T) = println(s"Recycling ${x}")
 
-def recycleAnInteger(rbin: RecyclingBin[Int]) = 
-    rbin.recycle(100)
+def recycleAnInteger(rbin: RecyclingBin[Int]) =
+  rbin.recycle(100)
 
-recycleAnInteger(new RecyclingBin[Any]() {})    // RecyclingBin[Any] can be interpreted as RecyclingBin[Int] due to contravariance
-recycleAnInteger(new RecyclingBin[AnyVal]() {}) // RecyclingBin[AnyVal] can be interpreted as RecyclingBin[Int] due to contravariance
+class IntBin extends RecyclingBin[Int]
 
-// Yet, this erases to:
-def recycleAnInteger(rbin: RecyclingBin$sp$Int) = 
-    rbin.recycle(100)
-
-recycleAnInteger(RecyclingBin$impl().asInstanceOf[RecyclingBin$sp$Int]) // RecyclingBin$impl cannot be cast to RecyclingBin$sp$Int; Any and Int live in different erasure "buckets" so their erased types are unrelated
-recycleAnInteger(RecyclingBin$impl{}.asInstanceOf[RecyclingBin$sp$Int]) // RecyclingBin$impl cannot be cast to RecyclingBin$sp$Int
+recycleAnInteger(new RecyclingBin[Any]() {})    // RecyclingBin[Any] can be used as RecyclingBin[Int] due to contravariance
+recycleAnInteger(new RecyclingBin[AnyVal]() {}) // RecyclingBin[AnyVal] can be used as RecyclingBin[Int] due to contravariance
+recycleAnInteger(new IntBin)
 ```
-Therefore we have the following issues:
-- `RecyclingBin[Any]`, `RecyclingBin[AnyVal]` may not be passed to `RecyclingBin[Int]` whereas normally they would be able to be passed
-- `RecyclingBin[Any]`, `RecyclingBin[Object / AnyRef]` may not be passed to `RecyclingBin[Paper]` whereas normally they would.
+erases to:
+```scala
+def recycleAnInteger(rbin: RecyclingBin) = ...  // not RecyclingBin$sp$Int
 
-These uses of contravariance can never succeed. Rather than allowing them to always fail at runtime, we reject them at compilation time. We impose an additional restriction on contravariance with specialized parameters:
-- If (when `F1 >:> F2`) `A[F1]` is to be interpreted as `A[F2]` under `A[-T: Specialized]`, we require that `SpecType(F1) = SpecType(F2)`. Given `F1 >:> F2` and looking at the definition of `SpecType` this means concretely:
-  - `RecyclingBin[Any]`, `RecyclingBin[AnyVal]` may not be passed to `RecyclingBin[Int]` whereas normally they would
-  - `RecyclingBin[Any]`, `RecyclingBin[Object / AnyRef]` may not be passed to `RecyclingBin[Paper]` whereas normally they would.
-  - `RecyclingBin[Any]` may be passed to `RecyclingBin[Object]`, `RecyclingBin[AnyRef]`, `RecyclingBin[AnyVal]` as these all erase to `RecyclingBin`.
+class IntBin extends RecyclingBin, RecyclingBin$sp$Int
 
-Covariance has a similar problem:
- - In general covariance works fine because it corresponds to interpreting `A[F1]` as `A[F2]` where `F1 <:< F2`. Either`A[F1]` and `A[F2]` both erase to the same type (`A$sp$SpecType(F2)`, or `A` if `F1` and `F2` are both top classes), or `A[F1]` erases to `A$sp$F1` and `A[F2]` erases to `A` (`F2` is a top class while `F1` is not). But `A$sp$F1` is a subtype of `A` by definition so the upcast will succeed (and upcasts are generally cheap compared to downcasts on the JVM so this is acceptable from a performance perspective).  
- - The only exception is with `Nothing`, because we want to interpret `A[Nothing]` as e.g. `A[Int]`, but we erase `A[Nothing]` to `A`. `A >:> A$sp$Int` so this doesn't work and so we also have to reject covariance using `Nothing`. To implement this correctly would require a specialization `A$sp$Nothing` which extends every single specialization in the program, and this was deemed infeasible. The lack of covariance with `Nothing` makes the code less ergonomic in some cases. For example `case object Nil extends List[Nothing]` has to become `inline trait Nil[T: Specialized] extends List[T]` and `inline def apply[T: Specialized] = new Nil[T] () {}`, but we don't lose too much expressivity.
+recycleAnInteger(new RecyclingBin$impl())
+recycleAnInteger(new RecyclingBin$impl())
+recycleAnInteger(new IntBin())
+```
+The specialized interface traits and instance classes are still generated, and instances of them still carry the specialized method implementations, but references to the trait in signature no longer name them. 
+As a consequence, the invariant `T <:< Foo[Int] <=> T <:< Foo$sp$Int` only holds for specialized traits without variant specialized type parameters.
 
+To recover some of the lost performance, calls to members of such a trait whose receiver has a fully specialized static type are dispatched on the runtime class of the receiver. 
+For example, `rbin.recycle(100)` becomes:
+```scala
+val rbin1 = rbin
+if rbin1.isInstanceOf[RecyclingBin$sp$Int] then
+  rbin1.asInstanceOf[RecyclingBin$sp$Int].recycle(100) // calls the specialized method, no boxing
+else
+  rbin1.recycle(100)                                  // calls the generic method
+```
+
+Since the specialization opportunities are reduced, declaring a specialized type parameter as variant produces a warning (E234).
 
 ### `sealed` Specialized traits
 Like other traits, specialized traits may be `sealed`, but this requires some thought. In particular, the generated `$sp$` traits and `$impl$` classes extend the `sealed` specialized trait potentially from another file without the user being aware that this is happening behind the scenes. We want to allow for example:

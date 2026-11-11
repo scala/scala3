@@ -32,19 +32,3 @@ def main =
     val myNewspaperWasteBin = new Bin[Newspaper]() {}
     throwAwayGeneralPaper(myNewspaperWasteBin) // error: Bin[Newspaper] cannot be interpreted as Bin[Paper] due to contravariance
 
-    /* These ones are specifically banned for specialized traits: */
-    val myObjectBin = new Bin[Object]() {}
-    throwAwayTheNewspaper(myObjectBin) // error: This use of contravariance is not compatible with specialized traits.
-
-    val myAnyBin = new Bin[Any]() {}
-    throwAwayTheNewspaper(myAnyBin) // error: This use of contravariance is not compatible with specialized traits.
-
-    throwAwayAnInteger(myAnyBin) // error: This use of contravariance is not compatible with specialized traits.
-
-    val myAnyRefBin = new Bin[AnyRef]() {}
-    val myAnyValBin = new Bin[AnyVal]() {}
-    
-    throwAwayTheNewspaper(myAnyRefBin) // error: This use of contravariance is not compatible with specialized traits
-    throwAwayAnInteger(myAnyValBin) // error: This use of contravariance is not compatible with specialized traits
-
-
