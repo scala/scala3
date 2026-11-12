@@ -32,13 +32,8 @@ final class PcRenameProvider(
     def isInWorksheet = sym.source.path.isWorksheet
     !isForbiddenMethod && (local || isInWorksheet) && soughtSymbolNames(decodedName)
 
-  /** Named tuple fields are declared in a type (`(name: String)`) which has
-   *  no symbol for the field, so their usages cannot be renamed consistently.
-   */
-  private def canRename: Boolean = !isOnNamedTupleField
-
   def prepareRename(): Option[l.Range] =
-    if !canRename then None
+    if isOnNamedTupleField then None
     else
       soughtSymbols.flatMap((symbols, pos) =>
         if symbols.forall(canRenameSymbol) then Some(pos.toLsp)
@@ -58,7 +53,7 @@ final class PcRenameProvider(
 
   def rename(): List[l.TextEdit] =
     val (symbols, _) = soughtSymbols.getOrElse(Set.empty, pos)
-    if canRename && symbols.nonEmpty && symbols.forall(canRenameSymbol(_))
+    if !isOnNamedTupleField && symbols.nonEmpty && symbols.forall(canRenameSymbol(_))
     then result()
     else Nil
 end PcRenameProvider

@@ -173,24 +173,16 @@ trait PcCollector[T]:
             traverser(set, tree)
           }
 
-        /** Named tuple field access such as:
+        /** Named tuple fields, which have no symbol:
          *  ```
-         *  val x: (name: String) = ???
          *  x.<<name>>
          *  ```
-         *  Named tuple selections are typed as `NamedTuple.apply[N, V](qual)(idx)`
-         *  and the field has no symbol, so we synthesize one. The qualifier is
-         *  collected by the regular traversal of the children.
          */
         case app @ NamedTupleSelection(_, names, values, i) if app.span.isCorrect =>
           val fieldSpan = namedTupleFieldSpan(app)
-          val fieldOccurrence =
-            namedTupleFieldSymbol(names, values, i, fieldSpan)
-              .filter: sym =>
-                soughtFilter(sought => sameNamedTupleField(sought, sym))
-              .map: sym =>
-                collect(app, pos.withSpan(fieldSpan), Some(sym))
-          occurrences ++ fieldOccurrence
+          occurrences ++ namedTupleFieldSymbol(names, values, i, fieldSpan)
+            .filter(sym => soughtFilter(sameNamedTupleField(_, sym)))
+            .map(sym => collect(app, pos.withSpan(fieldSpan), Some(sym)))
 
         /* Named parameters don't have symbol so we need to check the owner
          *  ```
@@ -297,13 +289,9 @@ trait PcCollector[T]:
     traverser(Set.empty[T], unit.tpdTree)
   end traverseSought
 
-  /** The `NamedTuple.apply` reference synthesized for a named tuple selection
-   *  `x.name` carries the span of the qualifier `x` and must not produce an
-   *  occurrence there. An explicit `x.apply(0)` keeps its own `apply` span.
-   */
+  // The `NamedTuple.apply` synthesized for `x.name` has the span of `x`; an explicit `x.apply(0)` has its own
   private def isSyntheticNamedTupleApply(sel: Select)(using Context): Boolean =
-    isNamedTupleApply(sel.symbol) &&
-      sourceText.substring(sel.span.start, sel.span.end) != nme.apply.toString
+    isNamedTupleApply(sel.symbol) && sourceText.substring(sel.span.start, sel.span.end) != nme.apply.toString
 
 end PcCollector
 
