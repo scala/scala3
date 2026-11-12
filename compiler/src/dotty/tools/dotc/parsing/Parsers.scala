@@ -2986,6 +2986,29 @@ object Parsers {
           atSpan(in.offset) { PrefixOp(termIdent(), simpleExpr(location)) }
       else simpleExpr(location)
 
+    /** Warn if the indented block starting at `start` that was just parsed is followed
+     *  by a leading infix operator that is less indented than the block, as in
+     *
+     *      if c then
+     *        a
+     *      else
+     *        b
+     *      + 1
+     *
+     *  The scanner closes the indentation region before such an operator, but the operator
+     *  is still applied to the block, i.e. here only to the `else` branch. This is
+     *  surprising, since the layout suggests that it applies to the enclosing expression.
+     */
+    def checkNoLeadingInfixAfterIndentedBlock(start: Offset): Unit =
+      if in.isIdent && in.isOperator && in.isAfterLineEnd
+         && source.column(in.offset) < source.column(start)
+      then
+        warning(
+          em"""Leading infix operator `${in.name}` applies only to the indented block above,
+              |not to the enclosing expression, although it is less indented than that block.
+              |Indent the operator further to make this explicit,
+              |or wrap the enclosing expression in parentheses to apply the operator to all of it.""")
+
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
      *                 |  ‘new’ TemplateBody
      *                 |  BlockExpr
@@ -3031,9 +3054,15 @@ object Parsers {
           atSpan(start) { Ident(pname) }
         case LPAREN =>
           atSpan(in.offset) { makeTupleOrParens(inParensWithCommas(exprsInParensOrBindings())) }
-        case LBRACE | INDENT =>
+        case LBRACE =>
           canApply = false
           blockExpr()
+        case INDENT =>
+          canApply = false
+          val start = in.offset
+          val t = blockExpr()
+          checkNoLeadingInfixAfterIndentedBlock(start)
+          t
         case QUOTE =>
           quote(location.inPattern)
         case NEW =>
