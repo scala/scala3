@@ -1,3 +1,22 @@
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i25464.scala:8:17 --------------------------------------
+8 |  class Impl(val a: C^{C.this}) extends CF2 // error
+  |                 ^
+  |          Reference `Impl.this.a` is not included in the allowed capture set {any} of the self type of class Impl.
+  |
+  |          where:    any is a root capability classified as CF2 in the type of class Impl
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25464.scala:10:12 ---------------------------------------
+10 |  val cf2 = new Impl(this) // error
+   |            ^^^^^^^^^^^^^^
+   |Found:    C.this.Impl{val a: (C.this : C^)}^{any, C.this}
+   |Required: C.this.Impl{val a: C^'s1}^'s2
+   |
+   |Note that capability `C.this` is not classified as trait CF2, therefore it
+   |cannot flow into capture set 's2 of value cf2 of CF2 elements.
+   |
+   |where:    ^   refers to a root capability classified as CF1 created in class C when constructing instance C with contributing field val cf1
+   |          any is a root capability classified as CF2 created in value cf2 when constructing instance C.this.Impl
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25464.scala:15:6 ----------------------------------------
 15 |  f(c.cf1) // error
    |    ^^^^^
@@ -20,9 +39,3 @@
    |    where:    any is a root capability created in method test when checking argument to parameter x of method f
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/i25464.scala:8:17 -------------------------------------------------------------
-8 |  class Impl(val a: C^{C.this}) extends CF2 // error
-  |                 ^
-  |                 value a's type C^{C.this} captures C.this which is unclassified,
-  |                 but it is a field of class Impl which is classied as CF2.
-  |                 Field classifiers have to conform to the classifier of the containing class.

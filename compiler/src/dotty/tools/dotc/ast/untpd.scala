@@ -265,6 +265,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def isAllOf(fc: FlagSet): Boolean = flags.isAllOf(fc)
 
     def | (fs: FlagSet): Modifiers = withFlags(flags | fs)
+    def safe_|(fs: FlagSet): Modifiers =
+      if compatible(flags, fs) then withFlags(flags | fs) else this
     def & (fs: FlagSet): Modifiers = withFlags(flags & fs)
     def &~(fs: FlagSet): Modifiers = withFlags(flags &~ fs)
 
@@ -289,7 +291,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       || flags1.isTermFlags && flags2.isTermFlags
       || flags1.isTypeFlags && flags2.isTypeFlags
 
-    /** Add `flags` to thos modifier set, checking that there are no type/term conflicts.
+    /** Add `flags` to this modifier set, checking that there are no type/term conflicts.
      *  If there are conflicts, issue an error and return the modifiers consisting of
      *  the added flags only. The reason to do it this way is that the added flags usually
      *  describe the core of a construct whereas the existing set are the modifiers

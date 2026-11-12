@@ -502,7 +502,7 @@ object JavaParsers {
             flags |= Flags.Final
             in.nextToken()
           case DEFAULT =>
-            flags |= Flags.DefaultMethod
+            flags |= Flags.JavaDefaultMethod
             in.nextToken()
           case NATIVE =>
             addAnnot(scalaDot(jtpnme.NATIVEkw))
@@ -656,7 +656,7 @@ object JavaParsers {
           val vparams = formalParams()
           if (!isVoid) rtpt = optArrayBrackets(rtpt)
           optThrows()
-          val bodyOk = !inInterface || mods.isOneOf(Flags.DefaultMethod | Flags.JavaStatic | Flags.Private)
+          val bodyOk = !inInterface || mods.isOneOf(Flags.JavaDefaultMethod | Flags.JavaStatic | Flags.Private)
           val body =
             if (bodyOk && in.token == LBRACE)
               methodBody()

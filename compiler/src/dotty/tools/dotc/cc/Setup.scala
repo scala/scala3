@@ -290,7 +290,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else tp
       case _ => tp
 
-    /** Pull out an embedded capture set from a part of `tp` */
+    /** Pull out an embedded capture set from a part of `tp`
+     *  Note: There is no simplification for intersection types. We can't reliably
+     *  intersect capture sets during Setup because subCaptures needs captureSetOfInfo,
+     *  which is not always known yet. Consequently, subCaptures can mispredict
+     *  to false, which would create intersections that are too small. Unions don't
+     *  have that problem since all a mispredicted subCaptures would lead to is
+     *  add a redundant element to a capture set.
+     */
     def normalizeCaptures(tp: Type)(using Context): Type = tp match
       case tp @ RefinedType(parent @ CapturingType(parent1, refs), rname, rinfo) =>
         CapturingType(tp.derivedRefinedType(parent1, rname, rinfo), refs, parent.isBoxed)
@@ -300,11 +307,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             CapturingType(tp.derivedRecType(parent1), refs, parent.isBoxed)
           case _ =>
             tp // can return `tp` here since unlike RefinedTypes, RecTypes are never created
-                // by `mapInferred`. Hence if the underlying type admits capture variables
-                // a variable was already added, and the first case above would apply.
-      case AndType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
-        assert(tp1.isBoxed == tp2.isBoxed)
-        CapturingType(AndType(parent1, parent2), refs1 ** refs2, tp1.isBoxed)
+               // by `mapInferred`. Hence if the underlying type admits capture variables
+               // a variable was already added, and the first case above would apply.
       case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
         assert(tp1.isBoxed == tp2.isBoxed)
         CapturingType(OrType(parent1, parent2, tp.isSoft), refs1 ++ refs2, tp1.isBoxed)
