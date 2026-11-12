@@ -3,12 +3,9 @@
 // Under -source:future, a leading infix operator that follows an indented block
 // and is less indented than that block applies to the enclosing control expression.
 
-def yes = true
-def no = false
-
 @main def Test =
   val a =
-    if yes then
+    if true then
       10
     else
       1
@@ -16,7 +13,7 @@ def no = false
   assert(a == 110)
 
   val b =
-    if no then
+    if false then
       10
     else
       1
@@ -25,7 +22,7 @@ def no = false
 
   // usual precedence rules apply after the control expression
   val c =
-    if yes then
+    if true then
       10
     else
       1
@@ -34,9 +31,9 @@ def no = false
 
   // `else if` chains: the operator applies to the outermost conditional
   val d =
-    if no then
+    if false then
       1
-    else if no then
+    else if false then
       2
     else
       3
@@ -45,10 +42,10 @@ def no = false
 
   // the operator lines up with the inner conditional, which has its own indentation region
   val e =
-    if no then
+    if false then
       1
     else
-      if no then
+      if false then
         2
       else
         3
@@ -77,7 +74,7 @@ def no = false
 
   // an indented operator still belongs to the branch
   val i =
-    if yes then
+    if true then
       10
     else
       1
@@ -86,7 +83,7 @@ def no = false
 
   // single-line branches are not affected
   val j =
-    if yes then 10 else 1
+    if true then 10 else 1
     + 100
   assert(j == 10)
 
