@@ -80,8 +80,8 @@ class LogicalPackagesProvider(sourcePath: String) {
         trees.foreach(traverse)
       case pkg: untpd.PackageDef =>
         traversePackageDef(pkg)
-      case _: untpd.MemberDef =>
-        // Top-level class or object in default package
+      case _: untpd.MemberDef | _: untpd.Export =>
+        // Top-level definition or export, which contributes members to the enclosing package
         currentPackage.enterSource(sourceFile.file.nn)
       case _ =>
 
