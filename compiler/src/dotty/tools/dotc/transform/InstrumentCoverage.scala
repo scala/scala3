@@ -252,11 +252,12 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
   private class CoverageTransformer(outputPath: String) extends Transformer:
     private val ConstOutputPath = Constant(outputPath)
 
-    private def warnSkippedLargeTreeCoverage(tree: MemberDef, subject: String, nodeCount: Int)(using Context): Unit =
-      report.warning(
+    private def echoSkippedLargeTreeCoverage(tree: MemberDef, subject: String, nodeCount: Int)(using Context): Unit = {
+      report.echo(
         s"Skipping coverage instrumentation for large $subject ($nodeCount tree nodes exceeds threshold ${InstrumentCoverage.MaxInstrumentableTreeNodes}); compilation will continue but no coverage data will be recorded for it.",
         tree.srcPos
       )
+    }
 
     /** Generates the tree for:
       * ```
@@ -290,9 +291,13 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         start = pos.start,
         end = pos.end,
         // +1 to account for the line number starting at 1
-        // the internal line number is 0-base https://github.com/scala/scala3/blob/18ada516a85532524a39a962b2ddecb243c65376/compiler/src/dotty/tools/dotc/util/SourceFile.scala#L173-L176
+        // the internal line number is 0-based, see SourceFile.scala
         line = pos.line + 1,
-        desc = sourceFile.content.slice(pos.start, pos.end).mkString,
+        // TODO: figure out why pos.end can be out of range, e.g., in `tests/run/targetName-modules-2`
+        desc = {
+          val textContent = sourceFile.textContent()
+          textContent.substring(pos.start, if pos.end < textContent.length then pos.end else textContent.length)
+        },
         symbolName = tree.symbol.name.toSimpleName.show,
         treeName = tree.getClass.getSimpleName,
         branch,
@@ -370,7 +375,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       * @return instrumentation result, with the preparation statement, coverage call and tree separated
       */
     private def tryInstrument(tree: Apply)(using Context): InstrumentedParts =
-      if LiftCoverage.isUnsafeAssumeSeparate(tree) then
+      if usesConstructorOnly(tree) then
+        InstrumentedParts.notCovered(tree)
+      else if LiftCoverage.isUnsafeAssumeSeparate(tree) then
         val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
         InstrumentedParts.notCovered(transformed)
       else if canInstrumentApply(tree) then
@@ -401,6 +408,11 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
         InstrumentedParts.notCovered(transformed)
     end tryInstrument
+
+    private def usesConstructorOnly(tree: Tree)(using Context): Boolean =
+      tree.existsSubTree:
+        case ref: RefTree => ref.symbol.hasAnnotation(defn.ConstructorOnlyAnnot)
+        case _ => false
 
     private def tryInstrument(tree: Ident)(using Context): InstrumentedParts =
       val sym = tree.symbol
@@ -477,7 +489,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           case tree if !tree.span.exists || tree.span.isZeroExtent => tree // no meaningful position
 
           case tree: ValDef if !tree.rhs.isEmpty && treeSize(tree.rhs) > InstrumentCoverage.MaxInstrumentableTreeNodes =>
-            warnSkippedLargeTreeCoverage(tree, s"value initializer `${tree.name.show}`", treeSize(tree.rhs))
+            echoSkippedLargeTreeCoverage(tree, s"value initializer `${tree.name.show}`", treeSize(tree.rhs))
             tree
 
           case tree: Literal =>
@@ -614,7 +626,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // (Note that a retained inline method will have a `$retained` variant that will be instrumented.)
         tree
       else if !tree.rhs.isEmpty && treeSize(tree.rhs) > InstrumentCoverage.MaxInstrumentableTreeNodes then
-        warnSkippedLargeTreeCoverage(tree, s"method body `${tree.name.show}`", treeSize(tree.rhs))
+        echoSkippedLargeTreeCoverage(tree, s"method body `${tree.name.show}`", treeSize(tree.rhs))
         tree
       else
         // Only transform the params (for the default values) and the rhs, not the name and tpt.

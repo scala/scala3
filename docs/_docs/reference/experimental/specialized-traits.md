@@ -60,7 +60,7 @@ inline trait Vec[T: {Specialized, Numeric}](elems: Array[T]):
 def printVector(v: Vec[Int]) = println(v)
 
 object Vec:
-  inline def apply[T: Specialized](elems: Array[T]) = new Vec[T](elems) {}
+  inline def apply[T: {Specialized, Numeric}](elems: Array[T]) = new Vec[T](elems) {}
 end Vec
 
 val v = Vec[Int](Array(1, 2, 3, 4, 5))
@@ -90,7 +90,7 @@ class Vec$impl$Int(elems: Array[Int])(using Numeric[Int]) extends Vec[Int](elems
 def printVector(v: Vec$sp$Int) = println(v)
 
 object Vec:
-  inline def apply[T: Specialized](elems: Array[T]) = new Vec[T](elems) {}
+  inline def apply[T: {Specialized, Numeric}](elems: Array[T]) = new Vec[T](elems) {}
 end Vec
 
 val v = Vec$impl$Int(Array(1, 2, 3, 4, 5))

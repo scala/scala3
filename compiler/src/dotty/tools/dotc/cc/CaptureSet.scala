@@ -64,7 +64,7 @@ sealed abstract class CaptureSet extends Showable:
    *  CapturingType is formed. This is different from the setter `mutability_=`
    *  in that it can be defined with different behaviors:
    *
-   *   - set mutability to Writer (for normal Vars)
+   *   - set mutability to Writer unless it is already known (for normal Vars)
    *   - take mutability from the set's sources (for DerivedVars)
    *   - compute mutability on demand based on mutability of elements (for Consts)
    */
@@ -217,6 +217,7 @@ sealed abstract class CaptureSet extends Showable:
     addThisElem(elem)
     || !elem.isTerminalCapability
         && vs.isOpen
+        && !isCaptureSetup
         && {
           val underlying = elem.captureSetOfInfo
           val res = ifNotTried(elem)(tryInclude(underlying.elems, this))
@@ -245,6 +246,35 @@ sealed abstract class CaptureSet extends Showable:
     cs.addDependent(this)(using ctx, VarState.Unrecorded)
     this
 
+  /** Classifier splitting: the projections of `x`'s base in this set may cover `x` where
+   *  `subsumes` cannot show it, typically several of them together. A projection under
+   *  `.rd` or `?` takes part only if `x` has that wrapper too. Subtract the projections
+   *  from `x` in turn. `x` is covered if nothing remains, if what remains lies outside
+   *  the classifiers of the base, or if `coversPiece` covers each remaining piece, for
+   *  instance by widening it. A root base is not asked for its classifiers, since a
+   *  local root that is not yet classified would cache an answer that can still change.
+   */
+  private def coveredByProjections(x: Capability)(coversPiece: Capability => Boolean)(using Context): Boolean =
+    val base = x.core
+    def isReadOnly(c: Capability) = c.stripMaybe.isInstanceOf[ReadOnly]
+    def peer(elem: Capability): Classified | Null = elem.stripMaybe.stripReadOnly match
+      case p: Classified
+      if (p.underlying eq base) && p.only != defn.NothingClass
+          && (x.isMaybe || !elem.isMaybe)
+          && (isReadOnly(x) || !isReadOnly(elem)) => p
+      case _ => null
+    def emptyUnderBase(rest: List[Capability]) =
+      !x.isTerminalCapability && (base.transClassifiers match
+        case ClassifiedAs(cs) => rest.forall(r => cs.forall(r.isProjectionDisjointFrom(_)))
+        case _ => false)
+    elems.exists(peer(_) != null) && {
+      val rest = elems.toList.foldLeft(x :: Nil): (rest, elem) =>
+        peer(elem) match
+          case p: Classified => rest.flatMap(_.remainderAfter(p))
+          case null => rest
+      rest.isEmpty || emptyUnderBase(rest) || rest.forall(coversPiece)
+    }
+
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
    */
@@ -254,17 +284,23 @@ sealed abstract class CaptureSet extends Showable:
       val suffix = if ctx.settings.YccVerbose.value then i" with ${x.captureSetOfInfo}" else ""
       i"$this accountsFor $x$suffix"
 
+    def subsumed(y: Capability) = elems.exists(_.subsumes(y))
+
+    // Even though subsumes already follows captureSetOfInfo, this is not enough.
+    // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
+    def widened(y: Capability) =
+      !y.isTerminalCapability
+      && !isCaptureSetup
+      && !(vs.isSeparating && y.captureSetOfInfo.containsTerminalCapability)
+        // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
+        // and might therefore insert an element that is too unspecific.
+      && ifNotTried(y)(y.captureSetOfInfo.subCaptures(this, VarState.Separate))
+
     def test(using Context) = reporting.trace(debugInfo):
       TypeComparer.noNotes: // Any failures in accountsFor should not lead to error notes
-        elems.exists(_.subsumes(x))
-        || // Even though subsumes already follows captureSetOfInfo, this is not enough.
-           // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
-          !x.isTerminalCapability
-          && !x.coreType.derivesFromCapSet
-          && !(vs.isSeparating && x.captureSetOfInfo.containsTerminalCapability)
-            // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
-            // and might therefore insert an element that is too unspecific.
-          && ifNotTried(x)(x.captureSetOfInfo.subCaptures(this, VarState.Separate))
+        subsumed(x)
+        || coveredByProjections(x)(r => subsumed(r) || widened(r))
+        || widened(x)
 
     comparer match
       case comparer: ExplainingTypeComparer => comparer.traceIndented(debugInfo)(test)
@@ -279,16 +315,22 @@ sealed abstract class CaptureSet extends Showable:
    *  root capability `any`.
    */
   def mightAccountFor(x: Capability)(using Context): Boolean =
-    reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
+    def subsumed(y: Capability) =
       CCState.withCollapsedLocalCaps:
         // TODO Can we drop withCollapsedLocalCaps?. Without it we get errors in
         // LazyListIterable.scala.
         TypeComparer.noNotes:
-          elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
-      || !x.isTerminalCapability
-        && ifNotTried(x):
-          val xelems = x.captureSetOfInfo.elems
-          !xelems.isEmpty && xelems.forall(mightAccountFor(_))
+          elems.exists(_.subsumes(y)(using ctx)(using VarState.ClosedUnrecorded))
+    def widened(y: Capability) =
+      !y.isTerminalCapability
+      && !isCaptureSetup
+      && ifNotTried(y):
+        val yelems = y.captureSetOfInfo.elems
+        !yelems.isEmpty && yelems.forall(mightAccountFor(_))
+    reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
+      subsumed(x)
+      || coveredByProjections(x)(r => subsumed(r) || widened(r))
+      || widened(x)
 
   /** A more optimistic version of subCaptures used to choose one of two typing rules
    *  for selections and applications. `cs1 mightSubcapture cs2` if `cs2` might account for
@@ -312,11 +354,8 @@ sealed abstract class CaptureSet extends Showable:
         capt.println(i"WIDEN ro $this with ${this.mutability} <:< $that with ${that.mutability} to $this1")
         this1.subCaptures(that, vs)
       else
-        try
+        printOnAssertionError(i"error while subcap $this <:< $that"):
           that.tryInclude(elems, this) && addDependent(that)
-        catch case ex: AssertionError =>
-          println(i"error while subcap $this <:< $that")
-          throw ex
 
   /** Two capture sets are considered =:= equal if they mutually subcapture each other
    *  in a frozen state.
@@ -342,9 +381,6 @@ sealed abstract class CaptureSet extends Showable:
     else if that.subCaptures(this, VarState.HardSeparate) then this
     else if this.isConst && that.isConst then Const(this.elems ++ that.elems)
     else Union(this, that)
-
-  def ++ (that: CaptureSet.Const)(using Context): CaptureSet.Const =
-    Const(this.elems ++ that.elems)
 
   /** The smallest superset (via <:<) of this capture set that also contains `ref`.
    */
@@ -627,9 +663,6 @@ object CaptureSet:
   def shared(using Context): Const =
     GlobalAny.readOnly.singletonCaptureSet
 
-  /** Used as a recursion brake */
-  @sharable private[dotc] val Pending = Const(SimpleIdentitySet.empty)
-
   def apply(elems: Capability*)(using Context): Const =
     if elems.isEmpty then empty
     else
@@ -796,7 +829,7 @@ object CaptureSet:
     val deps: Deps = new MutableIdentitySet[CaptureSet]
 
     def associateWithStateful()(using Context): CaptureSet =
-      mutability = Writer
+      if mutability == Ignored then mutability = Writer
       this
 
     def isConst(using Context) = solved >= ccState.iterationId
@@ -895,10 +928,8 @@ object CaptureSet:
         // id == 108 then assert(false, i"trying to add $elem to $this")
         assert(elem.isWellformed, elem)
         assert(!this.isInstanceOf[HiddenSet] || summon[VarState].isSeparating, summon[VarState])
-        try includeElem(elem)
-        catch case ex: AssertionError =>
-          println(i"error for incl $elem in $this, ${summon[VarState].toString}")
-          throw ex
+        printOnAssertionError(i"error for incl $elem in $this, ${summon[VarState].toString}"):
+          includeElem(elem)
         newElemAddedHandlers.foreach(_(elem))
         val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
@@ -927,13 +958,13 @@ object CaptureSet:
             case _ => foldOver(b, t)
       find(false, binder)
 
-    def levelOK(elem: Capability)(using Context): Boolean = elem match
-      case elem @ ResultCap(binder) =>
+    def levelOK(elem: Capability)(using Context): Boolean = elem.core match
+      case core @ ResultCap(binder) =>
         rootLimit == null && isPartOf(binder.resType)
       case _: GlobalCap =>
         rootLimit == null
-      case elem: ParamRef =>
-        isPartOf(elem.binder.resType)
+      case core: ParamRef =>
+        isPartOf(core.binder.resType)
       case _ =>
         if owner.exists then
           val elemVis = elem.visibility
@@ -1031,7 +1062,7 @@ object CaptureSet:
     override def optionalInfo(using Context): String =
       for vars <- ctx.property(ShownVars) do vars += this
       if !ctx.settings.YccDebug.value then ""
-      else if isConst then ids ++ "(solved)"
+      else if isConst then ids + "(solved)"
       else ids
 
     /** Used for diagnostics and debugging: A string that traces the creation
@@ -1044,7 +1075,11 @@ object CaptureSet:
       def descr = getClass.getSimpleName.nn.take(1)
       val trail = this.match
         case dv: DerivedVar =>
-          def summary = if ctx.settings.YccVerbose.value then dv.summarize else descr
+          // A summary can show types with further variables; don't summarize those again
+          def summary =
+            if ctx.settings.YccVerbose.value && ctx.property(InSummary).isEmpty
+            then dv.summarize(using ctx.withProperty(InSummary, Some(())))
+            else descr
           s"$summary${dv.source.ids}"
         case _ => descr
       s"$id$trail"
@@ -1052,7 +1087,7 @@ object CaptureSet:
   end Var
 
   /** Variables created in types of inferred type trees */
-  class VarInTypeTree(override val owner: Symbol, initialElems: Refs = emptyRefs, val nestedOK: Boolean = true, isRefining: Boolean)(using /*@constructorOnly*/ ictx: Context)
+  class VarInTypeTree(override val owner: Symbol, initialElems: Refs = emptyRefs, val nestedOK: Boolean = true, val isRefining: Boolean)(using /*@constructorOnly*/ ictx: Context)
   extends Var(owner, initialElems, nestedOK) {
 
     /** Make sure that capset variables in types of vals and result types of
@@ -1187,12 +1222,9 @@ object CaptureSet:
       else
         // Propagate backwards to source. The element will be added then by another
         // forward propagation from source that hits the first branch `if origin eq source then`.
-        try
+        printOnAssertionError(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}"):
           reporting.trace(i"prop backwards $elem from $this # $id to $source # ${source.id} via $summarize"):
             source.tryInclude(bimap.inverse.mapCapability(elem), this)
-        catch case ex: AssertionError =>
-          println(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}")
-          throw ex
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
      *  the source via the inverse type mapping and vice versa. That is, if
@@ -1854,6 +1886,9 @@ object CaptureSet:
     ctx.property(AssumedContains).getOrElse(immutable.Map.empty)
 
   private val ShownVars: Property.Key[mutable.Set[Var]] = Property.Key()
+
+  /** Set while printing the summary of a derived variable's map */
+  private val InSummary: Property.Key[Unit] = Property.Key()
 
   /** Perform `op`. Under -Ycc-debug, collect and print info about all variables reachable
    *  via `(_.deps)*` from the variables that were shown in `op`.

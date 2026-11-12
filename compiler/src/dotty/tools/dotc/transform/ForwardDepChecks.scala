@@ -22,7 +22,7 @@ object ForwardDepChecks:
   type LevelAndIndex = immutable.Map[Symbol, (LevelInfo, Int)]
 
   class OptLevelInfo {
-    def levelAndIndex: LevelAndIndex = Map()
+    def levelAndIndex: LevelAndIndex = Map.empty
     def enterReference(sym: Symbol, span: Span): Unit = ()
   }
 

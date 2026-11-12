@@ -5,4 +5,5 @@ trait Foo[+T]
 def magic[T](io: Cap^, x: Foo[T]^{io}): Foo[T]^{} =
   val x1: (Foo[T]^) & Foo[Any]^{io} = x
   val x2: Foo[T] = x1  // error
+  val x3: Foo[T]^{io} = x1  // ok
   x2  // boom, an impure value becomes pure

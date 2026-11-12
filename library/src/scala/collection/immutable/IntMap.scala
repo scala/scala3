@@ -479,10 +479,10 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
    *  @return        A map with all the keys both in `this` and `that`, mapped to corresponding values from `this`.
    */
   def intersection[R](that: IntMap[R]): IntMap[T] =
-    this.intersectionWith(that, (key: Int, value: T, value2: R) => value)
+    this.intersectionWith(that, (_key: Int, value: T, _value2: R) => value)
 
   def ++[S >: T](that: IntMap[S]) =
-    this.unionWith[S](that, (key, x, y) => y)
+    this.unionWith[S](that, (_key, _x, y) => y)
 
   /** The entry with the lowest key value considered in unsigned order. */
   @tailrec

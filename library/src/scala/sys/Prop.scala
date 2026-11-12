@@ -13,6 +13,7 @@
 package scala
 package sys
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A lightweight interface wrapping a property contained in some
@@ -95,7 +96,7 @@ object Prop {
      *  @param key the property name used for lookup
      *  @return a new `Prop[T]` backed by the given key
      */
-    def apply(key: String): Prop[T]
+    def apply(key: String): Prop[T]^{this}
   }
 
   implicit object FileProp extends CreatorImpl[java.io.File](s => new java.io.File(s))

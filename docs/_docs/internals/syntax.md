@@ -185,7 +185,7 @@ Type              ::=  FunType
 FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type                          Function(ts, t) | FunctionWithMods(ts, t, mods)
                     |  FunTypeArgs (‘->’ | ‘?->’) [CaptureSet] Type             -- under pureFunctions and captureChecking
                     |  TypTypeParamClause ‘=>’ Type                             PolyFunction(ps, t)
-                    |  TypTypeParamClause ‘->’ [CaptureSet] Type                -- under pureFunctions and captureChecking
+                    |  TypTypeParamClause ‘->’ Type                             -- under pureFunctions and captureChecking
 FunTypeArgs       ::=  InfixType
                     |  ‘(’ [ FunArgTypes ] ‘)’
                     |  FunParamClause

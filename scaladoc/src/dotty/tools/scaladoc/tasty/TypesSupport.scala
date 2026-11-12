@@ -54,15 +54,35 @@ trait TypesSupport:
   protected def inParens(s: SSignature, wrap: Boolean = true) =
     if wrap then plain("(").l ++ s ++ plain(")").l else s
 
+  /** The hover text of a capturing suffix such as `^` or `^{io}` */
+  private def capturingHint(capturing: SSignature): String =
+    capturing.map(_.name).mkString.stripPrefix("^") match
+      case "" => CaptureHints.capturesAny
+      case set => CaptureHints.captures(set)
+
+  private def setText(set: SSignature): String = set.map(_.name).mkString
+
   extension (on: SignaturePart) def l: List[SignaturePart] = List(on)
 
   private def tpe(using Quotes)(symbol: reflect.Symbol)(using inCC: Option[Any]): SSignature =
     import SymOps._
     val dri: Option[DRI] = Option(symbol).filterNot(_.isHiddenByVisibility).map(_.dri)
-    if ccEnabled && inCC.isDefined then // we are in the context of a capture set and want paths to be rendered plainly
-      dotty.tools.scaladoc.Plain(symbol.normalizedName).l
+    if ccEnabled && inCC.isDefined then // we are in the context of a capture set
+      capabilityPath(symbol, symbol.normalizedName)
     else
       dotty.tools.scaladoc.Type(symbol.normalizedName, dri).l
+
+  /** A class or term on a path in a capture set or uses clause, e.g. `Outer` and `io`
+   *  in `^{Outer.this.io}`. Classes and members of classes link to their documentation;
+   *  parameters, which have no documentation of their own, are rendered plainly.
+   */
+  private def capabilityPath(using Quotes)(symbol: reflect.Symbol, name: String): SSignature =
+    import SymOps._
+    val documented =
+      symbol.exists && !symbol.isTypeParam && !symbol.flags.is(reflect.Flags.Param)
+      && (symbol.isClassDef || symbol.owner.isClassDef) && !symbol.isHiddenByVisibility
+    if documented then dotty.tools.scaladoc.Type(name, Some(symbol.dri)).l
+    else dotty.tools.scaladoc.Plain(name).l
 
   private def commas(lists: List[SSignature]) = lists match
     case List(single) => single
@@ -120,7 +140,7 @@ trait TypesSupport:
         inParens(inner(left, skipThisTypePrefix), shouldWrapInParens(left, tp, true))
         ++ keyword(" & ").l
         ++ inParens(inner(right, skipThisTypePrefix), shouldWrapInParens(right, tp, false))
-      case ByNameType(CapturingType(tpe, refs)) =>
+      case ByNameType(ByNameCapturingType(tpe, refs)) =>
         emitByNameArrow(using qctx)(Some(refs), skipThisTypePrefix) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))
       case ByNameType(tpe) =>
         emitByNameArrow(using qctx)(None, skipThisTypePrefix) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))
@@ -140,9 +160,21 @@ trait TypesSupport:
             functionType(base, args, skipThisTypePrefix)(using inCC = Some(refs))
           case t : Refinement if t.isFunctionType =>
             inner(base, skipThisTypePrefix)(using indent = indent, skipTypeSuffix = skipTypeSuffix, inCC = Some(refs))
-          case t if t.isCapSet => emitCaptureSet(refs, skipThisTypePrefix, omitCap = false)
+          case t: Refinement if isPolyOrEreased(t) =>
+            // The capture set applies to the whole function, not to its result type
+            emitCapturing(base, refs, skipThisTypePrefix) match
+              case Nil => inner(base, skipThisTypePrefix)
+              case capturing =>
+                // The parentheses are only needed for the capture set, so they are toggled with it
+                val hint = capturingHint(capturing)
+                ccToggle(plain("(").l, hint = hint) ++ inner(base, skipThisTypePrefix) ++ ccToggle(plain(")") :: capturing, hint = hint)
+          case t if t.isCapSet =>
+            val set = emitCaptureSet(refs, skipThisTypePrefix, omitCap = false)
+            ccToggle(set, tpe(t.typeSymbol)(using None), CaptureHints.capabilitySet(setText(set)))
           case t if t.isPureClass(elideThis) => inner(base, skipThisTypePrefix)
-          case t => inner(base, skipThisTypePrefix) ++ emitCapturing(refs, skipThisTypePrefix)
+          case t =>
+            val capturing = emitCapturing(base, refs, skipThisTypePrefix)
+            inner(base, skipThisTypePrefix) ++ ccToggle(capturing, hint = capturingHint(capturing))
       case AnnotatedType(tpe, _) =>
         inner(tpe, skipThisTypePrefix)
       case FlexibleType(tpe) =>
@@ -156,7 +188,7 @@ trait TypesSupport:
       case tl @ TypeLambda(params, paramBounds, resType) =>
         plain("[").l ++ commas(params.zip(paramBounds).map { (name, typ) =>
           val normalizedName = if name.matches("_\\$\\d*") then "_" else name
-          val suffix = if ccEnabled && typ.derivesFrom(CaptureDefs.Caps_CapSet) then List(Keyword("^")) else Nil
+          val suffix = if ccEnabled && typ.derivesFrom(CaptureDefs.Caps_CapSet) then ccToggle(Keyword("^").l, hint = CaptureHints.captureSetParameter) else Nil
           tpe(normalizedName).l ++ suffix ++ inner(typ, skipThisTypePrefix)
         }) ++ plain("]").l
         ++ keyword(" =>> ").l
@@ -179,7 +211,7 @@ trait TypesSupport:
         def getParamBounds(t: PolyType): SSignature = commas(
           t.paramNames.zip(t.paramBounds.map(inner(_, skipThisTypePrefix))).zipWithIndex
             .map { case ((name, bound), idx) =>
-              val suffix = if ccEnabled && t.param(idx).derivesFrom(CaptureDefs.Caps_CapSet) then List(Keyword("^")) else Nil
+              val suffix = if ccEnabled && t.param(idx).derivesFrom(CaptureDefs.Caps_CapSet) then ccToggle(Keyword("^").l, hint = CaptureHints.captureSetParameter) else Nil
               tpe(name).l ++ suffix ++ bound
             }
         )
@@ -213,9 +245,10 @@ trait TypesSupport:
         def parsePolyFunction(info: TypeRepr): SSignature = info match {
           case t: PolyType =>
             val paramBounds = getParamBounds(t)
-            val method = t.resType.asInstanceOf[MethodType]
-            val rest = parseDependentFunctionType(method)
-            plain("[").l ++ paramBounds ++ plain("]").l ++ keyword(" => ").l ++ rest
+            val rest = inner(t.resType, skipThisTypePrefix)
+            // Type application is pure, the capture sets belong to the function in `rest`
+            val arrow = if ccEnabled then ccToggle(keyword(" -> ").l, keyword(" => ").l, CaptureHints.polyArrow) else keyword(" => ").l
+            plain("[").l ++ paramBounds ++ plain("]").l ++ arrow ++ rest
           case other => noSupported(s"Not supported type in refinement $info")
         }
 
@@ -246,22 +279,20 @@ trait TypesSupport:
               val arrow =
                 if ccEnabled then
                   inCC0 match
-                    case None | Some(Nil) => keyword(arrPrefix + "->").l
+                    case None | Some(Nil) =>
+                      ccToggle(keyword(arrPrefix + "->").l, keyword(arrPrefix + "=>").l,
+                        if isCtx then CaptureHints.pureContextArrow else CaptureHints.pureArrow)
                     case Some(List(c)) if c.isCaptureRoot => keyword(arrPrefix + "=>").l
-                    case Some(refs) => keyword(arrPrefix + "->") :: emitCaptureSet(refs, skipThisTypePrefix)
+                    case Some(refs) =>
+                      val set = emitCaptureSet(refs, skipThisTypePrefix)
+                      ccToggle(keyword(arrPrefix + "->") :: set, keyword(arrPrefix + "=>").l,
+                        if isCtx then CaptureHints.capturingContextArrow(setText(set)) else CaptureHints.capturingArrow(setText(set)))
                 else keyword(arrPrefix + "=>").l
               val resType = inner(m.resType, skipThisTypePrefix)
               paramList ++ (plain(" ") :: arrow) ++ (plain(" ") :: resType)
             else
               val sym = defn.FunctionClass(m.paramTypes.length, isCtx)
-              val inCC = inCC0 match
-                case None if ccEnabled =>
-                  // For CC, we assume an impure function and hence force the capture set to `^`.
-                  // Otherwise, the function will be rendered as pure. We hit this case here when
-                  // dealing with polymorphic function types, e.g., the A => Int part of [A] => A => Int.
-                  Some(List(CaptureDefs.captureRoot.termRef))
-                case other => other
-              inner(sym.typeRef.appliedTo(m.paramTypes :+ m.resType), skipThisTypePrefix)(using indent = indent, skipTypeSuffix = skipTypeSuffix, inCC = inCC)
+              inner(sym.typeRef.appliedTo(m.paramTypes :+ m.resType), skipThisTypePrefix)(using indent = indent, skipTypeSuffix = skipTypeSuffix, inCC = inCC0)
           case other => noSupported("Dependent function type without MethodType refinement")
         }
 
@@ -302,11 +333,10 @@ trait TypesSupport:
 
       case t @ AppliedType(tpe, args) if t.isFunctionType =>
         lazy val dealiased = t.dealiasKeepOpaques
-        if tpe.isAnyFunctionType || t == dealiased then
+        if CaptureDefs.isFunctionClass(tpe.typeSymbol) || t == dealiased then
           functionType(tpe, args, skipThisTypePrefix)
-        else // i23456
-          val AppliedType(tpe, args) = dealiased.asInstanceOf[AppliedType]
-          functionType(tpe, args, skipThisTypePrefix)
+        else // i23456: expand the alias, keeping the capture set of an impure function type
+          inner(t.dealiasKeepAnnotsAndOpaques, skipThisTypePrefix)
 
       case t @ AppliedType(tpe, typeList) =>
         inner(tpe, skipThisTypePrefix) ++ plain("[").l ++ commas(typeList.map { t => t match
@@ -314,7 +344,8 @@ trait TypesSupport:
           case _ => topLevelProcess(t, skipThisTypePrefix)
         }) ++ plain("]").l
 
-      case t : TypeRef if ccEnabled && t.isCapSet => emitCaptureSet(Nil, skipThisTypePrefix)
+      case t : TypeRef if ccEnabled && t.isCapSet =>
+        ccToggle(emitCaptureSet(Nil, skipThisTypePrefix), tpe(t.typeSymbol)(using None), CaptureHints.capabilitySet("{}"))
 
       case tp @ TypeRef(qual, typeName) =>
         inline def wrapping = shouldWrapInParens(inner = qual, outer = tp, isLeft = true)
@@ -360,6 +391,8 @@ trait TypesSupport:
         val typeSig = tr.termSymbol.tree match
           case vd: ValDef if tr.termSymbol.flags.is(Flags.Module) =>
             inner(vd.tpt.tpe, skipThisTypePrefix)
+          case _ if ccEnabled && inCC.isDefined && !tr.isCaptureRoot && !tr.isFreshCap =>
+            capabilityPath(tr.termSymbol, typeName)
           case _ => plain(typeName).l
         prefix ++ typeSig ++ suffix
 
@@ -402,7 +435,7 @@ trait TypesSupport:
       case t: dotty.tools.dotc.core.Types.LazyRef => try {
         inner(t.ref(using ctx.compilerContext).asInstanceOf[TypeRepr], skipThisTypePrefix)
       } catch {
-        case e: AssertionError => tpe("LazyRef(...)").l
+        case NonFatal(_) => tpe("LazyRef(...)").l
       }
 
       case tpe =>
@@ -530,9 +563,10 @@ trait TypesSupport:
   private def isContextualMethod(using Quotes)(mt: reflect.MethodType) =
     mt.asInstanceOf[dotty.tools.dotc.core.Types.MethodType].isContextualMethod
 
-  private def isDependentMethod(using Quotes)(mt: reflect.MethodType) =
+  private def isDependentMethod(using qctx: Quotes)(mt: reflect.MethodType) =
     val method = mt.asInstanceOf[dotty.tools.dotc.core.Types.MethodType]
-    try method.isParamDependent || method.isResultDependent
+    // Use the context of the quotes, whose run created the symbols of the inspected TASTy
+    try inCompiler(method.isParamDependent || method.isResultDependent)
     catch case NonFatal(_) => true
 
   private def stripAnnotated(using Quotes)(tr: reflect.TypeRepr): reflect.TypeRepr =
@@ -548,10 +582,8 @@ trait TypesSupport:
       case OnlyCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("only"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
       case ExceptCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("except"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
       case t @ ThisType(tpe)      =>
-        // Render `this` for self-references and `EnclosingClass.this` otherwise.
-        // We deliberately call `inner` without `inCC` in scope so the enclosing
-        // class name renders as a clickable Type element rather than Plain
-        // (see the `tpe(symbol)` helper, which collapses to Plain when inCC is set).
+        // Render `this` for self-references and `EnclosingClass.this` otherwise,
+        // with the enclosing class name as a clickable Type element.
         if skipPrefix(t, elideThis, originalOwner, skipThisTypePrefix) then List(Keyword("this"))
         else inner(tpe, skipThisTypePrefix) ++ plain(".").l ++ List(Keyword("this"))
       case t                      => inner(t, skipThisTypePrefix)(using skipTypeSuffix = true, inCC = Some(Nil))
@@ -595,38 +627,58 @@ trait TypesSupport:
       case ReadOnlyCapability(c)  => isCapturedInContext(c)
       case OnlyCapability(c, _)   => isCapturedInContext(c)
       case ExceptCapability(c, _) => isCapturedInContext(c)
-      case ThisType(tr)           => !elideThis.symbol.typeRef.isPureClass(elideThis)
+      case ThisType(tr)           =>
+        // In members of the documented class, including inherited ones, `this` is an instance
+        // of the documented class; otherwise it refers to an enclosing class, as in `Outer.this`.
+        val thisClass = if elideThis.symbol.typeRef.derivesFrom(tr.typeSymbol) then elideThis.symbol.typeRef else tr
+        !thisClass.isPureClass(elideThis)
       case t                      => !t.isPureClass(elideThis)
 
-  private def emitCapturing(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
+  private def emitCapturing(using Quotes)(base: reflect.TypeRepr, refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._
     val refs0 = refs.filter(isCapturedInContext)
-    if refs0.isEmpty then Nil else Keyword("^") :: emitCaptureSet(refs0, skipThisTypePrefix)
+    if refs0.nonEmpty then Keyword("^") :: emitCaptureSet(refs0, skipThisTypePrefix)
+    // `C` means `C^` for a capability class `C`, so an empty capture set has to be shown
+    else if base.derivesFrom(CaptureDefs.Caps_Capability) then Keyword("^") :: emitCaptureSet(Nil, skipThisTypePrefix)
+    else Nil
 
-  private def emitFunctionArrow(using Quotes)(funTy: reflect.TypeRepr, captures: Option[List[reflect.TypeRepr]], skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
+  private def emitFunctionArrow(using Quotes)(funTy: reflect.TypeRepr, captures: Option[List[reflect.TypeRepr]], skipThisTypePrefix: Boolean, byName: Boolean = false)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._
-    val isContextFun = funTy.isAnyContextFunction || funTy.isAnyImpureContextFunction
+    val funSym = funTy.typeSymbol
+    val isContextFun = CaptureDefs.isContextFunctionClass(funSym)
     val prefix = if isContextFun then "?" else ""
     if !ccEnabled then
       List(Keyword(prefix + "=>"))
     else
-      val isPureFun = funTy.isAnyFunction || funTy.isAnyContextFunction
-      val isImpureFun = funTy.isAnyImpureFunction || funTy.isAnyImpureContextFunction
+      val isImpureFun = CaptureDefs.isImpureFunctionClass(funSym)
+      val isPureFun = CaptureDefs.isFunctionClass(funSym) && !isImpureFun
+      val impureArrow = List(Keyword(prefix + "=>"))
+      val pureHint =
+        if byName then CaptureHints.pureByName
+        else if isContextFun then CaptureHints.pureContextArrow
+        else CaptureHints.pureArrow
+      def capturingArrowHint(set: String) =
+        if byName then CaptureHints.capturingByName(set)
+        else if isContextFun then CaptureHints.capturingContextArrow(set)
+        else CaptureHints.capturingArrow(set)
+      def pureArrow = ccToggle(List(Keyword(prefix + "->")), impureArrow, pureHint)
       captures match
         case None => // means an explicit retains* annotation is missing
           if isPureFun then
-            List(Keyword(prefix + "->"))
+            pureArrow
           else if isImpureFun then
-            List(Keyword(prefix + "=>"))
+            impureArrow
           else
             report.error(s"Cannot emit function arrow: expected a (Context)Function* or Impure(Context)Function*, but got: ${funTy.show}")
             Nil
         case Some(refs) =>
           // there is some capture set
           refs match
-            case Nil => List(Keyword(prefix + "->"))
-            case List(ref) if ref.isCaptureRoot => List(Keyword(prefix + "=>"))
-            case refs => Keyword(prefix + "->") :: emitCaptureSet(refs, skipThisTypePrefix)
+            case Nil => pureArrow
+            case List(ref) if ref.isCaptureRoot => impureArrow
+            case refs =>
+              val set = emitCaptureSet(refs, skipThisTypePrefix)
+              ccToggle(Keyword(prefix + "->") :: set, impureArrow, capturingArrowHint(setText(set)))
 
   private def emitByNameArrow(using Quotes)(captures: Option[List[reflect.TypeRepr]], skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
-    emitFunctionArrow(CaptureDefs.Function1.typeRef, captures, skipThisTypePrefix)
+    emitFunctionArrow(reflect.defn.FunctionClass(1).typeRef, captures, skipThisTypePrefix, byName = true)

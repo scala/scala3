@@ -756,4 +756,38 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     }
   }
 
+  @Test def i25091_indirectInlineOverride = {
+    val source = """trait Settings:
+                   |  inline def switch: Boolean = true
+                   |
+                   |trait Inner:
+                   |  def switch: Boolean
+                   |  inline def go1: String = inline if switch then "Yes" else "No"
+                   |  def go2: String = if switch then "Yes" else "No"
+                   |
+                   |class Outer extends Inner, Settings
+                   |
+                   |class Outer2 extends Outer
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val cls     = lookupClass(dir, "Outer.class")
+      val clsNode = loadClassNode(cls)
+
+      val switchMethod = getMethod(clsNode, "switch")
+      val instructions  = instructionsFromMethod(switchMethod)
+      val expected      = List(Op(ICONST_1), Op(IRETURN))
+
+      assert(instructions == expected,
+        "indirectly overriding inline method `switch` was not retained with a concrete body in `Outer`\n" +
+        diffInstructions(instructions, expected))
+
+      val cls2     = lookupClass(dir, "Outer2.class")
+      val cls2Node = loadClassNode(cls2)
+      val switchInOuter2 = cls2Node.methods.asScala.find(_.name == "switch")
+
+      assert(switchInOuter2.isEmpty, "method `switch` should not have been redundantly copied to `Outer2`")
+    }
+  }
+
 }

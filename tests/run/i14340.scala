@@ -1,8 +1,8 @@
 class Container1 extends reflect.Selectable
 
-class Container2(values: Map[String, Any], methods: Map[String, Int => Any]) extends Selectable:
+class Container2(values: Map[String, Any], methods: Map[String, Seq[Int] => Any]) extends Selectable:
   def selectDynamic(name: String) = values(name)
-  def applyDynamic(name: String)(arg: Int) = methods(name)(arg)
+  def applyDynamic(name: String)(arg: Int*) = methods(name)(arg)
 
 class Foo(val value: Int) extends AnyVal
 class Bar[A](val value: A) extends AnyVal
@@ -29,7 +29,7 @@ object Helpers:
   )
 
   val cont2methods = Map(
-    "fooFromInt" -> { (i: Int) => Foo(i) }
+    "fooFromInt" -> { (i: Seq[Int]) => Foo(i.head) }
   )
 
   val cont2 = Container2(cont2values, cont2methods).asInstanceOf[Container2 {
@@ -39,7 +39,7 @@ object Helpers:
     def qux2: Bar[Container2 { def foo: Foo }]
     def fooFromInt(i: Int): Foo
   }]
-  
+
 
   println(cont1.foo.value)
   println(cont2.foo.value)
@@ -49,7 +49,7 @@ object Helpers:
 
   println(cont1.qux1.value.foo.value)
   println(cont2.qux1.value.foo.value)
-  
+
   println(cont1.qux2.value.foo.value)
   println(cont2.qux2.value.foo.value)
 

@@ -9,7 +9,7 @@ import dotty.tools.backend.jvm.SymbolUtils.symExtensions
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.toTermName
-import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, Private, Trait}
+import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, PhantomSymbol, Private, Trait}
 import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.{StdNames, Types}
@@ -20,7 +20,7 @@ import scala.annotation.tailrec
 import org.objectweb.asm
 import org.objectweb.asm.tree.ClassNode
 
-final class BTypeLoader(primitives: ScalaPrimitives, cache: ClassBType.Cache, inlineInfoLoader: Option[InlineInfoLoader]) {
+final class BTypeLoader(primitives: ScalaPrimitives, val cache: ClassBType.Cache, inlineInfoLoader: Option[InlineInfoLoader]) {
 
   // Cache only for `classBTypeFromSymbol`, since it is heavily called.
   // Its values are all also values of the main cache.
@@ -34,21 +34,21 @@ final class BTypeLoader(primitives: ScalaPrimitives, cache: ClassBType.Cache, in
   private var specialBTypes: Map[Symbol, BType] | Null = null
 
   def bTypeFromSymbol(sym: Symbol)(using Context): BType = {
-    if specialBTypes eq null then
-      specialBTypes = Map(
-        defn.UnitClass -> UNIT,
-        defn.BooleanClass -> BOOL,
-        defn.CharClass -> CHAR,
-        defn.ByteClass -> BYTE,
-        defn.ShortClass -> SHORT,
-        defn.IntClass -> INT,
-        defn.LongClass -> LONG,
-        defn.FloatClass -> FLOAT,
-        defn.DoubleClass -> DOUBLE,
-        defn.NothingClass -> classBTypeFromSymbol(defn.RuntimeNothingClass),
-        defn.NullClass -> classBTypeFromSymbol(defn.RuntimeNullClass)
-      )
-    specialBTypes.nn.getOrElse(sym, classBTypeFromSymbol(sym))
+    initialize(specialBTypes, specialBTypes = _, Map(
+      defn.UnitClass -> UNIT,
+      defn.BooleanClass -> BOOL,
+      defn.CharClass -> CHAR,
+      defn.ByteClass -> BYTE,
+      defn.ShortClass -> SHORT,
+      defn.IntClass -> INT,
+      defn.LongClass -> LONG,
+      defn.FloatClass -> FLOAT,
+      defn.DoubleClass -> DOUBLE,
+      defn.NothingClass -> classBTypeFromSymbol(defn.RuntimeNothingClass),
+      defn.NullClass -> classBTypeFromSymbol(defn.RuntimeNullClass)
+    )).get(sym) match
+      case Some(s) => s
+      case None => classBTypeFromSymbol(sym)
   }
 
   /**
@@ -312,7 +312,10 @@ final class BTypeLoader(primitives: ScalaPrimitives, cache: ClassBType.Cache, in
         Some(single.javaSimpleName + btype.descriptor)
       case _ => None
 
-    def keepMember(sym: Symbol) = sym.is(Method) && !primitives.isPrimitive(sym)
+    // Phantom symbols (e.g. constructor proxy `apply`s) have `NoType` info after erasure and are normally
+    // dropped from the decls when their owner's unit is erased. A class from a unit that was suspended
+    // in this run (e.g. on a macro defined in the same run) hasn't been through erasure, so skip them here.
+    def keepMember(sym: Symbol) = sym.is(Method) && !sym.is(PhantomSymbol) && !primitives.isPrimitive(sym)
 
     val classMethods = classSym.info.decls.iterator.filter(keepMember)
     val methods = if classSym.is(JavaDefined) then

@@ -13,6 +13,10 @@ class TestVirtualFile(path: Path) extends PathBasedFile:
   override def name(): String = path.toFile.getName
   override def names(): Array[String] = ???
   override def toPath(): Path = path
+  // Required by xsbti.HashedVirtualFileRef in compiler-interface 2.x.
+  // No `override`, so this still compiles against 1.x.
+  def contentHashStr(): String = ???
+  def sizeBytes(): Long = Files.size(path)
 
 
   override def hashCode(): Int = absolutePath.hashCode()

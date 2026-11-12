@@ -14,3 +14,8 @@ class Test {
 
 class Test2 extends \/ with /\
 
+
+/** Links to an object of another library, by its first lookup: [[scala.jdk.StreamConverters]] */
+class Test3 {
+  def d: Test = ???
+}

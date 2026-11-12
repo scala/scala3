@@ -17,7 +17,7 @@ package immutable
 import scala.language.`2.13`
 import java.io.{ObjectInputStream, ObjectOutputStream}
 import java.lang.{StringBuilder => JStringBuilder}
-import scala.annotation.tailrec
+import scala.annotation.{nowarn, tailrec}
 import scala.collection.generic.SerializeEnd
 import scala.collection.immutable.LazyListBase.InRace
 import scala.collection.mutable.{Builder, ReusableBuilder, StringBuilder}
@@ -300,6 +300,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
 
   @inline private def isEvaluated: Boolean = _head.asInstanceOf[AnyRef] ne Uninitialized
 
+  @nowarn("msg=Catching Throwable can lead to unexpected behavior") // a failed thunk must release its waiters
   private def initState(): Unit = {
     def selfRef(): Nothing =
       // if it's already mid-evaluation, we're stuck in an infinite self-referential loop (also it's empty)

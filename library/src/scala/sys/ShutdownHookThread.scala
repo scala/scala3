@@ -13,6 +13,7 @@
 package scala
 package sys
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A minimal Thread wrapper to enhance shutdown hooks.  It knows
@@ -28,13 +29,20 @@ object ShutdownHookThread {
     hookNameCount += 1
     "shutdownHook" + hookNameCount
   }
+
   /** Creates, names, and registers a shutdown hook to run the
    *  given code.
+   *
+   *  **Capture Checking notes**: shutdown hooks capture capabilities until the end of the programs.
+   *  Therefore, such hooks cannot capture scoped capabilities.
+   *  While classifying global capabilities is under progress (see scala/scala3#27196),
+   *  we require shutdown hooks to be pure. To include global resources (e.g. for cleanup),
+   *  mark them pure using [[scala.caps.unsafe.unsafeAssumePure unsafeAssumePure]].
    *
    *  @param body the code to execute when the JVM shuts down
    *  @return the newly created and registered `ShutdownHookThread`
    */
-  def apply(body: => Unit): ShutdownHookThread = {
+  def apply(body: -> Unit): ShutdownHookThread = {
     val t = new ShutdownHookThread(() => body, hookName())
     Runtime.getRuntime.addShutdownHook(t)
     t

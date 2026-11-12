@@ -40,7 +40,7 @@
    |          value foo is not a member of String.
    |          An extension method was tried, but could not be fully constructed:
    |
-   |              Test.foo("abc")(/* missing */summon[C])
+   |              Test.foo("abc")(using /* missing */summon[C])
    |
    |              failed with:
    |

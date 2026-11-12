@@ -165,7 +165,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
    *  - Parent spans contain child spans
    *  - If item is a non-empty tree, it has a position
    */
-  def checkPos(nonOverlapping: Boolean)(using Context): Unit = try {
+  def checkPos(nonOverlapping: Boolean)(using Context): Unit = printOnAssertionError(i"error while checking $this") {
     import untpd.*
     val last = LastPosRef()
     def check(p: Any): Unit = p match {
@@ -231,11 +231,6 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
         }
     }
   }
-  catch {
-    case ex: AssertionError =>
-      println(i"error while checking $this")
-      throw ex
-  }
 }
 
 object Positioned {
@@ -246,7 +241,7 @@ object Positioned {
   def init(using Context): Unit =
     debugId = ctx.settings.YdebugTreeWithId.value
     if ids == null && ctx.settings.YshowTreeIds.value
-       || debugId != ctx.settings.YdebugTreeWithId.default
+       || ctx.settings.YdebugTreeWithId.wasSetByUser
     then
       ids = java.util.WeakHashMap()
 }

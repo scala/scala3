@@ -52,7 +52,7 @@ object StdNames {
     protected implicit def fromString(s: String): N
     protected def fromName(name: Name): N = fromString(name.toString)
 
-    private val kws = mutable.Set[N]()
+    private val kws = mutable.Set.empty[N]
     protected def kw(name: N): N = { kws += name; name }
 
     final val keywords: collection.Set[N] = kws
@@ -137,6 +137,7 @@ object StdNames {
     val OPS_PACKAGE: N                = "<special-ops>"
     val OVERLOADED: N                 = "<overloaded>"
     val PACKAGE: N                    = "package"
+    val PACKAGE_INFO: N               = "package-info"
     val ROOT: N                       = "<root>"
     val SPEC: N                       = "$spec"
     val SPECIALIZED_SUFFIX: N         = "$sp"
@@ -206,6 +207,7 @@ object StdNames {
     final val NotNull: N             = "NotNull"
     final val Null: N                = "Null"
     final val Object: N              = "Object"
+    final val FlexibleType : N       = "<FlexibleType>"
     final val FromJavaObject: N      = "<FromJavaObject>"
     final val Record: N              = "Record"
     final val Product: N             = "Product"
@@ -275,9 +277,12 @@ object StdNames {
     final val MethodParametersATTR: N             = "MethodParameters"
     final val LineNumberTableATTR: N              = "LineNumberTable"
     final val LocalVariableTableATTR: N           = "LocalVariableTable"
+    final val RecordATTR: N                       = "Record"
     final val RuntimeVisibleAnnotationATTR: N     = "RuntimeVisibleAnnotations"   // RetentionPolicy.RUNTIME
     final val RuntimeInvisibleAnnotationATTR: N   = "RuntimeInvisibleAnnotations" // RetentionPolicy.CLASS
     final val RuntimeParamAnnotationATTR: N       = "RuntimeVisibleParameterAnnotations" // RetentionPolicy.RUNTIME (annotations on parameters)
+    final val RuntimeVisibleTypeAnnotationATTR: N   = "RuntimeVisibleTypeAnnotations"   // RetentionPolicy.RUNTIME (annotations on types)
+    final val RuntimeInvisibleTypeAnnotationATTR: N = "RuntimeInvisibleTypeAnnotations" // RetentionPolicy.CLASS (annotations on types)
     final val ScalaATTR: N                        = "Scala"
     final val ScalaSignatureATTR: N               = "ScalaSig"
     final val TASTYATTR: N                        = "TASTY"

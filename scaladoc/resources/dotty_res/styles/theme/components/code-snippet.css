@@ -19,7 +19,7 @@
 }
 
 .snippet pre code {
-  font-family: 'DejaVu Sans Mono', monospace;
+  font-family: var(--code-font-family);
 }
 
 .snippet pre code > span {
@@ -379,7 +379,7 @@ dd .snippet {
 .snippet-popup .scastie .cm-content,
 .snippet-popup .scastie .cm-line,
 .snippet-popup .scastie .inline {
-  font-family: 'DejaVu Sans Mono', monospace !important;
+  font-family: var(--code-font-family) !important;
   font-weight: 400 !important;
 }
 

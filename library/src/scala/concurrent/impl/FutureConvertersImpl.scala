@@ -13,6 +13,7 @@
 package scala.concurrent.impl
 
 import scala.language.`2.13`
+import scala.annotation.nowarn
 import java.util.concurrent.{CompletableFuture, CompletionStage, TimeUnit}
 import java.util.function.{BiConsumer, BiFunction, Consumer, Function => JFunction}
 
@@ -53,6 +54,7 @@ private[scala] object FutureConvertersImpl {
 
     override def handle[U](fn: BiFunction[? >: T, Throwable, ? <: U]): CompletableFuture[U] = handleAsync(fn)
 
+    @nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
     override def exceptionally(fn: JFunction[Throwable, ? <: T]): CompletableFuture[T] = {
       val cf = new CompletableFuture[T]
       whenCompleteAsync((t, e) => {

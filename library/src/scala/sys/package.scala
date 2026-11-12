@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.collection.immutable.ArraySeq
 import scala.jdk.CollectionConverters._
@@ -80,11 +81,13 @@ package object sys {
    *
    *  Note that shutdown hooks are NOT guaranteed to be run.
    *
+   *  **Capture Checking notes**: at the moment, shutdown hooks are required to be pure. See [[scala.sys.ShutdownHookThread#apply ShutdownHookThread]].
+   *
    *  @param    body  the body of code to run at shutdown
    *  @return   the `ShutdownHookThread` which will run the shutdown hook
    *  @see      [[scala.sys.ShutdownHookThread]]
    */
-  def addShutdownHook(body: => Unit): ShutdownHookThread = ShutdownHookThread(body)
+  def addShutdownHook(body: -> Unit): ShutdownHookThread = ShutdownHookThread(body)
 
   /** Returns all active thread in the current thread's thread group and subgroups.
    *

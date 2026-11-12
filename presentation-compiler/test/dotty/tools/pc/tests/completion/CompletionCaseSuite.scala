@@ -452,6 +452,60 @@ class CompletionCaseSuite extends BaseCompletionSuite:
       "case Outer.::(a, b) => $0"
     )
 
+  @Test def `java-enum` =
+    check(
+      """
+        |package example
+        |import java.nio.file.AccessMode
+        |
+        |object Main {
+        |  val x: AccessMode = ???
+        |  x match
+        |    case@@
+        |}""".stripMargin,
+      """|case AccessMode.EXECUTE =>
+         |case AccessMode.READ =>
+         |case AccessMode.WRITE =>
+         |""".stripMargin
+    )
+
+  @Test def `java-sealed` =
+    check(
+      """
+        |package example
+        |import java.lang.constant.ConstantDesc
+        |
+        |object Main {
+        |  val x: ConstantDesc = ???
+        |  x match
+        |    case@@
+        |}""".stripMargin,
+      """|case _: java.lang.Double =>
+         |case _: DynamicConstantDesc[?] => java.lang.constant
+         |case _: Enum$EnumDesc[?] => java.lang
+         |case _: java.lang.Float =>
+         |case _: Integer => java.lang
+         |case _: java.lang.Long =>
+         |case _: String => java.lang
+         |""".stripMargin
+    )
+
+  @Test def `java-class-in-scope` =
+    check(
+      """
+        |package example
+        |import java.util.ArrayList
+        |
+        |object Main {
+        |  val x: java.util.AbstractList[Int] = ???
+        |  x match
+        |    case@@
+        |}""".stripMargin,
+      """|case _: AbstractList[?] => java.util
+         |case _: ArrayList[?] => java.util
+         |""".stripMargin
+    )
+
   @Test def `scala-enum` =
     check(
       """

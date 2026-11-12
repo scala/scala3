@@ -4,16 +4,16 @@ package typer
 
 import backend.sjs.JSDefinitions
 import core.*
-import ast.{TreeTypeMap, untpd, tpd}
+import ast.{TreeTypeMap, tpd, untpd}
 import util.Spans.*
-import util.Stats.{record, monitored}
-import printing.{Showable, Printer}
+import util.Stats.{monitored, record}
+import printing.{Printer, Showable}
 import printing.Texts.*
 import Contexts.*
 import Types.*
 import Flags.*
 import Mode.ImplicitsEnabled
-import NameKinds.{LazyImplicitName, ContextBoundParamName}
+import NameKinds.{ContextBoundParamName, LazyImplicitName}
 import Symbols.*
 import Types.*
 import Decorators.*
@@ -23,7 +23,8 @@ import ProtoTypes.*
 import ErrorReporting.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import Scopes.newScope
-import Typer.BindingPrec, BindingPrec.*
+import Typer.BindingPrec
+import BindingPrec.*
 import Hashable.*
 import util.{EqHashMap, Stats}
 import config.{Config, Feature, SourceVersion}
@@ -37,7 +38,7 @@ import annotation.tailrec
 import NullOpsDecorator.stripNull
 
 import scala.annotation.internal.sharable
-import scala.annotation.threadUnsafe
+import scala.annotation.{nowarn, threadUnsafe}
 import scala.compiletime.uninitialized
 
 /** Implicit resolution */
@@ -85,6 +86,9 @@ object Implicits:
 
   def strictEquality(using Context): Boolean =
     ctx.mode.is(Mode.StrictEquality) || Feature.enabled(nme.strictEquality)
+
+  def relaxedNullChecks(using Context): Boolean =
+    Feature.enabled(Feature.relaxedNullChecks)
 
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
@@ -651,7 +655,7 @@ trait ImplicitRunInfo:
     object collectParts extends TypeTraverser:
 
       private var parts: mutable.LinkedHashSet[Type] = uninitialized
-      private val partSeen = util.HashSet[Type]()
+      private val partSeen = mutable.Set.empty[Type]
 
       def traverse(t: Type) = ctx.handleRecursive("collectParts of", t):
         if partSeen.contains(t) then ()
@@ -687,14 +691,14 @@ trait ImplicitRunInfo:
               traverseChildren(t)
 
       def apply(tp: Type): collection.Set[Type] =
-        parts = mutable.LinkedHashSet()
-        partSeen.clear(resetToInitial = false)
+        parts = mutable.LinkedHashSet.empty
+        partSeen.clear()
         traverse(tp)
         parts
     end collectParts
 
-    val seen = util.HashSet[Type]()
-    val incomplete = util.HashSet[Type]()
+    val seen = mutable.Set.empty[Type]
+    val incomplete = mutable.Set.empty[Type]
 
     def collectCompanions(tp: Type, parts: collection.Set[Type]): TermRefSet =
       val companions = new TermRefSet
@@ -825,7 +829,7 @@ trait ImplicitRunInfo:
         record(i"implicitScope")
         val liftToAnchors = new TypeMap:
           override def stopAt = StopAt.Static
-          private val seen = util.HashSet[Type]()
+          private val seen = mutable.Set.empty[Type]
 
           override def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type): Type =
             if lo.exists && hi.exists then super.derivedTypeBounds(tp, lo, hi)
@@ -893,6 +897,7 @@ trait Implicits:
   /** Find an implicit conversion to apply to given tree `from` so that the
    *  result is compatible with type `to`.
    */
+  @nowarn("msg=Catching AssertionError can lead to unexpected behavior") // we immediately rethrow
   def inferView(from: Tree, to: Type)(using Context): SearchResult = {
     record("inferView")
     if !ctx.mode.is(Mode.ImplicitsEnabled) || from.isInstanceOf[Super] then
@@ -1041,12 +1046,20 @@ trait Implicits:
    *   - if one of T, U is a subtype of the lifted version of the other,
    *     unless strict equality is set.
    *   - if the strictEqualityPatternMatching (SIP-67) conditions apply
+   *   - if one of the sides is Null and the other is a supertype of Null
    */
-  def assumedCanEqual(ltp: Type, rtp: Type, leftTree: Tree = EmptyTree)(using Context): Boolean = {
+  def assumedCanEqual(ltp: Type, rtp: Type, leftTree: Tree = EmptyTree, rightTree: Tree = EmptyTree)(using Context): Boolean = {
     // Map all non-opaque abstract types to their upper bound.
     // This is done to check whether such types might plausibly be comparable to each other.
     val lift = new TypeMap {
       def apply(t: Type): Type = t match {
+        case t @ FlexibleType(hi) =>
+          // Keep the flexible wrapper (it admits null), but lift the underlying
+          // type to its upper bound like any other abstract type. Mapping the
+          // flexible type with `mapOver` instead would lift its tycon to the
+          // tycon's upper bound and collapse the flexible type entirely, losing
+          // the nullability information.
+          t.derivedFlexibleType(apply(hi))
         case t: TypeRef =>
           t.info match {
             case TypeBounds(lo, hi) if lo.ne(hi) && !t.symbol.is(Opaque) => apply(hi)
@@ -1067,8 +1080,13 @@ trait Implicits:
     || rtp.isError
     || locally:
       if strictEquality then
+        def isNull(t: Tree) = t match
+          case Literal(Constants.Constant(null)) => true
+          case _ => false
         (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.is(Flags.Module)) &&
           ltp <:< rtp
+        || relaxedNullChecks && isNull(leftTree) && ltp <:< rtp
+        || relaxedNullChecks && isNull(rightTree) && rtp <:< ltp
       else
         ltp <:< lift(rtp) || rtp <:< lift(ltp)
   }
@@ -1076,9 +1094,10 @@ trait Implicits:
   /** Check that equality tests between types `ltp` and `left.tpe` make sense.
    * `left` is required to check for the condition for language.strictEqualityPatternMatching (SIP-67)
    */
-  def checkCanEqual(left: Tree, rtp: Type, span: Span)(using Context): Unit =
+  def checkCanEqual(left: Tree, right: Tree, span: Span)(using Context): Unit =
     val ltp = left.tpe.widen
-    if !ctx.isAfterTyper && !assumedCanEqual(ltp, rtp, left) then
+    val rtp = right.tpe.widen
+    if !ctx.isAfterTyper && !assumedCanEqual(ltp, rtp, left, right) then
       val res = implicitArgTree(defn.CanEqualClass.typeRef.appliedTo(ltp, rtp), span)
       implicits.println(i"CanEqual witness found for $ltp / $rtp: $res: ${res.tpe}")
 
@@ -1320,7 +1339,7 @@ trait Implicits:
       // A map that associates a priority change warning (between -source 3.6 and 3.7)
       // with the candidate refs mentioned in the warning. We report the associated
       // message if one of the critical candidates is part of the result of the implicit search.
-      val priorityChangeWarnings = mutable.ListBuffer[(/*critical:*/ List[TermRef], GivenSearchPriorityWarning)]()
+      val priorityChangeWarnings = mutable.ListBuffer.empty[(/*critical:*/ List[TermRef], GivenSearchPriorityWarning)]
 
       val sv = Feature.sourceVersion
       val isLastOldVersion = sv.stable == SourceVersion.`3.6`

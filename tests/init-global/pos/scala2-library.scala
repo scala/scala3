@@ -1,2 +1,3 @@
-//> using options -Ycompile-scala2-library
+import scala.language.`2.13`
+
 case class UninitializedFieldError(msg: String) extends RuntimeException(msg)

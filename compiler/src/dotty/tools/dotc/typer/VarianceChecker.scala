@@ -208,32 +208,36 @@ class VarianceChecker(using Context) {
       case None =>
     }
 
-    override def traverse(tree: Tree)(using Context) = {
-      def sym = tree.symbol
-      // No variance check for private/protected[this] methods/values.
-      def skip = !sym.exists
-        || sym.name.is(InlineAccessorName) // TODO: should we exclude all synthetic members?
-        || sym.isAllOf(LocalParamAccessor) // local class parameters are construction only
-        || sym.is(TypeParam) && sym.owner.isClass // already taken care of in primary constructor of class
-      try tree match {
-        case defn: MemberDef if skip =>
+    override def traverse(tree: Tree)(using Context): Unit = tree match {
+      case defn: MemberDef =>
+        val sym = tree.symbol
+        // No variance check for private/protected[this] methods/values.
+        def skip = !sym.exists
+          || sym.name.is(InlineAccessorName) // TODO: should we exclude all synthetic members?
+          || sym.isAllOf(LocalParamAccessor) // local class parameters are construction only
+          || sym.is(TypeParam) && sym.owner.isClass // already taken care of in primary constructor of class
+        if skip then
           report.debuglog(s"Skipping variance check of ${sym.showDcl}")
-        case tree: TypeDef =>
-          checkVariance(sym, tree.srcPos)
-          tree.rhs match {
-            case rhs: Template => traverseChildren(rhs)
-            case _ =>
-          }
-        case tree: ValDef =>
-          checkVariance(sym, tree.srcPos)
-        case DefDef(_, paramss, _, _) =>
-          checkVariance(sym, tree.srcPos)
-          paramss.foreach(_.foreach(traverse))
-        case _ =>
-      }
-      catch {
-        case ex: TypeError => report.error(ex, tree.srcPos.focus)
-      }
+          return
+
+        try tree match {
+          case tree: TypeDef =>
+            checkVariance(sym, tree.srcPos)
+            tree.rhs match {
+              case rhs: Template => traverseChildren(rhs)
+              case _ =>
+            }
+          case tree: ValDef =>
+            checkVariance(sym, tree.srcPos)
+          case DefDef(_, paramss, _, _) =>
+            checkVariance(sym, tree.srcPos)
+            paramss.foreach(_.foreach(traverse))
+          case _ =>
+        }
+        catch {
+          case ex: TypeError => report.error(ex, tree.srcPos.focus)
+        }
+      case _ => ()
     }
   }
 }

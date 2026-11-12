@@ -26,6 +26,7 @@
 package scala.util.matching
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.collection.AbstractIterator
 import java.util.regex.{ Pattern, Matcher }
 
@@ -130,8 +131,8 @@ import java.util.regex.{ Pattern, Matcher }
  *  val dates = "Important dates in history: 2004-01-20, 1958-09-05, 2010-10-06, 2011-07-15"
  *  val mi = date.findAllIn(dates)
  *  while (mi.hasNext) {
- *    val d = mi.next
- *    if (mi.group(1).toInt < 1960) println(s"\$d: An oldie but goodie.")
+ *    val d = mi.next()
+ *    if (mi.group(1).nn.toInt < 1960) println(s"\$d: An oldie but goodie.")
  *  }
  *  ```
  *
@@ -177,9 +178,9 @@ import java.util.regex.{ Pattern, Matcher }
  *  val date = raw"(\d{4})-(\d{2})-(\d{2})".r
  *  val dates = "Important dates in history: 2004-01-20, 1958-09-05, 2010-10-06, 2011-07-15"
  *  val redacted    = date.replaceAllIn(dates, "XXXX-XX-XX")
- *  val yearsOnly   = date.replaceAllIn(dates, m => m.group(1))
+ *  val yearsOnly   = date.replaceAllIn(dates, m => m.group(1).nn)
  *  val months      = (0 to 11).map { i => val c = Calendar.getInstance; c.set(2014, i, 1); f"\$c%tb" }
- *  val reformatted = date.replaceAllIn(dates, _ match { case date(y,m,d) => f"\${months(m.toInt - 1)} \$d, \$y" })
+ *  val reformatted = date.replaceAllIn(dates, _ match { case date(y,m,d) => f"\${months(m.nn.toInt - 1)} \$d, \$y" })
  *  ```
  *
  *  Pattern matching the `Match` against the `Regex` that created it does not reapply the `Regex`.
@@ -211,7 +212,7 @@ import java.util.regex.{ Pattern, Matcher }
  */
 @SerialVersionUID(-2094783597747625537L)
 class Regex private[matching](val pattern: Pattern, groupNames: String*) extends Serializable {
-  outer =>
+  outer: Regex =>
 
   import Regex._
 
@@ -263,7 +264,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *    case _      => false
    *  }
    *  val numberOfB = "abbbc" match {
-   *    case p2(b) => Some(b.length)    // one group
+   *    case p2(b) => Some(b.nn.length) // one group
    *    case _     => None
    *  }
    *  val p3 = "b*".r.unanchored
@@ -553,7 +554,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *  val vars = Map("x" -> "a var", "y" -> """some \$ and \ signs""")
    *  val text = "A text with variables %x, %y and %z."
    *  val varPattern = """%(\w+)""".r
-   *  val mapper = (m: Match) => vars get (m group 1) map (quoteReplacement(_))
+   *  val mapper = (m: Match) => vars.get(m.group(1).nn).map(quoteReplacement(_))
    *  val repl = varPattern replaceSomeIn (text, mapper)
    *  ```
    *
@@ -607,7 +608,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *  ```scala sc:compile
    *  val date = """(\d\d\d\d)-(\d\d)-(\d\d)""".r.unanchored
    *
-   *  val date(year, month, day) = "Date 2011-07-15"                       // OK
+   *  val date(year, month, day) = "Date 2011-07-15".runtimeChecked         // OK
    *
    *  val copyright: String = "Date of this document: 2011-07-15" match {
    *    case date(year, month, day) => s"Copyright \$year"                  // OK
@@ -862,7 +863,7 @@ object Regex {
    *  @param _groupNames the names of the capturing groups, if any
    */
   class MatchIterator(val source: CharSequence, val regex: Regex, private[Regex] val _groupNames: Seq[String])
-  extends AbstractIterator[String] with MatchData { self =>
+  extends AbstractIterator[String] with MatchData { self: MatchIterator =>
 
     @deprecated("groupNames does not include inline group names, and should not be used anymore", "2.13.7")
     val groupNames: Seq[String] = _groupNames

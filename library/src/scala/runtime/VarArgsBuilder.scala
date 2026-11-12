@@ -1,5 +1,6 @@
 package scala.runtime
 
+import language.experimental.captureChecking
 import scala.collection.immutable.ArraySeq
 import scala.reflect.ClassTag
 

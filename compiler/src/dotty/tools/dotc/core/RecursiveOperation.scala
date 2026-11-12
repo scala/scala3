@@ -19,22 +19,21 @@ type RecursiveOperationDetails = Showable | (() => String)
  * @param title the operation title
  * @param details the operation details
  * @param pos the operation position
- * @param weight the operation weight, used to prioritize some operations when displaying error messages
  */
-final class RecursiveOperation(var title: String, var details: RecursiveOperationDetails, var pos: SrcPos | Null, var weight: Int):
+final class RecursiveOperation(var title: String, var details: RecursiveOperationDetails, var pos: SrcPos | Null):
   def explanation(using Context): String =
     try
       ctx.handleRecursive("displaying error for", () => title):
         details match
           case f: (() => ?) => s"$title ${f()}"
-          case s: Showable => i"$title $s"
+          case s: Showable => s"$title ${s.showSummary(20)}"
     catch
       case _: RecursionOverflow => "<not enough fuel to show details>"
 
-  def copy(): RecursiveOperation = RecursiveOperation(title, details, pos, weight)
+  def copy(): RecursiveOperation = RecursiveOperation(title, details, pos)
 
 object RecursiveOperation:
-  def blank(): RecursiveOperation = RecursiveOperation("", () => "", NoSourcePosition, 0)
+  def blank(): RecursiveOperation = RecursiveOperation("", () => "", NoSourcePosition)
 
 /**
  * Thrown when recursing too deep, as an alternative to triggering a stack overflow.
@@ -44,7 +43,7 @@ object RecursiveOperation:
  *
  * @param ops the recursive operations, most recent first
  */
-final class RecursionOverflow(ops: List[RecursiveOperation])(using val ctx: Context) extends Error:
+final class RecursionOverflow(ops: List[RecursiveOperation])(using val ctx: Context) extends Throwable:
   // We aren't going to show the stack trace anyway so might as well save the perf cost of throwing
   override def fillInStackTrace(): Throwable =
     this
@@ -63,13 +62,14 @@ final class RecursionOverflow(ops: List[RecursiveOperation])(using val ctx: Cont
     ops.collectFirst{ case op if op.pos != null && op.pos != NoSourcePosition => op.pos.nn }.getOrElse(NoSourcePosition)
 
   def toMessage: Message =
-    val mostCommon = ops.groupBy(_.title).toList.maxBy(_._2.map(_.weight).sum)._2
+    val mostCommon = ops.groupBy(_.title).toList.maxBy(_._2.length)._2
+    val reason = opsString(mostCommon).stripMargin
     em"""Recursion limit exceeded.
         |Maybe there is an illegal cyclic reference?
         |If that's not the case, you could try to increase the fuel and stack size: https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html
         |For the unprocessed stack overflow trace, compile with -Xno-enrich-error-messages.
         |A recurring operation is (inner to outer):
-        |${opsString(mostCommon).stripMargin}"""
+        |$reason"""
 
 object RecursionOverflow:
   /**
@@ -81,7 +81,6 @@ object RecursionOverflow:
   def apply(rawOps: Array[RecursiveOperation],
             rawOverflowTitle: String,
             rawOverflowDetails: RecursiveOperationDetails,
-            rawOverflowPosition: SrcPos | Null,
-            rawOverflowWeight: Int)(using Context): Error =
-    val ops = RecursiveOperation(rawOverflowTitle, rawOverflowDetails, rawOverflowPosition, rawOverflowWeight) :: rawOps.map(_.copy()).reverse.toList
+            rawOverflowPosition: SrcPos | Null)(using Context): Throwable =
+    val ops = RecursiveOperation(rawOverflowTitle, rawOverflowDetails, rawOverflowPosition) :: rawOps.map(_.copy()).reverse.toList
     new RecursionOverflow(ops)

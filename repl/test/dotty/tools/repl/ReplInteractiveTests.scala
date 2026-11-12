@@ -1,7 +1,7 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
+import scala.util.control.NonFatal
 
 import java.io.{ByteArrayOutputStream, PipedInputStream, PipedOutputStream}
 import java.nio.charset.StandardCharsets
@@ -17,6 +17,12 @@ import org.jline.terminal.TerminalBuilder
 class ReplInteractiveTests:
 
   private lazy val context: Context = new ReplTest().initialState.context
+
+  /** A throwaway history file, so tests never read or write the user's `~/.dotty_history`. */
+  private def tempHistoryFile(): java.nio.file.Path =
+    val file = java.nio.file.Files.createTempFile("repl_history", ".txt")
+    file.toFile.deleteOnExit()
+    file
 
   private def contextually[A](op: Context ?=> A): A = op(using context)
 
@@ -61,7 +67,7 @@ class ReplInteractiveTests:
         .streams(pis, sink)
         .dumb(true)
         .build()
-    val jlt = new JLineTerminal(terminal)
+    val jlt = new JLineTerminal(terminal, historyFile = tempHistoryFile())
     try test(jlt, pos)
     finally jlt.close()
 
@@ -87,6 +93,30 @@ class ReplInteractiveTests:
       finally
         executor.shutdownNow()
 
+  /** Submit `inputs` one after another through the same terminal and return the
+   *  lines left in its history, so that history settings can be checked end to end.
+   */
+  private def historyAfter(inputs: String*): List[String] =
+    withTestTerminal: (term, pos) =>
+      val executor = Executors.newSingleThreadExecutor: r =>
+        val t = new Thread(r, "repl-history-test")
+        t.setDaemon(true)
+        t
+      try
+        for input <- inputs do
+          val future = executor.submit(() => term.readLine(noopCompleter)(using context))
+          pos.write(s"$input\n".getBytes(StandardCharsets.UTF_8))
+          pos.flush()
+          future.get(5000L, TimeUnit.MILLISECONDS)
+        term.historyLines
+      finally
+        executor.shutdownNow()
+
+  @Test def `completions command is not recorded in history`(): Unit =
+    assertEquals(
+      List("val x = 1", ":type x"),
+      historyAfter("val x = 1", ":completions x.", ":type x"))
+
   @Test def `single-line dep command submits on one ENTER`(): Unit =
     assertEquals(":dep com.lihaoyi::os-lib:0.11.8", readPastedLine(":dep com.lihaoyi::os-lib:0.11.8\n"))
 
@@ -109,7 +139,7 @@ class ReplInteractiveTests:
     val sink = new ByteArrayOutputStream
     val terminal =
       TerminalBuilder.builder().system(false).streams(pis, sink).dumb(true).build()
-    val jlt = new JLineTerminal(terminal)
+    val jlt = new JLineTerminal(terminal, historyFile = tempHistoryFile())
     val executor = Executors.newSingleThreadExecutor: r =>
       val t = new Thread(r, "repl-interactive-test")
       t.setDaemon(true)
@@ -125,7 +155,7 @@ class ReplInteractiveTests:
         waitsForMore
     finally
       executor.shutdownNow()
-      try jlt.close() catch case _: Throwable => ()
+      try jlt.close() catch case NonFatal(_) => ()
 
   @Test def `command then incomplete code is not submitted as one line`(): Unit =
     val incomplete = ":settings -deprecation\nif true then"
@@ -146,3 +176,6 @@ class ReplInteractiveTests:
     val preamble = ":settings -old-syntax:false\n:settings -old-syntax:true\n"
     assertFalse(ParseResult.shouldAcceptLine(preamble, hasPendingInput = true))
     assertTrue(ParseResult.shouldAcceptLine(preamble, hasPendingInput = false))
+
+  @Test def `code with incomplete opened parameter list is not accepted early`(): Unit = contextually:
+    assertFalse(ParseResult.shouldAcceptLine("def test(", hasPendingInput = false))

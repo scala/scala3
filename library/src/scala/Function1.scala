@@ -42,6 +42,12 @@ object Function1 {
     def unlift: PartialFunction[A, B] = Function.unlift(f)
   }
 
+  extension [T1, R](f: T1 => R)
+    /** Applies this function to the argument taken from the context.
+     *  @return the result of the function application
+     */
+    def applyUsing(using v1: T1): R = f(v1)
+
 }
 
 /** A function of 1 parameter.

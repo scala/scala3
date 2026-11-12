@@ -628,7 +628,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *  @return     an array consisting of the elements of this array
    *              sorted according to the ordering `ord`.
    */
-  def sorted[B >: A](implicit ord: Ordering[B]^): Array[A] = {
+  def sorted[B >: A](implicit ord: Ordering[B]): Array[A] = {
     val len = xs.length
     def boxed = if(len < ArrayOps.MaxStableSortLength) {
       val a = xs.clone()
@@ -670,16 +670,20 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *  The sort is stable. That is, elements that are equal (as determined by
    *  `lt`) appear in the same order in the sorted sequence as in the original.
    *
+   *  **Capture Checking notes**: `lt` defaults to allowing only pure functions. See [[scala.math.Ordering]].
+   *
    *  @param  lt  the comparison function which tests whether
    *              its first argument precedes its second argument in
    *              the desired ordering.
    *  @return     an array consisting of the elements of this array
    *              sorted according to the comparison function `lt`.
    */
-  def sortWith(lt: (A, A) => Boolean): Array[A] = sorted(using Ordering.fromLessThan(lt))
+  def sortWith(lt: (A, A) -> Boolean): Array[A] = sorted(using Ordering.fromLessThan(lt))
 
   /** Sorts this array according to the Ordering which results from transforming
    *  an implicitly given Ordering with a transformation function.
+   *
+   *  **Capture Checking notes**: `f` defaults to allowing only pure functions. See [[scala.math.Ordering]].
    *
    *  @see [[scala.math.Ordering]]
    *  @tparam  B the target type of the transformation `f`, and the type where
@@ -691,7 +695,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *           sorted according to the ordering where `x < y` if
    *           `ord.lt(f(x), f(y))`.
    */
-  def sortBy[B](f: A => B)(implicit ord: Ordering[B]): Array[A] = sorted(using ord.on(f))
+  def sortBy[B](f: A -> B)(implicit ord: Ordering[B]): Array[A] = sorted(using ord.on(f))
 
   /** Creates a non-strict filter of this array.
    *
@@ -819,7 +823,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *                     going left to right. Returns `z` if this array is empty.
    */
   def foldLeft[B](z: B)(op: (B, A) => B): B = {
-    def f[@specialized(Specializable.Everything) T](xs: Array[T], op: (Any, Any) => Any, z: Any): Any = {
+    inline def f[T](xs: Array[T], op: (Any, Any) => Any, z: Any): Any = {
       val length = xs.length
       var v: Any = z
       var i = 0
@@ -923,7 +927,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *                     is empty.
    */
   def foldRight[B](z: B)(op: (A, B) => B): B = {
-    def f[@specialized(Specializable.Everything) T](xs: Array[T], op: (Any, Any) => Any, z: Any): Any = {
+    inline def f[T](xs: Array[T], op: (Any, Any) => Any, z: Any): Any = {
       var v = z
       var i = xs.length - 1
       while(i >= 0) {
@@ -1383,7 +1387,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     if (xs.length == 0) bb.result()
     else {
       def mkRowBuilder() = ArrayBuilder.make[B](using ClassTag[B](aClass.getComponentType))
-      val bs = new ArrayOps(asArray(xs(0))).map((x: B) => mkRowBuilder())
+      val bs = new ArrayOps(asArray(xs(0))).map((_: B) => mkRowBuilder())
       for (xs <- this) {
         var i = 0
         for (x <- new ArrayOps(asArray(xs))) {

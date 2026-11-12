@@ -30,6 +30,7 @@ object Feature:
   val dependent = experimental("dependent")
   val erasedDefinitions = experimental("erasedDefinitions")
   val strictEqualityPatternMatching = experimental("strictEqualityPatternMatching")
+  val relaxedNullChecks = experimental("relaxedNullChecks")
   val symbolLiterals = deprecated("symbolLiterals")
   val saferExceptions = experimental("saferExceptions")
   val pureFunctions = experimental("pureFunctions")
@@ -45,6 +46,7 @@ object Feature:
   val magic = experimental("magic")
   val inlineTraits = experimental("inlineTraits")
   val specializedTraits = experimental("specializedTraits")
+  val methodBlockEndMarkers = experimental("methodBlockEndMarkers")
 
   val nonViralExperimentalFeatures: Set[TermName] =
     Set(captureChecking, separationChecking, safe)
@@ -71,6 +73,7 @@ object Feature:
     (scala2macros, "Allow Scala 2 macros"),
     (dependent, "Allow dependent method types"),
     (erasedDefinitions, "Allow erased definitions"),
+    (relaxedNullChecks, "Allow comparisons with null under strictEquality (SIP-79)"),
     (strictEqualityPatternMatching, "relaxed CanEqual checks for ADT pattern matching"),
     (symbolLiterals, "Allow symbol literals"),
     (saferExceptions, "Enable safer exceptions"),
@@ -86,6 +89,7 @@ object Feature:
     (magic, "Enable extensions for working with coding agents"),
     (inlineTraits, "Allow inline traits"),
     (specializedTraits, "Allow specialized traits"),
+    (methodBlockEndMarkers, "Enable experimental end markers for method blocks"),
   )
 
   /** Features that are now standard; the language import / -language choice is
@@ -250,9 +254,9 @@ object Feature:
       case Some(v) => v
       case none => sourceVersionSetting
 
-  /* Should we behave as scala 2?*/
+  /* Should we behave as scala 2? */
   def shouldBehaveAsScala2(using Context): Boolean =
-    ctx.settings.YcompileScala2Library.value || sourceVersion.isScala2
+    sourceVersion.isScala2
 
   def migrateTo3(using Context): Boolean =
     sourceVersion == `3.0-migration`

@@ -4,6 +4,7 @@ import org.scalacheck.*
 import Prop.*
 import Gen.*
 import Arbitrary.*
+import scala.util.control.NonFatal
 
 object TreeSetProps extends Properties("TreeSet") {
   def genTreeSet[A: {Arbitrary, Ordering}]: Gen[TreeSet[A]] =
@@ -34,7 +35,7 @@ object TreeSetProps extends Properties("TreeSet") {
     val values = (1 to highest).reverse
     val subject = TreeSet(values*)
     val it = subject.iterator
-    try { while (it.hasNext) it.next(); true } catch { case _: Throwable => false }
+    try { while (it.hasNext) it.next(); true } catch { case NonFatal(_) => false }
   }
 
   property("sorted") = forAll { (subject: TreeSet[Int]) => (subject.size >= 3) ==> {

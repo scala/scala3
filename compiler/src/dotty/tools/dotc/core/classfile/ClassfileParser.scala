@@ -8,18 +8,20 @@ import dotty.tools.tasty.UnpickleException
 import Contexts.*, Symbols.*, Types.*, Names.*, StdNames.*, NameOps.*, Scopes.*, Decorators.*
 import SymDenotations.*, unpickleScala2.Scala2Unpickler.*, Constants.*, Annotations.*, util.Spans.*
 import Phases.*
-import ast.{ tpd, untpd }
-import ast.tpd.*, util.*
-import java.io.IOException
+import ast.{tpd, untpd}
+import ast.tpd.*
+import dotty.tools.dotc.classpath.ClassPath
+import util.*
 
+import java.io.IOException
 import java.lang.Integer.toHexString
 
 import scala.collection.immutable
+import scala.collection.mutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
 import io.AbstractFile
-import dotty.tools.dotc.classpath.FileUtils.hasSiblingTasty
 import dotty.tools.dotc.config.Printers
 
 import scala.compiletime.uninitialized
@@ -32,11 +34,11 @@ object ClassfileParser {
     object Version:
       val Unknown: Version = -1L
 
-      def brokenVersionAddendum(classfileVersion: Version)(using Context): String =
+      def brokenVersionAddendum(classfileVersion: Version): String =
         if classfileVersion.exists then
           val (maj, min) = (classfileVersion.majorVersion, classfileVersion.minorVersion)
           val scalaVersion = config.Properties.versionNumberString
-          i""" (version $maj.$min),
+          s""" (version $maj.$min),
             |  please check the JDK compatibility of your Scala version ($scalaVersion)"""
         else
           ""
@@ -278,7 +280,10 @@ final class ClassfileParser(
   private var pool: ConstantPool = uninitialized        // the classfile's constant pool
 
   private var currentClassName: SimpleName = uninitialized // JVM name of the current class
-  private var classTParams: Map[Name, Symbol] = Map()
+  private var classTParams: Map[Name, Symbol] = Map.empty
+
+  // descriptors of the constructors with the ACC_VARARGS flag, see `tpnme.RecordATTR`
+  private var varargsConstructors: Set[String] = Set.empty
 
   private val Scala2UnpicklingMode = Mode.Scala2Unpickling
   private var classfileVersion: Header.Version = Header.Version.Unknown
@@ -446,6 +451,8 @@ final class ClassfileParser(
     val preName = pool.getName(in.nextChar)
     if (!sflags.isOneOf(Flags.PrivateOrArtifact) || preName.name == nme.CONSTRUCTOR) {
       val sig = pool.getExternalName(in.nextChar).value
+      if preName.name == nme.CONSTRUCTOR && (jflags & JAVA_ACC_VARARGS) != 0 then
+        varargsConstructors += sig
       val completer = MemberCompleter(preName.name, jflags, sig)
       val member = newSymbol(
         getOwner(jflags), preName.name, sflags, completer,
@@ -883,10 +890,13 @@ final class ClassfileParser(
     }
     attrType match
       case tp: TypeRef if tp.denot.infoOrCompleter.isInstanceOf[StubInfo] =>
-        // Silently ignore missing annotation classes like javac
-        if ctx.debug then
-          report.warning(em"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
-        None
+        if tp.symbol.fullName.toString == defn.JdkInternalValueBasedAnnotCtSymName && defn.JdkInternalValueBasedAnnot.exists then
+          Some(ClassfileAnnotation(defn.JdkInternalValueBasedAnnot.typeRef, Nil))
+        else
+          // Silently ignore missing annotation classes like javac
+          if ctx.debug then
+            report.warning(em"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
+          None
       case _ =>
         if (hasError || skip) None
         else Some(ClassfileAnnotation(attrType, argbuf.toList))
@@ -921,6 +931,7 @@ final class ClassfileParser(
     var annotations: List[Annotation] = Nil
     var namedParams: Map[Int, TermName] = Map.empty
     var permittedSubclasses: List[NameOrString] = Nil
+    var typeAnnotations: List[TypeAnnotation] = Nil
     def complete(tp: Type, isVarargs: Boolean = false)(using Context): Type = {
       val updatedType =
         val sig = this.sig
@@ -946,13 +957,20 @@ final class ClassfileParser(
         sym.addAnnotation(ThrowsAnnotation(cls.asClass))
       }
 
-      permittedSubclasses.foreach { child =>
-        val cls = getClassSymbol(child.name)
-        sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)(
+      // The children of a Java enum are its enum constants, registered in `MemberCompleter`.
+      // javac lists the anonymous classes of constants with bodies as permitted subclasses
+      // of the (implicitly sealed) enum class; they must not be registered as children,
+      // otherwise a match on the constants would be reported as non-exhaustive.
+      if !sym.flagsUNSAFE.is(Flags.Enum) then permittedSubclasses.foreach { child =>
+        sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)({
+          // It's important to fetch this symbol in the deferred tree function,
+          // since otherwise it may create cycles, e.g.,
+          // A extends from B which also permits C which also extends from D which permits A
+          val cls = getClassSymbol(child.name)
           New(defn.ChildAnnot.typeRef.appliedTo(cls.owner.thisType.select(cls.name, cls)), Nil)
-          .withSpan(NoSpan)
-          ))
-        }
+            .withSpan(NoSpan)
+        }))
+      }
 
       def fillInParamNames(t: Type): Type = t match
         case mt @ MethodType(oldp) if namedParams.nonEmpty =>
@@ -961,8 +979,60 @@ final class ClassfileParser(
           pt.derivedLambdaType(pt.paramNames, pt.paramInfos, fillInParamNames(pt.resultType))
         case _ => t
 
-      cook.apply(fillInParamNames(newType))
+      val cookedType = cook.apply(fillInParamNames(newType))
+      typeAnnotations.foldLeft(cookedType)((tp, annot) => annot.addTo(tp))
     }
+  }
+
+  /** A type annotation on (a part of) the type of a field or method (JVMS 4.7.20)
+   *
+   *  @param target      the annotated type: `TA_FIELD` for the type of a field, `TA_METHOD_RETURN` for the
+   *                     result type of a method, or `TA_METHOD_FORMAL_PARAMETER` for one of its parameter types
+   *  @param paramIndex  the index of the parameter, if `target` is `TA_METHOD_FORMAL_PARAMETER`
+   *  @param path        the steps to the annotated part of the type, as pairs of kind and type argument index
+   */
+  class TypeAnnotation(target: Int, paramIndex: Int, path: List[(Int, Int)], annot: Annotation) {
+
+    /** Add this annotation to `tp`, the type of the annotated member. Only nullness annotations
+     *  are kept, to be interpreted by `ImplicitNullInterop`. The annotation is also dropped if its
+     *  path does not match the shape of the type.
+     */
+    def addTo(tp: Type)(using Context): Type =
+      if ImplicitNullInterop.isNullnessAnnot(annot) then addToMember(tp) else tp
+
+    private def addToMember(tp: Type)(using Context): Type = tp match
+      case tp @ TempPolyType(_, tpe) =>
+        tp.copy(tpe = addToMember(tpe))
+      case tp: MethodType =>
+        if target == TA_METHOD_RETURN then
+          tp.derivedLambdaType(resType = annotate(tp.resType, path))
+        else if target == TA_METHOD_FORMAL_PARAMETER && paramIndex < tp.paramInfos.length then
+          tp.derivedLambdaType(paramInfos = tp.paramInfos.updated(paramIndex, annotate(tp.paramInfos(paramIndex), path)))
+        else tp
+      case _: ConstantType =>
+        tp
+      case _ =>
+        if target == TA_FIELD then annotate(tp, path) else tp
+
+    private def annotate(tp: Type, path: List[(Int, Int)])(using Context): Type = path match
+      case Nil =>
+        AnnotatedType(tp, annot)
+      case (kind, argIndex) :: path1 =>
+        tp match
+          case tp @ AppliedType(tycon, elem :: Nil)
+          if kind == TYPE_PATH_ARRAY && (tp.isRef(defn.ArrayClass) || tp.isRepeatedParam) =>
+            tp.derivedAppliedType(tycon, annotate(elem, path1) :: Nil)
+          case tp @ AppliedType(tycon, args) if kind == TYPE_PATH_TYPE_ARGUMENT && argIndex < args.length =>
+            tp.derivedAppliedType(tycon, args.updated(argIndex, annotate(args(argIndex), path1)))
+          case tp: TypeBounds if kind == TYPE_PATH_WILDCARD_BOUND =>
+            if tp.lo.isExactlyNothing then tp.derivedTypeBounds(tp.lo, annotate(tp.hi, path1))
+            else tp.derivedTypeBounds(annotate(tp.lo, path1), tp.hi)
+          case _ if kind == TYPE_PATH_NESTED =>
+            // The path goes from an outer class to an inner class, but we don't
+            // distinguish them: we conservatively annotate the inner class.
+            annotate(tp, path1)
+          case _ =>
+            tp
   }
 
   def parseAttributes(sym: Symbol)(using ctx: Context, in: DataReader): AttributeCompleter = {
@@ -1013,6 +1083,11 @@ final class ClassfileParser(
           | tpnme.RuntimeInvisibleAnnotationATTR =>
           parseAnnotations(attrLen)
 
+        // Java annotations on types, only needed to interpret nullness annotations right now
+        case tpnme.RuntimeVisibleTypeAnnotationATTR
+          | tpnme.RuntimeInvisibleTypeAnnotationATTR if ctx.explicitNulls =>
+          parseTypeAnnotations(attrLen)
+
         // TODO 1: parse runtime visible annotations on parameters
         // case tpnme.RuntimeParamAnnotationATTR
 
@@ -1039,6 +1114,22 @@ final class ClassfileParser(
             res.permittedSubclasses ::= childName
           }
 
+        case tpnme.RecordATTR =>
+          // JVMS 4.7.30: each record component has a name, a descriptor, and attributes
+          val components = List.fill(in.nextChar):
+            val name = pool.getName(in.nextChar).value
+            val descriptor = pool.getExternalName(in.nextChar).value
+            skipAttributes()
+            (name, descriptor)
+          val (names, descriptors) = components.unzip
+          // JLS 8.10.4: the canonical constructor's descriptor is the concatenation of the component
+          // descriptors, no other constructor can have that descriptor. It is vararg if the record is.
+          val canonicalConstructor = descriptors.mkString("(", "", ")V")
+          val isVararg = varargsConstructors.contains(canonicalConstructor)
+          // Record the component names and whether it's vararg, see `Applications.javaRecordFields`
+          res.annotations ::= Annotation.deferredSymAndTree(defn.JavaRecordFieldsAnnot):
+            JavaRecordFieldsAnnot.tpdTree(isVararg, names)
+
         case _ =>
           in.skip(attrLen)
       }
@@ -1057,6 +1148,37 @@ final class ClassfileParser(
       }
     }
 
+
+    /** Parse the type annotations on the type of a field or method. They are only needed to
+     *  interpret nullness annotations, so the ones on other types (e.g. type parameter bounds) are skipped.
+     */
+    def parseTypeAnnotations(len: Int): Unit = {
+      val end = in.bp + len
+      val nAnnots = in.nextChar
+      var i = 0
+      while i < nAnnots do
+        val target = in.nextByte & 0xFF
+        // Of the target info, we only need the index of an annotated parameter
+        val paramIndex = (target: @switch) match
+          case TA_FIELD | TA_METHOD_RETURN | TA_METHOD_RECEIVER => 0
+          case TA_METHOD_FORMAL_PARAMETER => in.nextByte & 0xFF
+          case TA_CLASS_TYPE_PARAMETER | TA_METHOD_TYPE_PARAMETER => in.skip(1); 0
+          case TA_CLASS_EXTENDS | TA_CLASS_TYPE_PARAMETER_BOUND | TA_METHOD_TYPE_PARAMETER_BOUND | TA_THROWS => in.skip(2); 0
+          case _ => -1 // other targets are only found in the attributes of method bodies
+        if paramIndex < 0 then
+          in.bp = end
+          i = nAnnots
+        else
+          val path = List.fill(in.nextByte & 0xFF):
+            val kind = in.nextByte & 0xFF
+            val argIndex = in.nextByte & 0xFF
+            (kind, argIndex)
+          val onMemberType = target == TA_FIELD || target == TA_METHOD_RETURN || target == TA_METHOD_FORMAL_PARAMETER
+          parseAnnotation(in.nextChar, skip = !onMemberType) match
+            case Some(annot) => res.typeAnnotations ::= TypeAnnotation(target, paramIndex, path, annot)
+            case None =>
+          i += 1
+    }
 
     /** Parse a sequence of annotations and attaches them to the
      *  current symbol sym, except for the ScalaSignature annotation that it returns, if it is available. */
@@ -1190,7 +1312,7 @@ final class ClassfileParser(
 
       if (scan(tpnme.TASTYATTR)) {
         val hint =
-          if classfile.hasSiblingTasty then "This is likely a bug in the compiler. Please report."
+          if classfile.resolveSibling(ClassPath.classNameToTasty(classfile.name)) != null then "This is likely a bug in the compiler. Please report."
           else "This `.tasty` file is missing. Try cleaning the project to fix this issue."
         report.error(s"Loading Scala 3 binary from $classfile. It should have been loaded from `.tasty` file. $hint", NoSourcePosition)
         return None
@@ -1275,15 +1397,29 @@ final class ClassfileParser(
       CompilationUnitInfo(classfile),
     )
 
-  private object innerClasses extends util.HashMap[String, InnerClassEntry] {
+  private object innerClasses {
+    private val map = mutable.Map.empty[String, InnerClassEntry]
+
+    def get(str: String): Option[InnerClassEntry] =
+      map.get(str)
+
+    def apply(str: String): InnerClassEntry =
+      map(str)
+
+    def update(str: String, entry: InnerClassEntry): Unit =
+      map(str) = entry
+
+    def valuesIterator: Iterator[InnerClassEntry] =
+      map.valuesIterator
+
     /** Return the Symbol of the top level class enclosing `name`,
      *  or 'name's symbol if no entry found for `name`.
      */
     def topLevelClass(name: String)(using Context): Symbol = {
-      val tlName = if (contains(name)) {
-        var entry = this(name)
-        while (contains(entry.outerName))
-          entry = this(entry.outerName)
+      val tlName = if (map.contains(name)) {
+        var entry = map(name)
+        while (map.contains(entry.outerName))
+          entry = map(entry.outerName)
         entry.outerName
       }
       else

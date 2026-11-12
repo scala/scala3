@@ -38,6 +38,30 @@ object Comments {
 
     def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
       doc.foreach(d => _docstrings.update(sym, d))
+
+    /** Drop the docstrings of symbols that are no longer valid in the current run.
+     *
+     *  This instance lives on the root context, so it is shared by all runs of
+     *  a long-lived driver (REPL, IDE, compile server). Symbols that a later run
+     *  replaced (e.g. by recompiling their source) would otherwise be retained
+     *  forever, together with everything reachable from them, including their
+     *  trees and the contexts of the run that created them.
+     *  Symbols that are still valid (from the classpath, or defined in an earlier
+     *  REPL line) keep their docstrings.
+     */
+    def removeStale()(using Context): Unit =
+      // `isValidInCurrentRun` alone is not enough: package objects are brought forward
+      // to the new run before their source is recompiled (see `Namer.checkNoConflictIn`),
+      // so a replaced package object still looks valid. Also require that the symbol,
+      // and its top-level class, are still the ones entered in their package.
+      def isEntered(sym: Symbol): Boolean =
+        val owner = sym.maybeOwner
+        !owner.is(Flags.PackageClass) || owner.unforcedDecls.contains(sym.name, sym)
+      def isLive(sym: Symbol): Boolean =
+        sym.isValidInCurrentRun && isEntered(sym) && isEntered(sym.topLevelClass)
+      val stale = _docstrings.keysIterator.filterNot(isLive).toList
+      stale.foreach(_docstrings.remove)
+      templateExpander.clearCaches()
   }
 
   /**
@@ -369,7 +393,7 @@ object Comments {
         if (depth >= expandLimit)
           throw new ExpansionLimitExceeded(str)
 
-        val out    = new StringBuilder
+        val out    = new java.lang.StringBuilder
         var idx    = -1
         var copied = 0
         while
@@ -390,9 +414,9 @@ object Comments {
           // useful to document things like `Symbol#decode`
           else if idx == 0 || str.charAt(idx - 1) != '\\' then
             val vstart = idx
-            def replaceWith(repl: CharSequence): Unit = {
-              out.append(str.subSequence(copied, vstart))
-              out.append(repl)
+            def replaceWith(repl: String, replBegin: Int, replEnd: Int): Unit = {
+              out.append(str, copied, vstart)
+              out.append(repl, replBegin, replEnd)
               copied = idx
             }
             idx = skipVariable(str, idx + 1)
@@ -405,16 +429,16 @@ object Comments {
                     var end = startTag(sc, superSections)
                     // Avoid including trailing whitespace
                     while end > 0 && Character.isWhitespace(sc.charAt(end - 1)) do end -= 1
-                    replaceWith(sc.subSequence(3, end))
+                    replaceWith(sc, 3, end)
                     for sec @ (start, end) <- superSections
                       if !isMovable(sc, sec)
-                        do out.append(sc.subSequence(start, end))
+                        do out.append(sc, start, end)
                   case None =>
                     report.warning(em"$$${hl("super")} reference does not refer to anything in comment for $sym", site)
               case vname =>
                 lookupVariable(vname, site) match
                   case Some(replacement) =>
-                    replaceWith(replacement)
+                    replaceWith(replacement, 0, replacement.length)
                   case None =>
                     report.warning(
                       em"Variable $$${hl(vname)} undefined in comment for $sym.\n(You can escape with \"\\$$\" to produce a single '$$' if necessary)",
@@ -426,7 +450,7 @@ object Comments {
           // we can't do this as we go, because then the next round of expanding would treat them as unescaped.
           str.replace("\\$", "$")
         else
-          out.append(str.subSequence(copied, str.length))
+          out.append(str, copied, str.length)
           expandInternal(out.toString, depth + 1)
       }
 
@@ -436,7 +460,11 @@ object Comments {
     /** Maps symbols to the variable -> replacement maps that are defined
      *  in their doc comments
      */
-    private val defs = mutable.HashMap[Symbol, Map[String, String]]() withDefaultValue Map()
+    private val defs = mutable.Map.empty[Symbol, Map[String, String]].withDefaultValue(Map.empty)
+
+    /** Forget the cached `@define`s; they are recomputed on demand from the docstrings. */
+    def clearCaches(): Unit = defs.clear()
+
     private val Trim = "(?s)^[\\s&&[^\n\r]]*(.*?)\\s*$".r
     private def getDefs(symbol: Symbol)(using Context): Map[String, String] = defs.get(symbol) match
       case Some(m) => m

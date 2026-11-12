@@ -13,6 +13,7 @@
 package scala.util
 
 import scala.language.`2.13`
+import scala.annotation.nowarn
 import scala.util.control.{ControlThrowable, NonFatal}
 import scala.runtime.ScalaRunTime.nullForGC
 
@@ -85,7 +86,7 @@ import scala.runtime.ScalaRunTime.nullForGC
  *   val xres = X(x)
  *   override def close() = println(s"CLOSE $y")
  *   // an error during construction releases previously acquired resources
- *   require(y != null, "y is null")
+ *   require(y != "", "y is empty")
  *   mgr.acquire(this)
  *  }
  *
@@ -95,9 +96,9 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  }
  *  println {
  *   Using.Manager { implicit mgr =>
- *     Y(null)("X")
+ *     Y("")("X")
  *   }
- *  } // Failure(java.lang.IllegalArgumentException: requirement failed: y is null)
+ *  } // Failure(java.lang.IllegalArgumentException: requirement failed: y is empty)
  *  ```
  *
  *  If you wish to avoid wrapping management and operations in a `Try`, you can use
@@ -143,6 +144,7 @@ import scala.runtime.ScalaRunTime.nullForGC
  *  @define suppressionBehavior See the main doc for [[Using `Using`]] for full details of
  *                             suppression behavior.
  */
+@nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
 object Using {
   /** Performs an operation using a resource, and then releases the resource,
    *  even if the operation throws an exception.

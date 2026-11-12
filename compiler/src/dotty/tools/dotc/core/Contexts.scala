@@ -14,7 +14,7 @@ import Uniques.*
 import ast.Trees.*
 import Flags.ParamAccessor
 import ast.untpd
-import util.{HashSet, NoSource, SimpleIdentityMap, SourceFile, SrcPos, Store, WrappedSourceFile}
+import util.{NoSource, SimpleIdentityMap, SourceFile, SrcPos, Store, WrappedSourceFile}
 import typer.{Implicits, ImportInfo, Nullables, SearchHistory, SearchRoot, TypeAssigner, Typer}
 import inlines.Inliner
 import Nullables.*
@@ -535,7 +535,7 @@ object Contexts {
      * If not, make sure this is called in a stack where a previous call had a meaningful position,
      * or the final error won't have one.
      */
-    final inline def handleRecursive[T](title: String, details: RecursiveOperationDetails, pos: SrcPos | Null = null, weight: Int = 1)(inline block: T): T =
+    final inline def handleRecursive[T](title: String, details: RecursiveOperationDetails, pos: SrcPos | Null = null)(inline block: T): T =
       // This method is hot, as it must be called every so often in potentially recursive operations
       // to catch stack overflows before they actually happen.
       // Thus, it's important for it not to allocate or do any unnecessary work,
@@ -546,13 +546,12 @@ object Contexts {
       val depth = base.recursiveDepth
       val ops = base.recursiveOperations
       if depth >= ops.length then
-        throw RecursionOverflow(ops, title, details, pos, weight)
+        throw RecursionOverflow(ops, title, details, pos)
       if depth >= 0 then
         base.recursiveDepth = depth + 1
         ops(depth).title = title
         ops(depth).details = details
         ops(depth).pos = pos
-        ops(depth).weight = weight
       try block
       finally base.recursiveDepth = depth
 
@@ -584,7 +583,7 @@ object Contexts {
     def settings: ScalaSettings            = base.settings
     def definitions: Definitions           = base.definitions
     def platform: Platform                 = base.platform
-    def pendingUnderlying: util.HashSet[Type]      = base.pendingUnderlying
+    def pendingUnderlying: mutable.Set[Type]       = base.pendingUnderlying
     def uniqueNamedTypes: Uniques.NamedTypeUniques = base.uniqueNamedTypes
     def uniques: util.WeakHashSet[Type]            = base.uniques
 
@@ -1056,12 +1055,12 @@ object Contexts {
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
 
     /** Sources and Files that were loaded */
-    val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
-    val files: util.HashMap[String, AbstractFile] = util.HashMap()
+    val sources: mutable.Map[AbstractFile, SourceFile] = mutable.Map.empty
+    val files: mutable.Map[String, AbstractFile] = mutable.Map.empty
 
     /** Cache for magic offset header lookups, scoped to this compiler instance
      *  so that concurrent compilers in the same classloader don't share stale entries. */
-    private[dotc] val magicHeaderCache: util.HashMap[SourceFile, WrappedSourceFile.MagicHeaderInfo] = util.HashMap()
+    private[dotc] val magicHeaderCache: mutable.Map[SourceFile, WrappedSourceFile.MagicHeaderInfo] = mutable.Map.empty
 
     /** Was best effort file used during compilation? */
     private[core] var usedBestEffortTasty = false
@@ -1105,13 +1104,13 @@ object Contexts {
 
     /** The set of named types on which a currently active invocation
      *  of underlying during a controlled operation exists. */
-    private[core] val pendingUnderlying: util.HashSet[Type] = util.HashSet[Type]()
+    private[core] val pendingUnderlying: mutable.Set[Type] = mutable.Set.empty
 
     /** A map from ErrorType to associated message. We use this map
      *  instead of storing messages directly in ErrorTypes in order
      *  to avoid space leaks - the message usually captures a context.
      */
-    private[core] val errorTypeMsg: mutable.Map[Types.ErrorType, Message] = mutable.Map()
+    private[core] val errorTypeMsg: mutable.Map[Types.ErrorType, Message] = mutable.Map.empty
 
     // Phases state
 
@@ -1126,7 +1125,10 @@ object Contexts {
     /** Next denotation transformer id */
     private[core] var nextDenotTransformerId: Array[Periods.PhaseId] = uninitialized
 
-    private[core] var denotTransformers: Array[DenotTransformer] = uninitialized
+    /** For each phase id with a linked denotation transformer, what `goForward` needs to know about it; null for
+     *  other phase ids
+     */
+    private[core] var denotTransformers: Array[DenotTransformerInfo] = uninitialized
 
     /** Flag to suppress inlining, set after overflow */
     private[dotc] var stopInlining: Boolean = false

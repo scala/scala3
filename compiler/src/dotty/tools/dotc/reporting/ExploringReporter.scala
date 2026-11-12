@@ -6,17 +6,17 @@ import collection.mutable
 import core.Contexts.Context
 import Diagnostic.*
 
-/** A re-usable Reporter used in Contexts#test */
+/** A re-usable Reporter used in Contexts#explore */
 class ExploringReporter extends StoreReporter(null, fromTyperState = false):
   infos = new mutable.ListBuffer[Diagnostic]
 
   override def hasUnreportedErrors: Boolean =
     infos.nn.exists(_.isInstanceOf[Error])
 
-  override def removeBufferedMessages(using Context): List[Diagnostic] =
+  override def removeBufferedMessages: List[Diagnostic] =
     try infos.nn.toList finally reset()
 
-  override def mapBufferedMessages(f: Diagnostic => Diagnostic)(using Context): Unit =
+  override def mapBufferedMessages(f: Diagnostic => Diagnostic): Unit =
     infos.nn.mapInPlace(f)
 
   def reset(): Unit =

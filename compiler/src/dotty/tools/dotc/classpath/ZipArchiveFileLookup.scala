@@ -5,34 +5,30 @@ package dotty.tools.dotc.classpath
 
 
 import java.io.File
-import java.net.URL
 
-import dotty.tools.io.{ AbstractFile, FileZipArchive }
+import dotty.tools.io.AbstractFile
 import FileUtils.*
-import dotty.tools.io.ClassPath
 
 /**
  * A trait allowing to look for classpath entries of given type in zip and jar files.
  * It provides common logic for classes handling class and source files.
  * It's aware of things like e.g. META-INF directory which is correctly skipped.
  */
-trait ZipArchiveFileLookup[FileEntryType] extends ClassPath {
-  val zipFile: File
-  val release: String
-
-  override def asURLs: Seq[URL] = Seq(zipFile.toURI.toURL)
+private trait ZipArchiveFileLookup[FileEntryType] extends ClassPath {
+  protected val zipFile: File
+  protected val release: String
 
   private val archive = AbstractFile.getDirectory(zipFile.toPath, release).nn
 
-  override def packages(inPackage: String): Seq[PackageEntry] =
+  override def packages(inPackage: String): Iterable[String] =
     findDirEntry(inPackage) match {
       case None =>
         Seq.empty
       case Some(dirEntry) =>
-        dirEntry.iterator.filter(_.isPackage).map(e => PackageEntry(PackageNameUtils.entryName(inPackage, e.name))).toSeq
+        dirEntry.iterator.filter(_.isPackage).map(e => PackageNameUtils.entryName(inPackage, e.name)).toSeq
     }
 
-  protected def files(inPackage: String): Seq[FileEntryType] =
+  protected def files(inPackage: String): Iterable[FileEntryType] =
     findDirEntry(inPackage) match {
       case None =>
         Seq.empty
@@ -52,4 +48,7 @@ trait ZipArchiveFileLookup[FileEntryType] extends ClassPath {
 
   protected def createFileEntry(file: AbstractFile): FileEntryType
   protected def isRequiredFileType(file: AbstractFile): Boolean
+
+  override def searchLocations: Iterable[AbstractFile] =
+    Iterable(archive)
 }

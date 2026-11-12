@@ -112,9 +112,7 @@ object SepCheck:
     var directPeaks : Refs = emptyRefs
 
     private def double[T <: AnyRef : ClassTag](xs: Array[T]): Array[T] =
-      val xs1 = new Array[T](xs.length * 2)
-      xs.copyToArray(xs1)
-      xs1
+      Array.copyOf(xs, xs.length * 2)
 
     private def ensureCapacity(added: Int): Unit =
       if size + added > refs.length then
@@ -222,18 +220,23 @@ object SepCheck:
       completeFootprint.peaks
 
     /** The shared elements between the peak sets `refs` and `other`.
-     *  These are the core capabilities and LocalCap capabilities that appear
-     *  in a (possibly classified or readOnly) version in both sets and that
-     *  that appear in a non-readOnly version in at least one of the sets.
+     *  These are the core capabilities `r` such that `r` appears (possibly
+     *  classified or readOnly) in one set, the other set contains a capability
+     *  `s` (possibly classified or readOnly) where `s` covers `r`, and at least
+     *  one of the two is not readOnly. Two readOnly capabilities never conflict,
+     *  but a writer of `s` conflicts with a reader of anything inside `s`, and
+     *  a reader of `s` conflicts with a writer of anything inside `s`.
+     *  @see overlapWith, covers in Capability
      */
     private def sharedPeaks(other: Refs)(using Context): Refs =
       def common(refs1: Refs, refs2: Refs) =
         var acc: Refs = emptyRefs
         refs1.foreach: ref =>
-          if !ref.isReadOnly then
-            val coreRef = ref.stripRestricted.stripExcluded
-            if refs2.exists(_.stripRestricted.stripExcluded.stripReadOnly.coversLocalCap(coreRef)) then
-              acc += coreRef
+          val coreRef = ref.core
+          val isCovered = refs2.exists: ref2 =>
+            !(ref.isReadOnly && ref2.isReadOnly)
+            && ref2.core.coversLocalCap(coreRef)
+          if isCovered then acc += coreRef
         acc
       assert(refs.forall(_.isTerminalCapability))
       assert(other.forall(_.isTerminalCapability))
@@ -715,7 +718,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             then
               badParams += refSym
           case ref: ThisType =>
-            val encl = currentOwner.enclosingMethodOrClassOrObject
+            def enclMethod(sym: Symbol): Symbol =
+              val encl = sym.enclosingMethodOrClassOrObject
+              if encl.isAnonymousFunction then enclMethod(encl.owner) else encl
+            val encl = enclMethod(currentOwner)
             if !encl.is(Synthetic) && !encl.hasAnnotation(defn.ConsumeAnnot) then
               report.error(
                 em"""Separation failure: $descr enclosing instance of class ${ref.cls}.
@@ -832,7 +838,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
        */
       var toCheck: List[List[Type]] = Nil
 
-      private val seen = util.HashSet[Symbol]()
+      private val seen = mutable.Set.empty[Symbol]
 
       def apply(c: Captures, t: Type) =
         if variance < 0 then c

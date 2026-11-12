@@ -21,6 +21,7 @@ import reporting.{Suppression, Action, Profile, ActiveProfile, MessageFilter, No
 import reporting.Diagnostic, Diagnostic.Warning
 import rewrites.Rewrites
 import profile.Profiler
+import quoted.QuotesCache
 import printing.XprintMode
 import typer.ImplicitRunInfo
 import config.Feature
@@ -34,6 +35,8 @@ import scala.collection.mutable, mutable.ListBuffer
 import scala.io.Codec
 
 import Run.Progress
+import Comments.docCtx
+import inlines.Inlines.InlineTraitState
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.transform.MegaPhase
 import dotty.tools.dotc.transform.Pickler
@@ -169,7 +172,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     myUnits = us
 
   var suspendedUnits: ListBuffer[CompilationUnit] = ListBuffer.empty
-  var suspendedHints: mutable.Map[CompilationUnit, (String, Boolean)] = mutable.HashMap()
+  var suspendedHints: mutable.Map[CompilationUnit, (String, Boolean)] = mutable.Map.empty
 
   /** Were any units suspended in the typer phase? if so then pipeline tasty can not complete. */
   var suspendedAtTyperPhase: Boolean = false
@@ -204,7 +207,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   }
 
   /** The source files of all late entered symbols, as a set */
-  private val lateFiles = mutable.Set[AbstractFile]()
+  private val lateFiles = mutable.Set.empty[AbstractFile]
 
   /** A cache for static references to packages and classes */
   val staticRefs = util.EqHashMap[Name, Denotation](initialCapacity = 1024)
@@ -471,6 +474,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       val action = finalizeActions.remove(0)
       action()
     }
+    ctx.docCtx.foreach(_.removeStale())
     compiling = false
   }
 
@@ -614,9 +618,18 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       .setTyper(new Typer)
       .addMode(Mode.ImplicitsEnabled)
       .setTyperState(ctx.typerState.fresh(ctx.reporter))
+      // GADT constraints and inline trait origins recorded while compiling must not
+      // end up in the root context, which may be shared with later runs.
+      .setFreshGADTBounds
+      .setInlineTraitState(InlineTraitState())
     if ctx.settings.YexplicitNulls.value && !Feature.enabledBySetting(nme.unsafeNulls) then
       start = start.addMode(Mode.SafeNulls)
     ctx.initialize()(using start) // re-initialize the base context with start
+
+    // Cache unpickled quote templates for the whole run (keyed by the pickled TASTY
+    // bytes, stable per quote-site), so a macro that expands many times unpickles
+    // each of its quotes once per run rather than once per expansion.
+    QuotesCache.init(start)
 
     // `this` must be unchecked for safe initialization because by being passed to setRun during
     // initialization, it is not yet considered fully initialized by the initialization checker

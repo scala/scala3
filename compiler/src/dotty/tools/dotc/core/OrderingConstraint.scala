@@ -330,7 +330,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   extends TypeTraverser, ConstraintAwareTraversal[Unit]:
 
     var add: Boolean = compiletime.uninitialized
-    val seen = util.HashSet[LazyRef]()
+    val seen = mutable.Set.empty[LazyRef]
 
     override protected def hasBounds(param: TypeParamRef) =
       (param eq ignoreBinding) || super.hasBounds(param)
@@ -369,7 +369,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     def adjustReferenced(bound: Type, isLower: Boolean, add: Boolean) =
       adjuster.variance = if isLower then 1 else -1
       adjuster.add = add
-      adjuster.seen.clear(resetToInitial = false)
+      adjuster.seen.clear()
       adjuster.traverse(bound)
 
     /** Use an optimized strategy to adjust dependencies to account for the delta
@@ -557,8 +557,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         if underlying1 ne tp.underlying then underlying1 else tp
       case CapturingType(parent, refs) =>
         tp.derivedCapturingType(recur(parent), refs)
-      case tp: FlexibleType =>
-        tp.derivedFlexibleType(recur(tp.hi))
+      case tp @ FlexibleType(hi) =>
+        tp.derivedFlexibleType(recur(hi))
       case tp: AnnotatedType =>
         tp.derivedAnnotatedType(recur(tp.parent), tp.annot)
       case _ =>
@@ -754,7 +754,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case tp: TypeVar if contains(tp.origin) => withHard(tp)
     case tp: TypeParamRef if contains(tp)   => hardenTypeVars(typeVarOfParam(tp))
     case tp: AndOrType                      => hardenTypeVars(tp.tp1).hardenTypeVars(tp.tp2)
-    case tp: FlexibleType                   => hardenTypeVars(tp.hi)
+    case FlexibleType(hi)                   => hardenTypeVars(hi)
     case _                                  => this
 
   def remove(pt: TypeLambda)(using Context): This = {
@@ -924,7 +924,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
      */
     def checkForward(srcParam: TypeParamRef)(using Context) =
       new TypeTraverser with ConstraintAwareTraversal[Unit]:
-        val seen = util.HashSet[LazyRef]()
+        val seen = mutable.Set.empty[LazyRef]
         def traverse(t: Type): Unit = t match
           case param: TypeParamRef if param ne srcParam =>
             def check(deps: ReverseDeps, directDeps: List[TypeParamRef], depsName: String) =

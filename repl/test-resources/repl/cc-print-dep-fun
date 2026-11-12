@@ -34,9 +34,9 @@ def insideBox: Box[(x: A) -> B]
 scala> def insideBoxFresh: Box[(x: A^) -> B^{fresh}] = ???
 def insideBoxFresh: Box[(x: A^) -> B^{fresh}]
 scala> def polyFn: [T] => (x: A) -> T = ???
-def polyFn: [T] => (x: A) -> T
+def polyFn: [T] -> (x: A) -> T
 scala> def polyFnUsed: [T] => (a: A^) -> A^{a} = ???
-def polyFnUsed: [T] => (a: A^) -> A^{a}
+def polyFnUsed: [T] -> (a: A^) -> A^{a}
 scala> def ctxUnused: (x: A) ?-> B = ???
 def ctxUnused: (x: A) ?-> B
 scala> def ctxUsed(io: A^): (a: A^{io}) ?-> B = ???

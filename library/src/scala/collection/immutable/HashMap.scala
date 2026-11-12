@@ -779,7 +779,7 @@ private final class BitmapIndexedMapNode[K, +V](
           val value0 = this.getValue(index)
           if ((key0.asInstanceOf[AnyRef] eq key.asInstanceOf[AnyRef]) && (value0.asInstanceOf[AnyRef] eq value.asInstanceOf[AnyRef]))
             this
-          else copyAndSetValue(bitpos, key, value)
+          else copyAndSetValue(bitpos, value)
         } else this
       } else {
         val value0 = this.getValue(index)
@@ -979,7 +979,7 @@ private final class BitmapIndexedMapNode[K, +V](
 
   def nodeIndex(bitpos: Int) = bitCount(nodeMap & (bitpos - 1))
 
-  def copyAndSetValue[V1 >: V](bitpos: Int, newKey: K, newValue: V1): BitmapIndexedMapNode[K, V1] = {
+  def copyAndSetValue[V1 >: V](bitpos: Int, newValue: V1): BitmapIndexedMapNode[K, V1] = {
     val dataIx = dataIndex(bitpos)
     val idx = TupleLength * dataIx
 
@@ -1929,12 +1929,6 @@ private final class HashCollisionMapNode[K, +V ](
 
   override def containsKey(key: K, originalHash: Int, hash: Int, shift: Int): Boolean =
     this.hash == hash && indexOf(key) >= 0
-
-  def contains[V1 >: V](key: K, value: V1, hash: Int, shift: Int): Boolean =
-    this.hash == hash && {
-      val index = indexOf(key)
-      index >= 0 && (content(index)._2.asInstanceOf[AnyRef] eq value.asInstanceOf[AnyRef])
-    }
 
   def updated[V1 >: V](key: K, value: V1, originalHash: Int, hash: Int, shift: Int, replaceValue: Boolean): MapNode[K, V1] = {
     val index = indexOf(key)

@@ -140,22 +140,23 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   /** A set containing symbols whose denotation is in train of being updated
    *  Used to suppress transforming the denotations of these symbols.
    */
-  private val toBeUpdated = new mutable.HashSet[Symbol]
+  private val toBeUpdated = mutable.Set.empty[Symbol]
 
   /** Drops `private` from the flags of `symd` provided it is
    *  a parameter accessor that's not `constructorOnly` or `uncheckedCaptured`
    *  and that contains at least one @retains in co- or in-variant position.
    *  The @retains might be implicit for a type deriving from `Capability`.
+   *  `@retainsByName` counts as well.
    */
   private def newFlagsFor(symd: SymDenotation)(using Context): FlagSet =
 
     object containsCovarRetains extends TypeAccumulator[Boolean]:
-      val seen = util.HashSet[Symbol]()
+      val seen = mutable.Set.empty[Symbol]
       def apply(x: Boolean, tp: Type): Boolean =
         if x then true
         else if tp.derivesFromCapability && variance >= 0 then true
         else tp.dealiasKeepAnnots match
-          case AnnotatedType(_, ann) if ann.symbol.isRetains && variance >= 0 => true
+          case AnnotatedType(_, ann) if ann.symbol.isRetainsLike && variance >= 0 => true
           case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
             seen += t.symbol
             apply(x, t.info.bounds.hi)
@@ -289,7 +290,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else tp
       case _ => tp
 
-    /** Pull out an embedded capture set from a part of `tp` */
+    /** Pull out an embedded capture set from a part of `tp`
+     *  Note: There is no simplification for intersection types. We can't reliably
+     *  intersect capture sets during Setup because subCaptures needs captureSetOfInfo,
+     *  which is not always known yet. Consequently, subCaptures can mispredict
+     *  to false, which would create intersections that are too small. Unions don't
+     *  have that problem since all a mispredicted subCaptures would lead to is
+     *  add a redundant element to a capture set.
+     */
     def normalizeCaptures(tp: Type)(using Context): Type = tp match
       case tp @ RefinedType(parent @ CapturingType(parent1, refs), rname, rinfo) =>
         CapturingType(tp.derivedRefinedType(parent1, rname, rinfo), refs, parent.isBoxed)
@@ -299,11 +307,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             CapturingType(tp.derivedRecType(parent1), refs, parent.isBoxed)
           case _ =>
             tp // can return `tp` here since unlike RefinedTypes, RecTypes are never created
-                // by `mapInferred`. Hence if the underlying type admits capture variables
-                // a variable was already added, and the first case above would apply.
-      case AndType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
-        assert(tp1.isBoxed == tp2.isBoxed)
-        CapturingType(AndType(parent1, parent2), refs1 ** refs2, tp1.isBoxed)
+               // by `mapInferred`. Hence if the underlying type admits capture variables
+               // a variable was already added, and the first case above would apply.
       case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
         assert(tp1.isBoxed == tp2.isBoxed)
         CapturingType(OrType(parent1, parent2, tp.isSoft), refs1 ++ refs2, tp1.isBoxed)
@@ -405,14 +410,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             addVar(mapFollowingAliases(tp), tp)
     }
 
-    try
+    printOnAssertionError(i"error while mapping inferred $tp"):
       ccState.withNoVarsMapped:
         mapInferred(inCaptureRefinement = false)(tp)
       .tap: tp1 =>
         if tp1 ne tp then capt.println(i"expanded inferred in ${ctx.owner}: $tp  -->  $tp1")
-    catch case ex: AssertionError =>
-      println(i"error while mapping inferred $tp")
-      throw ex
   }
 
   /** Transform an explicitly given type by performing the following transformation
@@ -592,9 +594,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   extension (sym: Symbol) def nextInfo(using Context): Type =
     atPhase(thisPhase.next)(sym.info)
 
-  val capturedBy: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
+  val capturedBy: mutable.Map[Symbol, Symbol] = mutable.Map.empty
 
-  val anonFunCallee: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
+  val anonFunCallee: mutable.Map[Symbol, Symbol] = mutable.Map.empty
 
   /** A traverser that adds knownTypes and updates symbol infos */
   def setupTraverser(checker: CheckerAPI) = new TreeTraverserWithPreciseImportContexts:
@@ -756,14 +758,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         def paramsToCap(psymss: List[List[Symbol]], mt: Type)(using Context): Type = mt match
           case mt: MethodType =>
-            try
+            printOnAssertionError(i"error while mapping params ${mt.paramInfos} of $sym"):
               mt.derivedLambdaType(
                 paramInfos =
                   psymss.head.lazyZip(mt.paramInfos).map(localCapToGlobal),
                 resType = paramsToCap(psymss.tail, mt.resType))
-            catch case ex: AssertionError =>
-              println(i"error while mapping params ${mt.paramInfos} of $sym")
-              throw ex
           case mt: PolyType =>
             mt.derivedLambdaType(resType = paramsToCap(psymss.tail, mt.resType))
           case _ => mt
@@ -1088,7 +1087,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 if !r.isTerminalCapability
               yield r
             val remaining = CaptureSet(others*)
-            check(remaining, remaining)
+            if remaining.accountsFor(ref) then
+              // Elements that `ref` subsumes but not vice versa, such as projections of `ref`,
+              // are redundant themselves. They should not make `ref` redundant together, as in
+              // `{x, x.only[C], x.except[C]}`, since dropping `ref` would keep the pieces
+              // instead of the whole.
+              val notBelow = others.filterNot(r => ref.subsumes(r) && !r.subsumes(ref))
+              val dom = if notBelow.length == others.length then remaining else CaptureSet(notBelow*)
+              if (dom eq remaining) || dom.accountsFor(ref) then
+                report.warning(em"redundant capture: $dom already accounts for $ref", pos)
       end for
     catch case ex: IllegalCaptureRef =>
       report.error(em"Illegal capture reference: ${ex.getMessage}", tpt.srcPos)

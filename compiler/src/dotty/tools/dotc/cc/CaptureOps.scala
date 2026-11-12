@@ -19,19 +19,26 @@ import config.Feature
 import NameKinds.{TryOwnerName, DefaultGetterName}
 import TypeOps.AsSeenFromMap
 import typer.ProtoTypes.WildcardSelectionProto
+import scala.collection.mutable
 
 /** Are we at checkCaptures phase? */
 def isCaptureChecking(using Context): Boolean =
   ctx.phaseId == Phases.checkCapturesPhaseId
 
-/** Are we in the CheckCaptures or Setup phase? */
+/** Are we in the Setup phase preceding CheckCaptures? */
+def isCaptureSetup(using Context): Boolean =
+  ctx.phaseId == Phases.checkCapturesPhaseId - 1 && ccState.iterationId > 0
+    // Note: just checking phase id is not enough since Setup would
+    // also be the phase after pattern matcher.
+
+/** Are we in the CheckCaptures or Setup phase?
+ *  Optimized version of `isCaptureChecking || isCaptureSetup
+ */
 def isCaptureCheckingOrSetup(using Context): Boolean =
   val ccId = Phases.checkCapturesPhaseId
   val ctxId = ctx.phaseId
-  ctxId == ccId
-  || ctxId == ccId - 1 && ccState.iterationId > 0
-    // Note: just checking phase id is not enough since Setup would
-    // also be the phase after pattern matcher.
+  ctxId == ccId || ctxId == ccId - 1 && ccState.iterationId > 0
+
 
 /** A dependent function type with given arguments and result type
  *  TODO Move somewhere else where we treat all function type related ops together.
@@ -495,14 +502,14 @@ extension (tp: Type)
     tp.spanCaptureSet.elems.filter(_.core.isInstanceOf[LocalCap]).toList
 
   /** If classifier `clsfier` exists: A localCap instance with this classifier,
-   *  possibly wrapped in a readOnly.
+   *  possibly wrapped in a readOnly. The classifier is frozen, so that it
+   *  cannot be narrowed later by comparisons with classified capture sets.
    */
   def impliedCaptures(clsfier: Symbol, contributing: List[Symbol], readOnly: => Boolean)(using Context): CaptureSet =
     clsfier match
     case clsfier: ClassSymbol =>
       val lcap = LocalCap(Origin.NewInstance(tp, contributing))
-      if !clsfier.isTopClassifier then
-        lcap.hiddenSet.adoptClassifier(clsfier)
+      lcap.adoptClassifier(clsfier, freeze = true)
       (if readOnly then lcap.readOnly else lcap).singletonCaptureSet
     case _ =>
       CaptureSet.empty
@@ -511,8 +518,7 @@ extension (tp: Type)
    *  result type?
    */
   def hasCapInResult(using Context): Boolean =
-    val (mt: MethodicType) = tp.stripPoly.runtimeChecked
-    mt.resType.spanCaptureSet.containsGlobalOrLocalCap
+    tp.asInstanceOf[MethodOrPoly].resType.spanCaptureSet.containsGlobalOrLocalCap
 
   /** The implied captures of a lambda that come from its result type.
    *  This is the set that needs to be added to a lambda type to ensure
@@ -642,8 +648,10 @@ extension (cls: ClassSymbol) {
   }
 
   def creationCapset(using Context)(core: Type = cls.appliedRef): CaptureSet =
-    if cls.derivesFromCapability
-    then LocalCap(Origin.NewInstance(core, Nil)).singletonCaptureSet
+    if cls.derivesFromCapability then
+      val lcap = LocalCap(Origin.NewInstance(core, Nil))
+      lcap.adoptClassifier(cls.classifier, freeze = true)
+      lcap.singletonCaptureSet
     else cls.capturesImpliedByFields(core).refs
 
   /** Map locals set with an as-seen-from relative to the prefix path of the created class
@@ -798,7 +806,7 @@ extension (sym: Symbol) {
    */
   def isExemptFromExplicitChecks(using Context): Boolean =
     sym.isLocalToCompilationUnit
-    || sym.isScalaDocSnippet
+    || sym.ownersIterator.exists(_.isScalaDocSnippet)
     || sym.name.isReplWrapperName
     || sym.isConstructor && sym.owner.name.isReplWrapperName
     || ctx.owner.enclosingPackageClass.isEmptyPackage
@@ -999,7 +1007,7 @@ object ContainsParam:
 /** A class encapsulating the accumulator logic needed for `CaptureSet.ofTypeDeeply`.
  */
 abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
-  val seen = util.HashSet[Symbol]()
+  val seen = mutable.Set.empty[Symbol]
 
   protected def capturingCase(acc: T, parent: Type, refs: CaptureSet, boxed: Boolean): T
 

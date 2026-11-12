@@ -11,7 +11,7 @@ import scala.io.Codec
 import Chars.*
 
 import scala.annotation.internal.sharable
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.ArrayBuilder
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.util.chaining.*
 
@@ -37,58 +37,59 @@ object WrappedSourceFile:
       case _ => sourceFile.atSpan(span)
 
   private def lookupMagicHeader(sourceFile: SourceFile)(using Context): MagicHeaderInfo =
-    val cache = ctx.base.magicHeaderCache
-    cache.lookup(sourceFile) match
-      case null =>
-        val magicHeader = ctx.settings.YmagicOffsetHeader.value
-        val result =
-          if magicHeader.isEmpty then NoHeader
-          else
-            val text = new String(sourceFile.content)
-            val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
-            val regex = s"(?m)^$headerQuoted:(.+)$$".r
-            regex.findFirstMatchIn(text) match
-              case Some(m) =>
-                val sourceStartOffset = sourceFile.nextLine(m.start)
-                val name = m.group(1).nn
-                val src = ctx.getSource(name)
-                val file = src.file
-                if file != null && file.exists then
-                  HasHeader(sourceStartOffset, src)
-                else
-                  report.warning(em"original source file not found: $name")
-                  NoHeader
-              case None => NoHeader
-        cache(sourceFile) = result
-        result
-      case result => result
+    ctx.base.magicHeaderCache.getOrElseUpdate(sourceFile, {
+      val magicHeader = ctx.settings.YmagicOffsetHeader.value
+      if magicHeader.isEmpty then NoHeader
+      else
+        val text = sourceFile.textContent()
+        val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
+        val regex = s"(?m)^$headerQuoted:(.+)$$".r
+        regex.findFirstMatchIn(text) match
+          case Some(m) =>
+            val sourceStartOffset = sourceFile.nextLine(m.start)
+            val name = m.group(1).nn
+            val src = ctx.getSource(name)
+            val file = src.file
+            if file != null && file.exists then
+              HasHeader(sourceStartOffset, src)
+            else
+              report.warning(em"original source file not found: $name")
+              NoHeader
+          case None => NoHeader
+    })
 
 class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec: Codec) extends interfaces.SourceFile {
-  private var myContent: Array[Char] | Null = null
+  private var myContent: String | Null = null
 
   private var _maybeIncomplete: Boolean = false
 
   def maybeIncomplete: Boolean = _maybeIncomplete
 
+  private var cachedCharArrayContent: Array[Char] | Null = null
+  @deprecated("Use `textContent` to not require a copy of the data.")
+  override def content(): Array[Char] =
+    initialize(cachedCharArrayContent, cachedCharArrayContent = _, textContent().toCharArray)
+
   /** The contents of the original source file. Note that this can be empty, for example when
    * the source is read from Tasty. */
-  def content(): Array[Char] =
-    if file == null then Array.emptyCharArray
+  override def textContent(): String =
+    if file == null then ""
     else
       initialize(myContent, myContent = _,
-        try new String(file.toByteArray, codec.charSet).toCharArray
-        catch case _: FileSystemException => Array.empty[Char]
+        try new String(file.toByteArray, codec.charSet)
+        catch case _: FileSystemException => ""
       )
 
   override def name: String =
     if file eq null then "" else file.name
-  def ext: FileExtension =
+  val ext: FileExtension =
     if file eq null then FileExtension.Empty else file.ext
   override def path: String =
     if file eq null then "" else file.path
   @threadUnsafe lazy val pathRelativeToSourceRoot: String =
     if file eq null then
-      throw new AssertionError(s"pathRelativeToSourceRoot called on a missing file")
+      // While this should not happen, it currently does due to known definitions being loaded without a source file
+      ""
     else if file.isVirtual || sourceRoot.isVirtual then
       // This can happen when evaluating debug expressions with fake in-memory files
       file.path
@@ -122,14 +123,14 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
 
   override def hashCode: Int = if file eq null then 0 else file.hashCode
 
-  def apply(idx: Int): Char = content().apply(idx)
+  def apply(idx: Int): Char = textContent().charAt(idx)
 
   /** length of the original source file
-   * Note that when the source is from Tasty, content() could be empty even though length > 0.
-   * Use content().length to determine the length of content(). */
+   * Note that when the source is from Tasty, textContent() could be empty even though length > 0.
+   * Use textContent().length to determine the length of content(). */
   def length: Int =
     if lineIndicesCache ne null then lineIndicesCache.last
-    else content().length
+    else textContent().length
 
   /** true for all source files except `NoSource` */
   def exists: Boolean = true
@@ -139,9 +140,10 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
     else NoSourcePosition
 
   private def calculateLineIndicesFromContents() = {
-    val cs = content()
-    val buf = new ArrayBuffer[Int]
-    buf += 0
+    val cs = textContent()
+    val buf = new ArrayBuilder.ofInt // unboxed, unlike ArrayBuffer[Int]
+    buf.sizeHint(cs.length / 30 + 2) // guess a short average line length to avoid regrowing
+    buf.addOne(0)
     var i = 0
     while i < cs.length do
       val isLineBreak =
@@ -149,10 +151,10 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
         // don't identify the CR in CR LF as a line break, since LF will do.
         if ch == CR then i + 1 == cs.length || cs(i + 1) != LF
         else isLineBreakChar(ch)
-      if isLineBreak then buf += i + 1
+      if isLineBreak then buf.addOne(i + 1)
       i += 1
-    buf += cs.length // sentinel, so that findLine below works smoother
-    buf.toArray
+    buf.addOne(cs.length) // sentinel, so that findLine below works smoother
+    buf.result()
   }
 
   private var lineIndicesCache: Array[Int] = uninitialized
@@ -208,7 +210,10 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
 
   /** The content of the line containing position `offset` */
   def lineContent(offset: Int): String =
-    content.slice(startOfLine(offset), nextLine(offset)).mkString
+    if textContent.isEmpty then
+      ""
+    else
+      textContent.substring(startOfLine(offset), nextLine(offset))
 
   /** The column corresponding to `offset`, starting at 0 */
   def column(offset: Int): Int = {
@@ -220,8 +225,9 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
   def startColumnPadding(offset: Int): String = {
     var idx = startOfLine(offset)
     val pad = new StringBuilder
+    val text = textContent()
     while (idx != offset) {
-      pad.append(if (idx < content().length && content()(idx) == '\t') '\t' else ' ')
+      pad.append(if idx < text.length && text(idx) == '\t' then '\t' else ' ')
       idx += 1
     }
     pad.result()

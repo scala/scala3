@@ -489,7 +489,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     if(i != 0) i else ordering.compare(key, node.key)
   }
 
-  @`inline` private def compare(key: K, hash: Int, node: RBNode): Int = {
+  @`inline` private def compare(key: K, @unused hash: Int, node: RBNode): Int = {
     /*val i = hash - node.hash
     if(i != 0) i else*/ ordering.compare(key, node.key)
   }
@@ -799,7 +799,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     if(i != 0) i else ord.compare(key, node.key)
   }
 
-  @`inline` private def compare[K, V](key: K, hash: Int, node: RBNode[K, V])(implicit ord: Ordering[K]): Int = {
+  @`inline` private def compare[K, V](key: K, @unused hash: Int, node: RBNode[K, V])(implicit ord: Ordering[K]): Int = {
     /*val i = hash - node.hash
     if(i != 0) i else*/ ord.compare(key, node.key)
   }

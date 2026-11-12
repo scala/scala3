@@ -27,8 +27,10 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
 
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
+  private val myIsJava: Boolean = source.ext.isJava // `source` and `ext` are immutable, so cache the answer
+
   /** Is this the compilation unit of a Java file */
-  def isJava: Boolean = source.ext.isJava
+  def isJava: Boolean = myIsJava
 
   /** Is this the compilation unit of a Java file, or TASTy derived from a Java file */
   def typedAsJava: Boolean =
@@ -44,7 +46,7 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   var sourceVersion: Option[SourceVersion] = None
 
   /** Pickled TASTY binaries, indexed by class. */
-  var pickled: Map[ClassSymbol, () => Array[Byte]] = Map()
+  var pickled: Map[ClassSymbol, () => Array[Byte]] = Map.empty
 
   /** The fresh name creator for the current unit.
    *  FIXME(#7661): This is not fine-grained enough to enable reproducible builds,
@@ -56,6 +58,12 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
    *  The information is used in phase `Inlining` in order to avoid traversing trees that need no transformations.
    */
   var needsInlining: Boolean = false
+
+  /** Set to `true` if there are inline traits (with or without Specialized context bounds)
+   *  This is used by:
+   *  DesugarSpecializedTraits, SpecializeInlineTraits, PruneInlineTraits
+   */
+  var hasSpecializations: Boolean = false
 
   var hasMacroAnnotations: Boolean = false
 
@@ -212,7 +220,7 @@ object CompilationUnit {
       if tree.symbol.is(Flags.Inline) then
         containsInline = true
       tree match
-        case _: tpd.Quote =>
+        case _: tpd.Quote | _: tpd.QuotePattern =>
           containsQuote = true
         case tree: tpd.Apply if tree.symbol == defn.QuotedTypeModule_of =>
           containsQuote = true

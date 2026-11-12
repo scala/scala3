@@ -16,7 +16,7 @@ import scala.language.`2.13`
 import java.util.concurrent.Executor
 import java.util.Objects
 import scala.util.control.NonFatal
-import scala.annotation.{switch, tailrec}
+import scala.annotation.{nowarn, switch, tailrec}
 
 /** Marker trait to indicate that a Runnable is Batchable by BatchingExecutors */
 trait Batchable {
@@ -167,6 +167,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
     }
 
     /* LOGIC FOR ASYNCHRONOUS BATCHES */
+    @nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
     override final def apply(prevBlockContext: BlockContext): Throwable | Null = try {
       parentBlockContext = prevBlockContext
       runN(BatchingExecutorStatics.runLimit)
@@ -183,6 +184,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
      * Only attempt to resubmit when there are `Runnables` left to process.
      * Note that `cause` can be `null`.
      */
+    @nowarn("msg=Catching Throwable can lead to unexpected behavior") // backwards compat
     private final def resubmit(cause: Throwable | Null): Throwable | Null =
       if (this.size > 0) {
         try { submitForExecution(this); cause } catch {

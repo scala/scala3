@@ -22,7 +22,14 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
   protected val args = summon[DocContext].args
   val staticSite = summon[DocContext].staticSiteContext
 
-  val effectiveMembers = members
+  // An inherited classlike keeps the DRI of its definition, which only has a page if the
+  // definition is documented too (it isn't when it is in a private parent, for example).
+  val effectiveMembers =
+    def rendered(m: Member): Seq[DRI] =
+      if m.inheritedFrom.nonEmpty && m.kind.isInstanceOf[Classlike] then Nil
+      else m.dri +: m.members.flatMap(rendered)
+    val renderedDris = rendered(rootPackage).toSet
+    members.filter((dri, _) => renderedDris(dri))
 
   protected def memberPage(member: Member): Page =
     val childrenPages = member.members.filter(_.needsOwnPage)

@@ -1,0 +1,6 @@
+# compile library a
+> a/compile
+# make a's sources unavailable, like a published library
+$ delete a/Foo.scala
+# compile b with -Xsemanticdb against a's classes; this used to crash extractSemanticDB
+> b/compile

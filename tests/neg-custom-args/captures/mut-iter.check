@@ -1,0 +1,19 @@
+-- Error: tests/neg-custom-args/captures/mut-iter.scala:17:40 ----------------------------------------------------------
+17 |  def foreach(op: T => Unit) = iterator.foreach(op)  // error
+   |                               ^^^^^^^^^^^^^^^^
+   |                               Cannot call update method foreach of Iterator[T]^{IterableBad.this.rd}
+   |                               since its capture set {IterableBad.this.rd} is read-only.
+-- Error: tests/neg-custom-args/captures/mut-iter.scala:18:42 ----------------------------------------------------------
+18 |  def exists(op: T => Boolean) = iterator.exists(op) // error
+   |                                 ^^^^^^^^^^^^^^^
+   |                                 Cannot call update method exists of Iterator[T]^{IterableBad.this.rd}
+   |                                 since its capture set {IterableBad.this.rd} is read-only.
+-- [E164] Declaration Error: tests/neg-custom-args/captures/mut-iter.scala:21:6 ----------------------------------------
+21 |  def iterator: Iterator[T]^ /* = new Iterator[T] { ... } */ // error
+   |      ^
+   |      error overriding method iterator in trait IterableOnce of type -> Iterator[T]^{IterableBad2.this};
+   |        method iterator of type -> Iterator[T]^{fresh} has incompatible type
+   |
+   |      where:    fresh is a root capability associated with the result type of -> Iterator[T]^
+   |
+   | longer explanation available when compiling with `-explain`

@@ -95,7 +95,7 @@ class PickleQuotes extends MacroTransform {
           val (holeContents, quote1) = extractHolesContents(quote)
           val quote2 = encodeTypeArgs(quote1)
           val holeContents1 = holeContents.map(transform(_))
-          PickleQuotes.pickle(quote2, quotes, holeContents1)
+          PickleQuotes.pickle(quote2, quotes, holeContents1)(using ctx.withSource(quote.source))
         case tree: DefDef if !tree.rhs.isEmpty && tree.symbol.isInlineMethod =>
           tree
         case _ =>
@@ -105,7 +105,7 @@ class PickleQuotes extends MacroTransform {
   private def extractHolesContents(quote: tpd.Quote)(using Context): (List[Tree], tpd.Quote) =
     class HoleContentExtractor extends Transformer:
       private val holeContents = List.newBuilder[Tree]
-      private val stagedClasses = mutable.HashSet.empty[Symbol]
+      private val stagedClasses = mutable.Set.empty[Symbol]
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
         tree match
           case tree @ Hole(isTerm, _, _, content) =>

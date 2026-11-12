@@ -502,7 +502,7 @@ object JavaParsers {
             flags |= Flags.Final
             in.nextToken()
           case DEFAULT =>
-            flags |= Flags.DefaultMethod
+            flags |= Flags.JavaDefaultMethod
             in.nextToken()
           case NATIVE =>
             addAnnot(scalaDot(jtpnme.NATIVEkw))
@@ -656,7 +656,7 @@ object JavaParsers {
           val vparams = formalParams()
           if (!isVoid) rtpt = optArrayBrackets(rtpt)
           optThrows()
-          val bodyOk = !inInterface || mods.isOneOf(Flags.DefaultMethod | Flags.JavaStatic | Flags.Private)
+          val bodyOk = !inInterface || mods.isOneOf(Flags.JavaDefaultMethod | Flags.JavaStatic | Flags.Private)
           val body =
             if (bodyOk && in.token == LBRACE)
               methodBody()
@@ -897,6 +897,11 @@ object JavaParsers {
         fieldsByName -= name
       end for
 
+      def isVarargComponent(tpt: Tree) = tpt match
+        case PostfixOp(_, Ident(tpnme.raw.STAR)) => true
+        case _ => false
+      val isVararg = header.lastOption.exists(v => isVarargComponent(v.tpt))
+
       // accessor for record's vararg field  (T...) returns array type (T[])
       def adaptVarargsType(tpt: Tree) = tpt match
         case PostfixOp(tpt2, Ident(tpnme.raw.STAR)) => arrayOf(tpt2)
@@ -922,8 +927,12 @@ object JavaParsers {
             tparams = tparams,
             needsDummyConstr = true
           )
-        ).withMods(mods.withFlags(Flags.JavaDefined | Flags.Final))
+        ).withMods(mods
+          .withFlags(Flags.JavaDefined | Flags.Final)
+          // Record the component names and whether it's vararg, see `Applications.javaRecordFields`
+          .withAddedAnnotation(ast.untpd.JavaRecordFieldsAnnot(isVararg, header.map(_.name.toString))))
       }
+
       addCompanionObject(statics, recordTypeDef)
     end recordDecl
 
@@ -1037,7 +1046,7 @@ object JavaParsers {
           unimplementedExpr).withMods(Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method)),
         DefDef(
           nme.valueOf,
-          List(List(makeParam("x".toTermName, TypeTree(StringType)))),
+          List(List(makeParam("name".toTermName, TypeTree(StringType)))), // as named by javac (JLS 8.9.3)
           enumType,
           unimplementedExpr).withMods(Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method)))
       accept(RBRACE)
@@ -1111,10 +1120,12 @@ object JavaParsers {
       val buf = ListBuffer.empty[Tree]
       var start = in.offset
       val leadingAnnots = if (in.token == AT) annotations() else Nil
+      var packageAnnots: List[Tree] = Nil
       val pkg: RefTree =
         if in.token == PACKAGE then
           if leadingAnnots.nonEmpty then
             start = in.offset
+            packageAnnots = leadingAnnots
           accept(PACKAGE)
           val pkg = qualId()
           accept(SEMI)
@@ -1137,6 +1148,14 @@ object JavaParsers {
       if buf.isEmpty then
         while (in.token == IMPORT)
           buf ++= importDecl()
+      // Annotations of a package declaration (in `package-info.java`) are kept on a synthetic
+      // `package-info` interface, which is how they are represented in class files. It comes
+      // after the imports, which the annotations may refer to.
+      if packageAnnots.nonEmpty then
+        buf += atSpan(start) {
+          TypeDef(tpnme.PACKAGE_INFO, makeTemplate(List(ObjectTpt()), Nil, Nil, needsDummyConstr = false))
+            .withMods(Modifiers(Flags.JavaInterface).withAnnotations(packageAnnots))
+        }
       while (in.token != EOF && in.token != RBRACE) {
         while (in.token == SEMI) in.nextToken()
         if (in.token != EOF) {

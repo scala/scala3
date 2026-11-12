@@ -17,7 +17,6 @@ import scala.language.`2.13`
 import language.experimental.captureChecking
 
 import scala.collection.immutable.NumericRange
-import scala.language.implicitConversions
 import scala.collection.mutable.Builder
 import scala.annotation.unchecked.uncheckedVariance
 import scala.reflect.ClassTag
@@ -405,7 +404,7 @@ trait StrictOptimizedSeqFactory[+CC[A] <: SeqOps[A, Seq, Seq[A]] & caps.Pure] ex
 trait SpecificIterableFactory[-A, +C] extends Factory[A, C] {
   def empty: C
   def apply(xs: A*): C = fromSpecific(xs)
-  def fill(n: Int)(elem: => A): C = fromSpecific(new View.Fill(n)(elem))
+  def fill(n: Int)(elem: => A): C^{elem} = fromSpecific(new View.Fill(n)(elem))
   def newBuilder: Builder[A, C]
 
   implicit def specificIterableFactory: Factory[A, C] = this

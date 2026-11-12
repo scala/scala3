@@ -6,6 +6,7 @@ import Contexts.*
 import Decorators.em
 import config.PathResolver
 import dotty.tools.io.*
+import dotty.tools.dotc.classpath.ClassPath
 import Phases.*
 import config.Printers.plugins.{ println => debug }
 import config.Properties
@@ -144,10 +145,12 @@ object Plugins {
    *  Note: this algorithm is factored out for unit test.
    */
   def schedule(plan: List[List[Phase]], pluginPhases: List[PluginPhase]): List[List[Phase]] = {
+    if pluginPhases.isEmpty then return plan
+
     import scala.collection.mutable.{ Map => MMap }
     type OrderingReq = (Set[String], Set[String])
 
-    val orderRequirements = MMap[String, OrderingReq]()
+    val orderRequirements = MMap.empty[String, OrderingReq]
 
     // 1. already inserted phases don't need constraints themselves.
     // 2. no need to propagate beyond boundary of inserted phases, as the information
@@ -182,7 +185,7 @@ object Plugins {
     // propagate ordering constraint : reflexivity
     pluginPhases.foreach { phase =>
 
-      var (runsAfter, runsBefore) = orderRequirements(phase.phaseName)
+      val (runsAfter, runsBefore) = orderRequirements(phase.phaseName)
 
       // propagate transitive constraints to related phases
       runsAfter.filter(!isInserted(_)).foreach { phaseName =>

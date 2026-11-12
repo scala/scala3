@@ -17,9 +17,8 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.backend.jvm.ClassNode1
 import dotty.tools.backend.jvm.analysis.AnalysisUtils.LambdaMetaFactoryCall
-import dotty.tools.dotc.classpath.{AggregateClassPath, CtSymClassPath, JrtClassPath}
+import dotty.tools.dotc.classpath.ClassPath
 import dotty.tools.io
-import dotty.tools.io.ClassPath
 
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
@@ -33,13 +32,13 @@ import org.objectweb.asm.{Attribute, ClassReader, Type}
  */
 class BCodeRepository(classPath: ClassPath) {
 
-  type ClassAndModuleNodes = (ClassNode, Option[ModuleNode])
+  private type ClassAndModuleNodes = (ClassNode, Option[ModuleNode])
 
   /**
    * Contains ClassNodes and the canonical path of the source file path of classes being compiled in
    * the current compilation run.
    */
-  val compilingClasses: concurrent.Map[InternalName, (ClassAndModuleNodes, String)] = concurrent.TrieMap.empty
+  val compilingClasses: concurrent.Map[InternalName, (ClassNode, String)] = concurrent.TrieMap.empty
 
   /**
   * Prevent the code repository from growing too large. Profiling reveals that the average size
@@ -57,10 +56,8 @@ class BCodeRepository(classPath: ClassPath) {
   private val parsedClasses: mutable.Map[InternalName, Either[ClassNotFound, ClassAndModuleNodes]] =
     FifoCache[InternalName, Either[ClassNotFound, ClassAndModuleNodes]](maxCacheSize, threadsafe = true)
 
-  def add(classNode: ClassNode, sourceFilePath: Option[String]): Unit = sourceFilePath match {
-    case Some(path) if path != "<no file>" => compilingClasses(classNode.name) = ((classNode, None), path)
-    case _                                 => parsedClasses(classNode.name) = Right(classNode, None)
-  }
+  def add(classNode: ClassNode, sourceFilePath: String): Unit =
+    compilingClasses(classNode.name) = (classNode, sourceFilePath)
 
   private def parsedClassNode(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
     parsedClasses.getOrElseUpdate(internalName, parseClass(internalName))
@@ -72,7 +69,7 @@ class BCodeRepository(classPath: ClassPath) {
    */
   def classNodeAndSourceFilePath(internalName: InternalName): Either[ClassNotFound, (ClassAndModuleNodes, Option[String])] = {
     compilingClasses.get(internalName) match {
-      case Some((c, p)) => Right((c, Some(p)))
+      case Some((c, p)) => Right(((c, None), Some(p)))
       case _            => parsedClassNode(internalName).map((_, None))
     }
   }
@@ -83,7 +80,7 @@ class BCodeRepository(classPath: ClassPath) {
    */
   def classNode(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
     compilingClasses.get(internalName) match {
-      case Some((c, _)) => Right(c)
+      case Some((c, _)) => Right((c, None))
       case None         => parsedClassNode(internalName)
     }
   }
@@ -92,7 +89,7 @@ class BCodeRepository(classPath: ClassPath) {
    * The field node for a field matching `name` and `descriptor`, accessed in class `classInternalName`.
    * The declaration of the field may be in one of the superclasses.
    *
-   * @return The [[FieldNode]] of the requested field and the [[InternalName]] of its declaring
+   * @return The FieldNode of the requested field and the InternalName of its declaring
    *         class, or an error message if the field could not be found
    */
   def fieldNode(classInternalName: InternalName, name: String, descriptor: String): Either[FieldNotFound, (FieldNode, InternalName)] = {
@@ -148,7 +145,7 @@ class BCodeRepository(classPath: ClassPath) {
    * Note that the returned method may be abstract (ACC_ABSTRACT), native (ACC_NATIVE) or signature
    * polymorphic (methods `invoke` and `invokeExact` in class `MethodHandles`).
    *
-   * @return The [[MethodNode]] of the requested method and the [[InternalName]] of its declaring
+   * @return The MethodNode of the requested method and the InternalName of its declaring
    *         class, or an error message if the method could not be found. An error message is also
    *         returned if method resolution results in multiple default methods.
    */
@@ -278,23 +275,10 @@ class BCodeRepository(classPath: ClassPath) {
     }
   }
 
-  /* Create a class path for the backend, based on the given class path.
-   * Used to make classes available to the inliner's bytecode repository.
-   * In particular, if ct.sym is used for compilation, replace it with jrt.
-   */
-  private lazy val optimizerClassPath = classPath match {
-    case cp@AggregateClassPath(entries) if entries.head.isInstanceOf[CtSymClassPath] =>
-      JrtClassPath(release = None) match {
-        case Some(jrt) => AggregateClassPath(entries.drop(1).prepended(jrt))
-        case _ => cp
-      }
-    case cp => cp
-  }
-
   private def parseClass(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
     try
       val fullName = internalName.replace('/', '.')
-      optimizerClassPath.findClassFile(fullName) match
+      classPath.findClassFile(fullName) match
         case Some(classFile) =>
           val classNode = new ClassNode1
           val classReader = new ClassReader(classFile.toByteArray)
@@ -312,7 +296,7 @@ class BCodeRepository(classPath: ClassPath) {
           //   https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.7.11
           //   https://jcp.org/aboutJava/communityprocess/final/jsr045/index.html
           removeLineNumbers(classNode)
-          val moduleNode = optimizerClassPath.findClassFile("module-info.class").map(f =>
+          val moduleNode = classPath.findClassFile("module-info.class").map(f =>
             val node = new ClassNode1
             val moduleReader = new ClassReader(f.toByteArray)
             moduleReader.accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES)

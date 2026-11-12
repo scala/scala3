@@ -2,6 +2,7 @@
 import caps.any
 class C
 type Cap = C^
+trait K extends caps.SharedCapability, caps.Classifier
 
 object foo
 
@@ -19,6 +20,7 @@ def test(c: Cap, other: String): Unit =
   // val x8: C^{c}^{any} = ??? // would be syntax error
   val x9: C^{c, any}  = ??? // warn: redundant
   val x10: C^{any, c} = ??? // warn: redundant
+  val x11: C^{c, c.only[K], c.except[K]} = ??? // warn: redundant // warn: redundant
 
   def even(n: Int): Boolean = if n == 0 then true else odd(n - 1)
   def odd(n: Int): Boolean = if n == 1 then true else even(n - 1)

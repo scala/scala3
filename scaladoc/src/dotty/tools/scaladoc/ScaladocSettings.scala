@@ -151,7 +151,8 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     BooleanSetting(RootSetting, "dynamic-side-menu", "Generate side menu via JS instead of embedding it in every html file", false)
 
   val suppressCC: Setting[Boolean] =
-    BooleanSetting(RootSetting, "suppressCC", "Suppress rendering anything related to experimental capture checking", false)
+    BooleanSetting(RootSetting, "suppress-cc", "Suppress rendering anything related to experimental capture checking", false,
+      aliases = SettingAlias("-suppressCC", Deprecation("Use -suppress-cc instead.")) :: Nil)
 
   val noSnippetNamesFor: Setting[List[String]] =
     MultiStringSetting(RootSetting, "no-snippet-names-for", "path", "Do not render labels for named snippets in static-site pages under these paths relative to the site root", Nil)

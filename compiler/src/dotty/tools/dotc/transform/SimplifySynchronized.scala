@@ -17,7 +17,10 @@ class SimplifySynchronized extends MiniPhase:
   override def transformDefDef(tree: DefDef)(using Context): Tree = {
     @tailrec
     def extractSynchronized(rhs: Tree): Option[Tree] = rhs match
-      case Apply(TypeApply(Ident(nme.synchronized_) | Select(This(_), nme.synchronized_), _), synchronizedBody :: Nil) =>
+      case Apply(TypeApply(Ident(nme.synchronized_), _), synchronizedBody :: Nil) =>
+        Some(synchronizedBody)
+      // `This(X)` means `this` inside `X` but `X.this` inside a nested class of `X`!
+      case Apply(TypeApply(Select(t: This, nme.synchronized_), _), synchronizedBody :: Nil) if t.tpe == tree.symbol.owner.thisType =>
         Some(synchronizedBody)
       case Block(Nil, expr) =>
         extractSynchronized(expr)

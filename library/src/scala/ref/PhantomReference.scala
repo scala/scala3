@@ -12,6 +12,7 @@
 
 package scala.ref
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 class PhantomReference[+T <: AnyRef](value: T, queue: ReferenceQueue[T]) extends ReferenceWrapper[T] {

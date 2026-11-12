@@ -45,7 +45,15 @@ trait TypeAssigner {
   }
 
   def avoidingType(expr: Tree, bindings: List[Tree])(using Context): Type =
-    TypeOps.avoid(expr.tpe, localSyms(bindings).filterConserve(_.isTerm))
+    avoidingType(expr.tpe, bindings)
+
+  def avoidingType(tpe: Type, bindings: List[Tree])(using Context): Type =
+    val syms = localSyms(bindings).filterConserve(_.isTerm)
+    val replacements = bindings.flatMap { b =>
+      b.getAttachment(InlineProxySkolem).map(b.symbol -> _)
+    }
+    if replacements.isEmpty then TypeOps.avoid(tpe, syms)
+    else TypeOps.avoid(tpe, syms, replacements.toMap)
 
   def avoidPrivateLeaks(sym: Symbol)(using Context): Type =
     if sym.owner.isClass && !sym.isOneOf(JavaOrPrivateOrSynthetic)
@@ -183,7 +191,7 @@ trait TypeAssigner {
       case _ => false
     def addendum =
       err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum, foundWithoutNull)
-      ++ err.transparentInlineSelectAddendum(qual)
+      + err.transparentInlineSelectAddendum(qual)
     val msg: Message =
       if tree.name == nme.CONSTRUCTOR then em"$qualType does not have a constructor"
       else NotAMember(qualType, tree.name, kind, proto, addendum)
@@ -341,7 +349,7 @@ trait TypeAssigner {
             val paramBoundsByName = paramNames.zip(pt.paramInfos).toMap
 
             // Type arguments which are specified by name (immutable after this first loop)
-            val namedArgMap = new mutable.HashMap[Name, Type]
+            val namedArgMap = mutable.Map.empty[Name, Type]
             for (case NamedArg(name, arg) <- args)
               if (namedArgMap.contains(name))
                 report.error(DuplicateNamedTypeParameter(name), arg.srcPos)
@@ -521,7 +529,7 @@ trait TypeAssigner {
       val rinfo = if (rsym.is(Accessor)) rsym.info.resultType else rsym.info
       if (rinfo.isError) rinfo
       else if (!rinfo.exists) parent // can happen after failure in self type definition
-      else RefinedType(parent, rsym.name, rinfo)
+      else RefinedType(parent, rsym.name, rinfo.curryPolyFunction(parent.typeSymbol))
     }
     val refined = refinements.foldLeft(parent.tpe)(addRefinement)
     tree.withType(RecType.closeOver(rt => refined.substThis(refineCls, rt.recThis)))
@@ -620,6 +628,13 @@ object TypeAssigner extends TypeAssigner:
    *  same skolems for path-dependent types in the expansion (see #26153).
    */
   private[dotc] val SkolemizedArgs = new Property.StickyKey[Map[tpd.Tree, SkolemType]]
+
+  /** Sticky attachment on an inline argument proxy ValDef, the typer skolem
+   *  that this proxy stands for (#26153 / #26810). Proxy itself keeps a widened
+   *  type and `avoidingType` recovers the skolem when eliminating the proxy from
+   *  the Inlined result type.
+   */
+  private[dotc] val InlineProxySkolem = new Property.StickyKey[SkolemType]
 
   def seqLitType(tree: untpd.SeqLiteral, elemType: Type)(using Context) = tree match
     case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemType)

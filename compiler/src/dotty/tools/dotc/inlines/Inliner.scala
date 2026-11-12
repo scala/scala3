@@ -7,10 +7,11 @@ import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
 import StdNames.nme
 import typer.*
 import Names.Name
-import NameKinds.InlineBinderName
+import NameKinds.{InlineBinderName, DefaultGetterName}
 import ProtoTypes.shallowSelectionProto
 import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
+import config.Feature
 import config.Printers.inlining
 import ErrorReporting.errorTree
 import util.{SimpleIdentitySet, SrcPos}
@@ -63,7 +64,8 @@ object Inliner:
       case New(_) | Closure(_, _, _) =>
         true
       case TypeApply(fn, _) =>
-        if fn.symbol.isErased || fn.symbol == defn.QuotedTypeModule_of then true else apply(fn)
+        val sym = fn.symbol
+        if sym.isErased || sym == defn.QuotedTypeModule_of then true else apply(fn)
       case Apply(fn, args) =>
         val isCaseClassApply = {
           val cls = tree.tpe.classSymbol
@@ -188,9 +190,9 @@ object Inliner:
 
   end OpaqueProxy
 
-  /** A more powerful version of [[constToLiteral]] that also can "see through"
-   *  [[Block]], [[Inlined]] and [[Typed]] trees that are elidable (see
-   *  [[isElideableExpr]]).
+  /** A more powerful version of `constToLiteral` that also can "see through"
+   *  `Block`, `Inlined` and `Typed` trees that are elidable (see
+   *  `isElideableExpr`).
    */
   def inlinedConstToLiteral(rootTree: Tree)(using Context): Tree =
     trace(i"inlinedConstToLiteral($rootTree)", inlining):
@@ -242,12 +244,12 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  When TypeAssigner types `async(...)`, it skolemizes unstable `am` in the
    *  dependent result type, and the call tree is typed as `Wrap[F, ?1.Context]`.
    *  Then the inliner expands the method body and replace `am` by a proxy `am$proxy`.
-   *  Then `new Wrap[F, am.Context]` becomes `new Wrap[F, am$proxy.Context]`.
    *
-   *  In `paramBindingDef`, we type `am$proxy` as $1, so that both expanded tree and
-   *  call tree is typed `Wrap[F, ?1.Context]`. Otherwise, call tree and expanded tree
-   *  has different types `?1.Context` vs `am$proxy.Context` and compile fails.
-   *  See #26153 and #26031.
+   *  Later, when the Inlined node's type avoids that proxy,
+   *  `TypeAssigner.InlineProxySkolem` on the binding recovers `?1` so the result
+   *  matches the call type `Wrap[F, ?1.Context]`
+   *  (instead of `Wrap[F, am$proxy.Context]` avoids to `Wrap[F, ?]`)
+   *  See #26153, #26031, and #26810.
    */
   private val callValueSkolemss: List[List[Option[SkolemType]]] =
     def loop(tree: Tree, skolemss: List[List[Option[SkolemType]]]): List[List[Option[SkolemType]]] = tree match
@@ -271,15 +273,20 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  (if the argument is a pure expression of singleton type), or to `val` or `def` acting
    *  as a proxy (if the argument is something else).
    */
-  private val paramBinding = new mutable.HashMap[Name, Type]
+  private val paramBinding = mutable.Map.empty[Name, Type]
 
   /** A map from parameter names of the inlineable method to spans of the actual arguments */
-  private val paramSpan = new mutable.HashMap[Name, Span]
+  private val paramSpan = mutable.Map.empty[Name, Span]
 
   /** A map from references to (type and value) parameters of the inlineable method
    *  to their corresponding argument or proxy references, as given by `paramBinding`.
    */
-  private[inlines] val paramProxy = new mutable.HashMap[Type, Type]
+  private[inlines] val paramProxy = mutable.Map.empty[Type, Type]
+
+  /** A map from proxy symbols to a skolem their argument already *was*, from
+   *  outside this call (see `callValueSkolemss` for the complementary case).
+   */
+  private val externalParamProxySkolem = mutable.Map.empty[Symbol, SkolemType]
 
   /** A map from the classes of (direct and outer) this references in `rhsToInline`
    *  to references of their proxies.
@@ -294,7 +301,7 @@ class Inliner(val call: tpd.Tree)(using Context):
    *
    *  These are different (wrt ==) types but represent logically the same key
    */
-  private val thisProxy = new mutable.HashMap[ClassSymbol, TermRef]
+  private val thisProxy = mutable.Map.empty[ClassSymbol, TermRef]
 
   /** A buffer for bindings that define proxies for actual arguments */
   private val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
@@ -311,7 +318,6 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  @param arg0        the argument corresponding to the parameter
    *  @param buf         the buffer to which the definition should be appended
    *  @param skolem      optional skolem from the call's dependent result type.
-   *                     If present, use it as the proxy type.
    */
   private[inlines] def paramBindingDef(name: Name, formal: Type, arg0: Tree,
                               buf: DefBuffer, skolem: Option[SkolemType] = None)(using Context): ValOrDefDef = {
@@ -330,16 +336,10 @@ class Inliner(val call: tpd.Tree)(using Context):
           dropNameArg(arg0)
     val argtpe = arg.tpe.dealiasKeepAnnots.translateFromRepeated(toArray = false)
     val argIsBottom = argtpe.isBottomTypeAfterErasure
-    val baseBindingType =
+    val bindingType =
       if argIsBottom then formal
       else if isByName then ExprType(argtpe.widen)
       else argtpe.widen
-    // If the call result type used a skolem for this argument, use the same skolem
-    // as the proxy type. `?1` has `argtpe.widen` as its underlying type.
-    val proxySkolem = if argIsBottom then None else skolem
-    val bindingType = proxySkolem match
-      case Some(sk) => if isByName then ExprType(sk) else sk
-      case None => baseBindingType
 
     var bindingFlags: FlagSet = InlineProxy
     if formal.widenExpr.hasAnnotation(defn.InlineParamAnnot) then
@@ -353,17 +353,30 @@ class Inliner(val call: tpd.Tree)(using Context):
       var newArg = arg.changeOwner(ctx.owner, boundSym)
       if bindingFlags.is(Inline) && argIsBottom then
         newArg = Typed(newArg, TypeTree(formal.widenExpr)) // type ascribe RHS to avoid type errors in expansion. See i8612.scala
-      else proxySkolem match
-        case Some(sk) =>
-          newArg = newArg.cast(sk) // adapt the rhs to the skolem-typed proxy
-        case None => ()
       if isByName then DefDef(boundSym, newArg)
-      else ValDef(boundSym, newArg, inferred = true)
+      else ValDef(boundSym, newArg)
     }.withSpan(boundSym.span)
+    if !argIsBottom then // Record typer skolem on the proxy ValDef, so the `avoidingType` can avoid proxy to skolem.
+      skolem.foreach(binding.putAttachment(TypeAssigner.InlineProxySkolem, _))
+      // Or, if the argument's own type is already some other skolem (generated by some external call), record that separately.
+      if skolem.isEmpty then
+        argtpe match
+          case sk: SkolemType => externalParamProxySkolem(binding.symbol) = sk
+          case _ =>
     inlining.println(i"parameter binding: $binding, $argIsBottom")
     buf += binding
     binding
   }
+
+  /** Can `singleton` reconstruct a tree from this type alone?
+   *  A TermRef such as `C#field` does not retain its receiver, even if the
+   *  original argument is an idempotent path or the field has a singleton type.
+   */
+  private def isReconstructible(tp: Type): Boolean = tp.dealias match
+    case tp: TermRef => prefixIsElidable(tp) || isReconstructible(tp.prefix)
+    case _: ThisType | _: ConstantType => true
+    case SuperType(qual, _) => isReconstructible(qual)
+    case _ => false
 
   /** Populate `paramBinding` and `buf` by matching parameters with
    *  corresponding arguments. `bindingbuf` will be further extended later by
@@ -391,7 +404,7 @@ class Inliner(val call: tpd.Tree)(using Context):
             (name, formal, arg, skolem) =>
             paramSpan(name) = arg.span
             paramBinding(name) = arg.tpe.dealias match
-              case _: SingletonType if isIdempotentPath(arg) =>
+              case tp: SingletonType if isIdempotentPath(arg) && isReconstructible(tp) =>
                 arg.tpe
               case _ =>
                 paramBindingDef(name, formal, arg, buf, skolem).symbol.termRef
@@ -620,7 +633,11 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  the method will return: `Foo.OpaqueInt`
    */
   def unpackProxiesFromResultType(inlined: Inlined): Type =
-    if thisTypeProxyExists then mapBackToOpaques.typeMap(thisTypeUnpacker.typeMap(inlined.expansion.tpe))
+    if thisTypeProxyExists then
+      val unpacked = mapBackToOpaques.typeMap(thisTypeUnpacker.typeMap(inlined.expansion.tpe))
+      // base inlined.tpe always avoids bindings in it's type (behavior built-in to the
+      // Inlined(...) constructor) so we do that here too
+      TypeAssigner.avoidingType(unpacked, inlined.bindings)
     else inlined.tpe
 
   /** Populate `thisProxy` and `paramProxy` as follows:
@@ -720,8 +737,10 @@ class Inliner(val call: tpd.Tree)(using Context):
         /* Span of the argument. Used when the argument is inlined directly without a binding */
         def argSpan =
           if (tree.name == nme.WILDCARD) tree.span // From type match
-          else if (tree.symbol.isTypeParam && tree.symbol.owner.isClass) tree.span // TODO is this the correct span
-          else paramSpan(tree.name)
+          else
+            val sym = tree.symbol
+            if sym.isTypeParam && sym.owner.isClass then tree.span // TODO is this the correct span
+            else paramSpan(tree.name)
         val inlinedCtx = ctx.withSource(inlinedMethod.topLevelClass.source)
         paramProxy.get(tree.tpe) match {
           case Some(t) if tree.isTerm && t.isSingleton =>
@@ -738,6 +757,12 @@ class Inliner(val call: tpd.Tree)(using Context):
         // reference to a private method is kept at runtime.
         cpy.Select(tree)(qual.asInstance(qual.tpe.widen), name)
 
+      case tree: TypeTree if Feature.ccEnabled =>
+        // cc.Setup.setupTraverser.transformTT creates scope-dependent capture types,
+        // cached by tree identity in transform.Recheck.Rechecker.nuTypes. Sharing a
+        // TypeTree would reuse the definition's (or another call's) capture roots
+        // in this expansion. See tests/pos-custom-args/captures/inline-result-captures.scala.
+        tree.cloneIn(tree.source)
       case tree => tree
     }
 
@@ -806,7 +831,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     // corresponding arguments or proxies on the type and term level. It also changes
     // the owner from the inlined method to the current owner.
 
-    // This is reused through InlineTraitAncestors for inline traits, so inlinedMethod might not exist there  
+    // This is reused through InlineTraitAncestors for inline traits, so inlinedMethod might not exist there
     val oldOwners = if (inlinedMethod.exists) then inlinedMethod :: Nil else Nil
     val newOwners = if (inlinedMethod.exists) then ctx.owner :: Nil else Nil
 
@@ -1098,7 +1123,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       super.typedSplice(tree, pt) match
         case tree1 @ Splice(expr) if level == 0 && !hasInliningErrors && !ctx.usedBestEffortTasty =>
           val expanded = expandMacro(expr, tree1.srcPos)
-          transform.TreeChecker.checkMacroGeneratedTree(tree1, expanded)
+          if !expanded.tpe.isError then transform.TreeChecker.checkMacroGeneratedTree(tree1, expanded)
           val res = typedExpr(expanded) // Inline calls and constant fold code generated by the macro
 
           // We dealias opaque types because their aliases might not be visible
@@ -1108,6 +1133,9 @@ class Inliner(val call: tpd.Tree)(using Context):
               case tp: TypeRef if tp.typeSymbol.isOpaqueAlias =>
                 val sym = tp.typeSymbol
                 apply(sym.opaqueAlias.asSeenFrom(tp.prefix, sym.owner))
+              case tp: TypeRef if tp.typeSymbol.isAliasType =>
+                val tp1 = tp.dealias
+                if tp1 eq tp then tp else apply(tp1)
               case _ =>
                 mapOver(tp)
 
@@ -1208,23 +1236,30 @@ class Inliner(val call: tpd.Tree)(using Context):
                         | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
                 errorTree(tree, msg)
             }
-        reduceInlineMatchExpr(retypedSel)
+        ctx.handleRecursive("reducing inline match expr", retypedSel, retypedSel):
+          reduceInlineMatchExpr(retypedSel)
       }
 
     override def newLikeThis(nestingLevel: Int): Typer = new InlineTyper(initialErrorCount, nestingLevel)
 
+    def isDefaultGetterOfInlinedMethod(sym: Symbol)(using Context): Boolean =
+      sym.name match
+        case DefaultGetterName(methName, _) =>
+          methName == inlinedMethod.name && sym.owner == inlinedMethod.owner
+        case _ => false
+
     /** True if this inline typer has already issued errors */
     override def hasInliningErrors(using Context) = ctx.reporter.errorCount > initialErrorCount
 
-    private def inlineIfNeeded(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree =
+    private def inlineIfNeeded(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = ctx.handleRecursive("inlining if needed", tree, tree):
       val meth = tree.symbol
       if meth.isAllOf(DeferredInline) then
         errorTree(tree, em"Deferred inline ${meth.showLocated} cannot be invoked")
       else if Inlines.needsInlining(tree) then inlinedConstToLiteral(Inlines.inlineCall(simplify(tree, pt, locked)))
       else tree
 
-    override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
-      super.typedUnadapted(tree, pt, locked) match
+    override def typedUnadapted(initTree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
+      super.typedUnadapted(initTree, pt, locked) match
         case member: MemberDef => member.setDefTree
         case tree => tree
 
@@ -1242,10 +1277,26 @@ class Inliner(val call: tpd.Tree)(using Context):
         case _ =>
           tree
 
-    /** For inlining only: Given `(x: T)` with expected type `x.type`, replace the tree with `x`.
-     */
     override def healAdapt(tree: Tree, pt: Type)(using Context): Tree = (tree, pt) match
+      /* Given `(x: T)` with expected type `x.type`, replace the tree with `x`. */
       case (Typed(tree1, _), pt: SingletonType) if tree1.tpe <:< pt => tree1
+      /* Cast a skolem based proxy back into a skolem, but only if we need to.
+       * E.g. We need to keep the skolem in tests/pos/i26885.scala but expect it widened in tests/pos/i26031.scala.
+       */
+      case (_, sk: SkolemType) if externalParamProxySkolem.get(tree.symbol).contains(sk) => tree.cast(sk)
+      /* Same as above, but for nested types (see tests/pos/i26958.scala).
+       */
+      case _ if externalParamProxySkolem.nonEmpty =>
+        val wtp = tree.tpe.widen
+        val substed = new TypeMap:
+          def apply(t: Type): Type = t match
+            case t: SkolemType =>
+              externalParamProxySkolem.collectFirst:
+                case (sym, `t`) => sym.termRef
+              .getOrElse(t)
+            case _ => mapOver(t)
+        .apply(wtp)
+        if (substed ne wtp) && (substed <:< pt) then tree.cast(pt) else tree
       case _ => tree
   end InlineTyper
 
@@ -1328,7 +1379,7 @@ class Inliner(val call: tpd.Tree)(using Context):
               case none => t
             }
             super.transform(t1)
-          case t: Apply =>
+          case t: (Apply | TypeApply) =>
             val t1 = super.transform(t)
             if (t1 `eq` t) t else BetaReduce(t1)
           case Block(Nil, expr) =>
@@ -1367,7 +1418,7 @@ class Inliner(val call: tpd.Tree)(using Context):
           hints.nn += i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}"
       if suspendable then
         if ctx.settings.YnoSuspendedUnits.value then
-          return errorTree(ref(defn.Predef_undefined), em"could not expand macro, suspended units are disabled by -Yno-suspended-units", splicePos)
+          return errorTree(ref(defn.Predef_undefined).withSpan(splicePos.span), em"could not expand macro, suspended units are disabled by -Yno-suspended-units", splicePos)
         else
           ctx.compilationUnit.suspend(hints.nn.toList.mkString(", ")) // this throws a SuspendException
 

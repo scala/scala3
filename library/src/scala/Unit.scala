@@ -12,7 +12,9 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
+import scala.annotation.unused
 
 /** `Unit` is a subtype of [[scala.AnyVal]]. There is only one value of type
  *  `Unit`, `()`, and it is not represented by any object in the underlying
@@ -32,7 +34,7 @@ object Unit extends AnyValCompanion {
    *  @param  x   the Unit to be boxed
    *  @return     a scala.runtime.BoxedUnit offering `x` as its underlying value.
    */
-  def box(x: Unit): scala.runtime.BoxedUnit = scala.runtime.BoxedUnit.UNIT
+  def box(@unused x: Unit): scala.runtime.BoxedUnit = scala.runtime.BoxedUnit.UNIT
 
   /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw

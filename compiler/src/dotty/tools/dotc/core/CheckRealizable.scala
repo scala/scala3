@@ -65,9 +65,9 @@ class CheckRealizable(using Context) {
   /** A set of all fields that have already been checked. Used
    *  to avoid infinite recursions when analyzing recursive types.
    */
-  private val checkedFields: mutable.Set[Symbol] = mutable.LinkedHashSet[Symbol]()
+  private val checkedFields: mutable.Set[Symbol] = mutable.LinkedHashSet.empty[Symbol]
 
-  /** Is symbol's definitition a lazy or erased val?
+  /** Is symbol's definition a lazy or erased val?
    *  (note we exclude modules here, because their realizability is ensured separately)
    */
   private def isLateInitialized(sym: Symbol) = sym.is(Lazy, butNot = Module)

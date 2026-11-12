@@ -19,7 +19,7 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import org.objectweb.asm
 import org.objectweb.asm.Opcodes.*
-import org.objectweb.asm.Type
+import org.objectweb.asm.{Opcodes, Type}
 import org.objectweb.asm.tree.*
 import org.objectweb.asm.tree.analysis.Value
 import dotty.tools.backend.jvm.BTypes.InternalName
@@ -27,40 +27,19 @@ import dotty.tools.backend.jvm.analysis.*
 import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
-class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
-              heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
-              settings: OptimizerSettings) {
+abstract class Inliner {
+  def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit
+}
 
-  // True if all instructions (they would cause an IllegalAccessError otherwise) can potentially be
-  // inlined in a later inlining round.
-  // Note that this method has a side effect. It allows inlining `INVOKESPECIAL` calls of static
-  // super accessors that we emit in traits. The inlined calls are marked in the call graph as
-  // `staticallyResolvedInvokespecial`. When looking up the MethodNode for the cloned `INVOKESPECIAL`,
-  // the call graph will always return the corresponding method in the trait.
-  private def maybeInlinedLater(callsite: KnownCallsite, insns: List[AbstractInsnNode]): Boolean = {
-    insns.forall({
-      case mi: MethodInsnNode =>
-        (mi.getOpcode != INVOKESPECIAL) || {
-          // Special handling for invokespecial T.f that appears within T, and T defines f.
-          // Such an instruction can be inlined into a different class, but it needs to be inlined in
-          // turn in a later inlining round.
-          // The call graph needs to treat it specially: the normal dynamic lookup needs to be
-          // avoided, it needs to resolve to T.f, no matter in which class the invocation appears.
-          def hasMethod(c: ClassNode): Boolean = {
-            val r = c.methods.iterator.asScala.exists(m => m.name == mi.name && m.desc == mi.desc)
-            if (r) callGraph.staticallyResolvedInvokespecial += mi
-            r
-          }
+final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
+                            heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
+                            settings: OptimizerSettings) extends Inliner {
+  def run(classNodesAndSourcePaths: Iterable[(ClassNode, String)], issueSink: OptimizerIssue => Unit): Unit = {
+    // add classes to the bytecode repo before building the call graph: the latter needs to
+    // look up classes and methods in the code repo.
+    for (c, p) <- classNodesAndSourcePaths do byteCodeRepository.add(c, p)
+    for (c, _) <- classNodesAndSourcePaths do callGraph.addClass(c)
 
-          mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME &&
-            mi.owner == callsite.callee.calleeDeclarationClass.internalName &&
-            byteCodeRepository.classNode(mi.owner).map((c, _) => hasMethod(c)).getOrElse(false) // TODO bubble up warning instead
-        }
-      case _ => false
-    })
-  }
-
-  def runInlinerAndClosureOptimizer(issueSink: OptimizerIssue => Unit): Unit = {
     var round = 0
     var changedByInliner = Iterable.empty[MethodNode]
     var changedByClosureOptimizer = mutable.LinkedHashSet.empty[MethodNode]
@@ -175,7 +154,7 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
             case None =>
               doInline(r, aliasFrame, None)
 
-            case Some(w: IllegalAccessInstructions) if maybeInlinedLater(r.callsite, w.instructions) =>
+            case Some(w: IllegalAccessInstructions) if callGraph.maybeInlinedLater(r.callsite, w.instructions) =>
               if (state.undoLog.isEmpty) {
                 val undo = new UndoLog(callGraph)
                 val currentState = state.clone()
@@ -244,7 +223,7 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
           }
 
         val rs = mutable.ListBuffer.empty[InlineRequest]
-        callGraph.callsites(method).valuesIterator foreach {
+        callGraph.getCallsites(method).foreach {
           // Don't inline: recursive calls, callsites that failed inlining before
           case cs: KnownCallsite if !failed(cs.callsiteInstruction) && !isLoop(cs.callsiteInstruction, cs.callee) =>
             heuristics.inlineRequest(cs) match {
@@ -402,7 +381,7 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
    * @return A map associating instruction nodes of the callee with the corresponding cloned
    *         instruction in the callsite method.
    */
-  def inlineCallsite(callsite: KnownCallsite, aliasFrame: Option[AliasingFrame[Value]] = None, updateCallGraph: Boolean = true): Map[AbstractInsnNode, AbstractInsnNode] = {
+  private def inlineCallsite(callsite: KnownCallsite, aliasFrame: Option[AliasingFrame[Value]] = None, updateCallGraph: Boolean = true): Map[AbstractInsnNode, AbstractInsnNode] = {
     val callsiteCallee = callsite.callee
     import callsiteCallee.{callee, calleeDeclarationClass, sourceFilePath}
 
@@ -706,6 +685,18 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
     instructionMap
   }
 
+  override def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit = {
+      var css = toInline.flatMap(callGraph.getCallsite(method, _))
+        .collect { case k: KnownCallsite => k }
+        .toList
+        .sorted(using callsiteOrdering)
+      while (css.nonEmpty) {
+        val cs = css.head
+        css = css.tail
+        inlineCallsite(cs, None, updateCallGraph = css.isEmpty)
+      }
+  }
+
   /**
    * Check whether the body of the callee contains any instructions that prevent the callsite from
    * being inlined. See also method `earlyCanInlineCheck`.
@@ -802,6 +793,38 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
    *     error occurred
    */
   private def findIllegalAccess(instructions: InsnList, calleeDeclarationClass: ClassBType, destinationClass: ClassBType): Either[(AbstractInsnNode, OptimizerWarning), List[AbstractInsnNode]] = {
+    def isAccessibleField(owner: String, name: String, desc: String): Either[OptimizerWarning, Boolean] =
+      for {
+        fieldRefClass <- bTypesFromClassfile.classBTypeFromParsedClassfile(owner)
+        (fieldNode, fieldDeclClassNode) <- byteCodeRepository.fieldNode(fieldRefClass.internalName, name, desc)
+        fieldDeclClass <- bTypesFromClassfile.classBTypeFromParsedClassfile(fieldDeclClassNode)
+      } yield {
+        val res = Inliner.memberIsAccessible(fieldNode.access, fieldDeclClass, fieldRefClass, destinationClass)
+        if res then
+          // ensure the result ClassBType is cached (for stack map frame calculation)
+          bTypesFromClassfile.bTypeForDescriptorFromClassfile(desc)
+        res
+      }
+    def isAccessibleMethod(owner: String, name: String, desc: String, descToLoad: => String | Null = null, isInvokeSpecial: Boolean = false): Either[OptimizerWarning, Boolean] =
+      for {
+        methodRefClass <- bTypesFromClassfile.classBTypeFromParsedClassfile(owner)
+        (methodNode, methodDeclClassNode) <- byteCodeRepository.methodNode(methodRefClass.internalName, name, desc)
+        methodDeclClass <- bTypesFromClassfile.classBTypeFromParsedClassfile(methodDeclClassNode)
+      } yield {
+        val res =
+          if isInvokeSpecial && name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME then
+            // invokespecial is used for private method calls, super calls and instance constructor calls.
+            // private method and super calls can only be inlined into the same class.
+            destinationClass == calleeDeclarationClass
+          else // INVOKEVIRTUAL, INVOKESTATIC, INVOKEINTERFACE and INVOKESPECIAL of constructors
+            Inliner.memberIsAccessible(methodNode.access, methodDeclClass, methodRefClass, destinationClass)
+        if res then
+          // ensure the result ClassBType is cached (for stack map frame calculation)
+          val toLoad = descToLoad
+          if toLoad != null then bTypesFromClassfile.bTypeForDescriptorFromClassfile(toLoad)
+        res
+      }
+
     /*
      * Check if `instruction` can be transplanted to `destinationClass`.
      *
@@ -828,17 +851,7 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
         isInternal(fi.owner) match
           case Left(l) => Left(l)
           case Right(true) => Right(false)
-          case Right(false) =>
-            for {
-              fieldRefClass                   <- bTypesFromClassfile.classBTypeFromParsedClassfile(fi.owner)
-              (fieldNode, fieldDeclClassNode) <- byteCodeRepository.fieldNode(fieldRefClass.internalName, fi.name, fi.desc): Either[OptimizerWarning, (FieldNode, InternalName)]
-              fieldDeclClass                  <- bTypesFromClassfile.classBTypeFromParsedClassfile(fieldDeclClassNode)
-            } yield {
-              val res = Inliner.memberIsAccessible(fieldNode.access, fieldDeclClass, fieldRefClass, destinationClass)
-              // ensure the result ClassBType is cached (for stack map frame calculation)
-              if (res) bTypesFromClassfile.bTypeForDescriptorFromClassfile(fi.desc)
-              res
-            }
+          case Right(false) => isAccessibleField(fi.owner, fi.name, fi.desc)
 
       case mi: MethodInsnNode =>
         isInternal(mi.owner) match
@@ -851,28 +864,7 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
               // array methods are accessible
               Right(true)
             } else {
-              def canInlineCall(opcode: Int, methodFlags: Int, methodDeclClass: ClassBType, methodRefClass: ClassBType): Boolean = {
-                opcode match {
-                  case INVOKESPECIAL if mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME =>
-                    // invokespecial is used for private method calls, super calls and instance constructor calls.
-                    // private method and super calls can only be inlined into the same class.
-                    destinationClass == calleeDeclarationClass
-
-                  case _ => // INVOKEVIRTUAL, INVOKESTATIC, INVOKEINTERFACE and INVOKESPECIAL of constructors
-                    Inliner.memberIsAccessible(methodFlags, methodDeclClass, methodRefClass, destinationClass)
-                }
-              }
-
-              for {
-                methodRefClass                    <- bTypesFromClassfile.classBTypeFromParsedClassfile(mi.owner)
-                (methodNode, methodDeclClassNode) <- byteCodeRepository.methodNode(methodRefClass.internalName, mi.name, mi.desc): Either[OptimizerWarning, (MethodNode, InternalName)]
-                methodDeclClass                   <- bTypesFromClassfile.classBTypeFromParsedClassfile(methodDeclClassNode)
-              } yield {
-                val res = canInlineCall(mi.getOpcode, methodNode.access, methodDeclClass, methodRefClass)
-                // ensure the result ClassBType is cached (for stack map frame calculation)
-                if (res) bTypesFromClassfile.bTypeForDescriptorFromClassfile(Type.getReturnType(mi.desc).getDescriptor)
-                res
-              }
+              isAccessibleMethod(mi.owner, mi.name, mi.desc, Type.getReturnType(mi.desc).getDescriptor, mi.getOpcode == Opcodes.INVOKESPECIAL)
             }
 
       case _: InvokeDynamicInsnNode if destinationClass == calleeDeclarationClass =>
@@ -927,24 +919,22 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
         // In the case of indyLambda, it depends on the visibility of the implMethod handle. If
         // the implMethod is public, lambdaMetaFactory doesn't use the Lookup object's extended
         // capability, and we can safely inline the instruction into a different class.
-
-        for {
-          methodRefClass                    <- bTypesFromClassfile.classBTypeFromParsedClassfile(implMethod.getOwner)
-          (methodNode, methodDeclClassNode) <- byteCodeRepository.methodNode(methodRefClass.internalName, implMethod.getName, implMethod.getDesc): Either[OptimizerWarning, (MethodNode, InternalName)]
-          methodDeclClass                   <- bTypesFromClassfile.classBTypeFromParsedClassfile(methodDeclClassNode)
-        } yield {
-          val res = Inliner.memberIsAccessible(methodNode.access, methodDeclClass, methodRefClass, destinationClass)
-          // ensure the result ClassBType is cached (for stack map frame calculation)
-          if (res) bTypesFromClassfile.bTypeForDescriptorFromClassfile(Type.getReturnType(indy.desc).getDescriptor)
-          res
-        }
+        isAccessibleMethod(implMethod.getOwner, implMethod.getName, implMethod.getDesc, Type.getReturnType(indy.desc).getDescriptor)
 
       case _: InvokeDynamicInsnNode => Left(UnknownInvokeDynamicInstruction)
 
       case ci: LdcInsnNode => ci.cst match {
-        case t: asm.Type => bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(t.getInternalName).map(Inliner.classIsAccessible(_, destinationClass))
-        // TODO: method handle -- check if method accessible?
-        case _ => Right(true)
+        case t: asm.Type =>
+          bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(t.getInternalName).map(Inliner.classIsAccessible(_, destinationClass))
+        case h: asm.Handle =>
+          if h.getTag == Opcodes.H_GETFIELD || h.getTag == Opcodes.H_GETSTATIC || h.getTag == Opcodes.H_PUTFIELD || h.getTag == Opcodes.H_PUTSTATIC then
+            isAccessibleField(h.getOwner, h.getName, h.getDesc)
+          else
+            isAccessibleMethod(h.getOwner, h.getName, h.getDesc, isInvokeSpecial = h.getTag == Opcodes.H_INVOKESPECIAL)
+        case d: asm.ConstantDynamic =>
+          Right(destinationClass == calleeDeclarationClass) // same condition as for INDYs above
+        case _ =>
+          Right(true)
       }
 
       case _ => Right(true)
@@ -1046,7 +1036,7 @@ object Inliner {
   }
 }
 
-class UndoLog(callGraph: CallGraph) {
+class UndoLog(callGraph: OptimizerCallGraph) {
 
   import java.util.{ArrayList => JArrayList}
 
@@ -1219,7 +1209,7 @@ final class InlineLog(optLogInline: Option[String]) {
   private var _active = false
 
   var roots: mutable.ArrayBuffer[InlineLogResult] | Null = null
-  var downstream: mutable.HashMap[Callsite, mutable.ArrayBuffer[InlineLogResult]] | Null = null
+  var downstream: mutable.Map[Callsite, mutable.ArrayBuffer[InlineLogResult]] | Null = null
   var callsiteInfo: String | Null = null
 
   // A bit of a hack.. We check the -Yopt-log-inline flag when logging the first inline request.
@@ -1235,7 +1225,7 @@ final class InlineLog(optLogInline: Option[String]) {
       }
       if (_active) {
         roots = mutable.ArrayBuffer.empty[InlineLogResult]
-        downstream = mutable.HashMap.empty[Callsite, mutable.ArrayBuffer[InlineLogResult]]
+        downstream = mutable.Map.empty[Callsite, mutable.ArrayBuffer[InlineLogResult]]
         callsiteInfo = s"Inlining into ${callsiteClass.internalName}.${callsiteMethod.name}"
       }
     }

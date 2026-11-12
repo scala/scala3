@@ -18,11 +18,9 @@ class PruneInlineTraits extends MiniPhase with SymTransformer { thisTransform =>
   override def phaseName: String = PruneInlineTraits.name
 
   override def description: String = PruneInlineTraits.description
-  
-  override def runsAfter: Set[String] = Set(PruneInlinedMethods.name)
-  
-  override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    if isEraseable(sym) then sym.copySymDenotation(initFlags = sym.flags | Deferred)
+  override def transformSym(sym: SymDenotation)(using Context): SymDenotation = {
+    if isEraseable(sym) then 
+      sym.copySymDenotation(initFlags = sym.flags | Deferred)
     else if sym.isInlineTrait then
       val clsInfo = sym.asClass.classInfo
       val clsInfo2 = clsInfo.derivedClassInfo(decls = 
@@ -30,9 +28,11 @@ class PruneInlineTraits extends MiniPhase with SymTransformer { thisTransform =>
       )
       sym.copySymDenotation(initFlags = sym.flags | PureInterface | NoInits, info = clsInfo2)
     else sym
+  }
 
   override def transformTemplate(tree: Template)(using Context): Tree = 
-    cpy.Template(tree)(body = tree.body.flatMap({
+    if !ctx.compilationUnit.hasSpecializations then tree 
+    else cpy.Template(tree)(body = tree.body.flatMap({
       case stmt: ValDef if isEraseable(stmt.symbol) => Some(cpy.ValDef(stmt)(rhs = EmptyTree))
       case stmt: DefDef if isEraseable(stmt.symbol) => Some(cpy.DefDef(stmt)(rhs = EmptyTree))
       case stmt: (ValDef | DefDef) if isDeletable(stmt.symbol) => None
@@ -40,14 +40,14 @@ class PruneInlineTraits extends MiniPhase with SymTransformer { thisTransform =>
     }))
 
   private def isEraseable(sym: SymDenotation)(using Context): Boolean =
-    !sym.isType
+    sym.exists
+    && !sym.isType
+    && sym.owner.isInlineTrait
     && !sym.isConstructor
     && !sym.is(Param)
     && !sym.is(ParamAccessor)
     && !sym.is(Local)
     && !sym.isLocalDummy
-    && sym.exists
-    && sym.owner.isInlineTrait
 
   private def isDeletable(sym: SymDenotation)(using Context): Boolean = 
     !sym.isType

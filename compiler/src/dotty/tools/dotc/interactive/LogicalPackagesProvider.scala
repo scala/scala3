@@ -7,9 +7,9 @@ import dotty.tools.dotc.parsing.JavaParsers
 import dotty.tools.dotc.parsing.Parsers
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.AbstractFile
-import dotty.tools.io.ClassPath
 import dotty.tools.io.FileExtension
 import dotty.tools.io.Path
+import dotty.tools.dotc.classpath.ClassPath
 
 import scala.io.Codec
 

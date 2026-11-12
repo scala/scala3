@@ -7,13 +7,16 @@ import printing.ReplPrinter
 import printing.SyntaxHighlighting
 import reporting.Diagnostic
 import StackTraceOps.*
+import io.AbstractFile
 
+import scala.annotation.nowarn
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
 import org.objectweb.asm.*
 import org.objectweb.asm.Opcodes.*
 import org.objectweb.asm.tree.*
 import scala.util.control.NonFatal
+import java.net.{URL, URLClassLoader}
 import java.util.function.Predicate
 
 import dotty.vendored.fansi
@@ -31,6 +34,10 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   import Rendering.*
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
+  // Used to notice when the output directory is changed within a REPL session
+  var myClassLoaderRoot: AbstractFile = uninitialized
+
+  private var myClasspathClassLoader: io.AbstractFileClassLoader = uninitialized
 
   // Temporary fix until `pprint` special-cases these.
   // (We cannot use, e.g., `isInstanceOf[LazyList]` because we're not in the same classloader)
@@ -216,27 +223,39 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
-    if (myClassLoader != null && myClassLoader.root == ctx.settings.outputDir.value) myClassLoader
+    if (myClassLoader != null && myClassLoaderRoot == ctx.settings.outputDir.value) myClassLoader
     else {
-      val parent = Option(myClassLoader).orElse(parentClassLoader).getOrElse {
-        val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
-        // We can't use the system classloader as a parent because it would
-        // pollute the user classpath with everything passed to the JVM
-        // `-classpath`. We can't use `null` as a parent either because on Java
-        // 9+ that's the bootstrap classloader which doesn't contain modules
-        // like `java.sql`, so we use the parent of the system classloader,
-        // which should correspond to the platform classloader on Java 9+.
-        val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
-        new java.net.URLClassLoader(compilerClasspath.toArray, baseClassLoader)
+      val parent = Option(myClassLoader).getOrElse {
+        myClasspathClassLoader = parentClassLoader match
+          case Some(given_) => io.AbstractFileClassLoader(Seq.empty, ctx.settings.javaOutputVersion.value, given_)
+          case None =>
+            val compilerClasspath = ctx.platform.classPath(using ctx).searchLocations.toSeq
+            // We can't use the system classloader as a parent because it would
+            // pollute the user classpath with everything passed to the JVM
+            // `-classpath`. We can't use `null` as a parent either because on Java
+            // 9+ that's the bootstrap classloader which doesn't contain modules
+            // like `java.sql`, so we use the parent of the system classloader,
+            // which should correspond to the platform classloader on Java 9+.
+            val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
+            io.AbstractFileClassLoader(compilerClasspath, ctx.settings.javaOutputVersion.value, baseClassLoader)
+        myClasspathClassLoader
       }
 
+      myClassLoaderRoot = ctx.settings.outputDir.value
       myClassLoader = new AbstractFileClassLoader(
-        ctx.settings.outputDir.value,
+        myClassLoaderRoot,
+        ctx.settings.javaOutputVersion.value,
         parent,
         AbstractFileClassLoader.InterruptInstrumentation.fromString(ctx.settings.XreplInterruptInstrumentation.value)
       )
       myClassLoader
     }
+
+  private[repl] def addToClasspath(dirs: Iterable[AbstractFile])(using Context): Unit =
+    classLoader()
+    dirs.foreach(myClasspathClassLoader.add)
+
+  private[repl] def addResource(dir: AbstractFile)(using Context): Unit = addToClasspath(Seq(dir))
 
   private[repl] def truncate(str: String, maxPrintCharacters: Int)(using ctx: Context): String =
     val ncp = str.codePointCount(0, str.length) // to not cut inside code point
@@ -291,10 +310,10 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       Some(value)
 
   def renderTypeDef(d: Denotation)(using Context): Diagnostic =
-    infoDiagnostic("// defined " ++ d.symbol.showUser, d)
+    infoDiagnostic("// defined " + d.symbol.showUser, d)
 
   def renderTypeAlias(d: Denotation)(using Context): Diagnostic =
-    infoDiagnostic("// defined alias " ++ d.symbol.showUser, d)
+    infoDiagnostic("// defined alias " + d.symbol.showUser, d)
 
   /** Render method definition result */
   def renderMethod(d: Denotation)(using Context): Diagnostic =
@@ -319,6 +338,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   end renderVal
 
   /** Force module initialization in the absence of members. */
+  // the module statements are executing in can fail to initialize if there's a problem
+  @nowarn("msg=Catching ExceptionInInitializerError can lead to unexpected behavior")
   def forceModule(sym: Symbol)(using Context): Seq[Diagnostic] =
     def load() =
       val objectName = sym.fullName.encode.toString

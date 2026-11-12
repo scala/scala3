@@ -600,7 +600,7 @@ object Future {
   private[concurrent] final val recoverWithFailedMarker: Future[Nothing] =
     scala.concurrent.Future.failed(new Throwable with NoStackTrace)
 
-  private[concurrent] final val recoverWithFailed = (t: Throwable) => recoverWithFailedMarker
+  private[concurrent] final val recoverWithFailed = (_: Throwable) => recoverWithFailedMarker
 
   private final val _zipWithTuple2: (Any, Any) => (Any, Any) = Tuple2.apply
   private[concurrent] final def zipWithTuple2Fun[T,U] = _zipWithTuple2.asInstanceOf[(T,U) => (T,U)]
@@ -855,7 +855,7 @@ object Future {
    *  or the result of the fold.
    *
    *  Example:
-   *  ```scala sc:compile
+   *  ```scala sc:nocompile
    *  import ExecutionContext.Implicits.global
    *  val futures = List(Future.successful(1), Future.successful(2), Future.successful(3))
    *  val futureSum = Future.fold(futures)(0)(_ + _)
@@ -878,7 +878,7 @@ object Future {
    *  where the fold-zero is the result value of the first `Future` in the collection.
    *
    *  Example:
-   *  ```scala sc:compile
+   *  ```scala sc:nocompile
    *  import ExecutionContext.Implicits.global
    *  val futures = List(Future.successful(1), Future.successful(2), Future.successful(3))
    *  val futureSum = Future.reduce(futures)(_ + _)

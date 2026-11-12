@@ -8,7 +8,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.attribute.{BasicFileAttributes, FileTime}
 
-import dotty.tools.io.{AbstractFile, ClassPath, FileZipArchive}
+import dotty.tools.io.{AbstractFile, FileZipArchive}
 import dotty.tools.dotc.core.Contexts.*
 import FileUtils.*
 
@@ -17,7 +17,7 @@ import FileUtils.*
  * It allows us to e.g. reduce significantly memory used by PresentationCompilers in Scala IDE
  * when there are a lot of projects having a lot of common dependencies.
  */
-sealed trait ZipAndJarFileLookupFactory {
+private sealed trait ZipAndJarFileLookupFactory {
   private val cache = new FileBasedCache[ClassPath]
 
   def create(zipFile: AbstractFile)(using Context): ClassPath =
@@ -36,14 +36,14 @@ sealed trait ZipAndJarFileLookupFactory {
  * Manages creation of classpath for class files placed in zip and jar files.
  * It should be the only way of creating them as it provides caching.
  */
-object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
-  private case class ZipArchiveClassPath(zipFile: File, override val release: String)
+private object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
+  private class ZipArchiveClassPath(protected override val zipFile: File, protected override val release: String)
     extends ZipArchiveFileLookup[BinaryFileEntry] {
 
     override def findClassFile(className: String): Option[AbstractFile] =
       file(className).map(_.file)
 
-    override def classes(inPackage: String): Seq[BinaryFileEntry] = files(inPackage)
+    override def classes(inPackage: String): Iterable[BinaryFileEntry] = files(inPackage)
 
     override protected def createFileEntry(file: AbstractFile): BinaryFileEntry = BinaryFileEntry(file)
 
@@ -60,9 +60,9 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
  * Manages creation of classpath for source files placed in zip and jar files.
  * It should be the only way of creating them as it provides caching.
  */
-object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
-  private case class ZipArchiveSourcePath(zipFile: File, override val release: String) extends ZipArchiveFileLookup[SourceFileEntry] {
-    override def sources(inPackage: String): Seq[SourceFileEntry] = files(inPackage)
+private object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
+  private class ZipArchiveSourcePath(protected override val zipFile: File, protected override val release: String) extends ZipArchiveFileLookup[SourceFileEntry] {
+    override def sources(inPackage: String): Iterable[SourceFileEntry] = files(inPackage)
 
     override protected def createFileEntry(file: AbstractFile): SourceFileEntry = SourceFileEntry(file)
     override protected def isRequiredFileType(file: AbstractFile): Boolean = file.ext.isSourceExtension
@@ -73,7 +73,7 @@ object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
     ZipArchiveSourcePath(jFile, release)
 }
 
-final class FileBasedCache[T] {
+private final class FileBasedCache[T] {
   private case class Stamp(lastModified: FileTime, fileKey: Object)
   private val cache = collection.mutable.Map.empty[java.nio.file.Path, (Stamp, T)]
 

@@ -205,7 +205,7 @@ trait MacroAnnotation extends StaticAnnotation:
    *      that match
    *        case that: User => this.name == that.name && this.id == that.id
    *        case _ => false
-   *    private lazy val hash$macro$1: Int =
+   *    private lazy val `hash$macro$1`: Int =
    *      var acc = 515782504 // scala.runtime.Statics.mix(-889275714, "User".hashCode)
    *      acc = scala.runtime.Statics.mix(acc, scala.runtime.Statics.anyHash(name))
    *      acc = scala.runtime.Statics.mix(acc, id)

@@ -7,8 +7,7 @@ object EqHashSet:
     set ++= xs
     set
 
-/** A hash set that allows some privileged protected access to its internals
- *  @param  initialCapacity  Indicates the initial number of slots in the hash table.
+/** @param  initialCapacity  Indicates the initial number of slots in the hash table.
  *                           The actual number of slots is always a power of 2, so the
  *                           initial size of the table will be the smallest power of two
  *                           that is equal or greater than the given `initialCapacity`.
@@ -19,7 +18,7 @@ object EqHashSet:
  *                           However, a table of size up to DenseLimit will be re-sized only
  *                           once the number of elements reaches the table's size.
  */
-class EqHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends GenericHashSet[T](initialCapacity, capacityMultiple) {
+final class EqHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends GenericHashSet[T](initialCapacity, capacityMultiple) {
   import GenericHashSet.DenseLimit
 
   /** System's identity hashcode left shifted by 1 */

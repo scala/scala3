@@ -15,6 +15,9 @@ import util.Store
 import dotty.tools.initialize
 import ast.tpd.*
 
+import scala.annotation.threadUnsafe
+import scala.collection.mutable
+
 /** This phase translates variables that are captured in closures to
  *  heap-allocated refs.
  */
@@ -25,24 +28,20 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
 
   override def description: String = CapturedVars.description
 
-  private val captured = util.HashSet[Symbol]()
+  private val captured = mutable.Set.empty[Symbol]
 
   private class RefInfo(using Context) {
     /** The classes for which a Ref type exists. */
     val refClassKeys: collection.Set[Symbol] =
       defn.ScalaNumericValueClasses() `union` Set(defn.BooleanClass, defn.ObjectClass)
 
-    val refClass: Map[Symbol, Symbol] =
+    @threadUnsafe
+    lazy val refClass: Map[Symbol, Symbol] =
       refClassKeys.map(rc => rc -> requiredClass(s"scala.runtime.${rc.name}Ref")).toMap
 
-    val volatileRefClass: Map[Symbol, Symbol] =
+    @threadUnsafe
+    lazy val volatileRefClass: Map[Symbol, Symbol] =
       refClassKeys.map(rc => rc -> requiredClass(s"scala.runtime.Volatile${rc.name}Ref")).toMap
-
-    val boxedRefClasses: collection.Set[Symbol] =
-      refClassKeys.flatMap(k => Set(refClass(k), volatileRefClass(k)))
-
-    val objectRefClasses: collection.Set[Symbol] =
-      Set(refClass(defn.ObjectClass), volatileRefClass(defn.ObjectClass))
   }
 
   private var myRefInfo: RefInfo | Null = null
@@ -111,7 +110,7 @@ object CapturedVars:
   val name: String = "capturedVars"
   val description: String = "represent vars captured by closures as heap objects"
 
-  def collect(captured: util.HashSet[Symbol]): TreeTraverser = new:
+  def collect(captured: mutable.Set[Symbol]): TreeTraverser = new:
     def traverse(tree: Tree)(using Context) = tree match
       case id: Ident =>
         val sym = id.symbol

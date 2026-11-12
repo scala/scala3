@@ -38,10 +38,10 @@ import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
 import cc.{isCaptureChecking, RetainingAnnotation, isRetainsLike, isDisallowedInCapset}
-import cc.Mutability.isUpdateMethod
+import cc.Mutability.{isUpdateMethod, isUpdateClass}
 
 import collection.mutable
-import reporting.*
+import reporting.*, report.Severity
 import Annotations.ExperimentalAnnotation
 
 object Checking {
@@ -257,7 +257,7 @@ object Checking {
   class CheckNonCyclicMap(sym: Symbol, reportErrors: Boolean)(using Context) extends TypeMap {
 
     /** Set of type references whose info is currently checked */
-    private val locked = mutable.Set[TypeRef]()
+    private val locked = mutable.Set.empty[TypeRef]
 
     /** Are cycles allowed within nested refinedInfos of currently checked type? */
     private var nestedCycleOK = false
@@ -701,8 +701,13 @@ object Checking {
       }
     if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
-    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Stateful) then
-      fail(em"Update method ${sym.name} must be declared in a class extending the `Stateful` trait.")
+    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Stateful) && !sym.owner.isUpdateClass then
+      fail(em"Update method ${sym.name} must be declared in a class extending the `Stateful` trait or in an update class.")
+    if sym.isUpdateClass then
+      if !sym.owner.derivesFrom(defn.Caps_Stateful) then
+        fail(em"Update $sym must be declared in a class extending the `Stateful` trait.")
+      if sym.is(Case) then
+        fail(em"Case classes cannot be update classes.")
     if sym.is(Erased) then checkErasedOK(sym)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
@@ -715,7 +720,7 @@ object Checking {
     // The issue with `erased inline` is that the erased semantics get lost
     // as the code is inlined and the reference is removed before the erased usage check.
     checkCombination(Erased, Inline)
-    checkNoConflict(Tracked, Mutable, em"mutable variables may not be `tracked`")
+    checkNoConflict(Tracked, MutableVal, em"mutable variables may not be `tracked`")
     checkNoConflict(Lazy, ParamAccessor, em"parameter may not be `lazy`")
   }
 
@@ -733,6 +738,8 @@ object Checking {
       report.error(ModifierNotAllowedForDefinition(Abstract), flagSourcePos(Abstract))
     if mods.is(Sealed) then
       report.error(ModifierNotAllowedForDefinition(Sealed), flagSourcePos(Sealed))
+    if mods.is(Mutable) then
+      report.error(em"Modifier `update` is not allowed for objects", flagSourcePos(Mutable))
     if mods.is(Final, butNot = Synthetic) then
       report.warning(RedundantModifier(Final), flagSourcePos(Final))
     if mods.is(Infix) then
@@ -969,31 +976,6 @@ object Checking {
 
   end checkAndAdaptExperimentalImports
 
-  /** Checks that PolyFunction only have valid refinements.
-   *
-   *  It only supports `apply` methods with one parameter list and optional type arguments.
-   */
-  def checkPolyFunctionType(tree: Tree)(using Context): Unit = new TreeTraverser {
-    def traverse(tree: Tree)(using Context): Unit = tree match
-      case tree: RefinedTypeTree if tree.tpe.derivesFrom(defn.PolyFunctionClass) =>
-        if tree.refinements.isEmpty then
-          reportNoRefinements(tree.srcPos)
-        tree.refinements.foreach {
-          case refinement: DefDef if refinement.name != nme.apply =>
-            report.error("PolyFunction only supports apply method refinements", refinement.srcPos)
-          case refinement: DefDef if !defn.PolyFunctionOf.isValidPolyFunctionInfo(refinement.tpe.widen) =>
-            report.error("Implementation restriction: PolyFunction apply must have exactly one parameter list and optionally type arguments. No by-name nor varags are allowed.", refinement.srcPos)
-          case _ =>
-        }
-      case _: RefTree if tree.symbol == defn.PolyFunctionClass =>
-        reportNoRefinements(tree.srcPos)
-      case _ =>
-        traverseChildren(tree)
-
-    def reportNoRefinements(pos: SrcPos) =
-      report.error("PolyFunction subtypes must refine the apply method", pos)
-  }.traverse(tree)
-
   /** Check that users do not extend the `PolyFunction` trait.
    *  We only allow compiler generated `PolyFunction`s.
    */
@@ -1206,9 +1188,11 @@ trait Checking {
         then
           report.error(em"no aliases can be used to refer to a language import", path.srcPos)
 
-  /** Check that `path` is a legal prefix for an export clause */
-  def checkLegalExportPath(path: Tree, selectors: List[untpd.ImportSelector])(using Context): Unit =
-    checkLegalImportOrExportPath(path, "export prefix")
+  /** Check that `path` is a legal prefix for an export clause.
+   *  @return whether the path itself is legal
+   */
+  def checkLegalExportPath(path: Tree, selectors: List[untpd.ImportSelector])(using Context): Boolean =
+    val isLegalPath = !ctx.reporter.reportsErrorsFor(checkLegalImportOrExportPath(path, "export prefix"))
     if
       selectors.exists(_.isWildcard)
       && path.tpe.classSymbol.is(PackageClass)
@@ -1218,6 +1202,7 @@ trait Checking {
       report.error(
         em"Implementation restriction: ${path.tpe.classSymbol} is not a valid prefix for a wildcard export, as it is a package",
         path.srcPos)
+    isLegalPath
 
   /** Check that the definition name isn't root. */
   def checkNonRootName(name: Name, nameSpan: Span)(using Context): Unit =
@@ -1265,7 +1250,7 @@ trait Checking {
 
   /** If `tree` is an application of a new-style implicit conversion (using the apply
    *  method of a `scala.Conversion` instance), check that the expected type is
-   *  annotated with @$into or that implicit conversions are enabled.
+   *  annotated with @\$into or that implicit conversions are enabled.
    */
   def checkImplicitConversionUseOK(tree: Tree, expected: Type)(using Context): Unit =
     val sym = tree.symbol
@@ -1278,7 +1263,13 @@ trait Checking {
         case Select(qual, _) => qual.symbol.orElse(sym.owner)
         case _ => sym.owner
       checkFeature(nme.implicitConversions,
-        i"Use of implicit conversion ${conv.showLocated}", NoSymbol, tree.srcPos)
+        i"""Implicit conversion to type $expected is not to an `into[...]` type.
+           |Therefore, the use of the implicit conversion ${conv.showLocated}""",
+        NoSymbol, tree.srcPos,
+        severity =
+          if sourceVersion.errorOnConversion then Severity.Error
+          else if sourceVersion.warnOnConversion then Severity.WarningThenError
+          else Severity.FeatureWarning)
 
   private def infixOKSinceFollowedBy(tree: untpd.Tree): Boolean = tree match {
     case _: untpd.Block | _: untpd.Match => true
@@ -1328,9 +1319,10 @@ trait Checking {
   def checkFeature(name: TermName,
                    description: => String,
                    featureUseSite: Symbol,
-                   pos: SrcPos)(using Context): Unit =
+                   pos: SrcPos,
+                   severity: Severity = Severity.FeatureWarning)(using Context): Unit =
     if !Feature.enabled(name) then
-      report.featureWarning(name.toString, description, featureUseSite, required = false, pos)
+      report.featureWarning(name.toString, description, featureUseSite, severity, pos)
 
   /** Check that `tp` is a class type and that any top-level type arguments in this type
    *  are feasible, i.e. that their lower bound conforms to their upper bound. If a type
@@ -1366,7 +1358,7 @@ trait Checking {
 
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit =
-    val seen = new mutable.HashMap[Name, List[Symbol]].withDefaultValue(Nil)
+    val seen = mutable.Map.empty[Name, List[Symbol]].withDefaultValue(Nil)
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit =
@@ -1718,12 +1710,14 @@ trait Checking {
         if (!sym.owner.is(Module) || !sym.owner.isStatic)
           report.error(em"$sym cannot be a main method since it cannot be accessed statically", pos)
       }
+      else if (annotCls == defn.ThrowsAnnot && !sym.is(Method) && !sym.isConstructor)
+        report.error(em"`@throws` only allowed for methods and constructors", pos)
       // TODO: Add more checks here
     }
 
   /** Check that symbol's external name does not clash with symbols defined in the same scope */
   def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit =
-    var seen = Set[Name]()
+    var seen = Set.empty[Name]
     for stat <- stats do
       val sym = stat.symbol
       val tname = sym.targetName
@@ -1813,7 +1807,7 @@ trait ReChecking extends Checking {
   override def checkCanThrow(tp: Type, span: Span)(using Context): Tree = EmptyTree
   override def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = ()
   override def checkNoContextFunctionType(tree: Tree)(using Context): Unit = ()
-  override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
+  override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos, severity: Severity)(using Context): Unit = ()
 }
 
 trait NoChecking extends ReChecking {

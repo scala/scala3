@@ -23,7 +23,7 @@ import config.Config
 import reporting.*
 import reporting.Diagnostic.LoadingFailure
 import collection.mutable
-import cc.{CapturingType, derivedCapturingType, stripCapturing}
+import cc.{CapturingType, derivedCapturingType, stripCapturing, isCaptureCheckingOrSetup, captureSet}
 
 import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized
@@ -514,9 +514,12 @@ object SymDenotations {
         if (kind.separator == "$")
           // duplicate scalac's behavior: don't write a double '$$' for module class members.
           prefix = prefix.exclude(ModuleClassName)
+        // avoid the need to capture `filler` and `encl` through ObjectRefs since they're vars
+        val immFiller = filler
+        val immEncl = encl
         def qualify(n: SimpleName) =
-          val qn = kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
-          if kind == FlatName && !encl.is(JavaDefined) then qn.compactified else qn
+          val qn = kind(prefix.toTermName, if (immFiller.isEmpty) n else termName(immFiller + n))
+          if kind == FlatName && !immEncl.is(JavaDefined) then qn.compactified else qn
         val fn = name.replaceDeep {
           case n: SimpleName => qualify(n)
         }
@@ -571,7 +574,8 @@ object SymDenotations {
       myTargetName = name
 
     def hasTargetName(name: Name)(using Context): Boolean =
-      targetName.matchesTargetName(name)
+      // Don't bother looking at annotations if we're looking for a name that will always match
+      name.isEmpty || targetName.matchesTargetName(name)
 
     /** The name given in a `@targetName` annotation if one is present, `name` otherwise */
     def targetName(using Context): Name =
@@ -675,9 +679,9 @@ object SymDenotations {
     final def isSpecializedTraitImplementationClass(using Context): Boolean =
       isClass && name.isSpecializedTraitImplementationName
 
-    /** Is this symbol a specialized trait implementation class that 
+    /** Is this symbol a specialized trait implementation class that
      * was generated from a specialization using only top classes / Nothing
-     * and is therefore not subject to a specialized interface */ 
+     * and is therefore not subject to a specialized interface */
     final def isRawSpecializedTraitImplementationClass(using Context): Boolean =
       isClass && name.isSpecializedTraitImplementationName
 
@@ -793,6 +797,17 @@ object SymDenotations {
     final def isStaticOwner(using Context): Boolean =
       myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
 
+    final def isJavaStaticsClass(using Context): Boolean =
+      isAllOf(JavaDefined | ModuleClass, butNot = PackageClass)
+
+    /** The class whose subclasses may access this symbol if it is protected (for Java statics, their class) */
+    final def protectedOwner(using Context): Symbol =
+      if owner.isJavaStaticsClass then owner.companionClass else owner
+
+    /** Is this a Java static accessed from trait `cls`, which is not a subclass on the JVM? */
+    final def isJavaStaticAccessedInTrait(cls: Symbol)(using Context): Boolean =
+      isTerm && owner.isJavaStaticsClass && cls.is(Trait)
+
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     final def isCoDefinedWith(other: Symbol)(using Context): Boolean =
       (this.effectiveOwner == other.effectiveOwner) &&
@@ -855,11 +870,11 @@ object SymDenotations {
       this.is(Method, butNot = Accessor) && !isAnonymousFunction
 
     /** A mutable variable (not a getter or setter for it) */
-    final def isMutableVar(using Context): Boolean = is(Mutable, butNot = Method)
+    final def isMutableVar(using Context): Boolean = is(MutableVal, butNot = Method)
 
     /** A mutable variable or its getter or setter */
     final def isMutableVarOrAccessor(using Context): Boolean =
-      is(Mutable) && (!is(Method) || is(Accessor))
+      is(MutableVal) && (!is(Method) || is(Accessor))
 
     /** Is this a getter? */
     final def isGetter(using Context): Boolean =
@@ -941,7 +956,13 @@ object SymDenotations {
      *  but it becomes nullable after erasure.
      */
     final def isNullableClassAfterErasure(using Context): Boolean =
-      isClass && !isValueClass && !is(ModuleClass) && symbol != defn.NothingClass
+      // `Null` derives from `AnyVal` under explicit nulls, so it would be excluded by
+      // `!isValueClass`, even though `null` is of course a value of it.
+      isClass && {
+        if isValueClass then
+          symbol == defn.NullClass || ctx.explicitNulls && symbol == defn.AnyValClass
+        else !is(ModuleClass) && symbol != defn.NothingClass
+      }
 
     /** Is `pre` the same as C.this, where C is exactly the owner of this symbol,
      *  or, if this symbol is protected, a subclass of the owner?
@@ -980,9 +1001,10 @@ object SymDenotations {
 
       /** Is protected access to target symbol permitted? */
       def isProtectedAccessOK: Boolean = {
-        val cls = owner.enclosingSubClass
+        val cls = protectedOwner.enclosingSubClass
         if !cls.exists then
           pre.termSymbol.isPackageObject && accessWithin(pre.termSymbol.owner)
+        else if isJavaStaticAccessedInTrait(cls) then false
         else
           def isConstructorAccessOK = isConstructor && ctx.isSuperCallContext
           // allow accesses to types from arbitrary subclasses fixes #4737
@@ -1086,11 +1108,11 @@ object SymDenotations {
 
     def isInlineTrait(using Context): Boolean =
       isAllOf(InlineTrait)
-    
-    def isSpecializedMethod(using Context): Boolean = 
+
+    def isSpecializedMethod(using Context): Boolean =
       Specialization.isSpecializedMethod(symbol)
 
-    def isSpecializedTrait(using Context): Boolean = 
+    def isSpecializedTrait(using Context): Boolean =
       Specialization.isSpecializedTrait(symbol)
 
     /** Does this method or field need to be retained at runtime */
@@ -1434,9 +1456,16 @@ object SymDenotations {
 
     /** The class that encloses the owner of the current context
      *  and that is a subclass of this class. NoSymbol if no such class exists.
+     *  Java statics are entered in a companion module, but in Java they are part
+     *  of the class body (JLS 8.1.6), where protected access is allowed (JLS 6.6.2.1).
+     *  So the companion class of a Java statics module is also considered.
      */
     final def enclosingSubClass(using Context): Symbol =
-      ctx.owner.ownersIterator.findSymbol(_.isSubClass(symbol))
+      ctx.owner.ownersIterator
+        .flatMap: owner =>
+          if owner.isJavaStaticsClass then Iterator(owner, owner.companionClass)
+          else Iterator.single(owner)
+        .findSymbol(_.isSubClass(symbol))
 
     /** The alias of an opaque type alias that's stored in the self type of the
      *  containing object.
@@ -1555,14 +1584,11 @@ object SymDenotations {
       }
 
     /** The class or term symbol up to which this symbol is accessible,
-     *  or RootClass if it is public.  As java protected statics are
-     *  otherwise completely inaccessible in scala, they are treated
-     *  as public.
+     *  or RootClass if it is public.
      *  @param base  The access boundary to assume if this symbol is protected
      */
     final def accessBoundary(base: Symbol)(using Context): Symbol =
       if (this.is(Private)) owner
-      else if (this.isAllOf(StaticProtected)) defn.RootClass
       else if (privateWithin.exists && (!ctx.phase.erasedTypes || this.is(JavaDefined))) privateWithin
       else if (this.is(Protected)) base
       else defn.RootClass
@@ -1838,7 +1864,7 @@ object SymDenotations {
       @tailrec
       def findLvlN(
         explore: mutable.ArrayDeque[Symbol],
-        seen: util.HashSet[Symbol],
+        seen: mutable.Set[Symbol],
         acc: mutable.ListBuffer[Symbol]
       ): List[Symbol] =
         if explore.isEmpty then
@@ -1860,7 +1886,7 @@ object SymDenotations {
        */
       @tailrec
       def findLvl2(
-        lvl1: List[Symbol], explore: List[Symbol], seenOrNull: util.HashSet[Symbol] | Null
+        lvl1: List[Symbol], explore: List[Symbol], seenOrNull: mutable.Set[Symbol] | Null
       ): List[Symbol] = explore match
         case sym :: explore1 =>
           val lvl2 = sym.children
@@ -1869,7 +1895,7 @@ object SymDenotations {
           else // check if we have seen the children before
             val seen = // initialise the seen set if not already
               if seenOrNull != null then seenOrNull
-              else util.HashSet.from(lvl1)
+              else mutable.Set.from(lvl1)
             val notSeen = lvl2.filterConserve(!seen.contains(_))
             if notSeen.isEmpty then // we found children, but we had already seen them, scan the rest of explore1
               findLvl2(lvl1, explore1, seen)
@@ -2092,7 +2118,7 @@ object SymDenotations {
     /** Like `baseClasses.length` but more efficient. */
     def baseClassesLength(using BaseData, Context): Int =
       // `+ 1` because the baseClassSet does not include the current class unlike baseClasses
-      baseClassSet.classIds.length + 1
+      baseClassSet.length + 1
 
     /** A bitset that contains the superId's of all base classes */
     private def baseClassSet(implicit onBehalf: BaseData, ctx: Context): BaseClassSet =
@@ -2302,7 +2328,34 @@ object SymDenotations {
               denots1
         case nil => denots
       if name.isConstructorName then ownDenots
-      else collect(ownDenots, info.parents)
+      else
+        val denots = collect(ownDenots, info.parents)
+        if name.isTermName && isJavaStaticsClass then
+          javaStaticsParents.foldLeft(denots): (denots1, parentStatics) =>
+            val inherited = inheritedJavaStatics(parentStatics, name, required, excluded)
+            denots1.union(inherited.mapInherited(ownDenots, denots1, thisType))
+        else denots
+
+    private def inheritedJavaStatics(parentStatics: ClassDenotation, name: Name,
+        required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): PreDenotation =
+      // constructor proxies are not static members and are not inherited
+      val inherited = parentStatics.membersNamedNoShadowingBasedOnFlags(name, required, excluded | Private | PhantomSymbol)
+        .filterWithPredicate: d =>
+          // package access members are only inherited within their package (JLS 8.4.8)
+          val sym = d.symbol
+          !sym.privateWithin.exists || sym.is(Protected) || sym.privateWithin == symbol.enclosingPackageClass
+      if parentStatics.companionClass.is(Trait) then
+        // static interface methods are not inherited (JLS 8.4.8), static fields are (JLS 8.3)
+        inherited.filterWithFlags(EmptyFlags, Method)
+      else inherited
+
+    private def javaStaticsParents(using Context): List[ClassDenotation] =
+      companionClass.denot match
+        case cls: ClassDenotation =>
+          cls.parentSyms.collect:
+            case psym if psym.is(JavaDefined) && psym.companionModule.exists =>
+              psym.companionModule.moduleClass.asClass.classDenot
+        case _ => Nil
 
     override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
       val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)
@@ -2434,7 +2487,9 @@ object SymDenotations {
                 if tp1.isBottomType && (tp1 frozen_<:< tp2) then return recur(tp2)
                 if tp2.isBottomType && (tp2 frozen_<:< tp1) then return recur(tp1)
               val baseTp =
-                if symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty then
+                if symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty
+                    && !isCaptureCheckingOrSetup // the shortcut would drop capture sets of baseTp1 and baseTp2
+                then
                   symbol.typeRef
                 else
                   val baseTp1 = recur(tp1)
@@ -2481,8 +2536,8 @@ object SymDenotations {
       }
 
     def computeMemberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {
-      var names = Set[Name]()
-      def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
+      var names = Set.empty[Name]
+      inline def maybeAdd(name: Name) = if keepOnly(thisType, name) then names += name
       ctx.handleRecursive("member names of", this):
         for ptype <- parentTypes do
           ptype.classSymbol match
@@ -2494,6 +2549,9 @@ object SymDenotations {
               // reference has been reported by computeBaseData).
               // Skip here to avoid a secondary MatchError.
               // See scala/scala3#20010.
+        if isJavaStaticsClass then
+          for parentStatics <- javaStaticsParents; name <- parentStatics.memberNames(keepOnly) do
+            if name.isTermName && inheritedJavaStatics(parentStatics, name).exists then maybeAdd(name)
         val ownSyms =
           if (keepOnly eq implicitFilter)
             if (this.is(Package)) Iterator.empty
@@ -2887,8 +2945,8 @@ object SymDenotations {
     private var myDecls: Scope = EmptyScope
     private var mySourceModule: Symbol | Null = null
     private var myModuleClass: Symbol | Null = null
-    private var mySourceModuleFn: Context ?=> Symbol = LazyType.NoSymbolFn
-    private var myModuleClassFn: Context ?=> Symbol = LazyType.NoSymbolFn
+    private var mySourceModuleFn: (Context => Symbol) | Null = null
+    private var myModuleClassFn: (Context => Symbol) | Null = null
 
     /** The type parameters computed by the completer before completion has finished */
     def completerTypeParams(sym: Symbol)(using Context): List[TypeParamInfo] =
@@ -2897,15 +2955,20 @@ object SymDenotations {
 
     def decls: Scope = myDecls
     def sourceModule(using Context): Symbol =
-      if mySourceModule == null then mySourceModule = mySourceModuleFn
-      mySourceModule.nn
+      initialize(mySourceModule, mySourceModule = _, {
+        val fn = mySourceModuleFn
+        if fn `eq` null then NoSymbol else fn(ctx)
+      })
+
     def moduleClass(using Context): Symbol =
-      if myModuleClass == null then myModuleClass = myModuleClassFn
-      myModuleClass.nn
+      initialize(myModuleClass, myModuleClass = _, {
+        val fn = myModuleClassFn
+        if fn `eq` null then NoSymbol else fn(ctx)
+      })
 
     def withDecls(decls: Scope): this.type = { myDecls = decls; this }
-    def withSourceModule(sourceModuleFn: Context ?=> Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
-    def withModuleClass(moduleClassFn: Context ?=> Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
+    def withSourceModule(sourceModuleFn: Context ?=> Symbol): this.type = { mySourceModuleFn = (c => sourceModuleFn(using c)); this }
+    def withModuleClass(moduleClassFn: Context ?=> Symbol): this.type = { myModuleClassFn = (c => moduleClassFn(using c)); this }
 
     override def toString: String = getClass.toString
 
@@ -2916,9 +2979,6 @@ object SymDenotations {
      */
     def needsCompletion(symd: SymDenotation)(using Context): Boolean = true
   }
-
-  object LazyType:
-    private val NoSymbolFn = (_: Context) ?=> NoSymbol
 
   /** A subtrait of LazyTypes where completerTypeParams yields a List[TypeSymbol], which
    *  should be completed independently of the info.
@@ -3137,66 +3197,47 @@ object SymDenotations {
     def sameGroup(p1: Phase, p2: Phase) = p1.sameParentsStartId == p2.sameParentsStartId
   }
 
-  class BaseClassSet(val classIds: Array[Int]) extends AnyVal {
-    def contains(sym: Symbol, limit: Int): Boolean = {
-      val id = sym.id
-      var i = 0
-      while (i < limit && classIds(i) != id) i += 1
-      i < limit && {
-        if (i > 0) {
-          val t = classIds(i)
-          classIds(i) = classIds(i - 1)
-          classIds(i - 1) = t
-        }
-        true
-      }
-    }
-    def contains(sym: Symbol): Boolean = contains(sym, classIds.length)
-  }
+  class BaseClassSet(classes: List[ClassSymbol]) extends AnyVal {
+    def length: Int = classes.length
 
-  object BaseClassSet {
-    def apply(bcs: List[ClassSymbol]): BaseClassSet =
-      new BaseClassSet(bcs.toArray.map(_.id))
+    def contains(sym: Symbol, limit: Int): Boolean =
+      @tailrec
+      def recur(sym: Symbol, lst: List[ClassSymbol], limit: Int): Boolean =
+        if limit == -1 then // < -1 means no limit -- no need to fetch the length of the list
+          false
+        else
+          lst match
+            case hd :: tl if hd.id == sym.id => true
+            case _ :: tl => recur(sym, tl, limit - 1)
+            case _ => false
+      recur(sym, classes, limit)
+
+    def contains(sym: Symbol): Boolean = contains(sym, -2)
   }
 
   /** A class to combine base data from parent types */
-  class BaseDataBuilder {
+  private final class BaseDataBuilder {
     private var classes: List[ClassSymbol] = Nil
-    private var classIds = new Array[Int](32)
     private var length = 0
 
-    private def resize(size: Int) = {
-      val classIds1 = new Array[Int](size)
-      System.arraycopy(classIds, 0, classIds1, 0, classIds.length min size)
-      classIds = classIds1
-    }
-
-    private def add(sym: Symbol): Unit = {
-      if (length == classIds.length) resize(length * 2)
-      classIds(length) = sym.id
-      length += 1
-    }
-
     def addAll(bcs: List[ClassSymbol]): this.type = {
-      val len = length
       bcs match {
         case bc :: bcs1 =>
           addAll(bcs1)
-          if (!new BaseClassSet(classIds).contains(bc, len)) {
-            add(bc)
+          if (!new BaseClassSet(classes).contains(bc)) {
             classes = bc :: classes
+            length += 1
           }
         case nil =>
       }
       this
     }
 
-    def baseClassSet: BaseClassSet = {
-      if (length != classIds.length) resize(length)
-      new BaseClassSet(classIds)
-    }
+    def baseClassSet: BaseClassSet =
+      new BaseClassSet(classes)
 
-    def baseClasses: List[ClassSymbol] = classes
+    def baseClasses: List[ClassSymbol] =
+      classes
   }
 
   private val packageTypeName = ModuleClassName(nme.PACKAGE).toTypeName

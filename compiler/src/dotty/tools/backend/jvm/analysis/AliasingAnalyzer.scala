@@ -357,7 +357,7 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
     super.init(src) // very quick (just an arraycopy)
     System.arraycopy(src.asInstanceOf[AliasingFrame[?]].aliases, 0, aliases, 0, aliases.length) // also quick
 
-    val newSets = mutable.HashMap.empty[AliasSet, AliasSet]
+    val newSets = mutable.Map.empty[AliasSet, AliasSet]
 
     // the rest of this method (cloning alias sets) is the second performance˙hotspot (next to
     // AliasingFrame.merge). for nullness, it takes ~20% of the analysis time.
@@ -412,12 +412,8 @@ class AliasingAnalyzer[V <: Value](interpreter: Interpreter[V]) extends Analyzer
   override def newFrame(src: Frame[? <: V]): AliasingFrame[V] = new AliasingFrame(src)
 }
 
-// Marker trait for AsmAnalyzers that use AliasingFrame
-trait AliasingAsmAnalyzerMarker
-
 class BasicAliasingAnalyzer(methodNode: MethodNode, classInternalName: String)
   extends AsmAnalyzer[BasicValue](methodNode, classInternalName, new AliasingAnalyzer(new BasicInterpreter))
-    with AliasingAsmAnalyzerMarker
 
 /**
  * An iterator over Int (required to prevent boxing the result of next).

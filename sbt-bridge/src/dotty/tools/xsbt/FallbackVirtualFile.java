@@ -20,17 +20,22 @@ public class FallbackVirtualFile extends xsbti.BasicVirtualFileRef implements xs
     this.sourceFile = sourceFile;
   }
 
-  private static byte[] toBytes(char[] chars) {
-    return new String(chars).getBytes(StandardCharsets.UTF_8);
-  }
-
   public InputStream input() {
-    return new java.io.ByteArrayInputStream(toBytes(sourceFile.content()));
+    return new java.io.ByteArrayInputStream(sourceFile.textContent().getBytes(StandardCharsets.UTF_8));
   }
 
   public long contentHash() {
-    int murmurHash3 = scala.util.hashing.MurmurHash3$.MODULE$.bytesHash(toBytes(sourceFile.content()));
-    return (long) murmurHash3;
+      return scala.util.hashing.MurmurHash3$.MODULE$.stringHash(sourceFile.textContent());
+  }
+
+  // Required by xsbti.HashedVirtualFileRef in compiler-interface 2.x.
+  // No @Override, so this still compiles against 1.x.
+  public String contentHashStr() {
+    return "murmur3-" + Long.toHexString(contentHash());
+  }
+
+  public long sizeBytes() {
+    return sourceFile.textContent().getBytes(StandardCharsets.UTF_8).length;
   }
 
 }

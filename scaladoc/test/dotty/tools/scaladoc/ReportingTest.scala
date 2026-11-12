@@ -34,12 +34,12 @@ class ReportingTest:
   }
 
   @Test
-  def errorsInCaseOfIncompletClasspath =
+  def errorsInCaseOfIncompleteClasspath =
     val notTasty = Files.createTempFile("broken", ".notTasty")
     try
       Files.write(notTasty, "Random file".getBytes)
       checkReportedDiagnostics(a => a.copy(tastyFiles = notTasty.toFile +: a.tastyFiles)){ diag =>
-        assertMessagesAbout(diag.errorMsgs)("File extension is not `tasty` or `jar`")
+        assertMessagesAbout(diag.errorMsgs)("File extension passed to Scaladoc is not `tasty` or `jar`")
       }
     finally Files.delete(notTasty)
 

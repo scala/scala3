@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.language.implicitConversions
 
@@ -41,7 +42,6 @@ import scala.language.implicitConversions
  *
  *  val x = Array(OrderedClass(1), OrderedClass(5), OrderedClass(3))
  *  scala.util.Sorting.quickSort(x)
- *  x
  *  ```
  *
  *  It is important that the `equals` method for an instance of `Ordered[A]` be consistent with the

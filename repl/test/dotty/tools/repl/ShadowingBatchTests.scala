@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import java.io.File
 import java.nio.file.Files
 
@@ -80,7 +78,7 @@ class ShadowingBatchTests extends ErrorMessagesTest:
     val runCtx = run.runContext
     if runCtx.reporter.hasErrors then
       val rep = runCtx.reporter.asInstanceOf[StoreReporter]
-      val msgs = rep.removeBufferedMessages(using runCtx).map(_.msg).reverse
+      val msgs = rep.removeBufferedMessages.map(_.msg).reverse
       new Report(msgs, runCtx)
     else new EmptyReport
 end ShadowingBatchTests

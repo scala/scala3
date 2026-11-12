@@ -241,8 +241,8 @@ object Flags {
   /** A value or variable accessor (getter or setter) */
   val (AccessorOrSealed @ _, Accessor @ _, Sealed @ _) = newFlags(11, "<accessor>", "sealed")
 
-  /** A mutable var, an open class */
-  val (MutableOrOpen @ _, Mutable @ _, Open @ _) = newFlags(12, "mutable", "open")
+  /** A mutable var, an update method or class */
+  val (Mutable @ _, MutableVal @ _, UpdateClass @ _) = newFlags(12, "mutable", "update")
 
   /** Symbol is local to current class (i.e. private[this] or protected[this]
    *  pre: Private or Protected are also set
@@ -353,8 +353,9 @@ object Flags {
   /** Symbol is a Java-style varargs method / a Java annotation */
   val (_, JavaVarargs @ _, JavaAnnotation @ _) = newFlags(37, "<varargs>", "<java-annotation>")
 
-  /** Symbol is a Java default method */
-  val (_, DefaultMethod @ _, _) = newFlags(38, "<defaultmethod>")
+  /** Symbol is labelled with an `open` modifier / or used in Java code: a Java default method */
+  val (Open @ _, OpenMethod @ _, OpenClass @ _) = newFlags(38, "open")
+  val JavaDefaultMethod = OpenMethod
 
   /** Symbol is a transparent inline method or trait */
   val (Transparent @ _, _, TransparentType @ _) = newFlags(39, "transparent")
@@ -453,10 +454,11 @@ object Flags {
 
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic, Transparent, Erased, Synchronized, Inline)
+    commonFlags(Private, Protected, Final, Case, Implicit, Given,
+      Open, Override, JavaStatic, Transparent, Erased, Synchronized, Inline)
 
   val TypeSourceModifierFlags: FlagSet =
-    CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open | Into
+    CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Into
 
   val TermSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTermFlags | AbsOverride | Lazy | Tracked
@@ -472,7 +474,7 @@ object Flags {
    */
   val FromStartFlags: FlagSet = commonFlags(
     Module, Package, Deferred, Method, Case, Enum, Param, ParamAccessorOrInto,
-    Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
+    Scala2SpecialFlags, Mutable, Open, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor, Tracked,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic, Exported,
     SuperParamAliasOrScala2x, Inline, Macro, PhantomSymbol, Invisible)
@@ -551,7 +553,7 @@ object Flags {
   val RetainedExportTypeFlags = Infix
 
   /** Flags that apply only to classes */
-  val ClassOnlyFlags = Sealed | Open | Abstract.toTypeFlags
+  val ClassOnlyFlags = Sealed | Open.toTypeFlags | Abstract.toTypeFlags
 
 // ------- Other flag sets -------------------------------------
 
@@ -597,7 +599,6 @@ object Flags {
   val InlineByNameProxy: FlagSet             = InlineProxy | Method
   val JavaEnum: FlagSet                      = JavaDefined | Enum                             // A Java enum trait
   val JavaEnumValue: FlagSet                 = JavaDefined | EnumValue                        // A Java enum value
-  val StaticProtected: FlagSet               = JavaDefined | JavaStatic | Protected           // Java symbol which is `protected` and `static`
   val JavaModule: FlagSet                    = JavaDefined | Module                           // A Java companion object
   val JavaInterface: FlagSet                 = JavaDefined | NoInits | Trait
   val JavaProtected: FlagSet                 = JavaDefined | Protected

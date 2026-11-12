@@ -1,0 +1,6 @@
+# Scala class C depends on Java class B in the empty package
+> compile
+
+# Removing B.f must invalidate C
+$ copy-file changes/B.java B.java
+-> compile

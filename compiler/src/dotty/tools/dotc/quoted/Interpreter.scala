@@ -35,7 +35,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
 
   val classLoader =
     if ctx.owner.topLevelClass.name.startsWith(str.REPL_SESSION_LINE) then
-        new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader0)
+        new AbstractFileClassLoader(ctx.settings.outputDir.value, ctx.settings.javaOutputVersion.value, classLoader0)
     else classLoader0
 
   /** Local variable environment */
@@ -204,7 +204,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     }
 
   private def loadReplLineClass(moduleClass: Symbol): Class[?] = {
-    val lineClassloader = new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader)
+    val lineClassloader = new AbstractFileClassLoader(ctx.settings.outputDir.value, ctx.settings.javaOutputVersion.value, classLoader)
     lineClassloader.loadClass(moduleClass.name.firstPart.toString)
   }
 
@@ -239,6 +239,8 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       case ex: InvocationTargetException =>
         ex.getTargetException match {
           case ex: scala.quoted.runtime.StopMacroExpansion =>
+            throw ex
+          case ex: dotty.tools.dotc.core.RecursionOverflow =>
             throw ex
           case MissingClassValidInCurrentRun(sym, origin) =>
             suspendOnMissing(sym, origin, pos)
@@ -358,11 +360,12 @@ object Interpreter:
           if message eq null then None
           else
             val className = message.replace('/', '.')
-            val sym =
+            val topLevelSym =
               if className.endsWith(str.MODULE_SUFFIX) then
                 staticRef(className.stripSuffix(str.MODULE_SUFFIX).toTermName).symbol.moduleClass
               else
                 staticRef(className.toTypeName).symbol
+            val sym = if topLevelSym.exists then topLevelSym else nestedClassFromBinaryName(className)
             if sym.isDefinedInBinary then
               // i.e. the associated file is `.tasty`, if the macro classloader is not able to find the class,
               // possibly it indicates that it comes from a pipeline-compiled dependency.
@@ -374,6 +377,25 @@ object Interpreter:
               None
         case _ => None
     }
+
+    /** The class whose binary name is `className`, for classes nested in other classes or objects
+     *  (e.g. `pkg.Outer$Inner` or `pkg.package$C`), which `staticRef` cannot resolve.
+     */
+    private def nestedClassFromBinaryName(className: String)(using Context): Symbol =
+      val lastDot = className.lastIndexOf('.')
+      val pkg =
+        if lastDot < 0 then defn.EmptyPackageClass
+        else staticRef(className.take(lastDot).toTermName, generateStubs = false, isPackage = true).symbol.moduleClass
+      def search(cls: Symbol): Symbol =
+        val name = cls.binaryClassName
+        if name == className then cls
+        else if !className.startsWith(name) then NoSymbol
+        else cls.info.decls.iterator.filter(_.isClass).map(search).find(_.exists).getOrElse(NoSymbol)
+      if !pkg.exists then NoSymbol
+      else
+        val outerName = termName(className.drop(lastDot + 1).takeWhile(_ != '$')).decode
+        val outerClasses = List(pkg.info.decl(outerName.toTypeName).symbol, pkg.info.decl(outerName).symbol.moduleClass)
+        outerClasses.filter(_.isClass).map(search).find(_.exists).getOrElse(NoSymbol)
   }
 
   def suspendOnMissing(sym: Symbol, origin: ClassOrigin, pos: SrcPos)(using Context): Nothing =

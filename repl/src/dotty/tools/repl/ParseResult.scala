@@ -126,12 +126,28 @@ object JarCmd extends ArgCommand[JarCmd] {
   val command: String = ":jar"
 }
 
+/** `:resource <path>` adds a resource file or directory to the classpath
+ */
+case class ResourceCmd(path: String) extends Command:
+  override def replayLine = Some(s"${ResourceCmd.command} $path")
+object ResourceCmd extends ArgCommand[ResourceCmd] {
+  val command: String = ":resource"
+}
+
 /** `:toolkit <version>` resolves a toolkit and adds it to the classpath
  */
 case class ToolkitCmd(coordinates: String) extends Command:
   override def replayLine = Some(s"${ToolkitCmd.command} $coordinates")
 object ToolkitCmd extends ArgCommand[ToolkitCmd] {
   val command: String = ":toolkit"
+}
+
+/** `:repository <url>|<alias>` adds repositories used to resolve dependencies
+ */
+case class RepoCmd(repositories: String) extends Command:
+  override def replayLine = Some(s"${RepoCmd.command} $repositories")
+object RepoCmd extends ArgCommand[RepoCmd] {
+  val command: String = ":repository"
 }
 
 /** `:kind <type>` display the kind of a type. see also :help kind
@@ -163,6 +179,16 @@ case class DocOf(expr: String) extends Command:
   override def replayLine = Some(s"${DocOf.command} $expr")
 object DocOf extends ArgCommand[DocOf] {
   val command: String = ":doc"
+}
+
+/** `:completions <input>` prints a `[completions] <text>` line per candidate, where
+ *  `<text>` replaces `input`. Meant for editors driving the REPL through a dumb
+ *  terminal, where TAB completion is unavailable.
+ */
+case class Completions(expr: String) extends Command:
+  override def replayLine = None
+object Completions extends ArgCommand[Completions] {
+  val command: String = ":completions"
 }
 
 /** `:imports` lists the imports that have been explicitly imported during the
@@ -340,7 +366,7 @@ object ParseResult {
           case _ => None
 
   def apply(source: SourceFile)(using state: State): ParseResult = {
-    val sourceCode = source.content().mkString
+    val sourceCode = source.textContent()
     sourceCode match {
       case "" => Newline
       case _ if mixesCommandsAndDirectives(sourceCode) => MixedCommandsAndDirectives

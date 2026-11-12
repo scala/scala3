@@ -168,6 +168,15 @@ object Inlines:
   private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
     tree.symbol.is(Transparent)
     || ctx.mode.is(Mode.ForceInline)
+    || isDefaultArgOfInlineParamInInlinedCode(tree)
+
+  /** Is `tree` a call to the default getter of an inline parameter of the method that is
+   *  currently being inlined?
+   */
+  private def isDefaultArgOfInlineParamInInlinedCode(tree: Tree)(using Context): Boolean =
+    ctx.typer match
+      case typer: Inliner#InlineTyper => typer.isDefaultGetterOfInlinedMethod(tree.symbol)
+      case _ => false
 
   /** Try to inline a call to an inline method. Fail with error if the maximal
    *  inline depth is exceeded.
@@ -191,19 +200,20 @@ object Inlines:
     )
 
     val tree0 = stripper.transform(tree)
+    val symbol0 = tree0.symbol
 
-    if tree0.symbol.denot.exists
-      && tree0.symbol.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass
+    if symbol0.denot.exists
+      && symbol0.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass
     then
-      if (tree0.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree0)
-      if (tree0.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree0)
+      if (symbol0 == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree0)
+      if (symbol0 == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree0)
 
     if ctx.isAfterTyper then
       // During typer we wait with cross version checks until PostTyper, in order
       // not to provoke cyclic references. See i16116 for a test case.
-      CrossVersionChecks.checkRef(tree0.symbol, tree0.srcPos)
+      CrossVersionChecks.checkRef(symbol0, tree0.srcPos)
 
-    if tree0.symbol.isConstructor then return tree // error already reported for the inline constructor definition
+    if symbol0.isConstructor then return tree // error already reported for the inline constructor definition
 
     /** Set the position of all trees logically contained in the expansion of
      *  inlined call `call` to the position of `call`. This transform is necessary
@@ -258,7 +268,7 @@ object Inlines:
         cpy.Block(tree0)(bindings.toList, inlineCall(tree1))
       else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
         val body =
-          try bodyToInline(tree0.symbol) // can typecheck the tree and thereby produce errors
+          try bodyToInline(symbol0) // can typecheck the tree and thereby produce errors
           catch case _: MissingInlineInfo =>
             throw CyclicReference(ctx.owner)
         new InlineCall(tree0).expand(body)
@@ -277,7 +287,7 @@ object Inlines:
     // if tree0 (inline call tree before expansion) is transparent
     // attach the method name to the tree2 (expanded tree)
     val tree3 =
-      if tree0.symbol.is(Transparent) then tree2.withAttachment(TransparentInlinedCall, tree0.symbol.show) else tree2
+      if symbol0.is(Transparent) then tree2.withAttachment(TransparentInlinedCall, symbol0.show) else tree2
     if ctx.base.stopInlining && enclosingInlineds.isEmpty then
       ctx.base.stopInlining = false
         // we have completely backed out of the call that overflowed;
@@ -472,11 +482,15 @@ object Inlines:
   /** For a retained inline method, another method that keeps track of
    *  the body that is kept at runtime. For instance, an inline method
    *
+   *  ```
    *      inline override def f(x: T) = b
+   *  ```
    *
    *  is complemented by the body retainer method
    *
+   *  ```
    *      private def f$retainedBody(x: T) = f(x)
+   *  ```
    *
    *  where the call `f(x)` is inline-expanded. This body is then transferred
    *  back to `f` at erasure, using method addRetainedInlineBodies.
@@ -494,6 +508,31 @@ object Inlines:
         ref(meth).appliedToArgss(prefss).withSpan(mdef.rhs.span.startPos))(
         using ctx.withOwner(retainer)))
     .showing(i"retainer for $meth: $result", inlining)
+  
+  /** Similar to `bodyRetainer`, a method that keeps track of the body that is kept at runtime,
+   *  except synthesised for indirect overrides, and put into a downstream class, e.g. in:
+   *  
+   *    class Foo:
+   *      inline def bar = True
+   *    class Bar:
+   *      def bar
+   *      def test = bar
+   *    class Test extends Foo, Bar
+   * 
+   * `bar$indirectRetainedBody` is added to `Test`, and rewritten to `bar` in erasure.
+   */
+  def indirectBodyRetainer(sym: Symbol, impl: Symbol, cls: ClassSymbol)(using Context): DefDef =
+    val retainer = impl.asTerm.copy(
+        owner = cls,
+        name = NameKinds.indirectRetainerName(sym.name.asTermName),
+        flags = (impl.flags &~ (Inline | Macro | Override | AbsOverride)) | Private,
+        info = sym.info.asSeenFrom(cls.thisType, sym.owner),
+        coord = cls.coord
+      ).asTerm.entered
+      DefDef(retainer, prefss =>
+        inlineCall(
+          This(cls).select(impl).appliedToArgss(prefss).withSpan(cls.span))(
+            using ctx.withOwner(retainer)))
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: Inlined)(using Context): Tree =
@@ -684,7 +723,7 @@ object Inlines:
 
       constructor.appliedTo(
         lit(error.message),
-        lit(error.pos.lineContent.reverse.dropWhile("\n ".contains).reverse),
+        lit(if error.pos.source.textContent().length > 0 then error.pos.lineContent.reverse.dropWhile("\n ".contains).reverse else "<no source available>"),
         lit(error.pos.column),
         if kind == ErrorKind.Parser then parserErrorKind else typerErrorKind)
 
@@ -841,7 +880,8 @@ object Inlines:
        *  result type after unpickling.
        */
       val inlined =
-        val proxySkolems = bindings.map(_.symbol.info.widenExpr).collect { case sk: SkolemType => sk }
+        val proxySkolems = bindings.flatMap: b =>
+          b.getAttachment(TypeAssigner.InlineProxySkolem)
         if proxySkolems.nonEmpty && inlined0.tpe.existsPart(proxySkolems.contains) then
           val sealedExpansion =
             inContext(ctx.withSource(expansion.source)):
@@ -1012,12 +1052,19 @@ object Inlines:
         flags &~= Override          // private override is illegal; if the inlined method was already override then we might make it private override by accident.
       else
         flags |= Override
-      sym.copy(
+      
+      val newSym = sym.copy(
         owner = ctx.owner,
         name = name,
         flags = flags &~ withoutFlags,
         info = inlinerTypeMap(sym.info),
-        coord = spanCoord(parent.span)).entered
+        coord = spanCoord(parent.span)
+      ).entered
+      
+      newSym.annotations = sym.annotations
+        
+      ctx.inlineTraitState.registerInlineOrigin(newSym, sym)
+      newSym
 
     private def inlinedValDef(vdef: ValDef, inlinedSym: Symbol)(using Context): ValDef =
       val rhs =
@@ -1104,6 +1151,9 @@ object Inlines:
             ctx.inlineTraitState.registerInlineOrigin(newSym, child, parentSym)
 
             tpd.ClassDefWithParents(newSym.asClass, ctor, tmpl1.parents, tmpl1.body)
+          case tree @ Return(expr, from) 
+            if ctx.owner.is(Method) && ctx.owner.overriddenSymbol(from.symbol.enclosingClass.asClass) == from.symbol =>
+              cpy.Return(tree)(expr = expr, from = Ident(ctx.owner.termRef))
           case tree => tree
         })
 
@@ -1152,15 +1202,18 @@ object Inlines:
       case InlineTraits, SpecializedTraits, None
 
   class InlineTraitState(
-    // For a class symbol created during inlining of an inline trait,
-    // the chain of inlined traits which produced it. We don't actually care about the order. 
-    // Used as a "seen list" for cycle checking. Persists across invocations of InlineParentTrait
-    val inlineOrigins: mutable.Map[Symbol, Set[Symbol]] = mutable.HashMap[Symbol, Set[Symbol]]().withDefaultValue(Set.empty),
+    // For symbols created during inlining of an inline trait, the chain of inlined symbols which produced it. 
+    // The order is not important as this is used as a "seen list" for cycle checking. 
+    // Persists across invocations of InlineParentTrait.
+    val inlineOrigins: mutable.Map[Symbol, Set[Symbol]] = mutable.Map.empty[Symbol, Set[Symbol]].withDefaultValue(Set.empty),
     val inlineTraitsPhase: InlineTraitState.InlineContext = InlineTraitState.InlineContext.None
   ):
 
     def registerInlineOrigin(newSym: Symbol, owner: Symbol, parentSym: Symbol): Unit =
       inlineOrigins(newSym) = inlineOrigins(owner) + parentSym
+      
+    def registerInlineOrigin(newSym: Symbol, parentSym: Symbol): Unit =
+      inlineOrigins(newSym) += parentSym
 
     def copyInPhase(phase: InlineTraitState.InlineContext) =
       InlineTraitState(inlineOrigins, phase)

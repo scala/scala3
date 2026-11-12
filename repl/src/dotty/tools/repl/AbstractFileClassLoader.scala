@@ -13,8 +13,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.config.ScalaSettings
 
 import io.AbstractFile
@@ -42,13 +40,12 @@ object AbstractFileClassLoader:
       case _ => throw new IllegalArgumentException(s"Invalid interrupt instrumentation value: $string")
     }
 
-class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interruptInstrumentation: InterruptInstrumentation)
-  extends io.AbstractFileClassLoader(root, parent):
-
-  def this(root: AbstractFile, parent: ClassLoader) = this(root, parent, InterruptInstrumentation.fromString(ScalaSettings.XreplInterruptInstrumentation.default))
+class AbstractFileClassLoader(root: AbstractFile, jarVersion: String, parent: ClassLoader, interruptInstrumentation: InterruptInstrumentation)
+  extends io.AbstractFileClassLoader(root, jarVersion, parent):
+  private val stopReplName = classOf[StopRepl].getName
 
   override protected def defineClass(name: String, bytes: Array[Byte]): Class[?] =
-    if interruptInstrumentation.is(InterruptInstrumentation.Enabled) then defineClassInstrumented(name, bytes)
+    if interruptInstrumentation.isOneOf(InterruptInstrumentation.Enabled, InterruptInstrumentation.Local) then defineClassInstrumented(name, bytes)
     else super.defineClass(name, bytes)
 
   private def defineClassInstrumented(name: String, originalBytes: Array[Byte]) = {
@@ -56,52 +53,50 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
     defineClass(name, instrumentedBytes, 0, instrumentedBytes.length)
   }
 
-  override def loadClass(name: String): Class[?] =
-    if interruptInstrumentation.isOneOf(InterruptInstrumentation.Disabled, InterruptInstrumentation.Local) then
-      return super.loadClass(name)
+  private def ownStopRepl(name: String): Class[?] = getClassLoadingLock(name).synchronized:
+    // Load StopRepl bytecode from parent but ensure each classloader gets its own copy
+    val classFileName = name.replace('.', '/') + ".class"
+    val is = Option(getParent.getResourceAsStream(classFileName))
+      // Can't get as resource, use the classloader that loaded this AbstractFileClassLoader
+      // class itself, which must have access to StopRepl
+      .getOrElse(classOf[AbstractFileClassLoader].getClassLoader.getResourceAsStream(classFileName))
+    try
+      val bytes = is.readAllBytes()
+      defineClass(name, bytes, 0, bytes.length)
+    finally is.close()
 
-    val loaded = findLoadedClass(name) // Check if already loaded
+  override def loadClass(name: String): Class[?] =
+    val loaded = findLoadedClass(name)
     if loaded != null then return loaded
 
-    name match {
-      // Don't instrument JDK classes. These are often restricted to load from a single classloader
-      // due to the JDK module system, and so instrumenting them and loading the modified copy of the class
-      // results in runtime exceptions
-      case s"java.$_" => super.loadClass(name)
-      case s"javax.$_" => super.loadClass(name)
-      case s"sun.$_" => super.loadClass(name)
-      case s"jdk.$_" => super.loadClass(name)
-      case s"org.xml.sax.$_" => super.loadClass(name) // XML SAX API (part of java.xml module)
-      case s"org.w3c.dom.$_" => super.loadClass(name) // W3C DOM API (part of java.xml module)
-      case s"com.sun.org.apache.$_" => super.loadClass(name) // Internal Xerces implementation
-      // Don't instrument StopRepl, which would otherwise cause infinite recursion
-      case "dotty.tools.repl.StopRepl" =>
-        // Load StopRepl bytecode from parent but ensure each classloader gets its own copy
-        val classFileName = name.replace('.', '/') + ".class"
-        val is = Option(getParent.getResourceAsStream(classFileName))
-          // Can't get as resource, use the classloader that loaded this AbstractFileClassLoader
-          // class itself, which must have access to StopRepl
-          .getOrElse(classOf[AbstractFileClassLoader].getClassLoader.getResourceAsStream(classFileName))
-
-        try
-          val bytes = is.readAllBytes()
-          defineClass(name, bytes, 0, bytes.length)
-        finally is.close()
-
-      case _ =>
+    if interruptInstrumentation.isOneOf(InterruptInstrumentation.Disabled, InterruptInstrumentation.Local) then
+      if interruptInstrumentation == InterruptInstrumentation.Local && name == stopReplName then
+        ownStopRepl(name)
+      else
         try findClass(name)
-        catch case _: ClassNotFoundException =>
+        catch case _: ClassNotFoundException => super.loadClass(name)
+    else
+      name match
+        // Don't instrument JDK classes. These are often restricted to load from a single classloader
+        // due to the JDK module system, and so instrumenting them and loading the modified copy of the class
+        // results in runtime exceptions
+        case s"java.$_" => super.loadClass(name)
+        case s"javax.$_" => super.loadClass(name)
+        case s"sun.$_" => super.loadClass(name)
+        case s"jdk.$_" => super.loadClass(name)
+        case s"org.xml.sax.$_" => super.loadClass(name) // XML SAX API (part of java.xml module)
+        case s"org.w3c.dom.$_" => super.loadClass(name) // W3C DOM API (part of java.xml module)
+        case s"com.sun.org.apache.$_" => super.loadClass(name) // Internal Xerces implementation
+        // Don't instrument StopRepl, which would otherwise cause infinite recursion
+        case `stopReplName` => ownStopRepl(name)
+        case _ =>
           // Not in REPL output, try to load from parent and instrument it
-          try
-            val resourceName = name.replace('.', '/') + ".class"
-            getParent.getResourceAsStream(resourceName) match {
-              case null => super.loadClass(name)
-              case is =>
-                try defineClassInstrumented(name, is.readAllBytes())
-                finally is.close()
-            }
-          catch
-            case ex: Exception => super.loadClass(name)
-    }
+          val resourceName = name.replace('.', '/') + ".class"
+          getParent.getResourceAsStream(resourceName) match {
+            case null => super.loadClass(name)
+            case is =>
+              try defineClassInstrumented(name, is.readAllBytes())
+              finally is.close()
+          }
 
 end AbstractFileClassLoader

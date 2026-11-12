@@ -38,7 +38,7 @@ object DidYouMean:
    *  kind as the missing member.
    */
   def inScopeCandidates(isType: Boolean, isApplied: Boolean, rootImportOK: Boolean)(using Context): collection.Set[Binding] =
-    val acc = collection.mutable.HashSet[Binding]()
+    val acc = collection.mutable.Set[Binding]()
     def nextInteresting(ctx: Context): Context =
       if ctx.outer.isImportContext
         || ctx.outer.scope != ctx.scope
@@ -151,7 +151,7 @@ object DidYouMean:
       case (d, b) :: rest
       if d != 0 || b.sym.is(ModuleClass) => // Avoid repeating the same name in "did you mean"
         if qualifies(b) then
-          def hint(b: Binding) = prefix ++ showName(b.name, b.sym)
+          def hint(b: Binding) = prefix + showName(b.name, b.sym)
           val alts = alternatives(d, rest).filter(_.name != b.name).map(hint).take(3).distinct
           val suffix = if alts.isEmpty then "" else alts.mkString(" or perhaps ", " or ", "?")
           s" - did you mean ${hint(b)}?$suffix"

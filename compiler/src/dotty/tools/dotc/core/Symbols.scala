@@ -181,16 +181,14 @@ object Symbols extends SymUtils {
         // periods check out OK. But once a package member is overridden it is not longer
         // valid. If the option would be removed, the check would be no longer needed.
 
-    final def isTerm(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isTerm
-    final def isType(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isType
+    final def isTerm(using Context): Boolean = lastDenot.isTerm
+    final def isType(using Context): Boolean = lastDenot.isType
     final def asTerm(using Context): TermSymbol = {
-      assert(isTerm, s"asTerm called on not-a-Term $this" );
+      assert(isTerm, s"asTerm called on not-a-Term $this")
       asInstanceOf[TermSymbol]
     }
     final def asType(using Context): TypeSymbol = {
-      assert(isType, s"asType called on not-a-Type $this");
+      assert(isType, s"asType called on not-a-Type $this")
       asInstanceOf[TypeSymbol]
     }
 
@@ -333,7 +331,7 @@ object Symbols extends SymUtils {
 
     /** A symbol related to `sym` that is defined in source code.
      *
-     *  @see [[interactive.Interactive.enclosingSourceSymbols]]
+     *  See `interactive.Interactive.enclosingSourceSymbols`
      */
     @annotation.tailrec final def sourceSymbol(using Context): Symbol =
       if (!denot.exists)
@@ -413,7 +411,7 @@ object Symbols extends SymUtils {
         compUnitInfo: CompilationUnitInfo | Null = null // Can be `= owner.compilationUnitInfo` once we have new default args
     ): Symbol = {
       val coord1 = if (coord == NoCoord) owner.coord else coord
-      val compilationUnitInfo1 = if (compilationUnitInfo == null) owner.compilationUnitInfo else compilationUnitInfo
+      val compilationUnitInfo1 = if (compUnitInfo == null) owner.compilationUnitInfo else compUnitInfo
 
       if isClass then
         newClassSymbol(owner, name.asTypeName, flags, _ => info, privateWithin, coord1, compilationUnitInfo1)
