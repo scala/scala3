@@ -1236,7 +1236,7 @@ object Parsers {
       def recur(top: Tree): Tree =
         def isType = kind == ParseKind.Type
         def maybePostfix = kind == ParseKind.Expr && in.postfixOpsEnabled
-        if isIdent && isOperator then
+        if isIdent && isOperator && !isPendingLeadingInfix then
           val op = if isType then typeIdent() else termIdent()
           val top1 = reduceStack(base, top, precedence(op.name), !op.name.isRightAssocOperatorName, op.name, isType)
           opStack = OpInfo(top1, op, in.offset) :: opStack
@@ -2660,14 +2660,24 @@ object Parsers {
             wrapPlaceholders(t)
     }
 
-    def expr1(location: Location = Location.Elsewhere): Tree = in.token match
+    def expr1(location: Location = Location.Elsewhere): Tree =
+      val start = in.offset
+      val isControlExpr =
+        controlExprTokens.contains(in.token)
+        || isIdent(nme.inline) && in.lookahead.token == IF
+      val t = expr1Core(location)
+      if isControlExpr then controlExprRest(t, start, location) else t
+
+    private val controlExprTokens = BitSet(IF, WHILE, TRY, THROW, RETURN, FOR)
+
+    private def expr1Core(location: Location): Tree = in.token match
       case IF =>
         ifExpr(in.offset, If)
       case WHILE =>
         atSpan(in.skipToken()) {
           val cond = condExpr(DO)
           newLinesOpt()
-          val body = subExpr()
+          val body = tailExpr()
           WhileDo(cond, body)
         }
       case DO =>
@@ -2722,7 +2732,7 @@ object Parsers {
           val finalizer =
             if (in.token == FINALLY) {
               in.nextToken();
-              val expr = subExpr()
+              val expr = tailExpr()
               if expr.span.exists then expr
               else syntheticUnitLiteral // finally without an expression
             }
@@ -2761,7 +2771,7 @@ object Parsers {
                   syntaxError(em"`inline` must be followed by an `if` or a `match`", start)
                   t
         else expr1Rest(postfixExpr(location), location)
-    end expr1
+    end expr1Core
 
     def expr1Rest(t: Tree, location: Location): Tree =
       if in.token == EQUALS then
@@ -2820,8 +2830,8 @@ object Parsers {
       atSpan(start, in.skipToken()) {
         val cond = condExpr(THEN)
         newLinesOpt()
-        val thenp = subExpr()
-        val elsep = if (in.token == ELSE) { in.nextToken(); subExpr() }
+        val thenp = tailExpr()
+        val elsep = if (in.token == ELSE) { in.nextToken(); tailExpr() }
                     else EmptyTree
         mkIf(cond, thenp, elsep)
       }
@@ -3003,11 +3013,57 @@ object Parsers {
       if in.isIdent && in.isOperator && in.isAfterLineEnd
          && source.column(in.offset) < source.column(start)
       then
-        warning(
-          em"""Leading infix operator `${in.name}` applies only to the indented block above,
-              |not to the enclosing expression, although it is less indented than that block.
-              |Indent the operator further to make this explicit,
-              |or wrap the enclosing expression in parentheses to apply the operator to all of it.""")
+        if sourceVersion.enablesLeadingInfixAfterIndentedBlock then
+          pendingLeadingInfix = in.offset
+        else
+          warning(
+            em"""Leading infix operator `${in.name}` applies only to the indented block above,
+                |not to the enclosing expression, although it is less indented than that block.
+                |Indent the operator further to make this explicit,
+                |or wrap the enclosing expression in parentheses to apply the operator to all of it.
+                |
+                |Under `-source:future`, the operator applies to the enclosing control expression
+                |(`if`, `while`, `for`, `try`, `throw` or `return`), or is rejected if there is none.""")
+
+    /** The offset of a leading infix operator that follows an indented block and
+     *  that is less indented than that block (see `checkNoLeadingInfixAfterIndentedBlock`).
+     *  Under `-source:future`, such an operator does not continue the infix operation
+     *  that has the block as its operand. Instead, it continues the enclosing control
+     *  expression, see `controlExprRest`.
+     */
+    private var pendingLeadingInfix: Offset = -1
+
+    /** The offset of the last branch or body of a control expression that starts
+     *  on the same line as its keyword, as the inner `if` in `else if`.
+     */
+    private var sameLineTailStart: Offset = -1
+
+    /** Is the current token an infix operator that may continue an infix operation? */
+    def isPendingLeadingInfix: Boolean = in.offset == pendingLeadingInfix
+
+    /** Parse a branch or body of a control expression. */
+    def tailExpr(): Tree =
+      if !in.isAfterLineEnd then sameLineTailStart = in.offset
+      subExpr()
+
+    /** Under `-source:future`, continue control expression `t` starting at `start`
+     *  with a pending leading infix operator, as in
+     *
+     *      if c then
+     *        a
+     *      else
+     *        b
+     *      + 1
+     *
+     *  where `+ 1` applies to the whole conditional. If the control expression is itself
+     *  a branch or body on the same line as its keyword, as the inner `if` in `else if`,
+     *  the operator is left to the enclosing control expression.
+     */
+    def controlExprRest(t: Tree, start: Offset, location: Location): Tree =
+      if isPendingLeadingInfix && start != sameLineTailStart then
+        pendingLeadingInfix = -1
+        postfixExprRest(t, location)
+      else t
 
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
      *                 |  ‘new’ TemplateBody
@@ -3424,12 +3480,12 @@ object Parsers {
         newLinesOpt()
         if (in.token == YIELD) {
           in.nextToken()
-          ForYield(enums, subExpr())
+          ForYield(enums, tailExpr())
         }
         else if (in.token == DO) {
           if (rewriteToOldSyntax()) dropTerminator()
           in.nextToken()
-          ForDo(enums, subExpr())
+          ForDo(enums, tailExpr())
         }
         else {
           if (!wrappedEnums) syntaxErrorOrIncomplete(YieldOrDoExpectedInForComprehension())
