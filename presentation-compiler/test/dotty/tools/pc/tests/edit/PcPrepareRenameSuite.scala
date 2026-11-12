@@ -520,3 +520,39 @@ class PcPrepareRenameSuite extends BasePcRenameSuite:
          |}
          |""".stripMargin
     )
+
+  @Test def `named-tuple-field` =
+    prepare(
+      """|package a
+         |object Main {
+         |  def m() = {
+         |    val x: (name: String, age: Int) = ???
+         |    val y = x.na@@me
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-nested` =
+    prepare(
+      """|package a
+         |object Main {
+         |  def m() = {
+         |    val x: (inner: (name: String, age: Int)) = ???
+         |    val y = x.inner.na@@me
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-qualifier` =
+    prepare(
+      """|package a
+         |object Main {
+         |  def m() = {
+         |    val x: (name: String, age: Int) = ???
+         |    val y = <<x@@>>.name
+         |  }
+         |}
+         |""".stripMargin
+    )

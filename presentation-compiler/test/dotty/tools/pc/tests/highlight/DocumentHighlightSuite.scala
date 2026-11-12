@@ -1542,7 +1542,156 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |  val y = x.<<name>>
          |  val z = x.<<na@@me>>
          |  val xAge = x.age
-         |  val otherName = other.name
+         |  val otherName = other.<<name>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-nested` =
+    check(
+      """|object Main:
+         |  val x: (inner: (name: String, age: Int)) = ???
+         |  val y: (inner: (name: String, age: Int)) = ???
+         |  val a = x.inner.<<na@@me>>
+         |  val b = x.inner.<<name>>
+         |  val c = y.inner.<<name>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-nested-outer` =
+    check(
+      """|object Main:
+         |  val x: (inner: (name: String, age: Int)) = ???
+         |  val y: (inner: (name: String, age: Int)) = ???
+         |  val a = x.<<in@@ner>>.name
+         |  val b = x.<<inner>>.age
+         |  val c = y.<<inner>>.name
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-method-qualifier` =
+    check(
+      """|object Main:
+         |  def person(): (name: String, age: Int) = ???
+         |  val a = person().<<na@@me>>
+         |  val b = person().<<name>>
+         |  val c = person().age
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-generic` =
+    check(
+      """|object Main:
+         |  def f[T](x: (name: T)) = x.<<na@@me>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-chain` =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  val a = x.<<na@@me>>.length
+         |  val b = x.<<name>>.toUpperCase
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-chain-method` =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  val a = x.name.<<len@@gth>>
+         |  val b = x.name.<<length>>
+         |  val c = x.name.toUpperCase
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-qualifier` =
+    check(
+      """|object Main:
+         |  val <<x>>: (name: String, age: Int) = ???
+         |  val other: (name: String, age: Int) = ???
+         |  val a = <<x@@>>.name
+         |  val b = <<x>>.toString
+         |  val c = other.name
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-qualifier-other-usage` =
+    check(
+      """|object Main:
+         |  val <<x>>: (name: String, age: Int) = ???
+         |  val a = <<x>>.name
+         |  val b = <<x@@>>.toString
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-qualifier-param` =
+    check(
+      """|object Main:
+         |  def f[T](<<x>>: (name: T)) = <<x@@>>.name
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-backticked` =
+    check(
+      """|object Main:
+         |  val x: (`my-name`: String, age: Int) = ???
+         |  val a = x.<<`my-n@@ame`>>
+         |  val b = x.<<`my-name`>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-type-alias` =
+    check(
+      """|object Main:
+         |  type Person = (name: String, age: Int)
+         |  val x: Person = ???
+         |  val y: Person = ???
+         |  val a = x.<<na@@me>>
+         |  val b = y.<<name>>
+         |  val c = x.age
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-different-types` =
+    check(
+      """|object Main:
+         |  val people: List[(name: String, age: Int)] = ???
+         |  val cars: List[(name: String, hp: Int)] = ???
+         |  val a = people.head.<<na@@me>>
+         |  val b = people.head.<<name>>
+         |  val c = cars.head.name
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-from-case-class` =
+    check(
+      """|object Main:
+         |  case class Person(name: String, age: Int)
+         |  val p: NamedTuple.From[Person] = ???
+         |  val a = p.<<a@@ge>>
+         |  val b = p.<<age>>
+         |  val c = p.name
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-no-symbol-qualifier` =
+    check(
+      """|object Main:
+         |  val a: (name: String) = ???
+         |  val b: (name: String) = ???
+         |  def c: Boolean = ???
+         |  val d = (if c then a else b).<<na@@me>>
+         |  val e = a.<<name>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-large` =
+    check(
+      """|object Main:
+         |  val x: (f1: Int, f2: Int, f3: Int, f4: Int, f5: Int, f6: Int, f7: Int, f8: Int, f9: Int, f10: Int, f11: Int, f12: Int, f13: Int, f14: Int, f15: Int, f16: Int, f17: Int, f18: Int, f19: Int, f20: Int, f21: Int, f22: Int, f23: Int) = ???
+         |  val a = x.<<f2@@3>>
+         |  val b = x.<<f23>>
+         |  val c = x.f22
          |""".stripMargin
     )
 

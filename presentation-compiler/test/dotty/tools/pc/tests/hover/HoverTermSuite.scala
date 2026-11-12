@@ -966,3 +966,31 @@ class HoverTermSuite extends BaseHoverSuite:
       """|def build(b: Builder[Unit]): Int
          |""".stripMargin.hover
     )
+
+  @Test def `named-tuples-field-val`: Unit =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  val y = x.na@@me
+         |""".stripMargin,
+      "name: String".hover
+    )
+
+  @Test def `named-tuples-field-nested`: Unit =
+    check(
+      """|object Main:
+         |  val x: (inner: (name: String, age: Int)) = ???
+         |  val y = x.inner.na@@me
+         |""".stripMargin,
+      "name: String".hover
+    )
+
+  @Test def `named-tuples-field-from-case-class`: Unit =
+    check(
+      """|object Main:
+         |  case class Person(name: String, age: Int)
+         |  val p: NamedTuple.From[Person] = ???
+         |  val y = p.a@@ge
+         |""".stripMargin,
+      "age: Int".hover
+    )

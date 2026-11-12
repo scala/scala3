@@ -13,10 +13,10 @@ import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Types.{AppliedType, ConstantType, NoType, Type}
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.util.Spans.{spanCoord, Span}
 import dotty.tools.pc.PcSymbolSearch.*
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
@@ -40,11 +40,37 @@ trait PcSymbolSearch:
       .collectFirst { case em @ ExtMethods(_, _) => em }
 
   lazy val path = rawPath match
+    /* The `NamedTuple.apply` reference synthesized for a named tuple selection `x.name`
+     * carries the span of the qualifier `x`, so `pathTo` stops at it when the cursor
+     * is on the qualifier. Redirect into the qualifier instead.
+     */
+    case (sel: Select) :: (_: TypeApply) :: Apply(_, List(qual)) :: rest
+        if isNamedTupleApply(sel.symbol) && qual.span.contains(pos.span) =>
+      namedTupleQualifierPath(qual) ::: rest
     // For type it will sometimes go into the wrong tree since TypeTree also contains the same span
     // https://github.com/lampepfl/dotty/issues/15937
     case TypeApply(sel: Select, _) :: _ if sel.span.contains(pos.span) =>
       Interactive.pathTo(sel, pos.span) ::: rawPath
     case _ => rawPath
+
+  /** Path into the qualifier of a named tuple selection, skipping the synthetic
+   *  `NamedTuple.apply` references of nested selections such as `x.inner.name`.
+   */
+  private def namedTupleQualifierPath(qual: Tree): List[Tree] =
+    Interactive.pathTo(qual, pos.span) match
+      case (sel: Select) :: (_: TypeApply) :: Apply(_, List(innerQual)) :: rest
+          if isNamedTupleApply(sel.symbol) && innerQual.span.contains(pos.span) =>
+        namedTupleQualifierPath(innerQual) ::: rest
+      case path => path
+
+  /** Whether the cursor is on the field of a named tuple selection (`x.na@@me`).
+   *  Such fields have no declaration symbol: they can be highlighted and searched
+   *  for, but not renamed.
+   */
+  lazy val isOnNamedTupleField: Boolean = path match
+    case (app @ NamedTupleSelection(_, _, _, _)) :: _ =>
+      namedTupleFieldSpan(app).contains(pos.span)
+    case _ => false
 
   lazy val soughtSymbols: Option[(Set[Symbol], SourcePosition)] =
     soughtSymbols(path)
@@ -175,15 +201,11 @@ trait PcSymbolSearch:
        *  x.na@@me
        *  ```
        */
-      case (app @ Apply(
-            Apply(TypeApply(fun, List(t1, t2)), List(qual)),
-            List(Literal(Constant(i: Int)))
-          )) :: _
-          if fun.symbol.exists && fun.symbol.name == nme.apply
-            && fun.symbol.owner.exists
-            && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
-        namedTupleFieldSymbol(qual.symbol, t1, t2, i).map: sym =>
-          (Set(sym), pos.withSpan(app.span.withStart(app.span.point)))
+      case (app @ NamedTupleSelection(_, names, values, i)) :: _
+          if namedTupleFieldSpan(app).contains(pos.span) =>
+        val fieldSpan = namedTupleFieldSpan(app)
+        namedTupleFieldSymbol(names, values, i, fieldSpan).map: sym =>
+          (Set(sym), pos.withSpan(fieldSpan))
 
       case _ => None
 
@@ -299,21 +321,60 @@ object PcSymbolSearch:
       nameSpan.end
     ) != df.name.toString()
 
-  /** Extract a synthetic symbol for a named tuple field from the desugared
-   *  `NamedTuple.apply[N, V](qual)(idx)` tree.
-   */
-  def namedTupleFieldSymbol(owner: Symbol, t1: Tree, t2: Tree, i: Int)(using Context): Option[Symbol] =
-    def typeAt(t: Tree): Option[Type] =
-      t.tpe.dealias match
-        case AppliedType(_, args) => args.get(i)
-        case _ => None
-    for
-      case ConstantType(Constant(name: String)) <- typeAt(t1)
-    yield
-      val fieldType = typeAt(t2).getOrElse(NoType)
-      newSymbol(owner, termName(name), Flags.EmptyFlags, fieldType)
+  def isNamedTupleApply(sym: Symbol)(using Context): Boolean =
+    sym.exists && sym.name == nme.apply && sym.owner == defn.NamedTupleModule.moduleClass
 
+  /** A named tuple field selection `qual.name` is typed as
+   *  `NamedTuple.apply[Names, Values](qual)(idx)` with a synthetic (zero-extent)
+   *  index literal, unlike an explicit `qual.apply(idx)`. Extracts
+   *  `(qual, Names, Values, idx)`.
+   */
+  object NamedTupleSelection:
+    def unapply(tree: Tree)(using Context): Option[(Tree, Tree, Tree, Int)] = tree match
+      case Apply(
+            Apply(TypeApply(fun, List(names, values)), List(qual)),
+            List(index @ Literal(Constant(i: Int)))
+          ) if isNamedTupleApply(fun.symbol) && (!index.span.exists || index.span.isZeroExtent) =>
+        Some((qual, names, values, i))
+      case _ => None
+
+  /** The span of the selected field name in a named tuple selection. */
+  def namedTupleFieldSpan(app: Tree): Span =
+    app.span.withStart(app.span.point)
+
+  /** The name and type of the `i`-th field of a named tuple with names `names`
+   *  and values `values`. The tuple types may be `TupleN`, `*:` chains (e.g.
+   *  `NamedTuple.From[Case]` or more than 22 fields) or type aliases.
+   */
+  def namedTupleFieldAt(names: Tree, values: Tree, i: Int)(using Context): Option[(TermName, Type)] =
+    for
+      nameTypes <- names.tpe.tupleElementTypes
+      case ConstantType(Constant(name: String)) <- nameTypes.get(i).map(_.dealias)
+    yield
+      val fieldType = values.tpe.tupleElementTypes.flatMap(_.get(i)).getOrElse(NoType)
+      (termName(name), fieldType)
+
+  /** Named tuple fields have no symbol, so we synthesize one for each selection.
+   *  Like a case class field, a named tuple field belongs to the tuple type:
+   *  its identity is the field name together with the names and values of the
+   *  tuple, which is stored as the symbol's info (see [[sameNamedTupleField]]).
+   */
+  def namedTupleFieldSymbol(names: Tree, values: Tree, i: Int, span: Span)(using Context): Option[Symbol] =
+    namedTupleFieldAt(names, values, i).map: (name, _) =>
+      newSymbol(
+        NoSymbol,
+        name,
+        Flags.Synthetic,
+        defn.NamedTuple(names.tpe, values.tpe),
+        coord = spanCoord(span)
+      )
+
+  /** Whether two symbols from [[namedTupleFieldSymbol]] denote the same field,
+   *  i.e. the same name on the same named tuple type.
+   */
   def sameNamedTupleField(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
-    sym1.name == sym2.name && sym1.owner == sym2.owner
+    sym1.name == sym2.name
+      && sym1.is(Flags.Synthetic) && sym2.is(Flags.Synthetic)
+      && sym1.info =:= sym2.info
 
 end PcSymbolSearch

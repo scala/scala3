@@ -6,7 +6,6 @@ import scala.meta.pc.VirtualFileParams
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.ImportSelector
-import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameOps.*
@@ -141,7 +140,8 @@ trait PcCollector[T]:
          */
         case sel: Select
             if sel.isCorrectSpan && filter(sel) &&
-              !sel.isForComprehensionMethod =>
+              !sel.isForComprehensionMethod &&
+              !isSyntheticNamedTupleApply(sel) =>
           occurrences + collect(
             sel,
             pos.withSpan(selectNameSpan(sel))
@@ -178,25 +178,19 @@ trait PcCollector[T]:
          *  val x: (name: String) = ???
          *  x.<<name>>
          *  ```
-         *  Named tuple selections are desugared to `NamedTuple.apply[N, V](qual)(idx)`.
+         *  Named tuple selections are typed as `NamedTuple.apply[N, V](qual)(idx)`
+         *  and the field has no symbol, so we synthesize one. The qualifier is
+         *  collected by the regular traversal of the children.
          */
-        case app @ Apply(
-              Apply(TypeApply(fun, List(t1, t2)), List(qual)),
-              List(Literal(Constant(i: Int)))
-            )
-            if fun.symbol.exists && fun.symbol.name == nme.apply
-              && fun.symbol.owner.exists
-              && fun.symbol.owner == defn.NamedTupleModule.moduleClass
-              && app.span.isCorrect =>
+        case app @ NamedTupleSelection(_, names, values, i) if app.span.isCorrect =>
+          val fieldSpan = namedTupleFieldSpan(app)
           val fieldOccurrence =
-            namedTupleFieldSymbol(qual.symbol, t1, t2, i)
+            namedTupleFieldSymbol(names, values, i, fieldSpan)
               .filter: sym =>
                 soughtFilter(sought => sameNamedTupleField(sought, sym))
               .map: sym =>
-                collect(app, pos.withSpan(app.span.withStart(app.span.point)), Some(sym))
-          val traverser =
-            new PcCollector.DeepFolderWithParent[Set[T]](collectNamesWithParent)
-          traverser(occurrences ++ fieldOccurrence, qual)
+                collect(app, pos.withSpan(fieldSpan), Some(sym))
+          occurrences ++ fieldOccurrence
 
         /* Named parameters don't have symbol so we need to check the owner
          *  ```
@@ -302,6 +296,14 @@ trait PcCollector[T]:
       new PcCollector.DeepFolderWithParent[Set[T]](collectNamesWithParent)
     traverser(Set.empty[T], unit.tpdTree)
   end traverseSought
+
+  /** The `NamedTuple.apply` reference synthesized for a named tuple selection
+   *  `x.name` carries the span of the qualifier `x` and must not produce an
+   *  occurrence there. An explicit `x.apply(0)` keeps its own `apply` span.
+   */
+  private def isSyntheticNamedTupleApply(sel: Select)(using Context): Boolean =
+    isNamedTupleApply(sel.symbol) &&
+      sourceText.substring(sel.span.start, sel.span.end) != nme.apply.toString
 
 end PcCollector
 
