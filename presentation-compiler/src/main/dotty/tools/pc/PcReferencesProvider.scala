@@ -11,6 +11,7 @@ import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.pc.PcSymbolSearch.*
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j
@@ -41,13 +42,17 @@ class PcReferencesProvider(
       symbol: Option[Symbol]
   ): Option[(String, Option[lsp4j.Range])] =
     val (pos, _) = toAdjust.adjust(text)
+    def symbolName(sym: Symbol) =
+      // a synthesized named tuple field is not in any index, so it is reported as local
+      if isNamedTupleField(sym) then s"local-named-tuple-field-${sym.name}" else SemanticdbSymbols.symbolName(sym)
     tree match
-      case t: DefTree if !request.includeDefinition() =>
+      // a named tuple field is defined by the name literal of its tuple type
+      case t: (DefTree | SingletonTypeTree) if !request.includeDefinition() =>
         val sym = symbol.getOrElse(t.symbol)
-        Some(SemanticdbSymbols.symbolName(sym), None)
+        Some(symbolName(sym), None)
       case t: Tree =>
         val sym = symbol.getOrElse(t.symbol)
-        Some(SemanticdbSymbols.symbolName(sym), Some(pos.toLsp))
+        Some(symbolName(sym), Some(pos.toLsp))
       case _ => None
 
   def references(): List[ReferencesResult] =

@@ -473,10 +473,10 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
   @Test def `named-tuple-members` =
     check(
       """|object <<A>>/*class*/:
-         |  type <<PersonNN>>/*type,definition*/ = (name: <<String>>/*type*/, age: <<Int>>/*class,abstract*/)
+         |  type <<PersonNN>>/*type,definition*/ = (<<name>>/*variable,readonly*/: <<String>>/*type*/, <<age>>/*variable,readonly*/: <<Int>>/*class,abstract*/)
          |  final case class <<PersonCC>>/*class*/(<<name>>/*variable,declaration,readonly*/: <<String>>/*type*/, <<age>>/*variable,declaration,readonly*/: <<Int>>/*class,abstract*/)
          |
-         |  val <<pNN>>/*variable,definition,readonly*/: <<PersonNN>>/*type*/ = (name = "John", age = 30)
+         |  val <<pNN>>/*variable,definition,readonly*/: <<PersonNN>>/*type*/ = (<<name>>/*variable,readonly*/ = "John", <<age>>/*variable,readonly*/ = 30)
          |  val <<pCC>>/*variable,definition,readonly*/: <<PersonCC>>/*class*/ = <<PersonCC>>/*class*/(<<name>>/*parameter,readonly*/ = "John", <<age>>/*parameter,readonly*/ = 30)
          |
          |  val <<nn>>/*variable,definition,readonly*/ = <<pNN>>/*variable,readonly*/.<<name>>/*variable,readonly*/
@@ -489,7 +489,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
   @Test def `named-tuple-issue-repro` =
     check(
       """|object <<A>>/*class*/:
-         |  type <<PersonNN>>/*type,definition*/ = (name: <<String>>/*type*/)
+         |  type <<PersonNN>>/*type,definition*/ = (<<name>>/*variable,readonly*/: <<String>>/*type*/)
          |  type <<PersonTup>>/*type,definition*/ = (<<String>>/*type*/, <<Int>>/*class,abstract*/)
          |  final case class <<PersonCC>>/*class*/(<<name>>/*variable,declaration,readonly*/: <<String>>/*type*/)
          |  val <<pNN>>/*variable,definition,readonly*/: <<PersonNN>>/*type*/ = <<???>>/*method*/
@@ -502,7 +502,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
   @Test def `named-tuple-method-qualifier` =
     check(
       """|object <<A>>/*class*/:
-         |  def <<person>>/*method,definition*/(): (name: <<String>>/*type*/, age: <<Int>>/*class,abstract*/) = <<???>>/*method*/
+         |  def <<person>>/*method,definition*/(): (<<name>>/*variable,readonly*/: <<String>>/*type*/, <<age>>/*variable,readonly*/: <<Int>>/*class,abstract*/) = <<???>>/*method*/
          |  val <<a>>/*variable,definition,readonly*/ = <<person>>/*method*/().<<name>>/*variable,readonly*/
          |  val <<b>>/*variable,definition,readonly*/ = <<person>>/*method*/().<<age>>/*variable,readonly*/
          |""".stripMargin
@@ -511,21 +511,21 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
   @Test def `named-tuple-literal-qualifier` =
     check(
       """|object <<A>>/*class*/:
-         |  val <<a>>/*variable,definition,readonly*/ = (name = "a", age = 1).<<name>>/*variable,readonly*/
+         |  val <<a>>/*variable,definition,readonly*/ = (<<name>>/*variable,readonly*/ = "a", <<age>>/*variable,readonly*/ = 1).<<name>>/*variable,readonly*/
          |""".stripMargin
     )
 
   @Test def `named-tuple-generic` =
     check(
       """|object <<A>>/*class*/:
-         |  def <<f>>/*method,definition*/[<<T>>/*typeParameter,definition,abstract*/](<<x>>/*parameter,declaration,readonly*/: (name: <<T>>/*typeParameter,abstract*/)) = <<x>>/*parameter,readonly*/.<<name>>/*variable,readonly*/
+         |  def <<f>>/*method,definition*/[<<T>>/*typeParameter,definition,abstract*/](<<x>>/*parameter,declaration,readonly*/: (<<name>>/*variable,readonly*/: <<T>>/*typeParameter,abstract*/)) = <<x>>/*parameter,readonly*/.<<name>>/*variable,readonly*/
          |""".stripMargin
     )
 
   @Test def `named-tuple-nested` =
     check(
       """|object <<A>>/*class*/:
-         |  val <<x>>/*variable,definition,readonly*/: (inner: (name: <<String>>/*type*/, age: <<Int>>/*class,abstract*/)) = <<???>>/*method*/
+         |  val <<x>>/*variable,definition,readonly*/: (<<inner>>/*variable,readonly*/: (<<name>>/*variable,readonly*/: <<String>>/*type*/, <<age>>/*variable,readonly*/: <<Int>>/*class,abstract*/)) = <<???>>/*method*/
          |  val <<a>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/.<<inner>>/*variable,readonly*/.<<name>>/*variable,readonly*/
          |""".stripMargin
     )
@@ -533,7 +533,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
   @Test def `named-tuple-chain` =
     check(
       """|object <<A>>/*class*/:
-         |  val <<x>>/*variable,definition,readonly*/: (name: <<String>>/*type*/, age: <<Int>>/*class,abstract*/) = <<???>>/*method*/
+         |  val <<x>>/*variable,definition,readonly*/: (<<name>>/*variable,readonly*/: <<String>>/*type*/, <<age>>/*variable,readonly*/: <<Int>>/*class,abstract*/) = <<???>>/*method*/
          |  val <<a>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/.<<name>>/*variable,readonly*/.<<length>>/*method*/
          |  val <<b>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/.<<name>>/*variable,readonly*/.<<toUpperCase>>/*method*/
          |""".stripMargin
@@ -542,7 +542,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
   @Test def `named-tuple-backticked` =
     check(
       """|object <<A>>/*class*/:
-         |  val <<x>>/*variable,definition,readonly*/: (`my-name`: <<String>>/*type*/) = <<???>>/*method*/
+         |  val <<x>>/*variable,definition,readonly*/: (<<`my-name`>>/*variable,readonly*/: <<String>>/*type*/) = <<???>>/*method*/
          |  val <<a>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/.<<`my-name`>>/*variable,readonly*/
          |""".stripMargin
     )
@@ -550,7 +550,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
   @Test def `named-tuple-param-qualifier` =
     check(
       """|object <<A>>/*class*/:
-         |  def <<f>>/*method,definition*/(<<x>>/*parameter,declaration,readonly*/: (name: <<String>>/*type*/)) = <<x>>/*parameter,readonly*/.<<name>>/*variable,readonly*/
+         |  def <<f>>/*method,definition*/(<<x>>/*parameter,declaration,readonly*/: (<<name>>/*variable,readonly*/: <<String>>/*type*/)) = <<x>>/*parameter,readonly*/.<<name>>/*variable,readonly*/
          |""".stripMargin
     )
 
@@ -558,7 +558,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
     check(
       """|object <<A>>/*class*/:
          |  def <<f>>/*method,definition*/[<<T>>/*typeParameter,definition,abstract*/] =
-         |    val <<x>>/*variable,definition,readonly*/: (name: <<T>>/*typeParameter,abstract*/) = <<???>>/*method*/
+         |    val <<x>>/*variable,definition,readonly*/: (<<name>>/*variable,readonly*/: <<T>>/*typeParameter,abstract*/) = <<???>>/*method*/
          |    <<x>>/*variable,readonly*/.<<name>>/*variable,readonly*/
          |""".stripMargin
     )
@@ -566,9 +566,9 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
   @Test def `named-tuple-pattern` =
     check(
       """|object <<A>>/*class*/:
-         |  val <<x>>/*variable,definition,readonly*/: (name: <<String>>/*type*/, age: <<Int>>/*class,abstract*/) = <<???>>/*method*/
+         |  val <<x>>/*variable,definition,readonly*/: (<<name>>/*variable,readonly*/: <<String>>/*type*/, <<age>>/*variable,readonly*/: <<Int>>/*class,abstract*/) = <<???>>/*method*/
          |  val <<a>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/ match
-         |    case (name = <<n>>/*variable,definition,readonly*/, age = <<m>>/*variable,definition,readonly*/) => <<n>>/*variable,readonly*/
+         |    case (<<name>>/*variable,readonly*/ = <<n>>/*variable,definition,readonly*/, <<age>>/*variable,readonly*/ = <<m>>/*variable,definition,readonly*/) => <<n>>/*variable,readonly*/
          |""".stripMargin
     )
 
@@ -584,7 +584,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
   @Test def `named-tuple-explicit-apply` =
     check(
       """|object <<A>>/*class*/:
-         |  val <<x>>/*variable,definition,readonly*/: (name: <<String>>/*type*/) = <<???>>/*method*/
+         |  val <<x>>/*variable,definition,readonly*/: (<<name>>/*variable,readonly*/: <<String>>/*type*/) = <<???>>/*method*/
          |  val <<a>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/.<<apply>>/*method*/(0)
          |""".stripMargin
     )

@@ -10,7 +10,6 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
-import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
@@ -87,6 +86,10 @@ trait PcCollector[T]:
       filter: Tree => Boolean,
       soughtFilter: (Symbol => Boolean) => Boolean
   ): Set[T] =
+    // The `NamedTuple.apply` references synthesized for `x.name`, which have the span of `x`;
+    // they are seen before their children, see `NamedTupleSelection` below.
+    val syntheticApplies = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[Tree, java.lang.Boolean])
+
     def collectNamesWithParent(
         occurrences: Set[T],
         tree: Tree,
@@ -141,7 +144,7 @@ trait PcCollector[T]:
         case sel: Select
             if sel.isCorrectSpan && filter(sel) &&
               !sel.isForComprehensionMethod &&
-              !isSyntheticNamedTupleApply(sel) =>
+              !syntheticApplies.contains(sel) =>
           occurrences + collect(
             sel,
             pos.withSpan(selectNameSpan(sel))
@@ -178,11 +181,45 @@ trait PcCollector[T]:
          *  x.<<name>>
          *  ```
          */
-        case app @ NamedTupleSelection(_, names, values, i) if app.span.isCorrect =>
-          val fieldSpan = namedTupleFieldSpan(app)
-          occurrences ++ namedTupleFieldSymbol(names, values, i, fieldSpan)
-            .filter(sym => soughtFilter(sameNamedTupleField(_, sym)))
-            .map(sym => collect(app, pos.withSpan(fieldSpan), Some(sym)))
+        case app @ NamedTupleSelection(_, names, values, i) =>
+          syntheticApplies.add(namedTupleSelectionFun(app))
+          if !app.span.isCorrect || !soughtFilter(isNamedTupleField) then occurrences
+          else
+            val span = namedTupleFieldSpan(app, sourceText)
+            val tupleType = defn.NamedTuple(names.tpe, values.tpe)
+            occurrences ++ namedTupleFieldAt(names, values, i)
+              .filter((name, _) => soughtFilter(sameNamedTupleField(_, name, tupleType)))
+              .map((name, _) => collect(app, pos.withSpan(span), Some(namedTupleFieldSymbol(tupleType, name, span))))
+
+        /** Named tuple field declarations, which have no symbol either:
+         *  ```
+         *  val x: (<<name>>: String) = (<<name>> = "")
+         *  ```
+         */
+        case NamedTupleTree(names, values) if soughtFilter(isNamedTupleField) =>
+          val tupleType = defn.NamedTuple(names.tpe, values.tpe)
+          namedTupleFieldNames(names).zipWithIndex.foldLeft(occurrences):
+            case (occs, (name, i)) if name.span.isCorrect =>
+              val span = namedTupleFieldNameSpan(name, sourceText)
+              occs ++ namedTupleFieldAt(names, values, i)
+                .filter((fieldName, _) => soughtFilter(sameNamedTupleField(_, fieldName, tupleType)))
+                .map: (fieldName, _) =>
+                  // the name literal of a type is the field's definition, a constructor is a use
+                  val occurrence = if tree.isType then name else tree
+                  collect(occurrence, pos.withSpan(span), Some(namedTupleFieldSymbol(tupleType, fieldName, span)))
+            case (occs, _) => occs
+
+        /** Named tuple pattern labels, which the typer drops:
+         *  ```
+         *  x match
+         *    case (<<name>> = n) => n
+         *  ```
+         */
+        case Match(scrutinee, cases) if soughtFilter(isNamedTupleField) =>
+          cases.foldLeft(occurrences): (occs, cdef) =>
+            occs ++ namedTuplePatternLabels(cdef, scrutinee, unit.untpdTree).collect:
+              case (span, name, tupleType) if span.isCorrect && soughtFilter(sameNamedTupleField(_, name, tupleType)) =>
+                collect(cdef.pat, pos.withSpan(span), Some(namedTupleFieldSymbol(tupleType, name, span)))
 
         /* Named parameters don't have symbol so we need to check the owner
          *  ```
@@ -288,10 +325,6 @@ trait PcCollector[T]:
       new PcCollector.DeepFolderWithParent[Set[T]](collectNamesWithParent)
     traverser(Set.empty[T], unit.tpdTree)
   end traverseSought
-
-  // The `NamedTuple.apply` synthesized for `x.name` has the span of `x`; an explicit `x.apply(0)` has its own
-  private def isSyntheticNamedTupleApply(sel: Select)(using Context): Boolean =
-    isNamedTupleApply(sel.symbol) && sourceText.substring(sel.span.start, sel.span.end) != nme.apply.toString
 
 end PcCollector
 
