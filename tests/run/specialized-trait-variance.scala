@@ -1,7 +1,5 @@
 //> using options -language:experimental.specializedTraits
 
-import scala.annotation.nowarn
-
 trait Animal:
     def makeNoise: String
 class Lion extends Animal:

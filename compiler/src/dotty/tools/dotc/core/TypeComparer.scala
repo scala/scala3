@@ -26,10 +26,7 @@ import Capabilities.Capability
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
 import reporting.Message.Note
-import reporting.IllegalVarianceInSpecializedTraitsNote
 import scala.util.boundary, boundary.break
-import dotty.tools.dotc.transform.Specialization
-import dotty.tools.dotc.transform.DesugarSpecializedTraits
 import scala.util.control.NonFatal
 
 /** Provides methods to compare types.
@@ -1966,31 +1963,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                    && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
-                if v < 0 then
-                  val isValidSubtype = isSubType(arg2, arg1)
-                  // Specialized traits have special variance rules because they have special erasure
-                  if tp1.classSymbol.isSpecializedTrait
-                     && Specialization.traitParamIsSpecialized(tp1.classSymbol, tparam.paramRef.typeSymbol)
-                     && isValidSubtype
-                     && !(DesugarSpecializedTraits.isSameErasureBucket(arg1, arg2))
-                  then
-                    addErrorNote(IllegalVarianceInSpecializedTraitsNote())
-                    false
-                  else // Normal contravariance case
-                    isValidSubtype
-                else if v > 0 then
-                  val isValidSubtype = isSubType(arg1, arg2)
-                  // Specialized traits have special variance rules because they have special erasure
-                  if tp1.classSymbol.isSpecializedTrait
-                     && Specialization.traitParamIsSpecialized(tp1.classSymbol, tparam.paramRef.typeSymbol)
-                     && isValidSubtype
-                     && (arg1 ne arg2)
-                     && (arg1.classSymbol == defn.NothingClass)
-                  then
-                    addErrorNote(IllegalVarianceInSpecializedTraitsNote())
-                    false
-                  else // Normal covariance case
-                    isValidSubtype
+                if v < 0 then isSubType(arg2, arg1)
+                else if v > 0 then isSubType(arg1, arg2)
                 else isSameType(arg2, arg1)
 
         val arg1 = args1.head

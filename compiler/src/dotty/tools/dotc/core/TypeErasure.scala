@@ -798,7 +798,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       // the signatures don't change before erasure which is required (meta-ordering
       // constraint in Compiler.scala)
       case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) &&
-        spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty) =>
+        spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty &&
+        !spec.hasVariantSpecializedParams) =>
           val specName = spec.newSpecializedTraitName
           val interfaceSymbol = spec.symbol.owner.enclosingPackageClass.info.decls.lookup(specName)
           assert(interfaceSymbol.exists && interfaceSymbol.isClass)
