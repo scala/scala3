@@ -6,9 +6,21 @@ object Scala3RunTime:
 
   // Called by inline def assert's. Extracted to minimize the bytecode size at call site.
 
+  /** Throws the `AssertionError` for a failed `assert` with an explanation.
+   *
+   *  @param message the explanation of the failed assertion; converted to a
+   *                 string and appended to the fixed prefix
+   *  @throws java.lang.AssertionError always, with the message
+   *          `"assertion failed: "` followed by `message`
+   */
   def assertFailed(message: Any): Nothing =
     throw new java.lang.AssertionError("assertion failed: " + message)
 
+  /** Throws the `AssertionError` for a failed `assert` without an explanation.
+   *
+   *  @throws java.lang.AssertionError always, with the fixed message
+   *          `"assertion failed"`
+   */
   def assertFailed(): Nothing =
     throw new java.lang.AssertionError("assertion failed")
 
