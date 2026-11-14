@@ -1,8 +1,6 @@
 package dotty.tools
 
 import scala.annotation.tailrec
-import scala.io.Source
-import scala.util.{Using, Success, Failure}
 import java.io.File
 
 enum CompileMode:
@@ -10,7 +8,6 @@ enum CompileMode:
   case Compile
   case Decompile
   case PrintTasty
-  case Script
 
 case class CompileSettings(
   classPath: List[String] = List.empty,
@@ -19,8 +16,6 @@ case class CompileSettings(
   javaProps: List[(String, String)] = List.empty,
   scalaArgs: List[String] = List.empty,
   residualArgs: List[String] = List.empty,
-  scriptArgs: List[String] = List.empty,
-  targetScript: String = "",
 ) {
   def withCompileMode(em: CompileMode): CompileSettings = this.compileMode match
     case CompileMode.Guess =>
@@ -38,17 +33,6 @@ case class CompileSettings(
 
   def withResidualArgs(args: String*): CompileSettings =
     this.copy(residualArgs = residualArgs.appendedAll(args.toList.filter(_.nonEmpty)))
-
-  def withScriptArgs(args: String*): CompileSettings =
-    this.copy(scriptArgs = scriptArgs.appendedAll(args.toList.filter(_.nonEmpty)))
-
-  def withTargetScript(file: String): CompileSettings =
-    Using(Source.fromFile(file))(_ => ()) match
-      case Success(_) => this.copy(targetScript = file)
-      case Failure(_) =>
-        println(s"not found $file")
-        this.copy(exitCode = 2)
-  end withTargetScript
 }
 
 object MainGenericCompiler {
@@ -78,12 +62,6 @@ object MainGenericCompiler {
       settings.withResidualArgs(tail*)
     case ("-v" | "-verbose" | "--verbose") :: tail =>
       process(tail, settings.withScalaArgs("-verbose"))
-    case "-script" :: targetScript :: tail =>
-      process(Nil, settings
-        .withCompileMode(CompileMode.Script)
-        .withJavaProps("script.path" -> targetScript)
-        .withTargetScript(targetScript)
-        .withScriptArgs(tail*))
     case "-compile" :: tail =>
       process(tail, settings.withCompileMode(CompileMode.Compile))
     case "-decompile" :: tail =>
@@ -124,11 +102,5 @@ object MainGenericCompiler {
         dotty.tools.dotc.decompiler.Main.main(properArgs.toArray)
       case CompileMode.PrintTasty =>
         dotty.tools.dotc.core.tasty.TastyPrinter.main(properArgs.toArray)
-      case CompileMode.Script => // Naive copy from scalac bash script
-        val fullArgs =
-          properArgs
-          ++ List("-script", settings.targetScript)
-          ++ settings.scriptArgs
-        scripting.Main.main(fullArgs.toArray)
   end main
 }
