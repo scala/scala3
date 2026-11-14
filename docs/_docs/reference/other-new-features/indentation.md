@@ -143,9 +143,9 @@ else d
 ```
 is parsed as `if x then a + b + c else d`.
 
-If a leading infix operator follows an `<outdent>` that closes an indented branch or body
-of a control expression (`if`, `while`, `for`, `try`, `throw` or `return`), the operator
-applies to the whole control expression. For instance,
+If a leading infix operator follows an `<outdent>` that closes an indented block forming
+the last part of a control expression (`if`, `while`, `for`, `try`, `throw` or `return`),
+the operator applies to the whole control expression. For instance,
 ```scala
 val y =
   if x then
@@ -154,8 +154,8 @@ val y =
     b
   + c
 ```
-is parsed as `val y = (if x then a else b) + c`. If there is no enclosing control expression,
-such an operator is rejected. This rule applies from source version `future` onwards.
+is parsed as `val y = (if x then a else b) + c`. A leading infix operator that follows
+any other indented block and is less indented than that block is rejected. This rule applies from source version `future` onwards.
 Earlier versions apply the operator only to the indented block that precedes it, i.e. `else b + c`
 in the example above, and issue a warning.
 

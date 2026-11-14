@@ -3022,8 +3022,9 @@ object Parsers {
                 |Indent the operator further to make this explicit,
                 |or wrap the enclosing expression in parentheses to apply the operator to all of it.
                 |
-                |Under `-source:future`, the operator applies to the enclosing control expression
-                |(`if`, `while`, `for`, `try`, `throw` or `return`), or is rejected if there is none.""")
+                |Under `-source:future`, if the indented block is the last part of a control expression
+                |(`if`, `while`, `for`, `try`, `throw` or `return`), the operator applies to that
+                |control expression. Otherwise, the operator is rejected.""")
 
     /** The offset of a leading infix operator that follows an indented block and
      *  that is less indented than that block (see `checkNoLeadingInfixAfterIndentedBlock`).

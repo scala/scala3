@@ -14,3 +14,11 @@ def g =
     x
   + 100 // error
   h
+
+// the indented block is not the last part of the control expression
+def k =
+  if
+    5 < 6
+  + 3 // error
+  then
+    println("hello")
