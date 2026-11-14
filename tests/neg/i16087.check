@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/i16087.scala:3:32 -------------------------------------------------------------
+3 |val bar: (Int, String) => Int = foo // error
+  |                                ^^^
+  |                                Found:    Int => String => Int
+  |                                Required: (Int, String) => Int
+  |
+  | longer explanation available when compiling with `-explain`
