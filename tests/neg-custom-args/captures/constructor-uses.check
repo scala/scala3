@@ -15,7 +15,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/constructor-uses.scala:28:21 -----------------------------
 28 |  val _: () -> a.B = f // error
    |                     ^
-   |                     Found:    (f : () ->{a.f²} a.B^{})
+   |                     Found:    (f : () ->{a.f²} a.B)
    |                     Required: () -> a.B
    |
    |                     Note that capability `f` cannot flow into capture set {}.
@@ -27,7 +27,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/constructor-uses.scala:35:19 -----------------------------
 35 |  val _: () -> C = g // error
    |                   ^
-   |                   Found:    (g : () ->{c} C^{})
+   |                   Found:    (g : () ->{c} C)
    |                   Required: () -> C
    |
    |                   Note that capability `g` cannot flow into capture set {}.
