@@ -1,0 +1,73 @@
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i27329.scala:9:6 ---------------------------------------
+9 |  pf[{b}](b) // error
+  |      ^
+  |      Reference `b` is not included in the allowed capture set {a}
+  |      of the type parameter bound scala.caps.CapSet^{a}.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i27329.scala:12:6 --------------------------------------
+12 |  l1[{b}](b) // error
+   |      ^
+   |      Reference `b` is not included in the allowed capture set {a} of value l1.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27329.scala:14:46 ---------------------------------------
+14 |  val l2: [C^] -> (f: File^{C}) -> File^{f} = pf // error
+   |                                              ^^
+   |                                              Found:    (pf : [C^ <: {a}] -> (f: p.File^{C}) -> p.File^{f})
+   |                                              Required: [C^ <: {any}] -> (f: p.File^{C}) -> p.File^{f}
+   |
+   |                                              Note that capability `any` cannot flow into capture set {a}.
+   |
+   |                                              where:    any is the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i27329.scala:18:6 --------------------------------------
+18 |  l3[{b}](b) // error // error
+   |      ^
+   |      Reference `b` is not included in the allowed capture set {} of value l3.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27329.scala:18:10 ---------------------------------------
+18 |  l3[{b}](b) // error // error
+   |          ^
+   |          Found:    (b : p.File^)
+   |          Required: p.File^{}
+   |
+   |          Note that capability `b` cannot flow into capture set {} of value l3.
+   |
+   |          where:    ^ refers to a root capability in the type of parameter b
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27329.scala:28:41 ---------------------------------------
+28 |  val d: [C^] -> (f: File^{C}) -> Unit = [C^ <: {any.rd}] => (f: File^{C}) => () // error
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                         Found:    [C^ <: {any.rd}] -> (f: p.File^{C}) -> Unit
+   |                                         Required: [C^ <: {any}] -> (f: p.File^{C}) -> Unit
+   |
+   |                                         Note that capability `any` cannot flow into capture set {any.rd}.
+   |
+   |                                         where:    any is the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i27329.scala:48:28 -------------------------------------
+48 |  val r2 = withFile(f => h[{f}](f)) // error
+   |                            ^
+   |                            Reference `f` is not included in the allowed capture set {any}
+   |                            of the type parameter bound scala.caps.CapSet^{a}.
+   |
+   |                            where:    any is a root capability created in value h
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i27329.scala:51:61 ---------------------------------------
+51 |  val h: [D^] -> (g: File^{D}) -> Cov[File^{any}] = mk[{any}]() // error
+   |                                                    ^^^^^^^^^^^
+   |                                               Found:    [D^ <: {any}] -> (g: p.File^{D}) -> p.Cov[p.File^{any}]
+   |                                               Required: [D^ <: {any²}] -> (g: p.File^{D}) -> p.Cov[p.File^]
+   |
+   |                                               Note that capability `any²` cannot flow into capture set {any}
+   |                                               because any² is not visible from any in value h.
+   |
+   |                                               where:    ^    refers to a root capability in the type of value h
+   |                                                         any  is a root capability created in value h
+   |                                                         any² is the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E057] Type Mismatch Error: tests/neg-custom-args/captures/i27329.scala:37:10 ---------------------------------------
+37 |  h[{x}, {y}](x, y) // error
+   |          ^
+   |          Type argument scala.caps.CapSet^{y} does not conform to upper bound scala.caps.CapSet^{x}
+   |
+   | longer explanation available when compiling with `-explain`

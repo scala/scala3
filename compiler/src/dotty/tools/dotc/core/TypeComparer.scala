@@ -709,6 +709,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               (info1, info2) match
                 case (info1: PolyType, info2: PolyType) =>
                   info1.paramNames.hasSameLengthAs(info2.paramNames)
+                  && info1.paramInfos.lazyZip(info2.paramInfos).forall: (bounds1, bounds2) =>
+                    // as in comparisons of capture variables, `caps.any` is the top capability
+                    CCState.withGlobalCapAsRoot:
+                      isSubType(bounds2.subst(info2, info1), bounds1)
                   && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
                 case (info1: MethodType, info2: MethodType) =>
                   matchingMethodParams(info1, info2, precise = false)
