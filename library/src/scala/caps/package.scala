@@ -147,15 +147,13 @@ object internal:
   @getter @param
   final class consume extends annotation.StaticAnnotation
 
-  /** An annotation on a type indicating that the type was inferred. Added
-   *  during inlining when we want to mark portions of an otherwise explicit type
-   *  as inferred.
+  /** An annotation on a type indicating that the type was inferred. It is no
+   *  longer generated, but TASTy files written by earlier compilers refer to it.
    */
   final class inferred extends annotation.StaticAnnotation
 
-  /** An annotation on a type indicating that the type was declared. Added
-   *  during PostTyper when we want to mark types of closure parameters as
-   *  explicit, even if the closure type as a whole is inferred.
+  /** An annotation on a type indicating that the type was declared. It is no
+   *  longer generated, but TASTy files written by earlier compilers refer to it.
    */
   final class declared extends annotation.StaticAnnotation
 

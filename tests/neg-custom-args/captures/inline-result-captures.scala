@@ -2,7 +2,7 @@ import language.experimental.captureChecking
 
 class Resource extends caps.ExclusiveCapability:
   def use(): Unit = ()
-  inline def action(cond: Boolean): Int ?=> Unit = if cond then use()
+  inline def action(cond: Boolean): Int ?=> Unit = if cond then use() // error
 
 def condition(): Boolean = true
 // Keep the result closure from being beta-reduced before capture checking.

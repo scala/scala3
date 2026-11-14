@@ -287,9 +287,8 @@ class CompilationTests {
   def recheck: Unit =
     given TestGroup = TestGroup("recheck")
     aggregateTests(
-      compileFilesInDir("tests/run", defaultOptions.and("-Yrecheck-test"), FileFilter.exclude(TestSources.runTestRecheckExcluded))
-      //Disabled to save some time.
-      //compileFilesInDir("tests/pos", recheckOptions, FileFilter.exclude(TestSources.posTestRecheckExcluded)),
+      compileFilesInDir("tests/run", defaultOptions.and("-Yrecheck-test"), FileFilter.exclude(TestSources.runTestRecheckExcluded)),
+      compileFilesInDir("tests/pos", defaultOptions.and("-Yrecheck-test"), FileFilter.exclude(TestSources.posTestRecheckExcluded)),
     ).checkCompile()
 
   // Explicit nulls tests

@@ -14,11 +14,9 @@ import Flags.*, Constants.*
 import Decorators.*
 import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
 import config.Printers.patmatch
-import config.Feature
 import reporting.*
 import ast.*
 import util.Property.*
-import cc.{CapturingType, Capabilities}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -486,10 +484,7 @@ object PatternMatcher {
             case Bind(_, body) => isTrusted(body)
             case _ => false
           }
-          val castTp = if Feature.ccEnabled
-            then CapturingType(tpt.tpe, scrutinee.termRef.singletonCaptureSet)
-            else tpt.tpe
-          val body = letAbstract(ref(scrutinee).cast(castTp)) { casted =>
+          val body = letAbstract(ref(scrutinee).cast(tpt.tpe)) { casted =>
             nonNull += casted
             patternPlan(casted, pat, onSuccess, isDefinitelyCatchAll)
           }
@@ -1060,7 +1055,7 @@ object PatternMatcher {
           }
           emitWithMashedConditions(plan :: Nil)
         case LetPlan(sym, body) =>
-          val valDef = ValDef(sym, initializer(sym).ensureConforms(sym.info), inferred = true).withSpan(sym.span)
+          val valDef = ValDef(sym, initializer(sym).ensureConforms(sym.info)).withSpan(sym.span)
           seq(valDef :: Nil, emit(body))
         case LabeledPlan(label, expr) =>
           Labeled(label, emit(expr))

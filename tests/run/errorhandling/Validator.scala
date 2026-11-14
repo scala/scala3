@@ -59,7 +59,7 @@ class Validation[E] extends caps.Stateful, caps.ExclusiveCapability:
     if !cond then
       appendOne(error)
 
-  update inline def require(cond: Boolean, inline error: E): Checked[Unit] = (lbl: CanCheck) ?=>
+  update inline def require(cond: Boolean, inline error: E): CanCheck ?->{this} Unit = (lbl: CanCheck) ?=>
     if !cond then
       appendOne(error)
       break(Validation.invalid)

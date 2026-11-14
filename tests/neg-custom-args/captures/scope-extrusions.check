@@ -143,13 +143,13 @@
 33 |  val f4: IO => IO = f3  // error
    |                     ^^
    |                     Found:    (f3 : (x: IO) -> IO^{x})
-   |                     Required: IO^ => IO^{any}
+   |                     Required: IO^{any} => IO^{any²}
    |
-   |                     Note that capability `x` cannot flow into capture set {any}
-   |                     because (x : IO) is not visible from any in value f4.
+   |                     Note that capability `any` cannot flow into capture set {any²}
+   |                     because any is not visible from any² in value f4.
    |
-   |                     where:    =>  refers to a root capability in the type of value f4
-   |                               ^   refers to the root capability caps.any
-   |                               any is a root capability classified as SharedCapability in the type of value f4
+   |                     where:    =>   refers to a root capability in the type of value f4
+   |                               any  is the root capability caps.any
+   |                               any² is a root capability classified as SharedCapability in the type of value f4
    |
    | longer explanation available when compiling with `-explain`

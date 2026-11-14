@@ -37,16 +37,23 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
       dual.boxDual = this
       dual
 
+  /** The type argument of a @retains annotation that stands for the capture set */
+  private def retainedType(using Context): Type =
+    val elems = refs.elems.toList.map(_.toType)
+    if elems.isEmpty then defn.NothingType
+    else elems.reduce((a, b) => OrType(a, b, soft = false))
+
   /** Reconstitute annotation tree from capture set */
   override def tree(using Context) =
-    if symbol == defn.RetainsCapAnnot then
-      New(symbol.typeRef, Nil)
-    else
-      val elems = refs.elems.toList.map(_.toType)
-      val trefs =
-        if elems.isEmpty then defn.NothingType
-        else elems.reduce((a, b) => OrType(a, b, soft = false))
-      New(AppliedType(symbol.typeRef, trefs :: Nil), Nil)
+    if symbol == defn.RetainsCapAnnot then New(symbol.typeRef, Nil)
+    else New(AppliedType(symbol.typeRef, retainedType :: Nil), Nil)
+
+  /** The @retains annotation that stands for this annotation in source and in
+   *  TASTy. It does not record whether the annotated type is boxed.
+   */
+  def toRetaining(using Context): RetainingAnnotation =
+    if symbol == defn.RetainsCapAnnot then RetainingAnnotation(defn.RetainsCapAnnot)
+    else RetainingAnnotation(symbol.asClass, retainedType)
 
   override def symbol(using Context) = cls
 

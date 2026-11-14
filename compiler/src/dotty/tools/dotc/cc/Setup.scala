@@ -55,6 +55,13 @@ trait SetupAPI:
    */
   def anonFunCallee: collection.Map[Symbol, Symbol]
 
+  /** If `arg` is an argument of a by-name parameter, the symbol owning the
+   *  environment in which the argument is checked, otherwise NoSymbol.
+   *  The symbol is an anonymous method whose result type is the result type
+   *  of the by-name parameter with fresh capture set variables added.
+   */
+  def byNameOwner(arg: Tree)(using Context): Symbol
+
 end SetupAPI
 
 object Setup:
@@ -202,7 +209,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 case Some(ann) =>
                   AnnotatedType(sym.info, RetainingAnnotation.fromAnnotation(ann))
                 case None => sym.info
-            else sym.info
+            else if sym.isByNameParam then Recheck.mapExprType(sym.info)
+            else withSelfType(sym.info)
           toResultInReturnType(sym):
             transformExplicitType(oldInfo, sym)(using symCtx)
       if Synthetics.needsTransform(symd) then
@@ -228,6 +236,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       else symd
     else symd
   end transformSym
+
+  /** If `info` is a class info with a self symbol, the same class info with the
+   *  declared type of that symbol as self type. Otherwise `info` itself.
+   *  We need the self type as a type so that it gets transformed together
+   *  with the rest of the class info.
+   */
+  private def withSelfType(info: Type)(using Context): Type = info match
+    case info: ClassInfo => info.derivedClassInfo(selfInfo = info.cls.givenSelfType)
+    case _ => info
 
   /** Apply toResult to the return types of def methods, so that local `any` capabilties
    *  are mapped to `fresh` in the return type of the resulting methodic types.
@@ -370,8 +387,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                     && getter.isRefiningParamAccessor
                     && !refiningNames.contains(getter.name) // Don't add a refinement if we have already an explicit one for the same name
                 then
+                  val getterInfo =
+                    val info = tp.memberInfo(getter)
+                    if getter.isByNameParam then Recheck.mapExprType(info) else info
                   val getterType =
-                    mapInferred(inCaptureRefinement = true)(tp.memberInfo(getter)).strippedDealias
+                    mapInferred(inCaptureRefinement = true)(getterInfo).strippedDealias
                   RefinedType.precise(core, getter.name,
                       CapturingType(getterType,
                         CaptureSet.VarInTypeTree(ctx.owner, isRefining = true)))
@@ -395,12 +415,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def innerApply(tp: Type) =
         tp match
           case AnnotatedType(parent, annot)
-          if annot.symbol.isRetains || annot.symbol == defn.InferredAnnot =>
-            // Drop explicit retains and @inferred annotations
+          if annot.symbol.isRetains =>
+            // Drop explicit retains annotations
             addVar(apply(parent), tp)
-          case AnnotatedType(parent, annot)
-          if annot.symbol == defn.DeclaredAnnot =>
-            transformExplicitType(parent, sym, initialVariance = variance)
           case tp @ RefinedType(parent, rname, rinfo) =>
             val saved = refiningNames
             refiningNames += rname
@@ -527,9 +544,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case t @ AnnotatedType(parent, ann) =>
             if ann.symbol == defn.UncheckedCapturesAnnot then
               makeUnchecked(this(parent))
-            else if ann.symbol == defn.InferredAnnot then
-              transformInferredType(parent, sym, initialVariance = variance)
-                // typeArgFormal is NoType here since we are inferring inside an argument, not at the toplevel
             else
               t.derivedAnnotatedType(this(parent), ann)
           case throwsAlias(res, exc) =>
@@ -598,6 +612,22 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   val anonFunCallee: mutable.Map[Symbol, Symbol] = mutable.Map.empty
 
+  /** Maps arguments of by-name parameters to the symbols owning their environments */
+  private val byNameOwners = util.EqHashMap[Tree, Symbol]()
+
+  /** The symbols in the range of `byNameOwners` */
+  private val byNameOwnerSyms = util.EqHashSet[Symbol]()
+
+  def byNameOwner(arg: Tree)(using Context): Symbol =
+    val owner = byNameOwners.lookup(arg)
+    if owner == null then NoSymbol else owner
+
+  /** Is `sym` an owner that Setup created for a `try` body or a by-name argument?
+   *  During capture checking, such a symbol owns the definitions it encloses.
+   */
+  private def isSetupOwner(sym: Symbol)(using Context): Boolean =
+    sym.name.is(TryOwnerName) || byNameOwnerSyms.contains(sym)
+
   /** A traverser that adds knownTypes and updates symbol infos */
   def setupTraverser(checker: CheckerAPI) = new TreeTraverserWithPreciseImportContexts:
     import checker.*
@@ -605,19 +635,20 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     /** Transform type of tree, and remember the transformed type as the type of the tree
      *  @pre !(boxed && sym.exists)
      */
-    private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean, typeArgFormal: Type = NoType)(using Context): Unit =
+    private def transformTT(tree: Tree, sym: Symbol, boxed: Boolean, typeArgFormal: Type = NoType)(using Context): Unit =
       if !tree.hasNuType then
+        val tpe = if sym.isByNameParam then Recheck.mapExprType(tree.tpe) else tree.tpe
         var transformed =
-          if tree.isInferred || sym.is(ModuleVal)
-          then transformInferredType(tree.tpe, sym, typeArgFormal)
-          else transformExplicitType(tree.tpe, sym, tptToCheck = tree)
+          if tree.isInstanceOf[InferredTypeTree] || sym.is(ModuleVal)
+          then transformInferredType(tpe, sym, typeArgFormal)
+          else transformExplicitType(tpe, sym, tptToCheck = tree)
         if boxed then transformed = transformed.boxDeeply
         tree.setNuType(
           if sym.hasAnnotation(defn.UncheckedCapturesAnnot) then makeUnchecked(transformed)
           else transformed)
 
     /** Transform the type of a val or var or the result type of a def */
-    def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
+    def transformResultType(tpt: Tree, sym: Symbol)(using Context): Unit =
       // First step: Transform the type and record it as knownType of tpt.
       try
         inContext(ctx.addMode(Mode.CCPreciseOwner)):
@@ -641,6 +672,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     def traverse(tree: Tree)(using Context): Unit =
       tree match
+        case _ if tree.isType =>
+          // Type trees are transformed as a whole in `postProcess`; their parts
+          // are not traversed.
+
         case tree: Ident =>
           val sym = tree.symbol
           if sym.isMutableVar && sym.owner.isTerm then
@@ -649,11 +684,21 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               capturedBy(sym) = enclMeth
 
         case Apply(fn, args) =>
-          for case closureDef(mdef) <- args do
-            anonFunCallee(mdef.symbol) = fn.symbol
-          traverseChildren(tree)
+          traverse(fn)
+          val formals = fn.tpe.widen match
+            case mt: MethodType if mt.paramInfos.hasSameLengthAs(args) => mt.paramInfos
+            case _ => args.map(_ => NoType)
+          for (arg, formal) <- args.lazyZip(formals) do
+            formal match
+              case formal: ExprType =>
+                traverseByNameArg(arg, formal, fn.symbol)
+              case _ =>
+                arg match
+                  case closureDef(mdef) => anonFunCallee(mdef.symbol) = fn.symbol
+                  case _ =>
+                traverse(arg)
 
-        case tree @ DefDef(_, paramss, tpt: TypeTree, _) =>
+        case tree @ DefDef(_, paramss, tpt, _) =>
           val meth = tree.symbol
           if isExcluded(meth) then
             return
@@ -663,7 +708,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             transformResultType(tpt, meth)
             traverse(tree.rhs)
 
-        case tree @ ValDef(_, tpt: TypeTree, _) =>
+        case tree @ ValDef(_, tpt, _) =>
           val sym = tree.symbol
           val defCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
           inContext(defCtx):
@@ -675,7 +720,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           val formals = fn.tpe.widen match
             case tl: TypeLambda => tl.paramInfos
             case _ => args.map(_ => NoType)
-          for case (arg: TypeTree, formal) <- args.lazyZip(formals) do
+          for (arg, formal) <- args.lazyZip(formals) do
             if defn.isTypeTestOrCast(fn.symbol) then
               arg.setNuType(
                 globalCapToLocal(arg.tpe, Origin.TypeArg(arg.tpe)))
@@ -687,12 +732,30 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           inContext(ctx.withOwner(sym))
             traverseChildren(tree)
 
-        case tree @ TypeDef(_, rhs: TypeTree) =>
+        case tree: Template =>
+          traverse(tree.constr)
+          traverse(tree.parents)
+          // The self type tree is transformed only so that it can be checked for
+          // well-formedness. The self type in the class info is established
+          // in `postProcess` and `transformSym`.
+          if !tree.self.isEmpty then transformTT(tree.self.tpt, ctx.owner, boxed = false)
+          traverse(tree.body)
+
+        case tree @ TypeDef(_, rhs) =>
           transformTT(rhs, tree.symbol, boxed = false)
 
         case tree @ SeqLiteral(elems, tpt: TypeTree) =>
           traverse(elems)
           tpt.setNuType(transformInferredType(tpt.tpe, ctx.owner).boxDeeply)
+
+        case CaseDef(pat, guard, body) =>
+          traversePattern(pat)
+          traverse(guard)
+          traverse(body)
+
+        case Quote(body, _) =>
+          // Quoted code is not capture checked, but the splices in it are
+          splicesIn(body).foreach(traverse)
 
         case tree @ Try(body, catches, finalizer) =>
           val tryOwner = firstCanThrowEvidence(body) match
@@ -715,9 +778,55 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       checkProperConsume(tree)
     end traverse
 
+    /** Traverse the argument `arg` of a by-name parameter of type `formal`.
+     *  The argument is checked in an environment of its own, so that we know
+     *  what it uses. A fresh anonymous function owns that environment and,
+     *  during capture checking, the definitions in `arg`. Its result type is
+     *  the result type of `formal` with fresh capture set variables. `callee` is
+     *  the applied method, which is recorded for error messages.
+     */
+    def traverseByNameArg(arg: Tree, formal: ExprType, callee: Symbol)(using Context): Unit =
+      val defn.ByNameFunction(resType) = Recheck.mapExprType(formal): @unchecked
+      val owner = newAnonFun(ctx.owner, MethodType(Nil, resType), coord = arg.span)
+      byNameOwners(arg) = owner
+      byNameOwnerSyms += owner
+      anonFunCallee(owner) = callee
+      inContext(ctx.withOwner(owner)):
+        val resType1 = inContext(ctx.addMode(Mode.CCPreciseOwner)):
+          transformInferredType(resType, owner)
+        updateInfo(owner, MethodType(Nil, resType1), owner.owner)
+        traverse(arg)
+
+    /** Traverse pattern `pat`. Parts of patterns that are not themselves patterns
+     *  are traversed like other trees. The exception is the types of typed patterns.
+     *  A matching scrutinee is cast to such a type, so the type is treated like the
+     *  type argument of a cast.
+     */
+    def traversePattern(pat: Tree)(using Context): Unit = pat match
+      case Bind(_, body) =>
+        traversePattern(body)
+        postProcess(pat) // updates the info of the bound variable
+      case Typed(pat1, tpt) =>
+        tpt.setNuType(globalCapToLocal(tpt.tpe, Origin.TypeArg(tpt.tpe)))
+        traversePattern(pat1)
+      case UnApply(fun, implicits, pats) =>
+        traverse(fun)
+        traverse(implicits)
+        pats.foreach(traversePattern)
+      case Alternative(pats) =>
+        pats.foreach(traversePattern)
+      case NamedArg(_, arg) =>
+        traversePattern(arg)
+      case _ =>
+        traverse(pat)
+
+    /** The owner of definition `sym` during capture checking */
+    def ccOwnerOf(sym: Symbol)(using Context): Symbol =
+      if isSetupOwner(ctx.owner) then ctx.owner else sym.owner
+
     /** Processing done on node `tree` after its children are traversed */
     def postProcess(tree: Tree)(using Context): Unit = tree match
-      case tree: TypeTree =>
+      case _ if tree.isType =>
         transformTT(tree, NoSymbol, boxed = false)
       case tree: ValOrDefDef =>
         // Make sure denotation of tree's symbol is correct
@@ -753,8 +862,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         // have a new type installed here (meaning hasRememberedType is true)
         def signatureChanges =
           tree.tpt.hasNuType || paramSignatureChanges
-        def ownerChanges =
-          ctx.owner.name.is(TryOwnerName)
+        def ownerChanges = isSetupOwner(ctx.owner)
 
         def paramsToCap(psymss: List[List[Symbol]], mt: Type)(using Context): Type = mt match
           case mt: MethodType =>
@@ -796,30 +904,35 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                       .showing(i"new info of $sym = $result", capt)
               else newInfo
             else sym.info
-          val updatedOwner = if ownerChanges then ctx.owner else sym.owner
-          updateInfo(sym, updatedInfo, updatedOwner)
+          updateInfo(sym, updatedInfo, ccOwnerOf(sym))
 
       case tree: Bind =>
         val sym = tree.symbol
-        updateInfo(sym, transformInferredType(sym.info, sym), sym.owner)
+        updateInfo(sym, transformInferredType(sym.info, sym), ccOwnerOf(sym))
+      case tree: Match =>
+        // The type of a match is its original type with fresh capture set variables,
+        // see `recheckMatch` in CheckCaptures.
+        val matchType = tree.tpe.widenSingleton match
+          case ExprType(rt) => rt
+          case _ => tree.tpe
+        tree.setNuType(transformInferredType(matchType, NoSymbol))
       case tree @ TypeDef(_, impl: Template) =>
         val cls: ClassSymbol = tree.symbol.asClass
 
         ccState.fieldsWithExplicitTypes(cls) =
           for
-            case vd @ ValDef(_, tpt: TypeTree, _) <- impl.body
-            if !tpt.isInferred && vd.symbol.exists && !vd.symbol.is(NonMember)
+            case vd @ ValDef(_, tpt, _) <- impl.body
+            if !tpt.isInstanceOf[InferredTypeTree] && vd.symbol.exists && !vd.symbol.is(NonMember)
           yield
             vd.symbol
 
         checkClassifiedInheritance(cls)
-        val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
+        val cinfo @ ClassInfo(prefix, _, ps, decls, _) = cls.classInfo
+        val selfInfo = cls.givenSelfType
 
         // Is self info inferred, i.e. only the name is given but not the type?
         def selfInfoIsInferred =
-          impl.body.exists:
-            case TypeDef(tpnme.SELF, tpt: TypeTree) => tpt.isInferred
-            case _ => false
+          impl.self.tpt.isInstanceOf[InferredTypeTree]
 
         // Compute new self type
         val selfInfo1 =
@@ -857,9 +970,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           ps.mapConserve(transformExplicitType(_, NoSymbol))
 
         // Install new types and if it is a module class also update module object
-        if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
+        if (selfInfo1 ne selfInfo) || (ps1 ne ps) || isSetupOwner(ctx.owner) then
           val newInfo = ClassInfo(prefix, cls, ps1, decls, selfInfo1)
-          updateInfo(cls, newInfo, cls.owner)
+          updateInfo(cls, newInfo, ccOwnerOf(cls))
           capt.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
           cls.thisType.asInstanceOf[ThisType].invalidateCaches()
       case _ =>
@@ -997,6 +1110,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         mapOver(t)
       case t: TypeLambda =>
         t.derivedLambdaType(resType = this(t.resType))
+      case t: ExprType if variance <= 0 =>
+        // A by-name parameter. It is treated like a function, so that it accepts
+        // arguments that capture capabilities.
+        this(Recheck.mapExprType(t))
       case CapturingType(_, _) =>
         t
       case _ =>
@@ -1019,9 +1136,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case _ => mapFollowingAliases(t)
 
   /** Run setup on a compilation unit with given `tree`.
-   *  @param recheckDef   the function to run for completing a val or def
+   *  @param checker   the checker, which records the new types of trees and
+   *                   completes vals and defs
    */
   def setupUnit(tree: Tree, checker: CheckerAPI)(using Context): Unit =
+    byNameOwners.clear()
+    byNameOwnerSyms.clear()
+    anonFunCallee.clear()
     setupTraverser(checker).traverse(tree)(using ctx.withPhase(thisPhase))
 
   // ------ Checks to run at Setup ----------------------------------------

@@ -1,9 +1,9 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/match-return-avoid.scala:8:11 ----------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/match-return-avoid.scala:8:17 ----------------------------
 8 |    case y => Box(y) // error
-  |           ^^^^^^^^^
-  |           Found:    Box[Foo]^'s1
-  |           Required: Box[Foo^{y}]^'s2
+  |              ^^^^^^
+  |              Found:    Box[Foo^{y}]^'s1
+  |              Required: Box[Foo]
   |
-  |           Note that capability `y` cannot flow into capture set {}.
+  |              Note that capability `y` cannot flow into capture set {}.
   |
   | longer explanation available when compiling with `-explain`

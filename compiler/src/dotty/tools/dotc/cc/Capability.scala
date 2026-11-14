@@ -760,6 +760,7 @@ object Capabilities:
      */
     def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
       cls.isTopClassifier
+      || ccState.ignoreClassifiers
       || this.match
         case self: LocalCap =>
           if self.isClassified then self.hiddenSet.classifier.derivesFrom(cls)
@@ -773,8 +774,6 @@ object Capabilities:
           ref1.tryClassifyAs(cls)
         case Maybe(ref1) =>
           ref1.tryClassifyAs(cls)
-        case self: TermRef if self.symbol.is(Case) && ccState.ignoreClassifiers =>
-          true
         case self: CoreCapability =>
           if self.derivesFromCapability then self.derivesFrom(cls)
           else captureSetOfInfo.tryClassifyAs(cls)
@@ -1054,11 +1053,13 @@ object Capabilities:
     def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[Capability] =
       CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)
 
-    /** The type representing this capability.
-     *  Note this method does not distinguish different `RootCapability` instances,
-     *  and should only be used for printing or phases not related to CC.
+    /** The type that stands for this capability in a @retains annotation.
+     *  A ResultCap is written `caps.fresh`, like the global `fresh`, and every
+     *  other root capability `caps.any`. So the type does not tell which
+     *  ResultCap or LocalCap it stands for.
      */
     def toType(using Context): Type = this match
+      case _: ResultCap | GlobalFresh => defn.Caps_fresh.termRef
       case c: RootCapability => defn.Caps_any.termRef
       case c: CoreCapability => c
       case c: DerivedCapability =>
@@ -1142,7 +1143,7 @@ object Capabilities:
     case InDecl(sym: Symbol, fields: List[Symbol] = Nil)
     case TypeArg(tp: Type)
     case UnsafeAssumePure
-    case Formal(pref: ParamRef, app: tpd.Apply)
+    case Formal(pref: ParamRef, meth: Symbol)
     case ResultInstance(result: ResultCap, methType: Type, tree: Tree = EmptyTree)
     case UnapplyInstance(info: MethodType)
     case LocalInstance(restpe: Type)
@@ -1175,8 +1176,7 @@ object Capabilities:
         i" of type argument $tp"
       case UnsafeAssumePure =>
         " when instantiating argument of unsafeAssumePure"
-      case Formal(pref, app) =>
-        val meth = app.symbol
+      case Formal(pref, meth) =>
         if meth.exists
         then i" when checking argument to parameter ${pref.paramName} of $meth"
         else ""
