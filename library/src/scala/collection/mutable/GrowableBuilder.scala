@@ -31,13 +31,30 @@ import language.experimental.captureChecking
 class GrowableBuilder[Elem, To <: Growable[Elem]](protected val elems: To)
   extends Builder[Elem, To] {
 
+  /** Removes all elements from the underlying collection. */
   def clear(): Unit = elems.clear()
 
+  /** Returns the underlying growable collection itself, not a copy. Elements
+   *  added to this builder afterwards are visible in the returned collection.
+   */
   def result(): To = elems
 
+  /** Adds a single element to the underlying collection.
+   *
+   *  @param elem the element to add
+   *  @return this builder
+   */
   def addOne(elem: Elem): this.type = { elems += elem; this }
 
+  /** Adds all elements produced by an `IterableOnce` to the underlying collection.
+   *
+   *  @param xs the elements to add
+   *  @return this builder
+   */
   override def addAll(xs: IterableOnce[Elem]^): this.type = { elems.addAll(xs); this }
 
+  /** Returns the number of elements in the underlying collection, if it can be
+   *  cheaply computed, -1 otherwise.
+   */
   override def knownSize: Int = elems.knownSize
 }
