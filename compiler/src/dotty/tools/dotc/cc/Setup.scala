@@ -392,6 +392,17 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       override def mapRefinedFunction(tp: Type, rinfo: MethodType): Type =
         addVar(super.mapRefinedFunction(tp, rinfo), tp)
 
+      /** Are we mapping a polymorphic type? Then the declared parts we see are bounds
+       *  of its type parameters, since its result type is a method type, which resets
+       *  this flag.
+       */
+      var inBounds = false
+
+      override protected def mapOverLambda(tp: LambdaType) =
+        val saved = inBounds
+        inBounds = tp.isInstanceOf[PolyType]
+        try super.mapOverLambda(tp) finally inBounds = saved
+
       def innerApply(tp: Type) =
         tp match
           case AnnotatedType(parent, annot)
@@ -400,7 +411,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             addVar(apply(parent), tp)
           case AnnotatedType(parent, annot)
           if annot.symbol == defn.DeclaredAnnot =>
-            transformExplicitType(parent, sym, initialVariance = variance)
+            transformExplicitType(parent, sym, initialVariance = variance, inBounds = inBounds)
           case tp @ RefinedType(parent, rname, rinfo) =>
             val saved = refiningNames
             refiningNames += rname
@@ -425,8 +436,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *   4. Map `any` in function result types to existentially bound variables.
    *   5. Schedule deferred well-formed tests for types with retains annotations.
    *   6. Perform normalizeCaptures
+   *  If `inBounds` is true, `tp` is a bound of a type parameter, where `any` stays as it is,
+   *  see `GlobalCapToLocal.mapOverLambda`.
    */
-  private def transformExplicitType(tp: Type, sym: Symbol, tptToCheck: Tree = EmptyTree, initialVariance: Int = 1)(using Context): Type =
+  private def transformExplicitType(tp: Type, sym: Symbol, tptToCheck: Tree = EmptyTree, initialVariance: Int = 1, inBounds: Boolean = false)(using Context): Type =
 
     def fail(msg: Message) =
       if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
@@ -580,7 +593,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             |The `fresh` capability may only be used in the result of a function type,
             |following a function arrow such as `=>` or `->`.""")
 
-    if initialVariance < 0 then tp2
+    if initialVariance < 0 || inBounds then tp2
     else globalCapToLocal(tp2, Origin.InDecl(sym))
   end transformExplicitType
 
@@ -764,7 +777,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   psymss.head.lazyZip(mt.paramInfos).map(localCapToGlobal),
                 resType = paramsToCap(psymss.tail, mt.resType))
           case mt: PolyType =>
-            mt.derivedLambdaType(resType = paramsToCap(psymss.tail, mt.resType))
+            mt.derivedLambdaType(
+              paramInfos = psymss.head.lazyZip(mt.paramInfos).map(localCapToGlobal(_, _).bounds),
+              resType = paramsToCap(psymss.tail, mt.resType))
           case _ => mt
 
         // If there's a change in the signature or owner, update the info of `sym`

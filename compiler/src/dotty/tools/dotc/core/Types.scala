@@ -3860,11 +3860,12 @@ object Types extends TypeUtils {
     def integrate(tparams: List[ParamInfo], tp: Type)(using Context): Type =
       (tparams: @unchecked) match {
         case LambdaParam(lam, _) :: _ => tp.subst(lam, this) // This is where the precondition is necessary.
-        case params: List[Symbol @unchecked] => IntegrateMap(params, paramRefs)(tp)
+        case params: List[Symbol @unchecked] => IntegrateMap(params)(tp)
       }
 
-    /** A map that replaces references to symbols in `params` by the types in
-     *  `paramRefs`.
+    /** A map that replaces references to symbols in `from` by the corresponding
+     *  types in `paramRefs`. It is a bijection whose inverse maps these parameter
+     *  references back to references to `from`.
      *
      *  It is similar to [[Substituters#subst]] but avoids reloading denotations
      *  of named types by overriding `derivedSelect`.
@@ -3877,7 +3878,9 @@ object Types extends TypeUtils {
      *  result in a [[NoDenotation]], which would make later disambiguation of
      *  overloads impossible. See `tests/pos/annot-17242.scala` for example.
      */
-    private class IntegrateMap(from: List[Symbol], to: List[Type])(using Context) extends TypeMap:
+    private class IntegrateMap(from: List[Symbol])(using Context) extends BiTypeMap:
+      thisMap =>
+
       override def apply(tp: Type) =
         // Same implementation as in `SubstMap`, except the `derivedSelect` in
         // the `NamedType` case, and the default case that just calls `mapOver`.
@@ -3885,7 +3888,7 @@ object Types extends TypeUtils {
           case tp: NamedType =>
             val sym = tp.symbol
             var fs = from
-            var ts = to
+            var ts = paramRefs
             while (fs.nonEmpty && ts.nonEmpty) {
               if (fs.head eq sym) return ts.head
               fs = fs.tail
@@ -3895,6 +3898,12 @@ object Types extends TypeUtils {
             else derivedSelect(tp, apply(tp.prefix))
           case _: BoundType | _: ThisType => tp
           case _ => mapOver(tp)
+
+      object inverse extends BiTypeMap:
+        def apply(tp: Type) = tp match
+          case tp: ParamRef if tp.binder eq self => from(tp.paramNum).namedType
+          case _ => mapOver(tp)
+        def inverse = thisMap
 
       override final def derivedSelect(tp: NamedType, pre: Type): Type =
         if tp.prefix eq pre then tp
