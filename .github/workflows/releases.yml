@@ -36,8 +36,8 @@ jobs:
     with:
       version: ${{ inputs.version }}
     secrets:
-      CONSUMER-KEY: ${{ secrets.SDKMAN_KEY }}
-      CONSUMER-TOKEN: ${{ secrets.SDKMAN_TOKEN }}
+      SDKMAN_EMAIL: ${{ secrets.SDKMAN_VENDOR_EMAIL }}
+      SDKMAN_PASSWORD: ${{ secrets.SDKMAN_VENDOR_PASSWORD }}
 
   compute-digest:
     runs-on: ubuntu-latest
