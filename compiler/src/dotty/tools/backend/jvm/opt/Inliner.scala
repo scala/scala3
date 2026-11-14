@@ -32,7 +32,7 @@ abstract class Inliner {
 }
 
 final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
-                            heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
+                            heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer, knownBTypes: OptimizerKnownBTypes,
                             settings: OptimizerSettings) extends Inliner {
   def run(classNodesAndSourcePaths: Iterable[(ClassNode, String)], issueSink: OptimizerIssue => Unit): Unit = {
     // add classes to the bytecode repo before building the call graph: the latter needs to
@@ -393,7 +393,7 @@ final class GlobalOptimizer(callGraph: OptimizerCallGraph, classBTypeCache: Clas
     //   def g = f; println() // println is unreachable after inlining f
     // If we have an inline request for a call to g, and f has been already inlined into g, we
     // need to run DCE on g's body before inlining g.
-    LocalOptImpls.minimalRemoveUnreachableCode(callee, calleeDeclarationClass.internalName, callGraph)
+    LocalOptImpls.minimalRemoveUnreachableCode(callee, calleeDeclarationClass.internalName, callGraph, bTypesFromClassfile, knownBTypes)
 
     // If the callsite was eliminated by DCE, do nothing.
     if (!callGraph.containsCallsite(callsite)) return Map.empty
