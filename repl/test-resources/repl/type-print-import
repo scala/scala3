@@ -1,11 +1,11 @@
 scala> collection.mutable.Buffer()
-val res0: collection.mutable.Buffer[Nothing] = ArrayBuffer()
+val res0: collection.mutable.Buffer[Nothing] = ArrayDeque()
 scala> import collection.mutable
 scala> mutable.Buffer()
-val res1: mutable.Buffer[Nothing] = ArrayBuffer()
+val res1: mutable.Buffer[Nothing] = ArrayDeque()
 scala> import collection.mutable.ArrayBuffer
 scala> ArrayBuffer(1, 2, 3)
 val res2: ArrayBuffer[Int] = ArrayBuffer(1, 2, 3)
 scala> import collection.mutable.{Buffer => B}
 scala> B()
-val res3: B[Nothing] = ArrayBuffer()
+val res3: B[Nothing] = ArrayDeque()
