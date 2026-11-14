@@ -898,7 +898,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           typed(
             untpd.Apply(
               untpd.Select(untpd.TypedSplice(qual), nme.apply),
-              untpd.Literal(Constant(nameIdx))),
+              untpd.Literal(Constant(nameIdx))).withSpan(tree0.span),
             pt)
         else
           report.error(

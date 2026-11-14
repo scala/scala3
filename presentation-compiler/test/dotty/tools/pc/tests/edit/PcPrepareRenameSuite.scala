@@ -520,3 +520,93 @@ class PcPrepareRenameSuite extends BasePcRenameSuite:
          |}
          |""".stripMargin
     )
+
+  @Test def `named-tuple-field` =
+    prepare(
+      """|package a
+         |object Main {
+         |  def m() = {
+         |    val x: (name: String, age: Int) = ???
+         |    val y = x.<<na@@me>>
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-nested` =
+    prepare(
+      """|package a
+         |object Main {
+         |  def m() = {
+         |    val x: (inner: (name: String, age: Int)) = ???
+         |    val y = x.inner.<<na@@me>>
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-declaration` =
+    prepare(
+      """|package a
+         |object Main {
+         |  def m() = {
+         |    val x: (<<na@@me>>: String, age: Int) = ???
+         |    val y = x.name
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+  // The type may be used from other files, so only local declarations can be renamed
+  @Test def `named-tuple-field-member` =
+    prepare(
+      """|package a
+         |object Main {
+         |  val x: (name: String, age: Int) = ???
+         |  def m() = x.na@@me
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-param` =
+    prepare(
+      """|package a
+         |object Main {
+         |  def m(p: (name: String, age: Int)) = p.na@@me
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-qualifier` =
+    prepare(
+      """|package a
+         |object Main {
+         |  def m() = {
+         |    val x: (name: String, age: Int) = ???
+         |    val y = <<x@@>>.name
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-local-method-param` =
+    prepare(
+      """|object Main {
+         |  def method() = {
+         |    def inner(p: (name: String)) = p.<<na@@me>>
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-inferred-member-type` =
+    prepare(
+      """|object Main {
+         |  def m = {
+         |    val x: (name: String) = (name = "a")
+         |    x
+         |  }
+         |  def n = m.na@@me
+         |}
+         |""".stripMargin
+    )

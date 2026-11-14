@@ -545,3 +545,288 @@ class PcRenameSuite extends BasePcRenameSuite:
         |""".stripMargin,
       wrap = false
     )
+
+  // Named tuple fields have no symbol; they are declared by the type literal
+  @Test def `named-tuple-field` =
+    check(
+      """|val x: (<<name>>: String, age: Int) = (<<name>> = "a", age = 1)
+         |val other: (<<name>>: String, age: Int) = ???
+         |val car: (name: String, hp: Int) = ???
+         |val y = x.<<na@@me>>
+         |val z = x.age
+         |val otherName = other.<<name>>
+         |val carName = car.name
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-nested` =
+    check(
+      """|val x: (inner: (<<name>>: String, age: Int)) = ???
+         |val y = x.inner.<<na@@me>>
+         |val z = x.inner.age
+         |""".stripMargin
+    )
+
+  // The type may be used from other files, so only local declarations are renamed
+  @Test def `named-tuple-field-member` =
+    check(
+      """|object Main {
+         |  val x: (name: String, age: Int) = ???
+         |  def m() = x.na@@me
+         |}
+         |""".stripMargin,
+      wrap = false
+    )
+
+  @Test def `named-tuple-field-param` =
+    check(
+      """|object Main {
+         |  def m(p: (name: String, age: Int)) = p.na@@me
+         |}
+         |""".stripMargin,
+      wrap = false
+    )
+
+  // Pattern labels are found in the untyped tree, the typer drops them
+  @Test def `named-tuple-field-pattern` =
+    check(
+      """|val x: (<<name>>: String, age: Int) = (<<name>> = "a", age = 1)
+         |x match
+         |  case (<<name>> = n, age = a) => println(n)
+         |  case (age = a, <<name>> = n) => println(n)
+         |val y = x.<<na@@me>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-pattern-nested` =
+    check(
+      """|val x: (outer: (<<name>>: String)) = ???
+         |x match
+         |  case (outer = (<<na@@me>> = n)) => println(n)
+         |  case (outer = o) => println(o.<<name>>)
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-pattern-for` =
+    check(
+      """|val xs: List[(<<name>>: String)] = Nil
+         |for (<<name>> = n) <- xs do println(n)
+         |val (<<na@@me>> = m) = xs.head
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-subtype-constructor` =
+    check(
+      """|val x: (<<o>>: Option[Int], xs: List[Int]) = (<<o>> = Some(1), xs = Nil)
+         |val y = x.<<o@@>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-generic-constructor` =
+    check(
+      """|def mk[T](t: T) = (<<v>> = t)
+         |val y = mk(1).<<v@@>>
+         |val z: (<<v>>: String) = mk("a")
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-backticked` =
+    check(
+      """|val x: (<<`my-name`>>: String) = (<<`my-name`>> = "a")
+         |val y = x.<<`my-n@@ame`>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-to-backticked` =
+    check(
+      """|val x: (<<name>>: String) = (<<name>> = "a")
+         |val y = x.<<na@@me>>
+         |""".stripMargin,
+      newName = "`my-name`"
+    )
+
+  @Test def `named-tuple-field-explicit-literal` =
+    check(
+      """|val x: NamedTuple.NamedTuple[("<<name>>", "age"), (String, Int)] = ???
+         |val y = x.<<na@@me>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-same-name-other-symbols` =
+    check(
+      """|val name = "zzz"
+         |val x: (<<name>>: String) = (<<name>> = name)
+         |val y = x.<<na@@me>>
+         |def f(name: Int) = name
+         |""".stripMargin
+    )
+
+  // the type also comes from `NamedTuple.From[P]`, which cannot be renamed
+
+  @Test def `named-tuple-field-local-alias` =
+    check(
+      """|type P = (<<name>>: String)
+         |val p: P = (<<name>> = "a")
+         |val n = p.<<na@@me>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-constructor-in-body` =
+    check(
+      """|val x: (<<name>>: String) = ???
+         |println((<<name>> = "b").<<na@@me>>)
+         |""".stripMargin
+    )
+
+  // param of a local method is local
+
+  @Test def `named-tuple-field-local-method-param` =
+    check(
+      """|def inner(p: (<<name>>: String)) = p.<<na@@me>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-lambda-param` =
+    check(
+      """|val xs: List[(<<name>>: String)] = Nil
+         |xs.map(x => x.<<na@@me>>)
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-member-statement` =
+    check(
+      """|object Main {
+         |  println((<<name>> = "a").<<na@@me>>)
+         |}
+         |""".stripMargin,
+      wrap = false
+    )
+
+  @Test def `named-tuple-field-pattern-val` =
+    check(
+      """|val (a, b) = ((<<name>> = "a"), 1)
+         |val y = a.<<na@@me>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-worksheet` =
+    check(
+      """|object Main {
+         |  val x: (<<name>>: String) = (<<name>> = "a")
+         |  def m() = x.<<na@@me>>
+         |}
+         |""".stripMargin,
+      filename = "A.worksheet.sc",
+      wrap = false
+    )
+
+  // The type escapes the file through a signature visible outside, so it cannot be renamed
+  @Test def `named-tuple-field-inferred-member-type` =
+    check(
+      """|object Main {
+         |  def m = {
+         |    val x: (name: String) = (name = "a")
+         |    x
+         |  }
+         |  def n = m.na@@me
+         |}
+         |""".stripMargin,
+      wrap = false
+    )
+
+  // a constructor directly in a member method body is local
+
+  @Test def `named-tuple-field-inferred-member-val` =
+    check(
+      """|object Main {
+         |  val v = { val x: (name: String) = (name = "a"); x }
+         |  def n = v.na@@me
+         |}
+         |""".stripMargin,
+      wrap = false
+    )
+
+  @Test def `named-tuple-field-inferred-member-list` =
+    check(
+      """|object Main {
+         |  val xs = List((name = "a"))
+         |  def m() = xs.head.na@@me
+         |}
+         |""".stripMargin,
+      wrap = false
+    )
+
+  @Test def `named-tuple-field-member-result-type` =
+    check(
+      """|object Main {
+         |  def m: (name: String) = (name = "a")
+         |  def n = m.na@@me
+         |}
+         |""".stripMargin,
+      wrap = false
+    )
+
+  @Test def `named-tuple-field-member-lambda-param` =
+    check(
+      """|object Main {
+         |  val f = (p: (name: String)) => p.na@@me
+         |}
+         |""".stripMargin,
+      wrap = false
+    )
+
+  @Test def `named-tuple-field-type-param-bound` =
+    check(
+      """|object Main {
+         |  class Box[T <: (name: String)](t: T) { def n = t.na@@me }
+         |}
+         |""".stripMargin,
+      wrap = false
+    )
+
+  @Test def `named-tuple-field-member-class-parent` =
+    check(
+      """|object Main {
+         |  class Box[T]
+         |  class C extends Box[(name: String)]
+         |  def m() = { val x: (name: String) = ???; x.na@@me }
+         |}
+         |""".stripMargin,
+      wrap = false
+    )
+
+  @Test def `named-tuple-field-member-alias` =
+    check(
+      """|object Main {
+         |  type P = (name: String)
+         |  val x: P = ???
+         |  def m() = { val y: (name: String) = x; y.na@@me }
+         |}
+         |""".stripMargin,
+      wrap = false
+    )
+
+  // The type also comes from elsewhere, so it cannot be renamed
+  @Test def `named-tuple-field-from-case-class` =
+    check(
+      """|case class P(name: String, age: Int)
+         |val p: NamedTuple.From[P] = ???
+         |val x: (name: String, age: Int) = ???
+         |val y = x.na@@me
+         |val z = p.name
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-other-object` =
+    check(
+      """|object Main {
+         |  def m() = {
+         |    val x: (name: String, age: Int) = ???
+         |    val y = x.na@@me
+         |    val z = Other.p.name
+         |  }
+         |}
+         |object Other { def p: (name: String, age: Int) = ??? }
+         |""".stripMargin,
+      wrap = false
+    )
