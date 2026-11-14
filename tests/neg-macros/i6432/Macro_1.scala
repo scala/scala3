@@ -7,7 +7,7 @@ object Macro {
 
   def impl(sc: Expr[StringContext])(using Quotes) : Expr[Unit] = {
     import quotes.reflect.*
-    sc match {
+    (sc: @unchecked) match {
       case '{ StringContext(${Varargs(parts)}*) } =>
         for (case part @ Expr(s) <- parts)
           report.error(s, part.asTerm.pos)
