@@ -106,6 +106,7 @@ transparent trait IsIterable[Repr] extends IsIterableOnce[Repr] {
    */
   type C
 
+  /** A function that converts a `Repr` to an `IterableOps[A, Iterable, C]`, equivalent to `apply`. */
   @deprecated("'conversion' is now a method named 'apply'", "2.13.0")
   @untrackedCaptures
   override val conversion: Repr => IterableOps[A, Iterable, C] = apply(_)
@@ -122,6 +123,12 @@ transparent trait IsIterable[Repr] extends IsIterableOnce[Repr] {
 object IsIterable extends IsIterableLowPriority {
 
   // Straightforward case: IterableOps subclasses
+  /** Provides an `IsIterable` instance for any `IterableOps` type.
+   *
+   *  @tparam A0 the element type of the collection
+   *  @tparam CC0 the collection type constructor, which must be a subtype of `IterableOps`
+   *  @return an `IsIterable` instance for the given `IterableOps` type, with `A` set to `A0` and `C` set to `CC0[A0]`
+   */
   implicit def iterableOpsIsIterable[A0, CC0[X] <: IterableOps[X, Iterable, CC0[X]]]: IsIterable[CC0[A0]] { type A = A0; type C = CC0[A0] } =
     new IsIterable[CC0[A0]] {
       type A = A0
@@ -132,6 +139,11 @@ object IsIterable extends IsIterableLowPriority {
   // The `BitSet` type can not be unified with the `CC0` parameter of
   // the above definition because it does not take a type parameter.
   // Hence the need for a separate case:
+  /** Provides an `IsIterable` instance for `BitSet` types.
+   *
+   *  @tparam C0 the `BitSet` type, which must extend both `BitSet` and `BitSetOps`
+   *  @return an `IsIterable` instance for the given `BitSet` type, with `A` set to `Int` and `C` set to `C0`
+   */
   implicit def bitSetOpsIsIterable[C0 <: BitSet & BitSetOps[C0]]: IsIterable[C0] { type A = Int; type C = C0 } =
     new IsIterable[C0] {
       type A = Int
@@ -144,11 +156,23 @@ object IsIterable extends IsIterableLowPriority {
 transparent trait IsIterableLowPriority {
 
   // Makes `IsSeq` instances visible in `IsIterable` companion
+  /** Makes an `IsSeq` instance visible as an `IsIterable` instance.
+   *
+   *  @tparam Repr the representation type that can be converted to an `Iterable`
+   *  @param isSeqLike the `IsSeq` instance to expose as an `IsIterable`
+   *  @return `isSeqLike` itself (an `IsSeq` is an `IsIterable`), preserving its element (`A`) and collection (`C`) types
+   */
   implicit def isSeqLikeIsIterable[Repr](implicit
     isSeqLike: IsSeq[Repr]
   ): IsIterable[Repr] { type A = isSeqLike.A; type C = isSeqLike.C } = isSeqLike
 
   // Makes `IsMap` instances visible in `IsIterable` companion
+  /** Makes an `IsMap` instance visible as an `IsIterable` instance.
+   *
+   *  @tparam Repr the representation type that can be converted to an `Iterable`
+   *  @param isMapLike the `IsMap` instance to expose as an `IsIterable`
+   *  @return `isMapLike` itself (an `IsMap` is an `IsIterable`), preserving its element (`A`) and collection (`C`) types
+   */
   implicit def isMapLikeIsIterable[Repr](implicit
     isMapLike: IsMap[Repr]
   ): IsIterable[Repr] { type A = isMapLike.A; type C = isMapLike.C } = isMapLike
