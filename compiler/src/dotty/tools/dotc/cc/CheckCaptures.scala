@@ -1782,6 +1782,9 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     private def findImpureUpperBound(tp: Type)(using Context): Type = tp match
       case _: SingletonType => findImpureUpperBound(tp.widen)
+      case CapturingType(parent, refs) if !tp.isBoxed =>
+        val hi = findImpureUpperBound(parent)
+        if hi.exists then CapturingType(hi, refs) else NoType
       case tp: TypeRef if tp.symbol.isAbstractOrParamType =>
         tp.info match
           case TypeBounds(_, hi) if hi.isBoxed => hi
@@ -2107,9 +2110,13 @@ class CheckCaptures extends Recheck, SymTransformer:
         if needsAdaptation && !insertBox then // we are unboxing
           val criticalSet =          // the set with which we unbox
             if covariant then
+              // If actual has nested captures, e.g. (box Cap^{fs})^{io}, unboxing must
+              // charge fs to the enclosing capture sets. actual.captureSet would give
+              // io instead. See box-adapt-cov.scala's test3.
+              val unboxed = actual.boxedCaptureSet ++ leaked
               if expected.expectsReadOnly && actual.derivesFromStateful
-              then captures.readOnly
-              else captures
+              then unboxed.readOnly
+              else unboxed
             else expected.captureSet     // contravarant: we unbox with captures of epected type
             //debugShowEnvs()
           markFree(criticalSet, tree)
