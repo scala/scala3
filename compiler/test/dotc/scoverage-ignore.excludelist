@@ -44,3 +44,4 @@ tailrec-synchronized.scala
 tailrec.scala
 traitParams.scala
 outer-synchronized.scala
+i25746.scala
