@@ -1085,10 +1085,22 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  captures everything the extractor result captures.
      */
     override protected def unknownArgType(pat: Tree, resultType: Type)(using Context): Type =
+      val refs = resultType.deepCaptureSet
       val shape = pat match
-        case pat: Bind if pat.symbol.isTerm => pat.symbol.info.stripCapturing
+        case pat: Bind if pat.symbol.isTerm =>
+          // PROTOTYPE: The capture set variables in the parts of the type of the
+          // variable also include everything the extractor result captures.
+          val includeRefs = new TypeTraverser:
+            def traverse(t: Type) = t match
+              case CapturingType(parent, cs) =>
+                if variance >= 0 then checkSubset(refs, cs, pat.srcPos)
+                traverse(parent)
+              case _ => traverseChildren(t)
+          val declared = pat.symbol.info
+          includeRefs.traverse(declared)
+          declared.stripCapturing
         case _ => pat.tpe.widen
-      shape.capturing(resultType.deepCaptureSet)
+      shape.capturing(refs)
 
     /** Recheck `caps.unsafe.unsafeAssumePure(...)` */
     def applyAssumePure(tree: Apply, pt: Type)(using Context): Type =
