@@ -1429,14 +1429,16 @@ class CheckCaptures extends Recheck, SymTransformer:
       if !tree.tpt.isEmpty && !defn.isFunctionType(tree.tpt.tpe) then
         tree.tpt.nuType match
           case SAMType(samType, _) =>
-            val methType = tree.meth.tpe.widen
-            TypeComparer.compareResult(isCompatible(methType, samType)) match
-              case TypeComparer.CompareResult.Fail(notes) =>
-                def asFunction(tp: Type) = tp match
-                  case tp: MethodType => tp.toFunctionType(alwaysDependent = true)
-                  case _ => tp
-                err.typeMismatch(tree.withType(asFunction(methType)), asFunction(samType), notes)
-              case _ =>
+            // The two method types are compared as function types, so that boxes
+            // are adapted in the same way as for closures of function types.
+            def asFunction(tp: Type) = tp match
+              case tp: MethodType => tp.toFunctionType(alwaysDependent = true)
+              case _ => tp
+            // What is used by unboxing a parameter is charged to the closure.
+            checkConformsExpr(
+              asFunction(tree.meth.tpe.widen),
+              asFunction(samType).capturing(tree.meth.symbol.useSet),
+              tree)
           case _ =>
 
     /** Recheck a lambda of the form
