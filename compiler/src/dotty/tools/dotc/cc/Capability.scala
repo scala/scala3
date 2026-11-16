@@ -1244,6 +1244,13 @@ object Capabilities:
         case _ =>
           mapFollowingAliases(t)
 
+    /** Bounds of type parameters are kept as they are: `any` in a bound means that the
+     *  parameter can be instantiated with any capture set.
+     */
+    override protected def mapOverLambda(tp: LambdaType) = tp match
+      case tp: PolyType => derivedLambdaType(tp)(tp.paramInfos, this(tp.resultType))
+      case _ => super.mapOverLambda(tp)
+
     override def mapCapability(c: Capability): Capability = c match
       case GlobalAny =>
         // Roots at invariant positions are not adopted into closure parameter

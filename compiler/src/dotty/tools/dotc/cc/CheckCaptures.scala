@@ -203,6 +203,18 @@ object CheckCaptures:
             traverse(parent)
           case defn.RefinedFunctionOf(mt) =>
             traverse(mt)
+          case t: PolyType =>
+            // The capture set of an upper bound only says what the type parameter can be
+            // instantiated with, as `{any}` in `[C^]`, so it is not checked. Method parameter
+            // types do not need this: where they are not contravariant, as in
+            // `Box[(f: File^) -> Unit]`, Setup maps their `any` to a local root, but it keeps
+            // `any` in bounds. Roots nested in a bound are still checked: with
+            // `[R, X <: Boxed[IO^] -> R]`, a function can pass a capability of its own to its
+            // argument, see i21401.scala.
+            for case TypeBounds(lo, hi) <- t.paramInfos do
+              traverse(lo)
+              atVariance(-variance)(traverse(hi.stripCapturing))
+            traverse(t.resType)
           case t: MethodType if t.marksExistentialScope =>
             atVariance(-variance):
               t.paramInfos.foreach(traverse)
@@ -340,13 +352,17 @@ class CheckCaptures extends Recheck, SymTransformer:
       def markedFree: CaptureSet = usedSet.getOrElse(tree, CaptureSet.empty)
 
     /** Instantiate capture set variables appearing contra-variantly to their
-     *  upper approximation.
+     *  upper approximation. This also applies to variables in upper bounds of type
+     *  parameters that appear invariantly: such a bound is only constrained from above,
+     *  by the bounds it is compared with, and its precise solution is the largest one.
      */
     private def interpolate(tp: Type, sym: Symbol, startingVariance: Int = 1)(using Context): Unit =
 
       object variances extends TypeTraverser:
         variance = startingVariance
         val varianceOfVar = EqHashMap[CaptureSet.Var, Int]()
+        val boundVars = EqHashSet[CaptureSet.Var]() // variables in upper bounds of type parameters
+        var inBounds = false
         override def traverse(t: Type) = t match
           case t @ CapturingType(parent, refs) =>
             refs match
@@ -354,10 +370,19 @@ class CheckCaptures extends Recheck, SymTransformer:
                 varianceOfVar(refs) = varianceOfVar.get(refs) match
                   case Some(v0) => if v0 == 0 then 0 else (v0 + variance) / 2
                   case None => variance
+                if inBounds then boundVars += refs
               case _ =>
             traverse(parent)
           case t @ defn.RefinedFunctionOf(rinfo) =>
             traverse(rinfo)
+          case t: PolyType =>
+            atVariance(-variance):
+              for case TypeBounds(lo, hi) <- t.paramInfos do
+                atVariance(-variance)(traverse(lo))
+                val saved = inBounds
+                inBounds = true
+                try traverse(hi) finally inBounds = saved
+            traverse(t.resType)
           case _ =>
             traverseChildren(t)
 
@@ -366,7 +391,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           case t @ CapturingType(parent, refs) =>
             refs match
               case refs: CaptureSet.Var if !refs.isConst =>
-                if variances.varianceOfVar(refs) < 0 then refs.solve()
+                val v = variances.varianceOfVar(refs)
+                if v < 0 || v == 0 && variances.boundVars.contains(refs) then refs.solve()
                 else refs.markSolved(provisional = !sym.isMutableVar)
               case _ =>
             traverse(parent)
