@@ -875,7 +875,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         traversePattern(body)
         postProcess(pat) // updates the info of the bound variable
       case Typed(pat1, tpt) =>
-        tpt.setNuType(globalCapToLocal(tpt.tpe, Origin.TypeArg(tpt.tpe)))
+        // In a pattern `p*` there is no cast, and `tpt` is not used for checking
+        if !tpt.tpe.isRepeatedParam then
+          tpt.setNuType(globalCapToLocal(tpt.tpe, Origin.TypeArg(tpt.tpe)))
         traversePattern(pat1)
       case UnApply(fun, implicits, pats) =>
         traverse(fun)
