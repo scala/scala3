@@ -1696,8 +1696,15 @@ class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context
     case _ => false
   override def canExplain = !isBounds
   def msg(using Context) =
+    def isCapSet(tp: Type) = tp.derivesFrom(defn.Caps_CapSet)
+    def captures(tp: Type) = CaptureSet.ofType(tp, followResult = false)
     if isBounds then
       i"Type argument ${tpe} does not overlap with $which bound $bound"
+    else if isCapSet(tpe) && isCapSet(bound) then
+      if which == "lower" then
+        i"Capture set argument ${captures(tpe)} does not include its lower bound ${captures(bound)}"
+      else
+        i"Capture set argument ${captures(tpe)} is not included in its upper bound ${captures(bound)}"
     else
       i"Type argument ${tpe} does not conform to $which bound $bound"
 

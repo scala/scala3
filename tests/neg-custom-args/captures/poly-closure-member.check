@@ -1,0 +1,8 @@
+-- Error: tests/neg-custom-args/captures/poly-closure-member.scala:9:14 ------------------------------------------------
+9 |  val l = List([C^] => (f: File^{C}) => f) // error
+  |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |          value l needs an explicit type because the inferred type does not conform to
+  |          the type that is externally visible in other compilation units.
+  |
+  |           Inferred type          : List[[C^] -> (f: p.File^{C}) ->'s1 p.File^{f}]
+  |           Externally visible type: List[[C^] -> (f: p.File) -> p.File]
