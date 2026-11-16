@@ -381,13 +381,19 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             case _ => tp
         case _ => tp
 
-      /** Normalize `tp1` and add a capture set variable to it if necessary. */
+      /** Normalize `tp1` and add a capture set variable to it if necessary.
+       *  No variable is added to a type argument `tp` whose formal `typeArgFormal` has
+       *  a pure upper bound. This bound restricts only `tp` itself, not its parts,
+       *  so these get variables as usual. For instance, in `id(s)` with
+       *  `def id[T <: Src[File^]](t: T): T` and `s: Src[File^{x}]`, the type argument
+       *  is `Src[File^{?}]`, not `Src[File]`.
+       */
       def addVar(tp1: Type, orig: Type) =
         decorate(
           addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, orig))),
           CaptureSet.VarInTypeTree(ctx.owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining = inCaptureRefinement),
           transformExplicitType(_, sym, initialVariance = variance),
-          typeArgFormal)
+          if orig eq tp then typeArgFormal else NoType)
 
       override def mapRefinedFunction(tp: Type, rinfo: MethodType): Type =
         addVar(super.mapRefinedFunction(tp, rinfo), tp)
