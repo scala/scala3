@@ -1670,12 +1670,14 @@ trait Applications extends Compatibility {
 
   /** Is `tp` a unary function type or an overloaded type with only unary function
    *  types as alternatives?
-   *  If `skipImplicit` is true, leading implicit parameter sections are
-   *  skipped first.
+   *  If `skipImplicit` is true, leading `using` parameter sections are
+   *  skipped first, since explicit arguments cannot fill them. Old-style
+   *  `implicit` sections are not skipped: they can be filled by explicit
+   *  arguments (see `matchingApply`), so their arity counts.
    */
   def isUnary(tp: Type, skipImplicit: Boolean)(using Context): Boolean = tp.stripPoly match
     case mt: MethodType =>
-      if skipImplicit && mt.isImplicitMethod then
+      if skipImplicit && mt.isContextualMethod then
         isUnary(tp.resultType, skipImplicit)
       else
         mt.paramInfos match
