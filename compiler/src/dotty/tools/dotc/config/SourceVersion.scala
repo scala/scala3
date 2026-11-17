@@ -59,7 +59,7 @@ enum SourceVersion:
 object SourceVersion extends Property.Key[SourceVersion]:
 
   /* The default source version used by the built compiler */
-  val defaultSourceVersion = `3.10`
+  val defaultSourceVersion = `3.11`
 
   /* Illegal source versions that may not appear in the settings `-source:<...>` */
   val illegalInSettings = List(`2.13`, `3.1-migration`, `never`)
