@@ -1,3 +1,5 @@
+import scala.language.implicitConversions
+
 class Foo:
   given Conversion[String, Data]:
     def apply(str: String): Data = new Data(str)

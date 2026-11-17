@@ -1,3 +1,5 @@
+import scala.language.implicitConversions
+
 object ConversionChain {
 
   class X(val value: Int)

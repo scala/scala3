@@ -1,4 +1,5 @@
 import Conversion.into
+import scala.language.implicitConversions
 
 class BigInt(x: Int):
   def + (other: into[BigInt]): BigInt = ???

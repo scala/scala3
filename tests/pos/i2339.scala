@@ -1,3 +1,4 @@
+import scala.language.implicitConversions
 import scala.collection.mutable
 
 case class Foo[K, V]()(implicit conv: Conversion[V, Ordered[V]])
