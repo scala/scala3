@@ -26,18 +26,8 @@
    |              Externally visible type: () -> Unit
    |
 21 |    count.put(count.get - 1)
--- Error: tests/neg-custom-args/captures/check-inferred.scala:24:14 ----------------------------------------------------
-24 |  val count = Ref(): Object^ // error // error
-   |              ^^^^^^^^^^^^^^
-   |              value count needs an explicit type because the inferred type does not conform to
-   |              the type that is externally visible in other compilation units.
-   |
-   |               Inferred type          : Object^
-   |               Externally visible type: Object
-   |
-   |              where:    ^ refers to a root capability created in value count
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:24:11 ----------------------------------------------------
-24 |  val count = Ref(): Object^ // error // error
+24 |  val count = Ref(): Object^ // error
    |           ^
    |           value count needs an explicit type because it captures a root capability in its type Object^.
    |           Fields capturing a root capability need to be given an explicit type unless the capability is already
