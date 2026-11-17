@@ -157,7 +157,7 @@ object Inlines:
                                                                                                    // 1) they will be pruned out later anyway and if we inline them we will create a loop (as in tests/pos/specialized-trait-inlining-causes-implementation-required-loop-bad.scala)
                                                                                                    // 2) they are covered by another specialized type parameter in inlining and therefore we will specialize later when the inline function is called
                                                                                                    //    tests/run/specialized-trait-inline-specialized-instance-with-specialization
-                                                                                                   // 3) we already dealt with them in desugarSpecializedTraits
+                                                                                                   // 3) we already dealt with them in specializeInlineTraits
           case other => Some(tree)
         }
       }
