@@ -1,4 +1,4 @@
-//> using options  -feature
+//> using options -feature -source 3.10
 
 class A
 class B
