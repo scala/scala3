@@ -26,7 +26,7 @@
 18 |  l3[{b}](b) // error // error
    |          ^
    |          Found:    (b : p.File^)
-   |          Required: p.File^{}
+   |          Required: p.File
    |
    |          Note that capability `b` cannot flow into capture set {} of value l3.
    |

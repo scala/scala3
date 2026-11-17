@@ -203,6 +203,30 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case ref :: Nil => ref.isCapsAnyRef
     case _ => false
 
+  /** Can the empty capture set `refs` of a capturing type with parent `parent` be omitted?
+   *  Only if `refs` is a capture set variable that was solved to the empty set, since
+   *  constant empty sets are shown as written or kept on purpose by `CapturingType`, and if
+   *  `parent` refers to a class that is not a capability class, since then `parent` written
+   *  without a capture set means the same. Excluded are classes for which subtyping ignores
+   *  capture sets (`Any`, `AnyKind` and `Singleton`), and `Array`, which counts as a
+   *  capability class under strict mutability, depending on the context. Classes are not
+   *  completed here.
+   */
+  protected def isElidableEmpty(parent: Type, refs: GeneralCaptureSet): Boolean =
+    def isPureClassRef(tp: Type): Boolean = tp match
+      case tp: RefinedType => isPureClassRef(tp.parent)
+      case tp: AppliedType => isPureClassRef(tp.tycon)
+      case tp: TypeRef =>
+        val cls = tp.symbol
+        cls.isClass && cls.isCompleted && !cls.derivesFromCapability
+        && cls != defn.AnyClass && cls != defn.AnyKindClass && cls != defn.SingletonClass
+        && cls != defn.ArrayClass
+      case _ => false
+    refs match
+      case refs: CaptureSet.Var =>
+        refs.isAlwaysEmpty && !ccVerbose && !printDebug && isPureClassRef(parent)
+      case _ => false
+
   protected def toTextGeneralCaptureSet(refs: GeneralCaptureSet): Text = refs match
     case refs: CaptureSet => toTextCaptureSet(refs)
     case refs: List[Type] => toTextRetainedElems(refs)
@@ -211,7 +235,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
    *  capturing function types.
    */
   protected def toTextCapturing(parent: Type, refs: GeneralCaptureSet, boxText: Text): Text =
-    changePrec(InfixPrec):
+    if isElidableEmpty(parent, refs) then boxText ~ toText(parent)
+    else changePrec(InfixPrec):
       boxText
       ~ toTextLocal(parent)
       ~ "^"
