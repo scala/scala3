@@ -31,7 +31,8 @@ jobs:
       - name: Set up JDK ${{ matrix.jdk }}
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
-          distribution: 'zulu'
+          distribution: 'corretto'
+          check-latest: true
           java-version: ${{ matrix.jdk }}
           cache: 'sbt'
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
@@ -45,6 +46,6 @@ jobs:
       - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
       - uses: VirtusLab/scala-cli-setup@9d61091a7d9d19f69faa59b31cdbc6ef2537eccc # v1.19.0
         with:
-          jvm: temurin:17
+          jvm: corretto:17
       - name: Run bisect script tests
         run: scala-cli test project/scripts/bisect.test.scala
