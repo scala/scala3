@@ -77,6 +77,9 @@ enum ClassOnly: // this should still generate the `ordinal` and `fromOrdinal` co
 
   cantFind(companion = Color,     ordinal = 500) // test default case for enumeration
   cantFind(companion = Suits,     ordinal = 500) // test default case for Java style enumeration
+  cantFind(companion = Color,     ordinal = -1)  // negative ordinals for enumerations
+  cantFind(companion = Suits,     ordinal = -1)
+  cantFind(companion = Color,     ordinal = scala.Int.MinValue)
   cantFind(companion = Tag,       ordinal = 500) // test default case for mixed adt with non-simple values
   cantFind(companion = ClassOnly, ordinal = 500) // should always throw
 

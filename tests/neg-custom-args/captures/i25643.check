@@ -1,0 +1,29 @@
+-- Error: tests/neg-custom-args/captures/i25643.scala:9:6 --------------------------------------------------------------
+9 |      sharedCount += 1   // error
+  |      ^^^^^^^^^^^^^^^^
+  |      Cannot assign to field sharedCount of Registry
+  |      since the access is in class CounterW, which is not an update class.
+-- Error: tests/neg-custom-args/captures/i25643.scala:13:6 -------------------------------------------------------------
+13 |      sharedCount += 1   // error
+   |      ^^^^^^^^^^^^^^^^
+   |      Cannot assign to field sharedCount of Registry
+   |      since the access is in class CounterY, which is not an update class.
+-- Error: tests/neg-custom-args/captures/i25643.scala:20:11 ------------------------------------------------------------
+20 |  def mk = Inc()  // error
+   |           ^^^
+   |           Cannot create an instance of update class Inc of Outer.this
+   |           since the access is in method mk, which is not an update method.
+-- Error: tests/neg-custom-args/captures/i25643.scala:23:10 ------------------------------------------------------------
+23 |  val _ = p.Inc() // error
+   |          ^^^^^
+   |          Cannot create an instance of update class Inc of p
+   |          since its capture set {} is read-only.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25643.scala:25:22 ---------------------------------------
+25 |  val _: () -> Unit = () => i() // error
+   |                      ^^^^^^^^^
+   |                      Found:    () ->{i} Unit
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `i` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`

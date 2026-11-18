@@ -1,12 +1,28 @@
 -- Error: tests/neg-custom-args/captures/mut-outside-mutable.scala:5:13 ------------------------------------------------
 5 |  update def foreach(op: T => Unit): Unit // error
   |             ^
-  |             Update method foreach must be declared in a class extending the `Stateful` trait.
+  |           Update method foreach must be declared in a class extending the `Stateful` trait or in an update class.
 -- Error: tests/neg-custom-args/captures/mut-outside-mutable.scala:9:15 ------------------------------------------------
 9 |    update def baz() = 1 // error
   |               ^
-  |               Update method baz must be declared in a class extending the `Stateful` trait.
+  |               Update method baz must be declared in a class extending the `Stateful` trait or in an update class.
 -- Error: tests/neg-custom-args/captures/mut-outside-mutable.scala:14:15 -----------------------------------------------
 14 |    update def baz() = 1 // error
    |               ^
-   |               Update method baz must be declared in a class extending the `Stateful` trait.
+   |             Update method baz must be declared in a class extending the `Stateful` trait or in an update class.
+-- Error: tests/neg-custom-args/captures/mut-outside-mutable.scala:17:15 -----------------------------------------------
+17 |  update class C // error
+   |               ^
+   |               Update class C must be declared in a class extending the `Stateful` trait.
+-- Error: tests/neg-custom-args/captures/mut-outside-mutable.scala:19:15 -----------------------------------------------
+19 |    update def foo() = () // error
+   |               ^
+   |             Update method foo must be declared in a class extending the `Stateful` trait or in an update class.
+-- Error: tests/neg-custom-args/captures/mut-outside-mutable.scala:22:2 ------------------------------------------------
+22 |  update object O // error
+   |  ^^^^^^
+   |  Modifier `update` is not allowed for objects
+-- Error: tests/neg-custom-args/captures/mut-outside-mutable.scala:23:20 -----------------------------------------------
+23 |  update case class C(x: Int) // error
+   |                    ^
+   |                    Case classes cannot be update classes.

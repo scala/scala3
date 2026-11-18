@@ -37,8 +37,17 @@
    |where:    any is a root capability classified as SharedCapability created in value supersecret when constructing instance test5.Secret
    |
    | longer explanation available when compiling with `-explain`
+-- [E223] CaptureChecking Error: tests/neg/i26416.scala:76:6 -----------------------------------------------------------
+76 |      commonsecret = supersecret // error // error
+   |      ^^^^^^^^^^^^
+   |      Reference `test6` is not included in the allowed capture set 's2
+   |      of the enclosing class SecretService in object test6.
+   |
+   |      Note that `test6` is a capability because it contains a field commonsecret: test6.Secret^.
+   |
+   |      where:    ^ refers to a root capability in the type of variable commonsecret
 -- [E007] Type Mismatch Error: tests/neg/i26416.scala:76:21 ------------------------------------------------------------
-76 |      commonsecret = supersecret // error
+76 |      commonsecret = supersecret // error // error
    |                     ^^^^^^^^^^^
    |Found:    (SecretService.this.supersecret : test6.Secret^{SecretService.this})
    |Required: test6.Secret^{any}
@@ -64,8 +73,8 @@
 -- Error: tests/neg/i26416.scala:10:21 ---------------------------------------------------------------------------------
 10 |    val supersecret: Secret^{this} = Secret("Blahblah") // error // error
    |                     ^^^^^^^^^^^^^
-   |                 (SecretService.this : test1.SecretService^'s2) cannot be tracked since its capture set is empty
+   |                 (SecretService.this : test1.SecretService^'s3) cannot be tracked since its capture set is empty
 -- Error: tests/neg/i26416.scala:35:21 ---------------------------------------------------------------------------------
 35 |    val supersecret: Secret^{this} = Secret("Blahblah") // error
    |                     ^^^^^^^^^^^^^
-   |                     (SecretService.this : SecretService^'s3) cannot be tracked since its capture set is empty
+   |                     (SecretService.this : SecretService^'s4) cannot be tracked since its capture set is empty

@@ -116,7 +116,7 @@ object ScaladocConfigs0 {
       "-d", scala3Output,
       "-revision", "main",
       "-external-mappings", javaExternalMapping,
-      "-doc-root-content", (stdlib / "resources" / "rootdoc.txt").toString,
+      "-doc-root-content", (stdlib / "resources" / "rootdoc.md").toString,
       "-comment-syntax", "markdown", // Markdown syntax is used by default for all sources
       "-versions-dictionary-url", "https://scala-lang.org/api/versions.json",
       "-Ydocument-synthetic-types:true",

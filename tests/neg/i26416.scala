@@ -73,7 +73,7 @@ object test6 {
   class SecretService extends caps.SharedCapability:
     val supersecret: Secret^{this} = Secret("Blahblah")
     def leak(): Unit =
-      commonsecret = supersecret // error
+      commonsecret = supersecret // error // error
 }
 
 // Version 7: Has self type with any

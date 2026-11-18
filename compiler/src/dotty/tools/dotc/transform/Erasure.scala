@@ -1113,11 +1113,16 @@ object Erasure {
       // Match corresponding class info erasure in TypeErasure::apply ClassInfo case
       val oldParents = implInit.asInstanceOf[Template].parents
       val superCtxNoSpec = disallowSpecializedCtx(using ctx.superCallContext)
+      // Erase specialized parents to their `$sp$` traits even if they have variant specialized
+      // type parameters, matching the erasure of the class info in TypeErasure::apply.
+      def specializedParent(parent: Tree): Tree = parent match
+        case parent: TypeTree => TypeTree(erasure(parent.tpe)(using allowSpecializedCtx(using preErasureCtx)))
+        case _ => parent
       val newParents =
         // {source: Bar, Foo both specialized traits} inline trait Bar$sp$Int extends Object, Bar, Foo$sp$Int
         if cls.isSpecializedTraitInterface then
           val (obj :: originalTrait :: inheritedParents) = oldParents : @unchecked
-          obj :: typedType(originalTrait)(using superCtxNoSpec) :: inheritedParents
+          obj :: typedType(originalTrait)(using superCtxNoSpec) :: inheritedParents.map(specializedParent)
          // {source: Bar, Foo both specialized traits} class Bar$impl$Int extends Object, Bar$sp$Int, Bar(10)
         else if cls.isSpecializedTraitImplementationClass && !cls.isRawSpecializedTraitImplementationClass then
           val (objectParent :: traitSpParent :: originalTraitSpecializedParent :: Nil) = oldParents : @unchecked
@@ -1139,7 +1144,7 @@ object Erasure {
             // class Bar extends Object, Foo(10), Bar(10), Foo$sp$Int, Bar$sp$Int
             oldParents
               .map(tp => if isPrimaryConsOfSpecTrait(tp) then typedExpr(tp)(using superCtxNoSpec) else tp)
-              ::: extraSpTraits.map(sym => TypeTree(sym))
+              ::: extraSpTraits.map(tp => specializedParent(TypeTree(tp)))
           }
 
       cpy.TypeDef(cdef.asInstanceOf[TypeDef])(rhs = cpy.Template(implInit.asInstanceOf[Template])(parents = newParents))

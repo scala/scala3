@@ -96,7 +96,7 @@ Principal areas of the compiler and internal team members responsible for their 
 - Standard library: @lrytz, @SethTisue, @natsukagami, @noti0na1 
 
 **Tooling**
-- REPL: @SolalPirelli
+- REPL: @SolalPirelli, @warcholjakub, @Gedochao
 - Runner/CLI: @Gedochao, (@tgodzik)
 - Directives' Parser: @Gedochao
 - IDE: @tgodzik, @zielinsky

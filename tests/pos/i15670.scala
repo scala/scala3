@@ -1,3 +1,5 @@
+import scala.language.implicitConversions
+
 trait JsonRowEntry {
   def readAs[E](implicit c: Read[E]): Option[E] = ???
 }

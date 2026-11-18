@@ -25,7 +25,7 @@ class SourceTest {
 
   @Test def canIterateLines() = assertEquals(sampler.linesIterator.size, (Source fromString sampler).getLines().size)
   @Test def loadFromResource() = {
-    val res = Source.fromResource("rootdoc.txt")
+    val res = Source.fromResource("rootdoc.md")
     val ls = res.getLines()
     ls.next() match {
       case "The Scala compiler and reflection APIs." =>

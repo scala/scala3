@@ -1,3 +1,5 @@
+import scala.language.implicitConversions
+
 object NOTHING
 
 inline given [A] => Conversion[NOTHING.type, Option[A]] = _ => None

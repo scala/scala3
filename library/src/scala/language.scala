@@ -28,13 +28,13 @@ import scala.annotation.compileTimeOnly
  *  ```
  *
  *  The language features are:
- *   - [[dynamics            `dynamics`]]            enables defining calls rewriting using the [[scala.Dynamic `Dynamic`]] trait
- *   - [[existentials        `existentials`]]        enables writing existential types
- *   - [[higherKinds         `higherKinds`]]         enables writing higher-kinded types
- *   - [[implicitConversions `implicitConversions`]] enables defining implicit methods and members
- *   - [[postfixOps          `postfixOps`]]          enables postfix operators (not recommended)
- *   - [[reflectiveCalls     `reflectiveCalls`]]     enables using structural types
- *   - [[experimental        `experimental`]]        contains newer features that have not yet been tested in production
+ *   - [[dynamics]]            enables defining calls rewriting using the [[scala.Dynamic Dynamic]] trait
+ *   - [[existentials]]        enables writing existential types
+ *   - [[higherKinds]]         enables writing higher-kinded types
+ *   - [[implicitConversions]] enables defining implicit methods and members
+ *   - [[postfixOps]]          enables postfix operators (not recommended)
+ *   - [[reflectiveCalls]]     enables using structural types
+ *   - [[experimental]]        contains newer features that have not yet been tested in production
  *
  *  @groupname production   Language Features
  *  @groupname experimental Experimental Language Features
@@ -697,6 +697,20 @@ object language {
     */
   @compileTimeOnly("`3.11` can only be used at compile time in import statements")
   object `3.11`
+
+  /** Sets source version to 3.12-migration.
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.12-migration` can only be used at compile time in import statements")
+  object `3.12-migration`
+
+  /** Sets source version to 3.12
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.12` can only be used at compile time in import statements")
+  object `3.12`
 
   // !!! Keep in sync with dotty.tools.dotc.config.SourceVersion !!!
   // When adding a new `3.x` / `3.x-migration` here, add matching tests:

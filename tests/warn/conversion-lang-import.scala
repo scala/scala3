@@ -1,3 +1,4 @@
+//> using options -source 3.10
 import Conversion.into
 
 given [A] => Conversion[A, Option[A]] = Some(_)

@@ -21,7 +21,7 @@ class OptimizerSettings(using @constructorOnly ctx: Context):
   val optAllowSkipCoreModuleInit: Boolean = ctx.settings.optAllowSkipCoreModuleInit
   val optAssumeModulesNonNull: Boolean = ctx.settings.optAssumeModulesNonNull
   val optAllowSkipClassLoading: Boolean = ctx.settings.optAllowSkipClassLoading
-  val optInlinerEnabled: Boolean = ctx.settings.optInline.value.nonEmpty
+  val optInlinerEnabled: Boolean = ctx.settings.optInlineEnabled
   val optInlineFrom: List[String] = ctx.settings.optInline.value
   val optInlineHeuristics: String = ctx.settings.YoptInlineHeuristics.value
   val optWarningNoInlineMixed: Boolean = ctx.settings.optWarningNoInlineMixed

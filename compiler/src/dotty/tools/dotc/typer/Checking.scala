@@ -38,7 +38,7 @@ import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
 import cc.{isCaptureChecking, RetainingAnnotation, isRetainsLike, isDisallowedInCapset}
-import cc.Mutability.isUpdateMethod
+import cc.Mutability.{isUpdateMethod, isUpdateClass}
 
 import collection.mutable
 import reporting.*, report.Severity
@@ -701,8 +701,13 @@ object Checking {
       }
     if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
-    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Stateful) then
-      fail(em"Update method ${sym.name} must be declared in a class extending the `Stateful` trait.")
+    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Stateful) && !sym.owner.isUpdateClass then
+      fail(em"Update method ${sym.name} must be declared in a class extending the `Stateful` trait or in an update class.")
+    if sym.isUpdateClass then
+      if !sym.owner.derivesFrom(defn.Caps_Stateful) then
+        fail(em"Update $sym must be declared in a class extending the `Stateful` trait.")
+      if sym.is(Case) then
+        fail(em"Case classes cannot be update classes.")
     if sym.is(Erased) then checkErasedOK(sym)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
@@ -715,7 +720,7 @@ object Checking {
     // The issue with `erased inline` is that the erased semantics get lost
     // as the code is inlined and the reference is removed before the erased usage check.
     checkCombination(Erased, Inline)
-    checkNoConflict(Tracked, Mutable, em"mutable variables may not be `tracked`")
+    checkNoConflict(Tracked, MutableVal, em"mutable variables may not be `tracked`")
     checkNoConflict(Lazy, ParamAccessor, em"parameter may not be `lazy`")
   }
 
@@ -733,6 +738,8 @@ object Checking {
       report.error(ModifierNotAllowedForDefinition(Abstract), flagSourcePos(Abstract))
     if mods.is(Sealed) then
       report.error(ModifierNotAllowedForDefinition(Sealed), flagSourcePos(Sealed))
+    if mods.is(Mutable) then
+      report.error(em"Modifier `update` is not allowed for objects", flagSourcePos(Mutable))
     if mods.is(Final, butNot = Synthetic) then
       report.warning(RedundantModifier(Final), flagSourcePos(Final))
     if mods.is(Infix) then

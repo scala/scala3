@@ -14,7 +14,7 @@ trait Iterator[T] extends Stateful:
     val it = new Iterator[T]:
       def hasNext = Iterator.this.hasNext
       update def next() = Iterator.this.next() // error
-    while it.hasNext do f(it.next())
+    while it.hasNext do f(it.next()) // error
 end Iterator
 
 def listIterator[T](xs: List[T]): Iterator[T]^ = new Iterator[T]:

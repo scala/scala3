@@ -7,7 +7,7 @@ trait CF2 extends CF1, Classifier
 class C:
   class Impl(val a: C^{C.this}) extends CF2 // error
   val cf1: CF1 = ???
-  val cf2 = new Impl(this)
+  val cf2 = new Impl(this) // error
 
 def f(x: AnyRef^{any.only[CF2]}): Unit = ()
 

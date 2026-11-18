@@ -339,8 +339,8 @@ Note that this restriction does not block `inline trait extends trait` or `inlin
 Non-local private members members which are labelled private and accessed from within the class on other instances of the class.
 Local private members (members with the same access patterns as the former `private[this]`) are allowed.
 
-### Inner classes
-Inner classes and traits are supported with same behaviour as in normal traits. In particular, the following is completely fine, and will be inlined into B.
+### Opaque types
+Opaque types are supported with same behaviour as in normal traits. In particular, the following is completely fine, and will be inlined into B.
 ```scala
 inline trait A[T](val x: T):
     opaque type Special = T
@@ -351,7 +351,6 @@ inline trait A[T](val x: T):
 class B extends A[Int](100)
 ```
 
-### Opaque types
 In contrast, it is not possible to use inlining to "cheat" opaque types, even though it is tempting to try to argue that
 the opaque type will be inlined into B and therefore its alias should be visible. This is not allowed because type checking
 is performed before inline traits, and this follows the logic that inline traits are an optimisation on top of normal traits,
@@ -377,6 +376,7 @@ trait A[T]:
 trait D extends A[Int] // error: self type of D does not conform to that of A
 ```
 
+### Inner classes
 While inline traits may not directly define inner classes, they may contain methods which define classes within their bodies.
 
 ## Processing of inline traits in the compiler

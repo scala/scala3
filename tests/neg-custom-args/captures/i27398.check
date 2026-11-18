@@ -1,0 +1,20 @@
+-- [E058] Type Mismatch Error: tests/neg-custom-args/captures/i27398.scala:4:6 -----------------------------------------
+4 |trait A extends P:  // error
+  |      ^
+  |illegal inheritance: self type A{def m(): () ->{fresh} Int} & A of trait A does not conform to self type P{def m(): () => Int}
+  |of parent trait P
+  |
+  |where:    =>    refers to the root capability caps.any
+  |          fresh is a root capability associated with the result type of (): () ->{fresh} Int
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E058] Type Mismatch Error: tests/neg-custom-args/captures/i27398.scala:6:6 -----------------------------------------
+6 |trait B extends P:  // error
+  |      ^
+  |illegal inheritance: self type B{def m(): () ->{fresh.rd} Int} & B of trait B does not conform to self type P{def m(): () => Int}
+  |of parent trait P
+  |
+  |where:    =>    refers to the root capability caps.any
+  |          fresh is a root capability associated with the result type of (): () ->{fresh.rd} Int
+  |
+  | longer explanation available when compiling with `-explain`

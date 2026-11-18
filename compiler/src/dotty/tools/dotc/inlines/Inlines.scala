@@ -168,6 +168,15 @@ object Inlines:
   private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
     tree.symbol.is(Transparent)
     || ctx.mode.is(Mode.ForceInline)
+    || isDefaultArgOfInlineParamInInlinedCode(tree)
+
+  /** Is `tree` a call to the default getter of an inline parameter of the method that is
+   *  currently being inlined?
+   */
+  private def isDefaultArgOfInlineParamInInlinedCode(tree: Tree)(using Context): Boolean =
+    ctx.typer match
+      case typer: Inliner#InlineTyper => typer.isDefaultGetterOfInlinedMethod(tree.symbol)
+      case _ => false
 
   /** Try to inline a call to an inline method. Fail with error if the maximal
    *  inline depth is exceeded.

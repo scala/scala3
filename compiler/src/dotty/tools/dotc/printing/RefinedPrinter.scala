@@ -31,7 +31,7 @@ import config.SourceVersion.*
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
 import cc.*
-import cc.Mutability.isUpdateMethod
+import cc.Mutability.{isUpdateMethod, isUpdateClass}
 import dotty.tools.dotc.parsing.JavaParsers
 import dotty.tools.dotc.transform.TreeExtractors.BinaryOp
 
@@ -1198,7 +1198,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (rawFlags.is(Param)) flagMask = flagMask &~ Given
     val flags = rawFlags & flagMask
     var flagsText = toTextFlags(sym, flags)
-    if sym.isUpdateMethod then flagsText ~~= keywordStr("update")
+    if sym.isUpdateMethod || sym.isUpdateClass then flagsText ~~= keywordStr("update")
     val annotTexts =
       if sym.exists then
         sym.annotationsUNSAFE.filterNot(ann => dropAnnotForModText(ann.symbol)).map(toText)

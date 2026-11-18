@@ -17,6 +17,7 @@ import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.transform.Specialization.isSpecializationCandidate
 import dotty.tools.dotc.transform.Specialization.isSpecializedTrait
 import dotty.tools.dotc.util.SrcPos
+import dotty.tools.dotc.reporting.VarianceInSpecializedTraitsLimitation
 
 object CheckInlineTraits:
   val name: String = "checkInlineTraits"
@@ -93,7 +94,15 @@ class CheckInlineTraits extends MiniPhase:
         tree.rhs.tpe.existsPart(t => t.typeSymbol == defn.SpecializedClass.asType) 
       if containUseOfSpecialized && (sym ne defn.SpecializedClass) then
         report.error(IllegalUseOfSpecialized(), tree.srcPos)
-
+      
+      tree.symbol.typeParams.foreach {
+        param =>
+          val isVariant = param.paramVariance.isOneOf(Flags.Contravariant | Flags.Covariant) && 
+            Specialization.classSpecializedTypeParams(tree.symbol).exists(tpe => tpe.typeSymbol == param)
+          if isVariant then
+            report.warning(VarianceInSpecializedTraitsLimitation(), param.srcPos)
+      }
+      
       tree
     }
 

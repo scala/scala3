@@ -340,7 +340,7 @@ private[semanticdb] object Scala3:
           props |= SymbolInformation.Property.COVARIANT.value
         if sym.is(Contravariant) then
           props |= SymbolInformation.Property.CONTRAVARIANT.value
-        if sym.isAllOf(DefaultMethod | JavaDefined) || sym.is(Accessor) && sym.name.is(NameKinds.DefaultGetterName) then
+        if sym.isAllOf(JavaDefaultMethod | JavaDefined) || sym.is(Accessor) && sym.name.is(NameKinds.DefaultGetterName) then
           props |= SymbolInformation.Property.DEFAULT.value
         if symkinds.exists(_.isVal) then
           props |= SymbolInformation.Property.VAL.value

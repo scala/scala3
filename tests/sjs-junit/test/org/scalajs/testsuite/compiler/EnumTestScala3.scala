@@ -141,6 +141,22 @@ class EnumTestScala3:
 
   end testOpt
 
+  @Test def testFromOrdinal(): Unit =
+    def noCase(f: => Any): Unit =
+      try
+        f
+        fail("expected NoSuchElementException")
+      catch case _: java.util.NoSuchElementException => ()
+
+    assert(Color1.fromOrdinal(0) == Color1.Red)
+    assert(Color1.fromOrdinal(2) == Color1.Blue)
+    assert(Color2.fromOrdinal(1) == Color2.Green)
+    for ordinal <- Seq(3, 500, -1, Int.MinValue, Int.MaxValue) do
+      noCase(Color1.fromOrdinal(ordinal))
+      noCase(Color2.fromOrdinal(ordinal))
+
+  end testFromOrdinal
+
 object EnumTestScala3:
 
   enum Color1 derives CanEqual:

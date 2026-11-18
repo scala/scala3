@@ -1,0 +1,24 @@
+-- Error: tests/neg-custom-args/captures/i27393b.scala:2:58 ------------------------------------------------------------
+2 |def keep[A <: AnyRef^, B <: AnyRef^](x: A & B): AnyRef^ = x  // error // error
+  |                                                          ^
+  |                                         Local any in the bound of type B leaks into capture scope of method keep.
+  |                                         You could try to abstract the capability in a capset variable.
+-- Error: tests/neg-custom-args/captures/i27393b.scala:3:41 ------------------------------------------------------------
+3 |def keep2[A <: AnyRef^](x: A): AnyRef^ = x  // error // error
+  |                                         ^
+  |                                        Local any in the bound of type A leaks into capture scope of method keep2.
+  |                                        You could try to abstract the capability in a capset variable.
+-- Error: tests/neg-custom-args/captures/i27393b.scala:2:48 ------------------------------------------------------------
+2 |def keep[A <: AnyRef^, B <: AnyRef^](x: A & B): AnyRef^ = x  // error // error
+  |                                                ^^^^^^^
+  |            Separation failure: method keep's result type AnyRef^ hides any, which appears in the bound of type B.
+  |            This is not allowed. The type B has to be returned explicitly in the result type.
+  |
+  |            where:    any is a root capability in the bound of type B
+-- Error: tests/neg-custom-args/captures/i27393b.scala:3:31 ------------------------------------------------------------
+3 |def keep2[A <: AnyRef^](x: A): AnyRef^ = x  // error // error
+  |                               ^^^^^^^
+  |           Separation failure: method keep2's result type AnyRef^ hides any, which appears in the bound of type A.
+  |           This is not allowed. The type A has to be returned explicitly in the result type.
+  |
+  |           where:    any is a root capability in the bound of type A
