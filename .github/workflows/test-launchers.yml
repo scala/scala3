@@ -18,7 +18,8 @@ jobs:
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           java-version: '17'
-          distribution: 'zulu'
+          distribution: 'corretto'
+          check-latest: true
           cache: 'sbt'
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Build and test launcher command
@@ -37,7 +38,8 @@ jobs:
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           java-version: '17'
-          distribution: 'zulu'
+          distribution: 'corretto'
+          check-latest: true
           cache: 'sbt'
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Build and test launcher command
@@ -56,7 +58,8 @@ jobs:
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           java-version: '17'
-          distribution: 'zulu'
+          distribution: 'corretto'
+          check-latest: true
           cache: 'sbt'
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Build and test launcher command
@@ -75,7 +78,8 @@ jobs:
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           java-version: '17'
-          distribution: 'zulu'
+          distribution: 'corretto'
+          check-latest: true
           cache: 'sbt'
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Build and test launcher command
@@ -94,7 +98,8 @@ jobs:
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           java-version: '17'
-          distribution: 'zulu'
+          distribution: 'corretto'
+          check-latest: true
           cache: 'sbt'
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Build the launcher command
@@ -114,8 +119,11 @@ jobs:
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           java-version: '17'
-          # Temurin has no GA JDK 17 build for Windows ARM64
+          # Corretto and Temurin have no GA JDK 17 build for Windows ARM64.
+          # ARM64 is not affected by CVE-2026-114938, and Zulu has the
+          # eMudhra/emSign fix (CVE-2026-91403, see #27417).
           distribution: 'zulu'
+          check-latest: true
           cache: 'sbt'
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       # Build both launchers in a single sbt invocation: a second sbt run on this runner

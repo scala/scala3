@@ -22,7 +22,8 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
-          distribution: 'zulu'
+          distribution: 'corretto'
+          check-latest: true
           java-version: 17
           cache: 'sbt'
 
@@ -40,7 +41,8 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
-          distribution: 'zulu'
+          distribution: 'corretto'
+          check-latest: true
           java-version: 17
           cache: 'sbt'
 
@@ -58,7 +60,8 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
-          distribution: 'zulu'
+          distribution: 'corretto'
+          check-latest: true
           java-version: 17
           cache: 'sbt'
 
@@ -76,7 +79,8 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
-          distribution: 'zulu'
+          distribution: 'corretto'
+          check-latest: true
           java-version: 17
           cache: 'sbt'
 
@@ -97,7 +101,8 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
-          distribution: 'zulu'
+          distribution: 'corretto'
+          check-latest: true
           java-version: 17
           cache: 'sbt'
 
@@ -115,7 +120,8 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
-          distribution: 'zulu'
+          distribution: 'corretto'
+          check-latest: true
           java-version: 17
           cache: 'sbt'
 
