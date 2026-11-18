@@ -1,7 +1,8 @@
 //> using options -source:future
 
 // Under -source:future, a leading infix operator that directly follows a block,
-// i.e. an <outdent> or a closing brace, applies to the enclosing control expression.
+// i.e. an <outdent> or a closing brace, applies to the control expression of which
+// the block is a branch or body.
 
 @main def Test =
   val a =
@@ -68,12 +69,6 @@
     ++ List(3)
   assert(f == List(10, 20, 3))
 
-  val g =
-    try 1
-    catch case _: Exception =>
-      2
-    + 100
-  assert(g == 101)
 
   val h =
     try "a"
@@ -133,3 +128,32 @@
       1
     + 100
   assert(k(true) == 110)
+
+  // blocks that are not a branch or body of a control expression are not affected:
+  // the operator applies to the block, as with a hanging operator
+  val o =
+    val x =
+      1
+    + 100
+    x
+  assert(o == 101)
+
+  val p =
+    val x = {
+      1
+    }
+    + 100
+    x
+  assert(p == 101)
+
+  val q = (x: Int) =>
+    x
+  + 100
+  assert(q(1) == 101)
+
+  val r =
+    try 1
+    catch case _: Exception =>
+      2
+    + 100
+  assert(r == 1)

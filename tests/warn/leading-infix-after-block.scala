@@ -1,5 +1,7 @@
 // A leading infix operator that directly follows a block, i.e. an <outdent> or a
-// closing brace, is applied to that block. Warn, since the layout suggests otherwise.
+// closing brace, is applied to that block. Warn if the block is a branch or body of
+// a control expression, since the layout suggests that the operator applies to the
+// whole control expression.
 
 def c = true
 
@@ -32,31 +34,6 @@ def tryFinally =
     "a"
   + "b" // warn
 
-def tryCatch =
-  try 1
-  catch case _: Exception =>
-    2
-  + 100 // warn
-
-def lambda =
-  val f = (x: Int) =>
-    x
-  + 100 // warn
-  f
-
-// a hanging operator at top level stays inside the lambda body,
-// no outdent is inserted, so this is not affected
-def lambdaHanging = (x: Int) =>
-    x
-  + 100
-
-def assign =
-  var v = 0
-  v =
-    1
-  + 100 // warn
-  v
-
 def nested =
   if c then
     1
@@ -85,13 +62,6 @@ def bracesOldStyle =
     2
   }
   + 100 // warn
-
-def bracesValRhs =
-  val x = {
-    1
-  }
-  + 100 // warn
-  x
 
 // no warnings below
 
@@ -137,3 +107,44 @@ def separateStatement =
     println()
 
   + 100
+
+// blocks that are not a branch or body of a control expression:
+// the operator can only apply to the block, as with a hanging operator
+
+def valRhs(a: Boolean, b: Boolean) =
+  val x =
+    !a
+  || b
+  x
+
+def bracesValRhs =
+  val x = {
+    1
+  }
+  + 100
+  x
+
+def lambda =
+  val f = (x: Int) =>
+    x
+  + 100
+  f
+
+def assign =
+  var v = 0
+  v =
+    1
+  + 100
+  v
+
+def tryCatch =
+  try 1
+  catch case _: Exception =>
+    2
+  + 100
+
+def condition =
+  if
+    true
+  == true
+  then 1 else 2
