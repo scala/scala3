@@ -1,3 +1,5 @@
+import scala.language.implicitConversions
+
 type outer = Int
 object outer:
   type DFBits = Long

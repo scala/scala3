@@ -1,3 +1,5 @@
+import scala.language.implicitConversions
+
 def Test = {
   val ops: CompileOps[Option, Option, Any]  = ???
   ops.to(List).map(_.reverse) // error

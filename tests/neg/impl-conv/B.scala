@@ -1,4 +1,4 @@
-//> using options -Werror -feature
+//> using options -Werror -feature -source 3.10
 
 package implConv
 

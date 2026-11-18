@@ -1,3 +1,5 @@
+import scala.language.implicitConversions
+
 type DFBits = Long
 object DFBits:
   def a: Unit = f // forces suspension of this compilation unit in typer

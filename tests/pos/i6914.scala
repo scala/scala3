@@ -1,3 +1,5 @@
+import scala.language.implicitConversions
+
 trait Expr[T]
 trait Liftable[T]
 

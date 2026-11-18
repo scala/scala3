@@ -1,3 +1,5 @@
+import scala.language.implicitConversions
+
 enum SUB[-A, +B]:
   case Refl[S]() extends SUB[S, S]
 

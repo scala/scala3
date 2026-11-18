@@ -1,3 +1,4 @@
+import scala.language.implicitConversions
 
 object Lib {
   extension (sc: StringContext) def showMe(args: Showed*): String = sc.s(args*)
