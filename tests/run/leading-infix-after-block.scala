@@ -1,7 +1,7 @@
 //> using options -source:future
 
-// Under -source:future, a leading infix operator that follows an indented block
-// and is less indented than that block applies to the enclosing control expression.
+// Under -source:future, a leading infix operator that directly follows a block,
+// i.e. an <outdent> or a closing brace, applies to the enclosing control expression.
 
 @main def Test =
   val a =
@@ -39,6 +39,16 @@
       3
     + 100
   assert(d == 103)
+
+  // the same with a single-line `then` branch in the inner conditional
+  val d2 =
+    if true then
+      1
+    else if true then 2
+    else
+      3
+    + 100
+  assert(d2 == 101)
 
   // the operator lines up with the inner conditional, which has its own indentation region
   val e =
@@ -86,6 +96,34 @@
     if true then 10 else 1
     + 100
   assert(j == 10)
+
+  // blocks in braces are treated the same way
+  val l =
+    if true then {
+      1
+    } else {
+      2
+    }
+    + 100
+  assert(l == 101)
+
+  val m =
+    if false then {
+      1
+    }
+    else {
+      2
+    }
+    + 100
+  assert(m == 102)
+
+  // a block in braces that is not the first operand is not affected
+  val n =
+    1 + {
+      2
+    }
+    + 100
+  assert(n == 103)
 
   // inline if
   inline def k(inline x: Boolean) =

@@ -15,6 +15,13 @@ def g =
   + 100 // error
   h
 
+def bracesValRhs =
+  val x = {
+    1
+  }
+  + 100 // error
+  x
+
 // the indented block is not the last part of the control expression
 def k =
   if

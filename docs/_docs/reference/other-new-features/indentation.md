@@ -143,9 +143,10 @@ else d
 ```
 is parsed as `if x then a + b + c else d`.
 
-If a leading infix operator follows an `<outdent>` that closes an indented block forming
-the last part of a control expression (`if`, `while`, `for`, `try`, `throw` or `return`),
-the operator applies to the whole control expression. For instance,
+If a leading infix operator directly follows the end of a block, i.e. an `<outdent>` or a
+closing brace `}`, and that block is the last part of a control expression (`if`, `while`,
+`for`, `try`, `throw` or `return`), the operator applies to the whole control expression.
+For instance,
 ```scala
 val y =
   if x then
@@ -154,10 +155,14 @@ val y =
     b
   + c
 ```
-is parsed as `val y = (if x then a else b) + c`. A leading infix operator that follows
-any other indented block and is less indented than that block is rejected. This rule applies from source version `future` onwards.
-Earlier versions apply the operator only to the indented block that precedes it, i.e. `else b + c`
-in the example above, and issue a warning.
+is parsed as `val y = (if x then a else b) + c`, and so is the same code with the branches
+in braces. A leading infix operator that directly follows the end of any other block that starts
+an expression is rejected. Since the rule refers only to `<outdent>` and `}` tokens and to line
+breaks, it does not depend on indentation under `-no-indent`, and rewriting between braces and
+indentation preserves the meaning of such code.
+
+This rule applies from source version `future` onwards. Earlier versions apply the operator
+only to the block that precedes it, i.e. `else b + c` in the example above, and issue a warning.
 
 ## Optional Braces Around Template Bodies
 

@@ -1,5 +1,5 @@
-// A leading infix operator that is less indented than a preceding indented block
-// is nevertheless applied to that block. Warn, since the layout suggests otherwise.
+// A leading infix operator that directly follows a block, i.e. an <outdent> or a
+// closing brace, is applied to that block. Warn, since the layout suggests otherwise.
 
 def c = true
 
@@ -67,7 +67,46 @@ def nested =
       3
     + 100 // warn
 
+// blocks in braces are treated the same way
+
+def braces =
+  if c then {
+    1
+  } else {
+    2
+  }
+  + 100 // warn
+
+def bracesOldStyle =
+  if (c) {
+    1
+  }
+  else {
+    2
+  }
+  + 100 // warn
+
+def bracesValRhs =
+  val x = {
+    1
+  }
+  + 100 // warn
+  x
+
 // no warnings below
+
+def bracesSameLine =
+  if c then {
+    1
+  } else {
+    2
+  } + 100
+
+def bracesNotFirstOperand =
+  1 + {
+    2
+  }
+  + 100
 
 def indentedOp =
   if c then
@@ -81,14 +120,6 @@ def sameLine =
     1
   else
     2 + 100
-
-def braces =
-  if c then
-    1
-  else {
-    2
-  }
-  + 100
 
 def colonArg =
   identity:
