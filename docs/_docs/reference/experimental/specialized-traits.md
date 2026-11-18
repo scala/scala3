@@ -98,7 +98,7 @@ val v = Vec$impl$Int(Array(1, 2, 3, 4, 5))
 
 This provides a number of potential efficiency gains:
  - Avoid boxing in the API for values like the result of `scalarProduct` (as we will access the method on the specialized version).
- - Specialize on the concrete `Numeric` class instance for `T`, so that calls to `num`'s methods have static targets and can be inlined, and avoid boxing for internal values like `result` (if we use define and use a specialized version of Numeric).
+ - Specialize on the concrete `Numeric` class instance for `T`, so that calls to `num`'s methods have static targets and can be inlined, and avoid boxing for internal values like `result` (if we define and use a specialized version of Numeric).
  - Use an array `elems` specialized to the actual element instead of a fully generic array that has to be accessed via reflection. (The rest of the compiler already generates `int[]` when the source references `Array[Int]` so this comes for free through inline trait specialization).
 
 ## Creating Specialized Trait Instances
@@ -371,7 +371,7 @@ These could be lifted with additional work.
 
 | Behaviour                | Limitation | Chance of fixing / limited by |
 |--------------------------|-----------------------------------------------|---|
-| Use of `?` bounds | May not be used for Specialized parameters; however may be used for non-Specialized parameters in specialized traits. | It was thought that this would be challenging because it would require bridge methods that "despecialize" to ensure that `A$sp$Int` implements `A`'s interface. In the end these bridge methods have been implements, so it should be very possible to lift this restriction as future work.|
+| Use of `?` bounds | May not be used for Specialized parameters; however may be used for non-Specialized parameters in specialized traits. | It was thought that this would be challenging because it would require bridge methods that "despecialize" to ensure that `A$sp$Int` implements `A`'s interface. In the end these bridge methods have been implemented, so it should be very possible to lift this restriction as future work.|
 | Defining specialized traits inside traits/classes/objects | May define specialized traits inside `object`s. May not define them inside `class`es or `trait`s. | Limited by the way we flatten the owners of generated `$impl$` classes and `$sp$` traits. We really want to build the `Foo$impl$` class directly next to `Foo`. For a single CU this would be possible if we walked the entire tree and found where these belong; for multiple CUs it is more complicated as the tree may not exist in the current CU. The case of path dependent specialized traits was deemed niche enough to not be high priority, and for multiple CUs seems very tricky. |
 
 ## A Larger Case Study
@@ -521,7 +521,7 @@ inline def bar3[S: Specialized] = new T1[List[List[S]]]() {}    // ok
 
 Note that in the cases with `List` this restriction is imposed not because of the definition of `List`, but rather simply because we have a 
 type variable `S` which is not marked as Specialized which appears 'somewhere inside' a type in a Specialized position. Again this is done to
-avoid confusion. A user extending `T1[List[S]]` would likely expect some degree of specialization to given the definition of `T1`, but this 
+avoid confusion. A user extending `T1[List[S]]` would likely expect some degree of specialization to the given definition of `T1`, but this 
 is not possible if `S` is not marked as `Specialized`. In practice `specType(List[_])` is `Any` however.
 
 ## Specialized Traits in the Compiler
