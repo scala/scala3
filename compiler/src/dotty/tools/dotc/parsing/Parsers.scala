@@ -887,7 +887,7 @@ object Parsers {
       })
       canRewrite &= (in.isAfterLineEnd || statCtdTokens.contains(in.token)) // test (5)
       // Under `-source:future`, a leading infix operator directly after the closing brace
-      // applies to the enclosing control expression (see `leadingInfixAfterBlockRest`).
+      // of a branch applies to the enclosing control expression (see `checkLeadingInfixAfterTail`).
       // Without braces, an operator that is at least as indented as the contents of the
       // block would continue the block instead, so keep the braces in that case.
       if sourceVersion.enablesLeadingInfixAfterBlock
@@ -2980,11 +2980,7 @@ object Parsers {
      *                  | InfixExpr MatchClause
      */
     def postfixExpr(location: Location = Location.Elsewhere): Tree =
-      val isTail = in.offset == tailStart
-      val first = prefixExpr(location)
-      val t =
-        if isTail && in.offset == leadingInfixAfterBlock then leadingInfixAfterBlockRest(first, location)
-        else postfixExprRest(first, location)
+      val t = postfixExprRest(prefixExpr(location), location)
       if location.inArgs && followingIsVararg() then
         Typed(t, atSpan(in.skipToken()) { Ident(tpnme.WILDCARD_STAR) })
       else
@@ -3011,8 +3007,9 @@ object Parsers {
           atSpan(in.offset) { PrefixOp(termIdent(), simpleExpr(location)) }
       else simpleExpr(location)
 
-    /** The offset of a leading infix operator that directly follows a block,
-     *  i.e. that follows a closing brace or an <outdent> on a new line, as in
+/* -------- LEADING INFIX OPERATORS AFTER BRANCHES ---------------------------- */
+
+    /*  In
      *
      *      if c then
      *        a
@@ -3020,74 +3017,66 @@ object Parsers {
      *        b
      *      + 1
      *
-     *  Set by `simpleExpr`. If the block is a branch or body of a control expression,
-     *  the operator is handled by `leadingInfixAfterBlockRest`.
+     *  the `else` branch is a block (indented or in braces) that is directly followed
+     *  by a leading infix operator. Before `-source:future`, `+ 1` continues the `else`
+     *  branch, which is surprising, so we warn about it. Under `-source:future`, it
+     *  applies to the whole conditional instead. This works in four steps:
+     *
+     *   1. `tailExpr` parses a branch or body of a control expression and records
+     *      where it starts.
+     *   2. If such a branch or body is a block that is directly followed by a leading
+     *      infix operator, `simpleExpr` calls `checkLeadingInfixAfterTail`, which warns
+     *      about the operator or, under `-source:future`, records it as pending.
+     *   3. `infixOps` does not take a pending operator, so the branch ends with the block.
+     *   4. Once a control expression is parsed, `expr1` continues it with the pending
+     *      operator, see `controlExprRest`.
      */
-    private var leadingInfixAfterBlock: Offset = -1
 
-    /** Continue the infix operation starting with block `t`, which is a branch or body
-     *  of a control expression and which is directly followed by a leading infix operator
-     *  (see `leadingInfixAfterBlock`). Before `-source:future`, the operator applies to the
-     *  block, which is surprising, since the layout suggests that it applies to the whole
-     *  control expression, so we warn about this. Under `-source:future`, the operator
-     *  does not continue the infix operation but the control expression, see `controlExprRest`.
-     */
-    def leadingInfixAfterBlockRest(t: Tree, location: Location): Tree =
-      val opOffset = in.offset
-      leadingInfixAfterBlock = -1
-      if sourceVersion.enablesLeadingInfixAfterBlock then
-        pendingLeadingInfix = opOffset
-      else
-        val msg =
-          em"""Leading infix operator `${in.name}` applies only to the block above,
-              |not to the enclosing `if`, `while`, `for` or `try` expression.
-              |To make this explicit, indent the operator to the level of the block or,
-              |for a block in braces, move it to the line of the closing brace.
-              |To apply the operator to the whole expression, wrap that expression in parentheses.
-              |
-              |Under `-source:future`, the operator applies to the whole expression."""
-        if sourceVersion.isMigrating && sourceVersion.isAtLeast(`future`) then
-          report.migrationWarning(msg, source.atSpan(Span(opOffset)))
-        else
-          warning(msg, opOffset)
-      postfixExprRest(t, location)
+    /** The start of the last branch or body of a control expression */
+    private var tailStart: Offset = -1
 
-    /** The offset of a leading infix operator that follows a block (see `leadingInfixAfterBlock`).
-     *  Under `-source:future`, such an operator does not continue the infix operation
-     *  that has the block as its operand. Instead, it continues the enclosing control
-     *  expression, see `controlExprRest`.
-     */
-    private var pendingLeadingInfix: Offset = -1
-
-    /** The offset of the last branch or body of a control expression that starts
-     *  on the same line as its keyword, as the inner `if` in `else if`.
+    /** The start of the last branch or body of a control expression that is on the
+     *  same line as its keyword, as the inner `if` in `else if`
      */
     private var sameLineTailStart: Offset = -1
 
-    /** Is the current token an infix operator that may continue an infix operation? */
-    def isPendingLeadingInfix: Boolean = in.offset == pendingLeadingInfix
+    /** The offset of a leading infix operator after a branch or body that applies
+     *  to the enclosing control expression (only under `-source:future`)
+     */
+    private var pendingLeadingInfix: Offset = -1
 
-    /** The offset of the last branch or body of a control expression. */
-    private var tailStart: Offset = -1
-
-    /** Parse a branch or body of a control expression. */
+    /** Step 1: Parse a branch or body of a control expression */
     def tailExpr(): Tree =
       tailStart = in.offset
       if !in.isAfterLineEnd then sameLineTailStart = in.offset
       subExpr()
 
-    /** Under `-source:future`, continue control expression `t` with a pending leading
-     *  infix operator, as in
-     *
-     *      if c then
-     *        a
-     *      else
-     *        b
-     *      + 1
-     *
-     *  where `+ 1` applies to the whole conditional. If the control expression is itself
-     *  a branch or body on the same line as its keyword (`isSameLineTail`), as the inner
-     *  `if` in `else if`, the operator is left to the enclosing control expression.
+    /** Step 2: Called after a block that is a branch or body of a control expression */
+    def checkLeadingInfixAfterTail(): Unit =
+      if in.isIdent && in.isOperator && in.isAfterLineEnd then
+        if sourceVersion.enablesLeadingInfixAfterBlock then
+          pendingLeadingInfix = in.offset
+        else
+          val msg =
+            em"""Leading infix operator `${in.name}` applies only to the block above,
+                |not to the enclosing `if`, `while`, `for` or `try` expression.
+                |To make this explicit, indent the operator to the level of the block or,
+                |for a block in braces, move it to the line of the closing brace.
+                |To apply the operator to the whole expression, wrap that expression in parentheses.
+                |
+                |Under `-source:future`, the operator applies to the whole expression."""
+          if sourceVersion.isMigrating && sourceVersion.isAtLeast(`future`) then
+            report.migrationWarning(msg, source.atSpan(Span(in.offset)))
+          else
+            warning(msg)
+
+    /** Step 3: Is the current token a pending leading infix operator? */
+    def isPendingLeadingInfix: Boolean = in.offset == pendingLeadingInfix
+
+    /** Step 4: Continue control expression `t` with a pending leading infix operator.
+     *  If the control expression is itself a branch or body on the same line as its
+     *  keyword (`isSameLineTail`), as the inner `if` in `else if`, leave the operator
+     *  to the enclosing control expression.
      */
     def controlExprRest(t: Tree, isSameLineTail: Boolean, location: Location): Tree =
       if isPendingLeadingInfix && !isSameLineTail then
@@ -3142,9 +3131,9 @@ object Parsers {
           atSpan(in.offset) { makeTupleOrParens(inParensWithCommas(exprsInParensOrBindings())) }
         case LBRACE | INDENT =>
           canApply = false
+          val isTail = in.offset == tailStart
           val t = blockExpr()
-          if in.isIdent && in.isOperator && in.isAfterLineEnd then
-            leadingInfixAfterBlock = in.offset
+          if isTail then checkLeadingInfixAfterTail()
           t
         case QUOTE =>
           quote(location.inPattern)
