@@ -58,7 +58,11 @@ class SpecializeFunctions extends MiniPhase {
       defn.isSpecializableFunction(cls, paramTypes, retType)
     }
 
-    if (sym.is(Flags.Deferred) || sym.is(Flags.Inline) || !isSpecializable) return ddef
+    def alreadyExists = {
+      sym.owner.info.decl(specName.nn).exists
+    }
+
+    if (sym.is(Flags.Deferred) || sym.is(Flags.Inline) || !isSpecializable || alreadyExists) return ddef
 
     val specializedApply = newSymbol(
         cls,

@@ -600,7 +600,7 @@ object Symbols extends SymUtils {
       owner: Symbol,
       name: TypeName,
       flags: FlagSet,
-      parents: List[TypeRef],
+      parents: List[Type],
       decls: Scope,
       selfInfo: Type = NoType,
       privateWithin: Symbol = NoSymbol,
