@@ -1945,15 +1945,13 @@ class Definitions {
     isFunctionNType(tp)
     || tp.derivesFrom(defn.PolyFunctionClass)   // TODO check for refinement?
 
-  private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
-    if !Feature.shouldBehaveAsScala2 then
-      for base <- bases; tp <- paramTypes do
-        cls.enter(newSymbol(cls, base.specializedName(List(tp)), Method, ExprType(tp)))
-    cls
-
-  @tu lazy val Tuple1: ClassSymbol = withSpecMethods(requiredClass("scala.Tuple1"), List(nme._1), Tuple1SpecializedParamTypes)
-  @tu lazy val Tuple2: ClassSymbol = withSpecMethods(requiredClass("scala.Tuple2"), List(nme._1, nme._2), Tuple2SpecializedParamTypes)
-
+  // Currently split into bootstrapped and non-bootstrapped,
+  // because scala2 specialization for the stdlib is implemented only in bootstrapped;
+  // this split can be reverted once it has made its way to the compiler used by nonbootstrapped.
+  //@tu lazy val Tuple1: ClassSymbol = requiredClass("scala.Tuple1")
+  //@tu lazy val Tuple2: ClassSymbol = requiredClass("scala.Tuple2")
+  @tu lazy val Tuple1: ClassSymbol = SpecializedDefinitions.Tuple1(this)
+  @tu lazy val Tuple2: ClassSymbol = SpecializedDefinitions.Tuple2(this)
   @tu lazy val TupleSpecializedClasses: Set[Symbol]               = Set(Tuple1, Tuple2)
   @tu lazy val Tuple1SpecializedParamTypes: Set[TypeRef]          = Set(IntType, LongType, DoubleType)
   @tu lazy val Tuple2SpecializedParamTypes: Set[TypeRef]          = Set(IntType, LongType, DoubleType, CharType, BooleanType)

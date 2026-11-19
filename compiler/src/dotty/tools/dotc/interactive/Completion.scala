@@ -33,6 +33,7 @@ import dotty.tools.dotc.core.Symbols
 import dotty.tools.dotc.core.Constants
 import dotty.tools.dotc.core.TypeOps
 import dotty.tools.dotc.core.StdNames
+import dotty.tools.dotc.transform.Scala2SpecializationForStdLib
 
 import java.util.logging.Logger
 
@@ -365,6 +366,7 @@ object Completion:
     !(sym.is(Mutable) && sym.is(Accessor)) &&
     !sym.isPackageObject &&
     !sym.is(Artifact) &&
+    !Scala2SpecializationForStdLib.isSpecializedSymbol(sym) &&
     !(completionMode.is(Mode.Type) && sym.isAllOf(ConstructorProxyModule)) &&
     !(isNew && isEnum) &&
     (

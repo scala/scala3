@@ -586,6 +586,9 @@ private sealed trait YSettings extends SettingGroup:
   val YimplicitToGiven: Setting[Boolean] = BooleanSetting(ForkSetting, "Yimplicit-to-given", "Allows to rewrite the implicit keywords to their scala-3 given counterparts. Does not adjust imports. Use in conjunction with --rewrite.")
   val YappToMain: Setting[Boolean] = BooleanSetting(ForkSetting, "Yapp-to-main", "Rewrite `object X extends App { ... }` to an object with an explicit `main` method. Use in conjunction with --rewrite.")
 
+  // Temporary. Do not use outside of the stdlib.
+  val YcompilingStdlib: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycompiling-stdlib", "Temporary. Do not use. Whether we are compiling the stdlib.")
+
   // Should be removed but causes a lot of breakage in practice, e.g., with old versions of the sbt-typelevel plugin
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
   val YkindProjector: Setting[String] = ChoiceSetting(ForkSetting, "Ykind-projector", "[underscores, enable, disable]", "Allow `*` as type lambda placeholder to be compatible with kind projector. When invoked as -Ykind-projector:underscores will repurpose `_` to be a type parameter placeholder, this will disable usage of underscore as a wildcard.", List("disable", "", "underscores"), "disable", legacyArgs = true, deprecation = Deprecation.renamed("-Xkind-projector"))

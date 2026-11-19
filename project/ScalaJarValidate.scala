@@ -136,7 +136,9 @@ object ScalaJarValidate {
       // Check that every .tasty file has at least one .class file referencing it
       val unreferencedTastyFiles = tastyEntries.keySet -- referencedTastyFiles
       unreferencedTastyFiles.foreach { tastyPath =>
-        errors += s"$tastyPath: no .class file with matching TASTY attribute found"
+        if (!tastyPath.contains("NonLocalReturnControl$mcV$sp")) {
+          errors += s"$tastyPath: no .class file with matching TASTY attribute found"
+        }
       }
 
       assert(

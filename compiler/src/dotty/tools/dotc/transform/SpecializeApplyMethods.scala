@@ -17,6 +17,9 @@ import scala.collection.mutable
  *  We know which specializations exist for the different arities, therefore we
  *  can hardcode them. This should, however be removed once we're using a
  *  different standard library.
+ *
+ *  This phase does nothing if `Feature.shouldBehaveAsScala2`, since it is a subset of Scala 2 specialization
+ *  that is implemented by `Scala2SpecializationForStdLib` for that case.
  */
 class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
   import ast.tpd.*
@@ -63,7 +66,7 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
 
   /** Add symbols for specialized methods to FunctionN */
   override def transformInfo(tp: Type, sym: Symbol)(using Context) = tp match {
-    case tp: ClassInfo =>
+    case tp: ClassInfo if !Feature.shouldBehaveAsScala2 =>
       if sym == defn.Function0 then
         val scope = tp.decls.cloneScope
         specFun0 { r => scope.enter(specApplySymbol(sym, Nil, r)) }
@@ -106,12 +109,15 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
       cpy.Template(tree)(body = tree.body ++ applyBuf)
     }
 
-    if cls == defn.Function0 then
-      synthesizeApply(defn.Function0SpecializedApplyNames)
-    else if cls == defn.Function1 then
-      synthesizeApply(defn.Function1SpecializedApplyNames)
-    else if cls == defn.Function2 then
-      synthesizeApply(defn.Function2SpecializedApplyNames)
+    if !Feature.shouldBehaveAsScala2 then
+      if cls == defn.Function0 then
+        synthesizeApply(defn.Function0SpecializedApplyNames)
+      else if cls == defn.Function1 then
+        synthesizeApply(defn.Function1SpecializedApplyNames)
+      else if cls == defn.Function2 then
+        synthesizeApply(defn.Function2SpecializedApplyNames)
+      else
+        tree
     else
       tree
   }

@@ -8,7 +8,6 @@ import DenotTransformers.*
 import Denotations.*
 import Decorators.*
 import config.Printers.config
-import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase.*
 import dotty.tools.dotc.transform.*
 import parsing.Parser
@@ -19,6 +18,8 @@ import typer.ImportInfo.withRootImports
 import ast.{tpd, untpd}
 import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized
+import scala.collection
+import scala.collection.mutable
 
 object Phases {
 
@@ -55,17 +56,14 @@ object Phases {
     // drop NoPhase at beginning
     def allPhases: Array[Phase] = (if (fusedPhases.nonEmpty) fusedPhases else phases).tail
 
-    private var myRecheckPhaseIds: Long = 0
+    private val myRecheckPhaseIds: mutable.BitSet = mutable.BitSet.empty
 
-    /** A bitset of the ids of the phases extending `transform.Recheck`.
-     *  Recheck phases must have id 63 or less.
-     */
-    def recheckPhaseIds: Long = myRecheckPhaseIds
+    /** A bitset of the ids of the phases extending `transform.Recheck`. */
+    def recheckPhaseIds: collection.BitSet = myRecheckPhaseIds
 
     def recordRecheckPhase(phase: Recheck): Unit =
       val id = phase.id
-      assert(id < 64, s"Recheck phase with id $id outside range 0..63, cannot use Long bits encoding")
-      myRecheckPhaseIds |= (1L << id)
+      myRecheckPhaseIds.add(id)
 
     object SomePhase extends Phase {
       def phaseName: String = "<some phase>"
@@ -92,8 +90,8 @@ object Phases {
                          phasesToSkip: List[String],
                          stopBeforePhases: List[String],
                          YCheckAfter: List[String])(using Context): List[Phase] = {
-      val fusedPhases: ListBuffer[Phase] = ListBuffer.empty
-      var prevPhases: Set[String] = Set.empty
+      val fusedPhases = mutable.ListBuffer.empty[Phase]
+      var prevPhases = Set.empty[String]
 
       var stop = false
 
@@ -152,7 +150,7 @@ object Phases {
      *  if fusion is enabled, phases in same subgroup will be fused to single phase.
      */
     final def usePhases(phasess: List[Phase], runCtx: FreshContext, fuse: Boolean = true): Unit = {
-      myRecheckPhaseIds = 0L
+      myRecheckPhaseIds.clear()
       val flatPhases = collection.mutable.ArrayBuilder.make[Phase]
       flatPhases += NoPhase
       phasess.foreach {

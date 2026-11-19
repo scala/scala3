@@ -90,14 +90,13 @@ object Synthetics:
       case info: MethodType =>
         val paramInfo :: Nil = info.paramInfos.runtimeChecked
         val newParamInfo = CapturingType(paramInfo, CaptureSet.universal)
-        val trackedParam = info.paramRefs.head
         def newResult(tp: Type): Type = tp match
           case tp: MethodOrPoly =>
             tp.derivedLambdaType(resType = newResult(tp.resType))
           case _ =>
-            if paramInfo.hasAnnotation(defn.ConsumeAnnot)
-            then CapturingType(tp, CaptureSet.universal)
-            else trackedParam
+            if paramInfo.hasAnnotation(defn.ConsumeAnnot) then CapturingType(tp, CaptureSet.universal)
+            else if tp.classSymbol == symd.owner.companionClass then info.paramRefs.head // def unapply(x: C): C = x
+            else tp // 2.13 extractors and 0-ary extractors
         info.derivedLambdaType(paramInfos = newParamInfo :: Nil, resType = newResult(info.resType))
           .showing(i"augment unapply type $info to $result", capt)
       case info: PolyType =>
