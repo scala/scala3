@@ -1,6 +1,6 @@
-//> using options -source 3.11
+//> using options -source 3.12
 
-// `_` is a type lambda placeholder from 3.11 on, without -Xkind-projector
+// `_` is a type lambda placeholder from 3.12 on, without -Xkind-projector
 trait Foo[F[_]]
 trait Qux[F[_, _]]
 

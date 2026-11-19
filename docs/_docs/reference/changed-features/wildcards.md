@@ -31,8 +31,8 @@ A step-by-step migration is made possible with the following measures:
  1. In earlier versions of Scala 3, both `_` and `?` are legal names for wildcards.
  2. In Scala 3.4, `_` will be deprecated in favor of `?` as a name for wildcards. A `-rewrite` option is
     available to rewrite one to the other.
- 3. In Scala 3.11, the meaning of `_` changes from wildcard to placeholder for type parameters.
-    Code using `_` as a wildcard can be rewritten with `-source 3.11-migration -rewrite`.
+ 3. In Scala 3.12, the meaning of `_` changes from wildcard to placeholder for type parameters.
+    Code using `_` as a wildcard can be rewritten with `-source 3.12-migration -rewrite`.
 
 To smooth the transition for codebases that use kind-projector, we adopt the following measures under the command line
 option `-Xkind-projector` (`-Ykind-projector` in older versions of the Scala 3 compiler):
