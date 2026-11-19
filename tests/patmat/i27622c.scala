@@ -1,7 +1,7 @@
-// As match-alias-exhaustivity, but one child's range is an application of a match
-// alias that does not reduce, because its scrutinee is the child's own type
-// parameter. Exhaustivity must then widen it to the alias's declared bound, which
-// keeps the child rather than pruning it unsoundly.
+// As i27622, but one child's range is an application of a match alias that does
+// not reduce, because its scrutinee is the child's own type parameter. Exhaustivity
+// must then widen it to the alias's declared bound, which keeps the child rather
+// than pruning it unsoundly.
 sealed trait Release
 object Release:
   case object R1 extends Release

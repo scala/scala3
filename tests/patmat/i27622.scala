@@ -1,5 +1,5 @@
-// Exhaustivity must prune a child whose type argument is declared through a
-// parameterised alias applying a match type to the alias's own parameters.
+// i27622: exhaustivity must prune a child whose type argument is declared through
+// a parameterised alias applying a match type to the alias's own parameters.
 sealed trait Release
 object Release:
   case object R1 extends Release

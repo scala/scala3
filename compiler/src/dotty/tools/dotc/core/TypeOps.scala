@@ -869,7 +869,7 @@ object TypeOps:
     // 1. Replace type parameters in T with tvars
     // 2. Replace `A.this.C` with `A#C` (see tests/patmat/i12681.scala)
     // 3. Replace a non-reducing MatchType, or a non-reducing application of a
-    //    match alias, with its bound
+    //    match alias, with its bound (see tests/patmat/i27622.scala)
     //
     val approximateParent = new TypeMap {
       val boundTypeParams = mutable.Map.empty[TypeRef, TypeVar]

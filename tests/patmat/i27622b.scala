@@ -1,4 +1,4 @@
-// As match-alias-exhaustivity, but the range is computed by recursive match types behind the alias.
+// As i27622, but the range is computed by recursive match types behind the alias.
 sealed trait Release
 object Release:
   case object R1 extends Release
