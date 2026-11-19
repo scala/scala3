@@ -289,7 +289,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       || flags1.isTermFlags && flags2.isTermFlags
       || flags1.isTypeFlags && flags2.isTypeFlags
 
-    /** Add `flags` to thos modifier set, checking that there are no type/term conflicts.
+    /** Add `flags` to this modifier set, checking that there are no type/term conflicts.
      *  If there are conflicts, issue an error and return the modifiers consisting of
      *  the added flags only. The reason to do it this way is that the added flags usually
      *  describe the core of a construct whereas the existing set are the modifiers
@@ -636,7 +636,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  parameter, the reference will be a repeated argument.
    */
   def refOfDef(tree: MemberDef)(using Context): Tree = tree match {
-    case ValDef(_, PostfixOp(_, Ident(tpnme.raw.STAR)), _) => repeated(Ident(tree.name))
+    case ValDef(_, tpt, _) if isRepeatedParamType(tpt) => repeated(Ident(tree.name))
     case _ => Ident(tree.name)
   }
 

@@ -864,10 +864,9 @@ object desugar {
       case _ => false
     }
 
-    /** Is this a repeated argument x* (using a spread operator)? */
-    def isRepeated(tree: Tree): Boolean = stripByNameType(tree) match
-      case PostfixOp(_, Ident(tpnme.raw.STAR)) => true
-      case _ => false
+    /** Does this parameter list end with a repeated parameter type? */
+    def endsInRepeated(trees: List[Tree])(using Context): Boolean =
+      trees.nonEmpty && isRepeatedParamType(trees.last)
 
     def appliedRef(tycon: Tree, tparams: List[TypeDef] = constrTparams, widenHK: Boolean = false) = {
       val targs = for (tparam <- tparams) yield {
@@ -956,9 +955,7 @@ object desugar {
           (ordinalMethLit(ordinal) :: Nil, scaffolding)
         else (Nil, Nil)
       def copyMeths = {
-        val hasRepeatedParam = constrVparamss.nestedExists {
-          case ValDef(_, tpt, _) => isRepeated(tpt)
-        }
+        val hasRepeatedParam = constrVparamss.exists(endsInRepeated)
         if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
         else {
           val copyFirstParams = derivedVparamss.head.zipWithIndex.map: (vparam, idx) =>
@@ -1050,9 +1047,7 @@ object desugar {
                 val members = vparams.map(vparam => Select(Ident(unapplyParamName), vparam.name))
                 Apply(scalaDot(nme.Option), Apply(tupleApply, members))
 
-          val hasRepeatedParam = constrVparamss.head.exists {
-            case ValDef(_, tpt, _) => isRepeated(tpt)
-          }
+          val hasRepeatedParam = endsInRepeated(constrVparamss.head)
           val methName = if (hasRepeatedParam) nme.unapplySeq else nme.unapply
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
             .withConsumeIf(consumeParamPositions.nonEmpty)
@@ -2648,7 +2643,7 @@ object desugar {
       case tree @ Bind(_, tree1) =>
         add(tree, TypeTree())
         collect(tree1)
-      case Typed(id: Ident, t) if isVarPattern(id) && id.name != nme.WILDCARD && !isWildcardStarArg(tree) =>
+      case Typed(id: Ident, t) if isVarPattern(id) && id.name != nme.WILDCARD && !isSpread(tree) =>
         add(id, t)
       case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD =>
         add(id, TypeTree())

@@ -313,7 +313,7 @@ object Applications {
           untpd.Tuple(args) :: Nil
         case _ =>
           args
-      val varArgs = alignedArgs.filter(untpd.isWildcardStarArg)
+      val varArgs = alignedArgs.filter(untpd.isSpread)
       val isProductSeqMatch = argTypes.length > 1 && argTypes.last.derivesFrom(defn.SeqClass)
       val hasInvalidSeqWildcard =
         if varArgs.nonEmpty && unapplyName != nme.unapplySeq && !isProductSeqMatch then
@@ -570,7 +570,7 @@ trait Applications extends Compatibility {
     /** Is this an argument of the form `expr*` or a RepeatedParamType
      *  derived from such an argument?
      */
-    protected def isVarArg(arg: Arg): Boolean
+    protected def isSpreadArg(arg: Arg): Boolean
 
     /** If constructing trees, turn last `n` processed arguments into a
      *  `SeqLiteral` tree with element type `elemFormal`.
@@ -834,7 +834,7 @@ trait Applications extends Compatibility {
         case formal :: formals1 =>
 
           def checkNoVarArg(arg: Arg) =
-            if !ctx.isAfterTyper && isVarArg(arg) then
+            if !ctx.isAfterTyper && isSpreadArg(arg) then
               val addendum =
                 if formal.isRepeatedParam then
                   i"it is not the only argument to be passed to the corresponding repeated parameter $formal"
@@ -913,7 +913,7 @@ trait Applications extends Compatibility {
 
           if (formal.isRepeatedParam)
             args match {
-              case arg :: Nil if isVarArg(arg) =>
+              case arg :: Nil if isSpreadArg(arg) =>
                 addTyped(arg)
               case (arg @ Typed(Literal(Constant(null)), _)) :: Nil if ctx.isAfterTyper =>
                 addTyped(arg)
@@ -922,7 +922,7 @@ trait Applications extends Compatibility {
                 val typedVarArgs = mutable.Set.empty[TypedArg]
                 val typedArgs = harmonic(harmonizeArgs, elemFormal):
                   args.map: arg =>
-                    if isVarArg(arg) then
+                    if isSpreadArg(arg) then
                       if !Feature.enabled(Feature.multiSpreads) || ctx.isAfterTyper then
                         checkNoVarArg(arg)
                       typedArg(arg, formal).tap(typedVarArgs += _)
@@ -1099,7 +1099,7 @@ trait Applications extends Compatibility {
       if untpd.isContextualClosure(arg) && defn.isContextFunctionType(formal) then arg.tpe
       else normalize(arg.tpe, formal)
     def treeToArg(arg: Tree): Tree = arg
-    def isVarArg(arg: Tree): Boolean = tpd.isWildcardStarArg(arg)
+    def isSpreadArg(arg: Tree): Boolean = tpd.isSpread(arg)
     def typeOfArg(arg: Tree): Type = arg.tpe
     def harmonizeArgs(args: List[Tree]): List[Tree] = harmonize(args)
   }
@@ -1109,7 +1109,7 @@ trait Applications extends Compatibility {
   extends TestApplication(methRef, methRef, args, resultType, argMatch) {
     def argType(arg: Type, formal: Type): Type = arg
     def treeToArg(arg: Tree): Type = arg.tpe
-    def isVarArg(arg: Type): Boolean = arg.isRepeatedParam
+    def isSpreadArg(arg: Type): Boolean = arg.isRepeatedParam
     def typeOfArg(arg: Type): Type = arg
     def harmonizeArgs(args: List[Type]): List[Type] = harmonizeTypes(args)
   }
@@ -1122,7 +1122,7 @@ trait Applications extends Compatibility {
     override val applyKind: ApplyKind)(using Context)
   extends Application(methRef, fun.tpe, args, resultType) {
     type TypedArg = Tree
-    def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
+    def isSpreadArg(arg: Trees.Tree[T]): Boolean = untpd.isSpread(arg)
     private var typedArgBuf = new mutable.ListBuffer[Tree]
     private var liftedDefs: mutable.ListBuffer[Tree] | Null = null
     private var myNormalizedFun: Tree = fun

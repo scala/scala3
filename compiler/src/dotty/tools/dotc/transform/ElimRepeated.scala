@@ -127,7 +127,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def transformApply(tree: Apply)(using Context): Tree =
     val args = tree.args.mapConserve { arg =>
-      if isWildcardStarArg(arg) then
+      if isSpread(arg) then
         val expr = arg match
           case t: Typed => t.expr
           case _ => arg // if the argument has been lifted it's not a Typed (often it's an Ident)
