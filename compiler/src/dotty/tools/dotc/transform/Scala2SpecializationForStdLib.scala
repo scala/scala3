@@ -84,7 +84,6 @@ object Scala2SpecializationForStdLib:
       case tpe => specialization.filter((t, _) => tpe.existsPart(_ == t))
     val sortedSpec = usedSpec.toList.sortBy(_._1.asInstanceOf[NamedType].name.toString)
     val specString = sortedSpec.map(e => ctx.definitions.typeTag(e._2)).mkString("")
-    //assert(specString.nonEmpty, s"empty spec for $name $specialization $memberType")
     // We have to go through String because ++ on DerivedName does the append before the derivation (i.e., `original$appended$derived`)
     name.likeSpaced((name.toString + ourNames.specializationPrefix + specString + ourNames.specializationSuffix).toTermName)
 
@@ -625,7 +624,9 @@ object Scala2SpecializationForStdLib:
           val unspecializedGetters = t.body.flatMap {
             case dd: DefDef if dd.name.endsWith(ourNames.specializationSuffix) =>
               val ogName = unspecializedName(dd.name)
-              if tdSym.info.decl(ogName).exists then None
+              // Unfortunately, we have to match names as strings because DerivedNames can't be suffixed (they add the suffix before the derivation),
+              // so we end up with different name kinds but the same name.
+              if tdSym.info.decls.exists(_.name.toString == ogName.toString) then None
               else
                 val ddSym = dd.symbol
                 // some of the specialized defs are param accessors, but the unspecialized versions never are
