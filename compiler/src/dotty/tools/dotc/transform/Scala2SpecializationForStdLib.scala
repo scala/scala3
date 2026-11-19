@@ -55,7 +55,21 @@ object Scala2SpecializationForStdLib:
 
   // TODO: Get rid of this once #27515 is in -- it's caused by CC doing rechecking very late
   def ignoreTypeBoundsError()(using Context): Boolean =
-    ctx.owner.name.endsWith(ourNames.specializationSuffix)
+    ctx.settings.YcompilingStdLib.value && ctx.owner.name.endsWith(ourNames.specializationSuffix)
+
+  // For binary compatibility with Scala 2:
+  // - Non-specialized fields of classes that have specialized equivalents in specialized subtypes are public at the JVM level
+  // - Specialized fields of specialized subtypes are public at the JVM level
+  def fieldShouldBePublic(sym: Symbol)(using Context): Boolean =
+    ctx.settings.YcompilingStdLib.value && {
+      val owner = sym.owner
+      if owner.name.endsWith(ourNames.specializationSuffix) then
+        sym.name.endsWith(ourNames.specializationSuffix)
+      else
+        def check(tp: Type): Boolean =
+          tp.decls.exists(d => d.name.startsWith(sym.name.toString + ourNames.specializationPrefix)) || tp.parents.exists(check)
+        check(owner.info)
+    }
 
   // Avoid polluting nme.*
   private object ourNames:
