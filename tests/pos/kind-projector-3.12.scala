@@ -1,4 +1,4 @@
-//> using options -source 3.11 -Xkind-projector
+//> using options -source 3.12 -Xkind-projector
 
 // `_` is not a placeholder here, so `*` is not deprecated
 trait Foo[F[_]]

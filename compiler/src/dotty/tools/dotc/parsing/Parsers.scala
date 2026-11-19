@@ -2024,7 +2024,7 @@ object Parsers {
           if uscores then
             val replacement = name.toString.replace('*', '_')
             report.errorOrMigrationWarning(
-              em"`$name` is deprecated as a type parameter placeholder: use `$replacement` instead${rewriteNotice(`3.11-migration`, "-Xkind-projector:underscores")}",
+              em"`$name` is deprecated as a type parameter placeholder: use `$replacement` instead${rewriteNotice(`3.12-migration`, "-Xkind-projector:underscores")}",
               source.atSpan(param.span), MigrationVersion.KindProjectorSyntax)
             if MigrationVersion.KindProjectorSyntax.needsPatch then
               patch(source, param.span, replacement)
@@ -2332,7 +2332,7 @@ object Parsers {
                   else {
                     val lambdaParams = typeDefs.map(_.name).mkString("[", ", ", "] =>> ")
                     report.errorOrMigrationWarning(
-                      em"`λ` is deprecated for type lambdas: use `$lambdaParams...` instead${rewriteNotice(`3.11-migration`)}",
+                      em"`λ` is deprecated for type lambdas: use `$lambdaParams...` instead${rewriteNotice(`3.12-migration`)}",
                       source.atSpan(Span(startOffset(t), in.lastOffset)), MigrationVersion.KindProjectorSyntax)
                     if MigrationVersion.KindProjectorSyntax.needsPatch then
                       // Patch only around the body, so that it can still be patched itself
