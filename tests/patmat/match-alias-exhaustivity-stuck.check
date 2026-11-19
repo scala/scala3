@@ -1,0 +1,8 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/match-alias-exhaustivity-stuck.scala:24:37 
+24 |def read(f: Feature[R4.type]): Int = f match
+   |                                     ^
+   |                           match may not be exhaustive.
+   |
+   |                           It would fail on pattern case: Feature.Old(_)
+   |
+   | longer explanation available when compiling with `-explain`

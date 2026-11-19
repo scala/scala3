@@ -868,7 +868,8 @@ object TypeOps:
     //
     // 1. Replace type parameters in T with tvars
     // 2. Replace `A.this.C` with `A#C` (see tests/patmat/i12681.scala)
-    // 3. Replace non-reducing MatchType with its bound
+    // 3. Replace a non-reducing MatchType, or a non-reducing application of a
+    //    match alias, with its bound
     //
     val approximateParent = new TypeMap {
       val boundTypeParams = mutable.Map.empty[TypeRef, TypeVar]
@@ -880,6 +881,13 @@ object TypeOps:
           else mapOver(tp.bound) // if the match type doesn't statically reduce
                                  // then to avoid it failing the <:<
                                  // we'll approximate by widening to its bounds
+
+        case tp: AppliedType if tp.isMatchAlias =>
+          tp.underlyingNormalizable match
+            case mt: MatchType =>
+              if mt.reduced.exists then tp // break cycles, as above
+              else mapOver(mt.bound)
+            case _ => mapOver(tp)
 
         case tp: TermRef if singletons.contains(tp.symbol) =>
           singletons(tp.symbol)
