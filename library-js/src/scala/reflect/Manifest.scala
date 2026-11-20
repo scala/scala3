@@ -48,11 +48,24 @@ import scala.collection.mutable.{ArrayBuilder, ArraySeq}
 // TODO undeprecated until Scala reflection becomes non-experimental
 // @deprecated("use scala.reflect.ClassTag (to capture erasures) or scala.reflect.runtime.universe.TypeTag (to capture types) or both instead", "2.10.0")
 trait Manifest[T] extends ClassManifest[T] with Equals {
+  /** Returns the manifests for the type arguments of the type represented by this
+   *  manifest. This default implementation returns `Nil`; manifests built with type
+   *  arguments override it.
+   */
   override def typeArguments: List[Manifest[_]] = Nil
 
+  /** Returns a manifest for the array type `Array[T]`, whose runtime class is the
+   *  array class with this manifest's runtime class as component, and whose only
+   *  type argument is this manifest.
+   */
   override def arrayManifest: Manifest[Array[T]] =
     Manifest.classType[Array[T]](arrayClass[T](runtimeClass), this)
 
+  /** Tests whether `that` can possibly equal this manifest.
+   *
+   *  @param that the value to test
+   *  @return `true` if `that` is a `Manifest`, `false` otherwise
+   */
   override def canEqual(that: Any): Boolean = that match {
     case _: Manifest[_]   => true
     case _                => false
@@ -66,6 +79,9 @@ trait Manifest[T] extends ClassManifest[T] with Equals {
     case m: Manifest[_] => (m canEqual this) && (this.runtimeClass == m.runtimeClass) && (this <:< m) && (m <:< this)
     case _              => false
   }
+  /** Returns the hash code of `runtimeClass`, so that manifests that compare equal
+   *  hash alike.
+   */
   override def hashCode = this.runtimeClass.##
 }
 
@@ -81,24 +97,42 @@ object Manifest {
    * defined above.
    */
 
+  /** Returns the manifests for the value types `Byte`, `Short`, `Char`, `Int`,
+   *  `Long`, `Float`, `Double`, `Boolean`, and `Unit`, in that order.
+   */
   def valueManifests: List[AnyValManifest[_]] =
     ManifestFactory.valueManifests
 
+  /** The manifest for the value type `Byte`, whose `runtimeClass` is `java.lang.Byte.TYPE`. */
   val Byte: ManifestFactory.ByteManifest = ManifestFactory.Byte
+  /** The manifest for the value type `Short`, whose `runtimeClass` is `java.lang.Short.TYPE`. */
   val Short: ManifestFactory.ShortManifest = ManifestFactory.Short
+  /** The manifest for the value type `Char`, whose `runtimeClass` is `java.lang.Character.TYPE`. */
   val Char: ManifestFactory.CharManifest = ManifestFactory.Char
+  /** The manifest for the value type `Int`, whose `runtimeClass` is `java.lang.Integer.TYPE`. */
   val Int: ManifestFactory.IntManifest = ManifestFactory.Int
+  /** The manifest for the value type `Long`, whose `runtimeClass` is `java.lang.Long.TYPE`. */
   val Long: ManifestFactory.LongManifest = ManifestFactory.Long
+  /** The manifest for the value type `Float`, whose `runtimeClass` is `java.lang.Float.TYPE`. */
   val Float: ManifestFactory.FloatManifest = ManifestFactory.Float
+  /** The manifest for the value type `Double`, whose `runtimeClass` is `java.lang.Double.TYPE`. */
   val Double: ManifestFactory.DoubleManifest = ManifestFactory.Double
+  /** The manifest for the value type `Boolean`, whose `runtimeClass` is `java.lang.Boolean.TYPE`. */
   val Boolean: ManifestFactory.BooleanManifest = ManifestFactory.Boolean
+  /** The manifest for the value type `Unit`, whose `runtimeClass` is `java.lang.Void.TYPE`. */
   val Unit: ManifestFactory.UnitManifest = ManifestFactory.Unit
 
+  /** The manifest for the type `Any`, whose `runtimeClass` is `classOf[java.lang.Object]`. */
   val Any: Manifest[scala.Any] = ManifestFactory.Any
+  /** The manifest for the type `Object`, whose `runtimeClass` is `classOf[java.lang.Object]`. */
   val Object: Manifest[java.lang.Object] = ManifestFactory.Object
+  /** The manifest for the type `AnyRef`, the same instance as `Object`. */
   val AnyRef: Manifest[scala.AnyRef] = ManifestFactory.AnyRef
+  /** The manifest for the type `AnyVal`, whose `runtimeClass` is `classOf[java.lang.Object]`. */
   val AnyVal: Manifest[scala.AnyVal] = ManifestFactory.AnyVal
+  /** The manifest for the type `Null`, whose `runtimeClass` is `classOf[scala.runtime.Null$]`. */
   val Null: Manifest[scala.Null] = ManifestFactory.Null
+  /** The manifest for the type `Nothing`, whose `runtimeClass` is `classOf[scala.runtime.Nothing$]`. */
   val Nothing: Manifest[scala.Nothing] = ManifestFactory.Nothing
 
   /** Manifest for the singleton type `value.type`.
@@ -144,6 +178,14 @@ object Manifest {
   def classType[T](prefix: Manifest[_], clazz: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
     ManifestFactory.classType[T](prefix, clazz, args: _*)
 
+  /** Manifest for the array type `Array[T]`, where `arg` manifests the element type `T`.
+   *
+   *  @tparam T the element type of the resulting array manifest; it is not checked against
+   *            `arg`, so a mismatched pair yields a manifest whose represented element type
+   *            differs from its static one
+   *  @param arg the manifest for the element type
+   *  @return the array manifest of `arg`
+   */
   def arrayType[T](arg: Manifest[_]): Manifest[Array[T]] =
     ManifestFactory.arrayType[T](arg)
 
@@ -181,15 +223,44 @@ object Manifest {
 
 // TODO undeprecated until Scala reflection becomes non-experimental
 // @deprecated("use type tags and manually check the corresponding class or type instead", "2.10.0")
+/** The base manifest for Scala's value types.
+ *
+ *  Value manifests compare with reference identity: a value manifest equals only
+ *  itself, and represents a subtype (`<:<`) only of itself, `Any`, and `AnyVal`.
+ *
+ *  @tparam T the value type represented by this manifest
+ *  @param toString the name of the value type, used as the string representation of this manifest
+ */
 @SerialVersionUID(1L)
 abstract class AnyValManifest[T <: AnyVal](override val toString: String) extends Manifest[T] with Equals {
+  /** Tests whether the type represented by this manifest is a subtype of the type
+   *  represented by `that`.
+   *
+   *  @param that the manifest to compare against
+   *  @return `true` if `that` is this manifest, `Manifest.Any`, or `Manifest.AnyVal`,
+   *          `false` otherwise
+   */
   override def <:<(that: ClassManifest[_]): Boolean =
     (that eq this) || (that eq Manifest.Any) || (that eq Manifest.AnyVal)
+  /** Tests whether `other` can possibly equal this manifest: only `AnyValManifest`
+   *  instances can.
+   *
+   *  @param other the value to test
+   */
   override def canEqual(other: Any) = other match {
     case _: AnyValManifest[_] => true
     case _                    => false
   }
+  /** Tests whether `that` is the same instance as this manifest; equality of value
+   *  manifests is reference identity.
+   *
+   *  @param that the value to compare against
+   *  @return `true` if `that` is this exact instance, `false` otherwise
+   */
   override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
+  /** Returns the identity hash code of this manifest, consistent with its
+   *  reference-identity `equals`.
+   */
   override def hashCode = System.identityHashCode(this)
 }
 
@@ -201,6 +272,9 @@ abstract class AnyValManifest[T <: AnyVal](override val toString: String) extend
  *  Why so complicated? Read up the comments for `ClassManifestFactory`.
  */
 object ManifestFactory {
+  /** Returns the manifests for the value types `Byte`, `Short`, `Char`, `Int`,
+   *  `Long`, `Float`, `Double`, `Boolean`, and `Unit`, in that order.
+   */
   def valueManifests: List[AnyValManifest[_]] =
     List(Byte, Short, Char, Int, Long, Float, Double, Boolean, Unit)
 
@@ -219,6 +293,7 @@ object ManifestFactory {
     private def readResolve(): Any = Manifest.Byte
   }
   private object ByteManifest extends ByteManifest
+  /** The manifest for the value type `Byte`, whose `runtimeClass` is `java.lang.Byte.TYPE`. */
   val Byte: ByteManifest = ByteManifest
 
   @SerialVersionUID(1L)
@@ -236,6 +311,7 @@ object ManifestFactory {
     private def readResolve(): Any = Manifest.Short
   }
   private object ShortManifest extends ShortManifest
+  /** The manifest for the value type `Short`, whose `runtimeClass` is `java.lang.Short.TYPE`. */
   val Short: ShortManifest = ShortManifest
 
   @SerialVersionUID(1L)
@@ -253,6 +329,7 @@ object ManifestFactory {
     private def readResolve(): Any = Manifest.Char
   }
   private object CharManifest extends CharManifest
+  /** The manifest for the value type `Char`, whose `runtimeClass` is `java.lang.Character.TYPE`. */
   val Char: CharManifest = CharManifest
 
   @SerialVersionUID(1L)
@@ -270,6 +347,7 @@ object ManifestFactory {
     private def readResolve(): Any = Manifest.Int
   }
   private object IntManifest extends IntManifest
+  /** The manifest for the value type `Int`, whose `runtimeClass` is `java.lang.Integer.TYPE`. */
   val Int: IntManifest = IntManifest
 
   @SerialVersionUID(1L)
@@ -287,6 +365,7 @@ object ManifestFactory {
     private def readResolve(): Any = Manifest.Long
   }
   private object LongManifest extends LongManifest
+  /** The manifest for the value type `Long`, whose `runtimeClass` is `java.lang.Long.TYPE`. */
   val Long: LongManifest = LongManifest
 
   @SerialVersionUID(1L)
@@ -304,6 +383,7 @@ object ManifestFactory {
     private def readResolve(): Any = Manifest.Float
   }
   private object FloatManifest extends FloatManifest
+  /** The manifest for the value type `Float`, whose `runtimeClass` is `java.lang.Float.TYPE`. */
   val Float: FloatManifest = FloatManifest
 
   @SerialVersionUID(1L)
@@ -322,6 +402,7 @@ object ManifestFactory {
     private def readResolve(): Any = Manifest.Double
   }
   private object DoubleManifest extends DoubleManifest
+  /** The manifest for the value type `Double`, whose `runtimeClass` is `java.lang.Double.TYPE`. */
   val Double: DoubleManifest = DoubleManifest
 
   @SerialVersionUID(1L)
@@ -339,6 +420,7 @@ object ManifestFactory {
     private def readResolve(): Any = Manifest.Boolean
   }
   private object BooleanManifest extends BooleanManifest
+  /** The manifest for the value type `Boolean`, whose `runtimeClass` is `java.lang.Boolean.TYPE`. */
   val Boolean: BooleanManifest = BooleanManifest
 
   @SerialVersionUID(1L)
@@ -359,6 +441,7 @@ object ManifestFactory {
     private def readResolve(): Any = Manifest.Unit
   }
   private object UnitManifest extends UnitManifest
+  /** The manifest for the value type `Unit`, whose `runtimeClass` is `java.lang.Void.TYPE`. */
   val Unit: UnitManifest = UnitManifest
 
   private object AnyManifest extends PhantomManifest[scala.Any](classOf[java.lang.Object], "Any") {
@@ -367,6 +450,7 @@ object ManifestFactory {
     override def <:<(that: ClassManifest[_]): Boolean = (that eq this)
     private def readResolve(): Any = Manifest.Any
   }
+  /** The manifest for the type `Any`, whose `runtimeClass` is `classOf[java.lang.Object]`. */
   val Any: Manifest[scala.Any] = AnyManifest
 
   private object ObjectManifest extends PhantomManifest[java.lang.Object](classOf[java.lang.Object], "Object") {
@@ -375,8 +459,10 @@ object ManifestFactory {
     override def <:<(that: ClassManifest[_]): Boolean = (that eq this) || (that eq Any)
     private def readResolve(): Any = Manifest.Object
   }
+  /** The manifest for the type `Object`, whose `runtimeClass` is `classOf[java.lang.Object]`. */
   val Object: Manifest[java.lang.Object] = ObjectManifest
 
+  /** The manifest for the type `AnyRef`, the same instance as `Object`. */
   val AnyRef: Manifest[scala.AnyRef] = Object
 
   private object AnyValManifest extends PhantomManifest[scala.AnyVal](classOf[java.lang.Object], "AnyVal") {
@@ -385,6 +471,7 @@ object ManifestFactory {
     override def <:<(that: ClassManifest[_]): Boolean = (that eq this) || (that eq Any)
     private def readResolve(): Any = Manifest.AnyVal
   }
+  /** The manifest for the type `AnyVal`, whose `runtimeClass` is `classOf[java.lang.Object]`. */
   val AnyVal: Manifest[scala.AnyVal] = AnyValManifest
 
   private object NullManifest extends PhantomManifest[scala.Null](classOf[scala.runtime.Null$], "Null") {
@@ -394,6 +481,7 @@ object ManifestFactory {
       (that ne null) && (that ne Nothing) && !(that <:< AnyVal)
     private def readResolve(): Any = Manifest.Null
   }
+  /** The manifest for the type `Null`, whose `runtimeClass` is `classOf[scala.runtime.Null$]`. */
   val Null: Manifest[scala.Null] = NullManifest
 
   private object NothingManifest extends PhantomManifest[scala.Nothing](classOf[scala.runtime.Nothing$], "Nothing") {
@@ -402,6 +490,7 @@ object ManifestFactory {
     override def <:<(that: ClassManifest[_]): Boolean = (that ne null)
     private def readResolve(): Any = Manifest.Nothing
   }
+  /** The manifest for the type `Nothing`, whose `runtimeClass` is `classOf[scala.runtime.Nothing$]`. */
   val Nothing: Manifest[scala.Nothing] = NothingManifest
 
   @SerialVersionUID(1L)
@@ -474,6 +563,12 @@ object ManifestFactory {
       argString
    }
 
+  /** Manifest for the array type `Array[T]`, where `arg` manifests the element type `T`.
+   *
+   *  @tparam T the element type of the array
+   *  @param arg the manifest for the element type `T`
+   *  @return the array manifest of `arg`
+   */
   def arrayType[T](arg: Manifest[_]): Manifest[Array[T]] =
     arg.asInstanceOf[Manifest[T]].arrayManifest
 

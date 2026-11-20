@@ -26,12 +26,24 @@ import scala.language.`2.13`
  *  @since    2.8
  */
 trait NoStackTrace extends Throwable {
+  /** Returns this throwable, filling in its stack trace first only if stack trace
+   *  suppression has been disabled globally via [[NoStackTrace.noSuppression]].
+   *
+   *  On Scala.js suppression cannot be disabled, so the stack trace is never filled in.
+   */
   override def fillInStackTrace(): Throwable =
     if (NoStackTrace.noSuppression) super.fillInStackTrace()
     else this
 }
 
 object NoStackTrace {
+  /** Returns whether stack trace suppression is disabled globally.
+   *
+   *  On Scala.js this is always `false`, because the system property that
+   *  disables suppression on the JVM is not supported.
+   *
+   *  @return `true` if stack trace suppression is disabled, `false` otherwise
+   */
   final def noSuppression = _noSuppression
 
   // two-stage init to make checkinit happy, since sys.SystemProperties.noTraceSupression.value calls back into NoStackTrace.noSuppression
