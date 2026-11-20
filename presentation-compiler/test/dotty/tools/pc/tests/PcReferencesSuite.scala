@@ -87,4 +87,70 @@ class PcReferencesSuite extends BasePCSuite with RangeReplace {
       """"|case class A()(implicit val fo@@o: Int)
           |""".stripMargin
     )
+
+  @Test def `named-tuple-field` =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  val other: (name: String, age: Int) = ???
+         |  val y = x.<<name>>
+         |  val z = x.<<na@@me>>
+         |  val xAge = x.age
+         |  val otherName = other.<<name>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-nested` =
+    check(
+      """|object Main:
+         |  val x: (inner: (name: String, age: Int)) = ???
+         |  val y: (inner: (name: String, age: Int)) = ???
+         |  val a = x.inner.<<na@@me>>
+         |  val b = x.inner.<<name>>
+         |  val c = y.inner.<<name>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-method-qualifier` =
+    check(
+      """|object Main:
+         |  def person(): (name: String, age: Int) = ???
+         |  val a = person().<<na@@me>>
+         |  val b = person().<<name>>
+         |  val c = person().age
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-scopes` =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  val y = x.name
+         |  def g(p: (name: String)) = p.<<na@@me>>
+         |  def h(p: (name: String)) = p.<<name>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-different-types` =
+    check(
+      """|object Main:
+         |  val people: List[(name: String, age: Int)] = ???
+         |  val cars: List[(name: String, hp: Int)] = ???
+         |  val a = people.head.<<na@@me>>
+         |  val b = people.head.<<name>>
+         |  val c = cars.head.name
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-from-case-class` =
+    check(
+      """|object Main:
+         |  case class Person(name: String, age: Int)
+         |  val p: NamedTuple.From[Person] = ???
+         |  val q: NamedTuple.From[Person] = ???
+         |  val a = p.<<a@@ge>>
+         |  val b = q.<<age>>
+         |  val c = p.name
+         |""".stripMargin
+    )
 }

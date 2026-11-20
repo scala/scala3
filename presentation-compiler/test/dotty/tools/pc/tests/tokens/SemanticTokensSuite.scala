@@ -469,3 +469,122 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
          |export <<Test>>/*class*/.<<methodA>>/*method*/
          |""".stripMargin
     )
+
+  @Test def `named-tuple-members` =
+    check(
+      """|object <<A>>/*class*/:
+         |  type <<PersonNN>>/*type,definition*/ = (<<name>>/*variable,readonly*/: <<String>>/*type*/, <<age>>/*variable,readonly*/: <<Int>>/*class,abstract*/)
+         |  final case class <<PersonCC>>/*class*/(<<name>>/*variable,declaration,readonly*/: <<String>>/*type*/, <<age>>/*variable,declaration,readonly*/: <<Int>>/*class,abstract*/)
+         |
+         |  val <<pNN>>/*variable,definition,readonly*/: <<PersonNN>>/*type*/ = (<<name>>/*variable,readonly*/ = "John", <<age>>/*variable,readonly*/ = 30)
+         |  val <<pCC>>/*variable,definition,readonly*/: <<PersonCC>>/*class*/ = <<PersonCC>>/*class*/(<<name>>/*parameter,readonly*/ = "John", <<age>>/*parameter,readonly*/ = 30)
+         |
+         |  val <<nn>>/*variable,definition,readonly*/ = <<pNN>>/*variable,readonly*/.<<name>>/*variable,readonly*/
+         |  val <<cc>>/*variable,definition,readonly*/ = <<pCC>>/*variable,readonly*/.<<name>>/*variable,readonly*/
+         |  val <<nnAge>>/*variable,definition,readonly*/ = <<pNN>>/*variable,readonly*/.<<age>>/*variable,readonly*/
+         |  val <<ccAge>>/*variable,definition,readonly*/ = <<pCC>>/*variable,readonly*/.<<age>>/*variable,readonly*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-issue-repro` =
+    check(
+      """|object <<A>>/*class*/:
+         |  type <<PersonNN>>/*type,definition*/ = (<<name>>/*variable,readonly*/: <<String>>/*type*/)
+         |  type <<PersonTup>>/*type,definition*/ = (<<String>>/*type*/, <<Int>>/*class,abstract*/)
+         |  final case class <<PersonCC>>/*class*/(<<name>>/*variable,declaration,readonly*/: <<String>>/*type*/)
+         |  val <<pNN>>/*variable,definition,readonly*/: <<PersonNN>>/*type*/ = <<???>>/*method*/
+         |  val <<pCC>>/*variable,definition,readonly*/: <<PersonCC>>/*class*/ = <<???>>/*method*/
+         |  val <<pTup>>/*variable,definition,readonly*/: <<PersonTup>>/*type*/ = <<???>>/*method*/
+         |  def <<main>>/*method,definition*/ = <<println>>/*method*/((<<pNN>>/*variable,readonly*/.<<name>>/*variable,readonly*/, <<pCC>>/*variable,readonly*/.<<name>>/*variable,readonly*/, <<pTup>>/*variable,readonly*/.<<_1>>/*variable,readonly*/))
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-method-qualifier` =
+    check(
+      """|object <<A>>/*class*/:
+         |  def <<person>>/*method,definition*/(): (<<name>>/*variable,readonly*/: <<String>>/*type*/, <<age>>/*variable,readonly*/: <<Int>>/*class,abstract*/) = <<???>>/*method*/
+         |  val <<a>>/*variable,definition,readonly*/ = <<person>>/*method*/().<<name>>/*variable,readonly*/
+         |  val <<b>>/*variable,definition,readonly*/ = <<person>>/*method*/().<<age>>/*variable,readonly*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-literal-qualifier` =
+    check(
+      """|object <<A>>/*class*/:
+         |  val <<a>>/*variable,definition,readonly*/ = (<<name>>/*variable,readonly*/ = "a", <<age>>/*variable,readonly*/ = 1).<<name>>/*variable,readonly*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-generic` =
+    check(
+      """|object <<A>>/*class*/:
+         |  def <<f>>/*method,definition*/[<<T>>/*typeParameter,definition,abstract*/](<<x>>/*parameter,declaration,readonly*/: (<<name>>/*variable,readonly*/: <<T>>/*typeParameter,abstract*/)) = <<x>>/*parameter,readonly*/.<<name>>/*variable,readonly*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-nested` =
+    check(
+      """|object <<A>>/*class*/:
+         |  val <<x>>/*variable,definition,readonly*/: (<<inner>>/*variable,readonly*/: (<<name>>/*variable,readonly*/: <<String>>/*type*/, <<age>>/*variable,readonly*/: <<Int>>/*class,abstract*/)) = <<???>>/*method*/
+         |  val <<a>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/.<<inner>>/*variable,readonly*/.<<name>>/*variable,readonly*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-chain` =
+    check(
+      """|object <<A>>/*class*/:
+         |  val <<x>>/*variable,definition,readonly*/: (<<name>>/*variable,readonly*/: <<String>>/*type*/, <<age>>/*variable,readonly*/: <<Int>>/*class,abstract*/) = <<???>>/*method*/
+         |  val <<a>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/.<<name>>/*variable,readonly*/.<<length>>/*method*/
+         |  val <<b>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/.<<name>>/*variable,readonly*/.<<toUpperCase>>/*method*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-backticked` =
+    check(
+      """|object <<A>>/*class*/:
+         |  val <<x>>/*variable,definition,readonly*/: (<<`my-name`>>/*variable,readonly*/: <<String>>/*type*/) = <<???>>/*method*/
+         |  val <<a>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/.<<`my-name`>>/*variable,readonly*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-param-qualifier` =
+    check(
+      """|object <<A>>/*class*/:
+         |  def <<f>>/*method,definition*/(<<x>>/*parameter,declaration,readonly*/: (<<name>>/*variable,readonly*/: <<String>>/*type*/)) = <<x>>/*parameter,readonly*/.<<name>>/*variable,readonly*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-generic-val` =
+    check(
+      """|object <<A>>/*class*/:
+         |  def <<f>>/*method,definition*/[<<T>>/*typeParameter,definition,abstract*/] =
+         |    val <<x>>/*variable,definition,readonly*/: (<<name>>/*variable,readonly*/: <<T>>/*typeParameter,abstract*/) = <<???>>/*method*/
+         |    <<x>>/*variable,readonly*/.<<name>>/*variable,readonly*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-pattern` =
+    check(
+      """|object <<A>>/*class*/:
+         |  val <<x>>/*variable,definition,readonly*/: (<<name>>/*variable,readonly*/: <<String>>/*type*/, <<age>>/*variable,readonly*/: <<Int>>/*class,abstract*/) = <<???>>/*method*/
+         |  val <<a>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/ match
+         |    case (<<name>>/*variable,readonly*/ = <<n>>/*variable,definition,readonly*/, <<age>>/*variable,readonly*/ = <<m>>/*variable,definition,readonly*/) => <<n>>/*variable,readonly*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-from-case-class` =
+    check(
+      """|object <<A>>/*class*/:
+         |  case class <<Person>>/*class*/(<<name>>/*variable,declaration,readonly*/: <<String>>/*type*/, <<age>>/*variable,declaration,readonly*/: <<Int>>/*class,abstract*/)
+         |  val <<p>>/*variable,definition,readonly*/: <<NamedTuple>>/*class*/.<<From>>/*type,abstract*/[<<Person>>/*class*/] = <<???>>/*method*/
+         |  val <<a>>/*variable,definition,readonly*/ = <<p>>/*variable,readonly*/.<<age>>/*variable,readonly*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-explicit-apply` =
+    check(
+      """|object <<A>>/*class*/:
+         |  val <<x>>/*variable,definition,readonly*/: (<<name>>/*variable,readonly*/: <<String>>/*type*/) = <<???>>/*method*/
+         |  val <<a>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/.<<apply>>/*method*/(0)
+         |""".stripMargin
+    )

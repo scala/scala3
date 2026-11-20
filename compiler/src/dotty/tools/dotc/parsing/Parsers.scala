@@ -665,7 +665,7 @@ object Parsers {
 
     def maybeNamed(op: () => Tree): () => Tree = () =>
       if isIdent && in.lookahead.token == EQUALS && sourceVersion.enablesNamedTuples then
-        atSpan(in.offset):
+        atSpan(in.offset, nameStart):
           val name = ident()
           in.nextToken()
           NamedArg(name, op())
@@ -1944,13 +1944,14 @@ object Parsers {
           val args =
             in.currentRegion.withCommasExpected:
               funArgType() match
-                case Ident(name) if name != tpnme.WILDCARD && in.isColon =>
+                case t @ Ident(name) if name != tpnme.WILDCARD && in.isColon =>
                   def funParam(start: Offset) =
                     atSpan(start):
                       val mods = erasedMods()
-                      typedFunParam(in.offset, ident(), mods)
+                      typedFunParam(in.offset, nameStart, ident(), mods)
+                  val point = pointOffset(t) + (if t.hasAttachment(Backquoted) then 1 else 0)
                   commaSeparatedRest(
-                    typedFunParam(paramStart, name.toTermName, leadingMods),
+                    typedFunParam(paramStart, point, name.toTermName, leadingMods),
                     () => funParam(in.offset))
                 case t =>
                   if leadingMods.is(Erased) then
@@ -2031,8 +2032,8 @@ object Parsers {
       Span(start, start + nme.IMPLICITkw.asSimpleName.length)
 
     /** TypedFunParam   ::= [`erased`] id ':' Type */
-    def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): ValDef =
-      atSpan(start) {
+    def typedFunParam(start: Offset, point: Offset, name: TermName, mods: Modifiers = EmptyModifiers): ValDef =
+      atSpan(start, point) {
         acceptColon()
         makeParameter(name, typ(), mods)
       }
@@ -2040,7 +2041,7 @@ object Parsers {
     /**  FunParamClause ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
      */
     def funParamClause(): List[ValDef] =
-      inParensWithCommas(commaSeparated(() => typedFunParam(in.offset, ident())))
+      inParensWithCommas(commaSeparated(() => typedFunParam(in.offset, nameStart, ident())))
 
     def funParamClauses(): List[List[ValDef]] =
       if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil

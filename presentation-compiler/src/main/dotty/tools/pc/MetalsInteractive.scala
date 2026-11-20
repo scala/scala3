@@ -3,8 +3,6 @@ package pc
 
 import scala.annotation.tailrec
 
-import dotty.tools.dotc.core.Constants.*
-import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import dotc.*
@@ -214,18 +212,11 @@ object MetalsInteractive:
             Nil
 
       // Handle select on named tuples
-      case (Apply(Apply(TypeApply(fun, List(t1, t2)), List(ddef)), List(Literal(Constant(i: Int))))) :: _
-          if fun.symbol.exists && fun.symbol.name == nme.apply &&
-            fun.symbol.owner.exists && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
-        def getIndex(t: Tree): Option[Type] =
-          t.tpe.dealias match
-            case AppliedType(_, args) => args.get(i)
-            case _ => None
-        val name = getIndex(t1) match
-          case Some(c: ConstantType) => c.value.stringValue
-          case _ => ""
-        val tpe = getIndex(t2).getOrElse(NoType)
-        List((ddef.symbol, tpe, Some(name)))
+      case PcSymbolSearch.NamedTupleSelection(qual, names, values, i) :: _ =>
+        val (name, tpe) = PcSymbolSearch.namedTupleFieldAt(names, values, i)
+          .map((name, tpe) => (name.toString, tpe))
+          .getOrElse(("", NoType))
+        List((qual.symbol, tpe, Some(name)))
 
       case head :: (sel @ Select(_, name)) :: _
           if head.sourcePos.encloses(sel.sourcePos) && (name == StdNames.nme.apply || name == StdNames.nme.unapply) =>
