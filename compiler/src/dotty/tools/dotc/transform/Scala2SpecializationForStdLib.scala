@@ -245,6 +245,11 @@ object Scala2SpecializationForStdLib:
     if specializedType == defn.UnitType then Block(List(arg), unitLiteral)
     else TypeApply(Select(arg, nme.asInstanceOf_), List(TypeTree(specializedType)))
 
+  private def specializedFlags(sym: Symbol, specializedName: Name)(using Context): FlagSet =
+    val flags = (sym.flags &~ Deferred) | Synthetic
+    val overridesParent = sym.owner.info.member(specializedName).exists
+    if overridesParent then flags | Override else flags
+
   /** Generates specialized subclasses (everything except what the phase below does) */
   final class PrePickler extends Phase with InfoTransformer:
     private val _specializationsByType: mutable.Map[Name, ParameterSpecializations] = mutable.Map.empty
@@ -523,11 +528,6 @@ object Scala2SpecializationForStdLib:
       val specTp = specializer.specialize(tp, onlyArrays = true)
       !(tp =:= specTp)
 
-    private def specializedFlags(sym: Symbol, specializedName: Name)(using Context): FlagSet =
-      val flags = (sym.flags &~ Deferred) | Synthetic
-      val overridesParent = sym.owner.info.member(specializedName).exists//.parentSyms.exists(_.info.member(specializedName).exists)
-      if overridesParent then flags | Override else flags
-
     private def specializedForSuperType(dd: DefDef, specialization: Specialization)(using Context): Option[DefDef] =
       val originalSym = dd.symbol
       val originalOwner = originalSym.owner
@@ -655,6 +655,7 @@ object Scala2SpecializationForStdLib:
           case _ =>
             td
 
+    /** Adds specialized getters (even if they already exist in a supertype, for binary compatibility) */
     private def addSpecializedGetters(td: TypeDef, specializations: ParameterSpecializations)(using Context): TypeDef =
       td.rhs match
         case t: Template =>
@@ -662,22 +663,23 @@ object Scala2SpecializationForStdLib:
           val specializedGetters = t.body.flatMap {
             case dd: DefDef if !dd.name.endsWith(ourNames.specializationSuffix) =>
               val ddSym = dd.symbol
-              if ddSym.isGetter && ddSym.is(ParamAccessor) then
-                specializations.get(ddSym.info.resultType) match
-                  case Some(specs) =>
-                    specs.flatMap(sp => {
-                      val name = specializedName(dd.name, sp)
-                      if tdSym.info.member(name).exists then
-                        None
-                      else
-                        val flags = (ddSym.flags &~ ParamAccessor) | Synthetic
-                        val sym = newSymbol(tdSym, name, flags, MethodType(Nil, sp)).entered
-                        Some(DefDef(sym, _ => castTo(ref(ddSym), sp)))
-                    })
-                  case _ =>
-                    Nil
-              else
-                Nil
+              ddSym.info match
+                case ExprType(resType) =>
+                  specializations.get(resType) match
+                    case Some(specs) =>
+                      specs.flatMap(sp => {
+                        val name = specializedName(dd.name, sp)
+                        if tdSym.info.decl(name).exists then
+                          None
+                        else
+                          val flags = specializedFlags(ddSym, name) &~ ParamAccessor
+                          val sym = newSymbol(tdSym, name, flags, MethodType(Nil, sp)).entered
+                          Some(DefDef(sym, _ => castTo(ref(ddSym), sp)))
+                      })
+                    case _ =>
+                      Nil
+                case _ =>
+                  Nil
             case _ => Nil
           }
           if specializedGetters.isEmpty then td
