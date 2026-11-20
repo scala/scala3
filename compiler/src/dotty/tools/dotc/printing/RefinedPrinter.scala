@@ -165,6 +165,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else simpleNameString(tsym)
     }
 
+  /** Is `app` an application to a using clause?
+    * Carefully not forcing completion of a typed tree symbol to avoid cyclic references.
+    */
+  private def isUsingApply(app: Apply[?]): Boolean =
+    val fnSym = if app.fun.hasType then app.fun.symbol else NoSymbol
+    (!fnSym.exists || fnSym.isCompleted) && app.applyKind == ApplyKind.Using
+
   protected def arrow(isGiven: Boolean, isPure: Boolean): String =
     (if isGiven then "?" else "") + (if isPure then "->" else "=>")
 
@@ -529,7 +536,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else
           toTextLocal(fun)
           ~ "("
-          ~ Str("using ").provided(app.applyKind == ApplyKind.Using && !homogenizedView)
+          ~ Str("using ").provided(isUsingApply(app) && !homogenizedView)
           ~ argsTreeText(args)
           ~ ")"
       case tree: TypeApply =>
