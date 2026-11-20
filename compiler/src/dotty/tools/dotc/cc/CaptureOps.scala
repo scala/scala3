@@ -28,8 +28,8 @@ def isCaptureChecking(using Context): Boolean =
 /** Are we in the Setup phase preceding CheckCaptures? */
 def isCaptureSetup(using Context): Boolean =
   ctx.phaseId == Phases.checkCapturesPhaseId - 1 && ccState.iterationId > 0
-    // Note: just checking phase id is not enough since Setup would
-    // also be the phase after pattern matcher.
+    // Note: just checking phase id is not enough since Setup is
+    // also the phase after PostTyper.
 
 /** Are we in the CheckCaptures or Setup phase?
  *  Optimized version of `isCaptureChecking || isCaptureSetup
@@ -49,6 +49,16 @@ def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames
     if paramNames.length == args.length then make(paramNames, args, resultType)
     else make(args, resultType)
   mt.toFunctionType(alwaysDependent = true)
+
+/** A tree traverser that skips the parts of a tree that are not capture checked:
+ *  `traverseChildren` does not descend into type trees, and of quoted code it
+ *  visits only the splices.
+ */
+abstract class CheckedTreeTraverser extends TreeTraverser:
+  override protected def traverseChildren(tree: Tree)(using Context): Unit = tree match
+    case _ if tree.isType =>
+    case Quote(body, _) => transform.Recheck.splicesIn(body).foreach(traverse)
+    case _ => super.traverseChildren(tree)
 
 /** An exception thrown if a @retains argument is not syntactically a Capability */
 class IllegalCaptureRef(tpe: Type)(using Context) extends Exception(tpe.show)
@@ -729,6 +739,15 @@ extension (sym: Symbol) {
     && !sym.allowsRootCapture
     && !defn.isPolymorphicAfterErasure(sym)
     && !defn.isTypeTestOrCast(sym)
+
+  /** Is `sym` a by-name parameter or the parameter accessor of one? The test
+   *  looks at the type the symbol had before capture checking, since during
+   *  capture checking by-name parameters have nullary context function types.
+   */
+  def isByNameParam(using Context): Boolean =
+    sym.isOneOf(TermParamOrAccessor)
+    && !sym.is(Method)
+    && sym.originDenotation.info.isInstanceOf[ExprType]
 
   /** It's a parameter accessor for a parameter that that is not annotated
    *  @constructorOnly or @uncheckedCaptures and that is not a consume parameter.
