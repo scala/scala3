@@ -672,7 +672,11 @@ object Scala2SpecializationForStdLib:
                         if tdSym.info.decl(name).exists then
                           None
                         else
-                          val flags = specializedFlags(ddSym, name) &~ ParamAccessor
+                          // it's no longer a param accessor, and it also can't be marked as accessor,
+                          // otherwise Memoize will assume it's pure, which it isn't since unboxing
+                          // is only valid on an instance of the corresponding specialized type
+                          val removedFlags = Accessor | ParamAccessor
+                          val flags = specializedFlags(ddSym, name) &~ removedFlags
                           val sym = newSymbol(tdSym, name, flags, MethodType(Nil, sp)).entered
                           Some(DefDef(sym, _ => castTo(ref(ddSym), sp)))
                       })
