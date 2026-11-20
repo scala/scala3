@@ -867,10 +867,28 @@ object Erasure {
         }
       case Block((mdef: DefDef) :: Nil, closure: Closure)
       if inContext(preErasureCtx)(mdef.symbol.info.isInstanceOf[PolyType]) =>
-        val rhs @ closureDef(_) = mdef.rhs.runtimeChecked
-        super.typed(rhs, pt).changeOwnerAfter(mdef.symbol, ctx.owner, erasurePhase)
+        // The body of a polymorphic closure is its value parameter closure or, if that was
+        // converted to a SAM type that needs a wrapper class, the instance of the anonymous
+        // class created by ExpandSAMs (which checked that creating it is unobservable),
+        // possibly cast to its expected type. Typer rejected all other bodies.
+        stripCast(mdef.rhs) match
+          case closureDef(_) | ExpandedSamClosure() =>
+          case rhs => assert(false, i"unexpected body of polymorphic closure: $rhs")
+        super.typed(mdef.rhs, pt).changeOwnerAfter(mdef.symbol, ctx.owner, erasurePhase)
       case _ =>
         super.typedBlock(tree, pt)
+
+    /** Is `tree` the instance of an anonymous class created by ExpandSAMs for a closure
+     *  converted to a SAM type: `{ class $anon ...; new $anon }` for a partial function, and
+     *  `{ def $anonfun(...) = ...; ...; { class $anon ...; new $anon } }` otherwise?
+     */
+    private object ExpandedSamClosure:
+      def unapply(tree: Tree)(using Context): Boolean = tree match
+        case Block((cdef: TypeDef) :: Nil, Apply(Select(New(tpt), nme.CONSTRUCTOR), Nil)) =>
+          cdef.symbol.isAnonymousClass && tpt.tpe.classSymbol == cdef.symbol
+        case Block(stats @ ((_: DefDef) :: _), expr) =>
+          stats.forall(_.isInstanceOf[DefDef]) && unapply(expr)
+        case _ => false
 
     override def typedBind(tree: untpd.Bind, pt: Type)(using Context): Bind =
       atPhase(erasurePhase):
