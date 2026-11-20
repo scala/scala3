@@ -179,268 +179,266 @@ final class BoxUnbox(callGraph: CallGraph, ts: OptimizerKnownBTypes) {
    * method-local optimizations, only before to perform inlining and closure rewriting.
    */
   def boxUnboxElimination(method: MethodNode, owner: InternalName, budget: AnalysisBudget): Boolean = {
-    Limits.sizeOKForSourceValue(method) && {
-      val toInsertBefore = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
-      val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
-      val toDelete = mutable.Set.empty[AbstractInsnNode]
+    val toInsertBefore = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
+    val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
+    val toDelete = mutable.Set.empty[AbstractInsnNode]
 
-      val knownHandled = mutable.Set.empty[AbstractInsnNode]
+    val knownHandled = mutable.Set.empty[AbstractInsnNode]
 
-      val prodCons = budget.prodConsAnalyzer(method, owner)
+    val prodCons = budget.prodConsAnalyzer(method, owner)
 
-      var nextLocal = MethodMax.maxLocals(method)
-      def getLocal(size: Int) = {
-        val r = nextLocal
-        nextLocal += size
-        r
-      }
-
-      var maxStackGrowth = 0
-
-      /* Method M1 for eliminating box-unbox pairs (see doc comment in the beginning of this file) */
-      def replaceBoxOperationsSingleCreation(creation: BoxCreation, finalCons: Set[BoxConsumer], boxKind: BoxKind, keepBox: Boolean): Unit = {
-        /*
-         * If the box is eliminated, all copy operations (loads, stores, others) of the box need to
-         * be removed. This method returns all copy operations that should be removed.
-         *
-         * Returns `None` in case some exotic copy operation is found that cannot be removed
-         * (DUP2_X1 and friends - these are never emitted by scalac). In this case, the box cannot
-         * be eliminated.
-         */
-        def copyOpsToEliminate: Option[Set[AbstractInsnNode]] = {
-          var elidableCopyOps = Set.empty[AbstractInsnNode]
-          var replaceOK = true
-          val copyOps = new CopyOpsIterator(Set(creation), finalCons, prodCons)
-          while (replaceOK && copyOps.hasNext) copyOps.next() match {
-            case vi: VarInsnNode =>
-              elidableCopyOps += vi
-
-            case copyOp if copyOp.getOpcode == DUP =>
-              elidableCopyOps += copyOp
-
-            case _ =>
-              replaceOK = false
-          }
-          if (replaceOK) Some(elidableCopyOps) else None
-        }
-
-        val canRewrite = keepBox || (copyOpsToEliminate match {
-          case Some(copyOps) =>
-            toDelete ++= copyOps
-            true
-
-          case _ => false
-        })
-
-        if (canRewrite) {
-          val localSlots = Vector.from[(Int, Type)](boxKind.boxedTypes.iterator.map(tp => (getLocal(tp.getSize), tp)))
-
-          // store boxed value(s) into localSlots
-          val storeOps = localSlots.reverseIterator.map { case (slot, tp) =>
-            new VarInsnNode(tp.getOpcode(ISTORE), slot)
-          }.toList
-          val storeInitialValues = creation.loadInitialValues match {
-            case Some(ops) => ops ::: storeOps
-            case None => storeOps
-          }
-          if (keepBox) {
-            val loadOps = List.from[VarInsnNode](localSlots.iterator.map({ case (slot, tp) =>
-              new VarInsnNode(tp.getOpcode(ILOAD), slot)
-            }))
-            toInsertBefore(creation.valuesConsumer) = storeInitialValues ::: loadOps
-          } else {
-            toReplace(creation.valuesConsumer) = storeInitialValues
-            toDelete ++= creation.allInsns - creation.valuesConsumer
-          }
-
-          // rewrite consumers
-          finalCons foreach {
-            case write: StaticSetterOrInstanceWrite =>
-              assert(!keepBox, s"cannot eliminate box write if the box remains (and escapes): $write")
-              val (slot, tp) = localSlots(boxKind.extractedValueIndex(write))
-              val storeOp = new VarInsnNode(tp.getOpcode(ISTORE), slot)
-              toReplace(write.consumer) = List(storeOp)
-
-            case c: EscapingConsumer =>
-              assert(keepBox, s"found escaping consumer, but box is eliminated: $c")
-
-            case Drop(insn) =>
-              if (keepBox) toReplace(insn) = List(getPop(1))
-              else toDelete += insn
-
-            case extraction =>
-              val (slot, tp) = localSlots(boxKind.extractedValueIndex(extraction))
-              val loadOps = new VarInsnNode(tp.getOpcode(ILOAD), slot) :: extraction.postExtractionAdaptationOps(tp)
-              if (keepBox) toReplace(extraction.consumer) = getPop(1) :: loadOps
-              else toReplace(extraction.consumer) = loadOps
-              toDelete ++= extraction.allInsns - extraction.consumer
-          }
-        }
-      }
-
-      /* Method M2 for eliminating box-unbox pairs (see doc comment in the beginning of this file) */
-      def replaceBoxOperationsMultipleCreations(allCreations: Set[BoxCreation], allConsumers: Set[BoxConsumer], boxKind: BoxKind): Unit = {
-        /*
-         * If a single-value size-1 box is eliminated, local variables slots holding the box are
-         * reused to hold the unboxed value. In case there's an entry for that local variable in the
-         * method's local variables table (debug info), adapt the type.
-         *
-         * If there are multiple entries for a local variable that's changing types, then all
-         * entries for that variable are deleted - it's not obvious how to find the correct entry.
-         * Note that scalac never re-uses local variable slots for non-overlapping locals. Also note
-         * that all locals that are newly created during the optimizer don't have an entry either.
-         *
-         * Finally, note that variables that become unused are removed later from the table by
-         * removeUnusedLocalVariableNodes in LocalOpt.
-         *
-         * Unlike modifications that affect the method's instructions (which uses toReplace etc.),
-         * we can directly modify the local variable table - it does not affect the frames of the
-         * ProdCons analysis.
-         */
-        def updateLocalVariableTypes(reTypedLocals: Map[Int, Type]): Unit = {
-          lazy val localsByIndex = method.localVariables.asScala.groupBy(_.index)
-          for ((index, tp) <- reTypedLocals) localsByIndex.get(index).map(_.toList) match {
-            case Some(List(local)) =>
-              local.desc = tp.getDescriptor
-            case Some(locals) =>
-              locals foreach method.localVariables.remove
-            case _ =>
-          }
-        }
-
-        /* Remove box creations - leave the boxed value(s) on the stack instead. */
-        def replaceCreationOps(): Unit = {
-          for (creation <- allCreations) creation.loadInitialValues match {
-            case None =>
-              toDelete ++= creation.allInsns
-
-            case Some(ops) =>
-              toReplace(creation.valuesConsumer) = ops
-              toDelete ++= (creation.allInsns - creation.valuesConsumer)
-          }
-        }
-
-        /*
-         * Replace a value extraction operation. For a single-value box, the extraction operation can
-         * just be removed. An extraction from a multi-value box is replaced by POP operations for the
-         * non-used values, and an xSTORE / xLOAD for the extracted value. Example: tuple3._2 becomes
-         * POP; xSTORE n; POP; xLOAD n.
-         */
-        def replaceExtractionOps(): Unit = {
-          if (boxKind.boxedTypes.lengthCompare(1) == 0) {
-            // fast path for single-value boxes
-            allConsumers.foreach(extraction => extraction.postExtractionAdaptationOps(boxKind.boxedTypes.head) match {
-              case Nil => extraction match {
-                case Drop(_) => toReplace(extraction.consumer) = boxKind.boxedTypes.map(t => getPop(t.getSize))
-                case _ => toDelete ++= extraction.allInsns
-              }
-              case ops =>
-                toReplace(extraction.consumer) = ops
-                toDelete ++= extraction.allInsns - extraction.consumer
-            })
-          } else {
-            for (extraction <- allConsumers) {
-              val replacementOps = extraction match {
-                case Drop(_) =>
-                  boxKind.boxedTypes.reverseIterator.map(t => getPop(t.getSize)).toList
-                case _ =>
-                  val valueIndex = boxKind.extractedValueIndex(extraction)
-                  if (valueIndex == 0) {
-                    val pops = boxKind.boxedTypes.tail.map(t => getPop(t.getSize))
-                    pops ::: extraction.postExtractionAdaptationOps(boxKind.boxedTypes.head)
-                  } else {
-                    var loadOps: List[AbstractInsnNode] | Null = null
-                    val consumeStack = boxKind.boxedTypes.zipWithIndex.reverseIterator.map {
-                      case (tp, i) =>
-                        if (i == valueIndex) {
-                          val resultSlot = getLocal(tp.getSize)
-                          loadOps = new VarInsnNode(tp.getOpcode(ILOAD), resultSlot) :: extraction.postExtractionAdaptationOps(tp)
-                          new VarInsnNode(tp.getOpcode(ISTORE), resultSlot)
-                        } else {
-                          getPop(tp.getSize)
-                        }
-                      }.to(List)
-                    consumeStack ::: loadOps.nn
-                  }
-              }
-              toReplace(extraction.consumer) = replacementOps
-              toDelete ++= extraction.allInsns - extraction.consumer
-            }
-          }
-        }
-
-        checkCopyOpReplacements(allCreations, allConsumers, boxKind.boxedTypes, nextLocal, prodCons) match {
-          case Some((replacements, nextCopyOpLocal, reTypedLocals)) =>
-            toReplace ++= replacements
-            updateLocalVariableTypes(reTypedLocals)
-            nextLocal = nextCopyOpLocal
-            replaceCreationOps()
-            replaceExtractionOps()
-            // Conservative (safe) value for stack growth. In every frame that initially has a multi-value
-            // box on the stack, the stack now contains all the individual values. So for every eliminated
-            // box, the maxStack may be up to N-1 slots larger.
-            maxStackGrowth += boxKind.boxedTypes.length - 1
-
-          case None =>
-        }
-      }
-
-      val it = method.instructions.iterator
-      while (it.hasNext) {
-        val insn = it.next()
-        if (!knownHandled(insn)) BoxKind.valueCreationKind(insn, prodCons) match {
-          case Some((boxCreation, boxKind)) =>
-            allCreationsConsumers(boxCreation, boxKind, prodCons) match {
-              case Some((allCreations, allConsumers)) =>
-                val (escapingConsumers, boxConsumers) = allConsumers.partition(_.isEscaping)
-                if (boxConsumers.nonEmpty) {
-                  for (c <- allCreations) knownHandled ++= c.allInsns
-                  for (e <- allConsumers) knownHandled ++= e.allInsns
-
-                  val hasEscaping = escapingConsumers.nonEmpty
-                  val hasWrite = allConsumers.exists(_.isWrite)
-                  if (!hasEscaping && !hasWrite) {
-                    // M2 -- see doc comment in the beginning of this file
-                    // If both M1 and M2 can be applied, we prefer M2 because it doesn't introduce new locals.
-                    replaceBoxOperationsMultipleCreations(allCreations, allConsumers, boxKind)
-                  } else if (allCreations.size == 1 && (!hasEscaping || !boxKind.isMutable)) {
-                    // M1 -- see doc comment in the beginning of this file
-                    replaceBoxOperationsSingleCreation(allCreations.head, allConsumers, boxKind, keepBox = hasEscaping)
-                  }
-                }
-
-              case None =>
-            }
-
-          case None =>
-        }
-      }
-
-      // We don't need to worry about CallGraph.closureInstantiations, the removed instructions are not IndyLambdas
-      def removeFromCallGraph(insn: AbstractInsnNode): Unit = insn match {
-        case mi: MethodInsnNode => callGraph.removeCallsite(mi, method)
-        case _ =>
-      }
-
-      for ((location, ops) <- toInsertBefore; op <- ops)
-        method.instructions.insertBefore(location, op)
-
-      for ((oldOp, newOps) <- toReplace) {
-        for (newOp <- newOps) method.instructions.insertBefore(oldOp, newOp)
-        method.instructions.remove(oldOp)
-        removeFromCallGraph(oldOp)
-      }
-
-      for (op <- toDelete) {
-        method.instructions.remove(op)
-        removeFromCallGraph(op)
-      }
-
-      method.maxLocals = nextLocal
-      method.maxStack = MethodMax.maxStack(method) + maxStackGrowth
-      val changed = toInsertBefore.nonEmpty || toReplace.nonEmpty || toDelete.nonEmpty
-      changed
+    var nextLocal = MethodMax.maxLocals(method)
+    def getLocal(size: Int) = {
+      val r = nextLocal
+      nextLocal += size
+      r
     }
+
+    var maxStackGrowth = 0
+
+    /* Method M1 for eliminating box-unbox pairs (see doc comment in the beginning of this file) */
+    def replaceBoxOperationsSingleCreation(creation: BoxCreation, finalCons: Set[BoxConsumer], boxKind: BoxKind, keepBox: Boolean): Unit = {
+      /*
+       * If the box is eliminated, all copy operations (loads, stores, others) of the box need to
+       * be removed. This method returns all copy operations that should be removed.
+       *
+       * Returns `None` in case some exotic copy operation is found that cannot be removed
+       * (DUP2_X1 and friends - these are never emitted by scalac). In this case, the box cannot
+       * be eliminated.
+       */
+      def copyOpsToEliminate: Option[Set[AbstractInsnNode]] = {
+        var elidableCopyOps = Set.empty[AbstractInsnNode]
+        var replaceOK = true
+        val copyOps = new CopyOpsIterator(Set(creation), finalCons, prodCons)
+        while (replaceOK && copyOps.hasNext) copyOps.next() match {
+          case vi: VarInsnNode =>
+            elidableCopyOps += vi
+
+          case copyOp if copyOp.getOpcode == DUP =>
+            elidableCopyOps += copyOp
+
+          case _ =>
+            replaceOK = false
+        }
+        if (replaceOK) Some(elidableCopyOps) else None
+      }
+
+      val canRewrite = keepBox || (copyOpsToEliminate match {
+        case Some(copyOps) =>
+          toDelete ++= copyOps
+          true
+
+        case _ => false
+      })
+
+      if (canRewrite) {
+        val localSlots = Vector.from[(Int, Type)](boxKind.boxedTypes.iterator.map(tp => (getLocal(tp.getSize), tp)))
+
+        // store boxed value(s) into localSlots
+        val storeOps = localSlots.reverseIterator.map { case (slot, tp) =>
+          new VarInsnNode(tp.getOpcode(ISTORE), slot)
+        }.toList
+        val storeInitialValues = creation.loadInitialValues match {
+          case Some(ops) => ops ::: storeOps
+          case None => storeOps
+        }
+        if (keepBox) {
+          val loadOps = List.from[VarInsnNode](localSlots.iterator.map({ case (slot, tp) =>
+            new VarInsnNode(tp.getOpcode(ILOAD), slot)
+          }))
+          toInsertBefore(creation.valuesConsumer) = storeInitialValues ::: loadOps
+        } else {
+          toReplace(creation.valuesConsumer) = storeInitialValues
+          toDelete ++= creation.allInsns - creation.valuesConsumer
+        }
+
+        // rewrite consumers
+        finalCons foreach {
+          case write: StaticSetterOrInstanceWrite =>
+            assert(!keepBox, s"cannot eliminate box write if the box remains (and escapes): $write")
+            val (slot, tp) = localSlots(boxKind.extractedValueIndex(write))
+            val storeOp = new VarInsnNode(tp.getOpcode(ISTORE), slot)
+            toReplace(write.consumer) = List(storeOp)
+
+          case c: EscapingConsumer =>
+            assert(keepBox, s"found escaping consumer, but box is eliminated: $c")
+
+          case Drop(insn) =>
+            if (keepBox) toReplace(insn) = List(getPop(1))
+            else toDelete += insn
+
+          case extraction =>
+            val (slot, tp) = localSlots(boxKind.extractedValueIndex(extraction))
+            val loadOps = new VarInsnNode(tp.getOpcode(ILOAD), slot) :: extraction.postExtractionAdaptationOps(tp)
+            if (keepBox) toReplace(extraction.consumer) = getPop(1) :: loadOps
+            else toReplace(extraction.consumer) = loadOps
+            toDelete ++= extraction.allInsns - extraction.consumer
+        }
+      }
+    }
+
+    /* Method M2 for eliminating box-unbox pairs (see doc comment in the beginning of this file) */
+    def replaceBoxOperationsMultipleCreations(allCreations: Set[BoxCreation], allConsumers: Set[BoxConsumer], boxKind: BoxKind): Unit = {
+      /*
+       * If a single-value size-1 box is eliminated, local variables slots holding the box are
+       * reused to hold the unboxed value. In case there's an entry for that local variable in the
+       * method's local variables table (debug info), adapt the type.
+       *
+       * If there are multiple entries for a local variable that's changing types, then all
+       * entries for that variable are deleted - it's not obvious how to find the correct entry.
+       * Note that scalac never re-uses local variable slots for non-overlapping locals. Also note
+       * that all locals that are newly created during the optimizer don't have an entry either.
+       *
+       * Finally, note that variables that become unused are removed later from the table by
+       * removeUnusedLocalVariableNodes in LocalOpt.
+       *
+       * Unlike modifications that affect the method's instructions (which uses toReplace etc.),
+       * we can directly modify the local variable table - it does not affect the frames of the
+       * ProdCons analysis.
+       */
+      def updateLocalVariableTypes(reTypedLocals: Map[Int, Type]): Unit = {
+        lazy val localsByIndex = method.localVariables.asScala.groupBy(_.index)
+        for ((index, tp) <- reTypedLocals) localsByIndex.get(index).map(_.toList) match {
+          case Some(List(local)) =>
+            local.desc = tp.getDescriptor
+          case Some(locals) =>
+            locals foreach method.localVariables.remove
+          case _ =>
+        }
+      }
+
+      /* Remove box creations - leave the boxed value(s) on the stack instead. */
+      def replaceCreationOps(): Unit = {
+        for (creation <- allCreations) creation.loadInitialValues match {
+          case None =>
+            toDelete ++= creation.allInsns
+
+          case Some(ops) =>
+            toReplace(creation.valuesConsumer) = ops
+            toDelete ++= (creation.allInsns - creation.valuesConsumer)
+        }
+      }
+
+      /*
+       * Replace a value extraction operation. For a single-value box, the extraction operation can
+       * just be removed. An extraction from a multi-value box is replaced by POP operations for the
+       * non-used values, and an xSTORE / xLOAD for the extracted value. Example: tuple3._2 becomes
+       * POP; xSTORE n; POP; xLOAD n.
+       */
+      def replaceExtractionOps(): Unit = {
+        if (boxKind.boxedTypes.lengthCompare(1) == 0) {
+          // fast path for single-value boxes
+          allConsumers.foreach(extraction => extraction.postExtractionAdaptationOps(boxKind.boxedTypes.head) match {
+            case Nil => extraction match {
+              case Drop(_) => toReplace(extraction.consumer) = boxKind.boxedTypes.map(t => getPop(t.getSize))
+              case _ => toDelete ++= extraction.allInsns
+            }
+            case ops =>
+              toReplace(extraction.consumer) = ops
+              toDelete ++= extraction.allInsns - extraction.consumer
+          })
+        } else {
+          for (extraction <- allConsumers) {
+            val replacementOps = extraction match {
+              case Drop(_) =>
+                boxKind.boxedTypes.reverseIterator.map(t => getPop(t.getSize)).toList
+              case _ =>
+                val valueIndex = boxKind.extractedValueIndex(extraction)
+                if (valueIndex == 0) {
+                  val pops = boxKind.boxedTypes.tail.map(t => getPop(t.getSize))
+                  pops ::: extraction.postExtractionAdaptationOps(boxKind.boxedTypes.head)
+                } else {
+                  var loadOps: List[AbstractInsnNode] | Null = null
+                  val consumeStack = boxKind.boxedTypes.zipWithIndex.reverseIterator.map {
+                    case (tp, i) =>
+                      if (i == valueIndex) {
+                        val resultSlot = getLocal(tp.getSize)
+                        loadOps = new VarInsnNode(tp.getOpcode(ILOAD), resultSlot) :: extraction.postExtractionAdaptationOps(tp)
+                        new VarInsnNode(tp.getOpcode(ISTORE), resultSlot)
+                      } else {
+                        getPop(tp.getSize)
+                      }
+                    }.to(List)
+                  consumeStack ::: loadOps.nn
+                }
+            }
+            toReplace(extraction.consumer) = replacementOps
+            toDelete ++= extraction.allInsns - extraction.consumer
+          }
+        }
+      }
+
+      checkCopyOpReplacements(allCreations, allConsumers, boxKind.boxedTypes, nextLocal, prodCons) match {
+        case Some((replacements, nextCopyOpLocal, reTypedLocals)) =>
+          toReplace ++= replacements
+          updateLocalVariableTypes(reTypedLocals)
+          nextLocal = nextCopyOpLocal
+          replaceCreationOps()
+          replaceExtractionOps()
+          // Conservative (safe) value for stack growth. In every frame that initially has a multi-value
+          // box on the stack, the stack now contains all the individual values. So for every eliminated
+          // box, the maxStack may be up to N-1 slots larger.
+          maxStackGrowth += boxKind.boxedTypes.length - 1
+
+        case None =>
+      }
+    }
+
+    val it = method.instructions.iterator
+    while (it.hasNext) {
+      val insn = it.next()
+      if (!knownHandled(insn)) BoxKind.valueCreationKind(insn, prodCons) match {
+        case Some((boxCreation, boxKind)) =>
+          allCreationsConsumers(boxCreation, boxKind, prodCons) match {
+            case Some((allCreations, allConsumers)) =>
+              val (escapingConsumers, boxConsumers) = allConsumers.partition(_.isEscaping)
+              if (boxConsumers.nonEmpty) {
+                for (c <- allCreations) knownHandled ++= c.allInsns
+                for (e <- allConsumers) knownHandled ++= e.allInsns
+
+                val hasEscaping = escapingConsumers.nonEmpty
+                val hasWrite = allConsumers.exists(_.isWrite)
+                if (!hasEscaping && !hasWrite) {
+                  // M2 -- see doc comment in the beginning of this file
+                  // If both M1 and M2 can be applied, we prefer M2 because it doesn't introduce new locals.
+                  replaceBoxOperationsMultipleCreations(allCreations, allConsumers, boxKind)
+                } else if (allCreations.size == 1 && (!hasEscaping || !boxKind.isMutable)) {
+                  // M1 -- see doc comment in the beginning of this file
+                  replaceBoxOperationsSingleCreation(allCreations.head, allConsumers, boxKind, keepBox = hasEscaping)
+                }
+              }
+
+            case None =>
+          }
+
+        case None =>
+      }
+    }
+
+    // We don't need to worry about CallGraph.closureInstantiations, the removed instructions are not IndyLambdas
+    def removeFromCallGraph(insn: AbstractInsnNode): Unit = insn match {
+      case mi: MethodInsnNode => callGraph.removeCallsite(mi, method)
+      case _ =>
+    }
+
+    for ((location, ops) <- toInsertBefore; op <- ops)
+      method.instructions.insertBefore(location, op)
+
+    for ((oldOp, newOps) <- toReplace) {
+      for (newOp <- newOps) method.instructions.insertBefore(oldOp, newOp)
+      method.instructions.remove(oldOp)
+      removeFromCallGraph(oldOp)
+    }
+
+    for (op <- toDelete) {
+      method.instructions.remove(op)
+      removeFromCallGraph(op)
+    }
+
+    method.maxLocals = nextLocal
+    method.maxStack = MethodMax.maxStack(method) + maxStackGrowth
+    val changed = toInsertBefore.nonEmpty || toReplace.nonEmpty || toDelete.nonEmpty
+    changed
   }
 
   /**

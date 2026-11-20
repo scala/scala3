@@ -100,12 +100,8 @@ object OptimizerUtils:
       insn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && ts.sideEffectFreeConstructors((insn.owner, insn.desc))
     }
 
-    def isNewForSideEffectFreeConstructor(insn: AbstractInsnNode): Boolean = {
-      insn.getOpcode == Opcodes.NEW && {
-        val ti = insn.asInstanceOf[TypeInsnNode]
-        ts.classesOfSideEffectFreeConstructors(ti.desc)
-      }
-    }
+    def isSideEffectFreeConstructor(insn: TypeInsnNode): Boolean =
+      ts.classesOfSideEffectFreeConstructors(insn.desc)
 
     def isSideEffectFreeCall(mi: MethodInsnNode): Boolean = {
       isScalaBox(mi) || // not Scala unbox, it may CCE

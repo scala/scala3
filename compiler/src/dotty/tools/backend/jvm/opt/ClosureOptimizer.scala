@@ -100,25 +100,23 @@ class ClosureOptimizer(byteCodeRepository: BCodeRepository, callGraph: Optimizer
     // buffer (cannot change a method's bytecode while still looking for further invocations to
     // rewrite, the frame indices of the ProdCons analysis would get out of date). If a callsite
     // cannot be rewritten, e.g., because the lambda body method is not accessible, issue a warning.
-    for (method <- methodsToRewrite if Limits.sizeOKForBasicValue(method)) callGraph.getClosureInstantiations(method) match {
+    for (method <- methodsToRewrite) callGraph.getClosureInstantiations(method) match {
       case closureInitsBeforeDCE if closureInitsBeforeDCE.nonEmpty =>
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
-        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph)
+        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, bTypesFromClassfile, ts)
 
-        if (Limits.sizeOKForSourceValue(method)) {
-          val closureInits = callGraph.getClosureInstantiations(method)
-            val prodCons = new ProdConsAnalyzer(method, ownerClass)
+        val closureInits = callGraph.getClosureInstantiations(method)
+          val prodCons = new ProdConsAnalyzer(method, ownerClass)
 
-            for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
-              case Left(warning) =>
-                issueSink(OptimizerIssue(warning.toString, OptimizerUtils.siteString(ownerClass, method.name), warning.pos))
+          for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
+            case Left(warning) =>
+              issueSink(OptimizerIssue(warning.toString, OptimizerUtils.siteString(ownerClass, method.name), warning.pos))
 
-              case Right((invocation, stackHeight)) =>
-                addRewrite(init, invocation, stackHeight)
-            }
-        }
+            case Right((invocation, stackHeight)) =>
+              addRewrite(init, invocation, stackHeight)
+          }
 
       case _ =>
     }
