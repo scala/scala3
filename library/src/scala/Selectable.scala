@@ -33,6 +33,17 @@ object Selectable:
   @deprecated(
     "import scala.reflect.Selectable.reflectiveSelectable instead of scala.language.reflectiveCalls",
     since = "3.0")
+  /** Converts a value into a [[scala.reflect.Selectable]] that performs
+   *  structural selections on it.
+   *
+   *  Only applies where `scala.language.reflectiveCalls` is imported, so that
+   *  code written against Scala 2 keeps compiling. Prefer importing
+   *  `scala.reflect.Selectable.reflectiveSelectable` instead.
+   *
+   *  @param x the value on which structural members are selected
+   *  @return a [[scala.reflect.Selectable]] wrapping `x`, whose `selectDynamic`
+   *          and `applyDynamic` dispatch on the runtime type of `x`
+   */
   implicit def reflectiveSelectableFromLangReflectiveCalls(x: Any)(
       using scala.languageFeature.reflectiveCalls): scala.reflect.Selectable =
     scala.reflect.Selectable.reflectiveSelectable(x)

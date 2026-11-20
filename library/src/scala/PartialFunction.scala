@@ -276,7 +276,19 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
  */
 object PartialFunction {
 
+  /** An extractor produced by [[PartialFunction.elementWise]] which matches a sequence
+   *  by applying the underlying partial function to each of its elements.
+   *
+   *  @tparam A the argument type of the underlying partial function
+   *  @tparam B the result type of the underlying partial function
+   */
   final class ElementWiseExtractor[-A, +B] private[PartialFunction] (private val pf: PartialFunction[A, B]^) extends AnyVal { this: ElementWiseExtractor[A, B]^ =>
+    /** Returns the results of applying the underlying partial function to every element of `seq`.
+     *
+     *  @param seq the sequence whose elements are matched against the partial function
+     *  @return `Some` containing the sequence of results if the partial function is defined
+     *          at every element of `seq`, `None` otherwise
+     */
     def unapplySeq(seq: Seq[A]): Option[Seq[B]] = {
       boundary:
         Some(seq.map:
