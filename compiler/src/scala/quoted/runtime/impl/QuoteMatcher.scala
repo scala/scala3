@@ -500,9 +500,17 @@ class QuoteMatcher(debug: Boolean) {
                   val (Env(termEnv, typeEnv), pmatch) = matchParamss(paramss1, paramss2)
                   val defEnv = Env(termEnv + (scrutinee.symbol -> pattern.symbol), typeEnv)
 
+                  // The result type of anonfun depends on what the typer inferred, where the scutinee and
+                  // the pattern are typed independently (so even for identical bodies the types may differ, which
+                  // can be unintuitive, see issue 25238). So instead we match using the user defined types from the body. 
+                  val tptMatch =
+                    if scrutinee.symbol.isAnonymousFunction && pattern.symbol.isAnonymousFunction then
+                      if withEnv(defEnv)(isSubTypeUnderTermAndTypeEnv(scrutinee.rhs.tpe, tpt2.tpe)) then matched else notMatched
+                    else withEnv(defEnv)(tpt1 =?= tpt2)
+
                   ematch
                   &&& pmatch
-                  &&& withEnv(defEnv)(tpt1 =?= tpt2)
+                  &&& tptMatch
                   &&& withEnv(defEnv)(scrutinee.rhs =?= pattern.rhs)
                 case _ => notMatched
 
@@ -584,6 +592,11 @@ class QuoteMatcher(debug: Boolean) {
     val scType = if env.isEmpty then scrutinee.tpe
       else scrutinee.subst(env.keys.toList, env.values.toList).tpe
     scType <:< pattern.tpe
+
+  private def isSubTypeUnderTermAndTypeEnv(scrutinee: Type, pattern: Type)(using Env, Context): Boolean =
+    val Env(termEnv, typeEnv) = summon[Env]
+    val (from, to) = (termEnv ++ typeEnv).toList.unzip
+    scrutinee.substSym(from, to) <:< pattern
 
   private object ClosedPatternTerm {
     /** Matches a term that does not contain free variables defined in the pattern (i.e. not defined in `Env`) */
