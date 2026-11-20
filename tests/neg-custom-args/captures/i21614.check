@@ -1,26 +1,31 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:11:33 ---------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:11:12 ---------------------------------------
 11 |  files.map((f: F) => new Logger(f)) // error, Q: can we make this pass (see #19076)?
-   |                                 ^
-   |Found:    (f : F)
-   |Required: File^{any}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |Found:    (f: F^{any}) ->{any², any³} Logger{val f²: File^{fresh}}^{fresh², f}
+   |Required: F^{any³} => Logger{val f²: File^'s1}^'s2
    |
-   |Note that capability `any²` cannot flow into capture set {any}.
+   |Note that capability `any³` cannot flow into capture set {any}.
    |
-   |where:    any  is a root capability classified as SharedCapability created in anonymous function of type (f²: F): Logger when checking argument to parameter f of constructor Logger
-   |          any² is a root capability classified as SharedCapability in the type of parameter f
+   |where:    =>               refers to a root capability created in method mkLoggers1 when checking argument to parameter f of method map
+   |          any              is the root capability caps.any
+   |          any²             is a root capability classified as SharedCapability in the bound of type F
+   |          any³             is a root capability classified as SharedCapability in the type of parameter files
+   |          f                is a reference to a value parameter
+   |          fresh and fresh² refer to a root capability associated with the result type of (f: F^{any}): Logger{val f²: File^{fresh}}^{fresh², f}
+   |          f²               is a value in class Logger
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:14:12 ---------------------------------------
 14 |  files.map(new Logger(_)) // error, Q: can we improve the error message?
    |            ^^^^^^^^^^^^^
-   |Capability `fresh` outlives its scope: it leaks into outer capture set 's1 which is owned by method mkLoggers2.
+   |Capability `fresh` outlives its scope: it leaks into outer capture set 's3 which is owned by method mkLoggers2.
    |The leakage occurred when trying to match the following types:
    |
    |Found:    (_$1: File^{C}) ->{C} Logger{val f: File^{_$1}}^{fresh², _$1}
-   |Required: File^{C} => Logger{val f: File^'s2}^'s1
+   |Required: File^{C} => Logger{val f: File^'s4}^'s3
    |
    |where:    =>     refers to a root capability created in method mkLoggers2 when checking argument to parameter f of method map
-   |          fresh  is a root capability associated with the result type of (_$1: File^{C}): Logger{val f: File^'s2}^'s1
+   |          fresh  is a root capability associated with the result type of (_$1: File^{C}): Logger{val f: File^'s4}^'s3
    |          fresh² is a root capability associated with the result type of (_$1: File^{C}): Logger{val f: File^{_$1}}^{fresh², _$1}
    |
    | longer explanation available when compiling with `-explain`
