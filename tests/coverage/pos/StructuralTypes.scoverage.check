@@ -23,7 +23,7 @@ StructuralTypes.scala
 covtest
 Record
 Class
-covtest.Record
+covtest.StructuralTypes.Record
 selectDynamic
 148
 172
@@ -40,7 +40,7 @@ StructuralTypes.scala
 covtest
 Record
 Class
-covtest.Record
+covtest.StructuralTypes.Record
 $anonfun
 159
 171
@@ -57,7 +57,7 @@ StructuralTypes.scala
 covtest
 Record
 Class
-covtest.Record
+covtest.StructuralTypes.Record
 selectDynamic
 148
 176
@@ -74,7 +74,7 @@ StructuralTypes.scala
 covtest
 Record
 Class
-covtest.Record
+covtest.StructuralTypes.Record
 selectDynamic
 109
 126

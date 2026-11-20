@@ -4,6 +4,7 @@ package coverage
 import ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.util.SourceFile
 
 /** Information about the location of a coverable piece of code.
@@ -34,6 +35,12 @@ object Location:
     val className = enclosingClass.name.toSimpleName.show
     val methodName = ownerDenot.enclosingMethod.name.toSimpleName.show
 
+    def fullClassName(cls: Symbol): String =
+      val outer = cls.owner.enclosingClass
+      val name = cls.name.toSimpleName.show
+      if !outer.exists || outer.is(Package) then s"$packageName.$name"
+      else s"${fullClassName(outer)}.$name"
+
     val classType: String =
       if enclosingClass.is(Trait) then "Trait"
       else if enclosingClass.is(ModuleClass) then "Object"
@@ -42,7 +49,7 @@ object Location:
     Location(
       packageName,
       className,
-      s"$packageName.$className",
+      fullClassName(enclosingClass),
       classType,
       methodName,
       source.pathRelativeToSourceRoot
