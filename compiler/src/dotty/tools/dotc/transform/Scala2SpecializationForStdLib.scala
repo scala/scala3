@@ -2,6 +2,7 @@ package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.{TreeTypeMap, untpd}
 import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.{toTermName, toTypeName}
 import dotty.tools.dotc.core.DenotTransformers.InfoTransformer
@@ -64,7 +65,7 @@ object Scala2SpecializationForStdLib:
     ctx.settings.YcompilingStdLib.value && {
       val owner = sym.owner
       if owner.name.endsWith(ourNames.specializationSuffix) then
-        sym.name.endsWith(ourNames.specializationSuffix)
+        sym.targetName.endsWith(ourNames.specializationSuffix)
       else
         def check(tp: Type): Boolean =
           tp.decls.exists(d => d.name.startsWith(sym.name.toString + ourNames.specializationPrefix)) || tp.parents.exists(check)
@@ -77,6 +78,7 @@ object Scala2SpecializationForStdLib:
     val unspecialized: TypeName = "unspecialized".toTypeName
     val specialized: TypeName = "specialized".toTypeName
     val specializable: TermName = "Specializable".toTermName
+    val specInstance: TermName = "specInstance$".toTermName
     val specializationPrefix = "$mc"
     val specializationSuffix = "$sp"
 
@@ -100,6 +102,9 @@ object Scala2SpecializationForStdLib:
     val specString = sortedSpec.map(e => ctx.definitions.typeTag(e._2)).mkString("")
     // We have to go through String because ++ on DerivedName does the append before the derivation (i.e., `original$appended$derived`)
     name.likeSpaced((name.toString + ourNames.specializationPrefix + specString + ourNames.specializationSuffix).toTermName)
+
+  private def specializedName[T <: Name](name: T, specializedType: Type)(using Context): name.ThisName =
+    name.likeSpaced((name.toString + ourNames.specializationPrefix + ctx.definitions.typeTag(specializedType) + ourNames.specializationSuffix).toTermName)
 
   /** Specialized name -> unspecialized form (assumes the name is specialized) */
   private def unspecializedName[T <: Name](name: T): name.ThisName =
@@ -235,6 +240,11 @@ object Scala2SpecializationForStdLib:
         case t: Tree => map.apply(t)
   }
 
+  // not handling arrays here, not needed for the stdlib
+  private def castTo(arg: Tree, specializedType: Type)(using Context): Tree =
+    if specializedType == defn.UnitType then Block(List(arg), unitLiteral)
+    else TypeApply(Select(arg, nme.asInstanceOf_), List(TypeTree(specializedType)))
+
   /** Generates specialized subclasses (everything except what the phase below does) */
   final class PrePickler extends Phase with InfoTransformer:
     private val _specializationsByType: mutable.Map[Name, ParameterSpecializations] = mutable.Map.empty
@@ -333,13 +343,21 @@ object Scala2SpecializationForStdLib:
           else
             val testSpecializer = Specializer(specializations.head, specializationsByType, superTypeSymbol)
             t.body.collect { case m: ValOrDefDef if needsSpecializing(m, testSpecializer) => m }
-        // Use the specialization maps to create the specialized methods in the supertype,
+        // Use the specialization maps to create the specialized members in the supertype,
         val superTypeSpecializedMethods = membersNeedingSpecialization.flatMap {
           case dd: DefDef => specializations.flatMap(sp => specializedForSuperType(dd, sp))
           case _ => Nil
         }
-        // which should be the only change we need to make to that type.
-        // Except we also need to make private nonspecialized vals protected,
+        // and handle nested typedefs.
+        val newBody = t.body.flatMap {
+          case nestedTd: TypeDef =>
+            val specNestedTd = specializeTypeDef(nestedTd)
+            if specNestedTd.isEmpty then List(nestedTd)
+            else specNestedTd
+          case other =>
+            List(other)
+        }
+        // We also need to make private nonspecialized vals protected,
         // so that specialized bodies in subtypes can use them.
         // e.g., in `class C[@specialized(Int) T](arr: Array[T]) { var pos = 0; def get = arr(pos) }`,
         // `get` will be specialized as it returns `T` , but `pos` won't, yet `get$mcI$sp`'s body is `this.arr$mcI$sp(super.pos)`.
@@ -362,9 +380,15 @@ object Scala2SpecializationForStdLib:
                 None
             case _ => None
           }
+        // Finally, superclasses (not traits) have a specInstance$ that returns false
+        val superTypeSpecInstance =
+          if specializations.isEmpty || superTypeSymbol.is(Trait) then Nil
+          else
+            val superTypeSpecInstanceSymbol = newSymbol(superTypeSymbol, ourNames.specInstance, Method | Synthetic, MethodType(Nil, defn.BooleanType)).entered
+            List(DefDef(superTypeSpecInstanceSymbol, _ => Literal(Constant(false))))
         val specializedSuperType = cpy.TypeDef(td)(rhs = cpy.Template(t)(
           parents = newSuperTypeParents,
-          body = t.body ++ superTypeSpecializedMethods ++ extraMembers
+          body = newBody ++ superTypeSpecializedMethods ++ extraMembers ++ superTypeSpecInstance
         ))
         // Then use the specialization maps to create specialized subtypes,
         val superTypeConstrSymbol = t.constr.symbol
@@ -408,7 +432,10 @@ object Scala2SpecializationForStdLib:
                 case dd: DefDef => specializedForSubType(dd, spec, memberVals, specializedMemberVals, superTypeSymbol, subTypeSymbol)
                 case _ => Nil
               }
-              specializedMemberVals ++ specializedMemberDefs
+              // Subclasses have a specInstance$ that returns true
+              val subTypeSpecInstanceSymbol = newSymbol(subTypeSymbol, ourNames.specInstance, Method | Override | Synthetic, MethodType(Nil, defn.BooleanType)).entered
+              val subTypeSpecInstance = DefDef(subTypeSpecInstanceSymbol, _ => Literal(Constant(true)))
+              specializedMemberVals ++ specializedMemberDefs :+ subTypeSpecInstance
           val specializer = Specializer(spec, specializationsByType, superTypeSymbol, subTypeSymbol)
           val constrInfo = specializer.specialize(superTypeConstrSymbol.info, topLevelPolyType = true)
           val constrSymbol = newSymbol(subTypeSymbol, nme.CONSTRUCTOR, superTypeConstrSymbol.flags | Synthetic, constrInfo).entered
@@ -473,11 +500,6 @@ object Scala2SpecializationForStdLib:
           case nme.Unit => defn.UnitType
         }
 
-    // not handling arrays here, not needed for the stdlib
-    private def castTo(arg: Tree, specializedType: Type)(using Context): Tree =
-      if specializedType == defn.UnitType then Block(List(arg), unitLiteral)
-      else TypeApply(Select(arg, nme.asInstanceOf_), List(TypeTree(specializedType)))
-
     private def needsSpecializing(m: ValOrDefDef, specializer: Specializer)(using Context): Boolean =
       val mSym = m.symbol
       // unlike final classes which can be specialized, final members cannot
@@ -494,15 +516,16 @@ object Scala2SpecializationForStdLib:
       // to check if a member needs specializing, we check if its type under specialization would change
       // except that only arrays are specialized as applied types, e.g., `def x: Iterable[T]` is not specialized for a specialized `T`
       // (whereas `def x: Array[T]` and `def x: T` are)
-      optIn || (!optOut && {
-        val tp = mSym.info
-        val specTp = specializer.specialize(tp, onlyArrays = true)
-        !(tp =:= specTp)
-      })
+      optIn || (!optOut && changesUnderSpecialization(mSym, specializer))
+
+    private def changesUnderSpecialization(sym: Symbol, specializer: Specializer)(using Context): Boolean =
+      val tp = sym.info
+      val specTp = specializer.specialize(tp, onlyArrays = true)
+      !(tp =:= specTp)
 
     private def specializedFlags(sym: Symbol, specializedName: Name)(using Context): FlagSet =
       val flags = (sym.flags &~ Deferred) | Synthetic
-      val overridesParent = sym.owner.asClass.parentSyms.exists(_.info.member(specializedName).exists)
+      val overridesParent = sym.owner.info.member(specializedName).exists//.parentSyms.exists(_.info.member(specializedName).exists)
       if overridesParent then flags | Override else flags
 
     private def specializedForSuperType(dd: DefDef, specialization: Specialization)(using Context): Option[DefDef] =
@@ -592,7 +615,8 @@ object Scala2SpecializationForStdLib:
       val newDef = DefDef(newSym, paramss => paramss.foldLeft(ref(specSym)) { case (fn, args) => fn.appliedToArgs(args) })
       List(specDef, newDef)
 
-  /** Removes 'final' from specializable classes (step 4.a.ii) and generates unspecialized getters for specialized vals (4.b.i) */
+  /** Removes 'final' from specializable classes (step 4.a.ii),
+   *  generates getters for specialized vals (4.b.i) */
   final class PreErasure extends Phase:
     override def phaseName: String =
       "scala2SpecializationForStdLib.PreErasure"
@@ -619,7 +643,7 @@ object Scala2SpecializationForStdLib:
     private def handleTypeDef(td: TypeDef, specializationsByType: collection.Map[Name, ParameterSpecializations])(using Context): Tree =
       if specializationsByType.contains(td.name) then
         td.symbol.resetFlag(Final)
-        td
+        addSpecializedGetters(td, specializationsByType(td.name))
       else if td.name.endsWith(ourNames.specializationSuffix) then
         addUnspecializedGetters(td)
       else
@@ -631,16 +655,46 @@ object Scala2SpecializationForStdLib:
           case _ =>
             td
 
-    private def addUnspecializedGetters(td: TypeDef)(using Context): TypeDef =
-      val tdSym = td.symbol
+    private def addSpecializedGetters(td: TypeDef, specializations: ParameterSpecializations)(using Context): TypeDef =
       td.rhs match
         case t: Template =>
+          val tdSym = td.symbol
+          val specializedGetters = t.body.flatMap {
+            case dd: DefDef if !dd.name.endsWith(ourNames.specializationSuffix) =>
+              val ddSym = dd.symbol
+              if ddSym.isGetter && ddSym.is(ParamAccessor) then
+                specializations.get(ddSym.info.resultType) match
+                  case Some(specs) =>
+                    specs.flatMap(sp => {
+                      val name = specializedName(dd.name, sp)
+                      if tdSym.info.member(name).exists then
+                        None
+                      else
+                        val flags = (ddSym.flags &~ ParamAccessor) | Synthetic
+                        val sym = newSymbol(tdSym, name, flags, MethodType(Nil, sp)).entered
+                        Some(DefDef(sym, _ => castTo(ref(ddSym), sp)))
+                    })
+                  case _ =>
+                    Nil
+              else
+                Nil
+            case _ => Nil
+          }
+          if specializedGetters.isEmpty then td
+          else cpy.TypeDef(td)(rhs = cpy.Template(t)(body = t.body ++ specializedGetters))
+        case _ =>
+          td
+
+    private def addUnspecializedGetters(td: TypeDef)(using Context): TypeDef =
+      td.rhs match
+        case t: Template =>
+          val tdSym = td.symbol
           val unspecializedGetters = t.body.flatMap {
             case dd: DefDef if dd.name.endsWith(ourNames.specializationSuffix) =>
               val ogName = unspecializedName(dd.name)
               // Unfortunately, we have to match names as strings because DerivedNames can't be suffixed (they add the suffix before the derivation),
               // so we end up with different name kinds but the same name.
-              if tdSym.info.decls.exists(_.name.toString == ogName.toString) then None
+              if tdSym.info.decls.exists(_.targetName.toString == ogName.toString) then None
               else
                 val ddSym = dd.symbol
                 // some of the specialized defs are param accessors, but the unspecialized versions never are
