@@ -218,25 +218,37 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case nil => EmptyTree
   }
 
-  /** Is tpt a vararg type of the form T* or => T*? */
+  /** Is tpt a repeated parameter type of the form T* or => T*? */
   def isRepeatedParamType(tpt: Tree)(using Context): Boolean = stripByNameType(tpt) match {
     case tpt: TypeTree => tpt.typeOpt.isRepeatedParam
-    case AppliedTypeTree(Select(_, tpnme.REPEATED_PARAM_CLASS), _) => true
+    case untpd.PostfixOp(_, Ident(tpnme.raw.STAR)) => true     // before typing
+    case AppliedTypeTree(Select(_, tpnme.REPEATED_PARAM_CLASS), _) => true  // after typing
     case _ => false
   }
 
   /** Is this argument node of the form <expr> *, or is it a reference to
    *  such an argument ? The latter case can happen when an argument is lifted.
    */
-  def isWildcardStarArg(tree: Tree)(using Context): Boolean = unbind(tree) match {
-    case Typed(Ident(nme.WILDCARD_STAR), _) => true
+  def isSpread(tree: Tree)(using Context): Boolean = unbind(tree) match {
+    case Typed(Ident(nme.WILDCARD_STAR), _) => true // can appear in patterns
     case Typed(_, Ident(tpnme.WILDCARD_STAR)) => true
     case Typed(_, tpt: TypeTree) => tpt.typeOpt.isRepeatedParam
-    case NamedArg(_, arg) => isWildcardStarArg(arg)
+    case NamedArg(_, arg) => isSpread(arg)
     case arg => arg.typeOpt.widen.isRepeatedParam
   }
 
-  /** Is tree a type tree of the form `=> T` or (under pureFunctions) `{refs}-> T`? */
+  /** Does this argument list end with a spread argument? */
+  def endsInSpread(trees: List[Tree])(using Context): Boolean =
+    trees.nonEmpty && isSpread(trees.last)
+
+  /** Is the argument a wildcard argument of the form `_` or `x @ _`?
+   */
+  def isWildcardArg(tree: Tree): Boolean = unbind(tree) match {
+    case Ident(nme.WILDCARD) => true
+    case _                   => false
+  }
+
+   /** Is tree a type tree of the form `=> T` or (under pureFunctions) `{refs}-> T`? */
   def isByNameType(tree: Tree)(using Context): Boolean =
     stripByNameType(tree) ne tree
 
@@ -249,18 +261,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
   def allParamSyms(ddef: DefDef)(using Context): List[Symbol] =
     ddef.paramss.flatten.map(_.symbol)
 
-  /** Does this argument list end with an argument of the form <expr> * ? */
-  def isWildcardStarArgList(trees: List[Tree])(using Context): Boolean =
-    trees.nonEmpty && isWildcardStarArg(trees.last)
-
-  /** Is the argument a wildcard argument of the form `_` or `x @ _`?
-   */
-  def isWildcardArg(tree: Tree): Boolean = unbind(tree) match {
-    case Ident(nme.WILDCARD) => true
-    case _                   => false
-  }
-
-  /** Does this list contain a named argument tree? */
+ /** Does this list contain a named argument tree? */
   def hasNamedArg(args: List[Any]): Boolean = args exists isNamedArg
   val isNamedArg: Any => Boolean = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[?]]
 
@@ -475,6 +476,12 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case Parens(tree1) => unsplice(tree1)
     case _ => tree
   }
+
+  /** Does `arg` refer to param, either directly or after stripping a spread? */
+  def refersTo(arg: Tree, param: ValDef)(using Context): Boolean = arg match
+    case Ident(name) => name == param.name
+    case Typed(arg1, _) if isSpread(arg) => refersTo(arg1, param)
+    case _ => false
 
   def functionWithUnknownParamType(tree: Tree): Option[Tree] = tree match {
     case Function(args, _) =>

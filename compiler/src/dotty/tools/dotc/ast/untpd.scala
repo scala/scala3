@@ -638,7 +638,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  parameter, the reference will be a repeated argument.
    */
   def refOfDef(tree: MemberDef)(using Context): Tree = tree match {
-    case ValDef(_, PostfixOp(_, Ident(tpnme.raw.STAR)), _) => repeated(Ident(tree.name))
+    case ValDef(_, tpt, _) if isRepeatedParamType(tpt) => repeated(Ident(tree.name))
     case _ => Ident(tree.name)
   }
 

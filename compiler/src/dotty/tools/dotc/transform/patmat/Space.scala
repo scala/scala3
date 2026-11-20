@@ -530,7 +530,7 @@ object SpaceEngine {
   def projectSeq(pats: List[Tree])(using Context): Space = {
     if (pats.isEmpty) return Typ(defn.NilType, false)
 
-    val (items, zero) = if (isWildcardStarArg(pats.last))
+    val (items, zero) = if (isSpread(pats.last))
       (pats.init, Typ(defn.ListType.appliedTo(pats.last.tpe.elemType), false))
     else
       (pats, Typ(defn.NilType, false))

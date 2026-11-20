@@ -39,7 +39,6 @@ class Parser extends Phase {
       unit.untpdTree.checkPos(nonOverlapping = !unit.isJava && !ctx.reporter.hasErrors)
   }
 
-
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     val unitContexts =
       for unit <- units yield

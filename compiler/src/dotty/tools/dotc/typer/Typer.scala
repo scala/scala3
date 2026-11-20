@@ -1368,7 +1368,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       assignType(cpy.Typed(tree)(expr1, tpt), underlyingTreeTpe)
     }
 
-    if (untpd.isWildcardStarArg(tree)) {
+    if (untpd.isSpread(tree)) {
 
       def fromRepeated(pt: Type): Type = pt match
         case pt @ FlexibleType(hi) =>
@@ -1381,7 +1381,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             pt.translateFromRepeated(toArray = false, translateWildcard = true)
             | pt.translateFromRepeated(toArray = true, translateWildcard = true)
 
-      def typedWildcardStarArgExpr = {
+      def typedSpreadExpr = {
         // A sequence argument `xs*` can be either a `Seq[T]` or an `Array[_ <: T]`,
         // irrespective of whether the method we're calling is a Java or Scala method,
         // so the expected type is the union `Seq[T] | Array[_ <: T]`.
@@ -1404,7 +1404,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       }
       cases(
         ifPat = ascription(TypeTree(defn.RepeatedParamType.appliedTo(pt)), isWildcard = true),
-        ifExpr = typedWildcardStarArgExpr,
+        ifExpr = typedSpreadExpr,
         wildName = nme.WILDCARD_STAR)
     }
     else {
@@ -1926,11 +1926,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      */
     var fnBody = tree.body
 
-    def refersTo(arg: untpd.Tree, param: untpd.ValDef): Boolean = arg match
-      case Ident(name) => name == param.name
-      case Typed(arg1, _) if untpd.isWildcardStarArg(arg) => refersTo(arg1, param)
-      case _ => false
-
     /** If parameter `param` appears exactly once as an argument in `args`,
      *  the singleton list consisting of its position in `args`, otherwise `Nil`.
      */
@@ -1938,7 +1933,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       def loop(args: List[untpd.Tree], start: Int): List[Int] = args match {
         case arg :: args1 =>
           val others = loop(args1, start + 1)
-          if (refersTo(arg, param)) start :: others else others
+          if (untpd.refersTo(arg, param)) start :: others else others
         case _ => Nil
       }
       val allIndices = loop(args, 0)
@@ -3014,7 +3009,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             || body1.isInstanceOf[Literal]
           val symTp =
             if isStableIdentifierOrLiteral || isNamedTuplePattern then pt
-            else if isWildcardStarArg(body1)
+            else if isSpread(body1)
                     || pt == defn.ImplicitScrutineeTypeRef
                     || pt.isBottomType
                     || body1.tpe <:< pt  // There is some strange interaction with gadt matching.

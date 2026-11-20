@@ -1993,7 +1993,7 @@ class Objects(using Context @constructorOnly):
       val applyDenot = getMemberMethod(scrutineeType, nme.apply, applyType(elemType))
       val applyRes = call(scrutinee, applyDenot.symbol, ArgInfo(SafeValue(defn.IntType), summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
 
-      if isWildcardStarArgList(pats) then
+      if endsInSpread(pats) then
         if pats.size == 1 then
           // call .toSeq
           val toSeqDenot = getMemberMethod(scrutineeType, nme.toSeq, toSeqType(elemType))
