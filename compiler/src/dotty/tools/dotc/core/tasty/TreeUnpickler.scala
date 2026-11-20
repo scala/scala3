@@ -1004,13 +1004,37 @@ class TreeUnpickler(reader: TastyReader,
               override def completerTypeParams(sym: Symbol)(using Context) =
                 rhs.tpe.typeParams
 
-            def opaqueToBounds(info: Type): Type =
-              val tparamSyms = rhs match
-                case LambdaTypeTree(tparams, body) => tparams.map(_.symbol.asType)
-                case _ => Nil
-              sym.opaqueToBounds(info, rhs, tparamSyms)
+            def lambdaTparamSyms: List[TypeSymbol] = rhs match
+              case LambdaTypeTree(tparams, _) => tparams.map(_.symbol.asType)
+              case _ => Nil
 
-            val info = checkNonCyclic(sym, rhs.tpe.toBounds, reportErrors = false)
+            def opaqueToBounds(info: Type): Type =
+              sym.opaqueToBounds(info, rhs, lambdaTparamSyms)
+
+            // `rhs.tpe` is built by `HKTypeLambda.fromParams`, which drops
+            // declared variances for transparent type aliases, so they're
+            // read back structurally. This only matters when declared and
+            // structural variances differ, i.e. when `@uncheckedVariance`
+            // was needed. Only then, re-abstract with `boundsFromParams`:
+            // doing it unconditionally would turn every annotated alias into
+            // a declared-variance lambda, which tightens higher-kinded
+            // subtyping (`Variances.variancesConform`) and breaks inference
+            // for type constructors such as `scala.List` read from TASTy.
+            val rhsBounds = rhs match
+              case LambdaTypeTree(_, body)
+              if !sym.isOpaqueAlias && !body.tpe.isInstanceOf[TypeBounds] =>
+                val structural = rhs.tpe.toBounds
+                val declaredVariances = lambdaTparamSyms.map(_.paramVariance)
+                def structuralVariances = structural.hi match
+                  case tl: HKTypeLambda => tl.typeParams.map(_.paramVariance)
+                  case _ => Nil
+                if declaredVariances.forall(_.isEmpty)
+                   || declaredVariances == structuralVariances
+                then structural
+                else HKTypeLambda.boundsFromParams(lambdaTparamSyms, body.tpe.toBounds)
+              case _ =>
+                rhs.tpe.toBounds
+            val info = checkNonCyclic(sym, rhsBounds, reportErrors = false)
             if sym.isOpaqueAlias then
               sym.info = opaqueToBounds(info)
               sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
