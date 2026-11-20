@@ -1945,14 +1945,8 @@ class Definitions {
     isFunctionNType(tp)
     || tp.derivesFrom(defn.PolyFunctionClass)   // TODO check for refinement?
 
-  private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
-    if !Feature.shouldBehaveAsScala2 then
-      for base <- bases; tp <- paramTypes do
-        cls.enter(newSymbol(cls, base.specializedName(List(tp)), Method, ExprType(tp)))
-    cls
-
-  @tu lazy val Tuple1: ClassSymbol = withSpecMethods(requiredClass("scala.Tuple1"), List(nme._1), Tuple1SpecializedParamTypes)
-  @tu lazy val Tuple2: ClassSymbol = withSpecMethods(requiredClass("scala.Tuple2"), List(nme._1, nme._2), Tuple2SpecializedParamTypes)
+  @tu lazy val Tuple1: ClassSymbol = requiredClass("scala.Tuple1")
+  @tu lazy val Tuple2: ClassSymbol = requiredClass("scala.Tuple2")
 
   @tu lazy val TupleSpecializedClasses: Set[Symbol]               = Set(Tuple1, Tuple2)
   @tu lazy val Tuple1SpecializedParamTypes: Set[TypeRef]          = Set(IntType, LongType, DoubleType)

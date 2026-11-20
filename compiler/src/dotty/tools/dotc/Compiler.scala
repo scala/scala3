@@ -47,6 +47,7 @@ class Compiler {
          new DesugarSpecializedTraits,      // Process Specialized traits
          new SpecializeInlineTraits) ::     // Inline the code of inline traits into their children
     List(new PostSpecializeInlineTraits) :: // Rewrite references to specialized trees
+    List(new Scala2SpecializationForStdLib.PrePickler()) :: // Scala2 specialization for the stdlib, part 1
     Nil
 
   /** Phases dealing with TASTY tree pickling and unpickling */
@@ -83,7 +84,6 @@ class Compiler {
          new ElimByName,             // Map by-name parameters to functions
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new ForwardDepChecks,       // Check that there are no forward references to local vals
-         new SpecializeApplyMethods, // Adds specialized methods to FunctionN
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
          new PruneInlineTraits) ::   // Remove right-hand side of definitions in inline traits
@@ -117,6 +117,7 @@ class Compiler {
          new LetOverApply,           // Lift blocks from receivers of applications
          new ArrayConstructors,      // Intercept creation of (non-generic) arrays and intrinsify.
          new SimplifySynchronized) ::// Simplify `synchronized` blocks when they surround a method body
+    List(new Scala2SpecializationForStdLib.PreErasure()) :: // Scala2 specialization for the stdlib, part 2
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
     List(new ElimErasedValueType,    // Expand erased value types to their underlying implementation types
          new PureStats,              // Remove pure stats from blocks

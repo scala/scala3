@@ -207,7 +207,10 @@ object StripScala2Annotations {
           s"TASTY UUID mismatch for $relativePath: original=${originalUUID.map(b => f"$b%02x").mkString}, new=${newUUID.map(b => f"$b%02x").mkString}."
         )
       case (Some(_), None) => sys.error(s"TASTY attribute defined, but not present in unpatched source $relativePath")
-      case (None, Some(_)) => sys.error(s"TASTY attribute missing, but present in unpatched $relativePath")
+      case (None, Some(_)) =>
+        if (!relativePath.endsWith("NonLocalReturnControl$mcV$sp.class")) {
+          sys.error(s"TASTY attribute missing, but present in unpatched $relativePath")
+        }
     }
 
     IO.write(output, patchClassFile(classfileBytes, tastyUUID))

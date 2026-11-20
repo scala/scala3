@@ -1082,7 +1082,6 @@ object Build {
 
   /* Configuration of the org.scala-lang:scala-library:*.**.**-bootstrapped project */
   lazy val `scala-library-bootstrapped` = project.in(file("library"))
-    .enablePlugins(ScalaLibraryPlugin)
     .settings(publishSettings)
     .settings(scalaLibrarySettings)
     .settings(
@@ -1106,6 +1105,7 @@ object Build {
       Compile / unmanagedResourceDirectories := Seq(baseDirectory.value / "resources"),
       Compile / compile / scalacOptions ++= Seq(
         "-opt", "-opt-inline:**,!java.**",
+        "-Ycompiling-stdlib",
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
@@ -1122,7 +1122,6 @@ object Build {
       mimaBackwardIssueFilters := MiMaFilters.ScalaLibrary.BackwardsBreakingChanges,
       mimaBinaryApi ++= MiMaFilters.ScalaLibrary.BinaryApiTracking,
       customMimaReportBinaryIssues("MiMaFilters.ScalaLibrary"),
-      scala2LibraryClasspath := Vector((`scala2-library` / Compile / packageBin).value),
       // Generate Scala 3 runtime properties overlay
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
       bspEnabled := enableBspAllProjects,

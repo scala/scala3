@@ -40,7 +40,7 @@ trait Function6[-T1, -T2, -T3, -T4, -T5, -T6, +R] extends AnyRef {
    *
    *  @return   a function `f` such that `f(x1)(x2)(x3)(x4)(x5)(x6) == apply(x1, x2, x3, x4, x5, x6)`
    */
-  @annotation.unspecialized def curried: T1 => T2 => T3 => T4 => T5 => T6 => R = {
+  def curried: T1 => T2 => T3 => T4 => T5 => T6 => R = {
     (x1: T1) => ((x2: T2, x3: T3, x4: T4, x5: T5, x6: T6) => this.apply(x1, x2, x3, x4, x5, x6)).curried
   }
   /** Creates a tupled version of this function: instead of 6 arguments,
@@ -48,8 +48,7 @@ trait Function6[-T1, -T2, -T3, -T4, -T5, -T6, +R] extends AnyRef {
    *
    *  @return   a function `f` such that `f((x1, x2, x3, x4, x5, x6)) == f(Tuple6(x1, x2, x3, x4, x5, x6)) == apply(x1, x2, x3, x4, x5, x6)`
    */
-
-  @annotation.unspecialized def tupled: ((T1, T2, T3, T4, T5, T6)) => R = {
+  def tupled: ((T1, T2, T3, T4, T5, T6)) => R = {
     case ((x1, x2, x3, x4, x5, x6)) => apply(x1, x2, x3, x4, x5, x6)
   }
   override def toString(): String = "<function6>"

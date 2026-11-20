@@ -17,7 +17,9 @@ import scala.language.`2.13`
 
 import Specializable._
 
-/** Annotate type parameters on which code should be automatically
+/** Unused in Scala 3. Only present for backwards binary compatibility with Scala 2.
+ *
+ *  Annotate type parameters on which code should be automatically
  *  specialized. For example:
  *  ```
  *    class MyList[@specialized T] ...
@@ -31,8 +33,6 @@ import Specializable._
  *
  *  @param group the group of primitive types for which specialization should be performed (typically constructed implicitly via the varargs constructor)
  */
-// class tspecialized[T](group: Group[T]) extends scala.annotation.StaticAnnotation {
-
 final class specialized(group: SpecializedGroup) extends scala.annotation.StaticAnnotation {
   def this(types: Specializable*) = this(new Group(types.toList))
   def this() = this(Primitives)
