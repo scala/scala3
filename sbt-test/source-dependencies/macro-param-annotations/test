@@ -1,0 +1,6 @@
+> run first
+
+# Change the annotation of the parameter of the constructor of the case class, in the
+# upstream project. The macro expansions that read it should be expanded again.
+$ copy-file changes/Opts.scala a/Opts.scala
+> run second
