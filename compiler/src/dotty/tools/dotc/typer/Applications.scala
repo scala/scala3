@@ -38,6 +38,7 @@ import Denotations.SingleDenotation
 import annotation.threadUnsafe
 
 import scala.annotation.tailrec
+import dotty.tools.dotc.transform.SpecializedEvidence
 
 object Applications {
   import tpd.*
@@ -2786,7 +2787,58 @@ trait Applications extends Compatibility {
           alts.filterConserve(alt =>
             isApplicableMethodRef(alt, args, resultType, keepConstraint = false, ArgMatch.CompatibleCAP)
           )
-
+          
+        def collectSpecializedTypeParamRefs(alt: TermRef): List[TypeParamRef] = 
+          alt.widen match
+            case poly: PolyType => 
+              var refs = mutable.ListBuffer.empty[TypeParamRef]
+              def helper(tpe: Type): Unit = tpe match
+                case mt: MethodType if mt.isContextualMethod => 
+                  mt.paramInfos.map(_.stripAnnots) foreach {
+                    case SpecializedEvidence(tpe: TypeParamRef) => refs += tpe 
+                    case _ => ()
+                  }
+                case mt: MethodType => helper(mt.resType)
+                case _ => ()
+                
+              helper(poly.stripPoly)
+              refs.toList
+            case _ => Nil
+        
+        def narrowBySpecialization(alts: List[TermRef], args: List[Tree]): List[TermRef] =
+          val specializedTypeParamsOf = alts.map(alt => alt -> collectSpecializedTypeParamRefs(alt)).toMap
+          
+          if !specializedTypeParamsOf.values.exists(_.nonEmpty) then alts
+          else 
+            def matchBySpecialization(args: List[Tree])(alt: TermRef): Boolean = 
+              if specializedTypeParamsOf(alt).isEmpty then false 
+              else alt.widen match
+                case poly: PolyType =>
+                  def isSpecialized(tpe: Type): Boolean = tpe.existsPart {
+                    case ref: TypeParamRef => specializedTypeParamsOf(alt).contains(ref)
+                    case _ => false
+                  } 
+                    
+                  poly.stripPoly match
+                    case mt: MethodType => mt.paramInfos.zip(args.map(_.tpe)) forall {
+                      case (paramTpe, argTpe) => 
+                        if !isSpecialized(paramTpe) then true 
+                        else isFullyDefined(argTpe, ForceDegree.none)
+                    }
+                    case _ => false
+                case _ => false
+              
+            alts.filter(matchBySpecialization(args)) match {
+              case Nil => 
+                alts.filterConserve(alt => specializedTypeParamsOf(alt).isEmpty)
+              case alts => 
+                // find the overload that specializes the most number of parameters
+                val max = alts.map(alt => specializedTypeParamsOf(alt).size).max
+                // it is possible there is still ambiguity
+                alts.filterConserve(alt => specializedTypeParamsOf(alt).size == max)
+          }
+            
+        
         record("resolveOverloaded.FunProto", alts.length)
         val alts1 = narrowBySize(alts)
         overload.println(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
@@ -2799,7 +2851,12 @@ trait Applications extends Compatibility {
           else
             record("resolveOverloaded.narrowedByShape", alts2.length)
             pretypeArgs(alts2, pt)
-            narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)), resultType)
+            val typedArgs = pt.typedArgs(normArg(alts2, _, _))
+            val alts3 = narrowByTrees(alts2, typedArgs, resultType)
+            if isDetermined(alts3) then alts3 
+            else
+              record("resolvedOverloaded.narrowBySpecialization", alts3.length)
+              narrowBySpecialization(alts3, typedArgs)
 
       case pt @ PolyProto(targs1, pt1) =>
         val alts1 = alts.filterConserve(pt.canInstantiate)
