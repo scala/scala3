@@ -143,6 +143,27 @@ else d
 ```
 is parsed as `if x then a + b + c else d`.
 
+If a leading infix operator directly follows the end of a block, i.e. an `<outdent>` or a
+closing brace `}`, and that block is a branch or body of a control expression (`if`, `while`,
+`for` or `try`), the operator applies to the whole control expression. For instance,
+```scala
+val y =
+  if x then
+    a
+  else
+    b
+  + c
+```
+is parsed as `val y = (if x then a else b) + c`, and so is the same code with the branches
+in braces. In an `else if` chain, the operator applies to the outermost conditional.
+Since the rule refers only to `<outdent>` and `}` tokens and to line breaks, it does not depend
+on indentation under `-no-indent`, and rewriting between braces and indentation preserves the
+meaning of such code.
+
+This rule applies from source version `future` onwards. Earlier versions, including
+`future-migration`, apply the operator only to the block that precedes it, i.e. `else b + c`
+in the example above, and issue a warning.
+
 ## Optional Braces Around Template Bodies
 
 The Scala grammar uses the term _template body_ for the definitions of a class, trait, or object that are normally enclosed in braces. The braces around a template body can also be omitted by means of the following rule.
