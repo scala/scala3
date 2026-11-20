@@ -2,6 +2,7 @@ package dotty.tools.sbtplugin
 
 import sbt.*
 import sbt.Keys.*
+import sbt.librarymanagement.Platform
 
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
@@ -49,13 +50,13 @@ object DottyJSPlugin extends AutoPlugin {
       _.filter(!_.name.startsWith("junit-interface"))
     },
     libraryDependencies +=
-      ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion  % "test").cross(CrossVersion.for3Use2_13),
+      ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion % "test").cross(CrossVersion.for3Use2_13).platform(Platform.jvm),
 
     // Typecheck the Scala.js IR found on the classpath
     scalaJSLinkerConfig ~= (_.withCheckIR(true)),
 
     // Maybe configure WebAssembly
-    scalaJSLinkerConfig := {
+    scalaJSLinkerConfig := Def.uncached {
       val prev = scalaJSLinkerConfig.value
       if (enableWebAssembly.value) {
         prev
@@ -66,7 +67,7 @@ object DottyJSPlugin extends AutoPlugin {
         prev
       }
     },
-    jsEnv := {
+    jsEnv := Def.uncached {
       val baseConfig = NodeJSEnv.Config()
       val config = if (enableWebAssembly.value) {
         baseConfig.withArgs(List(
@@ -80,10 +81,10 @@ object DottyJSPlugin extends AutoPlugin {
       new NodeJSEnv(config)
     },
 
-    Compile / jsEnvInput := (Compile / jsEnvInput).dependsOn(writePackageJSON).value,
-    Test / jsEnvInput := (Test / jsEnvInput).dependsOn(writePackageJSON).value,
+    Compile / jsEnvInput := Def.uncached((Compile / jsEnvInput).dependsOn(writePackageJSON).value),
+    Test / jsEnvInput := Def.uncached((Test / jsEnvInput).dependsOn(writePackageJSON).value),
 
-    writePackageJSON := {
+    writePackageJSON := Def.uncached {
       val packageType = scalaJSLinkerConfig.value.moduleKind match {
         case ModuleKind.NoModule       => "commonjs"
         case ModuleKind.CommonJSModule => "commonjs"
