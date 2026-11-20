@@ -27,6 +27,8 @@ import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
 import reporting.Message.Note
 import scala.util.boundary, boundary.break
+import dotty.tools.dotc.transform.Specialization
+import dotty.tools.dotc.transform.SpecializeInlineTraits
 import scala.util.control.NonFatal
 
 /** Provides methods to compare types.

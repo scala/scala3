@@ -14,7 +14,7 @@ import unpickleScala2.Scala2Erasure
 import Decorators.*
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec
-import dotty.tools.dotc.transform.DesugarSpecializedTraits
+import dotty.tools.dotc.transform.SpecializeInlineTraits
 import dotty.tools.dotc.util.Property
 
 /** The language in which the definition being erased was written. */
