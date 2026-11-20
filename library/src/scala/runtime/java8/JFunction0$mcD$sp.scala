@@ -14,7 +14,16 @@ package scala.runtime.java8
 
 import scala.language.`2.13`
 
+/** A `@FunctionalInterface` specialization of [[scala.Function0]] returning an
+ *  unboxed `Double`, allowing a Java lambda or method reference (and the
+ *  compiler's `invokedynamic` lambda encoding) to implement `Function0[Double]`
+ *  without boxing.
+ */
 @FunctionalInterface trait JFunction0$mcD$sp extends Function0[Any] with Serializable {
+  /** Applies this function, returning the result as an unboxed `Double`. */
   def apply$mcD$sp(): Double
+  /** Applies this function by delegating to `apply$mcD$sp`, boxing the
+   *  `Double` result.
+   */
   override def apply(): Any = scala.runtime.BoxesRunTime.boxToDouble(apply$mcD$sp())
 }
