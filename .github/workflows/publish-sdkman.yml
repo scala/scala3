@@ -21,9 +21,9 @@ on:
         required: true
         type: string
     secrets:
-      CONSUMER-KEY:
+      SDKMAN_EMAIL:
         required: true
-      CONSUMER-TOKEN:
+      SDKMAN_PASSWORD:
         required: true
 
 # Publishes to SDKMAN! with vendor credentials no GITHUB_TOKEN use
@@ -42,34 +42,39 @@ jobs:
     strategy:
       matrix:
         include:
-          - platform: LINUX_64
+          - platform: LINUX_X64
             archive : 'scala3-${{ inputs.version }}-x86_64-pc-linux.zip'
           - platform: LINUX_ARM64
             archive : 'scala3-${{ inputs.version }}-aarch64-pc-linux.zip'
-          - platform: MAC_OSX
+          - platform: MAC_X64
             archive : 'scala3-${{ inputs.version }}-x86_64-apple-darwin.zip'
           - platform: MAC_ARM64
             archive : 'scala3-${{ inputs.version }}-aarch64-apple-darwin.zip'
-          - platform: WINDOWS_64
+          - platform: WINDOWS_X64
             archive : 'scala3-${{ inputs.version }}-x86_64-pc-win32.zip'
     steps:
       - uses: sdkman/sdkman-release-action@92ab12086a18d531353f9a032eca59a8f9f7d161 # v1.0.0
         with:
-          CONSUMER-KEY   : ${{ secrets.CONSUMER-KEY }}
-          CONSUMER-TOKEN : ${{ secrets.CONSUMER-TOKEN }}
-          CANDIDATE      : scala
-          VERSION        : ${{ inputs.version }}
-          URL            : '${{ env.RELEASE-URL }}/${{ matrix.archive }}'
-          PLATFORM       : ${{ matrix.platform }}
+          email    : ${{ secrets.SDKMAN_EMAIL }}
+          password : ${{ secrets.SDKMAN_PASSWORD }}
+          candidate: scala
+          version  : ${{ inputs.version }}
+          url      : '${{ env.RELEASE-URL }}/${{ matrix.archive }}'
+          platform : ${{ matrix.platform }}
 
+  # The stable tag is the default version. Apply it only after every platform
+  # publish succeeds, by upserting one already-published platform.
   default:
     if: github.repository == 'scala/scala3'
     runs-on: ubuntu-latest
     needs: publish
     steps:
-      - uses: sdkman/sdkman-default-action@38ca710dbacfada85ccfb609953e4c92a717e557
+      - uses: sdkman/sdkman-release-action@92ab12086a18d531353f9a032eca59a8f9f7d161 # v1.0.0
         with:
-          CONSUMER-KEY   : ${{ secrets.CONSUMER-KEY }}
-          CONSUMER-TOKEN : ${{ secrets.CONSUMER-TOKEN }}
-          CANDIDATE      : scala
-          VERSION        : ${{ inputs.version }}
+          email    : ${{ secrets.SDKMAN_EMAIL }}
+          password : ${{ secrets.SDKMAN_PASSWORD }}
+          candidate: scala
+          version  : ${{ inputs.version }}
+          url      : '${{ env.RELEASE-URL }}/scala3-${{ inputs.version }}-x86_64-pc-linux.zip'
+          platform : LINUX_X64
+          tags     : stable
