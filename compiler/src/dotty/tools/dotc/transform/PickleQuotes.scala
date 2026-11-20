@@ -11,6 +11,7 @@ import Constants.*
 import ast.Trees.*
 import ast.untpd
 import ast.TreeTypeMap
+import util.Property
 
 import NameKinds.*
 import dotty.tools.dotc.ast.tpd
@@ -211,6 +212,11 @@ object PickleQuotes {
   val name: String = "pickleQuotes"
   val description: String = "turn quoted trees into explicit run-time data structures"
 
+  /** Attachment added to unpickleTypeV2/unpickleExprV2 Select node.
+   *  Points to the original tree from before serialization.
+  */
+  val OriginalTree = Property.StickyKey[tpd.Tree]
+
   def pickle(quote: Quote, quotes: Tree, holeContents: List[Tree])(using Context) = {
     val body = quote.body
     val bodyType = quote.bodyType
@@ -356,6 +362,7 @@ object PickleQuotes {
       quotes
         .asInstance(defn.QuoteUnpicklerClass.typeRef)
         .select(unpickleMeth).appliedToType(bodyType)
+        .withAttachment(OriginalTree, body)
         .appliedToArgs(unpickleArgs).withSpan(body.span)
     }
 

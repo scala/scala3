@@ -233,6 +233,7 @@ package foo.test.i16863c:
   def fn[A](expr: Expr[Any])(using Quotes) =
     val imp = expr match
       case '{ ${ _ }: a } => Expr.summon[Numeric[a]] // OK
+      case _ => '{}
     println(imp)
 
 package foo.test.i16863d:
