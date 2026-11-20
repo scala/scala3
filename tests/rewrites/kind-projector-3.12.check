@@ -1,0 +1,7 @@
+trait Foo[F[_]]
+trait Baz[F[_], A, B]
+
+// `_` is still a wildcard here, so `*` is not rewritten
+class Bar1 extends Foo[Map[?, *]]
+class Bar2 extends Foo[[x] =>> Map[?, x]]
+class Bar3 extends Foo[[x] =>> Baz[x => *, Int, x]]
