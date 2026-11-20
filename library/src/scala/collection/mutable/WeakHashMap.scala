@@ -38,8 +38,11 @@ import scala.collection.convert.JavaCollectionWrappers.{JMapWrapper, JMapWrapper
 class WeakHashMap[K, V] extends JMapWrapper[K, V](new java.util.WeakHashMap)
     with JMapWrapperLike[K, V, WeakHashMap, WeakHashMap[K, V]]
     with MapFactoryDefaults[K, V, WeakHashMap, Iterable] {
+  /** Returns a new empty `WeakHashMap` of the same key and value types. */
   override def empty = new WeakHashMap[K, V]
+  /** Returns the companion object `WeakHashMap`, which builds maps of this kind. */
   override def mapFactory: MapFactory[WeakHashMap] = WeakHashMap
+  /** Returns `"WeakHashMap"`, the name used in this map's string representation. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "WeakHashMap"
 }
@@ -50,8 +53,31 @@ class WeakHashMap[K, V] extends JMapWrapper[K, V](new java.util.WeakHashMap)
  */
 @SerialVersionUID(3L)
 object WeakHashMap extends MapFactory[WeakHashMap] {
+  /** Creates a new empty `WeakHashMap`.
+   *
+   *  @tparam K the type of keys
+   *  @tparam V the type of values
+   *  @return a new empty `WeakHashMap`
+   */
   def empty[K, V]: WeakHashMap[K,V] = new WeakHashMap[K, V]
+  /** Creates a new `WeakHashMap` from a collection of key/value pairs.
+   *
+   *  If several pairs share a key, the last one wins. Like any `WeakHashMap`,
+   *  the result holds its keys weakly, so entries whose keys are no longer
+   *  strongly referenced elsewhere may disappear from it.
+   *
+   *  @tparam K the type of keys
+   *  @tparam V the type of values
+   *  @param it the key/value pairs to initialize the map with
+   *  @return a new `WeakHashMap` containing the pairs of `it`
+   */
   def from[K, V](it: collection.IterableOnce[(K, V)]^): WeakHashMap[K,V] = Growable.from(empty[K, V], it)
+  /** Creates a new empty builder for a `WeakHashMap`.
+   *
+   *  @tparam K the type of keys
+   *  @tparam V the type of values
+   *  @return a new builder that produces a `WeakHashMap` from the key/value pairs added to it
+   */
   def newBuilder[K, V]: Builder[(K, V), WeakHashMap[K,V]] = new GrowableBuilder(WeakHashMap.empty[K, V])
 }
 
