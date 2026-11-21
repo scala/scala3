@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -12,9 +12,11 @@
 
 package scala
 
+import java.lang.System.{currentTimeMillis => currentTime}
+
 import scala.language.`2.13`
 
-import java.lang.System.{currentTimeMillis => currentTime}
+import scala.annotation.nowarn
 import scala.collection.mutable.ListBuffer
 
 /** The `App` trait can be used to quickly turn objects
@@ -38,8 +40,27 @@ import scala.collection.mutable.ListBuffer
  *
  *  Future versions of this trait will no longer extend `DelayedInit`.
  *
- *  @author  Martin Odersky
- *  @since   2.1
+ *  In Scala 3, the `DelayedInit` feature was dropped. `App` exists only in a limited form
+ *  that also does not support command line arguments and will be deprecated in the future.
+ *
+ *  [@main](https://docs.scala-lang.org/scala3/book/methods-main-methods.html) methods are the
+ *  recommended scheme to generate programs that can be invoked from the command line in Scala 3.
+ *
+ *  ```
+ *  @main def runMyProgram(args: String*): Unit = {
+ *    // your program here
+ *  }
+ *  ```
+ *
+ *  If programs need to cross-build between Scala 2 and Scala 3, it is recommended to use an
+ *  explicit `main` method:
+ *  ```
+ *  object Main {
+ *    def main(args: Array[String]): Unit = {
+ *      // your program here
+ *    }
+ *  }
+ *  ```
  */
 @deprecated(message = "Support for trait App is deprecated in Scala 3. Please refer to https://docs.scala-lang.org/scala3/book/methods-main-methods.html.", since = "3.8.0")
 trait App extends DelayedInit {
@@ -52,9 +73,9 @@ trait App extends DelayedInit {
    */
   protected final def args: Array[String] = _args
 
-  private[this] var _args: Array[String] = _
+  private var _args: Array[String] = compiletime.uninitialized
 
-  private[this] val initCode = new ListBuffer[() => Unit]
+  private val initCode = new ListBuffer[() => Unit]
 
   /** The init hook. This saves all initialization code for execution within `main`.
    *  This method is normally never called directly from user code.
