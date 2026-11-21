@@ -98,8 +98,17 @@ abstract class Enumeration (initial: Int) extends Serializable {
   protected def readResolve(): AnyRef = ???
 
   /** The name of this enumeration. */
-  override def toString =
-    (getClass.getName.stripSuffix("$").split('.')).last.split('$').last
+  override def toString = {
+    // original: (getClass.getName.stripSuffix("$").split('.')).last.split('$').last
+    val className = this.getClass().getName()
+    val len = className.length()
+    val end = if (len != 0 && className.charAt(len - 1) == '$') len - 1 else len
+    var start = end
+    while (start != 0 && { val c = className.charAt(start - 1); c != '.' && c != '$' }) {
+      start -= 1
+    }
+    className.substring(start, end)
+  }
 
   /** The mapping from the integer used to identify values to the actual
    *  values. 
