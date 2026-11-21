@@ -2160,6 +2160,7 @@ object Build {
             "isNoModule" -> (moduleKind == ModuleKind.NoModule),
             "isESModule" -> (moduleKind == ModuleKind.ESModule),
             "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
+            "isWasmModule" -> (moduleKind == ModuleKind.WasmModule),
             "usesClosureCompiler" -> linkerConfig.closureCompiler,
             "hasMinifiedNames" -> (linkerConfig.closureCompiler || linkerConfig.minify),
             "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
@@ -2173,6 +2174,7 @@ object Build {
             "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
             "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
             "isWebAssembly" -> linkerConfig.esFeatures.useWebAssembly,
+            "hasWasmCustomDescriptors" -> linkerConfig.wasmFeatures.experimentalUseCustomDescriptors,
         )
       }.taskValue,
 
@@ -2246,9 +2248,7 @@ object Build {
             -- "ClassDiffersOnlyInCaseTest.scala" // looks like the Scala 3 compiler itself does not deal with that
             )).get()
 
-          ++ (dir / "shared/src/test/require-sam" ** "*.scala").get()
-          ++ (dir / "shared/src/test/require-jdk8" ** "*.scala").get()
-          ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get()
+          ++ (dir / "js-wasm/src/test/" ** "*.scala").get()
 
           ++ (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
@@ -2257,7 +2257,6 @@ object Build {
             -- "TypedArrayConversionTest.scala" // #24321
             )).get()
 
-          ++ (dir / "js/src/test/require-2.12" ** "*.scala").get()
           ++ (dir / "js/src/test/require-new-target" ** "*.scala").get()
           ++ (dir / "js/src/test/require-sam" ** "*.scala").get()
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get()
