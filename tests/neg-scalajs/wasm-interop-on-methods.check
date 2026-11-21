@@ -1,0 +1,18 @@
+-- Error: tests/neg-scalajs/wasm-interop-on-methods.scala:4:23 ---------------------------------------------------------
+4 |class ImportConstructor @WasmImport("env", "ctor") () // error
+  |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                       @WasmImport can only be used on methods
+-- Error: tests/neg-scalajs/wasm-interop-on-methods.scala:5:23 ---------------------------------------------------------
+5 |class ExportConstructor @WasmExport("ctor") () // error
+  |                       ^^^^^^^^^^^^^^^^^^^^^^^
+  |                       @WasmExport can only be used on methods
+-- Error: tests/neg-scalajs/wasm-interop-on-methods.scala:9:6 ----------------------------------------------------------
+8 |  @WasmImport("env", "x")
+9 |  val imported: Int = 1 // error
+  |  ^
+  |  @WasmImport can only be used on methods
+-- Error: tests/neg-scalajs/wasm-interop-on-methods.scala:12:6 ---------------------------------------------------------
+11 |  @WasmExport("x")
+12 |  val exported: Int = 1 // error
+   |  ^
+   |  @WasmExport can only be used on methods

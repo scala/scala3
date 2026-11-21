@@ -1,0 +1,40 @@
+-- Error: tests/neg-scalajs/wasm-interop-must-static-owner.scala:7:6 ---------------------------------------------------
+6 |  @WasmImport("env", "imported")
+7 |  def imported(): Unit = wasm.native // error
+  |  ^
+  |  @WasmImport can only be used on methods in static Scala objects
+-- Error: tests/neg-scalajs/wasm-interop-must-static-owner.scala:10:6 --------------------------------------------------
+ 9 |  @WasmExport("exported")
+10 |  def exported(): Unit = ??? // error
+   |  ^
+   |  @WasmExport can only be used on methods in static Scala objects
+-- Error: tests/neg-scalajs/wasm-interop-must-static-owner.scala:16:8 --------------------------------------------------
+15 |    @WasmImport("env", "imported")
+16 |    def imported(): Unit = wasm.native // error
+   |    ^
+   |    @WasmImport can only be used on methods in static Scala objects
+-- Error: tests/neg-scalajs/wasm-interop-must-static-owner.scala:19:8 --------------------------------------------------
+18 |    @WasmExport("exported")
+19 |    def exported(): Unit = ??? // error
+   |    ^
+   |    @WasmExport can only be used on methods in static Scala objects
+-- Error: tests/neg-scalajs/wasm-interop-must-static-owner.scala:35:6 --------------------------------------------------
+34 |  @WasmImport("env", "imported")
+35 |  def imported(): Unit = wasm.native // error
+   |  ^
+   |  @WasmImport can only be used on methods in static Scala objects
+-- Error: tests/neg-scalajs/wasm-interop-must-static-owner.scala:38:6 --------------------------------------------------
+37 |  @WasmExport("exported")
+38 |  def exported(): Unit = ??? // error
+   |  ^
+   |  @WasmExport can only be used on methods in static Scala objects
+-- Error: tests/neg-scalajs/wasm-interop-must-static-owner.scala:44:8 --------------------------------------------------
+43 |    @WasmImport("env", "imported")
+44 |    def imported(): Unit = wasm.native // error
+   |    ^
+   |    @WasmImport is not allowed on local definitions
+-- Error: tests/neg-scalajs/wasm-interop-must-static-owner.scala:47:8 --------------------------------------------------
+46 |    @WasmExport("exported")
+47 |    def exported(): Unit = ??? // error
+   |    ^
+   |    @WasmExport is not allowed on local definitions

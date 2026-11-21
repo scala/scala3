@@ -2322,6 +2322,55 @@ object Build {
       },
     )
 
+  lazy val sjsWasmInteropTests: Project = project.in(file("tests/wasm-interop-tests"))
+    .enablePlugins(DottyJSPlugin)
+    .dependsOn(`scala-library-sjs`)
+    .settings(
+      regularScalaJSProjectSettings,
+
+      bspEnabled := false,
+
+      scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.WasmModule)),
+
+      Test / jsEnv := {
+        import org.scalajs.jsenv.nodejs.NodeJSEnv
+
+        val helperModulesDir = target.value / "helpers-modules"
+
+        val storageTypesAndTheirModuleBytes: List[(String, Array[Byte])] = List(
+          "i8" -> build.WasmGCArrayAccessModules.i8ArrayModuleBytes,
+          "i16" -> build.WasmGCArrayAccessModules.i16ArrayModuleBytes,
+          "i32" -> build.WasmGCArrayAccessModules.i32ArrayModuleBytes,
+          "i64" -> build.WasmGCArrayAccessModules.i64ArrayModuleBytes,
+          "f32" -> build.WasmGCArrayAccessModules.f32ArrayModuleBytes,
+          "f64" -> build.WasmGCArrayAccessModules.f64ArrayModuleBytes,
+        )
+
+        for ((storageType, moduleBytes) <- storageTypesAndTheirModuleBytes) {
+          val f = helperModulesDir / s"${storageType}ArrayAccess.wasm"
+          IO.write(f, moduleBytes)
+        }
+
+        val linkerOutput = (Compile / fastLinkJSOutput).value
+        val config = NodeJSEnv.Config()
+          .withEnv(Map(
+            "SCALAJS_LINKER_OUTPUT" -> linkerOutput.toString(),
+            "HELPER_MODULES_DIR" -> helperModulesDir.toString(),
+          ))
+        new NodeJSEnv(config)
+      },
+
+      Test / jsEnvInput := {
+        val resourceDir = (Test / resourceDirectory).value
+        val f = (resourceDir / "runtests.mjs").toPath
+        org.scalajs.jsenv.Input.ESModule(f) :: Nil
+      },
+
+      // let me run Test/run
+      Test / fork := false,
+      Test / scalaJSUseMainModuleInitializer := true,
+    )
+
   lazy val sjsCompilerTests = project.in(file("sjs-compiler-tests")).
     dependsOn(`scala3-compiler-bootstrapped` % "test->test").
     settings(
