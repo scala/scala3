@@ -2198,15 +2198,22 @@ object Build {
           case FullOptStage => (Test / fullLinkJS / scalaJSLinkerConfig).value
         }
 
-        val isWebAssembly = linkerConfig.esFeatures.useWebAssembly
+        val isWasmNoJS = linkerConfig.moduleKind == ModuleKind.WasmModule
+        val isWebAssembly = isWasmNoJS || linkerConfig.esFeatures.useWebAssembly
 
         val b = List.newBuilder[File]
 
-        if (linkerConfig.moduleKind != ModuleKind.NoModule && !linkerConfig.closureCompiler && !isWebAssembly)
-          b += baseDirectory.value / "test-require-multi-modules"
+        b += baseDirectory.value / "shared/test"
 
-        if (linkerConfig.esFeatures.esVersion >= ESVersion.ES2017)
-          b += baseDirectory.value / "test-require-async-await"
+        if (!isWasmNoJS) {
+          b += baseDirectory.value / "js/test"
+
+          if (linkerConfig.moduleKind != ModuleKind.NoModule && !linkerConfig.closureCompiler && !isWebAssembly)
+            b += baseDirectory.value / "js/test-require-multi-modules"
+
+          if (linkerConfig.esFeatures.esVersion >= ESVersion.ES2017)
+            b += baseDirectory.value / "js/test-require-async-await"
+        }
 
         b.result()
       },
@@ -2234,13 +2241,14 @@ object Build {
         val moduleKind = linkerConfig.moduleKind
         val hasModules = moduleKind != ModuleKind.NoModule
         val hasAsyncAwait = linkerConfig.esFeatures.esVersion >= ESVersion.ES2017
-        val isWebAssembly = linkerConfig.esFeatures.useWebAssembly
+        val isWasmNoJS = moduleKind == ModuleKind.WasmModule
+        val isWebAssembly = isWasmNoJS || linkerConfig.esFeatures.useWebAssembly
 
         def conditionally(cond: Boolean, subdir: String): Seq[File] =
           if (!cond) Nil
           else (dir / subdir ** "*.scala").get()
 
-        (
+        val sharedTests0: Seq[File] = (
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
             -- "UTF16Test.scala" // refutable pattern match
@@ -2249,8 +2257,20 @@ object Build {
             )).get()
 
           ++ (dir / "js-wasm/src/test/" ** "*.scala").get()
+        )
 
-          ++ (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
+        val sharedTests: Seq[File] = if (!isWasmNoJS) {
+          sharedTests0
+        } else {
+          // Not yet supported on WasmModule
+          sharedTests0.filterNot { f =>
+            f.getName() == "URITest.scala" ||
+              f.getPath().replace('\\', '/').contains("/javalib/util/regex/")
+          }
+        }
+
+        def jsTests: Seq[File] = (
+          (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
             -- "OptimizerTest.scala" // something crashes the optimizer, TODO investigate
@@ -2270,6 +2290,12 @@ object Build {
           ++ conditionally(hasAsyncAwait, "js/src/test/require-async-await")
           ++ conditionally(hasAsyncAwait && isWebAssembly, "js/src/test/require-orphan-await")
         )
+
+        if (isWasmNoJS) {
+          sharedTests
+        } else {
+          sharedTests ++ jsTests
+        }
       },
 
       /* For some reason, in Scala 3, the implementation of IterableDefaultTest
@@ -2289,6 +2315,7 @@ object Build {
           case ModuleKind.NoModule       => Nil
           case ModuleKind.CommonJSModule => (testDir / "resources-commonjs" ** "*.js").get()
           case ModuleKind.ESModule       => (testDir / "resources-esmodule" ** "*.js").get()
+          case ModuleKind.WasmModule     => Nil
         }
 
         common ++ moduleSpecific

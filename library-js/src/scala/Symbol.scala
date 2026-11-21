@@ -16,6 +16,7 @@ import language.experimental.captureChecking
 import scala.language.`2.13`
 
 import scala.scalajs.js
+import scala.scalajs.LinkingInfo._
 
 /** This class provides a simple way to get unique objects for equal strings.
  *  Since symbols are interned, they can be compared using reference equality.
@@ -38,13 +39,32 @@ object Symbol extends UniquenessCache[String, Symbol] {
 
 // Modified to use Scala.js specific cache
 private[scala] abstract class UniquenessCache[K, V] {
-  private val cache = js.Dictionary.empty[V]
+  private val cacheJS: js.Dictionary[V] | Null = {
+    linkTimeIf(moduleKind != ModuleKind.WasmModule) {
+      js.Dictionary.empty[V]
+    } {
+      null
+    }
+  }
+
+  private val cacheWasm: java.util.HashMap[String, V] | Null = {
+    linkTimeIf(moduleKind == ModuleKind.WasmModule) {
+      new java.util.HashMap[String, V]()
+    } {
+      null
+    }
+  }
 
   protected def valueFromKey(k: String): V
   protected def keyFromValue(v: V): Option[String]
 
-  def apply(name: String): V =
-    cache.getOrElseUpdate(name, valueFromKey(name))
+  def apply(name: String): V = {
+    linkTimeIf(moduleKind == ModuleKind.WasmModule) {
+      cacheWasm.nn.computeIfAbsent(name, valueFromKey(_))
+    } {
+      cacheJS.nn.getOrElseUpdate(name, valueFromKey(name))
+    }
+  }
 
   def unapply(other: V): Option[String] = keyFromValue(other)
 }

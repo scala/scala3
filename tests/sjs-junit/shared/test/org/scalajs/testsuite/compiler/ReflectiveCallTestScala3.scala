@@ -166,7 +166,8 @@ class ReflectiveCallTestScala3 {
     assertEquals("null", foo.nullMeth(null))
 
     // Make sure that a call to nothingMeth can link
-    if (Math.random() > 2) // always false
+    @noinline def never: Boolean = false
+    if (never)
       foo.nothingMeth(???)
   }
 
