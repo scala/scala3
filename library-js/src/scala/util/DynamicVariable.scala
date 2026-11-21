@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -13,8 +13,8 @@
 package scala
 package util
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
-
 import java.lang.InheritableThreadLocal
 
 /** `DynamicVariables` provide a binding mechanism where the current
@@ -27,31 +27,29 @@ import java.lang.InheritableThreadLocal
  *  parameterless closure, executes. When the second argument finishes,
  *  the variable reverts to the previous value.
  *
- *  ```
+ *  ```scala sc:compile
+ *  val someDynamicVariable = new DynamicVariable[Int](0)
+ *  val newValue = 42
  *  someDynamicVariable.withValue(newValue) {
  *    // ... code called in here that calls value ...
  *    // ... will be given back the newValue ...
  *  }
  *  ```
- *
  *  Each thread gets its own stack of bindings.  When a
  *  new thread is created, the `DynamicVariable` gets a copy
  *  of the stack of bindings from the parent thread, and
  *  from then on the bindings for the new thread
  *  are independent of those for the original thread.
  *
- *  @author  Lex Spoon
- *  @since   2.6
- *
  *  @tparam T the type of the dynamic variable's value
- *  @param init the initial value of the variable
+ *  @param init the initial value of the variable, inherited by new threads
  */
 class DynamicVariable[T](init: T) {
   /* Scala.js: replaced InheritableThreadLocal by a simple var.
    * This removes the dependency on ThreadLocal and InheritableThreadLocal from the
    * Hello World.
    */
-  private[this] var v = init
+  private var v = init
 
   /** Retrieves the current value. */
   def value: T = v
@@ -59,10 +57,10 @@ class DynamicVariable[T](init: T) {
   /** Sets the value of the variable while executing the specified
    *  thunk.
    *
-   *  @tparam S the result type of the thunk, also the return type of this method
-   *  @param newval The value to which to set the variable
-   *  @param thunk The code to evaluate under the new setting
-   *  @return the result of evaluating `thunk` with the variable temporarily bound to `newval`
+   *  @tparam S the result type of the thunk
+   *  @param newval the value to which to set the variable
+   *  @param thunk the code to evaluate under the new setting
+   *  @return the result of evaluating `thunk` with the variable bound to `newval`
    */
   def withValue[S](newval: T)(thunk: => S): S = {
     val oldval = v
@@ -72,10 +70,10 @@ class DynamicVariable[T](init: T) {
     finally v = oldval
   }
 
-  /** Changes the currently bound value, discarding the old value.
+  /** Change the currently bound value, discarding the old value.
    *  Usually withValue() gives better semantics.
    */
   def value_=(newval: T) = v = newval
 
-  override def toString: String = "DynamicVariable(" + value + ")"
+  override def toString(): String = "DynamicVariable(" + value + ")"
 }

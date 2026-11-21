@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -13,9 +13,12 @@
 package scala.collection.immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, Iterator, Stepper, StepperShape}
+import scala.collection.generic.CommonErrors
+import scala.annotation.compileTimeOnly
 
 /** `NumericRange` is a more generic version of the
  *  `Range` class which works with arbitrary types.
@@ -26,7 +29,7 @@ import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, 
  *  and `Range.BigDecimal`.  `Range.Int` exists for completeness, but
  *  the `Int`-based `scala.Range` should be more performant.
  *
- *  ```
+ *  ```scala sc:compile
  *     val r1 = Range(0, 100, 1)
  *     val veryBig = Int.MaxValue.toLong + 1
  *     val r2 = Range.Long(veryBig, veryBig + 100, 1)
@@ -56,15 +59,15 @@ sealed class NumericRange[T](
 
   override def iterator: Iterator[T] = new NumericRange.NumericRangeIterator(this, num)
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[T, S]): S with EfficientSplit = {
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[T, S]): S & EfficientSplit = {
     import scala.collection.convert._
     import impl._
     val s = shape.shape match {
       case StepperShape.IntShape    => new IntNumericRangeStepper   (this.asInstanceOf[NumericRange[Int]],    0, length)
       case StepperShape.LongShape   => new LongNumericRangeStepper  (this.asInstanceOf[NumericRange[Long]],   0, length)
-      case _         => shape.parUnbox(new AnyNumericRangeStepper[T](this, 0, length).asInstanceOf[AnyStepper[T] with EfficientSplit])
+      case _         => shape.parUnbox(new AnyNumericRangeStepper[T](this, 0, length).asInstanceOf[AnyStepper[T] & EfficientSplit])
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
 
@@ -96,29 +99,30 @@ sealed class NumericRange[T](
   /** Creates a new range with the start and end values of this range and
    *  a new `step`.
    *
-   *  @param newStep the new step value for the resulting range
-   *  @return a new `NumericRange` with the same `start` and `end` as this range but with `newStep` as its step
+   *  @param newStep the new step value for the range
+   *  @return a new `NumericRange` with the same `start` and `end` as this range but with the given `newStep`
    */
   def by(newStep: T): NumericRange[T] = copy(start, end, newStep)
 
 
   /** Creates a copy of this range.
    *
-   *  @param start the first value of the new range
-   *  @param end the end boundary of the new range (inclusive or exclusive, matching this range)
-   *  @param step the step value between successive elements of the new range
-   *  @return a new `NumericRange` with the given `start`, `end`, and `step`, preserving this range's inclusivity
+   *  @param start the start value of the new range
+   *  @param end the end value of the new range
+   *  @param step the step value of the new range
+   *  @return a new `NumericRange` with the given `start`, `end`, and `step`, preserving this range's `isInclusive` flag
    */
   def copy(start: T, end: T, step: T): NumericRange[T] =
     new NumericRange(start, end, step, isInclusive)
 
   @throws[IndexOutOfBoundsException]
   def apply(idx: Int): T = {
-    if (idx < 0 || idx >= length) throw new IndexOutOfBoundsException(s"$idx is out of bounds (min 0, max ${length - 1})")
+    if (idx < 0 || idx >= length)
+      throw CommonErrors.indexOutOfBounds(index = idx, max = length - 1)
     else locationAfterN(idx)
   }
 
-  override def foreach[@specialized(Specializable.Unit) U](f: T => U): Unit = {
+  override def foreach[U](f: T => U): Unit = {
     var count = 0
     var current = start
     while (count < length) {
@@ -127,6 +131,51 @@ sealed class NumericRange[T](
       count += 1
     }
   }
+
+  // NOTE: THIS METHOD SHOULD NOT BE USED ANYWHERE. IT EXISTS AS A LEGACY
+  //  AND TO KEEP BINARY COMPATIBILITY WITH SCALA 2. IT IS MARKED AS
+  //  `private[NumericRange]` BUT IT IS PUBLIC IN THE BINARY. THIS METHOD
+  //  SHOULD NOT BE REFERED TO DIRECTLY. CALLING `foreach` HERE DIRECTLY
+  //  DOESN'T INTRODUCE ANY PERFORMANCE REGRESSIONS SINCE THE BYTECODE OF
+  //  BOTH METHODS ARE THE SAME. IT IS ALSO MARKED AS `@compileTimeOnly`
+  //  TO CHECK THAT INDEED IT WILL NOT APPEAR IN ANY NEWLY COMPILED CODE
+  //  AT RUNTIME.
+  @compileTimeOnly(message = "Use `foreach` directly instead")
+  @deprecated(message = "Use `foreach` directly instead", since = "3.8.0")
+  private[NumericRange] def foreach$mVc$sp(f: T => Unit): Unit =
+    foreach(f)
+
+  private def indexOfTyped(elem: T, from: Int): Int =
+    posOf(elem) match {
+      case pos if pos >= from => pos
+      case _                  => -1
+    }
+
+  final override def indexOf[B >: T](elem: B, from: Int): Int =
+    try indexOfTyped(elem.asInstanceOf[T], from)
+    catch { case _: ClassCastException => super.indexOf(elem, from) }
+
+  private def lastIndexOfTyped(elem: T, end: Int): Int =
+    posOf(elem) match {
+      case pos if pos <= end => pos
+      case _                 => -1
+    }
+
+  final override def lastIndexOf[B >: T](elem: B, end: Int = length - 1): Int =
+    try lastIndexOfTyped(elem.asInstanceOf[T], end)
+    catch { case _: ClassCastException => super.lastIndexOf(elem, end) }
+
+  private def posOf(i: T): Int =
+      /*
+      If i is in this NumericRange, its position can simply be calculated by taking the amount of values up till i.
+      NumericRange.count does this in an most efficient manner.
+      Note that the contains() method throws an exception if the range has more than Int.MaxValue elements, but so did
+      the original indexOf / lastIndexOf functions, so no functionality changed. */
+    if (contains(i)) {
+      /* Because of zero indexing, the count is always one higher than the index. This can be simply solved by setting
+      isInclusive = false. */
+      NumericRange.count(this.start, i, this.step, isInclusive = false)
+    } else -1
 
   // TODO: these private methods are straight copies from Range, duplicated
   // to guard against any (most likely illusory) performance drop.  They should
@@ -250,14 +299,14 @@ sealed class NumericRange[T](
     if ((ord eq num) || defaultOrdering.get(num).exists(ord eq _)) {
       if (num.sign(step) > zero) head
       else last
-    } else super.min(ord)
+    } else super.min(using ord)
 
   override def max[T1 >: T](implicit ord: Ordering[T1]): T =
   // See comment for fast path in min().
     if ((ord eq num) || defaultOrdering.get(num).exists(ord eq _)) {
       if (num.sign(step) > zero) last
       else head
-    } else super.max(ord)
+    } else super.max(using ord)
 
   // a well-typed contains method.
   def containsTyped(x: T): Boolean =
@@ -318,7 +367,7 @@ sealed class NumericRange[T](
   override protected final def applyPreferredMaxLength: Int = Int.MaxValue
 
   override def equals(other: Any): Boolean = other match {
-    case x: NumericRange[_] =>
+    case x: NumericRange[?] =>
       (x canEqual this) && (length == x.length) && (
         (isEmpty) ||                            // all empty sequences are equal
           (start == x.start && last == x.last)  // same length and same endpoints implies equality
@@ -327,14 +376,14 @@ sealed class NumericRange[T](
       super.equals(other)
   }
 
-  override def toString: String = {
+  override def toString(): String = {
     val empty = if (isEmpty) "empty " else ""
     val preposition = if (isInclusive) "to" else "until"
     val stepped = if (step == 1) "" else s" by $step"
     s"${empty}NumericRange $start $preposition $end$stepped"
   }
 
-  override protected[this] def className = "NumericRange"
+  override protected def className = "NumericRange"
 }
 
 /** A companion object for numeric ranges.
@@ -361,12 +410,12 @@ object NumericRange {
    *  the number of elements exceeds the maximum Int.
    *
    *  @tparam T the numeric type of the range elements, which must have an `Integral` instance
-   *  @param start the first value in the range
-   *  @param end the end boundary of the range (exclusive or inclusive depending on `isInclusive`)
-   *  @param step the increment between successive elements
+   *  @param start the first element of the range
+   *  @param end the exclusive or inclusive upper bound, depending on `isInclusive`
+   *  @param step the increment between successive elements, must not be zero
    *  @param isInclusive whether `end` is included in the range
    *  @param num the `Integral` instance used for arithmetic on `T`
-   *  @return the number of elements in the range
+   *  @return the number of elements that the described range would contain
    */
   def count[T](start: T, end: T, step: T, isInclusive: Boolean)(implicit num: Integral[T]): Int = {
     val zero    = num.zero
@@ -466,7 +515,7 @@ object NumericRange {
 
   @SerialVersionUID(3L)
   class Inclusive[T](start: T, end: T, step: T)(implicit num: Integral[T])
-    extends NumericRange(start, end, step, true) {
+    extends NumericRange(start, end, step, isInclusive = true) {
     override def copy(start: T, end: T, step: T): Inclusive[T] =
       NumericRange.inclusive(start, end, step)
 
@@ -475,7 +524,7 @@ object NumericRange {
 
   @SerialVersionUID(3L)
   class Exclusive[T](start: T, end: T, step: T)(implicit num: Integral[T])
-    extends NumericRange(start, end, step, false) {
+    extends NumericRange(start, end, step, isInclusive = false) {
     override def copy(start: T, end: T, step: T): Exclusive[T] =
       NumericRange(start, end, step)
 
@@ -487,21 +536,23 @@ object NumericRange {
   def inclusive[T](start: T, end: T, step: T)(implicit num: Integral[T]): Inclusive[T] =
     new Inclusive(start, end, step)
 
-  private[collection] val defaultOrdering = Map[Numeric[_], Ordering[_]](
+  private[collection] val defaultOrdering = Map[Numeric[?], Ordering[?]](
+    Numeric.BigIntIsIntegral -> Ordering.BigInt,
     Numeric.IntIsIntegral -> Ordering.Int,
     Numeric.ShortIsIntegral -> Ordering.Short,
     Numeric.ByteIsIntegral -> Ordering.Byte,
     Numeric.CharIsIntegral -> Ordering.Char,
-    Numeric.LongIsIntegral -> Ordering.Long
+    Numeric.LongIsIntegral -> Ordering.Long,
+    Numeric.BigDecimalAsIfIntegral -> Ordering.BigDecimal
   )
 
   @SerialVersionUID(3L)
   private final class NumericRangeIterator[T](self: NumericRange[T], num: Integral[T]) extends AbstractIterator[T] with Serializable {
     import num.mkNumericOps
 
-    private[this] var _hasNext = !self.isEmpty
-    private[this] var _next: T = self.start
-    private[this] val lastElement: T = if (_hasNext) self.last else self.start
+    private var _hasNext = !self.isEmpty
+    private var _next: T = self.start
+    private val lastElement: T = if (_hasNext) self.last else self.start
     override def knownSize: Int = if (_hasNext) num.toInt((lastElement - _next) / self.step) + 1 else 0
     def hasNext: Boolean = _hasNext
     def next(): T = {

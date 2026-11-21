@@ -2,7 +2,7 @@
 //
 // e.g. addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
 
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.22.0")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.23.0")
 
 addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.3.2")
 

@@ -21,6 +21,9 @@ object DottyJSPlugin extends AutoPlugin {
 
     val enableWebAssembly: SettingKey[Boolean] =
       settingKey("enable all the configuration items required for WebAssembly")
+
+    val switchToWasmModule: StandardConfig => StandardConfig =
+      config => config.withModuleKind(ModuleKind.WasmModule)
   }
 
   import autoImport._
@@ -88,6 +91,7 @@ object DottyJSPlugin extends AutoPlugin {
         case ModuleKind.NoModule       => "commonjs"
         case ModuleKind.CommonJSModule => "commonjs"
         case ModuleKind.ESModule       => "module"
+        case ModuleKind.WasmModule     => "module"
       }
 
       val path = target.value / "package.json"

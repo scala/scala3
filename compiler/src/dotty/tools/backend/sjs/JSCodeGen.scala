@@ -528,7 +528,7 @@ class JSCodeGen()(using genCtx: Context) {
                 methods = forwarders,
                 jsConstructor = None,
                 jsMethodProps = Nil,
-                jsNativeMembers = Nil,
+                topLevelImportDefs = Nil,
                 topLevelExportDefs = Nil
             )(js.OptimizerHints.empty)
             generatedStaticForwarderClasses += sym -> forwardersClassDef
@@ -689,7 +689,7 @@ class JSCodeGen()(using genCtx: Context) {
         methods,
         Some(generatedConstructor),
         jsMethodProps,
-        jsNativeMembers = Nil,
+        topLevelImportDefs = Nil,
         topLevelExports)(
         OptimizerHints.empty)
 
@@ -2504,8 +2504,8 @@ class JSCodeGen()(using genCtx: Context) {
         jsFieldDefs += fdef
     }
 
-    assert(originalClassDef.jsNativeMembers.isEmpty,
-        "Found JS native members in anonymous JS class at " + pos)
+    assert(originalClassDef.topLevelImportDefs.isEmpty,
+        "Found top-level imports in anonymous JS class at " + pos)
 
     assert(originalClassDef.topLevelExportDefs.isEmpty,
         "Found top-level exports in anonymous JS class at " + pos)
@@ -2518,7 +2518,7 @@ class JSCodeGen()(using genCtx: Context) {
           ClassKind.AbstractJSType, None, Some(parent), interfaces = Nil,
           jsSuperClass = None, jsNativeLoadSpec = None, fields = Nil,
           methods = originalClassDef.methods, jsConstructor = None,
-          jsMethodProps = Nil, jsNativeMembers = Nil, topLevelExportDefs = Nil)(
+          jsMethodProps = Nil, topLevelImportDefs = Nil, topLevelExportDefs = Nil)(
           originalClassDef.optimizerHints)
     }
 
@@ -3067,7 +3067,12 @@ class JSCodeGen()(using genCtx: Context) {
       args: List[Tree]): js.Tree = {
     implicit val pos = tree.span
 
-    js.BinaryOp(js.BinaryOp.String_+, genExpr(receiver), genExpr(args.head))
+    def maybeConvertToString(arg: js.Tree): js.Tree =
+      if (arg.tpe == jstpe.StringType) arg
+      else js.UnaryOp(js.UnaryOp.ToString, arg)
+
+    js.BinaryOp(js.BinaryOp.String_+,
+        maybeConvertToString(genExpr(receiver)), maybeConvertToString(genExpr(args.head)))
   }
 
   /** Gen JS code for a call to Any.## */

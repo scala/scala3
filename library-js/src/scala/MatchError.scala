@@ -12,17 +12,21 @@
 
 package scala
 
+import language.experimental.captureChecking
+import scala.language.`2.13`
+import scala.util.control.NonFatal
+
 /** This class implements errors which are thrown whenever an
  *  object doesn't match any pattern of a pattern matching
  *  expression.
  *
- *  @param obj the object that failed to match any pattern
+ *  @param obj the object that failed to match any pattern; included in the error message
  */
 final class MatchError(@transient obj: Any) extends RuntimeException {
   /** There's no reason we need to call toString eagerly,
    *  so defer it until getMessage is called or object is serialized
    */
-  private[this] lazy val objString = {
+  private lazy val objString: String = {
     if (obj == null) "null"
     else {
       val cls = obj.getClass()
@@ -31,7 +35,7 @@ final class MatchError(@transient obj: Any) extends RuntimeException {
         else s"of class ${cls.getName()}"
       try s"$obj ($ofClass)"
       catch {
-        case _: Throwable => "an instance " + ofClass
+        case NonFatal(_) => "an instance " + ofClass
       }
     }
   }
@@ -42,5 +46,5 @@ final class MatchError(@transient obj: Any) extends RuntimeException {
     this
   }
 
-  override def getMessage() = objString
+  override def getMessage(): String = objString
 }

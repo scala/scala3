@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -14,41 +14,33 @@ package scala
 package reflect
 
 import scala.language.`2.13`
-
-import scala.annotation.unchecked.uncheckedStable
-
-import java.lang.{ Class => jClass }
-
-import scala.collection.mutable
-import scala.runtime.BoxedUnit
+import java.lang.{Class => jClass}
+import scala.annotation.{implicitNotFound, nowarn}
 
 /** A `ClassTag[T]` stores the erased class of a given type `T`, accessible via the `runtimeClass`
  *  field. This is particularly useful for instantiating `Array`s whose element types are unknown
  *  at compile time.
  *
- *  `ClassTag`s are a weaker special case of [[scala.reflect.api.TypeTags#TypeTag]]s, in that they
- *  wrap only the runtime class of a given type, whereas a `TypeTag` contains all static type
- *  information. That is, `ClassTag`s are constructed from knowing only the top-level class of a
- *  type, without necessarily knowing all of its argument types. This runtime information is enough
- *  for runtime `Array` creation.
+ *  `ClassTag`s wrap only the runtime class of a given type, without necessarily knowing all of
+ *  its argument types. This runtime information is enough for runtime `Array` creation.
  *
  *  For example:
- *  ```
- *   scala> def mkArray[T : ClassTag](elems: T*) = Array[T](elems: _*)
- *   mkArray: [T](elems: T*)(implicit evidence$1: scala.reflect.ClassTag[T])Array[T]
+ *  ```scala sc:compile
+ *  import scala.reflect.ClassTag
  *
- *   scala> mkArray(42, 13)
- *   res0: Array[Int] = Array(42, 13)
+ *  def mkArray[T: ClassTag](elems: T*): Array[T] = Array[T](elems*)
  *
- *   scala> mkArray("Japan","Brazil","Germany")
- *   res1: Array[String] = Array(Japan, Brazil, Germany)
+ *  val ints = mkArray(42, 13)
+ *  val strings = mkArray("Japan", "Brazil", "Germany")
  *  ```
  *
- *  See [[scala.reflect.api.TypeTags]] for more examples, or the
- *  [Reflection Guide: TypeTags](http://docs.scala-lang.org/overviews/reflection/typetags-manifests.html)
- *  for more details.
+ *  For compile-time type information in macros, see the facilities in the
+ *  [[scala.quoted]] package.
+ *  For limited runtime type checks beyond what `Class[?]` provides, see
+ *  [[scala.reflect.TypeTest]] and [[scala.reflect.Typeable]].
  */
-@scala.annotation.implicitNotFound(msg = "No ClassTag available for ${T}")
+@nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifestDeprecatedApis""")
+@implicitNotFound(msg = "No reflect.ClassTag available for ${T}. You can fix this by changing [${T}] to [${T}: reflect.ClassTag].")
 trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serializable {
   // please, don't add any APIs here, like it was with `newWrappedArray` and `newArrayBuilder`
   // class tags, and all tags in general, should be as minimalistic as possible
@@ -56,7 +48,7 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
   /** A class representing the type `U` to which `T` would be erased.
    *  Note that there is no subtyping relationship between `T` and `U`.
    */
-  def runtimeClass: jClass[_]
+  def runtimeClass: jClass[?]
 
   /** Produces a `ClassTag` that knows how to instantiate an `Array[Array[T]]`. */
   def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](arrayClass(runtimeClass))
@@ -84,11 +76,11 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
     else None
 
   // case class accessories
-  override def canEqual(x: Any) = x.isInstanceOf[ClassTag[_]]
-  override def equals(x: Any) = x.isInstanceOf[ClassTag[_]] && this.runtimeClass == x.asInstanceOf[ClassTag[_]].runtimeClass
-  override def hashCode = runtimeClass.##
-  override def toString = {
-    def prettyprint(clazz: jClass[_]): String =
+  override def canEqual(x: Any) = x.isInstanceOf[ClassTag[?]]
+  override def equals(x: Any) = x.isInstanceOf[ClassTag[?]] && this.runtimeClass == x.asInstanceOf[ClassTag[?]].runtimeClass
+  override def hashCode() = runtimeClass.##
+  override def toString() = {
+    def prettyprint(clazz: jClass[?]): String =
       if (clazz.isArray) s"Array[${prettyprint(clazz.getComponentType)}]" else
       clazz.getName
     prettyprint(runtimeClass)
@@ -117,7 +109,7 @@ object ClassTag {
 
   @inline
   @SerialVersionUID(1L)
-  private class GenericClassTag[T](val runtimeClass: jClass[_]) extends ClassTag[T] {
+  private class GenericClassTag[T](val runtimeClass: jClass[?]) extends ClassTag[T] {
     override def newArray(len: Int): Array[T] = {
       java.lang.reflect.Array.newInstance(runtimeClass, len).asInstanceOf[Array[T]]
     }
@@ -145,5 +137,5 @@ object ClassTag {
           new GenericClassTag[T](runtimeClass1)
     }
 
-  def unapply[T](ctag: ClassTag[T]): Option[Class[_]] = Some(ctag.runtimeClass)
+  def unapply[T](ctag: ClassTag[T]): Option[Class[?]] = Some(ctag.runtimeClass)
 }
