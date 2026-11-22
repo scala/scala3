@@ -21,7 +21,7 @@ object ProduktSeq:
     def unapply(f: Foo): Option[(String, Seq[Int])] = Some(f.name -> f.children)
 
   def foo(f: Foo) = f match
-    case Foo(name, x, y, ns*) => ">= two children." // error
+    case Foo(name, x, y, ns*) => ">= two children." // error // error // error // error
     case Foo(name, ns*)       => "< two children." // error
 end ProduktSeq
 

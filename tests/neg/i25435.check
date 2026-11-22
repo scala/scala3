@@ -1,7 +1,19 @@
 -- Error: tests/neg/i25435.scala:24:25 ---------------------------------------------------------------------------------
-24 |    case Foo(name, x, y, ns*) => ">= two children." // error
+24 |    case Foo(name, x, y, ns*) => ">= two children." // error // error // error // error
    |                         ^^^
-   |             Sequence wildcard pattern is not allowed for case class `unapply`; it requires `unapplySeq` instead
+   |                        Sequence wildcard pattern is not allowed for `unapply`; it requires `unapplySeq` instead
+-- Error: tests/neg/i25435.scala:24:13 ---------------------------------------------------------------------------------
+24 |    case Foo(name, x, y, ns*) => ">= two children." // error // error // error // error
+   |             ^^^^
+   |             expected type of name @ _ is not fully defined
+-- Error: tests/neg/i25435.scala:24:19 ---------------------------------------------------------------------------------
+24 |    case Foo(name, x, y, ns*) => ">= two children." // error // error // error // error
+   |                   ^
+   |                   expected type of x @ _ is not fully defined
+-- Error: tests/neg/i25435.scala:24:22 ---------------------------------------------------------------------------------
+24 |    case Foo(name, x, y, ns*) => ">= two children." // error // error // error // error
+   |                      ^
+   |                      expected type of y @ _ is not fully defined
 -- Error: tests/neg/i25435.scala:25:19 ---------------------------------------------------------------------------------
 25 |    case Foo(name, ns*)       => "< two children." // error
    |                   ^^^
