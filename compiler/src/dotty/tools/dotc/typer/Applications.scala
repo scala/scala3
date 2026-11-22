@@ -335,12 +335,16 @@ object Applications {
       val alignedArgTypes =
         if argTypes.length == alignedArgs.length then
           argTypes
-        else if hasInvalidSeqWildcard then
-          alignedArgs.map(_ => WildcardType)
         else
-          report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), pos)
-          argTypes.take(args.length) ++
-            List.fill(argTypes.length - args.length)(WildcardType)
+          val ats =
+            if hasInvalidSeqWildcard then
+              argTypes.zip(args).map: (at, a) =>
+                if untpd.isWildcardStarArg(a) then WildcardType
+                else at
+            else
+              report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), pos)
+              argTypes.take(args.length)
+          ats ++ List.fill(argTypes.length - args.length)(WildcardType)
 
       if varArgs.length >= 2 then
         report.error(em"Only one spread pattern allowed in sequence", varArgs(1).srcPos)
