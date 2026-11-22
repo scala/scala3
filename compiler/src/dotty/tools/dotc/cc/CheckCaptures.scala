@@ -2614,6 +2614,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           def traverse(t: Tree)(using Context) = t match
             case tree: InferredTypeTree =>
             case tree: New =>
+            case TypeApply(fun, args) if fun.symbol == defn.Any_typeTest || fun.symbol == defn.Any_typeCast =>
+              traverse(fun)
+              withMode(Mode.Pattern)(args.foreach(traverse))
             case tree: TypeTree =>
               withCollapsedLocalCaps:
                 checkAppliedTypesIn(tree.withType(tree.nuType))

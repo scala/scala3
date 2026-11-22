@@ -268,6 +268,10 @@ extension (tp: Type)
       case _ => tp
     tp match
       case tp: MethodOrPoly => tp // don't box results of methods outside refinements
+      case tp: LazyRef =>
+        val t1 = tp.ref
+        val t2 = recur(t1)
+        if t2 ne t1 then LazyRef.of(t2) else tp
       case _ => recur(tp)
 
   /** Is this type boxed (i.e its outmost capturing type is boxed,

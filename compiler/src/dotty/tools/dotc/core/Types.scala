@@ -2593,8 +2593,12 @@ object Types extends TypeUtils {
           case arg: TypeBounds =>
             val v = param.paramVarianceSign
             val pbounds = param.paramInfo
-            if (v > 0 && pbounds.loBound.dealiasKeepAnnots.isExactlyNothing) TypeAlias(arg.hiBound & rebase(pbounds.hiBound))
-            else if (v < 0 && pbounds.hiBound.dealiasKeepAnnots.isExactlyAny) TypeAlias(arg.loBound | rebase(pbounds.loBound))
+            if (v > 0 && pbounds.loBound.dealiasKeepAnnots.isExactlyNothing
+                && !pbounds.hiBound.existsPart(_.isInstanceOf[LazyRef], forceLazy = false))
+              TypeAlias(arg.hiBound & rebase(pbounds.hiBound))
+            else if (v < 0 && pbounds.hiBound.dealiasKeepAnnots.isExactlyAny
+                && !pbounds.loBound.existsPart(_.isInstanceOf[LazyRef], forceLazy = false))
+              TypeAlias(arg.loBound | rebase(pbounds.loBound))
             else arg recoverable_& rebase(pbounds)
           case arg => TypeAlias(arg)
         }
@@ -6174,13 +6178,18 @@ object Types extends TypeUtils {
    *  results if there is a change.
    */
   trait FollowAliasesMap(using Context) extends TypeMap:
-    def mapFollowingAliases(t: Type): Type =
-      val t1 = t.dealiasKeepAnnotsAndOpaques
-      if t1 ne t then
+    def mapFollowingAliases(t: Type): Type = t match
+      case t: LazyRef =>
+        val t1 = t.ref
         val t2 = apply(t1)
-        if t2 ne t1 then t2
-        else t
-      else mapOver(t)
+        if t2 ne t1 then LazyRef.of(t2) else t
+      case _ =>
+        val t1 = t.dealiasKeepAnnotsAndOpaques
+        if t1 ne t then
+          val t2 = apply(t1)
+          if t2 ne t1 then t2
+          else t
+        else mapOver(t)
 
   abstract class TypeMap(implicit protected var mapCtx: Context)
   extends VariantTraversal with (Type => Type) { thisMap =>
