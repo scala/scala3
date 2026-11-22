@@ -309,7 +309,11 @@ object Applications {
         case argType :: Nil
         if args.lengthCompare(1) > 0
             && Feature.autoTuplingEnabled
-            && defn.isTupleNType(argType.normalizedTupleType) =>
+            && {
+              val tt = argType.normalizedTupleType
+              defn.isTupleNType(tt)
+              && tt.argInfos.lengthCompare(args) == 0
+            } =>
           untpd.Tuple(args) :: Nil
         case _ =>
           args
