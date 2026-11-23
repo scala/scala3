@@ -109,9 +109,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
    */
   private val closuresNeedingExplicify = mutable.Set.empty[Symbol]
 
-  val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
-  val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
-  val beanProps: BeanProperties = new BeanProperties(thisPhase)
+  private val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
+  private val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
+  private val beanProps: BeanProperties = new BeanProperties(thisPhase)
 
   private def newPart(tree: Tree): Option[New] = methPart(tree) match {
     case Select(nu: New, _) => Some(nu)
@@ -881,9 +881,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         ExperimentalAnnotation.copy(sym.companionClass).foreach(sym.addAnnotation)
   }
 
-  override protected def infoMayChange(sym: Symbol)(using Context): Boolean = false
-
-  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp
+  def transformInfo(tp: Type, sym: Symbol)(using Context): Type =
+    // The actual change is done by synthMbr's addParent
+    tp
 
   private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[List[Type]] =
     val companionClass = sym.companionClass
