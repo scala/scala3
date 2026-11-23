@@ -175,7 +175,7 @@ object ExecutionContext {
    *   1. Writing a Java source file. This works because `private[scala]` is emitted as `public` in Java bytecode.
    *
    *  ```scala sc:compile
-   *  import scala.reflect.Selectable.reflectiveSelectable
+   *  import scala.language.reflectiveCalls
    *
    *  type ExecutionContextCompanionApi = AnyRef {
    *    def opportunistic: scala.concurrent.ExecutionContextExecutor

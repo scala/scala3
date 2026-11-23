@@ -68,9 +68,10 @@ object SnippetExpectations:
       else
         val ann = if level == MessageLevel.Warning then "warn" else "error"
         val summary = SnippetCompilerMessage(None,
-          s"No expected ${levelName}s marked in snippet -- use // $ann\nactual $levelName count: ${observed.size}", level)
+          s"No expected ${levelName}s marked in snippet -- use // $ann\nactual $levelName count: ${observed.size}",
+          MessageLevel.Error)
         summary +: observed.map(o =>
-          SnippetCompilerMessage(o.message.position, s"Unexpected ${describeObserved(o)}", o.message.level))
+          SnippetCompilerMessage(o.message.position, s"Unexpected ${describeObserved(o)}", MessageLevel.Error))
     else
       // Line-based: a line marked `// error` / `// warn` must carry at least one
       // such diagnostic, and lines without a marker must carry none. Counts are
@@ -87,7 +88,7 @@ object SnippetExpectations:
 
       for o <- observed if !expectedLines.contains(o.sourceLine) do
         errors += SnippetCompilerMessage(
-          o.message.position, s"Unexpected ${describeObserved(o)}", o.message.level)
+          o.message.position, s"Unexpected ${describeObserved(o)}", MessageLevel.Error)
 
       if errors.isEmpty then Nil
       else
@@ -101,8 +102,8 @@ object SnippetExpectations:
   private def describeObserved(o: ObservedDiagnostic): String =
     val name = o.message.level.text.toLowerCase
     o.sourceLine match
-      case Some(line) => s"$name on line ${line + 1}: " + o.message.message
-      case None => s"$name at an unknown position: " + o.message.message
+      case Some(line) => s"$name on line ${line + 1}"
+      case None => s"$name at an unknown position"
 
   /** Scans `snippet` for inline diagnostic annotations (`// error`, `// warn`).
    *  Returns parsed expectations together with any parse-level errors. */

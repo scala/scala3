@@ -112,7 +112,7 @@ class JLineTerminal(
    *  - Syntax highlighting
    *  - Auto-completions
    *
-   *  @throws org.jline.reader.EndOfFileException This exception is thrown when the user types Ctrl-D.
+   *  @throws EndOfFileException This exception is thrown when the user types Ctrl-D.
    */
   def readLine(
     completer: Completer // provide auto-completions

@@ -18,6 +18,7 @@ object int:
    *    case 2147483646 => 2147483647
    *  }
    *  ```
+   *  @syntax markdown
    */
   type S[N <: Int] <: Int
 
@@ -28,6 +29,7 @@ object int:
    *  ```scala sc:compile sc-compile-with:ops-int-plus-imports
    *  val sum: 2 + 2 = 4
    *  ```
+   *  @syntax markdown
    */
   infix type +[X <: Int, Y <: Int] <: Int
 
@@ -49,6 +51,7 @@ object int:
    *  ```scala sc:compile sc-compile-with:ops-int-times-imports
    *  val mul: 4 * 2 = 8
    *  ```
+   *  @syntax markdown
    */
   infix type *[X <: Int, Y <: Int] <: Int
 
@@ -59,6 +62,7 @@ object int:
    *  ```scala sc:compile sc-compile-with:ops-int-div-imports
    *  val div: 5 / 2 = 2
    *  ```
+   *  @syntax markdown
    */
   infix type /[X <: Int, Y <: Int] <: Int
 
@@ -69,6 +73,7 @@ object int:
    *  ```scala sc:compile sc-compile-with:ops-int-mod-imports
    *  val mod: 5 % 2 = 1
    *  ```
+   *  @syntax markdown
    */
   infix type %[X <: Int, Y <: Int] <: Int
 
@@ -79,6 +84,7 @@ object int:
    *  ```scala sc:compile sc-compile-with:ops-int-lshift-imports
    *  val lshift: 1 << 2 = 4
    *  ```
+   *  @syntax markdown
    */
   infix type <<[X <: Int, Y <: Int] <: Int
 
@@ -89,6 +95,7 @@ object int:
    *  ```scala sc:compile sc-compile-with:ops-int-rshift-imports
    *  val rshift: 10 >> 1 = 5
    *  ```
+   *  @syntax markdown
    */
   infix type >>[X <: Int, Y <: Int] <: Int
 
@@ -99,6 +106,7 @@ object int:
    *  ```scala sc:compile sc-compile-with:ops-int-urshift-imports
    *  val rshiftzero: 10 >>> 1 = 5
    *  ```
+   *  @syntax markdown
    */
   infix type >>>[X <: Int, Y <: Int] <: Int
 
@@ -109,6 +117,7 @@ object int:
    *  ```scala sc:compile sc-compile-with:ops-int-xor-imports
    *  val xor: 10 ^ 30 = 20
    *  ```
+   *  @syntax markdown
    */
   infix type ^[X <: Int, Y <: Int] <: Int
 
@@ -120,6 +129,7 @@ object int:
    *  val lt1: 4 < 2 = false
    *  val lt2: 2 < 4 = true
    *  ```
+   *  @syntax markdown
    */
   infix type <[X <: Int, Y <: Int] <: Boolean
 
@@ -131,6 +141,7 @@ object int:
    *  val gt1: 4 > 2 = true
    *  val gt2: 2 > 2 = false
    *  ```
+   *  @syntax markdown
    */
   infix type >[X <: Int, Y <: Int] <: Boolean
 
@@ -142,6 +153,7 @@ object int:
    *  val ge1: 4 >= 2 = true
    *  val ge2: 2 >= 3 = false
    *  ```
+   *  @syntax markdown
    */
   infix type >=[X <: Int, Y <: Int] <: Boolean
 
@@ -153,6 +165,7 @@ object int:
    *  val lt1: 4 <= 2 = false
    *  val lt2: 2 <= 2 = true
    *  ```
+   *  @syntax markdown
    */
   infix type <=[X <: Int, Y <: Int] <: Boolean
 
@@ -164,6 +177,7 @@ object int:
    *  val and1: BitwiseAnd[4, 4] = 4
    *  val and2: BitwiseAnd[10, 5] = 0
    *  ```
+   *  @syntax markdown
    */
   type BitwiseAnd[X <: Int, Y <: Int] <: Int
 
@@ -174,6 +188,7 @@ object int:
    *  ```scala sc:compile sc-compile-with:ops-int-bitwiseor-imports
    *  val or: BitwiseOr[10, 11] = 11
    *  ```
+   *  @syntax markdown
    */
   type BitwiseOr[X <: Int, Y <: Int] <: Int
 
@@ -184,6 +199,7 @@ object int:
    *  ```scala sc:compile sc-compile-with:ops-int-abs-imports
    *  val abs: Abs[-1] = 1
    *  ```
+   *  @syntax markdown
    */
   type Abs[X <: Int] <: Int
 
@@ -195,6 +211,7 @@ object int:
    *  val neg1: Negate[-1] = 1
    *  val neg2: Negate[1] = -1
    *  ```
+   *  @syntax markdown
    */
   type Negate[X <: Int] <: Int
 
@@ -205,6 +222,7 @@ object int:
    *  ```scala sc:compile sc-compile-with:ops-int-min-imports
    *  val min: Min[-1, 1] = -1
    *  ```
+   *  @syntax markdown
    */
   type Min[X <: Int, Y <: Int] <: Int
 
@@ -215,13 +233,18 @@ object int:
    *  ```scala sc:compile sc-compile-with:ops-int-max-imports
    *  val max: Max[-1, 1] = 1
    *  ```
+   *  @syntax markdown
    */
   type Max[X <: Int, Y <: Int] <: Int
 
   /** String conversion of an `Int` singleton type.
-   *  ```scala sc:nocompile
+  *  ```scala sc-hidden sc-name:ops-int-tostring-imports
+   *  import compiletime.ops.int.*
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-int-tostring-imports
    *  val abs: ToString[1] = "1"
    *  ```
+   *  @syntax markdown
    */
   @deprecated("Use compiletime.ops.any.ToString instead.","3.2.0")
   type ToString[X <: Int] <: String
@@ -233,6 +256,7 @@ object int:
    *  ```scala sc:compile sc-compile-with:ops-int-tolong-imports
    *  val x: ToLong[1] = 1L
    *  ```
+   *  @syntax markdown
    */
   type ToLong[X <: Int] <: Long
 
@@ -243,6 +267,7 @@ object int:
     *  ```scala sc:compile sc-compile-with:ops-int-tofloat-imports
    *  val x: ToFloat[1] = 1.0f
    *  ```
+   *  @syntax markdown
    */
   type ToFloat[X <: Int] <: Float
 
@@ -253,6 +278,7 @@ object int:
     *  ```scala sc:compile sc-compile-with:ops-int-todouble-imports
    *  val x: ToDouble[1] = 1.0
    *  ```
+   *  @syntax markdown
    */
   type ToDouble[X <: Int] <: Double
 
@@ -269,5 +295,6 @@ object int:
    *  type Log2[N <: Int] = 31 - NumberOfLeadingZeros[N]
    *  val log2of8: Log2[8] = 3
    *  ```
+   *  @syntax markdown
    */
   type NumberOfLeadingZeros[X <: Int] <: Int

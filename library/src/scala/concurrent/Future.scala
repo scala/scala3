@@ -855,7 +855,7 @@ object Future {
    *  or the result of the fold.
    *
    *  Example:
-   *  ```scala sc:nocompile
+   *  ```scala sc:compile
    *  import ExecutionContext.Implicits.global
    *  val futures = List(Future.successful(1), Future.successful(2), Future.successful(3))
    *  val futureSum = Future.fold(futures)(0)(_ + _)
@@ -878,7 +878,7 @@ object Future {
    *  where the fold-zero is the result value of the first `Future` in the collection.
    *
    *  Example:
-   *  ```scala sc:nocompile
+   *  ```scala sc:compile
    *  import ExecutionContext.Implicits.global
    *  val futures = List(Future.successful(1), Future.successful(2), Future.successful(3))
    *  val futureSum = Future.reduce(futures)(_ + _)

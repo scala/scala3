@@ -137,7 +137,7 @@ import caps.unsafe.unsafeAssumePure
  *  combinedDefaulting(p("tenty-nine"))
  *
  *  // Int = -1
- *  combinedDefaulting(p(null.asInstanceOf[String]))
+ *  combinedDefaulting(p(null: String))
  *
  *  // Int = -100
  *  combinedDefaulting(throw new IllegalStateException)

@@ -37,17 +37,17 @@ class StoreReporter(outer: Reporter | Null = Reporter.NoReporter, fromTyperState
       case null => false
       case is => is.exists(_.isInstanceOf[StickyError])
 
-  override def removeBufferedMessages: List[Diagnostic] =
+  override def removeBufferedMessages(using Context): List[Diagnostic] =
     infos match
       case null => Nil
       case is => try is.toList finally infos = null
 
-  override def mapBufferedMessages(f: Diagnostic => Diagnostic): Unit =
+  override def mapBufferedMessages(f: Diagnostic => Diagnostic)(using Context): Unit =
     infos match
       case null => ()
       case is => is.mapInPlace(f)
 
-  override def pendingMessages: List[Diagnostic] =
+  override def pendingMessages(using Context): List[Diagnostic] =
     infos match
       case null => Nil
       case is => is.toList
