@@ -1,3 +1,5 @@
+import scala.language.implicitConversions
+
 trait CB[X] { def get: X }
 
 trait WrapperConvert[F[_], G[_]]:

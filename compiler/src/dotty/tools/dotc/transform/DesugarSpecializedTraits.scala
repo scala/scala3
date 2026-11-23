@@ -48,7 +48,6 @@ import dotty.tools.dotc.util.Spans.spanCoord
 import dotty.tools.dotc.util.Spans.NoSpan
 import dotty.tools.dotc.transform.DesugarSpecializedTraits.specializationOf
 import dotty.tools.dotc.transform.DesugarSpecializedTraits.isTopClass
-import dotty.tools.dotc.reporting.VarianceInSpecializedTraitsLimitation
 import dotty.tools.dotc.transform.DesugarSpecializedTraits.isTopClassOrNothing
 import dotty.tools.dotc.inlines.Inlines.InlineTraitState
 import dotty.tools.dotc.core.Decorators.em
@@ -357,8 +356,86 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
     // we wouldn't need a transform statements method at all
     // (just a "generateInlineTraitsInterfaceAndImplementation" or something), 
     // but not sure if that's worth doing (it would be throwing away work).
-    (generatedTraitStatsFinal ++ generatedClassStatsFinal ++ stats) 
+    (generatedTraitStatsFinal ++ generatedClassStatsFinal ++ generatedVariantStats(stats))
   }
+
+  // If `A` has variant specialized type parameters, `A[Int]` erases to `A` rather than `A$sp$Int`
+  // because a value of type `A[Int]` may be:
+  //  an unspecialized `A[Any]` (contravariance) 
+  //  `A[Nothing]` (covariance). 
+  // To keep the benefit of specialization when the value is specialized, 
+  // rewrite 
+  //   q.m(args) 
+  // to
+  //    { 
+  //      val q' = q; 
+  //      val args' = args; 
+  //      if q'.isInstanceOf[A$sp$Int] then q'.asInstanceOf[A$sp$Int].m(args') 
+  //      else q'.m(args') 
+  //    }
+  private def generatedVariantStats(stats: List[Tree])(using Context): List[Tree] =
+    def variantInterface(qual: Tree): Option[Type] = qual match
+      case _: This | _: Super => None
+      case _ => qual.tpe.widenDealias match
+        case Specialization(spec) if spec.hasVariantSpecializedParams && spec.isFullySpecialized =>
+          val sym = spec.symbol.owner.enclosingPackageClass.info.decls.lookup(spec.newSpecializedTraitName)
+          Option.when(sym.isClass)(sym.typeRef.appliedTo(spec.unspecializedTypeArgs))
+        case _ => None
+
+    def withQualifier(tree: Tree, qual: Tree): Tree = tree match
+      case Apply(fn, args) => cpy.Apply(tree)(withQualifier(fn, qual), args)
+      case TypeApply(fn, targs) => cpy.TypeApply(tree)(withQualifier(fn, qual), targs)
+      case sel: Select => qual.select(sel.symbol)
+
+    def mapArgs(tree: Tree)(f: (Tree, Type) => Tree): Tree = tree match
+      case Apply(fn, args) =>
+        val fn1 = mapArgs(fn)(f)
+        cpy.Apply(tree)(fn1, args.lazyZip(fn.tpe.widen.firstParamTypes).map(f))
+      case TypeApply(fn, targs) => cpy.TypeApply(tree)(mapArgs(fn)(f), targs)
+      case _ => tree
+
+    def argsWithFormals(tree: Tree): List[(Tree, Type)] = tree match
+      case Apply(fn, args) => argsWithFormals(fn) ++ args.zip(fn.tpe.widen.firstParamTypes)
+      case TypeApply(fn, _) => argsWithFormals(fn)
+      case _ => Nil
+
+    // Arguments are duplicated into both branches if possible, and let-bound otherwise.
+    // By-name and repeated arguments cannot be let-bound.
+    def canDuplicate(arg: Tree) = isIdempotentExpr(arg) && !arg.existsSubTree(_.isDef)
+    def mustDuplicate(formal: Type) = formal.isInstanceOf[ExprType] || formal.isRepeatedParam
+
+    new TreeMap {
+      override def transform(tree: Tree)(using Context): Tree = tree match
+        case _: Apply | _: TypeApply | _: Select if !tree.tpe.widen.isInstanceOf[MethodicType] =>
+          methPart(tree) match
+            case sel @ Select(qual, _)
+            if sel.symbol.isTerm && sel.symbol.owner.isInlineTrait && !sel.symbol.isConstructor =>
+              variantInterface(qual) match
+                case Some(interface) =>
+                  val qual1 = transform(qual)
+                  val tree1 = mapArgs(tree)((arg, _) => transform(arg))
+                  if argsWithFormals(tree1).exists((arg, formal) => mustDuplicate(formal) && !canDuplicate(arg)) then
+                    withQualifier(tree1, qual1)
+                  else evalOnce(qual1) { q =>
+                    val argDefs = mutable.ListBuffer.empty[ValDef]
+                    val tree2 = mapArgs(tree1) { (arg, formal) =>
+                      if canDuplicate(arg) then arg
+                      else
+                        val vdef = SyntheticValDef(NameKinds.TempResultName.fresh(), arg)
+                        argDefs += vdef
+                        ref(vdef.symbol)
+                    }
+                    Block(argDefs.toList,
+                      If(q.isInstance(interface), withQualifier(tree2, q.cast(interface)), withQualifier(tree2, q)))
+                  }
+                case None => super.transform(tree)
+            case _ => super.transform(tree)
+        case tree @ Assign(lhs: Select, rhs) =>
+          cpy.Assign(tree)(cpy.Select(lhs)(transform(lhs.qualifier), lhs.name), transform(rhs))
+        case tree: CaseDef =>
+          cpy.CaseDef(tree)(tree.pat, transform(tree.guard), transform(tree.body))
+        case _ => super.transform(tree)
+    }.transform(stats)
 
   private def specializedTraitCtx(using Context): Context = 
     ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.SpecializedTraits))
@@ -432,14 +509,6 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
                 """, 
                 tdef.symbol.srcPos
               )
-                
-            tdef.symbol.typeParams.foreach {
-              param =>
-                val isVariant = param.paramVariance.isOneOf(Flags.Contravariant | Flags.Covariant) && 
-                  Specialization.classSpecializedTypeParams(tdef.symbol).exists(tpe => tpe.typeSymbol == param)
-                if isVariant then
-                  report.warning(VarianceInSpecializedTraitsLimitation(), param.srcPos)
-            }
             
             traverseChildren(tdef)
 
@@ -557,11 +626,6 @@ object DesugarSpecializedTraits:
         case None => ErrorType(em"Missing specialization type for $tp")
         case Some(tpe) => tpe.typeRef
 
-  def isSameErasureBucket(tp1: Type, tp2: Type)(using Context): Boolean =
-    val sp1 = specializationOf(tp1)
-    val sp2 = specializationOf(tp2)
-    (sp1 eq sp2) || isTopClassOrNothing(tp1.classSymbol) && isTopClassOrNothing(tp2.classSymbol)
-
 end DesugarSpecializedTraits
 
 /*
@@ -667,6 +731,9 @@ class Specialization(val symbol: Symbol, val args: List[Type], val span: Span)(u
       .map(param => specializedTypeParamsToTypeArgumentsMap.applyOrElse(param, _ => param)) 
 
   val hasSpecializedParams: Boolean = specializedTypeParams.nonEmpty
+
+  def hasVariantSpecializedParams: Boolean =
+    specializedTypeParams.exists(_.typeSymbol.paramVariance.isOneOf(Flags.Covariant | Flags.Contravariant))
   
   def constructorTypeParams: List[Type] = symbol.primaryConstructor.rawParamss.head.map(_.typeRef)
   

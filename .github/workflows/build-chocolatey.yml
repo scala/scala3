@@ -32,19 +32,19 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Replace the version placeholder
-        uses: richardrigutins/replace-in-files@bca25c5a547c8caa5e4db158b34ee8e8c7539ccf # v3.1.3
+        uses: richardrigutins/replace-in-files@3ad19babce615231ae704de7a34dd014f7686c6d # v3.1.6
         with:
           files: ./pkgs/chocolatey/scala.nuspec
           search-text: '@LAUNCHER_VERSION@'
           replacement-text: ${{ inputs.version }}
       - name: Replace the URL placeholder
-        uses: richardrigutins/replace-in-files@bca25c5a547c8caa5e4db158b34ee8e8c7539ccf # v3.1.3
+        uses: richardrigutins/replace-in-files@3ad19babce615231ae704de7a34dd014f7686c6d # v3.1.6
         with:
           files: ./pkgs/chocolatey/tools/chocolateyInstall.ps1
           search-text: '@LAUNCHER_URL@'
           replacement-text: ${{ inputs.url }}
       - name: Replace the CHECKSUM placeholder
-        uses: richardrigutins/replace-in-files@bca25c5a547c8caa5e4db158b34ee8e8c7539ccf # v3.1.3
+        uses: richardrigutins/replace-in-files@3ad19babce615231ae704de7a34dd014f7686c6d # v3.1.6
         with:
           files: ./pkgs/chocolatey/tools/chocolateyInstall.ps1
           search-text: '@LAUNCHER_SHA256@'

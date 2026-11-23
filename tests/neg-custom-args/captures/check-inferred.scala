@@ -21,7 +21,7 @@ class Counter extends ExclusiveCapability:
     count.put(count.get - 1)
 
 trait CounterAPI:
-  val count = Ref(): Object^ // error // error
+  val count = Ref(): Object^ // error
   private def count2 = Ref() // ok
 
 def test() =

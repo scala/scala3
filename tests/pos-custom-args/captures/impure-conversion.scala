@@ -1,4 +1,5 @@
 import language.experimental.captureChecking
+import scala.language.implicitConversions
 import caps.*
 
 trait Ctx extends SharedCapability

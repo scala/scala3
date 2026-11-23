@@ -192,10 +192,11 @@ sealed abstract class CaptureSet extends Showable:
    *
    *  If the element itself cannot be added to the set for some reason, and the
    *  element is not the root capability, try instead to include its underlying
-   *  capture set.
+   *  capture set. With `widen = false` this fallback is skipped: the caller,
+   *  a union, performs it itself against the whole union.
    */
-  protected def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean = reporting.trace(i"try include $elem in $this # ${maybeId}"):
-    accountsFor(elem) || addNewElem(elem)
+  protected def tryInclude(elem: Capability, origin: CaptureSet, widen: Boolean = true)(using Context, VarState): Boolean = reporting.trace(i"try include $elem in $this # ${maybeId}"):
+    accountsFor(elem) || addNewElem(elem, widen)
 
   /** Try to include all elements in `refs` to this capture set. */
   protected final def tryInclude(newElems: Refs, origin: CaptureSet)(using Context, VarState): Boolean =
@@ -211,11 +212,12 @@ sealed abstract class CaptureSet extends Showable:
    *
    *  If the element itself cannot be added to the set for some reason, and the
    *  element is not the root capability, try instead to include its underlying
-   *  capture set.
+   *  capture set, unless `widen` is false.
    */
-  protected final def addNewElem(elem: Capability)(using ctx: Context, vs: VarState): Boolean =
+  protected final def addNewElem(elem: Capability, widen: Boolean = true)(using ctx: Context, vs: VarState): Boolean =
     addThisElem(elem)
-    || !elem.isTerminalCapability
+    || widen
+        && !elem.isTerminalCapability
         && vs.isOpen
         && !isCaptureSetup
         && {
@@ -234,8 +236,15 @@ sealed abstract class CaptureSet extends Showable:
   protected def toReader()(using Context): Boolean
 
   protected def addIfHiddenOrFail(elem: Capability)(using ctx: Context, vs: VarState): Boolean =
-    elems.exists(_.maxSubsumes(elem, canAddHidden = true))
+    def hides(r: Capability, c: Capability) = r.maxSubsumes(c, canAddHidden = true)
+    def hidden(c: Capability) = elems.exists(hides(_, c))
+    hidden(elem)
     || elem.isKnownEmpty
+    // Split across roots, if this set has one. Otherwise `accountsFor` has already
+    // tried the same split.
+    || !elem.core.isInstanceOf[GlobalCap | ResultCap]
+       && containsTerminalCapability
+       && coveredByProjections(elem, hides)(hidden)
     || failWith(IncludeFailure(this, elem))
 
   /** If this is a variable, add `cs` as a dependent set */
@@ -251,29 +260,65 @@ sealed abstract class CaptureSet extends Showable:
    *  `.rd` or `?` takes part only if `x` has that wrapper too. Subtract the projections
    *  from `x` in turn. `x` is covered if nothing remains, if what remains lies outside
    *  the classifiers of the base, or if `coversPiece` covers each remaining piece, for
-   *  instance by widening it. A root base is not asked for its classifiers, since a
-   *  local root that is not yet classified would cache an answer that can still change.
+   *  instance by widening it. A root base is not asked for its classifiers, since those
+   *  of a local root can still change.
+   *
+   *  If `hides` is given, projections of other local and global roots take part as well,
+   *  after those of the base. The part of a piece under such a projection `p` of an
+   *  element `elem` is subtracted if `hides(elem, part)` adds it to the hidden set of the
+   *  root, as if the root were instantiated with `x`. Result roots do not take part since
+   *  they unify one-to-one. Callers do not pass a global or result root `x`, since no root
+   *  subsumes it whole either.
    */
-  private def coveredByProjections(x: Capability)(coversPiece: Capability => Boolean)(using Context): Boolean =
+  private def coveredByProjections(x: Capability, hides: ((Capability, Capability) => Boolean) | Null = null)
+      (coversPiece: Capability => Boolean)(using Context): Boolean =
     val base = x.core
     def isReadOnly(c: Capability) = c.stripMaybe.isInstanceOf[ReadOnly]
-    def peer(elem: Capability): Classified | Null = elem.stripMaybe.stripReadOnly match
+    // `elem` as a projection `b.only[O].except[E..]` that can take part in covering `x`,
+    // or null. It must be non-empty, and under `.rd` or `?` only if `x` is as well.
+    def projection(elem: Capability): Classified | Null = elem.stripMaybe.stripReadOnly match
       case p: Classified
-      if (p.underlying eq base) && p.only != defn.NothingClass
+      if p.only != defn.NothingClass
           && (x.isMaybe || !elem.isMaybe)
           && (isReadOnly(x) || !isReadOnly(elem)) => p
       case _ => null
+    // A projection of the base of `x`: it covers its part of `x` as is.
+    def peer(elem: Capability): Classified | Null = projection(elem) match
+      case p: Classified if p.underlying eq base => p
+      case _ => null
+    // A projection of another local or global root: it covers its part of `x`
+    // only if the root hides that part.
+    def rootPeer(elem: Capability): Classified | Null = projection(elem) match
+      case p @ Classified(_: (LocalCap | GlobalCap), _, _) if p.underlying ne base => p
+      case _ => null
+    // Do all pieces in `rest` lie outside the classifiers of the base?
     def emptyUnderBase(rest: List[Capability]) =
-      !x.isTerminalCapability && (base.transClassifiers match
-        case ClassifiedAs(cs) => rest.forall(r => cs.forall(r.isProjectionDisjointFrom(_)))
-        case _ => false)
-    elems.exists(peer(_) != null) && {
-      val rest = elems.toList.foldLeft(x :: Nil): (rest, elem) =>
+      !x.isTerminalCapability && rest.forall(_.transClassifiers == ClassifiedAs(Nil))
+    // The pieces of `rest` that the peers leave uncovered
+    def subtractPeers(rest: List[Capability]) =
+      elems.toList.foldLeft(rest): (rest, elem) =>
         peer(elem) match
           case p: Classified => rest.flatMap(_.remainderAfter(p))
           case null => rest
+    // The pieces of `rest` that are left after hiding their parts under root peers
+    def subtractRoots(rest: List[Capability], hides: (Capability, Capability) => Boolean) =
+      elems.toList.foldLeft(rest): (rest, elem) =>
+        rootPeer(elem) match
+          case p: Classified =>
+            rest.flatMap: r =>
+              val part = r.partUnder(p)
+              if part.isEmptyProjection || emptyUnderBase(part :: Nil) || !hides(elem, part)
+              then r :: Nil
+              else r.remainderAfter(p)
+          case null => rest
+    def covered(rest: List[Capability]) =
       rest.isEmpty || emptyUnderBase(rest) || rest.forall(coversPiece)
-    }
+    if hides == null then
+      elems.exists(peer(_) != null) && covered(subtractPeers(x :: Nil))
+    else
+      // Pieces may be added to hidden sets, so this needs to be atomic
+      elems.exists(elem => peer(elem) != null || rootPeer(elem) != null)
+      && TypeComparer.atomicOp(covered(subtractRoots(subtractPeers(x :: Nil), hides)))
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
@@ -933,9 +978,12 @@ object CaptureSet:
         newElemAddedHandlers.foreach(_(elem))
         val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
-        val res = deps.forall: dep =>
-          reporting.trace(i"forward $normElem from $this # $id to $dep # ${dep.maybeId} of class ${dep.getClass.toString}"):
-            dep.tryInclude(normElem, this)
+        // Forward to all dependents, rollback if any fails: if one dependent rejects
+        // the element, undo its inclusion in the dependents that accepted it.
+        val res = TypeComparer.atomicOp:
+          deps.forall: dep =>
+            reporting.trace(i"forward $normElem from $this # $id to $dep # ${dep.maybeId} of class ${dep.getClass.toString}"):
+              dep.tryInclude(normElem, this)
         if ccConfig.checkSkippedMaps && res then checkSkippedMaps(elem)
         if !res then
           elems -= elem
@@ -964,7 +1012,7 @@ object CaptureSet:
       case _: GlobalCap =>
         rootLimit == null
       case core: ParamRef =>
-        isPartOf(core.binder.resType)
+        isPartOf(core.binder.resType) || core.binder.paramInfos.exists(isPartOf)
       case _ =>
         if owner.exists then
           val elemVis = elem.visibility
@@ -1213,18 +1261,23 @@ object CaptureSet:
     if debugVars && id == debugTarget then
       println(i"variable $id is derived from $source")
 
-    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
+    override def tryInclude(elem: Capability, origin: CaptureSet, widen: Boolean)(using Context, VarState): Boolean =
       if origin eq source then
         val mappedElem = bimap.mapCapability(elem)
-        accountsFor(mappedElem) || addNewElem(mappedElem)
+        accountsFor(mappedElem) || addNewElem(mappedElem, widen)
       else if accountsFor(elem) then
         true
-      else
-        // Propagate backwards to source. The element will be added then by another
-        // forward propagation from source that hits the first branch `if origin eq source then`.
-        printOnAssertionError(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}"):
-          reporting.trace(i"prop backwards $elem from $this # $id to $source # ${source.id} via $summarize"):
-            source.tryInclude(bimap.inverse.mapCapability(elem), this)
+      else bimap match
+        case bimap: ClassifierMap if !bimap.keeps(elem) =>
+          // The projection drops parts of `elem`, so no instance of `source` makes
+          // this set account for `elem`.
+          failWith(IncludeFailure(this, elem))
+        case _ =>
+          // Propagate backwards to source. The element will be added then by another
+          // forward propagation from source that hits the first branch `if origin eq source then`.
+          printOnAssertionError(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}"):
+            reporting.trace(i"prop backwards $elem from $this # $id to $source # ${source.id} via $summarize"):
+              source.tryInclude(bimap.inverse.mapCapability(elem), this, widen)
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
      *  the source via the inverse type mapping and vice versa. That is, if
@@ -1249,15 +1302,15 @@ object CaptureSet:
     (val source: Var, val p: Context ?=> Capability => Boolean)(using @constructorOnly ctx: Context)
   extends DerivedVar(source.owner, source.elems.filter(p)):
 
-    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
+    override def tryInclude(elem: Capability, origin: CaptureSet, widen: Boolean)(using Context, VarState): Boolean =
       if accountsFor(elem) then
         true
       else if origin eq source then
-        !p(elem) || addNewElem(elem)
+        !p(elem) || addNewElem(elem, widen)
       else
         // Filtered elements have to be back-propagated to source.
         // Elements that don't satisfy `p` are not allowed.
-        if p(elem) then source.tryInclude(elem, this)
+        if p(elem) then source.tryInclude(elem, this, widen)
         else failWith(IncludeFailure(this, elem))
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
@@ -1281,13 +1334,26 @@ object CaptureSet:
     addAsDependentTo(cs2)
     mutability = cs1.mutability | cs2.mutability
 
-    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
+    /** Widen `elem` first, and push to the union. */
+    private def tryWiden(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
+      !elem.isTerminalCapability && varState.isOpen && {
+        val underlying = elem.captureSetOfInfo
+        TypeComparer.atomicOp:
+          ifNotTried(elem)(tryInclude(underlying.elems, origin)) && underlying.addDependent(this)
+      }
+
+    override def tryInclude(elem: Capability, origin: CaptureSet, widen: Boolean)(using Context, VarState): Boolean =
       if accountsFor(elem) then true
       else if (origin eq cs1) || (origin eq cs2) then
-        super.tryInclude(elem, origin)
+        super.tryInclude(elem, origin, widen)
       else
-           !cs1.isConst && cs1.tryInclude(elem, origin)
-        || !cs2.isConst && cs2.tryInclude(elem, origin)
+        // Allowing widening when pushing to the two operands only when
+        // `elem` is terminal, or its context capture set is stable.
+        // Otherwise, try widening here against the union first.
+        val widenInOperand = widen && elem.captureSetOfInfo.isConst
+        !cs1.isConst && cs1.tryInclude(elem, origin, widenInOperand)
+        || !cs2.isConst && cs2.tryInclude(elem, origin, widenInOperand)
+        || widen && tryWiden(elem, origin)
         || addIfHiddenOrFail(elem)
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
@@ -1311,7 +1377,7 @@ object CaptureSet:
     deps += cs2
     mutability = cs1.mutability & cs2.mutability
 
-    override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
+    override def tryInclude(elem: Capability, origin: CaptureSet, widen: Boolean)(using Context, VarState): Boolean =
       val inIntersection =
         if origin eq cs1 then cs2.accountsFor(elem)
         else if origin eq cs2 then cs1.accountsFor(elem)
@@ -1319,9 +1385,9 @@ object CaptureSet:
       !inIntersection
       || accountsFor(elem)
       || TypeComparer.atomicOp:
-            addNewElem(elem)
-            && ((origin eq cs1) || cs1.tryInclude(elem, this))
-            && ((origin eq cs2) || cs2.tryInclude(elem, this))
+            addNewElem(elem, widen)
+            && ((origin eq cs1) || cs1.tryInclude(elem, this, widen))
+            && ((origin eq cs2) || cs2.tryInclude(elem, this, widen))
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)
@@ -1751,16 +1817,38 @@ object CaptureSet:
     override def mapCapability(c: Capability) = c.readOnly
     override def toString = "ReadOnly"
 
-  private class RestrictMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
+  /** A narrowing map that projects capabilities by a classifier. Its identity
+   *  inverse is exact only for capabilities that the projection keeps whole:
+   *  {c} <: f(cs) holds iff {c} <: cs and {c} <: {f(c)}.
+   */
+  private abstract class ClassifierMap(using Context) extends NarrowingCapabilityMap:
+
+    /** Does the projection keep all of `c`, i.e. {c} <: {f(c)}? Subclasses decide the
+     *  common cases from the classifiers of `c` before running this full check.
+     */
+    def keeps(c: Capability)(using Context): Boolean =
+      mapCapability(c).singletonCaptureSet.accountsFor(c)
+
+  /** Maps `x` to `x.only[cls]` */
+  private class RestrictMap(val cls: ClassSymbol)(using Context) extends ClassifierMap:
     override def mapCapability(c: Capability) = c.restrict(cls)
+    override def keeps(c: Capability)(using Context): Boolean = c.transClassifiers match
+      case ClassifiedAs(cs) if cs.forall(_.isSubClass(cls)) => true
+      case Unclassified => false // a part of `c` has no classifier
+      case _ => super.keeps(c)
     override def toString = "Restrict"
     override def isSameMap(other: BiTypeMap) = other match
       case other: RestrictMap => cls == other.cls
       case _ => false
 
   /** Maps `x` to `x.except[cls]` */
-  private class ExceptMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
+  private class ExceptMap(val cls: ClassSymbol)(using Context) extends ClassifierMap:
     override def mapCapability(c: Capability) = c.exclude(cls)
+    override def keeps(c: Capability)(using Context): Boolean = c.transClassifiers match
+      // Not for roots, whose classifier `super.keeps` sees only once it is frozen
+      case ClassifiedAs(cs)
+      if cs.forall(leastClassifier(_, cls) == defn.NothingClass) && !c.isTerminalCapability => true
+      case _ => super.keeps(c)
     override def toString = "Except"
     // TODO: once except carries a list of classes, fuse except[A] ∘ except[B] into one map;
     // distinct-cls excepts don't fuse today (sound, just unoptimized).

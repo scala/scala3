@@ -30,7 +30,7 @@ import java.{lang => jl}
  *
  *  @define parNote Note: parallel processing is only efficient for collections that have a
  *                 [[scala.collection.Stepper]] implementation which supports efficient splitting. For collections
- *                 where this is the case, the [[scala.collection.IterableOnce.stepper `stepper`]]
+ *                 where this is the case, the [[scala.collection.IterableOnce.stepper stepper]]
  *                 method has a return type marked `with EfficientSplit`.
  *
  *  @define primitiveNote Note: this method uses the boxed type `java.lang.X` instead of the

@@ -433,16 +433,6 @@ extension (tp: Type)
 
   def isArrayUnderStrictMut(using Context): Boolean = tp.classSymbol.isArrayUnderStrictMut
 
-  /** Drop @retains annotations everywhere */
-  def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
-    val tm = new TypeMap:
-      def apply(t: Type) = t match
-        case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
-          apply(parent)
-        case _ =>
-          mapOver(t)
-    tm(tp)
-
   private def containsGlobal(c: GlobalCap, directly: Boolean)(using Context): Boolean =
     val search = new TypeAccumulator[Boolean]:
       def apply(x: Boolean, t: Type) =
@@ -495,7 +485,7 @@ extension (tp: Type)
 
   def inheritedClassifier(using Context): ClassSymbol =
     if tp.isArrayUnderStrictMut then defn.Caps_Unscoped
-    else tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
+    else leastInheritedClassifier(tp.classSymbols.flatMap(_.classifierBases))
 
   /** The classifiers of all terminal capabilities in the span capture set of `tp` */
   def embeddedLocalCaps(using Context): List[Capability] =
@@ -580,22 +570,23 @@ extension (cls: ClassSymbol) {
       bc.is(CaptureChecked) && selfType.exists && selfType.captureSet.elems == refs.elems
 
   def isClassifiedCapabilityClass(using Context): Boolean =
-    cls.derivesFromCapability && cls.parentSyms.contains(defn.Caps_Classifier)
+    cls.parentSyms.contains(defn.Caps_Classifier) && cls.derivesFromCapability
 
   /** `Any`, the top of the classifier tree: not a classifier class, but accepted as a
    *  projection argument (`only[Any]` = identity, `except[Any]` = empty). */
   def isTopClassifier(using Context): Boolean =
     cls == defn.AnyClass
 
+  /** The classifier classes among the base classes of this capability class */
+  def classifierBases(using Context): List[ClassSymbol] =
+    if !cls.derivesFromCapability then Nil
+    else if cls.isArrayUnderStrictMut then defn.Caps_Unscoped :: Nil
+    else if !cls.derivesFrom(defn.Caps_Classifier) then Nil
+    else cls.baseClasses.filter(_.isClassifiedCapabilityClass)
+
+  /** The least of `classifierBases`, see `leastInheritedClassifier` */
   def classifier(using Context): ClassSymbol =
-    if cls.derivesFromCapability then
-      if cls.isArrayUnderStrictMut then
-        defn.Caps_Unscoped
-      else
-        cls.baseClasses
-          .filter(_.parentSyms.contains(defn.Caps_Classifier))
-          .foldLeft(defn.AnyClass)(leastClassifier)
-    else defn.AnyClass
+    leastInheritedClassifier(cls.classifierBases)
 
   /** The additional capture set implied by the capture sets of its fields. This
    *  is either empty or, if some fields have a terminal capability in their span

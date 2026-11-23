@@ -14,7 +14,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist-global.scala:39:29 ------------------------------
 39 |  val ref1c: LazyList[Int] = ref1 // error
    |                             ^^^^
-   |Found:    (ref1 : lazylists.LazyCons[Int]{val xs: () ->{lazylists.cap1} lazylists.LazyList[Int]^{}}^{lazylists.cap1})
+   |Found:    (ref1 : lazylists.LazyCons[Int]{val xs: () ->{lazylists.cap1} lazylists.LazyList[Int]}^{lazylists.cap1})
    |Required: lazylists.LazyList[Int]
    |
    |Note that capability `lazylists.cap1` cannot flow into capture set {}.

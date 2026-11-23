@@ -36,9 +36,9 @@ on:
         default: false
         type: boolean
     secrets:
-      SCALA_PGP_KEY:
+      PGP_SECRET:
         required: true
-      SCALA_PGP_PASSPHRASE:
+      PGP_PW:
         required: true
       SYNCPKGS_KEY:
         required: true
@@ -74,12 +74,12 @@ jobs:
       - name: Check the configuration
         shell: bash
         env:
-          PGP_KEY       : ${{ secrets.SCALA_PGP_KEY }}
-          PGP_PASSPHRASE: ${{ secrets.SCALA_PGP_PASSPHRASE }}
-          SSH_KEY       : ${{ secrets.SYNCPKGS_KEY }}
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+          PGP_PW    : ${{ secrets.PGP_PW }}
+          SSH_KEY   : ${{ secrets.SYNCPKGS_KEY }}
         run: |
           for v in VERSION BASE_URL FINGERPRINT REMOTE_DIR REMOTE_USER REMOTE_HOST REMOTE_PORT \
-                   KNOWN_HOSTS PGP_KEY PGP_PASSPHRASE SSH_KEY; do
+                   KNOWN_HOSTS PGP_SECRET PGP_PW SSH_KEY; do
             [ -n "${!v}" ] || { echo "$v is empty, check the PACKAGES_* variables and the secrets" >&2; exit 1; }
           done
           case "$BASE_URL" in */) echo "PACKAGES_BASE_URL must not end with a slash" >&2; exit 1 ;; esac
@@ -112,8 +112,8 @@ jobs:
       - name: Import the signing key
         uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         with:
-          gpg_private_key: ${{ secrets.SCALA_PGP_KEY }}
-          passphrase     : ${{ secrets.SCALA_PGP_PASSPHRASE }}
+          gpg_private_key: ${{ secrets.PGP_SECRET }}
+          passphrase     : ${{ secrets.PGP_PW }}
           fingerprint    : ${{ env.FINGERPRINT }}
 
       - name: Set up SSH

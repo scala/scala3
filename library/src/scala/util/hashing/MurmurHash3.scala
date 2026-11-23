@@ -217,7 +217,20 @@ private[hashing] class MurmurHash3 {
    *  @param seed the initial seed for the hash computation
    *  @return the hash of `a`, compatible with `rangeHash` when `a` has at least three elements forming an arithmetic progression with non-zero step
    */
-  final inline def arrayHash[T](a: Array[T], seed: Int): Int = {
+  final def arrayHash[T](a: Array[T], seed: Int): Int = arrayHashImpl(a, seed)
+  // Manually specialized with names compatible with Scala 2 for binary compatibility
+  final def `arrayHash$mZc$sp`(a: Array[Boolean], seed: Int): Int = arrayHashImpl(a, seed)
+  final def `arrayHash$mBc$sp`(a: Array[Byte], seed: Int): Int = arrayHashImpl(a, seed)
+  final def `arrayHash$mCc$sp`(a: Array[Char], seed: Int): Int = arrayHashImpl(a, seed)
+  final def `arrayHash$mDc$sp`(a: Array[Double], seed: Int): Int = arrayHashImpl(a, seed)
+  final def `arrayHash$mFc$sp`(a: Array[Float], seed: Int): Int = arrayHashImpl(a, seed)
+  final def `arrayHash$mIc$sp`(a: Array[Int], seed: Int): Int = arrayHashImpl(a, seed)
+  final def `arrayHash$mJc$sp`(a: Array[Long], seed: Int): Int = arrayHashImpl(a, seed)
+  final def `arrayHash$mSc$sp`(a: Array[Short], seed: Int): Int = arrayHashImpl(a, seed)
+  final def `arrayHash$mVc$sp`(a: Array[Unit], seed: Int): Int = arrayHashImpl(a, seed)
+
+  /** Implementation of `arrayHash`, inlined to get specialized versions for primitive arrays. */
+  private[hashing] final inline def arrayHashImpl[T](a: Array[T], seed: Int): Int = {
     var h = seed
     val l = a.length
     l match {
@@ -418,17 +431,17 @@ object MurmurHash3 extends MurmurHash3 {
   final val mapSeed         = "Map".hashCode
   final val setSeed         = "Set".hashCode
 
-  def arrayHash[T](a: Array[T]): Int = arrayHash(a, arraySeed)
+  def arrayHash[T](a: Array[T]): Int = arrayHashImpl(a, arraySeed)
   // Manually specialized with names compatible with Scala 2
-  def `arrayHash$mZc$sp`(a: Array[Boolean]): Int = arrayHash(a, arraySeed)
-  def `arrayHash$mBc$sp`(a: Array[Byte]): Int = arrayHash(a, arraySeed)
-  def `arrayHash$mCc$sp`(a: Array[Char]): Int = arrayHash(a, arraySeed)
-  def `arrayHash$mDc$sp`(a: Array[Double]): Int = arrayHash(a, arraySeed)
-  def `arrayHash$mFc$sp`(a: Array[Float]): Int = arrayHash(a, arraySeed)
-  def `arrayHash$mIc$sp`(a: Array[Int]): Int = arrayHash(a, arraySeed)
-  def `arrayHash$mJc$sp`(a: Array[Long]): Int = arrayHash(a, arraySeed)
-  def `arrayHash$mSc$sp`(a: Array[Short]): Int = arrayHash(a, arraySeed)
-  def `arrayHash$mVc$sp`(a: Array[Unit]): Int = arrayHash(a, arraySeed)
+  def `arrayHash$mZc$sp`(a: Array[Boolean]): Int = arrayHashImpl(a, arraySeed)
+  def `arrayHash$mBc$sp`(a: Array[Byte]): Int = arrayHashImpl(a, arraySeed)
+  def `arrayHash$mCc$sp`(a: Array[Char]): Int = arrayHashImpl(a, arraySeed)
+  def `arrayHash$mDc$sp`(a: Array[Double]): Int = arrayHashImpl(a, arraySeed)
+  def `arrayHash$mFc$sp`(a: Array[Float]): Int = arrayHashImpl(a, arraySeed)
+  def `arrayHash$mIc$sp`(a: Array[Int]): Int = arrayHashImpl(a, arraySeed)
+  def `arrayHash$mJc$sp`(a: Array[Long]): Int = arrayHashImpl(a, arraySeed)
+  def `arrayHash$mSc$sp`(a: Array[Short]): Int = arrayHashImpl(a, arraySeed)
+  def `arrayHash$mVc$sp`(a: Array[Unit]): Int = arrayHashImpl(a, arraySeed)
 
   def bytesHash(data: Array[Byte]): Int                = bytesHash(data, arraySeed)
   def orderedHash(xs: IterableOnce[Any]): Int          = orderedHash(xs, symmetricSeed)
@@ -472,17 +485,17 @@ object MurmurHash3 extends MurmurHash3 {
    */
   def caseClassHash(x: Product, caseClassName: String | Null = null): Int = caseClassHash(x, productSeed, caseClassName)
 
-  private[scala] def arraySeqHash[T](a: Array[T]): Int = arrayHash(a, seqSeed)
+  private[scala] def arraySeqHash[T](a: Array[T]): Int = arrayHashImpl(a, seqSeed)
   // Manually specialized with names compatible with Scala 2 for binary compatibility
-  private[scala] def `arraySeqHash$mZc$sp`(a: Array[Boolean]): Int = arrayHash(a, seqSeed)
-  private[scala] def `arraySeqHash$mBc$sp`(a: Array[Byte]): Int = arrayHash(a, seqSeed)
-  private[scala] def `arraySeqHash$mCc$sp`(a: Array[Char]): Int = arrayHash(a, seqSeed)
-  private[scala] def `arraySeqHash$mDc$sp`(a: Array[Double]): Int = arrayHash(a, seqSeed)
-  private[scala] def `arraySeqHash$mFc$sp`(a: Array[Float]): Int = arrayHash(a, seqSeed)
-  private[scala] def `arraySeqHash$mIc$sp`(a: Array[Int]): Int = arrayHash(a, seqSeed)
-  private[scala] def `arraySeqHash$mJc$sp`(a: Array[Long]): Int = arrayHash(a, seqSeed)
-  private[scala] def `arraySeqHash$mSc$sp`(a: Array[Short]): Int = arrayHash(a, seqSeed)
-  private[scala] def `arraySeqHash$mVc$sp`(a: Array[Unit]): Int = arrayHash(a, seqSeed)
+  private[scala] def `arraySeqHash$mZc$sp`(a: Array[Boolean]): Int = arrayHashImpl(a, seqSeed)
+  private[scala] def `arraySeqHash$mBc$sp`(a: Array[Byte]): Int = arrayHashImpl(a, seqSeed)
+  private[scala] def `arraySeqHash$mCc$sp`(a: Array[Char]): Int = arrayHashImpl(a, seqSeed)
+  private[scala] def `arraySeqHash$mDc$sp`(a: Array[Double]): Int = arrayHashImpl(a, seqSeed)
+  private[scala] def `arraySeqHash$mFc$sp`(a: Array[Float]): Int = arrayHashImpl(a, seqSeed)
+  private[scala] def `arraySeqHash$mIc$sp`(a: Array[Int]): Int = arrayHashImpl(a, seqSeed)
+  private[scala] def `arraySeqHash$mJc$sp`(a: Array[Long]): Int = arrayHashImpl(a, seqSeed)
+  private[scala] def `arraySeqHash$mSc$sp`(a: Array[Short]): Int = arrayHashImpl(a, seqSeed)
+  private[scala] def `arraySeqHash$mVc$sp`(a: Array[Unit]): Int = arrayHashImpl(a, seqSeed)
 
   private[scala] def tuple2Hash(x: Any, y: Any): Int = tuple2Hash(x.##, y.##, productSeed)
 

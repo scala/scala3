@@ -87,6 +87,21 @@ class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationP
   unexpectedLinks = List("https://nightly.scala-lang.org/api/scala/jdk/StreamConverters.html")
 )
 
+// i27529: an object without a companion class has only a `$`-suffixed page
+class Scaladoc3ObjectWithoutCompanionExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
+  "externalScaladoc3ObjectWithoutCompanion",
+  List(".*scala/.*::scaladoc3::https://nightly.scala-lang.org/api/"),
+  List("https://nightly.scala-lang.org/api/scala/None$.html"),
+  unexpectedLinks = List("https://nightly.scala-lang.org/api/scala/None.html")
+)
+
+class Scaladoc3ObjectWithoutCompanionTermExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
+  "externalScaladoc3ObjectWithoutCompanionTerm",
+  List(".*scala/.*::scaladoc3::https://nightly.scala-lang.org/api/"),
+  List("https://nightly.scala-lang.org/api/scala/None$.html"),
+  unexpectedLinks = List("https://nightly.scala-lang.org/api/scala/None.html")
+)
+
 // What is documented in this run links to its own page, even if a mapping matches it
 class SelfMappedExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
   "externalScaladoc3",
