@@ -326,7 +326,7 @@ object SepCheck:
     def directPeaks (using Context): Refs =
       SimpleIdentitySet(ref).directFootprint.peaks
 
-class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
+class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
   import checker.*
   import SepCheck.*
 
@@ -641,6 +641,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         def pathRoot(tree: Tree): Tree = tree match
           case Select(This(_), _) => tree
           case Select(prefix, _) => pathRoot(prefix)
+          case NamedArg(_, arg) => pathRoot(arg)
           case _ => tree
 
         val rootSym = pathRoot(tree).symbol
@@ -1072,7 +1073,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   /** Traverse `tree` and perform separation checks everywhere */
   def traverse(tree: Tree)(using Context): Unit =
-    if !isAssumedSeparate(tree) then trace(i"checking separate $tree"):
+    if !tree.isType && !isAssumedSeparate(tree) then trace(i"checking separate $tree"):
       checkUse(tree)
       tree match
         case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.isConsume =>
@@ -1089,8 +1090,13 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         case tree: Assign =>
           traverseChildren(tree)
           checkAssign(tree)
-        case _: Block | _: Template =>
+        case _: Block =>
           traverseSection(tree)
+        case tree: Template =>
+          inSection:
+            traverse(tree.constr)
+            traverse(tree.parents)
+            traverse(tree.body)
         case tree: ValDef =>
           traverseChildren(tree)
           if !tree.name.is(WildcardParamName) then
