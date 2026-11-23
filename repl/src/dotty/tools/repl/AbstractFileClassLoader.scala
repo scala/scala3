@@ -70,37 +70,38 @@ class AbstractFileClassLoader(root: AbstractFile, jarVersion: String, parent: Cl
         defineClass(name, bytes, 0, bytes.length)
       finally is.close()
 
-  override def loadClass(name: String): Class[?] =
+  // Child classloaders (e.g. in `scala.quoted.staging`) delegate through this overload.
+  // Overriding only `loadClass(name)` would let them mix original and instrumented classes.
+  override protected def loadClass(name: String, resolve: Boolean): Class[?] = getClassLoadingLock(name).synchronized:
     val loaded = findLoadedClass(name)
-    if loaded != null then return loaded
-
-    if interruptInstrumentation.isOneOf(InterruptInstrumentation.Disabled, InterruptInstrumentation.Local) then
+    if loaded != null then loaded
+    else if interruptInstrumentation.isOneOf(InterruptInstrumentation.Disabled, InterruptInstrumentation.Local) then
       // `local` delegates what it does not instrument, so the flag would come from the
       // parent and be shared: cancelling one session would end the others.
       if interruptInstrumentation == InterruptInstrumentation.Local && name == stopReplName then
         ownStopRepl(name)
       else
         try findClass(name)
-        catch case _: ClassNotFoundException => super.loadClass(name)
+        catch case _: ClassNotFoundException => super.loadClass(name, resolve)
     else
       name match
         // Don't instrument JDK classes. These are often restricted to load from a single classloader
         // due to the JDK module system, and so instrumenting them and loading the modified copy of the class
         // results in runtime exceptions
-        case s"java.$_" => super.loadClass(name)
-        case s"javax.$_" => super.loadClass(name)
-        case s"sun.$_" => super.loadClass(name)
-        case s"jdk.$_" => super.loadClass(name)
-        case s"org.xml.sax.$_" => super.loadClass(name) // XML SAX API (part of java.xml module)
-        case s"org.w3c.dom.$_" => super.loadClass(name) // W3C DOM API (part of java.xml module)
-        case s"com.sun.org.apache.$_" => super.loadClass(name) // Internal Xerces implementation
+        case s"java.$_" => super.loadClass(name, resolve)
+        case s"javax.$_" => super.loadClass(name, resolve)
+        case s"sun.$_" => super.loadClass(name, resolve)
+        case s"jdk.$_" => super.loadClass(name, resolve)
+        case s"org.xml.sax.$_" => super.loadClass(name, resolve) // XML SAX API (part of java.xml module)
+        case s"org.w3c.dom.$_" => super.loadClass(name, resolve) // W3C DOM API (part of java.xml module)
+        case s"com.sun.org.apache.$_" => super.loadClass(name, resolve) // Internal Xerces implementation
         // Don't instrument StopRepl, which would otherwise cause infinite recursion
         case `stopReplName` => ownStopRepl(name)
         case _ =>
           // Not in REPL output, try to load from parent and instrument it
           val resourceName = name.replace('.', '/') + ".class"
           getParent.getResourceAsStream(resourceName) match {
-            case null => super.loadClass(name)
+            case null => super.loadClass(name, resolve)
             case is =>
               try defineClassInstrumented(name, is.readAllBytes())
               finally is.close()
