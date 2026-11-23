@@ -7,12 +7,18 @@ import dotty.tools.io.AbstractFileClassLoader
 
 object ClasspathFromClassloader {
 
-  // Class name of the REPL classloader.
-  // We can't import AbstractFileClassLoader directly because the REPL module
-  // depends on compiler, not vice-versa. The class name comparison is required
-  // anyway because the REPL classloader class is normally loaded with a different
-  // classloader (see the comment below at the usage site).
-  private final val ReplAbstractFileClassLoaderName = "dotty.tools.repl.AbstractFileClassLoader"
+  /** Is `cl` an `AbstractFileClassLoader`, possibly loaded by another classloader?
+   *  A type test is not enough in the REPL, where this class is loaded twice.
+   */
+  private def isAbstractFileClassLoader(cl: ClassLoader): Boolean =
+    val name = classOf[AbstractFileClassLoader].getName
+    var c: Class[?] | Null = cl.getClass
+    while c != null && c.getName != name do c = c.getSuperclass
+    c != null
+
+  /** `AbstractFileClassLoader#classpathEntries`, called reflectively. */
+  private def abstractFileClassLoaderEntries(cl: ClassLoader): Array[String] =
+    cl.getClass.getMethod("classpathEntries").nn.invoke(cl).asInstanceOf[Array[String]]
 
   /** Attempt to recreate a classpath from a classloader.
    *
@@ -35,24 +41,17 @@ object ClasspathFromClassloader {
               cl.getURLs.iterator.map(url => Paths.get(url.toURI).toAbsolutePath.toString)
           case af: AbstractFileClassLoader =>
             collectClassLoaderPaths(cl.getParent)
-            classpathBuff ++= af.searchLocations.filter(!_.isVirtual).map(_.path)
+            classpathBuff ++= af.classpathEntries
+          case _ if isAbstractFileClassLoader(cl) =>
+            // HACK: Don't recurse into arbitrary parents: some classloaders hide them on purpose
+            // (e.g. sbt's BootFilteredLoader hides the scala-library sbt depends on).
+            collectClassLoaderPaths(cl.getParent)
+            classpathBuff ++= abstractFileClassLoaderEntries(cl)
+          case _ if cl eq ClassLoader.getSystemClassLoader =>
+            // HACK: For Java 9+, if the classloader is an AppClassLoader then use the classpath from the system
+            // property `java.class.path`.
+            classpathBuff += System.getProperty("java.class.path")
           case _ =>
-            if cl.getClass.getName == ReplAbstractFileClassLoaderName ||
-               cl.getClass.getName == classOf[AbstractFileClassLoader].getName then
-              // HACK: We can't just collect the classpath from arbitrary parent
-              // classloaders since the current classloader might intentionally
-              // filter loading classes from its parent (for example
-              // BootFilteredLoader in the sbt launcher does this and we really
-              // don't want to include the scala-library that sbt depends on
-              // here), but we do need to look at the parent of the REPL
-              // classloader, so we special case it. We can't do this using a type
-              // test since the REPL classloader class itself is normally loaded
-              // with a different classloader.
-              collectClassLoaderPaths(cl.getParent)
-            else if cl eq ClassLoader.getSystemClassLoader then
-              // HACK: For Java 9+, if the classloader is an AppClassLoader then use the classpath from the system
-              // property `java.class.path`.
-              classpathBuff += System.getProperty("java.class.path")
         }
       }
     }
