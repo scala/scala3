@@ -54,22 +54,29 @@ class AbstractFileClassLoader(root: AbstractFile, jarVersion: String, parent: Cl
   }
 
   private def ownStopRepl(name: String): Class[?] = getClassLoadingLock(name).synchronized:
-    // Load StopRepl bytecode from parent but ensure each classloader gets its own copy
-    val classFileName = name.replace('.', '/') + ".class"
-    val is = Option(getParent.getResourceAsStream(classFileName))
-      // Can't get as resource, use the classloader that loaded this AbstractFileClassLoader
-      // class itself, which must have access to StopRepl
-      .getOrElse(classOf[AbstractFileClassLoader].getClassLoader.getResourceAsStream(classFileName))
-    try
-      val bytes = is.readAllBytes()
-      defineClass(name, bytes, 0, bytes.length)
-    finally is.close()
+    // Re-check under the lock: `loadClass` checks without it, so concurrent loads would
+    // otherwise all reach `defineClass` and every one but the first would fail.
+    val loaded = findLoadedClass(name)
+    if loaded != null then loaded
+    else
+      // Load StopRepl bytecode from parent but ensure each classloader gets its own copy
+      val classFileName = name.replace('.', '/') + ".class"
+      val is = Option(getParent.getResourceAsStream(classFileName))
+        // Can't get as resource, use the classloader that loaded this AbstractFileClassLoader
+        // class itself, which must have access to StopRepl
+        .getOrElse(classOf[AbstractFileClassLoader].getClassLoader.getResourceAsStream(classFileName))
+      try
+        val bytes = is.readAllBytes()
+        defineClass(name, bytes, 0, bytes.length)
+      finally is.close()
 
   override def loadClass(name: String): Class[?] =
     val loaded = findLoadedClass(name)
     if loaded != null then return loaded
 
     if interruptInstrumentation.isOneOf(InterruptInstrumentation.Disabled, InterruptInstrumentation.Local) then
+      // `local` delegates what it does not instrument, so the flag would come from the
+      // parent and be shared: cancelling one session would end the others.
       if interruptInstrumentation == InterruptInstrumentation.Local && name == stopReplName then
         ownStopRepl(name)
       else
