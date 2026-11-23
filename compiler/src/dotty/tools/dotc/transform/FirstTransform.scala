@@ -17,7 +17,6 @@ import NameOps.*
 import SymDenotations.SymDenotation
 import NameKinds.OuterSelectName
 import StdNames.*
-import config.Feature
 import inlines.Inlines.inInlineMethod
 import util.Property
 import inlines.Inlines
@@ -121,21 +120,9 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
     reorder(stats, Nil)
   }
 
-  /** Eliminate self in Template
-   *  Under captureChecking, we keep the self type `S` around in a type definition
-   *  ```
-   *     private[this] type $this = S
-   *  ```
-   *  This is so that the type can be checked for well-formedness in the CaptureCheck phase.
-   */
+  /** Eliminate self in Template */
   override def transformTemplate(impl: Template)(using Context): Tree =
-    impl.self match
-      case self: ValDef if !self.tpt.isEmpty && Feature.ccEnabled =>
-        val tsym = newSymbol(ctx.owner, tpnme.SELF, PrivateLocal, TypeAlias(self.tpt.tpe))
-        val tdef = untpd.cpy.TypeDef(self)(tpnme.SELF, self.tpt).withType(tsym.typeRef)
-        cpy.Template(impl)(self = EmptyValDef, body = tdef :: impl.body)
-      case _ =>
-        cpy.Template(impl)(self = EmptyValDef)
+    cpy.Template(impl)(self = EmptyValDef)
 
   override def transformDefDef(ddef: DefDef)(using Context): Tree =
     val meth = ddef.symbol.asTerm
