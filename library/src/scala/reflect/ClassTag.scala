@@ -78,9 +78,24 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
     else None
 
   // case class accessories
+  /** Returns `true` if `x` is a `ClassTag`, making it eligible for comparison with this one.
+   *
+   *  @param x the value to test for comparability with this class tag
+   */
   override def canEqual(x: Any) = x.isInstanceOf[ClassTag[?]]
+  /** Returns `true` if `x` is a `ClassTag` whose `runtimeClass` is the same as this class tag's.
+   *
+   *  Note that the type arguments of the two tags play no part in the comparison, since only
+   *  the erased class is stored.
+   *
+   *  @param x the value to compare with this class tag
+   */
   override def equals(x: Any) = x.isInstanceOf[ClassTag[?]] && this.runtimeClass == x.asInstanceOf[ClassTag[?]].runtimeClass
+  /** Returns a hash code derived from `runtimeClass`, consistent with `equals`. */
   override def hashCode() = runtimeClass.##
+  /** Returns the name of `runtimeClass`, rendering array classes as `Array[...]` instead of in
+   *  the form returned by `Class.getName`, such as `[Ljava.lang.String;`.
+   */
   override def toString() = {
     def prettyprint(clazz: jClass[?]): String =
       if (clazz.isArray) s"Array[${prettyprint(clazz.getComponentType)}]" else
@@ -148,6 +163,15 @@ object ClassTag {
     }
   }
 
+  /** Returns a `ClassTag[T]` whose `runtimeClass` is `runtimeClass1`, taken from a cache of tags
+   *  keyed by class unless caching was disabled by setting the system property
+   *  `scala.reflect.classtag.cache.disable` to `true` before this object was initialized, in which
+   *  case a tag is computed on each call.
+   *
+   *  @tparam T the type the resulting tag stands for; it is assumed, but not checked, to erase
+   *            to `runtimeClass1`
+   *  @param runtimeClass1 the erased class the resulting tag describes
+   */
   def apply[T](runtimeClass1: jClass[?]): ClassTag[T] = {
     if (cacheDisabled) {
       cache.computeTag(runtimeClass1).asInstanceOf[ClassTag[T]]
@@ -162,5 +186,14 @@ object ClassTag {
     }
   }
 
+  /** Extracts the erased class stored in a `ClassTag`, so that class tags can be taken apart in
+   *  pattern matches.
+   *
+   *  A `null` tag is not accepted: the extraction throws `NullPointerException` in that case.
+   *
+   *  @tparam T the type the tag stands for
+   *  @param ctag the class tag to take apart
+   *  @return `Some` of the tag's `runtimeClass`; for a non-null `ctag` the match always succeeds
+   */
   def unapply[T](ctag: ClassTag[T]): Option[Class[?]] = Some(ctag.runtimeClass)
 }

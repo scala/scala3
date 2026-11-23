@@ -49,11 +49,17 @@ import scala.collection.mutable.{ArrayBuilder, ArraySeq}
 // TODO undeprecated until Scala reflection becomes non-experimental
 // @deprecated("use scala.reflect.ClassTag (to capture erasures) or scala.reflect.runtime.universe.TypeTag (to capture types) or both instead", "2.10.0")
 trait Manifest[T] extends ClassManifest[T] with Equals {
+  /** Returns the manifests for the type arguments of the represented type, or `Nil` if there are none. */
   override def typeArguments: List[Manifest[?]] = Nil
 
+  /** Returns a manifest for the array type `Array[T]`. */
   override def arrayManifest: Manifest[Array[T]] =
     Manifest.classType[Array[T]](arrayClass[T](runtimeClass), this)
 
+  /** Returns `true` if `that` is a `Manifest`, and so is a candidate for equality with this manifest.
+   *
+   *  @param that the value to test for comparability with this manifest
+   */
   override def canEqual(that: Any): Boolean = that match {
     case _: Manifest[?]   => true
     case _                => false
@@ -67,6 +73,7 @@ trait Manifest[T] extends ClassManifest[T] with Equals {
     case m: Manifest[?] => (m canEqual this) && (this.runtimeClass == m.runtimeClass) && (this <:< m) && (m <:< this)
     case _              => false
   }
+  /** Returns a hash code derived from `runtimeClass`, so that manifests with the same erasure hash alike. */
   override def hashCode() = this.runtimeClass.##
 }
 
@@ -82,6 +89,9 @@ object Manifest {
    * defined above.
    */
 
+  /** Returns the manifests for the nine value types, in the order `Byte`, `Short`, `Char`, `Int`,
+   *  `Long`, `Float`, `Double`, `Boolean`, `Unit`.
+   */
   def valueManifests: List[AnyValManifest[?]] =
     ManifestFactory.valueManifests
 
@@ -145,6 +155,13 @@ object Manifest {
   def classType[T](prefix: Manifest[?], clazz: Predef.Class[?], args: Manifest[?]*): Manifest[T] =
     ManifestFactory.classType[T](prefix, clazz, args*)
 
+  /** Returns the manifest for the array type `Array[T]`, given the manifest `arg` for the element type `T`.
+   *
+   *  @tparam T the element type of the array type described by the result
+   *  @param arg the manifest for the element type
+   *  @return the `arrayManifest` obtained by casting `arg` to `Manifest[T]`; the cast is unchecked,
+   *          so `arg` is assumed to describe `T`
+   */
   def arrayType[T](arg: Manifest[?]): Manifest[Array[T]] =
     ManifestFactory.arrayType[T](arg)
 
@@ -180,6 +197,16 @@ object Manifest {
 
 }
 
+/** A `Manifest` for one of the value types, such as `Int` or `Boolean`.
+ *
+ *  Instances of this class are compared by reference identity, and the represented type conforms
+ *  only to itself, `Any` and `AnyVal`. The canonical manifest for each value type is the single
+ *  instance supplied by `Manifest`, such as `Manifest.Int`.
+ *
+ *  @tparam T the value type described by this manifest
+ *  @param toString the name of the value type, such as `"Int"`, used as the string representation
+ *                  of this manifest
+ */
 // TODO undeprecated until Scala reflection becomes non-experimental
 // @deprecated("use type tags and manually check the corresponding class or type instead", "2.10.0")
 @nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifest(DeprecatedApis.*)?""")
@@ -187,11 +214,21 @@ object Manifest {
 abstract class AnyValManifest[T <: AnyVal](override val toString: String) extends Manifest[T] with Equals {
   override def <:<(that: ClassManifest[?]): Boolean =
     (that eq this) || (that eq Manifest.Any) || (that eq Manifest.AnyVal)
+  /** Returns `true` if `other` is an `AnyValManifest`, and so is a candidate for equality with this manifest.
+   *
+   *  @param other the value to test for comparability with this manifest
+   */
   override def canEqual(other: Any) = other match {
     case _: AnyValManifest[?] => true
     case _                    => false
   }
+  /** Returns `true` only if `that` is this very manifest, since equality for value type manifests is
+   *  reference identity.
+   *
+   *  @param that the value to compare with this manifest
+   */
   override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
+  /** Returns the identity hash code of this manifest, consistent with its reference-identity `equals`. */
   override def hashCode = System.identityHashCode(this)
 }
 
@@ -204,6 +241,9 @@ abstract class AnyValManifest[T <: AnyVal](override val toString: String) extend
  */
 @nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifest(DeprecatedApis.*)?""")
 object ManifestFactory {
+  /** Returns the manifests for the nine value types, in the order `Byte`, `Short`, `Char`, `Int`,
+   *  `Long`, `Float`, `Double`, `Boolean`, `Unit`.
+   */
   def valueManifests: List[AnyValManifest[?]] =
     List(Byte, Short, Char, Int, Long, Float, Double, Boolean, Unit)
 
@@ -471,6 +511,13 @@ object ManifestFactory {
       argString
    }
 
+  /** Returns the manifest for the array type `Array[T]`, given the manifest `arg` for the element type `T`.
+   *
+   *  @tparam T the element type of the array type described by the result
+   *  @param arg the manifest for the element type
+   *  @return the `arrayManifest` obtained by casting `arg` to `Manifest[T]`; the cast is unchecked,
+   *          so `arg` is assumed to describe `T`
+   */
   def arrayType[T](arg: Manifest[?]): Manifest[Array[T]] =
     arg.asInstanceOf[Manifest[T]].arrayManifest
 
