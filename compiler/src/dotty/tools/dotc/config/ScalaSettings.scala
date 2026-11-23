@@ -2,10 +2,10 @@ package dotty.tools.dotc
 package config
 
 import dotty.tools.dotc.config.PathResolver.Defaults
-import dotty.tools.dotc.config.Settings.*
+import dotty.tools.dotc.config.Settings.{Setting, SettingAlias, SettingGroup, SettingCategory, Deprecation}
 import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.io.*
+import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
 import Setting.ChoiceWithHelp
 import ScalaSettingCategories.*
 
@@ -25,10 +25,12 @@ enum ScalaSettingCategories(val prefixLetter: String) extends SettingCategory:
   // Verbose settings, a category to configure the verbosity of the compiler
   case VerboseSetting extends ScalaSettingCategories("V")
 
-object ScalaSettings extends AllScalaSettings
+object ScalaSettings extends SettingGroup, AllScalaSettings
 type ScalaSettings = ScalaSettings.type
 
-trait AllScalaSettings extends SettingGroup, CommonScalaSettings, PluginSettings, VerboseSettings, OptimizerSettings, WarningSettings, XSettings, YSettings:
+trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, OptimizerSettings, WarningSettings, XSettings, YSettings:
+  self: SettingGroup =>
+
   /* Path related settings */
   val semanticdbTarget: Setting[String] = PathSetting(RootSetting, "semanticdb-target", "Specify an alternative output directory for SemanticDB files.", "")
   val semanticdbText: Setting[Boolean] = BooleanSetting(RootSetting, "semanticdb-text", "Specifies whether to include source code in SemanticDB files or not.")
@@ -59,12 +61,14 @@ trait AllScalaSettings extends SettingGroup, CommonScalaSettings, PluginSettings
   )
 
   val wikiSyntax: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xwiki-syntax", "Retains the Scala2 behavior of using Wiki Syntax in Scaladoc.")
-  val jvmargs: Setting[List[String]] = PrefixSetting(RootSetting, "J<flag>", "Pass -J<flag> directly to the runtime system.")
-  val defines: Setting[List[String]] = PrefixSetting(RootSetting, "D<property=value>", "Pass -D<property=value> directly to the runtime system.")
+  val jvmargs  = PrefixSetting(RootSetting, "J<flag>", "Pass -J<flag> directly to the runtime system.")
+  val defines  = PrefixSetting(RootSetting, "D<property=value>", "Pass -D<property=value> directly to the runtime system.")
 end AllScalaSettings
 
 /** Settings shared by compiler and scaladoc */
-trait CommonScalaSettings extends SettingGroup:
+trait CommonScalaSettings:
+  self: SettingGroup =>
+
   /* Path related settings */
   val bootclasspath: Setting[String] = PathSetting(RootSetting, "bootclasspath", "Override location of bootstrap class files.", Defaults.scalaBootClassPath, aliases = List("--boot-class-path"))
   val extdirs: Setting[String] = PathSetting(RootSetting, "extdirs", "Override location of installed extensions.", Defaults.scalaExtDirs, aliases = List("--extension-directories"))
@@ -97,7 +101,7 @@ trait CommonScalaSettings extends SettingGroup:
   val preview: Setting[Boolean] = BooleanSetting(RootSetting, "preview", "Enable the use of preview features anywhere in the project.")
 
   /* Coverage settings */
-  val coverageOutputDir: Setting[String] = PathSetting(RootSetting, "coverage-out", "Destination for coverage classfiles and instrumentation data.", "", aliases = List("--coverage-out"))
+  val coverageOutputDir = PathSetting(RootSetting, "coverage-out", "Destination for coverage classfiles and instrumentation data.", "", aliases = List("--coverage-out"))
   val coverageExcludeClasslikes: Setting[List[String]] = MultiStringSetting(RootSetting, "coverage-exclude-classlikes", "packages, classes and modules", "List of regexes for packages, classes and modules to exclude from coverage.", aliases = List("--coverage-exclude-classlikes"))
   val coverageExcludeFiles: Setting[List[String]] = MultiStringSetting(RootSetting, "coverage-exclude-files", "files", "List of regexes for files to exclude from coverage.", aliases = List("--coverage-exclude-files"))
 
@@ -107,37 +111,13 @@ trait CommonScalaSettings extends SettingGroup:
   val replInitScript: Setting[String] = StringSetting(RootSetting, "repl-init-script", "code", "The code will be run on REPL startup.", "", aliases = List("--repl-init-script"))
   val replQuitAfterInit: Setting[Boolean] = BooleanSetting(RootSetting, "repl-quit-after-init", "Quit REPL after evaluating the init script.", aliases = List("--repl-quit-after-init"))
 
-  /* XSettings shared with scaladoc (since it influences anything with a .jar as output) */
-  val XjarCompressionLevel: Setting[Int] = IntChoiceSetting(AdvancedSetting, "Xjar-compression-level", "compression level", "compression level to use when writing jar files", Deflater.DEFAULT_COMPRESSION to Deflater.BEST_COMPRESSION, Deflater.DEFAULT_COMPRESSION)
-
   /* YSettings shared with scaladoc */
   val Yusejavacp: Setting[Boolean] = BooleanSetting(ForkSetting, "Yusejavacp", "Utilize the java.class.path in classpath resolution.", aliases = List("--use-java-class-path", "-usejavacp", "--usejavacp"))
-
-
-  /* Settings that depend on other settings */
-  private object FileContainerLazyLoader extends SettingLazyLoader[AbstractFile]:
-    override def check(argValue: String, argDescription: String): Option[String] =
-      val path = Directory(argValue)
-      if path.ext.isJar || path.isDirectory then None
-      else Some(s"'$argValue' does not exist or is not a $argDescription")
-    override def load(argValue: String, state: SettingsState): AbstractFile =
-      // TODO: use JAR compression level, Java output version
-      val path = Directory(argValue)
-      if path.ext.isJar then JarArchive.create(path) else new PlainDirectory(path)
-  protected def FileContainerSetting(category: SettingCategory, name: String, allowsJar: Boolean, descr: String, default: AbstractFile, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[AbstractFile] =
-    publish(Setting(category, prependName(name), descr, default, if allowsJar then "directory or .jar file" else "directory", aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs, lazyLoader = Some(FileContainerLazyLoader)))
-
-  private object OptionalFileContainerLazyLoader extends SettingLazyLoader[Option[AbstractFile]]:
-    override def check(argValue: String, argDescription: String): Option[String] =
-      FileContainerLazyLoader.check(argValue, argDescription)
-    override def load(argValue: String, state: SettingsState): Option[AbstractFile] =
-      Some(FileContainerLazyLoader.load(argValue, state))
-  protected def OptionalFileContainerSetting(category: SettingCategory, name: String, allowsJar: Boolean, descr: String, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[Option[AbstractFile]] =
-    publish(Setting(category, prependName(name), descr, None, if allowsJar then "directory or .jar file" else "directory", aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs, lazyLoader = Some(OptionalFileContainerLazyLoader)))
 end CommonScalaSettings
 
 /** -P "plugin" settings. Various tools might support plugins. */
-private sealed trait PluginSettings extends SettingGroup:
+private sealed trait PluginSettings:
+  self: SettingGroup =>
   val plugin: Setting[List[String]]        = MultiStringSetting  (AdvancedSetting, "Xplugin", "paths", "Load a plugin from each classpath.")
   val disable: Setting[List[String]]       = MultiStringSetting  (AdvancedSetting, "Xplugin-disable", "plugin", "Disable plugins by name.")
   val require: Setting[List[String]]       = MultiStringSetting  (AdvancedSetting, "Xplugin-require", "plugin", "Abort if a named plugin is not loaded.")
@@ -146,17 +126,21 @@ private sealed trait PluginSettings extends SettingGroup:
   val pluginOptions: Setting[List[String]] = MultiStringSetting  (RootSetting, "P", "plugin:opt", "Pass an option to a plugin, e.g. -P:<plugin>:<opt>")
 
 /** -V "Verbose" settings */
-private sealed trait VerboseSettings extends SettingGroup:
+private sealed trait VerboseSettings:
+  self: SettingGroup =>
   val Vhelp: Setting[Boolean] = BooleanSetting(VerboseSetting, "V", "Print a synopsis of verbose options.")
   val Vprint: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vprint", "Print out program after", aliases = SettingAlias("-Xprint", Deprecation()) :: Nil)
   val XshowPhases: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vphases", "List compiler phases.", aliases = SettingAlias("-Xshow-phases", Deprecation()) :: Nil)
 
   val Vprofile: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vprofile", "Show metrics about sources and internal representations to estimate compile-time complexity.")
-  val VprofileSortedBy: Setting[String] = ChoiceSetting(VerboseSetting, "Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
-  val VprofileDetails: Setting[Int] = IntSetting(VerboseSetting, "Vprofile-details", "Show metrics about sources and internal representations of the most complex methods", 0)
+  val VprofileSortedBy = ChoiceSetting(VerboseSetting, "Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
+  val VprofileDetails = IntSetting(VerboseSetting, "Vprofile-details", "Show metrics about sources and internal representations of the most complex methods", 0)
 
-/** -W "Warnings" settings */
-private sealed trait WarningSettings extends SettingGroup:
+/** -W "Warnings" settings
+ */
+private sealed trait WarningSettings:
+  self: SettingGroup =>
+
   val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "W", "Print a synopsis of warning options.")
   val Werror: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = SettingAlias("-Xfatal-warnings", Deprecation()) :: Nil)
   val Wall: Setting[Boolean] = BooleanSetting(WarningSetting, "Wall", "Enable all warning settings.")
@@ -193,15 +177,15 @@ private sealed trait WarningSettings extends SettingGroup:
     default = Nil
   )
   object WunusedHas:
-    private def isChoiceSet(s: String)(using Context) = Wunused.value.contains(s)
-    private def allOr(s: String)(using Context) = Wall.value || Wunused.value.pipe(us => us.contains("all") || us.contains(s))
+    def isChoiceSet(s: String)(using Context) = Wunused.value.pipe(us => us.contains(s))
+    def allOr(s: String)(using Context) = Wall.value || Wunused.value.pipe(us => us.contains("all") || us.contains(s))
     def nowarn(using Context) = allOr("nowarn")
 
     // Is any choice set for -Wunused?
     def any(using Context): Boolean = Wall.value || Wunused.value.nonEmpty
 
     def imports(using Context) =
-      (allOr("imports") || allOr("linted")) && !strictNoImplicitWarn
+      (allOr("imports") || allOr("linted")) && !(strictNoImplicitWarn)
     def locals(using Context) =
       allOr("locals") || allOr("linted")
     /** -Wunused:explicits OR -Wunused:params */
@@ -278,7 +262,7 @@ private sealed trait WarningSettings extends SettingGroup:
          |to prevent the shell from expanding patterns.""".stripMargin,
   )
 
-  private val Wshadow: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
+  val Wshadow: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wshadow",
     helpArg = "warning",
@@ -295,7 +279,7 @@ private sealed trait WarningSettings extends SettingGroup:
     // Is any choice set for -Wshadow?
     def any(using Context): Boolean = Wall.value || Wshadow.value.nonEmpty
 
-    private def allOr(s: String)(using Context): Boolean =
+    def allOr(s: String)(using Context): Boolean =
       Wall.value || Wshadow.value.pipe(us => us.contains("all") || us.contains(s))
     def privateShadow(using Context) =
       allOr("private-shadow")
@@ -304,7 +288,7 @@ private sealed trait WarningSettings extends SettingGroup:
   end WshadowHas
 
   object Whas:
-    private def allOr(s: Setting[Boolean])(using Context): Boolean =
+    def allOr(s: Setting[Boolean])(using Context): Boolean =
       Wall.value || s.value
     def valueDiscard(using Context): Boolean = allOr(WvalueDiscard)
     def nonUnitStatement(using Context): Boolean = allOr(WNonUnitStatement)
@@ -319,10 +303,12 @@ private sealed trait WarningSettings extends SettingGroup:
     def unreasonableCatch(using Context): Boolean = allOr(WunreasonableCatch)
 
 /** "Optimizer" settings */
-private sealed trait OptimizerSettings extends SettingGroup:
+private sealed trait OptimizerSettings:
+  self: SettingGroup =>
+
   val opt = BooleanSetting(RootSetting, "opt", "Optimize generated JVM bytecode.")
 
-  private val YoptSpecific = MultiChoiceHelpSetting(
+  val YoptSpecific = MultiChoiceHelpSetting(
     ForkSetting,
     name = "Yopt-specific",
     helpArg = "optimization",
@@ -356,7 +342,7 @@ private sealed trait OptimizerSettings extends SettingGroup:
   def optAssumeModulesNonNull(using Context): Boolean = optEnabled("assume-modules-non-null")
   def optAllowSkipClassLoading(using Context): Boolean = optEnabled("allow-skip-class-loading")
 
-  private val inlineHelp =
+  val inlineHelp =
     """Inlining requires a list of patterns defining where code can be inlined from: `-opt-inline:p1,p2`. (Use `-opt-inline:help` for more details)
       |
       |  *              Matches classes in the empty package
@@ -389,7 +375,7 @@ private sealed trait OptimizerSettings extends SettingGroup:
     choices = List("at-inline-annotated", "everything", "default"),
     default = "default")
 
-  private val Wopt = MultiChoiceHelpSetting(
+  val Wopt = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wopt",
     helpArg = "warning",
@@ -422,8 +408,11 @@ private sealed trait OptimizerSettings extends SettingGroup:
     10_000_000)
   val YoptTrace = StringSetting(ForkSetting, "Yopt-trace", "package/Class.method", "Trace the optimizer progress for methods; `_` to print all, prefix match to select.", "")
 
+
 /** -X "Extended" or "Advanced" settings */
-private sealed trait XSettings extends CommonScalaSettings:
+private sealed trait XSettings:
+  self: SettingGroup =>
+
   val Xhelp: Setting[Boolean] = BooleanSetting(AdvancedSetting, "X", "Print a synopsis of advanced options.")
   val XnoForwarders: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-forwarders", "Do not generate static forwarders in mirror classes.")
   val XmaxInlines: Setting[Int] = IntSetting(AdvancedSetting, "Xmax-inlines", "Maximal number of successive inlines.", 32)
@@ -456,6 +445,7 @@ private sealed trait XSettings extends CommonScalaSettings:
   val XtermConflict: Setting[String] = ChoiceSetting(AdvancedSetting, "Xresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
   val XnoGenericSig: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-generic-signatures", "Suppress generation of generic signatures for Java.")
   val Xdumpclasses: Setting[Option[AbstractFile]] = OptionalFileContainerSetting(AdvancedSetting, "Xdump-classes", false, "Dump the generated bytecode to .class files (useful for reflective compilation that utilizes in-memory classloaders).")
+  val XjarCompressionLevel: Setting[Int] = IntChoiceSetting(AdvancedSetting, "Xjar-compression-level", "compression level", "compression level to use when writing jar files", Deflater.DEFAULT_COMPRESSION to Deflater.BEST_COMPRESSION, Deflater.DEFAULT_COMPRESSION)
   val XkindProjector: Setting[String] = ChoiceSetting(AdvancedSetting, "Xkind-projector", "[underscores, enable, disable]", "Allow `*` as type lambda placeholder to be compatible with kind projector. When invoked as -Xkind-projector:underscores will repurpose `_` to be a type parameter placeholder, this will disable usage of underscore as a wildcard.", List("disable", "", "underscores"), "disable", legacyArgs = true)
 
   val XmaxFuel: Setting[Int] = IntSetting(AdvancedSetting, "Xmax-fuel", "Max fuel for recursive operations before abandoning.", 550)
@@ -492,7 +482,9 @@ private sealed trait XSettings extends CommonScalaSettings:
 end XSettings
 
 /** -Y "Forking" as in forked tongue or "Private" settings */
-private sealed trait YSettings extends SettingGroup:
+private sealed trait YSettings:
+  self: SettingGroup =>
+
   val Yhelp: Setting[Boolean] = BooleanSetting(ForkSetting, "Y", "Print a synopsis of private options.")
   val Ycheck: Setting[List[String]] = PhasesSetting(ForkSetting, "Ycheck", "Check the tree at the end of")
   val YcheckMods: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycheck-mods", "Check that symbols and their defining trees have modifiers in sync.")

@@ -2,18 +2,19 @@ package dotty.tools
 package dotc
 
 import vulpix.TestConfiguration
+
 import dotty.tools.Useables.given
 import dotty.tools.dotc.config.Settings.*
 import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
 import dotty.tools.dotc.config.ScalaSettingCategories.*
-import dotty.tools.dotc.config.{CommonScalaSettings, ScalaSettings, ScalaVersion}
+import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.io.PlainDirectory
 import dotty.tools.io.Directory
-import io.PlainFile
-import PlainFile.*
+import dotty.tools.dotc.config.ScalaVersion
+import io.PlainFile, PlainFile.*
 
-import java.nio.file.*
-import Files.*
+import java.nio.file.*, Files.*
+
 import org.junit.Test
 import org.junit.Assert.{assertEquals, assertFalse, assertNotEquals, assertTrue}
 
@@ -252,7 +253,7 @@ class SettingsTests:
     assertTrue(summary.warnings.forall(_.contains("updated")))
 
   @Test def `dir option also warns`: Unit =
-    object Settings extends CommonScalaSettings:
+    object Settings extends SettingGroup:
       val option = FileContainerSetting(RootSetting, "option", false, "A file", Paths.get("a", "b", "c").toPlainFile)
     Using.resource(createTempDirectory("i13887")) { dir =>
       val target = createDirectory(dir.resolve("x"))
@@ -296,7 +297,7 @@ class SettingsTests:
 
   @Test def `Output setting is overriding existing jar`: Unit =
     val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>
-      object Settings extends CommonScalaSettings:
+      object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir)
 
@@ -312,7 +313,7 @@ class SettingsTests:
     val result = Using.resources(
       Files.createTempFile("myfile", ".jar"), Files.createTempFile("myfile2", ".jar")
     ): (file1, file2) =>
-      object Settings extends CommonScalaSettings:
+      object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir, preferPrevious = true)
 
@@ -335,7 +336,7 @@ class SettingsTests:
 
   @Test def `Output side effect is not present when setting is deprecated`: Unit =
     val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>
-      object Settings extends CommonScalaSettings:
+      object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
 
@@ -351,7 +352,7 @@ class SettingsTests:
 
   @Test def `Arguments of options are correctly parsed with either ":" or " " separators`: Unit =
     val Help = "" // i.e. help = Help
-    object Settings extends CommonScalaSettings:
+    object Settings extends SettingGroup:
       val booleanSetting = BooleanSetting(RootSetting, "booleanSetting", "booleanSetting", false)
       val stringSetting  = StringSetting(RootSetting, "stringSetting", "stringSetting", Help, "test")
       val choiceSetting =  ChoiceSetting(RootSetting, "choiceSetting", "choiceSetting", Help, List("a", "b"), "a")
@@ -471,7 +472,7 @@ class SettingsTests:
       flag
 
   @Test def `Ignored setting shifts args`: Unit =
-    object Settings extends CommonScalaSettings:
+    object Settings extends SettingGroup:
       val foo = BooleanSetting(RootSetting, "foo", "foo", ignoreInvalidArgs = true, preferPrevious = true)
       val bar = BooleanSetting(RootSetting, "bar", "bar")
       val baz = FileContainerSetting(RootSetting, "out", false, "A file", default = Paths.get("out", "baz").toPlainFile,
