@@ -1,0 +1,10 @@
+-- Error: tests/neg/i3248.scala:8:19 -----------------------------------------------------------------------------------
+8 |    case Foo(name, cs *) => name :: cs.reverse.toList.map(_.toString) // error
+  |                   ^^^^
+  |                   Sequence wildcard pattern is not allowed for `unapply`; it requires `unapplySeq` instead
+-- [E107] Syntax Error: tests/neg/i3248.scala:9:12 ---------------------------------------------------------------------
+9 |    case Foo(name, child, cs) => name :: Nil // error arity not unreached case
+  |         ^^^^^^^^^^^^^^^^^^^^
+  |         Wrong number of argument patterns for Test.Foo; expected: ((String, Seq[Int]))
+  |
+  | longer explanation available when compiling with `-explain`
