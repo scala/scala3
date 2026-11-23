@@ -86,10 +86,6 @@ trait PcCollector[T]:
       filter: Tree => Boolean,
       soughtFilter: (Symbol => Boolean) => Boolean
   ): Set[T] =
-    // The `NamedTuple.apply` references synthesized for `x.name`, which have the span of `x`;
-    // they are seen before their children, see `NamedTupleSelection` below.
-    val syntheticApplies = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[Tree, java.lang.Boolean])
-
     def collectNamesWithParent(
         occurrences: Set[T],
         tree: Tree,
@@ -101,6 +97,7 @@ trait PcCollector[T]:
           symbol: Option[Symbol] = None
       ) =
         this.collect(parent)(tree, pos, symbol)
+      def isSought(field: NamedTupleField) = soughtFilter(sameNamedTupleField(_, field))
       tree match
         /** All indentifiers such as:
          *  ```
@@ -143,8 +140,7 @@ trait PcCollector[T]:
          */
         case sel: Select
             if sel.isCorrectSpan && filter(sel) &&
-              !sel.isForComprehensionMethod &&
-              !syntheticApplies.contains(sel) =>
+              !sel.isForComprehensionMethod =>
           occurrences + collect(
             sel,
             pos.withSpan(selectNameSpan(sel))
@@ -176,50 +172,29 @@ trait PcCollector[T]:
             traverser(set, tree)
           }
 
-        /** Named tuple fields, which have no symbol:
-         *  ```
-         *  x.<<name>>
-         *  ```
-         */
-        case app @ NamedTupleSelection(_, names, values, i) =>
-          syntheticApplies.add(namedTupleSelectionFun(app))
-          if !app.span.isCorrect || !soughtFilter(isNamedTupleField) then occurrences
-          else
-            val span = namedTupleFieldSpan(app, sourceText)
-            val tupleType = defn.NamedTuple(names.tpe, values.tpe)
-            occurrences ++ namedTupleFieldAt(names, values, i)
-              .filter((name, _) => soughtFilter(sameNamedTupleField(_, name, tupleType)))
-              .map((name, _) => collect(app, pos.withSpan(span), Some(namedTupleFieldSymbol(tupleType, name, span))))
-
-        /** Named tuple field declarations, which have no symbol either:
+        /** Named tuple fields, which have no symbol, so one is synthesized per occurrence:
          *  ```
          *  val x: (<<name>>: String) = (<<name>> = "")
-         *  ```
-         */
-        case NamedTupleTree(names, values) if soughtFilter(isNamedTupleField) =>
-          val tupleType = defn.NamedTuple(names.tpe, values.tpe)
-          namedTupleFieldNames(names).zipWithIndex.foldLeft(occurrences):
-            case (occs, (name, i)) if name.span.isCorrect =>
-              val span = namedTupleFieldNameSpan(name, sourceText)
-              occs ++ namedTupleFieldAt(names, values, i)
-                .filter((fieldName, _) => soughtFilter(sameNamedTupleField(_, fieldName, tupleType)))
-                .map: (fieldName, _) =>
-                  // the name literal of a type is the field's definition, a constructor is a use
-                  val occurrence = if tree.isType then name else tree
-                  collect(occurrence, pos.withSpan(span), Some(namedTupleFieldSymbol(tupleType, fieldName, span)))
-            case (occs, _) => occs
-
-        /** Named tuple pattern labels, which the typer drops:
-         *  ```
+         *  x.<<name>>
          *  x match
          *    case (<<name>> = n) => n
          *  ```
          */
+        case app @ NamedTupleSelection(_, _, _, _) if app.span.isCorrect && soughtFilter(isNamedTupleField) =>
+          occurrences ++ selectedNamedTupleField(app, sourceText).filter(isSought).map: field =>
+            collect(app, pos.withSpan(field.span), Some(field.symbol))
+
+        case NamedTupleTree(names, values) if soughtFilter(isNamedTupleField) =>
+          occurrences ++ declaredNamedTupleFields(names, values, sourceText).collect:
+            case (literal, field) if literal.span.isCorrect && isSought(field) =>
+              // the name literal of a type is the field's definition, a constructor is a use
+              collect(if tree.isType then literal else tree, pos.withSpan(field.span), Some(field.symbol))
+
         case Match(scrutinee, cases) if soughtFilter(isNamedTupleField) =>
-          cases.foldLeft(occurrences): (occs, cdef) =>
-            occs ++ namedTuplePatternLabels(cdef, scrutinee, unit.untpdTree).collect:
-              case (span, name, tupleType) if span.isCorrect && soughtFilter(sameNamedTupleField(_, name, tupleType)) =>
-                collect(cdef.pat, pos.withSpan(span), Some(namedTupleFieldSymbol(tupleType, name, span)))
+          occurrences ++ cases.flatMap: cdef =>
+            namedTuplePatternFields(cdef, scrutinee, unit.untpdTree)
+              .filter(field => field.span.isCorrect && isSought(field))
+              .map(field => collect(cdef, pos.withSpan(field.span), Some(field.symbol)))
 
         /* Named parameters don't have symbol so we need to check the owner
          *  ```

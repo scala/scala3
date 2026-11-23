@@ -1594,6 +1594,15 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |""".stripMargin
     )
 
+  @Test def `named-tuple-field-conversion` =
+    check(
+      """|object Main:
+         |  val x: (<<name>>: String, age: Int) = ???
+         |  val a = x.<<na@@me>>.map(_.toUpper)
+         |  val b = x.<<name>>.toUpperCase
+         |""".stripMargin
+    )
+
   @Test def `named-tuple-field-chain-method` =
     check(
       """|object Main:

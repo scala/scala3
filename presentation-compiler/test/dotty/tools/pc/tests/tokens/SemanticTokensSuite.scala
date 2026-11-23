@@ -569,6 +569,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
          |  val <<x>>/*variable,definition,readonly*/: (<<name>>/*variable,readonly*/: <<String>>/*type*/, <<age>>/*variable,readonly*/: <<Int>>/*class,abstract*/) = <<???>>/*method*/
          |  val <<a>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/ match
          |    case (<<name>>/*variable,readonly*/ = <<n>>/*variable,definition,readonly*/, <<age>>/*variable,readonly*/ = <<m>>/*variable,definition,readonly*/) => <<n>>/*variable,readonly*/
+         |    case <<t>>/*variable,definition,readonly*/ @ (<<name>>/*variable,readonly*/ = "a", <<age>>/*variable,readonly*/ = 1) => <<t>>/*variable,readonly*/.<<name>>/*variable,readonly*/
          |""".stripMargin
     )
 

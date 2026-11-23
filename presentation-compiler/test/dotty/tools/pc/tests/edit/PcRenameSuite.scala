@@ -661,8 +661,6 @@ class PcRenameSuite extends BasePcRenameSuite:
          |""".stripMargin
     )
 
-  // the type also comes from `NamedTuple.From[P]`, which cannot be renamed
-
   @Test def `named-tuple-field-local-alias` =
     check(
       """|type P = (<<name>>: String)
@@ -677,8 +675,6 @@ class PcRenameSuite extends BasePcRenameSuite:
          |println((<<name>> = "b").<<na@@me>>)
          |""".stripMargin
     )
-
-  // param of a local method is local
 
   @Test def `named-tuple-field-local-method-param` =
     check(
@@ -733,8 +729,6 @@ class PcRenameSuite extends BasePcRenameSuite:
          |""".stripMargin,
       wrap = false
     )
-
-  // a constructor directly in a member method body is local
 
   @Test def `named-tuple-field-inferred-member-val` =
     check(

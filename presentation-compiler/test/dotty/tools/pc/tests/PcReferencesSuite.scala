@@ -153,4 +153,15 @@ class PcReferencesSuite extends BasePCSuite with RangeReplace {
          |  val c = p.name
          |""".stripMargin
     )
+
+  @Test def `named-tuple-field-pattern` =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  val y = x.<<na@@me>>
+         |  x match
+         |    case (<<name>> = n, age = a) => println(n)
+         |    case t @ (age = 1, <<name>> = "a") => println(t)
+         |""".stripMargin
+    )
 }

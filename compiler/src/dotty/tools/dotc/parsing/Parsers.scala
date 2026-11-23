@@ -1941,17 +1941,17 @@ object Parsers {
           def erasedMods(): Modifiers =
             if isErased then addModifier(EmptyModifiers) else EmptyModifiers
           val leadingMods = erasedMods()
+          val paramNameStart = nameStart
           val args =
             in.currentRegion.withCommasExpected:
               funArgType() match
-                case t @ Ident(name) if name != tpnme.WILDCARD && in.isColon =>
+                case Ident(name) if name != tpnme.WILDCARD && in.isColon =>
                   def funParam(start: Offset) =
                     atSpan(start):
                       val mods = erasedMods()
                       typedFunParam(in.offset, nameStart, ident(), mods)
-                  val point = pointOffset(t) + (if t.hasAttachment(Backquoted) then 1 else 0)
                   commaSeparatedRest(
-                    typedFunParam(paramStart, point, name.toTermName, leadingMods),
+                    typedFunParam(paramStart, paramNameStart, name.toTermName, leadingMods),
                     () => funParam(in.offset))
                 case t =>
                   if leadingMods.is(Erased) then

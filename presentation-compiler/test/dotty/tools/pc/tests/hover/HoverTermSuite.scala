@@ -967,7 +967,7 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin.hover
     )
 
-  @Test def `named-tuples-field-val`: Unit =
+  @Test def `named-tuple-field-val`: Unit =
     check(
       """|object Main:
          |  val x: (name: String, age: Int) = ???
@@ -976,7 +976,7 @@ class HoverTermSuite extends BaseHoverSuite:
       "name: String".hover
     )
 
-  @Test def `named-tuples-field-nested`: Unit =
+  @Test def `named-tuple-field-nested`: Unit =
     check(
       """|object Main:
          |  val x: (inner: (name: String, age: Int)) = ???
@@ -985,7 +985,7 @@ class HoverTermSuite extends BaseHoverSuite:
       "name: String".hover
     )
 
-  @Test def `named-tuples-field-from-case-class`: Unit =
+  @Test def `named-tuple-field-from-case-class`: Unit =
     check(
       """|object Main:
          |  case class Person(name: String, age: Int)
@@ -993,4 +993,13 @@ class HoverTermSuite extends BaseHoverSuite:
          |  val y = p.a@@ge
          |""".stripMargin,
       "age: Int".hover
+    )
+
+  @Test def `named-tuple-field-qualifier`: Unit =
+    check(
+      """|object Main:
+         |  val person: (name: String, age: Int) = ???
+         |  val y = per@@son.name
+         |""".stripMargin,
+      "val person: (name : String, age : Int)".hover
     )
