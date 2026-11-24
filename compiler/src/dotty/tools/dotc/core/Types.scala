@@ -6179,10 +6179,7 @@ object Types extends TypeUtils {
    */
   trait FollowAliasesMap(using Context) extends TypeMap:
     def mapFollowingAliases(t: Type): Type = t match
-      case t: LazyRef =>
-        val t1 = t.ref
-        val t2 = apply(t1)
-        if t2 ne t1 then LazyRef.of(t2) else t
+      case t: LazyRef => mapOver(t)
       case _ =>
         val t1 = t.dealiasKeepAnnotsAndOpaques
         if t1 ne t then
