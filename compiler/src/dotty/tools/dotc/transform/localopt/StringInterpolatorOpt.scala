@@ -97,7 +97,7 @@ class StringInterpolatorOpt extends MiniPhase:
         case _ => None
 
   override def transformApply(tree: Apply)(using Context): Tree =
-    def mkConcat(strs: List[Literal], elems: List[Tree]): Tree =
+    def mkConcat(strs: List[Literal], elems: List[Tree], linting: Boolean): Tree =
       val stri = strs.iterator
       val elemi = elems.iterator
       var result: Tree = stri.next()
@@ -106,7 +106,7 @@ class StringInterpolatorOpt extends MiniPhase:
       while elemi.hasNext
       do
         val elem = elemi.next()
-        lintToString(elem)
+        if linting then lintToString(elem)
         concat(elem)
         val str = stri.next()
         if !str.const.stringValue.isEmpty then
@@ -168,7 +168,7 @@ class StringInterpolatorOpt extends MiniPhase:
       else if !checker.formatted then
         val stripped = formats.map: fmt =>
           Literal(Constant(fmt.stripPrefix("%s")))
-        mkConcat(stripped, formatArgs)
+        mkConcat(stripped, formatArgs, linting = false)
       else mkFormat(formats, formatArgs)
     end transformF
     // Starting with Scala 2.13, s and raw are macros in the standard
@@ -193,7 +193,7 @@ class StringInterpolatorOpt extends MiniPhase:
     if isInterpolatedMethod then
       (tree: @unchecked) match
         case StringContextIntrinsic(strs: List[Literal], elems: List[Tree]) =>
-          mkConcat(strs, elems)
+          mkConcat(strs, elems, linting = true)
         case Apply(intp, args :: Nil) =>
           if sym eq defn.StringContext_f then transformF(intp, args)
           else transformS(intp, args, isRaw = sym eq defn.StringContext_raw)
