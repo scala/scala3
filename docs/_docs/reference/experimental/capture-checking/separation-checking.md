@@ -351,13 +351,63 @@ Here, the implicit `unapply` in the pattern match `case FreshCons(h, t) =>` cons
 
 Specifically, expanding a linear case class propagates `consume` as follows:
 
- - Parameters of the generated `apply` and `copy` methods are marked `consume` if the the corresponding case class parameters are marked `consume`.
- - Element selectors `_1`, `_2`, ... are marked `consume` if the corresponding
- case class parameters are marked `consume`.
- - If the case class is linear, its `copy` and `unapply` methods are marked `consume`.
+ - Parameters of the generated `apply` and `copy` methods are marked `consume` if the corresponding case class parameters are marked `consume`.
+ - Element selectors `_1`, `_2`, ... are marked `consume` if the corresponding case class parameters are marked `consume`.
+ - If the case class is linear, its `copy` method is marked `consume`, and the parameter of its synthetic `unapply` (or `unapplySeq`) method is marked `consume`.
 
-Note that the `productElement` and `productIterator` methods that are declared in `Product` and inherited by each case class cannot be marked `consume`. Hence, linear case class elements can be extracted multiple times using these methods, but only at type `Any`. This constitutes no breach of capability safety, since `Any` is not a `Matchable` type and therefore cannot be safely downcast to
-a type that would be able to exploit the leaked capabilities.
+Note that the `productElement` and `productIterator` methods that are declared in `Product` and inherited by each case class cannot be marked `consume`. Hence, linear case class elements can be extracted multiple times using these methods, but only at type `Any`. This constitutes no breach of capability safety, since `Any` is not a `Matchable` type and therefore cannot be safely downcast to a type that would be able to exploit the leaked capabilities.
+
+### Pattern Matching and Extractors
+
+User-defined `unapply` and `unapplySeq` methods cannot carry a `consume` modifier, neither on the method itself nor on any of its parameters. Only the synthetic extractors generated for linear case classes may consume their scrutinee. This restriction avoids arbitrary user code consuming a scrutinee before a pattern fails and falls through to subsequent cases.
+
+In a `match` or `catch` expression, pattern tests and guards are evaluated sequentially from top to bottom, whereas case bodies are mutually exclusive:
+
+ - Capabilities consumed in a case body do not affect subsequent cases, though they remain consumed after the `match` expression as a whole.
+ - Capabilities consumed in a guard (or in a non-structural pattern) remain consumed if that case fails and falls through to subsequent cases.
+
+Because the synthetic `unapply` of a linear case class is a pure identity function, separation checking treats **purely structural patterns without guards** specially. A pattern is _purely structural_ if it is built solely from synthetic case-class extractors, variable bindings, wildcards, type tests, literals, stable-identifier constants, and alternatives (with no user-defined extractors). When a case has a purely structural pattern and no guard, no user code can observe the freshly extracted components if the pattern fails to match; consumption of the scrutinee therefore takes effect only when the case matches and enters its body.
+
+As a result, multi-case matches over sum types containing linear case classes work naturally:
+```scala sc-name:sep-freshlist-context sc-compile-with:sep-ref-context
+trait FreshList[+A] { this: FreshList[A]^ =>
+  def isEmpty: Boolean
+}
+
+case class FreshCons[+A](consume head: A^, consume tail: FreshList[A]^) extends FreshList[A]:
+  def isEmpty = false
+
+object FreshNil extends FreshList[Nothing]:
+  def isEmpty = true
+```
+```scala sc-compile-with:sep-freshlist-context
+def updateFirst(consume xs: FreshList[Ref^{}]^): Boolean = xs match
+  case FreshCons(h, FreshNil) =>
+    h.set(1)
+    true
+  case FreshCons(h, t) =>
+    h.set(2)
+    true
+  case _ =>
+    xs.isEmpty
+```
+Here, if the first pattern `FreshCons(h, FreshNil)` fails, `xs` remains available for the second `FreshCons(h, t)` pattern and for the fallback `xs.isEmpty`. Inside a matching case body, within the same pattern (for instance, matching `(xs, xs)` against `(FreshCons(h, t), FreshCons(h2, t2))`), and after the `match` expression completes, `xs` is still treated as consumed.
+
+By contrast, if a case matching a linear case class has a **guard** or contains a **nested user-defined extractor**, user code can observe or alias the freshly extracted components before the case fails and falls through. In that situation, the scrutinee remains consumed for all subsequent cases:
+```scala sc:fail sc-compile-with:sep-freshlist-context
+def badGuard(consume xs: FreshList[Ref^{}]^): Unit = xs match
+  case FreshCons(h, t) if h.get == 0 => h.set(1)
+  case FreshCons(h, t) => h.set(2) // error: xs was already consumed
+  case FreshNil => ()
+```
+To test conditions on extracted linear components without consuming across cases, move the condition into an `if` expression inside the case body:
+```scala sc-compile-with:sep-freshlist-context
+def goodGuard(consume xs: FreshList[Ref^{}]^): Unit = xs match
+  case FreshCons(h, t) =>
+    if h.get == 0 then h.set(1)
+    else h.set(2)
+  case FreshNil => ()
+```
 
 ## The `freeze` Wrapper
 
