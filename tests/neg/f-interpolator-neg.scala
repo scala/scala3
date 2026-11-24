@@ -80,4 +80,11 @@ object Test {
     f"%%bci.2${'i'}%..2c2" // error
   }
 
+  def moreFlagMismatches(d: Int) =
+    f"$d%,,d" // error duplicate flag
+
+  def moreBadArgTypes(f: Double) =
+    f"$f%f %<d"
+    f"%1$$d $f%f"
+    f"${null}%s %<#s"
 }

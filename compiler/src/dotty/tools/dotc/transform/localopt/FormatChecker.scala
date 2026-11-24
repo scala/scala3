@@ -173,14 +173,18 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
       def only_-(msg: String) =
         val badFlags = flags.filterNot { case '-' | '<' => true case _ => false }
         badFlags.isEmpty or badFlag(badFlags(0), s"Only '-' allowed for $msg")
-      def goodFlags =
+      def goodFlags = flags.isEmpty || {
+        for dupe <- flags.diff(flags.distinct).distinct do
+          errorAt(Flags, flags.lastIndexOf(dupe))(s"Duplicate flag '$dupe'")
         val badFlags = flags.filterNot(okFlags.contains)
         for f <- badFlags do badFlag(f, s"Illegal flag '$f'")
         badFlags.isEmpty
-      def goodIndex =
+      }
+      def goodIndex = !isIndexed || {
         if index.nonEmpty && hasFlag('<') then warningAt(Index)("Argument index ignored if '<' flag is present")
         val okRange = index.map(i => i > 0 && i <= argc).getOrElse(true)
         okRange || hasFlag('<') or errorAt(Index)("Argument index out of range")
+      }
     // begin verify
       kind match
         case StringXn        => goodies
