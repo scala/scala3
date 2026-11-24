@@ -12,14 +12,13 @@ import core.Comments.Comment
 import core.Flags.*
 import core.Contexts.{Context, ctx, inContext}
 import core.DenotTransformers.IdentityDenotTransformer
-import core.Symbols.{defn, Symbol, TermSymbol}
+import core.Symbols.{defn, Symbol}
 import core.Constants.Constant
 import core.NameKinds.DefaultGetterName
 import core.NameOps.isContextFunction
 import core.StdNames.nme
 import core.Types.*
 import core.Decorators.*
-import cc.CapturingOrRetainsType
 import coverage.*
 import typer.LiftImpure
 import util.{Property, SourcePosition, SourceFile}
@@ -35,7 +34,6 @@ object LiftCoverage extends LiftImpure:
   // Property indicating whether we're currently lifting the arguments of an application
   private val LiftingArgs = new Property.Key[Boolean]
   private val SelectedReceiverApply = Property.StickyKey[tpd.Apply]()
-  val CoverageLiftedTemp = Property.StickyKey[Unit]()
 
   private inline def liftingArgs(using Context): Boolean =
     ctx.property(LiftingArgs).contains(true)
@@ -49,7 +47,6 @@ object LiftCoverage extends LiftImpure:
    */
   private def noLiftArg(arg: tpd.Tree)(using Context): Boolean =
     arg match
-      case arg if isUnsafeAssumeSeparate(arg) => true
       case a: tpd.Apply => a.symbol.is(Erased) // don't lift erased applications, but lift all others
       case tpd.Block((meth: tpd.DefDef) :: Nil, closure: tpd.Closure)
           if meth.symbol == closure.meth.symbol && closure.env.forall(noLiftArg) => true
@@ -58,40 +55,15 @@ object LiftCoverage extends LiftImpure:
       case tpd.Typed(expr, _) => noLiftArg(expr)
       case _ => super.noLift(arg)
 
-  def isUnsafeAssumeSeparate(tree: tpd.Tree)(using Context): Boolean = tree match
-    case tree: tpd.Apply =>
-      tree.symbol == defn.Caps_unsafeAssumeSeparate
-      || isUnsafeAssumeSeparate(tree.fun)
-    case tpd.Select(qual, _) => isUnsafeAssumeSeparate(qual)
-    case tpd.Block(_, expr) => isUnsafeAssumeSeparate(expr)
-    case tpd.Inlined(_, _, expr) => isUnsafeAssumeSeparate(expr)
-    case tpd.Typed(expr, _) => isUnsafeAssumeSeparate(expr)
-    case _ => false
-
-  def isCoverageLiftedTemp(sym: Symbol)(using Context): Boolean =
-    sym.defTree.hasAttachment(CoverageLiftedTemp)
-
   def selectedReceiverApply(tree: tpd.Tree)(using Context): Option[tpd.Apply] =
     tree.getAttachment(SelectedReceiverApply)
 
   def markSelectedReceiverApply(tree: tpd.Apply)(using Context): Unit =
     tree.putAttachment(SelectedReceiverApply, tree)
 
-  override protected def onLiftedDef(tree: tpd.Tree)(using Context): Unit =
-    tree.putAttachment(CoverageLiftedTemp, ())
-
-  override protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: tpd.Tree)(using Context): tpd.Tree =
-    val liftedRef = tpd.ref(lifted.termRef)
-    val hasCaptures =
-      liftedType.existsPart:
-        case CapturingOrRetainsType(_, refs) => !refs.isAlwaysEmpty
-        case _ => false
-    if liftingArgs && hasCaptures then tpd.Typed(liftedRef, tpd.TypeTree(liftedType, inferred = true))
-    else liftedRef
-
   override def noLift(expr: tpd.Tree)(using Context) =
     if liftingArgs then noLiftArg(expr)
-    else isUnsafeAssumeSeparate(expr) || super.noLift(expr)
+    else super.noLift(expr)
 
   /** Coverage runs post-typer, so skip deskolemization and preserve valid skolems. */
   override protected def liftedExprType(expr: tpd.Tree)(using Context): Type =
@@ -377,9 +349,6 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     private def tryInstrument(tree: Apply)(using Context): InstrumentedParts =
       if usesConstructorOnly(tree) then
         InstrumentedParts.notCovered(tree)
-      else if LiftCoverage.isUnsafeAssumeSeparate(tree) then
-        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
-        InstrumentedParts.notCovered(transformed)
       else if canInstrumentApply(tree) then
         // Create a call to Invoker.invoked(coverageDirectory, newStatementId)
         val coverageCall = createInvokeCall(tree, tree.sourcePos)
@@ -636,9 +605,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             tree.rhs
           else if sym.isClassConstructor then
             instrumentSecondaryCtor(tree)
-          else if !sym.isOneOf(Accessor | Artifact | Synthetic)
-               && !LiftCoverage.isUnsafeAssumeSeparate(tree.rhs)
-          then
+          else if !sym.isOneOf(Accessor | Artifact | Synthetic) then
             // If the body can be instrumented, do it (i.e. insert a "coverage call" at the beginning)
             // This is useful because methods can be stored and called later, or called by reflection,
             // and if the rhs is too simple to be instrumented (like `def f = this`),
@@ -804,8 +771,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       end applicationEvaluationNeedsLift
 
       def selectedReceiverNeedsProbe(tree: Apply): Boolean =
-        !LiftCoverage.isUnsafeAssumeSeparate(tree)
-        && canInstrumentApply(tree)
+        canInstrumentApply(tree)
         && applicationEvaluationNeedsLift(tree)
       end selectedReceiverNeedsProbe
 

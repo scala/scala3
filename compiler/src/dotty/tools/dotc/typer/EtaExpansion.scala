@@ -52,12 +52,6 @@ abstract class Lifter {
     val tp = expr.tpe.deskolemized
     if tp.isStable then tp else tp.widen
 
-  /** Hook for lifters that need to record or mark freshly created lifted defs. */
-  protected def onLiftedDef(tree: Tree)(using Context): Unit = ()
-
-  protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: Tree)(using Context): Tree =
-    ref(lifted.termRef)
-
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
     else {
@@ -73,9 +67,8 @@ abstract class Lifter {
         .withSpan(expr.span)
         .changeNonLocalOwners(lifted)
         .setDefTree
-      onLiftedDef(liftedTree)
       defs += liftedTree
-      liftedRef(lifted, liftedType, expr).withSpan(expr.span.focus)
+      ref(lifted.termRef).withSpan(expr.span.focus)
     }
 
   /** Lift out common part of lhs tree taking part in an operator assignment such as
