@@ -131,9 +131,9 @@ def fun(x: B) =
     x.foo // points to foo#2 
 ```
 ### Private members
-Inline traits may define private members, and these are handled specially: 
-- Private fields in the inline trait are inlined as private fields with a mangled name in the inline receiver. This ensures they do not collide with privates inherited from other inline traits.
-- The private fields are then no longer accessible in the inline trait, as it is transformed into a pure interface, so we delete them.
+Private fields in the inline trait will have a mangled name in the inline receiver. 
+This ensures they do not collide with privates inherited from other inline traits.
+As inline traits are lowered into pure interfaces, they will not exist in class binaries.
 
 ```scala
 inline trait A(b: Boolean):
@@ -153,6 +153,38 @@ class B extends A(true):
     private val A$$x: Int = 1
     override def foo(): Int = if this.A$$b then this.A$$x.+(1) else 0
 ```
+
+#### Scoped private members
+
+Certain types of scoped privacy may cause unexpected errors when applied to members of inline traits.
+For example:
+
+```scala
+inline trait A {
+  def foo(other: A.B): Int = other.v
+}
+
+object A {
+  class B(private [A] val v: Int)
+}
+
+class C extends A
+```
+
+will produce the following compilation error:
+
+```
+-- [E173] Reference Error: <source>:5:37 -----------------------------
+5 |  def foo(other: A.B): Int = other.v
+  |                             ^^^^^^^
+  | value v cannot be accessed as a member of (other : A.B) from class C.
+  |   private[A] value v can only be accessed from object A.
+```
+
+After trait inlining, `foo` is actually a member of `C` and the scope of `private [A]` is violated.
+As this behaviour is intentional on the part of inline traits and private scope is only intended for `trait A` and its companion object, 
+it would alter the intention of the scope to make the member available to inline receivers.
+Therefore, class private scopes provide no benefit when applied to members of inline traits.
 
 ### Mixing in of multiple inline traits & super calls
 An inline receiver may mix in multiple inline traits with colliding member names. This follows the same rules as normal traits. In particular, this must usually be disambiguated with an override. 
