@@ -645,6 +645,15 @@ class CheckCaptures extends Recheck, SymTransformer:
     def markFree(ref: Capability, tree: Tree)(using Context): Unit =
       if ref.isTracked then markFree(ref.singletonCaptureSet, tree)
 
+    /** Report an error if `included` adds an exclusive capability to a read-only method `meth`. */
+    private def checkReadOnlyMethod(included: CaptureSet, meth: Symbol, pos: SrcPos)(using Context): Unit =
+      included.checkAddedElems: elem =>
+        if elem.isExclusive() then
+          report.error(
+            em"""Read-only $meth accesses exclusive capability `${elem.showAsCapability}`;
+                |$meth should be declared an update method to allow this.""",
+            pos)
+
     /** Make sure the (projected) `cs` is a subset of the capture sets of all enclosing
      *  environments. At each stage, only include references from `cs` that are outside
      *  the environment's owner
@@ -663,14 +672,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             !sym.isContainedIn(effectiveOwner)
         }
 
-      def checkReadOnlyMethod(included: CaptureSet, meth: Symbol): Unit =
-        included.checkAddedElems: elem =>
-          if elem.isExclusive() then
-            report.error(
-                em"""Read-only $meth accesses exclusive capability `${elem.showAsCapability}`;
-                    |$meth should be declared an update method to allow this.""",
-                tree.srcPos)
-
       def recur(cs: CaptureSet, env: Env, lastEnv: Env | Null): Unit =
         if env.kind != EnvKind.Boxed && !cs.isAlwaysEmpty then
           // Only captured references that are visible from the environment
@@ -686,7 +687,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   && env.owner.isReadOnlyMember
                   && env.owner.owner.derivesFrom(defn.Caps_Stateful)
               then
-                checkReadOnlyMethod(included, env.owner)
+                checkReadOnlyMethod(included, env.owner, tree.srcPos)
               recur(included, nextEnv, env)
 
       if !cs.isAlwaysEmpty && !CCState.discardUses then
@@ -1434,15 +1435,50 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       defn.UnitType
 
-    /** Recheck Closure node: add the captured vars of the anonymoys function
+    /** Recheck Closure node: add the captured vars of the anonymous function
      *  to the result type. See also `recheckClosureBlock` which rechecks the
      *  block containing the anonymous function and the Closure node.
      */
     override def recheckClosure(tree: Closure, pt: Type, forceDependent: Boolean)(using Context): Type =
       val cs = tree.meth.symbol.useSet
       capt.println(i"typing closure $tree with cvs $cs")
+      checkSAMClosure(tree)
       super.recheckClosure(tree, pt, forceDependent).capturing(cs)
         .showing(i"rechecked closure $tree / $pt = $result", capt)
+
+    /** If `tree` is a closure that implements a SAM type which is not a function type,
+     *  check that the type of its anonymous function is compatible with the type of
+     *  the method it implements. The anonymous function will be turned into an
+     *  implementation of that method, so it has to meet the conditions for an
+     *  overriding method.
+     */
+    private def checkSAMClosure(tree: Closure)(using Context): Unit =
+      if !tree.tpt.isEmpty && !defn.isFunctionType(tree.tpt.tpe) then
+        tree.tpt.nuType match
+          case SAMType(samType, parent) =>
+            val cs = tree.meth.symbol.useSet
+            parent.classSymbol match
+              case cls: ClassSymbol =>
+                for pureBase <- cls.pureBaseClass do
+                  checkSubset(cs,
+                    CaptureSet.empty.withDescription(i"of pure base class $pureBase"),
+                    tree.srcPos)
+                if cls.derivesFrom(defn.Caps_Stateful) then
+                  val samMeth = parent.possibleSamMethods.headOption.map(_.symbol).getOrElse(NoSymbol)
+                  if samMeth.exists && !samMeth.isUpdateMethod then
+                    checkReadOnlyMethod(cs, samMeth, tree.srcPos)
+              case _ =>
+            // The two method types are compared as function types, so that boxes
+            // are adapted in the same way as for closures of function types.
+            def asFunction(tp: Type) = tp match
+              case tp: MethodType => tp.toFunctionType(alwaysDependent = true)
+              case _ => tp
+            // What is used by unboxing a parameter is charged to the closure.
+            checkConformsExpr(
+              asFunction(tree.meth.tpe.widen),
+              asFunction(samType).capturing(cs),
+              tree)
+          case _ =>
 
     /** Recheck a lambda of the form
      *  ```
@@ -1707,6 +1743,14 @@ class CheckCaptures extends Recheck, SymTransformer:
             }
           case _ =>
     }
+
+    /** Capture checking runs before inlining, so calls of inline methods are
+     *  checked against the signatures of these methods. Hence, their bodies have
+     *  to be checked like the bodies of other methods. The exception are macros,
+     *  where we have to trust the signature.
+     */
+    override protected def skipBody(sym: Symbol)(using Context): Boolean =
+      sym.is(Macro)
 
     /** Recheck method definitions:
      *   - check body in a nested environment that tracks uses, in  a nested level,
@@ -2417,8 +2461,21 @@ class CheckCaptures extends Recheck, SymTransformer:
               expected, covariant)
           case _ =>
 
+        /** The shape of a boxed intersection type: Strip the capture sets of its
+         *  operands, so that their boxes do not stay in place when the intersection
+         *  is unboxed. An example of such a type is the result type `x.type & T` of
+         *  `nn` where `T` is instantiated to a boxed type.
+         */
+        def intersectionShape(tp: Type): Type = tp match
+          case tp: AndType => tp.derivedAndType(intersectionShape(tp.tp1), intersectionShape(tp.tp2))
+          case _ => tp.stripCapturing
+
         // Decompose the actual type into the inner shape type, the capture set and the box status
-        val actualShape = if actual.isFromJavaObject then actual else actual.stripCapturing
+        val actualShape =
+          if actual.isFromJavaObject then actual
+          else actual match
+            case actual: AndType if actual.hasBoxedCapset => intersectionShape(actual)
+            case _ => actual.stripCapturing
         val actualIsBoxed = actual.hasBoxedCapset
           // We also need to do adapation if acual has nested boxed capture sets
           // See neg-custom-args/captures/box-adapt-cov.scala for a test case where

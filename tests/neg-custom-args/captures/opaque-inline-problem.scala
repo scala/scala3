@@ -8,4 +8,4 @@ object Async:
 
 def main() =
   Async.blocking:
-    val a = Async.current.group
+    val a = Async.current.group // error

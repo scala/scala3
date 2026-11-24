@@ -10,5 +10,5 @@ inline def atPhase[T]()(inline op: Context ?=> T)(using ctx: Context): T =
 def Test(using ctx: Context) =
   val info: Lam[ParamRef] = ???
   info.paramRefs.filter(_.isTracked)
-  val p = atPhase()((_: ParamRef).isTracked)
+  val p = atPhase()((_: ParamRef).isTracked) // error
   val _: ParamRef ->{ctx} Boolean = p

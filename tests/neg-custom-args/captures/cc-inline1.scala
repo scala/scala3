@@ -71,12 +71,12 @@ def testInline = {
 }
 def testInline1 = {
   val llist = LazyListIterable(1, 2, 3)
-  val leaked1 = Fs.useFile1(f => llist.map({x => f.write(x); x + 1}))
-  val _: LazyListIterable[Int] = leaked1 // error
-  val leaked2 = Fs.useFile1(l => l)
-  val _: Fs.FileHandle = leaked2 // error
-  val leaked3 = Fs.useFile1(f => () => f.write(42))
-  val _: () -> Unit = leaked3 // error
+  val leaked1 = Fs.useFile1(f => llist.map({x => f.write(x); x + 1})) // error
+  val _: LazyListIterable[Int] = leaked1
+  val leaked2 = Fs.useFile1(l => l) // error
+  val _: Fs.FileHandle = leaked2
+  val leaked3 = Fs.useFile1(f => () => f.write(42)) // error
+  val _: () -> Unit = leaked3
 }
 def testTransparent = {
   val llist = LazyListIterable(1, 2, 3)
@@ -96,11 +96,11 @@ def testTransparent1 = {
 
 def testInlineLeaky = {
   val llist = LazyListIterable(1, 2, 3)
-  val leaked1 = Fs.useFile1Leaky(f => llist.map({x => f.write(x); x + 1}))
+  val leaked1 = Fs.useFile1Leaky(f => llist.map({x => f.write(x); x + 1})) // error
   val _: LazyListIterable[Int] = leaked1 // ok
-  val leaked2 = Fs.useFile1Leaky(l => l)
+  val leaked2 = Fs.useFile1Leaky(l => l) // error
   val _: Fs.FileHandle = leaked2 // ok
-  val leaked3 = Fs.useFile1Leaky(f => () => f.write(42))
+  val leaked3 = Fs.useFile1Leaky(f => () => f.write(42)) // error
   val _: () -> Unit = leaked3 // ok
 }
 
