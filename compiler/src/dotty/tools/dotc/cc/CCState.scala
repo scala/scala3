@@ -102,8 +102,9 @@ class CCState:
 
   private var discardUses: Boolean = false
 
-  /** A switch allowing to ignore classifiers in subsumption checks for
-   *  asInstanceOf applications created by pattern-matches.
+  /** If true, classifiers are ignored in subsumption checks. Set while checking a
+   *  scrutinee that was cast to the type of a typed pattern, see
+   *  `ignoringClassifiersOfCast` in CheckCaptures.
    */
   var ignoreClassifiers = false
 
