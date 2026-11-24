@@ -39,6 +39,7 @@ object Synthetics:
     || isSyntheticCopyDefaultGetterMethod(symd)
     || (symd.symbol eq defn.Object_eq)
     || (symd.symbol eq defn.Object_ne)
+    || symd.owner == defn.ScalaPredefModuleClass && (symd.name == nme.eq || symd.name == nme.ne)
     || defn.isFunctionClass(symd.owner) && functionCombinatorNames.contains(symd.name)
 
   /** Method is excluded from regular capture checking.
@@ -128,10 +129,24 @@ object Synthetics:
       ExprType(mapFinalResult(et.resType, CapturingType(_, CaptureSet(enclThis))))
 
     def transformCompareCaptures =
-      val (enclThis: ThisType) = symd.owner.thisType.runtimeChecked
-      MethodType(
-        defn.ObjectType.capturing(CaptureSet(GlobalAny, enclThis)) :: Nil,
-        defn.BooleanType)
+      if symd.owner == defn.ScalaPredefModuleClass then
+        info match
+          case mt1: MethodType if mt1.paramInfos.length == 1 =>
+            mt1.resType match
+              case mt2: MethodType if mt2.paramInfos.length == 1 =>
+                val nullableObj = OrType(defn.ObjectType, defn.NullType, soft = false)
+                MethodType(mt1.paramNames)(
+                  _ => nullableObj.capturing(CaptureSet.universal) :: Nil,
+                  mt1_ => MethodType(mt2.paramNames,
+                    nullableObj.capturing(CaptureSet(GlobalAny, mt1_.paramRefs.head)) :: Nil,
+                    defn.BooleanType))
+              case _ => info
+          case _ => info
+      else
+        val (enclThis: ThisType) = symd.owner.thisType.runtimeChecked
+        MethodType(
+          defn.ObjectType.capturing(CaptureSet(GlobalAny, enclThis)) :: Nil,
+          defn.BooleanType)
 
     symd.copySymDenotation(info = symd.name match
       case DefaultGetterName(nme.copy, n) =>
