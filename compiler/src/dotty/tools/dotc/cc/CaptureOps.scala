@@ -268,6 +268,7 @@ extension (tp: Type)
       case _ => tp
     tp match
       case tp: MethodOrPoly => tp // don't box results of methods outside refinements
+      case tp: LazyRef => LazyRef.of(tp.ref.boxDeeply)
       case _ => recur(tp)
 
   /** Is this type boxed (i.e its outmost capturing type is boxed,

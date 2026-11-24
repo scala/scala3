@@ -338,8 +338,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         tp.derivedAppliedType(tycon, args.mapConserve(_.boxDeeply))
       case tp: RealTypeBounds =>
         tp.derivedTypeBounds(tp.lo, tp.hi.boxDeeply)
-      case tp: LazyRef =>
-        normalizeCaptures(tp.ref)
       case _ =>
         tp
 
@@ -591,7 +589,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   isContextual = defn.isContextFunctionClass(tycon.classSymbol)),
                 t.dealiasKeepAnnots))
               .showing(i"convert dep $t to $result", capt)
-          case t: (LazyRef | TypeVar) =>
+          case t: LazyRef =>
+            mapOver(t)
+          case t: TypeVar =>
             mapConserveSuper(t)
           case t =>
             val t1 = normalizeCaptures(mapFollowingAliases(mapOver(t)))

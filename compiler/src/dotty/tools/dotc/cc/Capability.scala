@@ -1428,7 +1428,7 @@ object Capabilities:
     override def mapOver(t: Type): Type = t match
       case t @ FunctionOrMethod(_, _) if variance > 0 && !t.isAliasFun =>
         t // `t` should be mapped in this case by a different call to `toResult`. See [[toResultInResults]].
-      case t: (LazyRef | TypeVar) =>
+      case t: TypeVar =>
         mapConserveSuper(t)
       case _ =>
         super.mapOver(t)

@@ -13,6 +13,6 @@ def eat[F <: Template[F]](food :F) :F = food.self.self
 val ham = new Ham
 val food :Food = ham
 
-def test =  // error
+def test =
   eat(ham)
   eat(food.self)
