@@ -4,17 +4,19 @@ object Test extends App {
   val two = "two"
   val threeHalf = 3.5
 
+  def bracketed(s: String): String = "[" + s + "]"
+
   // Test escaping
   println(raw"$one plus $two\nis $threeHalf")
   println(s"$one plus $two\nis $threeHalf")
 
-  // Test empty strings between elements
+  // Test empty parts between interpolated elements
   println(raw"a$one$two${threeHalf}b")
   println(s"a$one$two${threeHalf}b")
 
   // Test empty string interpolators
-  println(raw"")
-  println(s"")
+  println(bracketed(raw""))
+  println(bracketed(s""))
 
   // Make sure that StringContext still works with idents
   val foo = "Hello"
@@ -26,4 +28,6 @@ object Test extends App {
 
   // this shouldn't be optimised away
   println({ println("Side effect n2!"); StringContext }.apply("Titi", "Toto").s(" "))
+
+  println(bracketed(f"${"hello"}%-10s")) // preserve trailing space in formatted output for constant element
 }
