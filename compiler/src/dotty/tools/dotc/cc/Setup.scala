@@ -1049,14 +1049,19 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case _ =>
     end postProcess
 
-    /** Check that @consume annotations only appear on parameters and not on
-     *  anonymous function parameters.
+    /** Check that @consume annotations only appear on member methods and their
+     *  term parameters, and not on anonymous function parameters or user-defined
+     *  `unapply` / `unapplySeq` extractors.
      */
     def checkProperConsume(tree: Tree)(using Context): Unit = tree match
       case tree: MemberDef =>
         val sym = tree.symbol
         def isMethodParam = (sym.is(Param) || sym.is(ParamAccessor))
             && !sym.owner.isAnonymousFunction
+        def isUserExtractor(m: Symbol) =
+          m.is(Method)
+          && (m.name == nme.unapply || m.name == nme.unapplySeq)
+          && !Synthetics.isSyntheticCompanionMethod(m, nme.unapply, nme.unapplySeq)
         for ann <- tree.symbol.annotations do
           val annotCls = ann.symbol
           if annotCls == defn.ConsumeAnnot then
@@ -1066,6 +1071,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               report.error(
                 em"""consume cannot be used here. Only member methods and their term parameters
                     |can have a consume modifier.""",
+                tree.srcPos)
+            else if isUserExtractor(sym) || isMethodParam && isUserExtractor(sym.owner) then
+              val meth = if isUserExtractor(sym) then sym else sym.owner
+              report.error(
+                em"""consume cannot be used on user-defined extractor method ${meth.name}.
+                    |Only synthetic extractors of linear case classes may consume their scrutinee.""",
                 tree.srcPos)
       case _ =>
 
