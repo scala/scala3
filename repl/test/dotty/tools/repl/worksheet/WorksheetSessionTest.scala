@@ -1,0 +1,724 @@
+package dotty.tools.repl.worksheet
+
+import dotty.tools.repl.ReplTest
+import dotty.tools.repl.worksheet.WorksheetChecks.*
+
+import WorksheetDiagnosticSeverity.Warning
+
+import org.junit.Assert.*
+import org.junit.Test
+
+import scala.jdk.CollectionConverters.*
+
+class WorksheetSessionTest extends WorksheetTest:
+  private def withProperty[A](body: String => A): A =
+    val property = s"scala3.worksheet.${java.util.UUID.randomUUID()}"
+    System.clearProperty(property)
+    try body(property) finally System.clearProperty(property)
+
+  extension (result: WorksheetResult)
+    private def errors: List[WorksheetDiagnostic] =
+      result.diagnostics.filter(_.severity == WorksheetDiagnosticSeverity.Error)
+
+  @Test def evaluatesDefinitionsAndExpressionsInOneProgram(): Unit =
+    check(
+      "values.worksheet.scala",
+      """val x = 40
+        |val y = x + 2
+        |y * 2
+        |""".stripMargin,
+      """|: Int = 40
+         |x: Int = 40
+         |
+         |: Int = 42
+         |y: Int = 42
+         |
+         |: Int = 84
+         |res0: Int = 84""".stripMargin
+    )
+
+  @Test def reportsLazyValuesAndGivensWithoutEvaluatingThem(): Unit = withProperty: lazyProperty =>
+    withProperty: givenProperty =>
+      val result = driver.evaluate(
+        "lazy.worksheet.scala",
+        s"""lazy val value: Unit = System.setProperty("$lazyProperty", "evaluated")
+           |given ordering: Ordering[Int] =
+           |  System.setProperty("$givenProperty", "evaluated")
+           |  Ordering.Int
+           |""".stripMargin
+      )
+
+      checkDiagnostics(result)
+      checkDetails(result, "lazy val value: Unit", "lazy val ordering: Ordering[Int]")
+      checkSummaries(result, "lazy val value: Unit" -> true, "lazy val ordering: Ordering[Int]" -> true)
+      assertNull(System.getProperty(lazyProperty))
+      assertNull(System.getProperty(givenProperty))
+
+  @Test def assignsOutputToTheStatementThatProducedIt(): Unit =
+    check(
+      "output.worksheet.scala",
+      """println("hello")
+        |val answer = 42
+        |""".stripMargin,
+      """|hello
+         |// hello
+         |
+         |: Int = 42
+         |answer: Int = 42""".stripMargin
+    )
+
+  @Test def supportsImportsMultilineExpressionsAndPatternDefinitions(): Unit =
+    check(
+      "syntax.worksheet.scala",
+      """import scala.concurrent.duration.*
+        |val (number, text) = (1, "two")
+        |List(
+        |  number,
+        |  text.length
+        |).sum
+        |""".stripMargin,
+      """|number: Int = 1, text: String = "two"
+         |number: Int = 1
+         |text: String = "two"
+         |
+         |: Int = 4
+         |res0: Int = 4""".stripMargin
+    )
+
+  @Test def stopsAtACompilationError(): Unit =
+    val result = driver.evaluate(
+      "error.worksheet.scala",
+      """println("runs")
+        |val broken: String = 1
+        |val unreachable = 2
+        |""".stripMargin
+    )
+
+    assertEquals(List(1), result.errors.map(_.position.startLine))
+    checkDetails(result, "// runs")
+
+  @Test def stopsAtAnException(): Unit =
+    val result = driver.evaluate(
+      "exception.worksheet.scala",
+      """val before = 1
+        |throw new RuntimeException("boom")
+        |val after = 2
+        |""".stripMargin
+    )
+
+    checkDiagnostics(result, "java.lang.RuntimeException: boom")
+    checkDetails(result, "before: Int = 1")
+
+  @Test def honoursTheDependencyDirective(): Unit =
+    val result = driver.evaluate(
+      "dependency.worksheet.scala",
+      """//> using dep com.lihaoyi::os-lib:0.11.8
+        |import os.*
+        |val separator = os.pwd.toString.head
+        |""".stripMargin
+    )
+
+    checkDiagnostics(result)
+    val separator = java.nio.file.Path.of("").toAbsolutePath.toString.head
+    assertEquals(s"separator: Char = '$separator'", result.statements.last.details)
+    assertEquals(
+      List(WorksheetDependency("com.lihaoyi", "os-lib_3", "0.11.8")),
+      result.dependencies
+    )
+    assertTrue(result.classpath.toString, result.classpath.nonEmpty)
+
+  @Test def reportsADependencyThatCannotBeResolved(): Unit =
+    val result = driver.evaluate(
+      "unresolvable.worksheet.scala",
+      """//> using dep com.lihaoyi::os-lib:0.0.0-does-not-exist
+        |1 + 1
+        |""".stripMargin
+    )
+
+    val errors = result.errors
+    assertEquals(result.diagnostics.toString, 1, errors.length)
+    assertEquals(0, errors.head.position.startLine)
+    assertEquals(
+      """Unable to resolve dependencies: Failed to resolve dependencies: Error downloading com.lihaoyi:os-lib_3:0.0.0-does-not-exist
+        |  not found: https://repo1.maven.org/maven2/com/lihaoyi/os-lib_3/0.0.0-does-not-exist/os-lib_3-0.0.0-does-not-exist.pom""".stripMargin,
+      errors.head.message
+    )
+    assertEquals(Nil, result.dependencies)
+    checkDetails(result, "res0: Int = 2")
+
+  @Test def honoursTheJarDirective(): Unit =
+    val jar = WorksheetSessionTest.interfacesJar
+    val result = driver.evaluate(
+      "jar.worksheet.scala",
+      s"""//> using jar $jar
+         |val held = classOf[dotty.tools.repl.worksheet.interfaces.EvaluatedWorksheet].getSimpleName
+         |""".stripMargin
+    )
+
+    checkDiagnostics(result)
+    assertEquals("held: String = \"EvaluatedWorksheet\"", result.statements.last.details)
+    assertEquals(List(jar), result.classpath)
+
+  @Test def reportsAJarThatDoesNotExist(): Unit =
+    val result = driver.evaluate(
+      "missing-jar.worksheet.scala",
+      """//> using jar /does/not/exist.jar
+        |1 + 1
+        |""".stripMargin
+    )
+
+    val errors = result.errors
+    assertEquals(result.diagnostics.toString, 1, errors.length)
+    assertEquals("The jar `/does/not/exist.jar` does not exist.", errors.head.message)
+    checkDetails(result, "res0: Int = 2")
+
+  @Test def reportsADirectiveThatWorksheetsDoNotSupport(): Unit =
+    val result = driver.evaluate(
+      "unsupported.worksheet.scala",
+      """//> using scala 3.7.0
+        |1 + 1
+        |""".stripMargin
+    )
+
+    assertEquals(1, result.statements.length)
+    checkDiagnostics(result, "The `using scala` directive is not supported in worksheets.")
+    assertEquals(0, result.diagnostics.head.position.startLine)
+
+  @Test def resolvesDirectivesOnlyOncePerSession(): Unit =
+    val initial =
+      """//> using dep com.lihaoyi::os-lib:0.11.8
+        |val first = os.pwd.toString.nonEmpty
+        |""".stripMargin
+
+    val first = driver.evaluate("once.worksheet.scala", initial)
+    checkDiagnostics(first)
+
+    val second = driver.evaluate("once.worksheet.scala", initial + "val second = os.pwd.toString.nonEmpty\n")
+
+    assertEquals(first.dependencies, second.dependencies)
+    assertEquals(first.classpath, second.classpath)
+    assertEquals("second: Boolean = true", second.statements.last.details)
+
+  @Test def allowsShadowingBetweenReplSubmissions(): Unit =
+    check(
+      "shadowing.worksheet.scala",
+      """val value = 1
+        |val value = 2
+        |value
+        |""".stripMargin,
+      """|: Int = 1
+         |value: Int = 1
+         |
+         |: Int = 2
+         |value: Int = 2
+         |
+         |: Int = 2
+         |res0: Int = 2""".stripMargin
+    )
+
+  @Test def evaluatesOnlyTheAppendedStatements(): Unit = withProperty: property =>
+    val initial =
+      s"""val runCount = Option(System.getProperty("$property")).fold(1)(_.toInt + 1)
+         |System.setProperty("$property", runCount.toString)
+         |val value = 1
+         |""".stripMargin
+
+    val first = driver.evaluate("append.worksheet.scala", initial)
+    checkDiagnostics(first)
+    assertEquals("1", System.getProperty(property))
+
+    val second = driver.evaluate(
+      "append.worksheet.scala",
+      initial +
+        """val value = 2
+          |value
+          |""".stripMargin
+    )
+
+    checkDiagnostics(second)
+    assertEquals("1", System.getProperty(property))
+    assertEquals("value: Int = 2", second.statements.takeRight(2).head.details)
+    assertEquals("res1: Int = 2", second.statements.last.details)
+
+  @Test def appendsFromTheStatementThatFailedToCompile(): Unit = withProperty: property =>
+    val initial = "val before = 1\n"
+
+    val first = driver.evaluate("append-error.worksheet.scala", initial)
+    checkDiagnostics(first)
+
+    val broken =
+      initial +
+        s"""System.setProperty("$property", "executed")
+           |val broken: String = 1
+           |""".stripMargin
+    val second = driver.evaluate("append-error.worksheet.scala", broken)
+    assertTrue(second.errors.nonEmpty)
+    assertEquals("executed", System.getProperty(property))
+
+    System.setProperty(property, "not repeated")
+    val third = driver.evaluate(
+      "append-error.worksheet.scala",
+      broken.replace("val broken: String = 1", """val fixed: String = "ok"""")
+    )
+    checkDiagnostics(third)
+    assertEquals("not repeated", System.getProperty(property))
+    assertEquals("fixed: String = \"ok\"", third.statements.last.details)
+
+  @Test def bindsExpressionResultsToReusableResValues(): Unit =
+    check(
+      "res.worksheet.scala",
+      """1 + 1
+        |res0 + 1
+        |val doubled = res1 * 2
+        |""".stripMargin,
+      """|: Int = 2
+         |res0: Int = 2
+         |
+         |: Int = 3
+         |res1: Int = 3
+         |
+         |: Int = 6
+         |doubled: Int = 6""".stripMargin
+    )
+
+  @Test def keepsResNumbersTakenByAFlattenedBlock(): Unit =
+    check(
+      "block-res.worksheet.scala",
+      """{ println("a"); 42 }
+        |1 + 1
+        |res1
+        |""".stripMargin,
+      """|: Int = 42
+         |res1: Int = 42
+         |// a
+         |
+         |: Int = 2
+         |res2: Int = 2
+         |
+         |: Int = 42
+         |res3: Int = 42""".stripMargin
+    )
+
+  @Test def reusesResNumbersLeftByUnitExpressions(): Unit =
+    check(
+      "unit-res.worksheet.scala",
+      """1 + 1
+        |println("hi")
+        |res0 + 1
+        |""".stripMargin,
+      """|: Int = 2
+         |res0: Int = 2
+         |
+         |hi
+         |// hi
+         |
+         |: Int = 3
+         |res1: Int = 3""".stripMargin
+    )
+
+  @Test def propagatesGlobalLanguageImportsToLaterStatements(): Unit =
+    val result = driver.evaluate(
+      "language.worksheet.scala",
+      """import language.experimental.pureFunctions
+        |val increment: Int -> Int = x => x + 1
+        |increment(41)
+        |""".stripMargin
+    )
+
+    checkDiagnostics(result)
+    assertEquals(": Int = 42", result.statements.last.summary)
+
+  @Test def retainsTheDiagnosticsOfAnUnchangedPrefix(): Unit =
+    val initial =
+      """def describe(flag: Boolean) = flag match
+        |  case true => "yes"
+        |""".stripMargin
+
+    val first = driver.evaluate("warning.worksheet.scala", initial)
+    assertTrue(first.diagnostics.toString, first.diagnostics.exists(_.severity == Warning))
+
+    val second = driver.evaluate("warning.worksheet.scala", initial + "val value = 1\n")
+
+    assertEquals(first.diagnostics, second.diagnostics)
+    assertEquals("value: Int = 1", second.statements.last.details)
+
+  @Test def resetsTheSessionWhenAnEarlierStatementChanges(): Unit =
+    val initial =
+      """def describe(flag: Boolean) = flag match
+        |  case true => "yes"
+        |1 + 1
+        |""".stripMargin
+
+    val first = driver.evaluate("reset.worksheet.scala", initial)
+    assertTrue(first.diagnostics.nonEmpty)
+    assertEquals("res0: Int = 2", first.statements.last.details)
+
+    val second = driver.evaluate("reset.worksheet.scala", "2 + 2\n")
+
+    checkDiagnostics(second)
+    checkDetails(second, "res0: Int = 4")
+
+  @Test def reEvaluatingIdenticalTextReplaysTheCachedResult(): Unit = withProperty: property =>
+    val text =
+      s"""System.setProperty("$property", "executed")
+         |val value = 1
+         |""".stripMargin
+
+    val first = driver.evaluate("identical.worksheet.scala", text)
+    checkDiagnostics(first)
+    assertEquals("executed", System.getProperty(property))
+    System.clearProperty(property)
+
+    val second = driver.evaluate("identical.worksheet.scala", text)
+
+    assertEquals(first.diagnostics, second.diagnostics)
+    assertEquals(first.statements, second.statements)
+    assertEquals(null, System.getProperty(property))
+
+  @Test def keepsReportingARuntimeFailureWhileTheWorksheetGrows(): Unit =
+    val initial =
+      """val before = 1
+        |throw new RuntimeException("boom")
+        |""".stripMargin
+
+    val first = driver.evaluate("growing.worksheet.scala", initial)
+    checkDiagnostics(first, "java.lang.RuntimeException: boom")
+
+    val second = driver.evaluate("growing.worksheet.scala", initial + "val after = 2\n")
+    checkDiagnostics(second, "java.lang.RuntimeException: boom")
+    checkDetails(second, "before: Int = 1")
+
+  @Test def reportsReassignmentsUnderTheAssignedName(): Unit =
+    check(
+      "assign.worksheet.scala",
+      """var counter = 1
+        |counter = counter + 1
+        |counter
+        |""".stripMargin,
+      """|: Int = 1
+         |counter: Int = 1
+         |
+         |: Int = 2
+         |counter: Int = 2
+         |
+         |: Int = 2
+         |res0: Int = 2""".stripMargin
+    )
+
+  @Test def marksASummaryIncompleteWhenTheStatementAlsoPrinted(): Unit =
+    val result = driver.evaluate(
+      "output-and-value.worksheet.scala",
+      """val value =
+        |  println("noticed")
+        |  1
+        |""".stripMargin
+    )
+
+    checkDiagnostics(result)
+    checkSummaries(result, ": Int = 1" -> false)
+    checkDetails(result, "value: Int = 1\n// noticed")
+
+  @Test def doesNotReportTheCompilerSummaryAsADiagnostic(): Unit =
+    val result = driver.evaluate(
+      "summary.worksheet.scala",
+      """def describe(flag: Boolean) = flag match
+        |  case true => "yes"
+        |""".stripMargin
+    )
+
+    assertEquals(result.diagnostics.map(_.message).toString, 1, result.diagnostics.length)
+    assertEquals(WorksheetDiagnosticSeverity.Warning, result.diagnostics.head.severity)
+    assertTrue(result.diagnostics.head.position.startLine >= 0)
+
+  @Test def resetsTheSessionWhenAnotherWorksheetIsEvaluated(): Unit =
+    val first = driver.evaluate(
+      "first.worksheet.scala",
+      """1 + 1
+        |val broken: String = 2
+        |""".stripMargin
+    )
+    assertTrue(first.errors.nonEmpty)
+
+    val second = driver.evaluate("second.worksheet.scala", "1 + 1\n")
+
+    checkDiagnostics(second)
+    checkDetails(second, "res0: Int = 2")
+
+  @Test def anchorsDirectiveWarningsOnTheDirectiveThatCausedThem(): Unit =
+    val result = driver.evaluate(
+      "directive-position.worksheet.scala",
+      """val leading = 1
+        |//> using dep
+        |1 + 1
+        |""".stripMargin
+    )
+
+    assertTrue(result.diagnostics.toString, result.diagnostics.nonEmpty)
+    assertTrue(
+      result.diagnostics.toString,
+      result.diagnostics.forall(_.position.startLine == 1)
+    )
+
+  @Test def treatsAnEmptyFilenameAsAnOrdinaryWorksheet(): Unit =
+    val first = driver.evaluate("", "1 + 1\n")
+    assertEquals("res0: Int = 2", first.statements.head.details)
+
+    val second = driver.evaluate("", "2 + 2\n")
+
+    checkDiagnostics(second)
+    checkDetails(second, "res0: Int = 4")
+
+  @Test def keepsValueNumberingAcrossAFailedAppend(): Unit =
+    val initial = "val x = 1\n"
+    checkDiagnostics(driver.evaluate("numbering.worksheet.scala", initial))
+
+    val broken = driver.evaluate(
+      "numbering.worksheet.scala",
+      initial + "1 + 1\nval bad: String = 1\n"
+    )
+    assertTrue(broken.errors.nonEmpty)
+
+    val fixed = driver.evaluate(
+      "numbering.worksheet.scala",
+      initial + "1 + 1\nval good = 2\n"
+    )
+    checkOutput(
+      fixed,
+      """|: Int = 1
+         |x: Int = 1
+         |
+         |: Int = 2
+         |res0: Int = 2
+         |
+         |: Int = 2
+         |good: Int = 2""".stripMargin
+    )
+
+  @Test def resolvesDirectivesAppendedToAnExistingSession(): Unit =
+    val filename = "appended-directives.worksheet.scala"
+    val declared = "//> using dep com.lihaoyi::fansi:0.5.0\n"
+
+    checkDiagnostics(driver.evaluate(filename, declared))
+
+    val result = driver.evaluate(
+      filename,
+      s"""$declared//> using dep com.lihaoyi::os-lib:0.11.8
+         |val here = os.pwd.toString.nonEmpty
+         |""".stripMargin
+    )
+
+    checkDiagnostics(result)
+    assertEquals("here: Boolean = true", result.statements.last.details)
+    assertEquals(
+      List("com.lihaoyi" -> "fansi_3", "com.lihaoyi" -> "os-lib_3"),
+      result.dependencies.map(dependency => dependency.organization -> dependency.moduleName)
+    )
+
+  @Test def runsCompleteStatementsBeforeASyntaxError(): Unit =
+    val filename = "prefix.worksheet.scala"
+    assertEquals(
+      List("before: Int = 1"),
+      driver.evaluate(filename, "val before = 1\n").statements.map(_.details)
+    )
+
+    val result = driver.evaluate(
+      filename,
+      """val before = 1
+        |val after = 2
+        |val oops = (
+        |""".stripMargin
+    )
+
+    assertTrue(result.diagnostics.toString, result.diagnostics.nonEmpty)
+    checkDetails(result, "before: Int = 1", "after: Int = 2")
+
+  @Test def anchorsEachDirectiveDiagnosticToItsOwnLine(): Unit =
+    val result = driver.evaluate(
+      "directive-lines.worksheet.scala",
+      """//> using jar /does/not/exist.jar
+        |//> using scala 3.7.0
+        |//> using dep not-a-coordinate
+        |1 + 1
+        |""".stripMargin
+    )
+
+    assertEquals(
+      result.diagnostics.map(_.message).toString,
+      List(0, 1, 2),
+      result.diagnostics.map(_.position.startLine).sorted
+    )
+
+  @Test def marksASummaryThatDropsFormattingAsIncomplete(): Unit =
+    val result = driver.evaluate("spaced.worksheet.scala", "val spaced = \"a  b\"\n")
+
+    checkDetails(result, "spaced: String = \"a  b\"")
+    checkSummaries(result, ": String = \"a b\"" -> false)
+
+  @Test def ignoresACancellationRequestedWhileNothingRuns(): Unit =
+    driver.cancel()
+
+    val result = driver.evaluate("idle-cancel.worksheet.scala", "1 + 1\n")
+
+    checkDiagnostics(result)
+    checkDetails(result, "res0: Int = 2")
+
+  @Test def runsStatementsThatBindNothing(): Unit = withProperty: wildcard =>
+    withProperty: ascribed =>
+      val result = driver.evaluate(
+        "no-binder.worksheet.scala",
+        s"""val _ = { System.setProperty("$wildcard", "ran"); 1 }
+           |val _: Int = { System.setProperty("$ascribed", "ran"); 2 }
+           |""".stripMargin
+      )
+
+      checkDiagnostics(result)
+      assertEquals("ran", System.getProperty(wildcard))
+      assertEquals("ran", System.getProperty(ascribed))
+
+  @Test def runsCompleteStatementsOfANewWorksheetBeforeASyntaxError(): Unit =
+    checkDiagnostics(driver.evaluate("earlier.worksheet.scala", "val unrelated = 1\n"))
+
+    val result = driver.evaluate(
+      "later.worksheet.scala",
+      """val before = 2
+        |val bad = (
+        |""".stripMargin
+    )
+
+    assertTrue(result.diagnostics.toString, result.diagnostics.nonEmpty)
+    checkDetails(result, "before: Int = 2")
+
+  @Test def reportsTheClasspathOfANewWorksheetThatDoesNotParse(): Unit =
+    val jar = WorksheetSessionTest.interfacesJar
+    checkDiagnostics(driver.evaluate("other.worksheet.scala", "val unrelated = 1\n"))
+
+    val result = driver.evaluate(
+      "broken-jar.worksheet.scala",
+      s"""//> using jar $jar
+         |val bad = (
+         |""".stripMargin
+    )
+
+    assertTrue(result.diagnostics.toString, result.diagnostics.nonEmpty)
+    assertEquals(List(jar), result.classpath)
+
+  @Test def reportsNoClasspathForAnInputThatIsNotAWorksheet(): Unit =
+    val filename = "then-command.worksheet.scala"
+    val jar = WorksheetSessionTest.interfacesJar
+    val evaluated = driver.evaluate(filename, s"//> using jar $jar\nval value = 1\n")
+    assertEquals(List(jar), evaluated.classpath)
+
+    val result = driver.evaluate(filename, ":quit\n")
+
+    assertTrue(result.diagnostics.toString, result.diagnostics.nonEmpty)
+    checkDetails(result)
+    assertEquals(Nil, result.classpath)
+    assertEquals(Nil, result.dependencies)
+
+  @Test def reportsADirectiveAppendedAfterAnUnsupportedOne(): Unit =
+    val filename = "appended-unsupported.worksheet.scala"
+    val first = "//> using scala 3.7.0\n"
+    assertEquals(1, driver.evaluate(filename, first).diagnostics.length)
+
+    val result = driver.evaluate(filename, s"${first}//> using platform jvm\n1 + 1\n")
+
+    assertEquals(
+      result.diagnostics.map(_.message).toString,
+      List(0, 1),
+      result.diagnostics.map(_.position.startLine).sorted
+    )
+
+  @Test def keepsADiagnosticForEachLineThatCausedIt(): Unit =
+    val result = driver.evaluate(
+      "repeated.worksheet.scala",
+      """1 + 1
+        |//> using platform jvm
+        |//> using platform jvm
+        |""".stripMargin
+    )
+
+    assertEquals(
+      result.diagnostics.map(_.message).toString,
+      List(1, 2),
+      result.diagnostics.map(_.position.startLine).sorted
+    )
+
+  @Test def doesNotKeepAWarningFromAStatementThatFailed(): Unit =
+    val strict = new WorksheetSession(ReplTest.defaultOptions ++ Array("-Wunused:all"))
+    val text = """val value = { val unused = 1; throw new RuntimeException("boom") }
+                 |""".stripMargin
+    def warnings(result: WorksheetResult): List[String] =
+      result.diagnostics.filter(_.severity == Warning).map(_.message)
+    try
+      assertEquals(
+        List("unused local definition"),
+        warnings(strict.evaluate("warned.worksheet.scala", text))
+      )
+
+      val again = strict.evaluate("warned.worksheet.scala", text)
+
+      assertEquals(List("unused local definition"), warnings(again))
+    finally strict.shutdown()
+
+  @Test def rebuildsASessionLeftByAnotherWorksheetsSyntaxError(): Unit = withProperty: property =>
+    val first = s"""System.setProperty("$property", "1")
+                   |val value = 1
+                   |""".stripMargin
+
+    checkDiagnostics(driver.evaluate("a.worksheet.scala", first))
+    assertEquals("1", System.getProperty(property))
+
+    val broken = driver.evaluate("b.worksheet.scala", "val oops = (\n")
+    assertTrue(broken.diagnostics.nonEmpty)
+    checkDetails(broken)
+
+    System.clearProperty(property)
+    val again = driver.evaluate("a.worksheet.scala", first)
+
+    checkDiagnostics(again)
+    assertEquals("1", System.getProperty(property))
+
+  @Test def leavesTheProcessWideStreamsAlone(): Unit =
+    val originalOut = System.out
+    val originalErr = System.err
+    val result = driver.evaluate("streams.worksheet.scala", "println(\"hello\")\n")
+
+    assertEquals("hello", result.statements.head.summary)
+    assertSame(originalOut, System.out)
+    assertSame(originalErr, System.err)
+
+  @Test def capturesOutputFromThreadsTheWorksheetStarts(): Unit =
+    val result = driver.evaluate(
+      "threads.worksheet.scala",
+      """val answer =
+        |  val worker = new Thread(() => println("child-output"))
+        |  worker.start()
+        |  worker.join()
+        |  42
+        |""".stripMargin
+    )
+
+    checkDiagnostics(result)
+    checkDetails(result, "answer: Int = 42\n// child-output")
+
+  @Test def rebuildsASessionAfterACommandReplacesTheSameWorksheet(): Unit = withProperty: property =>
+    val text = s"""System.setProperty("$property", "1")
+                  |val value = 1
+                  |""".stripMargin
+
+    checkDiagnostics(driver.evaluate("same.worksheet.scala", text))
+    assertEquals("1", System.getProperty(property))
+
+    assertTrue(driver.evaluate("same.worksheet.scala", ":quit\n").diagnostics.nonEmpty)
+
+    System.clearProperty(property)
+    val again = driver.evaluate("same.worksheet.scala", text)
+
+    checkDiagnostics(again)
+    assertEquals("1", System.getProperty(property))
+
+private object WorksheetSessionTest:
+  val interfacesJar: java.nio.file.Path =
+    java.nio.file.Path.of(
+      classOf[interfaces.EvaluatedWorksheet].getProtectionDomain.getCodeSource.getLocation.toURI
+    )

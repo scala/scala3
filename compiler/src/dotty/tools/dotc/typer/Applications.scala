@@ -309,35 +309,42 @@ object Applications {
         case argType :: Nil
         if args.lengthCompare(1) > 0
             && Feature.autoTuplingEnabled
-            && defn.isTupleNType(argType.normalizedTupleType) =>
+            && {
+              val tt = argType.normalizedTupleType
+              defn.isTupleNType(tt)
+              && tt.argInfos.lengthCompare(args) == 0
+            } =>
           untpd.Tuple(args) :: Nil
         case _ =>
           args
       val varArgs = alignedArgs.filter(untpd.isWildcardStarArg)
-      val isProductSeqMatch = argTypes.length > 1 && argTypes.last.derivesFrom(defn.SeqClass)
-      val hasInvalidSeqWildcard =
-        if varArgs.nonEmpty && unapplyName != nme.unapplySeq && !isProductSeqMatch then
-          report.error(em"Sequence wildcard pattern is not allowed for ${unapplyName}, only unapplySeq is allowed", varArgs.head.srcPos)
-          true
-        else if varArgs.nonEmpty && unapplyName == nme.unapplySeq then
-          val sym = unapplyFn.symbol
-          // if the extractor also defines unapply
-          if sym.exists && sym.owner.info.member(nme.unapply).exists then
-            report.error(em"Sequence wildcard pattern is not allowed when the extractor also defines unapply, only unapplySeq is allowed", varArgs.head.srcPos)
-            true
-          else false
-        else false
+      val hasInvalidSeqWildcard = varArgs.nonEmpty && unapplyName == nme.unapply && {
+        val sym = unapplyFn.symbol
+        def hasExtractorMethod(name: Name): Boolean =
+          unapplyFn match
+          case Select(qual, _) if qual.tpe.exists => qual.tpe.member(name).exists
+          case _ => sym.exists && sym.owner.info.member(name).exists
+        val thing =
+          if sym.exists && sym.is(Synthetic) && sym.owner.companionClass.is(CaseClass) then "case class "
+          else ""
+        val instead = if hasExtractorMethod(nme.unapplySeq) then "only" else "instead"
+        report.error(em"Sequence wildcard pattern is not allowed for $thing`$unapplyName`; it requires `unapplySeq` $instead", varArgs.head.srcPos)
+        true
+      }
 
       val alignedArgTypes =
         if argTypes.length == alignedArgs.length then
           argTypes
-        else if hasInvalidSeqWildcard then
-          alignedArgs.map(_ => WildcardType)
         else
-          report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), pos)
-          argTypes.take(args.length) ++
-            List.fill(argTypes.length - args.length)(WildcardType)
-
+          val ats =
+            if hasInvalidSeqWildcard then
+              argTypes.zip(args).map: (at, a) =>
+                if untpd.isWildcardStarArg(a) then WildcardType
+                else at
+            else
+              report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), pos)
+              argTypes.take(args.length)
+          ats ++ List.fill(argTypes.length - args.length)(WildcardType)
 
       if varArgs.length >= 2 then
         report.error(em"Only one spread pattern allowed in sequence", varArgs(1).srcPos)
@@ -1670,12 +1677,14 @@ trait Applications extends Compatibility {
 
   /** Is `tp` a unary function type or an overloaded type with only unary function
    *  types as alternatives?
-   *  If `skipImplicit` is true, leading implicit parameter sections are
-   *  skipped first.
+   *  If `skipImplicit` is true, leading `using` parameter sections are
+   *  skipped first, since explicit arguments cannot fill them. Old-style
+   *  `implicit` sections are not skipped: they can be filled by explicit
+   *  arguments (see `matchingApply`), so their arity counts.
    */
   def isUnary(tp: Type, skipImplicit: Boolean)(using Context): Boolean = tp.stripPoly match
     case mt: MethodType =>
-      if skipImplicit && mt.isImplicitMethod then
+      if skipImplicit && mt.isContextualMethod then
         isUnary(tp.resultType, skipImplicit)
       else
         mt.paramInfos match
