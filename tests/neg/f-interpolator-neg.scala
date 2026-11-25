@@ -84,7 +84,7 @@ object Test {
     f"$d%,,d" // error duplicate flag
 
   def moreBadArgTypes(f: Double) =
-    f"$f%f %<d"
-    f"%1$$d $f%f"
-    f"${null}%s %<#s"
+    f"$f%f %<d" // TODO error
+    f"%1$$d $f%f" // TODO error
+    f"${null}%s %<#s" // TODO error
 }
