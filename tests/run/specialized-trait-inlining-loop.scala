@@ -16,10 +16,10 @@ inline def myInlineMethod2[T: Specialized] = new T3[T]() {}
 	assert(x.bar1.bar2.foo(10) == 10)
 
 // Need to:
-// 1) Create T1$impl$Int$ and inline `def bar1 = myInlineMethod1[Int]` (desugarSpecializedTraits)
-// 2) Inline myInlineMethod1 into bar1 inside T1$impl$Int (inlining)
-// 3) Create T2$impl$Int and fix the inlined definition of bar1/myInlineMethod1 (desugarSpecializedTraits)
+// 1) Create T1$impl$Int$ and inline `def bar1 = myInlineMethod1[Int]`
+// 2) Inline myInlineMethod1 into bar1 inside T1$impl$Int
+// 3) Create T2$impl$Int and fix the inlined definition of bar1/myInlineMethod1
 // 4) Inline myInlineMethod2 into bar2 inside T2$impl$Int
-// 5) Create T3$impl$Int and fix the inlined definition of bar2/myInlineMethod2 (desugarSpecializedTraits) 
+// 5) Create T3$impl$Int and fix the inlined definition of bar2/myInlineMethod2 
 
 // This can continue for arbitrarily many inlines and you don't know in advance that any of these specializations need to be created.

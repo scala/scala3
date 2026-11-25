@@ -525,20 +525,15 @@ avoid confusion. A user extending `T1[List[S]]` would likely expect some degree 
 is not possible if `S` is not marked as `Specialized`. In practice `specType(List[_])` is `Any` however.
 
 ## Specialized Traits in the Compiler
-We introduce a new phase `desugarSpecializedTraits` responsible for detecting specializations, generating the necessary `$sp$` and `$impl$` 
+The phase `specializeInlineTraits` is responsible for inlining inline traits.
+We extend the phase to detect specializations, generating the necessary `$sp$` and `$impl$`
 classes for these specializations, and inlining into them.
 
 The replacement of references to e.g. `Vec[Int]` with `Vec$sp$Int` and `new Vec[Int] {}` with `Vec$impl$Int()` is done at erasure, because we cannot change signatures before then, and doing it afterwards would not prevent the boxing that we seek to avoid. 
 
-Specialized traits rely on the semantics and implementation of inline traits, so it may seem logical that `desugarSpecializedTraits` would merely generate
-the prototypes for the classes, and allow `specializeInlineTraits` to inline the bodies. We *do not* do this. Rather, the phase `desugarSpecializedTraits` directly performs inlining of the parent traits (`Vec[Int]` in the above example) into the
-generated `$sp$` traits and `$impl$` classes, sharing the relevant code with the `specializeInlineTraits` phase through
-the `Inlines.scala` file. 
 
-This is done because while we want to keep the two phases separate and avoid coupling where possible (thus allowing e.g. specialized traits to be disabled 
-while maintaining inline traits), implementing specialized traits requires being able to alternate
- between the inlining and specializing steps in some cases. Consider the following
-example:
+The implementation of specialized traits requires being able to alternate between the trait inlining and trait specializing steps in some cases. 
+Consider the following example:
 
 ```scala
 inline trait D[R: Specialized]
@@ -571,14 +566,14 @@ Inlining the body of `C` into this trait will create a reference to `D[Char]`, w
 it is possible to create arbitrarily long chains requiring alternating between specialized trait generation and inline trait inlining. We note that 
 this problem arises not only with the `$sp$` traits, but also the `$impl$` classes (see `specialized-trait-inlining-causes-implementation-required.scala`).
 
-To resolve this problem without alternating between and looping the `specializeInlineTraits` and `desugarSpecializedTraits` phases in an inconvenient way, we opt to make:
-- `specializeInlineTraits` responsible for inlining inline traits written directly in user code:
-   - If a specialized trait creates an inline trait inlining opportunity which is not `specialized`, this is dealt with by `specializeInlineTraits`. 
-   - Further if a user writes `class Bar extends Foo[Int]` where Foo is declared Specialized, `specializeInlineTraits` will do the inlining. 
-- `desugarSpecializedTraits` responsible for finding specializations and generating the required `$sp$` traits and `$impl$` classes, inlining the parent specialized traits into these traits/classes, and repeating until no more inlining can be performed and no more `$sp$` traits and `$impl$` classes are needed.
+This broken down into two steps:
+- First it traverses the compilation unit and inlines traits in user code:
+   - If a specialized trait creates an inline trait inlining opportunity which is not `specialized`, this is dealt with by this step.
+   - Further if a user writes `class Bar extends Foo[Int]` where Foo is declared Specialized, this step will do the inlining.
+- Then it finds specializations and generates the required `$sp$` traits and `$impl$` classes, inlining the parent specialized traits into these traits/classes, and repeating until no more inlining can be performed and no more `$sp$` traits and `$impl$` classes are needed. 
+Inlining is also applied to the generated classes, since they are not part of the initial traversal.
 
-This decouples the responsibilities of the two phases, but given that `desugarSpecializedTraits` could produce a reference that requires inline trait inlining
-in the child class (e.g. `tests/run/specialized-trait-requires-inline-trait-inlining.scala`) we need to run `desugarSpecializedTraits` first.
+The inlining step must come first, because the specialization step can only see specializations (e.g. `T1[Int]` in `tests/run/specialized-trait-inline-trait-ordering-edge-case.scala`) once inline traits have been inlined into the child class.
 
 We also need to introduce a miniphase `pruneSpecializedMethods` which removes specialized methods. These methods are inline so they would be removed later anyway, but we need to remove them before `pruneInlineTraits` to avoid potentially creating dangling references.
 
