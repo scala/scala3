@@ -73,11 +73,33 @@ object DependencyResolver:
           .withRepositories(repos*)
           .withDependencies(deps*)
 
-        Right(fetch.fetch().asScala.toList)
+        Right(withUserAgent(fetch.fetch().asScala.toList))
 
       catch
         case NonFatal(e) =>
           Left(s"Failed to resolve dependencies: ${e.getMessage}")
+
+  private val userAgentProperty = "coursier.http.agent"
+
+  /** The HTTP User-Agent identifying the REPL to repositories, as Maven Central rate-limits
+   *  generic ones (see https://central.sonatype.org/faq/429-error/).
+   */
+  private def userAgent: String =
+    val version = Option(dotty.tools.dotc.config.Properties.versionNumberString).filter(_.nonEmpty).getOrElse("unknown")
+    s"Scala-REPL/$version (+https://github.com/scala/scala3) Coursier"
+
+  /** Run `body` with coursier identifying itself with [[userAgent]], unless a user agent
+   *  was explicitly set with the `coursier.http.agent` system property.
+   *
+   *  The Coursier Interface does not expose a way to set the user agent, so the system property
+   *  is set for the duration of `body`, and then restored, not to leak into the REPL session.
+   */
+  private def withUserAgent[T](body: => T): T =
+    if sys.props.contains(userAgentProperty) then body
+    else
+      sys.props(userAgentProperty) = userAgent
+      try body
+      finally sys.props.remove(userAgentProperty)
 
   /** Add resolved dependencies to the compiler classpath and classloader.
    *
