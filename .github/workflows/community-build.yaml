@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+# Dependencies are cached with coursier/cache-action rather than with setup-java's `cache: 'sbt'`:
+# the latter uses the same key for all jobs, so only the dependencies of the first job to finish
+# would be cached, and the other jobs would download theirs from Maven Central on every run.
+# Caches are only saved from main, so that caches of PRs do not evict them from the cache storage.
 jobs:
 
   community_build_a:
@@ -26,7 +30,9 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Run Community Build A
         run: |
@@ -46,7 +52,9 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Run Community Build B
         run: |
@@ -66,7 +74,9 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Run Community Build C
         run: |

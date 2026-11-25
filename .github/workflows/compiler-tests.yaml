@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+# Dependencies are cached with coursier/cache-action rather than with setup-java's `cache: 'sbt'`:
+# the latter uses the same key for all jobs, so only the dependencies of the first job to finish
+# would be cached, and the other jobs would download theirs from Maven Central on every run.
+# Caches are only saved from main, so that caches of PRs do not evict them from the cache storage.
 jobs:
 
   test-scala3-compiler-nonbootstrapped:
@@ -25,7 +29,10 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
 
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
 
@@ -50,7 +57,10 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
 
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
 
@@ -75,7 +85,9 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `scala3-sbt-bridge-nonbootstrapped`
         run: ./project/scripts/sbt scala3-sbt-bridge-nonbootstrapped/test
@@ -95,7 +107,9 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `scala3-sbt-bridge-nonbootstrapped` against compiler-interface 2.x
         run: ./project/scripts/sbt scala3-sbt-bridge-nonbootstrapped/test
@@ -113,7 +127,9 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `scala3-sbt-bridge-bootstrapped`
         run: ./project/scripts/sbt scala3-sbt-bridge-bootstrapped/test
@@ -131,7 +147,9 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `tasty-core-nonbootstrapped`
         run: ./project/scripts/sbt tasty-core-nonbootstrapped/test
@@ -149,7 +167,9 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `tasty-core-bootstrapped`
         run: ./project/scripts/sbt tasty-core-bootstrapped/test
@@ -166,7 +186,9 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `scala3-directives-parser-nonbootstrapped`
         run: ./project/scripts/sbt scala3-directives-parser-nonbootstrapped/test
@@ -183,7 +205,9 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test `scala3-directives-parser-bootstrapped`
         run: ./project/scripts/sbt scala3-directives-parser-bootstrapped/test
@@ -201,7 +225,9 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24.x'
@@ -241,7 +267,11 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
+          # the dependencies are the same for all JDKs
+          ignoreMatrix: 'true'
       # scala-cli-setup also installs a JVM and overrides JAVA_HOME, so it must
       # match the JDK 17 set up above. sbt runs on this JVM.
       - uses: VirtusLab/scala-cli-setup@9d61091a7d9d19f69faa59b31cdbc6ef2537eccc # v1.19.0
@@ -267,7 +297,9 @@ jobs:
           distribution: 'corretto'
           check-latest: true
           java-version: 17
-          cache: 'sbt'
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test Presentation Compiler
         run: ./project/scripts/sbt scala3-presentation-compiler/test

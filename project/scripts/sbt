@@ -7,8 +7,24 @@ set -e
 
 CMD="${1:?Missing sbt command}"
 
+EXTRA_OPTS=()
+if [ -n "$CI" ]; then
+  # Identify our traffic to Maven Central, which rate-limits (HTTP 429) generic user agents.
+  # See https://central.sonatype.org/faq/429-error/ and https://github.com/coursier/coursier/discussions/3841
+  # The build forwards these properties to the JVMs it forks (see `CoursierUserAgent`).
+  CS_USER_AGENT="Scala3-Compiler (+https://github.com/scala/scala3; ci) Coursier"
+  EXTRA_OPTS+=(
+    # read by coursier (used in tests, e.g. vulpix and the REPL)
+    "-Dcoursier.http.agent=$CS_USER_AGENT"
+    # read by the coursier shaded into sbt's lm-coursier, since lm-coursier-shaded 2.1.14
+    # (sbt <= 1.13.1 still bundles 2.1.13, which hardcodes `Coursier/2.0`)
+    "-Dlmcoursier.internal.shaded.coursier.http.agent=$CS_USER_AGENT"
+  )
+fi
+
 # run sbt with the supplied arg
 sbt -J-XX:ReservedCodeCacheSize=512m \
     -DSBT_PGP_USE_GPG=false \
+    "${EXTRA_OPTS[@]}" \
     -no-colors \
     "$CMD"
