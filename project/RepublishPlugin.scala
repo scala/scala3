@@ -108,7 +108,7 @@ object RepublishPlugin extends AutoPlugin {
       (file(javaHome) / "bin" / cmd).getAbsolutePath
     }
     val env = Map("COURSIER_CACHE" -> cache.getAbsolutePath.toString).asJava
-    val cmdLine0 = Seq(javaCmd, "-jar", jar0)
+    val cmdLine0 = Seq(javaCmd) ++ CoursierUserAgent.javaOptions ++ Seq("-jar", jar0)
     args =>
       val cmdLine = cmdLine0 ++ args
       // invoke cmdLine with env, but also capture the output
