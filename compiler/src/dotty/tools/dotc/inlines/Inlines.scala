@@ -931,7 +931,8 @@ object Inlines:
     import Inlines.*
 
     private val parentSym = symbolFromParent(parent)
-    private val paramAccessorsMapper = ParamAccessorsMapper()
+    private val paramValues = ParamValueMap()
+    private val inlinedSymbolMap: mutable.Map[Symbol, Symbol] = mutable.Map.empty
 
     private val child = ctx.owner
     private val childThisType = ctx.owner.thisType
@@ -941,7 +942,7 @@ object Inlines:
       inlinerTypeMap(parentSym.asClass.classDenot.givenSelfType)
 
     def expandDefs(overriddenDecls: Set[Symbol]): List[Tree] =
-      paramAccessorsMapper.registerParamValuesOf(parent)
+      paramValues.putParameterValues(parent)
       val stats = Inlines.defsToInline(parentSym)
                          .filterNot(stat => overriddenDecls.contains(stat.symbol) && stat.symbol.is(Deferred))
                          .filterNot(stat => stat.isDef && stat.symbol.isClass) // Inline traits may not define inner classes; error elsewhere but skip now for best effort error msgs
@@ -964,7 +965,10 @@ object Inlines:
             // At that point either the method is overridden so needs mangling (and we just copied and mangled it in this inlining phase), 
             // or not, in which case call directly by original name. In both cases we are calling the method resulting from inlining, on the
             // inline receiver class.
-            Select(This(ctx.owner.asClass), paramAccessorsMapper.getParamAccessorName(sel.symbol.owner, name).getOrElse(name))
+            val thisTree = This(ctx.owner.asClass)
+            inlinedSymbolMap.get(sel.symbol) match
+              case Some(renamed) => thisTree.select(renamed)
+              case None => Select(thisTree, name)
         case tree => tree
       })
       defs.map(ttmap(_))
@@ -997,8 +1001,8 @@ object Inlines:
           inContext(ctx.withSource(tree.source)) { // Need to ensure we preserve the fact that this Select was inlined
                                                    // potentially from a different file. Recreating it discards that info.
                                                    // See: inline-trait-multiple-stages-generic-defs.
-            paramAccessorsMapper.getParamAccessorName(qual.symbol, name) match {
-                case Some(newName) => Select(this(qual), newName).withSpan(parent.span)
+            inlinedSymbolMap.get(sel.symbol) match {
+                case Some(renamed) => this(qual).select(renamed).withSpan(parent.span)
                 case None => cpy.Select(sel)(this(qual), name)
             }
           }
@@ -1044,15 +1048,19 @@ object Inlines:
 
     private def inlinedMemberSym(sym: Symbol, overriddenDecls: Set[Symbol], withoutFlags: FlagSet = EmptyFlags)(using Context): Symbol =
       var name = sym.name
+      
       var flags = sym.flags | Synthetic
       if sym.isTermParamAccessor then flags &~= ParamAccessor
-      if sym.is(Local) || (overriddenDecls.contains(sym)) then
-        name = paramAccessorsMapper.registerNewName(sym)
+      
+      val hasNewInlinedName = if sym.is(Local) || (overriddenDecls.contains(sym)) then
+        name = name.expandedName(parentSym)
         flags |= (Private | Local)
         flags &~= Override          // private override is illegal; if the inlined method was already override then we might make it private override by accident.
+        true 
       else
         flags |= Override
-      
+        false 
+        
       val newSym = sym.copy(
         owner = ctx.owner,
         name = name,
@@ -1061,6 +1069,8 @@ object Inlines:
         coord = spanCoord(parent.span)
       ).entered
       
+      if hasNewInlinedName then inlinedSymbolMap.put(sym, newSym)
+      
       newSym.annotations = sym.annotations
         
       ctx.inlineTraitState.registerInlineOrigin(newSym, sym)
@@ -1068,8 +1078,8 @@ object Inlines:
 
     private def inlinedValDef(vdef: ValDef, inlinedSym: Symbol)(using Context): ValDef =
       val rhs =
-        paramAccessorsMapper
-          .getParamAccessorRhs(vdef.symbol.owner, vdef.symbol.name)
+        paramValues
+          .getValue(vdef.symbol.owner, vdef.symbol.name)
           .getOrElse(inlinedRhs(vdef, inlinedSym))
       
       val rhs1 = rhs.changeNonLocalOwners(inlinedSym)
@@ -1163,11 +1173,10 @@ object Inlines:
                     oldOwners = symbolMap.keys.toList,
                     newOwners = symbolMap.values.toList)(rhs2)
 
-    private class ParamAccessorsMapper:
-      private val paramAccessorsTrees: mutable.Map[Symbol, Map[Name, Tree]] = mutable.Map.empty
-      private val paramAccessorsNewNames: mutable.Map[(Symbol, Name), Name] = mutable.Map.empty
+    private class ParamValueMap:
+      private val values: mutable.Map[Symbol, Map[Name, Tree]] = mutable.Map.empty
 
-      def registerParamValuesOf(parent: Tree): Unit =
+      def putParameterValues(parent: Tree): Unit =
         def allArgs(tree: Tree, acc: Vector[List[Tree]]): List[List[Tree]] = tree match
           case Apply(fun, args) => allArgs(fun, acc :+ args)
           case TypeApply(fun, _) => allArgs(fun, acc)
@@ -1179,21 +1188,12 @@ object Inlines:
         val info =
           if parent.symbol.isClass then parent.symbol.primaryConstructor.info
           else parent.symbol.info
-        val paramAccessors = allParams(info, Nil).flatten.zip(allArgs(parent, Vector.empty).flatten).toMap
-        paramAccessorsTrees.put(symbolFromParent(parent), paramAccessors)
+        val nameAndTrees = allParams(info, Nil).flatten.zip(allArgs(parent, Vector.empty).flatten).toMap
+        values.put(symbolFromParent(parent), nameAndTrees)
 
-      def registerNewName(paramAccessorSym: Symbol): paramAccessorSym.ThisName =
-        val oldName = paramAccessorSym.name
-        val newName = oldName.expandedName(parentSym)
-        paramAccessorsNewNames.put((paramAccessorSym.owner, oldName), newName)
-        newName
-
-      def getParamAccessorRhs(parent: Symbol, paramAccessorName: Name): Option[Tree] =
-        paramAccessorsTrees.get(parent).flatMap(_.get(paramAccessorName))
-
-      def getParamAccessorName(parent: Symbol, paramAccessorName: Name): Option[Name] =
-        paramAccessorsNewNames.get(parent, paramAccessorName)
-    end ParamAccessorsMapper
+      def getValue(parent: Symbol, param: Name): Option[Tree] =
+        values.get(parent).flatMap(_.get(param))
+    end ParamValueMap
   end InlineParentTrait
 
 
