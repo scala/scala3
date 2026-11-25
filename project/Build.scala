@@ -153,6 +153,9 @@ object Build {
     // Do not cut off the bottom of large stack traces (default is 1024)
     javaOptions ++= "-XX:MaxJavaStackTraceDepth=1000000" :: Nil,
 
+    // Tests resolve dependencies with coursier, so they need to identify themselves to Maven Central too
+    javaOptions ++= CoursierUserAgent.javaOptions,
+
     excludeLintKeys ++= Set(
       // We set these settings in `commonSettings`, if a project
       // uses `commonSettings` but overrides `unmanagedSourceDirectories`,
@@ -772,7 +775,7 @@ object Build {
         s"-Dplugin.scalaVersion=${dottyVersion}",
         s"-Dplugin.scala2Version=${Versions.scala2Version}",
         s"-Dplugin.scalaJSVersion=${scalaJSVersion}",
-      ),
+      ) ++ CoursierUserAgent.javaOptions,
       scriptedBufferLog := true,
       scripted := scripted.dependsOn(
         (`scala3-sbt-bridge-bootstrapped` / publishLocalBin),
