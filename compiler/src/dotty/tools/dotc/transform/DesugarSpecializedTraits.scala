@@ -512,15 +512,17 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
             
             traverseChildren(tdef)
 
-          case tree @ Typed(Apply(Select(New(anon),ctor),List()), tpt: TypeTree) if anon.symbol.isAnonymousClass =>
-            (tpt.tpe, tpt.span) match {
-              case Specialization(spec) if spec.isFullySpecializedToTopClassesOrNothing => 
-                // We never inline into anonymous class instances (avoids cycles in inline trait inlining), 
-                // so all anonymous class instances must have a non-anonymous class final representation as an $impl$ class.
-                addErasedImplementation(spec, cache)
+          case tree @ AnonymousClassInstance(anon) =>
+            (anon.typeTree.tpe, anon.typeTree.span) match {
+              case Specialization(spec) => 
+                if spec.isFullySpecializedToTopClassesOrNothing then 
+                  addErasedImplementation(spec, cache)
                                                                                                                                           
-              case Specialization(spec) if spec.isSpecialized => 
-                addInterfaceAndImplementation(spec, cache)
+                else if spec.isSpecialized then  
+                  if anon.isSimple(spec) then
+                    addInterfaceAndImplementation(spec, cache)
+                  else 
+                    addInterface(spec, cache)
 
               case _ => ()
             }
@@ -915,15 +917,25 @@ object Specialization:
         }
       }
    
+  def isSimpleAnonymousClass(parentCalls: List[Tree], body: List[Tree], spec: Specialization)(using Context): Boolean =
+    // Omit compiler-generated members
+    val hasOnlySyntheticMembers = body.forall: t =>
+      t.symbol.name.is(ContextBoundParamName) || t.symbol.isOneOf(Flags.Synthetic | Flags.Artifact)
+    val hasOnlyValidParents = parentCalls match
+      case (obj :: parentsOfSpecTrait) :+ Apply(_, _) =>
+        obj.symbol.owner == defn.ObjectClass &&
+        parentsOfSpecTrait.forall(p => spec.symbol.asClass.baseClasses.contains(p.symbol.owner))
+      case _ => false
+    hasOnlySyntheticMembers && hasOnlyValidParents
+
   def anonymousClassIsSpecialized(tree: Tree)(using Context) = 
     tree match {
-      case TypeDef(anon, Template(_, parentCalls: List[Tree], _, _)) =>
+      case TypeDef(anon, Template(_, parentCalls: List[Tree], _, body: List[Tree])) =>
         parentCalls match {
           case _ :+ Apply(Apply(t, ctorArgs), ev) => // extends Object, parents of spec trait, spec trait
             Specialization
               .unapply(t.tpe.resultType.resultType, t.span)
-              .map(_.hasSpecializedParams)
-              .nonEmpty
+              .exists(spec => isSimpleAnonymousClass(parentCalls, body, spec))
           case _ => false
         }
       case _ => false
@@ -968,7 +980,9 @@ class AnonymousClassInstance(
   val parentCalls: List[Tree],
   val ctor: Name,
   val typeTree: TypeTree
-)
+):
+  def isSimple(spec: Specialization)(using Context): Boolean =
+    Specialization.isSimpleAnonymousClass(parentCalls, body, spec)
 
 object AnonymousClassInstance:
 

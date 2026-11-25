@@ -845,7 +845,9 @@ object Erasure {
         inContext(preErasureCtx) {
           Specialization.unapply(anon.typeTree.tpe, anon.typeTree.span).flatMap(spec => {
             anon.parentCalls match {
-              case (obj :: parentsOfSpecTrait) if (spec.isSpecialized || spec.isFullySpecializedToTopClassesOrNothing) && (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.symbol.asClass.baseClasses.exists(p => p == x.symbol.owner))) =>
+              case (obj :: parentsOfSpecTrait) if 
+                (spec.isSpecialized || spec.isFullySpecializedToTopClassesOrNothing) && anon.isSimple(spec) =>
+                
                 val app: Tree = parentsOfSpecTrait.find(p => p.symbol.owner == spec.symbol).get
                 assert(app.isInstanceOf[Apply]) // At the very least we pass the Specialized instance.
                 val targetImplName = spec.newImplementationClassName

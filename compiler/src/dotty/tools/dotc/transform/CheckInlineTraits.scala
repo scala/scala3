@@ -108,68 +108,10 @@ class CheckInlineTraits extends MiniPhase:
 
     override def transformBlock(tree: Block)(using Context): Tree = tree match {
       case AnonymousClassInstance(anon) =>
-        def deandify(tp: Type): Iterator[Type] = tp match {
-          case AndType(l, r) => deandify(l) ++ deandify(r)
-          case _ => Iterator.single(tp)
-        }
-
-        def checkSpecializedMixins(tpe: AndType) = deandify(tpe) foreach {
-          Specialization.unapply(_, anon.typeTree.span) foreach {
-            spec => if spec.hasSpecializedParams then
-              report.error(
-                """
-                Anonymous classes acting as instances of Specialized traits may not mix in other traits; 
-                You can make a named object instead if you like.
-                """, 
-                anon.srcPos
-              )
-          }
-        }
-        anon.typeTree.tpe match {
-          case tpe: AndType => /* Multiple mixed in traits will be typed as an AndType */ 
-            checkSpecializedMixins(tpe)
-
-            tree 
-          
-          case tpe =>
-            Specialization
-              .unapply(tpe, anon.typeTree.span)
-              .foreach(spec => 
-                if spec.hasSpecializedParams then
-                  // Only allowed to contain evidence parameters
-                  if !anon.body.forall(x => x.symbol.name.is(ContextBoundParamName)) then
-                    report.error(
-                      """
-                      Anonymous classes acting as instances of Specialized traits may not have additional members; 
-                      you can make a named object instead if you like.
-                      """,
-                      anon.srcPos
-                    )                    
-
-                  def hasOnlyValidParents: Boolean = anon.parentCalls match { 
-                    case (obj :: parentsOfSpecTrait) :+ (app@Apply(_, _)) =>
-                      val isFirstParentObject = obj.symbol.owner == ctx.definitions.ObjectClass
-                      val validOtherParents =
-                        parentsOfSpecTrait.forall(x => spec.symbol.asClass.baseClasses.contains(x.symbol.owner))
-                      
-                      isFirstParentObject && validOtherParents
-                    case _ => false
-                  }
-                      
-                  if !hasOnlyValidParents then
-                    report.error(
-                      """
-                      Anonymous classes acting as instances of Specialized traits may not mix in other traits; 
-                      you can make a named object instead if you like.
-                      """,
-                      anon.srcPos
-                    )
-
-                  registerSpecializationsInUnit
-                )
-              
-            tree
-        }
+        (anon.typeTree.tpe, anon.typeTree.span) match
+          case Specialization(spec) if spec.hasSpecializedParams => registerSpecializationsInUnit
+          case _ => ()
+        tree
       case _ => tree
     }
 

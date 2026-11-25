@@ -372,9 +372,17 @@ object Inlines:
         checkInlineTraitOverrides(cls.symbol.asClass)
         val clsOverriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
         val ancestors = inlineTraitAncestors(cls)
-
-        if cls.symbol.isAnonymousClass && ancestors.exists(tree => Specialization.unapply(tree.tpe).exists(anc => anc.isSpecialized || anc.isFullySpecializedToTopClassesOrNothing)) then
-          // No need to inline into specialized trait anonymous class instances; these will later be replaced by $impl$ classes.
+        
+        val isSimpleSpecializedAnon = 
+          cls.symbol.isAnonymousClass &&
+          ancestors.exists:
+            tree => tree.tpe match
+              case Specialization(spec) => 
+                (spec.isSpecialized || spec.isFullySpecializedToTopClassesOrNothing) &&
+                Specialization.isSimpleAnonymousClass(impl.parents, impl.body, spec)
+              case _ => false
+        
+        if isSimpleSpecializedAnon then
           return cls
           
         val cycleFound = ancestors.exists { parent =>
