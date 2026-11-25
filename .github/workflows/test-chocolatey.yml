@@ -35,7 +35,8 @@ jobs:
     steps:
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
-          distribution: 'zulu'
+          distribution: 'corretto'
+          check-latest: true
           java-version: ${{ inputs.java-version }}
       - name: Download the 'nupkg' from GitHub Artifacts
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
