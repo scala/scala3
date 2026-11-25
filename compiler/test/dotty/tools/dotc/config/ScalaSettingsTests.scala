@@ -245,7 +245,7 @@ class ScalaSettingsTests:
       argsStr = "-Wconf:src=bar/.*\\.scala:s",
       warning = diagnosticWarning(plainFile(path))
     )
-    assertEquals(result, Right(reporting.Action.Warning))
+    assertEquals(Right(reporting.Action.Default), result)
 
   @Test def `Wconf src filter only matches exact path endings`: Unit =
     val path = Path("foobar/File.scala++")
@@ -253,7 +253,7 @@ class ScalaSettingsTests:
       argsStr = "-Wconf:src=foobar/.*\\.scala:s",
       warning = diagnosticWarning(plainFile(path))
     )
-    assertEquals(result, Right(reporting.Action.Warning))
+    assertEquals(Right(reporting.Action.Default), result)
 
   @Test def `WConf src filter reports an error on an invalid regex`: Unit =
     val result = wconfSrcFilterTest(
