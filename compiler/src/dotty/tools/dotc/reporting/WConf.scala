@@ -30,13 +30,18 @@ enum MessageFilter:
       val path = source.jfile()
         .map(_.toPath.toAbsolutePath.toUri.normalize().getRawPath)
         .orElse(source.path())
-      pattern.findFirstIn(path).nonEmpty
+      matchesPathSuffix(pattern, path)
     case Origin(pattern) =>
       message match
       case message: OriginWarning if message.origin != OriginWarning.NoOrigin =>
         pattern.findFirstIn(message.origin).nonEmpty
       case _ => false
     case None => false
+
+  private def matchesPathSuffix(pattern: Regex, path: String): Boolean =
+    val matcher = pattern.pattern.matcher(path).useAnchoringBounds(false).useTransparentBounds(true)
+    val starts = Iterator.single(0) ++ path.indices.iterator.filter(path(_) == '/').flatMap(i => Iterator(i, i + 1))
+    starts.exists(start => matcher.region(start, path.length).matches())
 
   case Any, Configuration, Deprecated, Feature, Unchecked, None
   case MessagePattern(pattern: Regex)
