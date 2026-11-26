@@ -248,7 +248,7 @@ private sealed trait WarningSettings extends SettingGroup:
          |  - Source location: src=regex
          |    The regex must match the canonical path relative to any path segment
          |    (`b/.*Test.scala` matches `/a/b/XTest.scala` but not `/ab/Test.scala`).
-         |    Use unix-style paths, separated by `/`.
+         |    Use Unix-style paths, separated by `/`.
          |
          |  - Origin of warning: origin=regex
          |    The regex must match the full name (`package.Class.method`) of the deprecated entity.
