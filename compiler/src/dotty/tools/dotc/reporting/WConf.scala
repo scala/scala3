@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package reporting
 
-import scala.collection.mutable
-
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.dotc.interfaces.SourceFile
@@ -32,13 +30,18 @@ enum MessageFilter:
       val path = source.jfile()
         .map(_.toPath.toAbsolutePath.toUri.normalize().getRawPath)
         .orElse(source.path())
-      pattern.findFirstIn(path).nonEmpty
+      matchesPathSuffix(pattern, path)
     case Origin(pattern) =>
       message match
       case message: OriginWarning if message.origin != OriginWarning.NoOrigin =>
         pattern.findFirstIn(message.origin).nonEmpty
       case _ => false
     case None => false
+
+  private def matchesPathSuffix(pattern: Regex, path: String): Boolean =
+    val matcher = pattern.pattern.matcher(path).useAnchoringBounds(false).useTransparentBounds(true)
+    val starts = Iterator.single(0) ++ path.indices.iterator.filter(path(_) == '/').flatMap(i => Iterator(i, i + 1))
+    starts.exists(start => matcher.region(start, path.length).matches())
 
   case Any, Configuration, Deprecated, Feature, Unchecked, None
   case MessagePattern(pattern: Regex)
@@ -72,20 +75,6 @@ object WConf:
   private def regex(s: String) =
     try Right(s.r)
     catch case e: PatternSyntaxException => Left(s"invalid pattern `$s`: ${e.getMessage}")
-
-  // Ensures a filter matches only complete path segments and exact endings.
-  //
-  // `parseFilter` invokes `regex(conf).map(anchored)` because the original
-  // pattern must be a valid regex before adding the anchor characters.
-  private def anchored(pattern: Regex) =
-    val orig = pattern.toString
-    val result = new mutable.StringBuilder
-
-    if (!orig.startsWith("/")) result += '/'
-    result ++= orig
-    if (!orig.endsWith("$")) result += '$'
-
-    result.toString.r
 
   @sharable val Splitter = raw"([^=]+)=(.+)".r
   @sharable val ErrorId = raw"E?(\d+)".r
@@ -123,7 +112,7 @@ object WConf:
           case "unchecked"   => Right(Unchecked)
           case _             => Left(s"unknown category: $conf")
 
-        case "src" => regex(conf).map(anchored).map(SourcePattern.apply)
+        case "src" => regex(conf).map(SourcePattern.apply)
         case "origin" => regex(conf).map(Origin.apply)
 
         case _ => Left(s"unknown filter: $filter")

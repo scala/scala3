@@ -255,6 +255,89 @@ class ScalaSettingsTests:
     )
     assertEquals(Right(reporting.Action.Default), result)
 
+  @Test def `Wconf src filter matches a pattern starting with a slash at any segment`: Unit =
+    val result = wconfSrcFilterTest(
+      argsStr = "-Wconf:src=/path/.*:s",
+      warning = diagnosticWarning(virtualFile("file:///some/path/file.scala"))
+    )
+    assertEquals(Right(reporting.Action.Silent), result)
+
+  @Test def `Wconf src filter accepts a pattern ending with a dollar`: Unit =
+    val result = wconfSrcFilterTest(
+      argsStr = "-Wconf:src=path/file\\.scala$:s",
+      warning = diagnosticWarning(virtualFile("file:///some/path/file.scala"))
+    )
+    assertEquals(Right(reporting.Action.Silent), result)
+
+  @Test def `Wconf src filter with a leading caret matches from the start of the path`: Unit =
+    def resultFor(uri: String) = wconfSrcFilterTest(
+      argsStr = "-Wconf:src=^/some/path/.*:s",
+      warning = diagnosticWarning(virtualFile(uri))
+    )
+    assertEquals(Right(reporting.Action.Silent), resultFor("file:///some/path/file.scala"))
+    assertEquals(Right(reporting.Action.Default), resultFor("file:///other/some/path/file.scala"))
+
+  @Test def `Wconf src filter with a leading inline flag and slash matches`: Unit =
+    val result = wconfSrcFilterTest(
+      argsStr = "-Wconf:src=(?i)/SOME/PATH/.*:s",
+      warning = diagnosticWarning(virtualFile("file:///some/path/file.scala"))
+    )
+    assertEquals(Right(reporting.Action.Silent), result)
+
+  @Test def `Wconf src filter anchors every branch of an alternation`: Unit =
+    def resultFor(pattern: String) = wconfSrcFilterTest(
+      argsStr = s"-Wconf:src=$pattern:s",
+      warning = diagnosticWarning(virtualFile("file:///some/path/myfile.scala"))
+    )
+    assertEquals(Right(reporting.Action.Default), resultFor("other\\.scala|file\\.scala"))
+    assertEquals(Right(reporting.Action.Default), resultFor("(other|file)\\.scala"))
+    assertEquals(Right(reporting.Action.Silent), resultFor("other\\.scala|myfile\\.scala"))
+
+  @Test def `Wconf src filter with an unterminated quote matches`: Unit =
+    val result = wconfSrcFilterTest(
+      argsStr = "-Wconf:src=\\Qfile.scala:s",
+      warning = diagnosticWarning(virtualFile("file:///some/path/file.scala"))
+    )
+    assertEquals(Right(reporting.Action.Silent), result)
+
+  @Test def `Wconf src filter ending with an escaped dollar is anchored at the end`: Unit =
+    val result = wconfSrcFilterTest(
+      argsStr = "-Wconf:src=file\\$:s",
+      warning = diagnosticWarning(virtualFile("file:///some/path/file$Bar.scala"))
+    )
+    assertEquals(Right(reporting.Action.Default), result)
+
+  @Test def `Wconf src filter matching everything also matches a warning without a position`: Unit =
+    // The path of a position-less warning is empty
+    val result = wconfSrcFilterTest(
+      argsStr = "-Wconf:src=.*:s",
+      warning = reporting.Diagnostic.Warning("A warning".toMessage, util.NoSourcePosition)
+    )
+    assertEquals(Right(reporting.Action.Silent), result)
+
+  @Test def `Wconf src filter resolves a relative virtual path against the working directory`: Unit =
+    // `VirtualFile.jpath` is `Path.of(path)`, so `Foo.scala` is matched as `<cwd>/Foo.scala`
+    val result = wconfSrcFilterTest(
+      argsStr = "-Wconf:src=Foo\\.scala:s",
+      warning = diagnosticWarning(util.SourceFile.virtual("Foo.scala", ""))
+    )
+    assertEquals(Right(reporting.Action.Silent), result)
+
+  @Test def `Wconf src filter matches against the URI-encoded path`: Unit =
+    def resultFor(pattern: String) = wconfSrcFilterTest(
+      argsStr = s"-Wconf:src=$pattern:s",
+      warning = diagnosticWarning(plainFile(Path("my dir/File.scala")))
+    )
+    assertEquals(Right(reporting.Action.Default), resultFor("my dir/.*"))
+    assertEquals(Right(reporting.Action.Silent), resultFor("my%20dir/.*"))
+
+  @Test def `nowarn src filter matches like the Wconf one`: Unit =
+    // `@nowarn("...")` parses its filters with `WConf.parseFilters` as well
+    def matchesBar(uri: String) =
+      reporting.WConf.parseFilters("src=bar/.*").map(_.forall(_.matches(diagnosticWarning(virtualFile(uri)))))
+    assertEquals(Right(true), matchesBar("file:///w/bar/A.scala"))
+    assertEquals(Right(false), matchesBar("file:///w/foobar/A.scala"))
+
   @Test def `WConf src filter reports an error on an invalid regex`: Unit =
     val result = wconfSrcFilterTest(
       argsStr = """-Wconf:src=\:s""",
