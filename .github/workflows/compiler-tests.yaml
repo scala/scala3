@@ -303,3 +303,23 @@ jobs:
       - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
       - name: Test Presentation Compiler
         run: ./project/scripts/sbt scala3-presentation-compiler/test
+
+  test-staging:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: 'corretto'
+          check-latest: true
+          java-version: 17
+      - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
+        with:
+          cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
+      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - name: Test `scala3-staging`
+        run: ./project/scripts/sbt scala3-staging/test

@@ -27,6 +27,12 @@ class AbstractFileClassLoader(entries: Seq[AbstractFile], jarVersion: String, pa
   def searchLocations: Seq[AbstractFile] =
     _searchLocations
 
+  /** Paths of the non-virtual search locations.
+   *  Uses only JDK types, so `ClasspathFromClassloader` can call it across classloaders.
+   */
+  def classpathEntries: Array[String] =
+    searchLocations.filter(!_.isVirtual).map(_.path).toArray
+
   def add(entry: AbstractFile): Unit =
     _searchLocations = _searchLocations ++ open(entry).toSeq
 

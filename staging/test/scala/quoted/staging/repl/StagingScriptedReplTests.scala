@@ -11,6 +11,6 @@ import org.junit.experimental.categories.Category
 class StagingScriptedReplTests extends ReplTest {
 
   @Category(Array(classOf[BootstrappedOnlyTests]))
-  @Test def replStagingTests = scripts("/repl-staging").foreach(testFile)
+  @Test def replStagingTests = testFiles(scripts("/repl-staging"))
 
 }
