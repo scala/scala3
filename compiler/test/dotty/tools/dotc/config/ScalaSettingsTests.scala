@@ -14,8 +14,8 @@ import core.Decorators.toMessage
 import dotty.tools.io.*
 
 import java.net.URI
-import java.nio.file.{Files, Paths}
-import scala.util.{Success, Using}
+import java.nio.file.{Files, FileSystemException, Paths}
+import scala.util.Using
 import scala.io.Codec
 
 import scala.annotation.nowarn
@@ -211,25 +211,25 @@ class ScalaSettingsTests:
     assertEquals(Right(reporting.Action.Default), result)
 
   @Test def `Wconf src filter matches symbolic links without resolving them`: Unit =
-    val result = Using.Manager { use =>
-      def f(file: java.nio.file.Path) = use(file)(using Files.deleteIfExists(_))
+    try
+      val result = Using.Manager { use =>
+        def f(file: java.nio.file.Path) = use(file)(using Files.deleteIfExists(_))
 
-      val tempDir = f(Files.createTempDirectory("wconf-src-symlink-test"))
-      val externalDir = f(Files.createDirectory(Paths.get(tempDir.toString, "external")))
-      val cacheDir = f(Files.createDirectory(Paths.get(tempDir.toString, "cache")))
-      val actualFile = f(Files.createFile(Paths.get(cacheDir.toString, "myfile.scala")))
-      val symlinkPath = Paths.get(externalDir.toString, "myfile.scala")
+        val tempDir = f(Files.createTempDirectory("wconf-src-symlink-test"))
+        val externalDir = f(Files.createDirectory(Paths.get(tempDir.toString, "external")))
+        val cacheDir = f(Files.createDirectory(Paths.get(tempDir.toString, "cache")))
+        val actualFile = f(Files.createFile(Paths.get(cacheDir.toString, "myfile.scala")))
+        val symlinkPath = Paths.get(externalDir.toString, "myfile.scala")
+        val symlink = f(Files.createSymbolicLink(symlinkPath, actualFile)) // may bail early if unsupported
 
-      // This may fail with an IOException if symlinks are disabled on Windows:
-      // https://docs.oracle.com/javase/8/docs/api/java/nio/file/Files.html#createSymbolicLink-java.nio.file.Path-java.nio.file.Path-java.nio.file.attribute.FileAttribute...-
-      val symlink = f(Files.createSymbolicLink(symlinkPath, actualFile))
-
-      wconfSrcFilterTest(
-        argsStr = "-Wconf:src=external/.*\\.scala:s",
-        warning = diagnosticWarning(plainFile(Path(symlink)))
-      )
-    }
-    assertEquals(result, Success(Right(reporting.Action.Silent)))
+        wconfSrcFilterTest(
+          argsStr = "-Wconf:src=external/.*\\.scala:s",
+          warning = diagnosticWarning(plainFile(Path(symlink)))
+        )
+      }.get
+      assertEquals(Right(reporting.Action.Silent), result)
+    // Symbolic links may be unsupported, or disabled on Windows without the required privilege
+    catch case _: (UnsupportedOperationException | FileSystemException) => ()
 
   @Test def `Wconf src filter normalizes paths`: Unit =
     val path = Path("foo/./bar/../quux/../baz/File.scala")
