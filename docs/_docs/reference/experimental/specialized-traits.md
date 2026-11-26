@@ -115,16 +115,21 @@ class Bar extends Foo[Int](10): // Type parameter does of course not need to be 
 object Baz extends Foo(12)
 val myBar = Bar()
 ```
- - Instantiation of an anonymous class instance directly from the Specialized trait: `new A[Ts](ps1)...(psN) {}`  where `A` is a specialized trait and the type parameters `Ts` and term parameters `ps1, ,,, psN` can also be absent. This has a special meaning, as it desugars to instantiating a _specialized instance class_ (`$impl$` class, see Expansion of Specialized Traits). This comes with the twin advantages that:
-    - there is no need for the boilerplate of manually defining an object/class to extend the specialized trait
-    - this specialized instance class is reused every time such an instance is created (there is no proliferation of anonymous classes).
-  
-    However, to facilitate this reuse, we must impose the following restrictions. Anonymous class instances acting as instances of Specialized traits:
-    - can extend only a single specialized trait [0],
-    - cannot mix in further classes or traits, and
-    - cannot contain member definitions.
+ - Instantiation of a _simple_ specialized anonymous class instance has special benefits, 
+   these instantiations erase to a _specialized instance class_ (`$impl$` class, see Expansion of Specialized Traits).
+ 
+  We define a simple specialized anonymous class as follows:
+    1. extends only a single specialized trait
+    2. does not mix in others classes or traits
+    3. does not contain member definitions
     
-    Should these restrictions be undesirable, the user can always create their own named `object` or `class` extending from a specialized trait (i.e. the first case for creation of a specialized object just above), which does not induce these restrictions.
+    Simple specialized anonymous classes comes with the following benefits:
+      - No need for the boilerplate of manually defining an object/class to extend the specialized trait.
+      - A specialized instance class is shared between every simple specialized anonymous class extending the same type.
+
+  An anonymous class that does not satisfy these conditions is treated just like a named `class` extending the specialized trait. 
+  It still implements the specialized interface, so member accesses through that interface avoid boxing, 
+  but it does not reuse a shared specialized class so each use site will generate its own class.
 
 [0] Note that because the specialized traits take evidence parameters for the `Specialized` typeclass, `new Foo[Int] {}` where `Foo` extends some other specialized trait `Bar` desugars in the compiler to `new Bar[Int] with Foo[Int] {}`, which means we can't distinguish these two cases. Therefore we allow 
 e.g. `new Bar[Int] with Foo[Int] {}` although there is no reason to use this in source code because it's exactly the same as writing `new Foo[Int] {}`.
