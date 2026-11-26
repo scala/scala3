@@ -1894,4 +1894,142 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |""".stripMargin
     )
 
+  // The names are not spelled out, so there is no definition to highlight
+  @Test def `named-tuple-field-alias-names` =
+    check(
+      """|object Main:
+         |  type Names = ("name", "age")
+         |  val x: NamedTuple.NamedTuple[Names, (String, Int)] = ???
+         |  val y = x.<<na@@me>>
+         |  val z = x.<<name>>
+         |  val w = x.age
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-explicit-literal-cursor` =
+    check(
+      """|object Main:
+         |  val x: NamedTuple.NamedTuple[("<<na@@me>>", "age"), (String, Int)] = ???
+         |  val y = x.<<name>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-interpolation` =
+    check(
+      """|object Main:
+         |  val x: (<<name>>: String, age: Int) = ???
+         |  val s = s"${x.<<na@@me>>} is ${x.age}, ${x.<<name>>.length}"
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-partial-function` =
+    check(
+      """|object Main:
+         |  val xs: List[(<<name>>: String, age: Int)] = ???
+         |  val ns = xs.map { case (<<na@@me>> = n, age = _) => n }
+         |  val ms = xs.collect { case (age = 1, <<name>> = n) => n }
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-pattern-guard` =
+    check(
+      """|object Main:
+         |  val x: (<<name>>: String, age: Int) = ???
+         |  x match
+         |    case (<<name>> = n, age = a) if n.nonEmpty => println(n)
+         |    case _ => ()
+         |  val y = x.<<na@@me>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-pattern-nested-cursor` =
+    check(
+      """|object Main:
+         |  val x: (outer: (<<name>>: String)) = ???
+         |  x match
+         |    case (outer = (<<na@@me>> = n)) => println(n)
+         |  val y = x.outer.<<name>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-for-yield` =
+    check(
+      """|object Main:
+         |  val xs: List[(<<name>>: String)] = ???
+         |  val ns = for (<<name>> = n) <- xs yield n
+         |  val ms = for x <- xs yield x.<<na@@me>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-pattern-val` =
+    check(
+      """|object Main:
+         |  val x: (<<name>>: String, age: Int) = ???
+         |  val (<<na@@me>> = n, age = a) = x
+         |  val y = x.<<name>>
+         |""".stripMargin
+    )
+
+  // The pattern has a label that is not a field, so only the fields are found
+  @Test def `named-tuple-field-pattern-wrong-label` =
+    check(
+      """|object Main:
+         |  val x: (<<name>>: String, age: Int) = ???
+         |  x match
+         |    case (nam = n, age = a) => println(n)
+         |  val y = x.<<na@@me>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-with-errors` =
+    check(
+      """|object Main:
+         |  val x: (<<name>>: String, age: Int) = ???
+         |  val bad: Int = "a"
+         |  val y = x.<<na@@me>>
+         |  val z = x.<<name>>
+         |  val w = x.
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-this-qualifier` =
+    check(
+      """|class Main:
+         |  val x: (<<name>>: String) = ???
+         |  val y = this.x.<<na@@me>>
+         |  val z = Main.this.x.<<name>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-selected-in-type-position` =
+    check(
+      """|object Main:
+         |  val x: (<<name>>: String) = ???
+         |  val y: x.<<name>>.type = x.<<na@@me>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-select-on-constructor-of-other-fields` =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  val y = (<<name>> = "a").<<na@@me>>
+         |  val z = x.name
+         |""".stripMargin
+    )
+
+  @Test def `dependent-function-type-param` =
+    check(
+      """|object Main:
+         |  val f: (<<x@@>>: Int) => <<x>>.type = ???
+         |""".stripMargin
+    )
+
+  @Test def `lambda-typed-param` =
+    check(
+      """|object Main:
+         |  val f = (<<x@@>>: Int, y: Int) => <<x>> + y
+         |""".stripMargin
+    )
+
 end DocumentHighlightSuite

@@ -824,3 +824,50 @@ class PcRenameSuite extends BasePcRenameSuite:
          |""".stripMargin,
       wrap = false
     )
+
+  // The names are not spelled out, so they cannot be renamed
+  @Test def `named-tuple-field-alias-names` =
+    check(
+      """|type Names = ("name", "age")
+         |val x: NamedTuple.NamedTuple[Names, (String, Int)] = ???
+         |val y = x.na@@me
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-pattern-cursor` =
+    check(
+      """|val x: (<<name>>: String, age: Int) = ???
+         |x match
+         |  case (<<na@@me>> = n, age = a) => println(n)
+         |val y = x.<<name>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-constructor-cursor` =
+    check(
+      """|val x: (<<name>>: String) = (<<na@@me>> = "a")
+         |val y = x.<<name>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-partial-function` =
+    check(
+      """|val xs: List[(<<name>>: String)] = Nil
+         |val ns = xs.map { case (<<name>> = n) => n }
+         |val y = xs.head.<<na@@me>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-explicit-literal-cursor` =
+    check(
+      """|val x: NamedTuple.NamedTuple[("<<na@@me>>", "age"), (String, Int)] = ???
+         |val y = x.<<name>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-interpolation` =
+    check(
+      """|val x: (<<name>>: String) = (<<name>> = "a")
+         |val s = s"${x.<<na@@me>>}"
+         |""".stripMargin
+    )

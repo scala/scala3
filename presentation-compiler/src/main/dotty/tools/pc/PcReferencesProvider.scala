@@ -11,7 +11,7 @@ import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.pc.PcSymbolSearch.*
+import dotty.tools.pc.NamedTupleFields.*
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j

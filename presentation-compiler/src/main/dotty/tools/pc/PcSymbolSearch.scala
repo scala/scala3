@@ -2,23 +2,20 @@ package dotty.tools.pc
 
 import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.ast.Positioned
-import dotty.tools.dotc.ast.desugar
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.ExtMethods
-import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.TypeError
-import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.dotc.util.Spans.{spanCoord, Span}
+import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.pc.NamedTupleFields.*
 import dotty.tools.pc.PcSymbolSearch.*
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
@@ -308,120 +305,5 @@ object PcSymbolSearch:
       nameSpan.start,
       nameSpan.end
     ) != df.name.toString()
-
-  def isNamedTupleMethod(sym: Symbol, name: TermName)(using Context): Boolean =
-    sym.exists && sym.name == name && sym.owner == defn.NamedTupleModule.moduleClass
-
-  /** `qual.name` on a named tuple is typed as `NamedTuple.apply[Names, Values](qual)(idx)`
-   *  with a synthetic index, unlike an explicit `qual.apply(idx)`.
-   */
-  object NamedTupleSelection:
-    def unapply(tree: Tree)(using Context): Option[(Tree, Tree, Tree, Int)] = tree match
-      case Apply(Apply(TypeApply(fun, List(names, values)), List(qual)), List(index @ Literal(Constant(i: Int))))
-          if isNamedTupleMethod(fun.symbol, nme.apply) && (!index.span.exists || index.span.isZeroExtent) =>
-        Some((qual, names, values, i))
-      case _ => None
-
-  /** The `(names, values)` of a named tuple type `(n: T, ...)` or constructor `(n = t, ...)`. */
-  object NamedTupleTree:
-    def unapply(tree: Tree)(using Context): Option[(Tree, Tree)] = tree match
-      case AppliedTypeTree(tycon, List(names, values)) if tycon.symbol == defn.NamedTupleTypeRef.symbol =>
-        Some((names, values))
-      case Apply(TypeApply(Apply(TypeApply(fun, List(names)), Nil), _), List(values))
-          if isNamedTupleMethod(fun.symbol, nme.build) =>
-        Some((names, values))
-      case _ => None
-
-  /** The fields of a named tuple type, `Nil` for any other type. */
-  def namedTupleFieldsOf(tpe: Type)(using Context): List[(TermName, Type)] =
-    try tpe.widenDealias.namedTupleElementTypes(derived = true)
-    catch case _: TypeError => Nil // a name that is not a string literal
-
-  /** The `i`-th field of a named tuple type or constructor tree. */
-  def namedTupleFieldAt(names: Tree, values: Tree, i: Int)(using Context): Option[(TermName, Type)] =
-    namedTupleFieldsOf(defn.NamedTuple(names.tpe, values.tpe)).lift(i)
-
-  /** An occurrence of a named tuple field, which has no symbol, so one is synthesized per occurrence,
-   *  owned by no symbol. Like a case class field it belongs to the tuple type, which is kept as the
-   *  symbol's info. The symbol is positioned at the occurrence, whose full span is `span`.
-   */
-  case class NamedTupleField(symbol: Symbol, span: Span)
-
-  private def namedTupleField(tupleType: Type, name: TermName, span: Span)(using Context): NamedTupleField =
-    NamedTupleField(newSymbol(NoSymbol, name, Flags.Synthetic, tupleType, coord = spanCoord(span)), span)
-
-  def isNamedTupleField(sym: Symbol)(using Context): Boolean = sym.is(Flags.Synthetic) && sym.owner == NoSymbol
-
-  /** Fields are the same when they have the same name in named tuples with the same field names.
-   *  The field types are not compared: a constructor `(xs = Nil)` or a generic `(x = t)` has
-   *  a subtype of the declared `(xs: List[Int])`, and a rename has to change all of them.
-   */
-  def sameNamedTupleField(sym: Symbol, field: NamedTupleField)(using Context): Boolean =
-    isNamedTupleField(sym) && sym.name == field.symbol.name
-      && namedTupleFieldsOf(sym.info).map(_._1) == namedTupleFieldsOf(field.symbol.info).map(_._1)
-
-  /** The field selected by `qual.name`, positioned at the name without backticks, like a definition's `nameSpan`. */
-  def selectedNamedTupleField(app: Tree, sourceText: String)(using Context): Option[NamedTupleField] = app match
-    case NamedTupleSelection(_, names, values, i) =>
-      val span = app.span.withStart(app.span.point)
-      val nameSpan =
-        if sourceText.lift(span.start).contains('`') then span.withStart(span.start + 1).withEnd(span.end - 1)
-        else span
-      val tupleType = defn.NamedTuple(names.tpe, values.tpe)
-      namedTupleFieldsOf(tupleType).lift(i).map((name, _) => namedTupleField(tupleType, name, nameSpan))
-    case _ => None
-
-  /** The name literals of a named tuple type, in order; the tuple may be `TupleN` or a `*:` chain. */
-  private def namedTupleFieldNames(names: Tree): List[Tree] = names match
-    case AppliedTypeTree(_, args) => args.flatMap(namedTupleFieldNames)
-    case name @ SingletonTypeTree(Literal(Constant(_: String))) => List(name)
-    case _ => Nil
-
-  /** The fields of a named tuple type or constructor tree with their name literals, positioned at the literals
-   *  without the quotes of an explicit literal type `NamedTuple[("name"), (String)]`.
-   */
-  def declaredNamedTupleFields(names: Tree, values: Tree, sourceText: String)(using
-      Context): List[(Tree, NamedTupleField)] =
-    val tupleType = defn.NamedTuple(names.tpe, values.tpe)
-    namedTupleFieldNames(names).zip(namedTupleFieldsOf(tupleType)).map:
-      case (literal, (name, _)) =>
-        val span = literal.span
-        val nameSpan =
-          if sourceText.lift(span.start).contains('"') then
-            val quotes = if sourceText.startsWith("\"\"\"", span.start) then 3 else 1
-            span.withStart(span.start + quotes).withEnd(span.end - quotes)
-          else span
-        (literal, namedTupleField(tupleType, name, nameSpan))
-
-  /** The labels of a named tuple pattern `(name = n, ...)` with the tuple type they belong to;
-   *  a nested pattern `(a = (b = n))` has the labels of the type of the field `a`.
-   */
-  private def namedTuplePatternLabels(pat: untpd.Tree, tupleType: Type)(using Context): List[(untpd.NamedArg, Type)] =
-    pat match
-      case untpd.Tuple(elems) =>
-        val fields = namedTupleFieldsOf(tupleType)
-        elems.zipWithIndex.flatMap:
-          case (arg @ untpd.NamedArg(name, sub), _) =>
-            fields.find(_._1 == name).toList.flatMap: (_, fieldType) =>
-              (arg, tupleType) :: namedTuplePatternLabels(sub, fieldType)
-          case (sub, i) => fields.lift(i).toList.flatMap((_, fieldType) => namedTuplePatternLabels(sub, fieldType))
-      case untpd.Parens(pat) => namedTuplePatternLabels(pat, tupleType)
-      case untpd.Bind(_, pat) => namedTuplePatternLabels(pat, tupleType)
-      case untpd.Typed(pat, _) => namedTuplePatternLabels(pat, tupleType)
-      case untpd.Alternative(pats) => pats.flatMap(namedTuplePatternLabels(_, tupleType))
-      case _ => Nil
-
-  /** The fields labelled in the named tuple patterns of a case, `case (name = n) =>`, positioned at the labels.
-   *  The typer drops the labels, so they are found in the untyped tree.
-   */
-  def namedTuplePatternFields(cdef: CaseDef, scrutinee: Tree, untpdTree: untpd.Tree)(using
-      Context): List[NamedTupleField] =
-    if namedTupleFieldsOf(scrutinee.tpe).isEmpty then Nil
-    else
-      NavigateAST.pathTo(cdef.pat.span, List(untpdTree)).headOption.toList.flatMap:
-        case pat: untpd.Tree =>
-          namedTuplePatternLabels(pat, scrutinee.tpe).map: (arg, tupleType) =>
-            namedTupleField(tupleType, arg.name.asTermName, desugar.namedArgNameSpan(arg))
-        case _ => Nil
 
 end PcSymbolSearch

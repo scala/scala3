@@ -164,4 +164,31 @@ class PcReferencesSuite extends BasePCSuite with RangeReplace {
          |    case t @ (age = 1, <<name>> = "a") => println(t)
          |""".stripMargin
     )
+
+  @Test def `named-tuple-field-pattern-nested` =
+    check(
+      """|object Main:
+         |  val x: (outer: (name: String)) = ???
+         |  x match
+         |    case (outer = (<<na@@me>> = n)) => println(n)
+         |  val y = x.outer.<<name>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-for` =
+    check(
+      """|object Main:
+         |  val xs: List[(name: String)] = ???
+         |  for (<<name>> = n) <- xs do println(n)
+         |  val ns = xs.map(_.<<na@@me>>)
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-constructor` =
+    check(
+      """|object Main:
+         |  val x: (name: String) = (<<name>> = "a")
+         |  val y = x.<<na@@me>>
+         |""".stripMargin
+    )
 }

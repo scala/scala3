@@ -589,3 +589,45 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
          |  val <<a>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/.<<apply>>/*method*/(0)
          |""".stripMargin
     )
+
+  @Test def `named-tuple-for` =
+    check(
+      """|object <<A>>/*class*/:
+         |  val <<xs>>/*variable,definition,readonly*/: <<List>>/*type*/[(<<name>>/*variable,readonly*/: <<String>>/*type*/)] = <<???>>/*method*/
+         |  for (<<name>>/*variable,readonly*/ = <<n>>/*variable,definition,readonly*/) <- <<xs>>/*variable,readonly*/ do <<println>>/*method*/(<<n>>/*variable,readonly*/)
+         |  val <<ns>>/*variable,definition,readonly*/ = for (<<name>>/*variable,readonly*/ = <<n>>/*variable,definition,readonly*/) <- <<xs>>/*variable,readonly*/ yield <<n>>/*variable,readonly*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-partial-function` =
+    check(
+      """|object <<A>>/*class*/:
+         |  val <<xs>>/*variable,definition,readonly*/: <<List>>/*type*/[(<<name>>/*variable,readonly*/: <<String>>/*type*/)] = <<???>>/*method*/
+         |  val <<ns>>/*variable,definition,readonly*/ = <<xs>>/*variable,readonly*/.<<map>>/*method*/ { case (<<name>>/*variable,readonly*/ = <<n>>/*variable,definition,readonly*/) => <<n>>/*variable,readonly*/ }
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-alias-names` =
+    check(
+      """|object <<A>>/*class*/:
+         |  type <<Names>>/*type,definition*/ = ("name", "age")
+         |  val <<x>>/*variable,definition,readonly*/: <<NamedTuple>>/*class*/.<<NamedTuple>>/*type,abstract*/[<<Names>>/*type*/, (<<String>>/*type*/, <<Int>>/*class,abstract*/)] = <<???>>/*method*/
+         |  val <<y>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/.<<name>>/*variable,readonly*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-explicit-literal` =
+    check(
+      """|object <<A>>/*class*/:
+         |  val <<x>>/*variable,definition,readonly*/: <<NamedTuple>>/*class*/.<<NamedTuple>>/*type,abstract*/[("<<name>>/*variable,readonly*/", "<<age>>/*variable,readonly*/"), (<<String>>/*type*/, <<Int>>/*class,abstract*/)] = <<???>>/*method*/
+         |  val <<y>>/*variable,definition,readonly*/ = <<x>>/*variable,readonly*/.<<name>>/*variable,readonly*/
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-interpolation` =
+    check(
+      """|object <<A>>/*class*/:
+         |  val <<x>>/*variable,definition,readonly*/: (<<name>>/*variable,readonly*/: <<String>>/*type*/) = <<???>>/*method*/
+         |  val <<s>>/*variable,definition,readonly*/ = <<s>>/*method*/"${<<x>>/*variable,readonly*/.<<name>>/*variable,readonly*/}"
+         |""".stripMargin
+    )

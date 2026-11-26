@@ -212,8 +212,8 @@ object MetalsInteractive:
             Nil
 
       // Handle select on named tuples
-      case PcSymbolSearch.NamedTupleSelection(qual, names, values, i) :: _ =>
-        val (name, tpe) = PcSymbolSearch.namedTupleFieldAt(names, values, i)
+      case NamedTupleFields.NamedTupleSelection(qual, names, values, i) :: _ =>
+        val (name, tpe) = NamedTupleFields.namedTupleFieldAt(names, values, i)
           .map((name, tpe) => (name.toString, tpe))
           .getOrElse(("", NoType))
         List((qual.symbol, tpe, Some(name)))

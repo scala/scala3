@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.pc.PcSymbolSearch.*
+import dotty.tools.pc.NamedTupleFields.*
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j as l
@@ -40,8 +40,8 @@ final class PcRenameProvider(
    *  of a definition visible outside. Structurally equal types of other files are not seen.
    */
   private def isLocalNamedTupleField(sym: Symbol)(using Context): Boolean =
-    val fieldNames = namedTupleFieldsOf(sym.info).map(_._1)
-    def isFieldTuple(tpe: Type) = tpe.exists && namedTupleFieldsOf(tpe).map(_._1) == fieldNames
+    val fieldNames = namedTupleFieldNames(sym.info)
+    def isFieldTuple(tpe: Type) = tpe.exists && namedTupleFieldNames(tpe) == fieldNames
     def hasFieldTuple(tpe: Type) = tpe.exists && tpe.existsPart(isFieldTuple, forceLazy = false)
     def isLocal(sym: Symbol) =
       val definition = if sym.is(Param) then sym.owner else sym
@@ -61,11 +61,13 @@ final class PcRenameProvider(
         case _ => foldOver(false, tree)
 
     /** Does the tuple type come from another file, as the type of a definition there or as
-     *  a type that is not spelled out, like `NamedTuple.From[P]`?
+     *  a type whose names are not spelled out, like `NamedTuple.From[P]` or `NamedTuple[Names, Values]`?
      */
     val imported = new Finder:
       def find(tree: Tree)(using Context) = tree match
-        case NamedTupleTree(_, _) => foldOver(false, tree)
+        case NamedTupleTree(names, values) =>
+          isFieldTuple(defn.NamedTuple(names.tpe, values.tpe)) && !declaresAllNamedTupleFields(names, values)
+          || foldOver(false, tree)
         case tree: RefTree =>
           !definedHere(tree.symbol) && (if tree.isType then isFieldTuple(tree.tpe) else hasFieldTuple(tree.symbol.info))
           || foldOver(false, tree)
@@ -101,8 +103,8 @@ final class PcRenameProvider(
       parent: Option[Tree]
   )(tree: Tree | EndMarker, toAdjust: SourcePosition, sym: Option[Symbol]): l.TextEdit =
     val (pos, stripBackticks) = toAdjust.adjust(text, forRename = true)
-    // a named tuple field declared as an explicit literal type `NamedTuple[("name"), ...]`
-    val inLiteral = pos.start > 0 && text(pos.start - 1) == '"'
+    // a named tuple field declared by an explicit literal type `NamedTuple[("name"), (String)]` keeps its quotes
+    val inLiteral = sym.exists(isNamedTupleField) && pos.start > 0 && text(pos.start - 1) == '"'
     l.TextEdit(
       pos.toLsp,
       if stripBackticks || inLiteral then newName.stripBackticks else newName

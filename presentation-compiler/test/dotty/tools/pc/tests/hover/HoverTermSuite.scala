@@ -1003,3 +1003,38 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin,
       "val person: (name : String, age : Int)".hover
     )
+
+  @Test def `named-tuple-field-declaration`: Unit =
+    check(
+      """|object Main:
+         |  val x: (na@@me: String, age: Int) = ???
+         |""".stripMargin,
+      "".hover
+    )
+
+  @Test def `named-tuple-field-constructor`: Unit =
+    check(
+      """|object Main:
+         |  val x = (na@@me = "a", age = 1)
+         |""".stripMargin,
+      "".hover
+    )
+
+  @Test def `named-tuple-field-pattern`: Unit =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  x match
+         |    case (na@@me = n, age = a) => println(n)
+         |""".stripMargin,
+      "".hover
+    )
+
+  @Test def `named-tuple-field-explicit-apply`: Unit =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  val y = x.app@@ly(0)
+         |""".stripMargin,
+      "extension [N <: Tuple, V <: Tuple](x: NamedTuple.NamedTuple[N, V]) inline def apply(n: Int): Elem[NamedTuple.NamedTuple[N, V], n.type]".hover
+    )

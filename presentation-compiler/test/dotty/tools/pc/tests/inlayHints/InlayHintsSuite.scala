@@ -1808,4 +1808,27 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
          |""".stripMargin,
       closingLabels = true
     )
+
+  // no hint for the synthetic `NamedTuple.apply` of a field selection
+  @Test def `named-tuple-field` =
+    check(
+      """|object Main {
+         |  val x: (name: String, age: Int) = ???
+         |  val y = x.name
+         |  val z = x.name.length
+         |  val w = x match {
+         |    case (name = n, age = a) => n
+         |  }
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  val x: (name: String, age: Int) = ???
+         |  val y/*: String<<scala/Predef.String#>>*/ = x.name
+         |  val z/*: Int<<scala/Int#>>*/ = x.name.length
+         |  val w/*: String<<java/lang/String#>>*/ = x match {
+         |    case (name = n, age = a) => n
+         |  }
+         |}
+         |""".stripMargin
+    )
 }

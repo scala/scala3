@@ -3298,6 +3298,93 @@ Diagnostics:
 Synthetics:
 [4:2..4:21):User(name = "John") => apply(*)
 
+expect/NamedTuples.scala
+------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => NamedTuples.scala
+Text => empty
+Language => Scala
+Symbols => 25 entries
+Occurrences => 32 entries
+Diagnostics => 1 entries
+Synthetics => 8 entries
+
+Symbols:
+example/NamedTuples. => final object NamedTuples extends Object { self: NamedTuples.type => +12 decls }
+example/NamedTuples.P# => case class P extends Object with Product with Serializable { self: P => +5 decls }
+example/NamedTuples.P#_1(). => method _1 => String
+example/NamedTuples.P#`<init>`(). => primary ctor <init> (val param name: String): P
+example/NamedTuples.P#`<init>`().(name) => val param name: String
+example/NamedTuples.P#copy$default$1(). => method copy$default$1 => String @uncheckedVariance
+example/NamedTuples.P#copy(). => method copy (param name: String): P
+example/NamedTuples.P#copy().(name) => param name: String
+example/NamedTuples.P#name. => val method name String
+example/NamedTuples.P. => final object P extends Object { self: P.type => +4 decls }
+example/NamedTuples.P.apply(). => method apply (param name: String): P
+example/NamedTuples.P.apply().(name) => param name: String
+example/NamedTuples.P.toString(). => method toString => String <: scala/Any#toString().
+example/NamedTuples.P.unapply(). => method unapply (param x$1: P): P
+example/NamedTuples.P.unapply().(x$1) => param x$1: P
+example/NamedTuples.Person# => type Person  = NamedTuple[Tuple2["name", "age"], Tuple2[String, Int]]
+example/NamedTuples.p. => val method p NamedTuple[*:["name", EmptyTuple.type], *:[String, EmptyTuple.type]]
+example/NamedTuples.q. => val method q String
+example/NamedTuples.v. => val method v Int
+example/NamedTuples.w. => val method w String
+example/NamedTuples.x. => val method x Person
+example/NamedTuples.y. => val method y String
+example/NamedTuples.z. => val method z String
+local0 => val local n: String
+local1 => val local a: Int
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:18): NamedTuples <- example/NamedTuples.
+[3:7..3:13): Person <- example/NamedTuples.Person#
+[3:23..3:29): String -> scala/Predef.String#
+[3:36..3:39): Int -> scala/Int#
+[4:6..4:7): x <- example/NamedTuples.x.
+[4:9..4:15): Person -> example/NamedTuples.Person#
+[5:6..5:7): y <- example/NamedTuples.y.
+[5:10..5:11): x -> example/NamedTuples.x.
+[6:6..6:7): z <- example/NamedTuples.z.
+[6:10..6:11): x -> example/NamedTuples.x.
+[6:12..6:17): apply -> scala/NamedTuple.apply(+1).
+[7:6..7:7): w <- example/NamedTuples.w.
+[7:10..7:11): x -> example/NamedTuples.x.
+[8:17..8:18): n <- local0
+[8:26..8:27): a <- local1
+[8:32..8:33): n -> local0
+[9:6..9:7): v <- example/NamedTuples.v.
+[9:10..9:11): x -> example/NamedTuples.x.
+[9:17..9:23): length -> java/lang/String#length().
+[11:13..11:14): P <- example/NamedTuples.P#
+[11:14..11:14): <- example/NamedTuples.P#`<init>`().
+[11:15..11:19): name <- example/NamedTuples.P#name.
+[11:15..11:19): name <- example/NamedTuples.P#`<init>`().(name)
+[11:21..11:27): String -> scala/Predef.String#
+[12:6..12:7): p <- example/NamedTuples.p.
+[12:9..12:19): NamedTuple -> scala/NamedTuple.
+[12:20..12:24): From -> scala/NamedTuple.From#
+[12:25..12:26): P -> example/NamedTuples.P#
+[12:30..12:33): ??? -> scala/Predef.`???`().
+[13:6..13:7): q <- example/NamedTuples.q.
+[13:10..13:11): p -> example/NamedTuples.p.
+
+Diagnostics:
+[8:26..8:27): [warning] unused pattern variable
+
+Synthetics:
+[4:18..4:39):(name = "a", age = 1) => *[Tuple2[String, Int]]
+[4:18..4:39):(name = "a", age = 1) => orig()[Tuple2["name", "age"]]
+[4:18..4:39):(name = "a", age = 1) => Tuple2.apply[String, Int](*)
+[5:10..5:11):x => NamedTuple.apply[Tuple2["name", "age"], Tuple2[String, Int]](*)
+[6:10..6:17):x.apply => NamedTuple.apply[Tuple2["name", "age"], Tuple2[String, Int]](*)
+[6:12..6:17):apply => *[Tuple2["name", "age"], Tuple2[String, Int]]
+[9:10..9:11):x => NamedTuple.apply[Tuple2["name", "age"], Tuple2[String, Int]](*)
+[13:10..13:11):p => NamedTuple.apply[*:["name", EmptyTuple.type], *:[String, EmptyTuple.type]](*)
+
 expect/NewModifiers.scala
 -------------------------
 

@@ -610,3 +610,38 @@ class PcPrepareRenameSuite extends BasePcRenameSuite:
          |}
          |""".stripMargin
     )
+
+  @Test def `named-tuple-field-constructor` =
+    prepare(
+      """|object Main {
+         |  def m() = {
+         |    val x: (name: String) = (<<na@@me>> = "a")
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-pattern` =
+    prepare(
+      """|object Main {
+         |  def m() = {
+         |    val x: (name: String) = ???
+         |    x match {
+         |      case (<<na@@me>> = n) => n
+         |    }
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-alias-names` =
+    prepare(
+      """|object Main {
+         |  def m() = {
+         |    type Names = ("name", "age")
+         |    val x: NamedTuple.NamedTuple[Names, (String, Int)] = ???
+         |    val y = x.na@@me
+         |  }
+         |}
+         |""".stripMargin
+    )
