@@ -84,14 +84,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
   override def changesMembers: Boolean = true // the phase adds super accessors and synthetic members
 
-  /**
-   * Serializable and AbstractFunction1 are added for companion objects of case classes in scala2-library
-   */
-  override def changesParents: Boolean =
-    if !initContextCalled then
-      throw new Exception("Calling changesParents before initContext, should call initContext first")
-    compilingScala2StdLib
-
   override def transformPhase(using Context): Phase = thisPhase.next
 
   def newTransformer(using Context): Transformer =
@@ -110,18 +102,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       SafeRefs.checker.traverse(unit.tpdTree)
     super.run
 
-  /**
-   * Used to check that `changesParents` is called after `initContext`.
-   *
-   * This contract is easy to break and results in subtle bugs.
-   */
-  private var initContextCalled = false
-
-  private var compilingScala2StdLib = false
-  override def initContext(ctx: FreshContext): Unit =
-    initContextCalled = true
-    compilingScala2StdLib = Feature.shouldBehaveAsScala2(using ctx)
-
   /** The anonymous function symbols that need an explicified result type
    *  if their right hand side is also a closure. This is the case if
    *  the closure's type forms part of the type of a valdef or defdef
@@ -129,9 +109,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
    */
   private val closuresNeedingExplicify = mutable.Set.empty[Symbol]
 
-  val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
-  val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
-  val beanProps: BeanProperties = new BeanProperties(thisPhase)
+  private val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
+  private val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
+  private val beanProps: BeanProperties = new BeanProperties(thisPhase)
 
   private def newPart(tree: Tree): Option[New] = methPart(tree) match {
     case Select(nu: New, _) => Some(nu)
@@ -808,7 +788,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                 if sym.isOpaqueAlias then
                   VarianceChecker.checkLambda(rhs, TypeBounds.upper(sym.opaqueAlias))
               case _ =>
-          processMemberDef(super.transform(scala2LibPatch(tree)))
+          processMemberDef(super.transform(tree))
         case tree: Bind =>
           val sym = tree.symbol
           if sym.isType && !sym.name.is(WildcardParamName) then
@@ -899,45 +879,15 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     private def annotateExperimentalCompanion(sym: Symbol)(using Context): Unit =
       if sym.is(Module) then
         ExperimentalAnnotation.copy(sym.companionClass).foreach(sym.addAnnotation)
-
-    // It needs to run at the phase of the postTyper --- otherwise, the test of the symbols will use
-    // the transformed denotation with added `Serializable` and `AbstractFunction1`.
-    private def scala2LibPatch(tree: TypeDef)(using Context) = atPhase(thisPhase):
-      val sym = tree.symbol
-      if compilingScala2StdLib && sym.is(ModuleClass) then
-        // Add Serializable to companion objects of serializable classes,
-        // and add AbstractFunction1 to companion objects of case classes with 1 parameter.
-        tree.rhs match
-          case impl: Template =>
-            var parents1 = impl.parents
-            val companionClass = sym.companionClass
-            if !sym.derivesFrom(defn.SerializableClass) && companionClass.derivesFrom(defn.SerializableClass) then
-              parents1 = parents1 :+ TypeTree(defn.SerializableType)
-            argTypeOfCaseClassThatNeedsAbstractFunction1(sym) match
-              case Some(args) if parents1.head.symbol.owner == defn.ObjectClass =>
-                parents1 = New(defn.AbstractFunctionClass(1).typeRef).select(nme.CONSTRUCTOR).appliedToTypes(args).ensureApplied :: parents1.tail
-              case _ =>
-            val impl1 = cpy.Template(impl)(parents = parents1)
-            cpy.TypeDef(tree)(rhs = impl1)
-      else tree
   }
 
   protected override def infoMayChange(sym: Symbol)(using Context): Boolean =
-    compilingScala2StdLib && sym.isAllOf(ModuleClass, butNot = Package)
+    // This is a lie, superAcc and synthMbr make changes, but if this is `true` the compiler crashes.
+    false
 
-  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match
-    case info: ClassInfo =>
-      var parents1 = info.parents
-      val companionClass = sym.companionClass
-      if !sym.derivesFrom(defn.SerializableClass) && companionClass.derivesFrom(defn.SerializableClass) then
-        parents1 = parents1 :+ defn.SerializableType
-      argTypeOfCaseClassThatNeedsAbstractFunction1(sym) match
-        case Some(args) if parents1.head.typeSymbol == defn.ObjectClass =>
-          parents1 = defn.AbstractFunctionClass(1).typeRef.appliedTo(args) :: parents1.tail
-        case _ =>
-      if parents1 ne info.parents then info.derivedClassInfo(declaredParents = parents1)
-      else tp
-    case _ => tp
+  def transformInfo(tp: Type, sym: Symbol)(using Context): Type =
+    // The actual change is done by superAcc and synthMbr
+    tp
 
   private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[List[Type]] =
     val companionClass = sym.companionClass
