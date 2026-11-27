@@ -1846,6 +1846,15 @@ object desugar {
     case _ => elems
   end checkWellFormedTupleElems
 
+  /** The span of the name of a named tuple element `name: T` or `name = t`, whose point is at the name,
+   *  so that tools can navigate to it as the declaration of the field.
+   */
+  def namedArgNameSpan(arg: NamedArg): Span =
+    if arg.span.exists then
+      val point = arg.span.point
+      Span(point, (point + arg.name.toString.length) min arg.span.end, point)
+    else arg.span
+
   /** Translate tuple expressions
    *
    *     ()                       ==>   ()
@@ -1885,12 +1894,12 @@ object desugar {
       tup
     else
       val names = elems.collect:
-        case NamedArg(name, arg) => name
+        case arg: NamedArg => arg
       def namesTuple = withModeBits(ctx.mode &~ Mode.Pattern | Mode.Type):
-        tuple(Tuple(
-          names.map: name =>
-            SingletonTypeTree(Literal(Constant(name.toString))).withSpan(tree.span)),
-          WildcardType)
+        // the name literals get the spans of the names, their tuple the span of the whole tuple
+        val nameTypes = names.map: arg =>
+          SingletonTypeTree(Literal(Constant(arg.name.toString))).withSpan(namedArgNameSpan(arg))
+        tuple(Tuple(nameTypes).withSpan(tree.span), WildcardType)
       if ctx.mode.is(Mode.Type) then
         AppliedTypeTree(ref(defn.NamedTupleTypeRef), namesTuple :: tup :: Nil)
       else

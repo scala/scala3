@@ -45,6 +45,32 @@ class PcSemanticdbSuite extends BasePCSuite:
       filename = "A.worksheet.sc"
     )
 
+  // the synthetic `NamedTuple.apply` of a field selection has no occurrence, unlike an explicit `apply`
+  @Test def `named-tuple` =
+    check(
+      """|package a
+         |
+         |object O {
+         |  val x: (name: String, age: Int) = (name = "a", age = 1)
+         |  val y = x.name
+         |  val z = x.apply(0)
+         |  x match {
+         |    case (name = n, age = a) => n
+         |  }
+         |}""".stripMargin,
+      """|package a
+         |
+         |object O/*<-a::O.*/ {
+         |  val x/*<-a::O.x.*/: (name: String/*->scala::Predef.String#*/, age: Int/*->scala::Int#*/) = (name = "a", age = 1)
+         |  val y/*<-a::O.y.*/ = x/*->a::O.x.*/.name
+         |  val z/*<-a::O.z.*/ = x/*->a::O.x.*/.apply/*->scala::NamedTuple.apply(+1).*/(0)
+         |  x/*->a::O.x.*/ match {
+         |    case (name = n/*<-local0*/, age = a/*<-local1*/) => n/*->local0*/
+         |  }
+         |}
+         |""".stripMargin
+    )
+
   def check(
       original: String,
       expected: String,

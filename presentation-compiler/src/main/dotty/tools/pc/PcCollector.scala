@@ -14,6 +14,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.pc.NamedTupleFields.*
 import dotty.tools.pc.PcSymbolSearch.*
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
@@ -97,6 +98,7 @@ trait PcCollector[T]:
           symbol: Option[Symbol] = None
       ) =
         this.collect(parent)(tree, pos, symbol)
+      def isSought(field: NamedTupleField) = soughtFilter(sameNamedTupleField(_, field))
       tree match
         /** All indentifiers such as:
          *  ```
@@ -170,6 +172,30 @@ trait PcCollector[T]:
           ) { case (set, tree) =>
             traverser(set, tree)
           }
+
+        /** Named tuple fields, which have no symbol, so one is synthesized per occurrence:
+         *  ```
+         *  val x: (<<name>>: String) = (<<name>> = "")
+         *  x.<<name>>
+         *  x match
+         *    case (<<name>> = n) => n
+         *  ```
+         */
+        case app @ NamedTupleSelection(_, _, _, _) if app.span.isCorrect && soughtFilter(isNamedTupleField) =>
+          occurrences ++ selectedNamedTupleField(app, sourceText).filter(isSought).map: field =>
+            collect(app, pos.withSpan(field.span), Some(field.symbol))
+
+        case NamedTupleTree(names, values) if soughtFilter(isNamedTupleField) =>
+          occurrences ++ declaredNamedTupleFields(names, values, sourceText).collect:
+            case (literal, field) if literal.span.isCorrect && isSought(field) =>
+              // the name literal of a type is the field's definition, a constructor is a use
+              collect(if tree.isType then literal else tree, pos.withSpan(field.span), Some(field.symbol))
+
+        case Match(scrutinee, cases) if soughtFilter(isNamedTupleField) =>
+          occurrences ++ cases.flatMap: cdef =>
+            namedTuplePatternFields(cdef, scrutinee, unit.untpdTree)
+              .filter(field => field.span.isCorrect && isSought(field))
+              .map(field => collect(cdef, pos.withSpan(field.span), Some(field.symbol)))
 
         /* Named parameters don't have symbol so we need to check the owner
          *  ```

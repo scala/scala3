@@ -895,10 +895,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val nameIdx = namedTupleElems.indexWhere(_._1 == selName)
       if nameIdx >= 0 && sourceVersion.enablesNamedTuples then
         if namedTupleElems.forall(_._1 != nme.apply) then
+          // `apply` is not in the source: its selection spans the qualifier with the point at the end,
+          // so that the name, and the `NamedTuple.apply` reference, get a zero-extent span that tools skip.
+          // The application keeps the span of the selection, also when `typed` wraps it in a conversion.
+          val applySpan = if qual.span.exists then qual.span.withPoint(qual.span.end) else NoSpan
           typed(
             untpd.Apply(
-              untpd.Select(untpd.TypedSplice(qual), nme.apply),
-              untpd.Literal(Constant(nameIdx))),
+              untpd.Select(untpd.TypedSplice(qual), nme.apply).withSpan(applySpan),
+              untpd.Literal(Constant(nameIdx))).withSpan(tree0.span),
             pt)
         else
           report.error(

@@ -15,6 +15,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.pc.NamedTupleFields.*
 import dotty.tools.pc.PcSymbolSearch.*
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
@@ -26,8 +27,8 @@ trait PcSymbolSearch:
   lazy val rawPath =
     Interactive
       .pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
-      .dropWhile(t => // NamedArg anyway doesn't have symbol
-        t.symbol == NoSymbol && !t.isInstanceOf[NamedArg] ||
+      .dropWhile(t => // NamedArg and named tuple field names don't have symbols anyway
+        t.symbol == NoSymbol && !t.isInstanceOf[NamedArg] && !t.isInstanceOf[SingletonTypeTree] ||
           // same issue https://github.com/lampepfl/dotty/issues/15937 as below
           t.isInstanceOf[TypeTree]
       )
@@ -167,13 +168,37 @@ trait PcSymbolSearch:
           .selector(pos.span)
           .map(sym => (symbolAlternatives(sym), sym.sourcePos))
 
-      case _ => None
+      /* named tuple fields, which have no symbol, so one is synthesized:
+       *  ```
+       *  val x: (na@@me: String) = (na@@me = "")
+       *  x.na@@me
+       *  x match
+       *    case (na@@me = n) => n
+       *  ```
+       */
+      case _ =>
+        namedTupleFieldAtCursor(path).map(field => (Set(field.symbol), pos.withSpan(field.span)))
 
     sought match
       case None => seekInExtensionParameters()
       case _ => sought
 
   end soughtSymbols
+
+  private def namedTupleFieldAtCursor(path: List[Tree]): Option[NamedTupleField] = path match
+    case (app @ NamedTupleSelection(_, _, _, _)) :: _ =>
+      selectedNamedTupleField(app, sourceText).filter(_.span.contains(pos.span))
+    case (literal: SingletonTypeTree) :: rest =>
+      rest
+        .collectFirst { case NamedTupleTree(names, values) => declaredNamedTupleFields(names, values, sourceText) }
+        .flatMap(_.collectFirst { case (l, field) if l eq literal => field })
+    case _ =>
+      path
+        .zip(path.drop(1))
+        .collectFirst:
+          case (cdef: CaseDef, Match(scrutinee, _)) if cdef.pat.span.contains(pos.span) =>
+            namedTuplePatternFields(cdef, scrutinee, unit.untpdTree).find(_.span.contains(pos.span))
+        .flatten
 
   private def seekInExtensionParameters() =
     def collectParams(

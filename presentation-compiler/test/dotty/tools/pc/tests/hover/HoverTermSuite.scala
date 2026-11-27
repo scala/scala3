@@ -966,3 +966,75 @@ class HoverTermSuite extends BaseHoverSuite:
       """|def build(b: Builder[Unit]): Int
          |""".stripMargin.hover
     )
+
+  @Test def `named-tuple-field-val`: Unit =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  val y = x.na@@me
+         |""".stripMargin,
+      "name: String".hover
+    )
+
+  @Test def `named-tuple-field-nested`: Unit =
+    check(
+      """|object Main:
+         |  val x: (inner: (name: String, age: Int)) = ???
+         |  val y = x.inner.na@@me
+         |""".stripMargin,
+      "name: String".hover
+    )
+
+  @Test def `named-tuple-field-from-case-class`: Unit =
+    check(
+      """|object Main:
+         |  case class Person(name: String, age: Int)
+         |  val p: NamedTuple.From[Person] = ???
+         |  val y = p.a@@ge
+         |""".stripMargin,
+      "age: Int".hover
+    )
+
+  @Test def `named-tuple-field-qualifier`: Unit =
+    check(
+      """|object Main:
+         |  val person: (name: String, age: Int) = ???
+         |  val y = per@@son.name
+         |""".stripMargin,
+      "val person: (name : String, age : Int)".hover
+    )
+
+  @Test def `named-tuple-field-declaration`: Unit =
+    check(
+      """|object Main:
+         |  val x: (na@@me: String, age: Int) = ???
+         |""".stripMargin,
+      "".hover
+    )
+
+  @Test def `named-tuple-field-constructor`: Unit =
+    check(
+      """|object Main:
+         |  val x = (na@@me = "a", age = 1)
+         |""".stripMargin,
+      "".hover
+    )
+
+  @Test def `named-tuple-field-pattern`: Unit =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  x match
+         |    case (na@@me = n, age = a) => println(n)
+         |""".stripMargin,
+      "".hover
+    )
+
+  @Test def `named-tuple-field-explicit-apply`: Unit =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  val y = x.app@@ly(0)
+         |""".stripMargin,
+      "extension [N <: Tuple, V <: Tuple](x: NamedTuple.NamedTuple[N, V]) inline def apply(n: Int): Elem[NamedTuple.NamedTuple[N, V], n.type]".hover
+    )
