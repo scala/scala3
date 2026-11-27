@@ -13,8 +13,9 @@ import dotty.tools.io.AbstractFile
 object Main extends dotc.Driver {
   override protected def newCompiler(using Context): dotc.Compiler = {
     assert(ctx.settings.fromTasty.value)
-    if (!ctx.settings.outputDir.isDefault)
-      Files.deleteIfExists(ctx.settings.outputDir.value.fileNamed("decompiled.scala").jpath)
+    if !ctx.settings.outputDir.isDefault then
+      val previous = ctx.settings.outputDir.value.lookupName("decompiled.scala", directory = false)
+      if previous != null then Files.deleteIfExists(previous.jpath)
     new TASTYDecompiler
   }
 

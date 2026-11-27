@@ -5,7 +5,7 @@ import dotty.tools.backend.jvm.opt.*
 import dotty.tools.dotc.{CompilationUnit, report}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.io.JarArchive
+import dotty.tools.io.JarDestination
 
 import scala.annotation.stableNull
 
@@ -68,7 +68,7 @@ final class GenBCode extends Phase:
       result
     finally
       ctx.settings.outputDir.value match
-        case jar: JarArchive =>
+        case jar: JarDestination =>
           if (ctx.run.nn.suspendedUnits.nonEmpty)
             // If we close the jar the next run will not be able to write on the jar.
             // But if we do not close it we cannot use it as part of the macro classpath of the suspended files.
