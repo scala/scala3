@@ -771,6 +771,7 @@ object Capabilities:
      */
     def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
       cls.isTopClassifier
+      || ccState.ignoreClassifiers
       || this.match
         case self: LocalCap =>
           if self.isClassified then self.hiddenSet.classifier.derivesFrom(cls)
@@ -786,8 +787,6 @@ object Capabilities:
           ref1.tryClassifyAs(cls)
         case Maybe(ref1) =>
           ref1.tryClassifyAs(cls)
-        case self: TermRef if self.symbol.is(Case) && ccState.ignoreClassifiers =>
-          true
         case self: CoreCapability =>
           if self.derivesFromCapability then self.derivesFrom(cls)
           else captureSetOfInfo.tryClassifyAs(cls)
@@ -1160,7 +1159,7 @@ object Capabilities:
     case InDecl(sym: Symbol, fields: List[Symbol] = Nil)
     case TypeArg(tp: Type)
     case UnsafeAssumePure
-    case Formal(pref: ParamRef, app: tpd.Apply)
+    case Formal(pref: ParamRef, meth: Symbol)
     case ResultInstance(result: ResultCap, methType: Type, tree: Tree = EmptyTree)
     case UnapplyInstance(info: MethodType)
     case LocalInstance(restpe: Type)
@@ -1193,8 +1192,7 @@ object Capabilities:
         i" of type argument $tp"
       case UnsafeAssumePure =>
         " when instantiating argument of unsafeAssumePure"
-      case Formal(pref, app) =>
-        val meth = app.symbol
+      case Formal(pref, meth) =>
         if meth.exists
         then i" when checking argument to parameter ${pref.paramName} of $meth"
         else ""

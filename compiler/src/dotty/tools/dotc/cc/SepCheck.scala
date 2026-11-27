@@ -7,10 +7,9 @@ import collection.mutable
 import core.*
 import Symbols.*, Types.*, Flags.*, Contexts.*, Names.*, Decorators.*
 import CaptureSet.{Refs, emptyRefs, HiddenSet}
-import NameKinds.WildcardParamName
+import NameKinds.{WildcardParamName, PatMatStdBinderName}
 import config.Printers.capt
 import StdNames.nme
-import transform.LiftCoverage
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import tpd.*
 import reflect.ClassTag
@@ -169,7 +168,11 @@ object SepCheck:
 
   case class PeaksPair(actual: Refs, hidden: Refs)
 
-  case class DefInfo(tree: ValOrDefDef, symbol: Symbol, hidden: Refs, hiddenPeaks: Refs)
+  /** Info about a previous definition of `symbol` with (result) type `tpe`.
+   *  Besides `val`s and `def`s, this covers variables bound in patterns and
+   *  the variables created by the capture checker for values matched in patterns.
+   */
+  case class DefInfo(symbol: Symbol, tpe: Type, hidden: Refs, hiddenPeaks: Refs)
 
   extension (refs: Refs)
 
@@ -326,7 +329,7 @@ object SepCheck:
     def directPeaks (using Context): Refs =
       SimpleIdentitySet(ref).directFootprint.peaks
 
-class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
+class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
   import checker.*
   import SepCheck.*
 
@@ -335,34 +338,36 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    */
   private var defsShadow: Refs = emptyRefs
 
-  /** The previous val or def definitions encountered during separation checking
-   *  in reverse order. These all enclose and precede the current traversal node.
+  /** The previous definitions encountered during separation checking in reverse
+   *  order, including variables of patterns. These all enclose and precede the
+   *  current traversal node.
    */
   private var previousDefs: List[DefInfo] = Nil
 
   /** The set of references that were consumed so far in the current method */
   private var consumed: MutConsumedSet = MutConsumedSet()
 
-  /** Infos about Labeled expressions enclosing the current traversal point.
-   *  For each labeled expression, it's label name, and a list buffer containing
-   *  all consumed sets of return expressions referring to that label.
-   */
-  private var openLabeled: List[(Name, mutable.ListBuffer[ConsumedSet])] = Nil
-
   /** The deep capture set of an argument or prefix widened to the formal parameter, if
    *  the latter contains an `any`.
    */
   private def formalCaptures(arg: Tree)(using Context): Refs =
-    arg.formalType.orElse(arg.nuType).spanCaptureSet.elems
+    arg.formalType.orElse(argType(arg)).spanCaptureSet.elems
+
+  /** The type of `tree` when seen as an argument. For arguments of by-name
+   *  parameters this is the type of the argument as a nullary context function,
+   *  which captures what the argument uses.
+   */
+  private def argType(tree: Tree)(using Context): Type =
+    tree.byNameType.orElse(tree.nuType)
 
    /** The span capture set of the type of `tree`. */
-  private def spanCaptures(tree: Tree)(using Context): Refs = tree.nuType.widen match
+  private def spanCaptures(tree: Tree)(using Context): Refs = argType(tree).widen match
     case _: MethodOrPoly if tree.symbol.is(Method) => tree.symbol.useSet.elems
-    case _ => tree.nuType.spanCaptureSet.elems
+    case _ => argType(tree).spanCaptureSet.elems
 
    /** The deep capture set of the type of `tree` */
   private def deepCaptures(tree: Tree)(using Context): Refs =
-   tree.nuType.deepCaptureSet.elems
+   argType(tree).deepCaptureSet.elems
 
   // ---- Error reporting TODO Once these are stabilized, move to messages -----" +
 
@@ -447,21 +452,26 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   /** Report a use/definition failure, where a previously hidden capability is
    *  used again.
    *  @param tree        the tree where the capability is used
-   *  @param clashing    the tree where the capability is previously hidden,
-   *                     or emptyTree if none exists
+   *  @param clashingDef the previous definition that hides the capability,
+   *                     or null if none was found
    *  @param used        the uses of `tree`
    *  @param hidden      the hidden set of the clashing def,
    *                     or the global hidden set if no clashing def exists
    */
-  def sepUseError(tree: Tree, clashingDef: ValOrDefDef | Null, used: Refs, hidden: Refs)(using Context): Unit =
+  def sepUseError(tree: Tree, clashingDef: DefInfo | Null, used: Refs, hidden: Refs)(using Context): Unit =
     if clashingDef != null then
-      def resultStr = if clashingDef.isInstanceOf[DefDef] then " result" else ""
-      //println(i"sep use error: previous ${clashingDef.tpt.nuType}, ref = $used")
-      report.error(
-        em"""Separation failure: Illegal access to ${overlapStr(hidden, used)} which is hidden by the previous definition
-            |of ${clashingDef.symbol} with$resultStr type ${clashingDef.tpt.nuType}.
-            |This type hides capabilities  ${CaptureSet(hidden)}${synthNote(tree)}""",
-        tree.srcPos)
+      val sym = clashingDef.symbol
+      def resultStr = if sym.is(Method) then " result" else ""
+      val msg =
+        if sym.name.is(PatMatStdBinderName) then
+          em"""Separation failure: Illegal access to ${overlapStr(hidden, used)} which is hidden by a value
+              |of type ${clashingDef.tpe} that is matched in a pattern.
+              |This type hides capabilities  ${CaptureSet(hidden)}${synthNote(tree)}"""
+        else
+          em"""Separation failure: Illegal access to ${overlapStr(hidden, used)} which is hidden by the previous definition
+              |of $sym with$resultStr type ${clashingDef.tpe}.
+              |This type hides capabilities  ${CaptureSet(hidden)}${synthNote(tree)}"""
+      report.error(msg, tree.srcPos)
     else
       report.error(
         em"""Separation failure: illegal access to ${overlapStr(hidden, used)} which is hidden by some previous definitions
@@ -614,33 +624,23 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       case _ =>
   end checkAssign
 
-  /** Is `tree` a coverage-lifted local temp or a reference to one?
-   *  These aliases are identified through the attachment set by `LiftCoverage`,
-   *  not by broad synthetic checks.
-   */
-  private def isCoverageLiftedTemp(tree: Tree)(using Context): Boolean = tree match
-    case tree: ValDef => tree.symbol.exists && LiftCoverage.isCoverageLiftedTemp(tree.symbol)
-    case tree: Ident => tree.symbol.exists && LiftCoverage.isCoverageLiftedTemp(tree.symbol)
-    case _ => false
-
-  private def isPatmatCast(tree: Tree)(using Context): Boolean = tree match
-    case tree: TypeApply => tree.symbol == defn.Any_typeCast
-    case _ => false
-
   /** 1. Check that the capabilities used at `tree` don't overlap with
    *     capabilities hidden by a previous definition.
    *  2. Also check that none of the used capabilities was consumed before.
    */
-  def checkUse(tree: Tree)(using Context): Unit =
+  def checkUse(tree: Tree, inPattern: Boolean = false)(using Context): Unit =
     val used = tree.markedFree.elems
-    if !used.isEmpty && !isCoverageLiftedTemp(tree) && !isPatmatCast(tree) then
+    if !used.isEmpty then
       capt.println(i"check use $tree: $used")
-      val usedPeaks = used.allPeaks
-      if !defsShadow.allPeaks.sharedPeaks(usedPeaks).isEmpty then
+      lazy val usedPeaks = used.allPeaks
+      // Capabilities used in a pattern are accessed through the scrutinee, which
+      // was already checked against the previous definitions.
+      if !inPattern && !defsShadow.allPeaks.sharedPeaks(usedPeaks).isEmpty then
         // Drop all Selects unless they select from a `this`
         def pathRoot(tree: Tree): Tree = tree match
           case Select(This(_), _) => tree
           case Select(prefix, _) => pathRoot(prefix)
+          case NamedArg(_, arg) => pathRoot(arg)
           case _ => tree
 
         val rootSym = pathRoot(tree).symbol
@@ -657,7 +657,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           case Some(clashing) =>
             //println(i"check use $tree, $used, $rootSym, ${clashing.symbol}")
             if clashing.symbol != rootSym then
-              sepUseError(tree, clashing.tree, used, clashing.hidden)
+              sepUseError(tree, clashing, used, clashing.hidden)
           case None =>
             sepUseError(tree, null, used, defsShadow)
       end if
@@ -942,12 +942,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    * if `f` has the type (x: A, y: B, c: C) -> (op: () ->{b} Unit) -> List[() ->{x, y, a} Unit], its interfering
    * peaks will be the peaks of `a` and `b`.
    */
-  private def dependencies(fn: Tree, argss: List[List[Tree]], app: Tree)(using Context): (collection.Map[Tree, List[Tree]], Refs) =
+  private def fnMethodType(fn: Tree)(using Context): Type =
     def isFunApply(sym: Symbol) =
       sym.name == nme.apply && defn.isFunctionClass(sym.owner)
-    val mtpe =
-      if fn.symbol.exists && !isFunApply(fn.symbol) then fn.symbol.info
-      else fn.nuType.widen
+    if fn.symbol.exists && !isFunApply(fn.symbol) then fn.symbol.info
+    else fn.nuType.widen
+
+  private def dependencies(fn: Tree, argss: List[List[Tree]], app: Tree)(using Context): (collection.Map[Tree, List[Tree]], Refs) =
+    val mtpe = fnMethodType(fn)
     val mtps = collectMethodTypes(mtpe)
     assert(mtps.hasSameLengthAs(argss), i"diff for $fn: ${fn.symbol} /// $mtps /// $argss")
     val mtpsWithArgs = mtps.zip(argss)
@@ -1001,36 +1003,101 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  If some of the arguments need a separation check because they are capture polymorphic,
    *  perform a separation check with `checkApply`
    */
+  private def checkCall(fn: Tree, argss: List[List[Tree]], app: Tree)(using Context): Unit =
+    if argss.nestedExists(_.needsSepCheck) then
+      val (deps, resultPeaks) = dependencies(fn, argss, app)
+      checkApply(fn, argss.flatten, app, deps, resultPeaks)
+
   private def traverseApply(app: Tree)(using Context): Unit =
     def recur(tree: Tree, argss: List[List[Tree]]): Unit = tree match
       case Apply(fn, args) => recur(fn, args :: argss)
       case TypeApply(fn, args) => recur(fn, argss) // skip type arguments
-      case _ =>
-        if argss.nestedExists(_.needsSepCheck) then
-          val (deps, resultPeaks) = dependencies(tree, argss, app)
-          checkApply(tree, argss.flatten, app, deps, resultPeaks)
+      case _ => checkCall(tree, argss, app)
     recur(app, Nil)
 
-  /** Is `tree` an application of caps.unsafe.unsafeAssumeSeparate?
-   *  or a synthetic application of throw new MatchError(...)?
+  /** Separation check an extractor call `pat.fun(scrutinee)(using implicits...)`
+   *  via `checkApply`, mirroring `traverseApply`.
    */
+  private def traverseUnApplyCall(pat: UnApply)(using Context): Unit =
+    val arg = pat.unapplyArg
+    if !arg.isEmpty then
+      def peel(tree: Tree, argss: List[List[Tree]]): (Tree, List[List[Tree]]) = tree match
+        case Apply(fn, args) => peel(fn, args :: argss)
+        case TypeApply(fn, _) => peel(fn, argss)
+        case _ => (tree, argss)
+      val (fn, leadingArgss) = peel(pat.fun, Nil)
+      val mtps = collectMethodTypes(fnMethodType(fn))
+      def splitImplicits(mtps: List[TermLambda], imps: List[Tree]): List[List[Tree]] = mtps match
+        case mt :: mtps1 if imps.nonEmpty =>
+          val (args, rest) = imps.splitAt(mt.paramInfos.length)
+          args :: splitImplicits(mtps1, rest)
+        case _ => Nil
+      val argss = leadingArgss ::: List(arg) :: splitImplicits(mtps.drop(leadingArgss.length + 1), pat.implicits)
+      if mtps.hasSameLengthAs(argss) then
+        val app = TypeTree(pat.unapplyResultType.orElse(pat.nuType)).withSpan(pat.span)
+        checkCall(fn, argss, app)
+      else if arg.needsSepCheck then
+        checkType(arg.formalType, pat.srcPos, TypeRole.Argument(arg, fn.symbol))
+
+  /** Is `tree` an application of caps.unsafe.unsafeAssumeSeparate? */
   def isAssumedSeparate(tree: Tree)(using Context): Boolean = tree match
-    case tree: Apply =>
-      tree.symbol == defn.Caps_unsafeAssumeSeparate
-      || tree.symbol == defn.throwMethod
-          && tree.span.isZeroExtent
-          && tree.args.head.tpe.classSymbol == defn.MatchErrorClass
+    case tree: Apply => tree.symbol == defn.Caps_unsafeAssumeSeparate
     case _ => false
 
   def pushDef(tree: ValOrDefDef, hiddenByDef: Refs)(using Context): Unit =
+    pushDef(tree.symbol, tree.tpt.nuType, hiddenByDef)
+
+  def pushDef(sym: Symbol, tpe: Type, hiddenByDef: Refs)(using Context): Unit =
     defsShadow ++= hiddenByDef
-    previousDefs = DefInfo(tree, tree.symbol, hiddenByDef, hiddenByDef.allPeaks) :: previousDefs
+    previousDefs = DefInfo(sym, tpe, hiddenByDef, hiddenByDef.allPeaks) :: previousDefs
+
+  /** Check the type of variable `sym`, which is bound in a pattern or was created
+   *  for a value that is matched in a pattern, and record `sym` as a previous
+   *  definition. Such variables are treated like `val`s with inferred types,
+   *  except that `checkLegalRefs` skips them.
+   */
+  def checkPatternVar(sym: Symbol, pos: SrcPos)(using Context): Unit =
+    val tpe = sym.info
+    checkType(tpe, pos, TypeRole.Result(sym, inferred = true))
+    pushDef(sym, tpe, tpe.spanCaptureSet.elems.transHiddenSet.deductSymRefs(sym))
+
+  /** Traverse pattern `pat`, treating the variables bound in it as definitions */
+  def traversePattern(pat: Tree)(using Context): Unit = pat match
+    case Bind(_, body) =>
+      checkUse(pat, inPattern = true)
+      traversePattern(body)
+      if pat.symbol.isTerm then
+        checkPatternVar(pat.symbol, pat.srcPos)
+    case Typed(pat1, _) =>
+      checkUse(pat, inPattern = true)
+      traversePattern(pat1)
+    case pat @ UnApply(fun, implicits, pats) =>
+      checkUse(pat, inPattern = true)
+      traverse(fun)
+      implicits.foreach(traverse)
+      traverseUnApplyCall(pat)
+      pat.patternTemps.foreach(checkPatternVar(_, pat.srcPos))
+      pats.foreach(traversePattern)
+    case Alternative(pats) =>
+      pats.foreach(traversePattern)
+    case NamedArg(_, arg) =>
+      traversePattern(arg)
+    case _ =>
+      traverse(pat)
+
+  /** Traverse the argument `arg` of a by-name parameter. It is treated like the
+   *  body of a function literal: definitions and consumed capabilities in it are
+   *  local, but the capabilities hidden by its result count as consumed.
+   */
+  def traverseByNameArg(arg: Tree, owner: Symbol)(using Context): Unit =
+    inSection:
+      consumed.segment:
+        traverse(arg)(using ctx.withOwner(owner))
+      checkType(arg.nuType, arg.srcPos, TypeRole.Result(owner, inferred = true))
 
   /** Check (result-) type of `tree` for separation conditions using `checkType`.
    *  Excluded are parameters and definitions that have an =unsafeAssumeSeparate
    *  application as right hand sides.
-   *  Also excluded are local temps marked by `LiftCoverage`, which are aliases
-   *  introduced solely to preserve coverage evaluation order.
    *  Hidden sets of checked definitions are added to `defsShadow`.
    */
   def checkValOrDefDef(tree: ValOrDefDef)(using Context): Unit =
@@ -1038,7 +1105,6 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     if !sym.isOneOf(TermParamOrAccessor)
        && !sym.needsResultRefinement
        && !isAssumedSeparate(tree.rhs)
-       && !isCoverageLiftedTemp(tree)
     then
       capt.println(i"sep check def $sym: ${tree.tpt.nuType} with ${spanCaptures(tree.tpt).transHiddenSet.directFootprint}")
       checkType(tree.tpt, sym)
@@ -1054,12 +1120,11 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def traverseSection[T](tree: Tree)(using Context) = inSection(traverseChildren(tree))
 
-  /** Should separatiion checking be disabled for the body of this method?
+  /** Should separation checking be disabled for the body of this method?
    */
   def skippable(sym: Symbol)(using Context): Boolean =
-    sym.isInlineMethod
-      // We currently skip inline method bodies since these seem to generate
-      // spurious recheck completions. Test case is i20237.scala
+    sym.is(Macro)
+      // The bodies of macros are not capture checked
     || sym.is(Synthetic) && sym.name.startsWith("_")
       // Approximation of case class getters _1, _2, ... . We can't separation check them
       // or colltest5/CollectionStrawManCC5_1.scala would fail with an error in
@@ -1070,9 +1135,23 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       // a position with source code to show. On the other hand, skipping all synthetic members
       // might cause soundness issues.
 
+  /** Traverse a list of match or catch cases. Patterns and guards are evaluated
+   *  sequentially before falling through to subsequent cases, so their consumed
+   *  capabilities remain consumed for later cases; only case bodies are mutually
+   *  exclusive and segmented.
+   */
+  private def traverseCases(cases: List[CaseDef])(using Context): Unit =
+    val bodyConsumed = for cas <- cases yield
+      inSection:
+        cas.patternTemps.foreach(checkPatternVar(_, cas.pat.srcPos))
+        traversePattern(cas.pat)
+        traverse(cas.guard)
+        consumed.segment(traverse(cas.body))
+    bodyConsumed.foreach(consumed ++= _)
+
   /** Traverse `tree` and perform separation checks everywhere */
   def traverse(tree: Tree)(using Context): Unit =
-    if !isAssumedSeparate(tree) then trace(i"checking separate $tree"):
+    if !tree.isType && !isAssumedSeparate(tree) then trace(i"checking separate $tree"):
       checkUse(tree)
       tree match
         case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.isConsume =>
@@ -1082,15 +1161,27 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
               TypeRole.Qualifier(qual, tree.symbol),
               i"call prefix of consume ${tree.symbol} refers to", qual.srcPos)
         case tree: GenericApply =>
-          traverseChildren(tree)
+          tree match
+            case Apply(fn, args) =>
+              traverse(fn)
+              for arg <- args do
+                val owner = arg.byNameOwner
+                if owner.exists then traverseByNameArg(arg, owner) else traverse(arg)
+            case _ =>
+              traverseChildren(tree)
           tree.tpe match
             case _: MethodOrPoly =>
             case _ => traverseApply(tree)
         case tree: Assign =>
           traverseChildren(tree)
           checkAssign(tree)
-        case _: Block | _: Template =>
+        case _: Block =>
           traverseSection(tree)
+        case tree: Template =>
+          inSection:
+            traverse(tree.constr)
+            traverse(tree.parents)
+            traverse(tree.body)
         case tree: ValDef =>
           traverseChildren(tree)
           if !tree.name.is(WildcardParamName) then
@@ -1111,26 +1202,19 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           val elseConsumed = consumed.segment(traverse(elsep))
           consumed ++= thenConsumed
           consumed ++= elseConsumed
-        case tree @ Labeled(bind, expr) =>
-          val consumedBuf = mutable.ListBuffer[ConsumedSet]()
-          openLabeled = (bind.name, consumedBuf) :: openLabeled
-          traverse(expr)
-          for cs <- consumedBuf do consumed ++= cs
-          openLabeled = openLabeled.tail
-        case Return(expr, from) =>
-          val retConsumed = consumed.segment(traverse(expr))
-          from match
-            case Ident(name) =>
-              for (lbl, consumedBuf) <- openLabeled do
-                if lbl == name then
-                  consumedBuf += retConsumed
-            case _ =>
+        case Return(expr, _) =>
+          // What is consumed in the returned expression does not matter
+          // for the code that follows the return.
+          consumed.segment(traverse(expr))
+        case Try(body, catches, finalizer) =>
+          traverse(body)
+          traverseCases(catches)
+          traverse(finalizer)
         case Match(sel, cases) =>
-          // Matches without returns might still be kept after pattern matching to
-          // encode table switches.
           traverse(sel)
-          val caseConsumed = for cas <- cases yield consumed.segment(traverse(cas))
-          caseConsumed.foreach(consumed ++= _)
+          traverseCases(cases)
+        case tree: CaseDef =>
+          traverseCases(tree :: Nil)
         case tree: TypeDef if tree.symbol.isClass =>
           consumed.segment:
             traverseChildren(tree)
