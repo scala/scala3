@@ -1,9 +1,20 @@
--- [E007] Type Mismatch Error: tests/neg/more-specific.scala:9:17 ------------------------------------------------------
+-- [E008] Not Found Error: tests/neg/more-specific.scala:9:14 ----------------------------------------------------------
 9 |        if (x eq y) // error
-  |                 ^
-  |                 Found:    (y : T)
-  |                 Required: Object
-  |                 Note that implicit conversions were not tried because the result of an implicit conversion
-  |                 must be more specific than Object
+  |            ^^^^
+  |            value eq is not a member of T.
+  |            An extension method was tried, but could not be fully constructed:
   |
-  | longer explanation available when compiling with `-explain`
+  |                eq(x)
+  |
+  |                failed with:
+  |
+  |                    Found:    (x : T)
+  |                    Required: AnyRef | Null
+  |                    Note that implicit conversions were not tried because the result of an implicit conversion
+  |                    must be more specific than AnyRef | Null
+  |                    
+  |                    The following import might fix the problem:
+  |                    
+  |                      import scala.reflect.Selectable.reflectiveSelectable
+  |                    
+  |                    
