@@ -881,8 +881,12 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         ExperimentalAnnotation.copy(sym.companionClass).foreach(sym.addAnnotation)
   }
 
+  protected override def infoMayChange(sym: Symbol)(using Context): Boolean =
+    // This is a lie, superAcc and synthMbr make changes, but if this is `true` the compiler crashes.
+    false
+
   def transformInfo(tp: Type, sym: Symbol)(using Context): Type =
-    // The actual change is done by synthMbr's addParent
+    // The actual change is done by superAcc and synthMbr
     tp
 
   private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[List[Type]] =
