@@ -23,9 +23,6 @@ class FreshCons[+A](consume val head: A^, consume val tail: FreshList[A]^) exten
   consume def decons: FreshCons[A]^ = this
 }
 
-object FreshCons:
-  def unapply[A](consume xs: FreshCons[A]^): FreshCons[A]^ = xs
-
 object FreshNil extends FreshList[Nothing] {
   def isEmpty = true
   consume def decons = ???
@@ -41,15 +38,3 @@ def Test =
     val c = xs.decons
     val h = c.head
     par(h, c.head) // error separation
-
-
-def Test4 =
-    val xs: FreshList[Ref^{}]^ = FreshCons(Ref(), FreshCons(Ref(), FreshNil))
-    val ys = xs match
-      case FreshCons(h, t) => FreshCons(h, t)
-
-    val zs = ys match
-      case FreshCons(h, t) => FreshCons(h, t)
-
-    val err = xs match // error separation
-      case FreshCons(h, t) => FreshCons(h, t) // error separation

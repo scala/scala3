@@ -1079,7 +1079,12 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
       pat.patternTemps.foreach(checkPatternVar(_, pat.srcPos))
       pats.foreach(traversePattern)
     case Alternative(pats) =>
-      pats.foreach(traversePattern)
+      val altConsumed = for p <- pats yield
+        if isStructuralPattern(p) then consumed.segment(traversePattern(p))
+        else
+          traversePattern(p)
+          EmptyConsumedSet
+      altConsumed.foreach(consumed ++= _)
     case NamedArg(_, arg) =>
       traversePattern(arg)
     case _ =>
@@ -1135,18 +1140,51 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends CheckedTreeTraverser:
       // a position with source code to show. On the other hand, skipping all synthetic members
       // might cause soundness issues.
 
+  /** Is `tree` a stable path containing no `consume` method selections? */
+  private def isPureStablePath(tree: Tree)(using Context): Boolean = tree match
+    case Ident(_) | This(_) => !tree.symbol.isConsume
+    case Select(qual, _) => !tree.symbol.isConsume && isPureStablePath(qual)
+    case TypeApply(fn, _) => isPureStablePath(fn)
+    case _ => false
+
+  /** Is `pat` a purely structural pattern whose evaluation cannot expose
+   *  extracted components to user code or consume capabilities except via
+   *  synthetic case-class extractors?
+   */
+  private def isStructuralPattern(pat: Tree)(using Context): Boolean = pat match
+    case Bind(_, body) => isStructuralPattern(body)
+    case Typed(pat1, _) => isStructuralPattern(pat1)
+    case Alternative(pats) => pats.forall(isStructuralPattern)
+    case NamedArg(_, arg) => isStructuralPattern(arg)
+    case UnApply(fun, implicits, pats) =>
+      Synthetics.isSyntheticCompanionMethod(fun.symbol, nme.unapply, nme.unapplySeq)
+      && isPureStablePath(fun)
+      && implicits.isEmpty
+      && pats.forall(isStructuralPattern)
+    case Literal(_) | Ident(nme.WILDCARD) => true
+    case Ident(_) | Select(_, _) => isPureStablePath(pat)
+    case _ => false
+
   /** Traverse a list of match or catch cases. Patterns and guards are evaluated
-   *  sequentially before falling through to subsequent cases, so their consumed
-   *  capabilities remain consumed for later cases; only case bodies are mutually
-   *  exclusive and segmented.
+   *  sequentially before falling through to subsequent cases, so capabilities
+   *  consumed in guards or non-structural patterns remain consumed for later cases.
+   *  Purely structural patterns without guards can only consume via synthetic
+   *  case-class extractors, which are pure identity functions; their consumption
+   *  is segmented together with the case body so failed matches do not prevent
+   *  subsequent cases from accessing the scrutinee.
    */
   private def traverseCases(cases: List[CaseDef])(using Context): Unit =
     val bodyConsumed = for cas <- cases yield
       inSection:
         cas.patternTemps.foreach(checkPatternVar(_, cas.pat.srcPos))
-        traversePattern(cas.pat)
-        traverse(cas.guard)
-        consumed.segment(traverse(cas.body))
+        if cas.guard.isEmpty && isStructuralPattern(cas.pat) then
+          consumed.segment:
+            traversePattern(cas.pat)
+            traverse(cas.body)
+        else
+          traversePattern(cas.pat)
+          traverse(cas.guard)
+          consumed.segment(traverse(cas.body))
     bodyConsumed.foreach(consumed ++= _)
 
   /** Traverse `tree` and perform separation checks everywhere */
