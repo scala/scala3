@@ -270,8 +270,9 @@ class ScalaSettingsTests:
     assertEquals(Right(reporting.Action.Silent), result)
 
   @Test def `Wconf src filter with a leading caret matches from the start of the path`: Unit =
+    val root = Paths.get("/some/path").toAbsolutePath.toUri.getRawPath.stripSuffix("/")
     def resultFor(uri: String) = wconfSrcFilterTest(
-      argsStr = "-Wconf:src=^/some/path/.*:s",
+      argsStr = s"-Wconf:src=^${java.util.regex.Pattern.quote(root)}/.*:s",
       warning = diagnosticWarning(virtualFile(uri))
     )
     assertEquals(Right(reporting.Action.Silent), resultFor("file:///some/path/file.scala"))
