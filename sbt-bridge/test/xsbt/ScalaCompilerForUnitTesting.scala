@@ -145,9 +145,7 @@ class ScalaCompilerForUnitTesting {
       val testProgress = new TestCompileProgress
       val classesOutput =
         if (compileToJar) {
-          val jar = new File(temp, "classes.jar")
-          jar.createNewFile()
-          jar
+          new File(temp, "classes.jar")
         } else {
           val dir = new File(temp, "classes")
           dir.mkdir()
