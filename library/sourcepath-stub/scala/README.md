@@ -1,0 +1,3 @@
+The standard library is compiled with this directory as `-sourcepath` (see `project/Build.scala`). `Definitions#init` runs before any source is entered and needs package `scala` to exist; on a from-scratch build only the sourcepath can provide it.
+
+Keep it empty. With the real sources on the sourcepath, incremental builds re-enter files like `IArray.scala` (compiled to `IArray$package`) from source, which crashes the compiler (scala/scala3#27408). An empty sourcepath also keeps the build close to how Zinc is normally used: Zinc combined with a populated `-sourcepath` is an unusual setup and likely un- or under-tested.
