@@ -20,25 +20,44 @@ object Cleaner {
   private def cleanHtml(text: String): String = {
     val result = StringBuilder()
     var index = 0
-    var insideCode = false
+    var insideInlineCode = false
+    var insideFencedCode = false
     var insideLink = false
     while (index < text.length) {
-      if (insideCode) {
-        result.append(text(index))
-        if (index >= 2 && text(index) == '`' && text(index - 1) == '`' && text(index - 2) == '`') {
-          insideCode = false
+      if (insideInlineCode) {
+        if (text(index) == '`') {
+          insideInlineCode = false
+          index += 1
+          result.append("`")
+        } else {
+          result.append(text(index))
+          index += 1
         }
-        index += 1
+      } else if (insideFencedCode) {
+        if (index <= text.length - 3 && text(index) == '`' && text(index + 1) == '`' && text(index + 2) == '`') {
+          insideFencedCode = false
+          index += 3
+          result.append("```")
+        } else {
+          result.append(text(index))
+          index += 1
+        }
       } else if (insideLink) {
         result.append(text(index))
         if (index >= 1 && text(index) == ']' && text(index - 1) == ']') {
           insideLink = false
         }
         index += 1
-      } else if (index <= text.length - 3 && text(index) == '`' && text(index + 1) == '`' && text(index + 2) == '`') {
-        result.append("```")
-        insideCode = true
-        index += 3
+      } else if (index <= text.length - 1 && text(index) == '`') {
+        result.append("`")
+        index += 1
+        if (index <= text.length - 2 && text(index) == '`' && text(index + 1) == '`') {
+          result.append("``")
+          index += 2
+          insideFencedCode = true
+        } else {
+          insideInlineCode = true
+        }
       } else if (index <= text.length - 2 && text(index) == '[' && text(index + 1) == '[') {
         result.append("[[")
         insideLink = true

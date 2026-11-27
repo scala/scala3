@@ -104,7 +104,8 @@ class EndToEndTests:
 
   @Test
   def fences(): Unit = run("defines", "fences.scala") { (out, _) =>
-    ensureContains(out, "pkg", "C.html", "$a", "${b}", "$c", "${d}", "$e")
+    ensureContains(out, "pkg", "B.html", "x &lt; y", "a &gt; b", "i &lt;not-a-tag&gt; j")
+    ensureContains(out, "pkg", "C.html", "$a", "${b}", "$c", "${d} `hello` $e", "i &lt; j")
   }
 
   @Test
