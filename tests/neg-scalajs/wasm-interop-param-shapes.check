@@ -1,0 +1,16 @@
+-- Error: tests/neg-scalajs/wasm-interop-param-shapes.scala:6:15 -------------------------------------------------------
+6 |  def imported(x: Int*): Unit = wasm.native // error
+  |               ^
+  |               @WasmImport methods may not have repeated parameters
+-- Error: tests/neg-scalajs/wasm-interop-param-shapes.scala:9:15 -------------------------------------------------------
+9 |  def exported(x: Int*): Unit = ??? // error
+  |               ^
+  |               @WasmExport methods may not have repeated parameters
+-- Error: tests/neg-scalajs/wasm-interop-param-shapes.scala:14:15 ------------------------------------------------------
+14 |  def imported(x: Int = 1): Unit = wasm.native // error
+   |               ^
+   |               @WasmImport methods may not have default parameters
+-- Error: tests/neg-scalajs/wasm-interop-param-shapes.scala:17:15 ------------------------------------------------------
+17 |  def exported(x: Int = 1): Unit = ??? // error
+   |               ^
+   |               @WasmExport methods may not have default parameters

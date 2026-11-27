@@ -1,0 +1,8 @@
+-- Error: tests/neg-scalajs/wasm-interop-import-body.scala:6:30 --------------------------------------------------------
+6 |  def imported(x: Int): Int = x // error
+  |                              ^
+  |                              @WasmImport methods may only call wasm.native.
+-- Error: tests/neg-scalajs/wasm-interop-import-body.scala:9:29 --------------------------------------------------------
+9 |  def importedUnit(): Unit = () // error
+  |                             ^^
+  |                             @WasmImport methods may only call wasm.native.

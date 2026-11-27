@@ -1,0 +1,30 @@
+-- Error: tests/neg-scalajs/wasm-interop-non-public.scala:6:14 ---------------------------------------------------------
+5 |  @WasmImport("env", "imported")
+6 |  private def imported(): Unit = wasm.native // error
+  |  ^
+  |  @WasmImport can only be used on public methods
+-- Error: tests/neg-scalajs/wasm-interop-non-public.scala:9:14 ---------------------------------------------------------
+8 |  @WasmExport("exported")
+9 |  private def exported(): Unit = ??? // error
+  |  ^
+  |  @WasmExport can only be used on public methods
+-- Error: tests/neg-scalajs/wasm-interop-non-public.scala:14:16 --------------------------------------------------------
+13 |  @WasmImport("env", "imported")
+14 |  protected def imported(): Unit = wasm.native // error
+   |  ^
+   |  @WasmImport can only be used on public methods
+-- Error: tests/neg-scalajs/wasm-interop-non-public.scala:17:16 --------------------------------------------------------
+16 |  @WasmExport("exported")
+17 |  protected def exported(): Unit = ??? // error
+   |  ^
+   |  @WasmExport can only be used on public methods
+-- Error: tests/neg-scalajs/wasm-interop-non-public.scala:22:30 --------------------------------------------------------
+21 |  @WasmImport("env", "imported")
+22 |  private[PackagePrivate] def imported(): Unit = wasm.native // error
+   |  ^
+   |  @WasmImport can only be used on public methods
+-- Error: tests/neg-scalajs/wasm-interop-non-public.scala:25:30 --------------------------------------------------------
+24 |  @WasmExport("exported")
+25 |  private[PackagePrivate] def exported(): Unit = ??? // error
+   |  ^
+   |  @WasmExport can only be used on public methods

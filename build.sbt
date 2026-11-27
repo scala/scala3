@@ -51,6 +51,7 @@ val `scala3-presentation-compiler-testcases` = Build.`scala3-presentation-compil
 
 val sjsSandbox = Build.sjsSandbox
 val sjsJUnitTests = Build.sjsJUnitTests
+val sjsWasmInteropTests = Build.sjsWasmInteropTests
 val sjsCompilerTests = Build.sjsCompilerTests
 
 inThisBuild(Build.thisBuildSettings)

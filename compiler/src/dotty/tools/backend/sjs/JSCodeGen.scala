@@ -436,7 +436,8 @@ class JSCodeGen()(using genCtx: Context) {
     // Generate members (constructor + methods)
 
     val methodsBuilder = List.newBuilder[js.MethodDef]
-    val jsNativeMembersBuilder = List.newBuilder[js.JSNativeMemberDef]
+    val topLevelImportDefsBuilder = List.newBuilder[js.TopLevelImportDef]
+    val wasmExportDefsBuilder = List.newBuilder[js.TopLevelWasmMethodExportDef]
 
     for (tree <- collectValOrDefDefs(td.rhs.asInstanceOf[Template])) {
       tree match {
@@ -444,21 +445,39 @@ class JSCodeGen()(using genCtx: Context) {
           // fields are added via genClassFields(), but we need to generate the JS native members
           val sym = vd.symbol
           if (!sym.is(Module) && sym.hasAnnotation(jsdefn.JSNativeAnnot))
-            jsNativeMembersBuilder += genJSNativeMemberDef(vd)
+            topLevelImportDefsBuilder += genJSNativeMemberDef(vd)
 
         case dd: DefDef =>
           val sym = dd.symbol
           if sym.hasAnnotation(jsdefn.JSNativeAnnot) then
             if !sym.is(Accessor) then
-              jsNativeMembersBuilder += genJSNativeMemberDef(dd)
-          else
-            methodsBuilder ++= genMethod(dd)
+              topLevelImportDefsBuilder += genJSNativeMemberDef(dd)
+          else if sym.hasAnnotation(jsdefn.WasmImportAnnot) then
+            topLevelImportDefsBuilder += genWasmImportedMethodDef(dd)
+          else {
+            val methods = genMethod(dd)
+            methodsBuilder ++= methods
+
+            // register TopLevelWasmMethodExportDef if the method is annotated with `@WasmExport`
+            for {
+              annot <- dd.symbol.getAnnotation(jsdefn.WasmExportAnnot)
+              exportName <- annot.argumentConstantString(0)
+              method <- methods
+            } {
+              val exportTarget = genWasmExportedMethodForwarder(dd, method)
+              methodsBuilder += exportTarget
+
+              wasmExportDefsBuilder += js.TopLevelWasmMethodExportDef(
+                  jswkn.DefaultModuleID, exportName, exportTarget.name.name)(
+                  using exportTarget.pos)
+            }
+          }
       }
     }
 
     val (fields, staticGetterDefs) = if (!isHijacked) genClassFields(td) else (Nil, Nil)
 
-    val jsNativeMembers = jsNativeMembersBuilder.result()
+    val topLevelImportDefs = topLevelImportDefsBuilder.result()
     val generatedMethods = methodsBuilder.result() ::: staticGetterDefs
 
     // Generate member exports
@@ -528,7 +547,7 @@ class JSCodeGen()(using genCtx: Context) {
                 methods = forwarders,
                 jsConstructor = None,
                 jsMethodProps = Nil,
-                jsNativeMembers = Nil,
+                topLevelImportDefs = Nil,
                 topLevelExportDefs = Nil
             )(js.OptimizerHints.empty)
             generatedStaticForwarderClasses += sym -> forwardersClassDef
@@ -548,6 +567,8 @@ class JSCodeGen()(using genCtx: Context) {
       else if (isHijacked) ClassKind.HijackedClass
       else ClassKind.Class
 
+    val wasmExportDefs = wasmExportDefsBuilder.result()
+
     val classDefinition = js.ClassDef(
         classIdent,
         originalName,
@@ -561,8 +582,8 @@ class JSCodeGen()(using genCtx: Context) {
         allMethods,
         jsConstructor = None,
         memberExports,
-        jsNativeMembers,
-        topLevelExportDefs)(
+        topLevelImportDefs,
+        topLevelExportDefs ::: wasmExportDefs)(
         optimizerHints)
 
     ir.Hashers.hashClassDef(classDefinition)
@@ -689,7 +710,7 @@ class JSCodeGen()(using genCtx: Context) {
         methods,
         Some(generatedConstructor),
         jsMethodProps,
-        jsNativeMembers = Nil,
+        topLevelImportDefs = Nil,
         topLevelExports)(
         OptimizerHints.empty)
 
@@ -905,6 +926,7 @@ class JSCodeGen()(using genCtx: Context) {
         || hasAccessBoundary
         || isOfJLObject
         || m.hasAnnotation(jsdefn.JSNativeAnnot) || isDefaultParamOfJSNativeDef // #4557
+        || m.hasAnnotation(jsdefn.WasmImportAnnot)
     }
 
     val forwarders = for {
@@ -1589,6 +1611,54 @@ class JSCodeGen()(using genCtx: Context) {
     val methodName = encodeJSNativeMemberSym(sym)
     val jsNativeLoadSpec = computeJSNativeLoadSpecOfValDef(sym)
     js.JSNativeMemberDef(flags, methodName, jsNativeLoadSpec)
+  }
+
+  def genWasmImportedMethodDef(tree: DefDef): js.WasmImportedMethodDef = {
+    implicit val pos = tree.span
+
+    val sym = tree.symbol
+    val annot = sym.getAnnotation(jsdefn.WasmImportAnnot).get
+    val moduleName = annot.argumentConstantString(0).get
+    val functionName = annot.argumentConstantString(1).get
+
+    withNewLocalNameScope {
+      withPerMethodBodyState(sym) {
+        val vparamss = tree.termParamss
+        val params = if (vparamss.isEmpty) Nil else vparamss.head
+        js.WasmImportedMethodDef(
+            js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic),
+            encodeMethodSym(sym),
+            params.map(param => genParamDef(param.symbol)),
+            toIRType(sym.info.resultType),
+            moduleName,
+            functionName)
+      }
+    }
+  }
+
+  def genWasmExportedMethodForwarder(tree: DefDef,
+      targetMethod: js.MethodDef): js.MethodDef = {
+    implicit val pos = tree.span
+
+    val sym = tree.symbol
+    withNewLocalNameScope {
+      withPerMethodBodyState(sym) {
+        val methodName = targetMethod.name.name
+        val resultType = targetMethod.resultType
+        val vparamss = tree.termParamss
+        val params = (if (vparamss.isEmpty) Nil else vparamss.head)
+          .map(p => genParamDef(p.symbol))
+
+        val args = params.map(p => js.VarRef(p.name.name)(p.ptpe)(using p.pos))
+        val body = js.Apply(js.ApplyFlags.empty, genLoadModule(sym.owner)(using tree.sourcePos),
+            js.MethodIdent(methodName), args)(resultType)
+
+        js.MethodDef(
+            js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic),
+            js.MethodIdent(methodName), originalNameOfMethod(sym), params,
+            resultType, Some(body))(OptimizerHints.empty, Unversioned)
+      }
+    }
   }
 
   private def genMethod(dd: DefDef): Option[js.MethodDef] = {
@@ -2504,8 +2574,8 @@ class JSCodeGen()(using genCtx: Context) {
         jsFieldDefs += fdef
     }
 
-    assert(originalClassDef.jsNativeMembers.isEmpty,
-        "Found JS native members in anonymous JS class at " + pos)
+    assert(originalClassDef.topLevelImportDefs.isEmpty,
+        "Found top-level imports in anonymous JS class at " + pos)
 
     assert(originalClassDef.topLevelExportDefs.isEmpty,
         "Found top-level exports in anonymous JS class at " + pos)
@@ -2518,7 +2588,7 @@ class JSCodeGen()(using genCtx: Context) {
           ClassKind.AbstractJSType, None, Some(parent), interfaces = Nil,
           jsSuperClass = None, jsNativeLoadSpec = None, fields = Nil,
           methods = originalClassDef.methods, jsConstructor = None,
-          jsMethodProps = Nil, jsNativeMembers = Nil, topLevelExportDefs = Nil)(
+          jsMethodProps = Nil, topLevelImportDefs = Nil, topLevelExportDefs = Nil)(
           originalClassDef.optimizerHints)
     }
 
@@ -3067,7 +3137,12 @@ class JSCodeGen()(using genCtx: Context) {
       args: List[Tree]): js.Tree = {
     implicit val pos = tree.span
 
-    js.BinaryOp(js.BinaryOp.String_+, genExpr(receiver), genExpr(args.head))
+    def maybeConvertToString(arg: js.Tree): js.Tree =
+      if (arg.tpe == jstpe.StringType) arg
+      else js.UnaryOp(js.UnaryOp.ToString, arg)
+
+    js.BinaryOp(js.BinaryOp.String_+,
+        maybeConvertToString(genExpr(receiver)), maybeConvertToString(genExpr(args.head)))
   }
 
   /** Gen JS code for a call to Any.## */
@@ -3221,6 +3296,8 @@ class JSCodeGen()(using genCtx: Context) {
         genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
     } else if (sym.hasAnnotation(jsdefn.JSNativeAnnot)) {
       genJSNativeMemberCall(tree)
+    } else if (sym.hasAnnotation(jsdefn.WasmImportAnnot)) {
+      genWasmImportedMethodCall(tree)
     } else {
       genApplyMethodMaybeStatically(genExpr(receiver), sym, genActualArgs(sym, args))
     }
@@ -3436,6 +3513,17 @@ class JSCodeGen()(using genCtx: Context) {
     unbox(boxedResult, atPhase(elimErasedValueTypePhase) {
       sym.info.resultType
     })
+  }
+
+  /** Gen IR for a call to a Wasm imported function. */
+  private def genWasmImportedMethodCall(tree: Apply): js.Tree = {
+    val sym = tree.symbol
+    val Apply(_, args0) = tree
+
+    implicit val pos = tree.span
+
+    js.ApplyWasmImport(encodeClassName(sym.owner), encodeMethodSym(sym),
+        genActualArgs(sym, args0))(toIRType(sym.info.resultType))
   }
 
   private def genJSSuperCall(tree: Apply, isStat: Boolean): js.Tree = {

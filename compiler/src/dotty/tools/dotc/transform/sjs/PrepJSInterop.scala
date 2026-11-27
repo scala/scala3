@@ -153,6 +153,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           false
       }
 
+      PrepWasmInterop.checkWasmInteropAnnotations(tree)
+
       checkJSNameAnnots(sym)
       constantFoldJSAnnotations(sym)
 

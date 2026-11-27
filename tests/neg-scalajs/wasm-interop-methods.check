@@ -1,0 +1,30 @@
+-- Error: tests/neg-scalajs/wasm-interop-methods.scala:6:6 -------------------------------------------------------------
+5 |  @WasmImport("env", "imported")
+6 |  def imported[A](x: Int): Unit = wasm.native // error
+  |  ^
+  |  @WasmImport methods may not have type parameters
+-- Error: tests/neg-scalajs/wasm-interop-methods.scala:9:6 -------------------------------------------------------------
+8 |  @WasmExport("exported")
+9 |  def exported[A](x: Int): Unit = ??? // error
+  |  ^
+  |  @WasmExport methods may not have type parameters
+-- Error: tests/neg-scalajs/wasm-interop-methods.scala:14:6 ------------------------------------------------------------
+13 |  @WasmImport("env", "imported")
+14 |  def imported(x: Int)(y: Int): Unit = wasm.native // error
+   |  ^
+   |  @WasmImport methods may not have multiple parameter lists
+-- Error: tests/neg-scalajs/wasm-interop-methods.scala:17:6 ------------------------------------------------------------
+16 |  @WasmExport("exported")
+17 |  def exported(x: Int)(y: Int): Unit = ??? // error
+   |  ^
+   |  @WasmExport methods may not have multiple parameter lists
+-- Error: tests/neg-scalajs/wasm-interop-methods.scala:22:6 ------------------------------------------------------------
+21 |  @WasmImport("env", "imported")
+22 |  def imported: Int = wasm.native // error
+   |  ^
+   |  @WasmImport methods must have a parameter list
+-- Error: tests/neg-scalajs/wasm-interop-methods.scala:25:6 ------------------------------------------------------------
+24 |  @WasmExport("exported")
+25 |  def exported: Int = ??? // error
+   |  ^
+   |  @WasmExport methods must have a parameter list

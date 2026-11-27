@@ -112,6 +112,16 @@ final class JSDefinitions() {
 
   def JSAnnotPackage(using Context) = JSGlobalAnnot.owner.asClass
 
+  @threadUnsafe lazy val WasmPackageVal = requiredPackage("scala.scalajs.wasm")
+  @threadUnsafe lazy val WasmPackageClass = WasmPackageVal.moduleClass.asClass
+    @threadUnsafe lazy val WasmPackage_nativeR = WasmPackageClass.requiredMethodRef("native")
+    def WasmPackage_native(using Context) = WasmPackage_nativeR.symbol
+
+  @threadUnsafe lazy val WasmImportAnnotType: TypeRef = requiredClassRef("scala.scalajs.wasm.annotation.WasmImport")
+  def WasmImportAnnot(using Context) = WasmImportAnnotType.symbol.asClass
+  @threadUnsafe lazy val WasmExportAnnotType: TypeRef = requiredClassRef("scala.scalajs.wasm.annotation.WasmExport")
+  def WasmExportAnnot(using Context) = WasmExportAnnotType.symbol.asClass
+
   @threadUnsafe lazy val JSTypeAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.internal.JSType")
   def JSTypeAnnot(using Context) = JSTypeAnnotType.symbol.asClass
   @threadUnsafe lazy val JSOptionalAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.internal.JSOptional")

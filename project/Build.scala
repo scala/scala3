@@ -2177,6 +2177,7 @@ object Build {
             "isNoModule" -> (moduleKind == ModuleKind.NoModule),
             "isESModule" -> (moduleKind == ModuleKind.ESModule),
             "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
+            "isWasmModule" -> (moduleKind == ModuleKind.WasmModule),
             "usesClosureCompiler" -> linkerConfig.closureCompiler,
             "hasMinifiedNames" -> (linkerConfig.closureCompiler || linkerConfig.minify),
             "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
@@ -2190,6 +2191,7 @@ object Build {
             "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
             "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
             "isWebAssembly" -> linkerConfig.esFeatures.useWebAssembly,
+            "hasWasmCustomDescriptors" -> linkerConfig.wasmFeatures.experimentalUseCustomDescriptors,
         )
       }.taskValue,
 
@@ -2213,15 +2215,22 @@ object Build {
           case FullOptStage => (Test / fullLinkJS / scalaJSLinkerConfig).value
         }
 
-        val isWebAssembly = linkerConfig.esFeatures.useWebAssembly
+        val isWasmNoJS = linkerConfig.moduleKind == ModuleKind.WasmModule
+        val isWebAssembly = isWasmNoJS || linkerConfig.esFeatures.useWebAssembly
 
         val b = List.newBuilder[File]
 
-        if (linkerConfig.moduleKind != ModuleKind.NoModule && !linkerConfig.closureCompiler && !isWebAssembly)
-          b += baseDirectory.value / "test-require-multi-modules"
+        b += baseDirectory.value / "shared/test"
 
-        if (linkerConfig.esFeatures.esVersion >= ESVersion.ES2017)
-          b += baseDirectory.value / "test-require-async-await"
+        if (!isWasmNoJS) {
+          b += baseDirectory.value / "js/test"
+
+          if (linkerConfig.moduleKind != ModuleKind.NoModule && !linkerConfig.closureCompiler && !isWebAssembly)
+            b += baseDirectory.value / "js/test-require-multi-modules"
+
+          if (linkerConfig.esFeatures.esVersion >= ESVersion.ES2017)
+            b += baseDirectory.value / "js/test-require-async-await"
+        }
 
         b.result()
       },
@@ -2249,13 +2258,14 @@ object Build {
         val moduleKind = linkerConfig.moduleKind
         val hasModules = moduleKind != ModuleKind.NoModule
         val hasAsyncAwait = linkerConfig.esFeatures.esVersion >= ESVersion.ES2017
-        val isWebAssembly = linkerConfig.esFeatures.useWebAssembly
+        val isWasmNoJS = moduleKind == ModuleKind.WasmModule
+        val isWebAssembly = isWasmNoJS || linkerConfig.esFeatures.useWebAssembly
 
         def conditionally(cond: Boolean, subdir: String): Seq[File] =
           if (!cond) Nil
           else (dir / subdir ** "*.scala").get()
 
-        (
+        val sharedTests0: Seq[File] = (
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
             -- "UTF16Test.scala" // refutable pattern match
@@ -2263,18 +2273,27 @@ object Build {
             -- "ClassDiffersOnlyInCaseTest.scala" // looks like the Scala 3 compiler itself does not deal with that
             )).get()
 
-          ++ (dir / "shared/src/test/require-sam" ** "*.scala").get()
-          ++ (dir / "shared/src/test/require-jdk8" ** "*.scala").get()
-          ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get()
+          ++ (dir / "js-wasm/src/test/" ** "*.scala").get()
+        )
 
-          ++ (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
+        val sharedTests: Seq[File] = if (!isWasmNoJS) {
+          sharedTests0
+        } else {
+          // Not yet supported on WasmModule
+          sharedTests0.filterNot { f =>
+            f.getName() == "URITest.scala" ||
+              f.getPath().replace('\\', '/').contains("/javalib/util/regex/")
+          }
+        }
+
+        def jsTests: Seq[File] = (
+          (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
             -- "OptimizerTest.scala" // something crashes the optimizer, TODO investigate
             -- "TypedArrayConversionTest.scala" // #24321
             )).get()
 
-          ++ (dir / "js/src/test/require-2.12" ** "*.scala").get()
           ++ (dir / "js/src/test/require-new-target" ** "*.scala").get()
           ++ (dir / "js/src/test/require-sam" ** "*.scala").get()
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get()
@@ -2288,6 +2307,12 @@ object Build {
           ++ conditionally(hasAsyncAwait, "js/src/test/require-async-await")
           ++ conditionally(hasAsyncAwait && isWebAssembly, "js/src/test/require-orphan-await")
         )
+
+        if (isWasmNoJS) {
+          sharedTests
+        } else {
+          sharedTests ++ jsTests
+        }
       },
 
       /* For some reason, in Scala 3, the implementation of IterableDefaultTest
@@ -2307,10 +2332,60 @@ object Build {
           case ModuleKind.NoModule       => Nil
           case ModuleKind.CommonJSModule => (testDir / "resources-commonjs" ** "*.js").get()
           case ModuleKind.ESModule       => (testDir / "resources-esmodule" ** "*.js").get()
+          case ModuleKind.WasmModule     => Nil
         }
 
         common ++ moduleSpecific
       },
+    )
+
+  lazy val sjsWasmInteropTests: Project = project.in(file("tests/wasm-interop-tests"))
+    .enablePlugins(DottyJSPlugin)
+    .dependsOn(`scala-library-sjs`)
+    .settings(
+      regularScalaJSProjectSettings,
+
+      bspEnabled := false,
+
+      scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.WasmModule)),
+
+      Test / jsEnv := {
+        import org.scalajs.jsenv.nodejs.NodeJSEnv
+
+        val helperModulesDir = target.value / "helpers-modules"
+
+        val storageTypesAndTheirModuleBytes: List[(String, Array[Byte])] = List(
+          "i8" -> build.WasmGCArrayAccessModules.i8ArrayModuleBytes,
+          "i16" -> build.WasmGCArrayAccessModules.i16ArrayModuleBytes,
+          "i32" -> build.WasmGCArrayAccessModules.i32ArrayModuleBytes,
+          "i64" -> build.WasmGCArrayAccessModules.i64ArrayModuleBytes,
+          "f32" -> build.WasmGCArrayAccessModules.f32ArrayModuleBytes,
+          "f64" -> build.WasmGCArrayAccessModules.f64ArrayModuleBytes,
+        )
+
+        for ((storageType, moduleBytes) <- storageTypesAndTheirModuleBytes) {
+          val f = helperModulesDir / s"${storageType}ArrayAccess.wasm"
+          IO.write(f, moduleBytes)
+        }
+
+        val linkerOutput = (Compile / fastLinkJSOutput).value
+        val config = NodeJSEnv.Config()
+          .withEnv(Map(
+            "SCALAJS_LINKER_OUTPUT" -> linkerOutput.toString(),
+            "HELPER_MODULES_DIR" -> helperModulesDir.toString(),
+          ))
+        new NodeJSEnv(config)
+      },
+
+      Test / jsEnvInput := {
+        val resourceDir = (Test / resourceDirectory).value
+        val f = (resourceDir / "runtests.mjs").toPath
+        org.scalajs.jsenv.Input.ESModule(f) :: Nil
+      },
+
+      // let me run Test/run
+      Test / fork := false,
+      Test / scalaJSUseMainModuleInitializer := true,
     )
 
   lazy val sjsCompilerTests = project.in(file("sjs-compiler-tests")).

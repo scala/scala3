@@ -1,0 +1,280 @@
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:13:15 -----------------------------------------------------
+13 |  def testByte(x: Byte): Unit = wasm.native // error
+   |               ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:15:16 -----------------------------------------------------
+15 |  def testShort(x: Short): Unit = wasm.native // error
+   |                ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:17:18 -----------------------------------------------------
+17 |  def testBoolean(x: Boolean): Unit = wasm.native // error
+   |                  ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:19:17 -----------------------------------------------------
+19 |  def testString(x: String): Unit = wasm.native // error
+   |                 ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:21:15 -----------------------------------------------------
+21 |  def testChar(x: Char): Unit = wasm.native // error
+   |               ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:23:23 -----------------------------------------------------
+23 |  def testArrayBoolean(x: Array[Boolean]): Unit = wasm.native // error
+   |                       ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:25:20 -----------------------------------------------------
+25 |  def testArrayChar(x: Array[Char]): Unit = wasm.native // error
+   |                    ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:27:22 -----------------------------------------------------
+27 |  def testArrayString(x: Array[String]): Unit = wasm.native // error
+   |                      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:29:24 -----------------------------------------------------
+29 |  def testArrayArrayInt(x: Array[Array[Int]]): Unit = wasm.native // error
+   |                        ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:31:14 -----------------------------------------------------
+31 |  def testAny(x: Any): Unit = wasm.native // error
+   |              ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:33:17 -----------------------------------------------------
+33 |  def testAnyRef(x: AnyRef): Unit = wasm.native // error
+   |                 ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:35:18 -----------------------------------------------------
+35 |  def testNothing(x: Nothing): Unit = wasm.native // error
+   |                  ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:37:15 -----------------------------------------------------
+37 |  def testNull(x: Null): Unit = wasm.native // error
+   |               ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:39:20 -----------------------------------------------------
+39 |  def testJLInteger(x: java.lang.Integer): Unit = wasm.native // error
+   |                    ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:41:25 -----------------------------------------------------
+41 |  def testArrayJLInteger(x: Array[java.lang.Integer]): Unit = wasm.native // error
+   |                         ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:43:18 -----------------------------------------------------
+43 |  def testListInt(x: List[Int]): Unit = wasm.native // error
+   |                  ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:45:20 -----------------------------------------------------
+45 |  def testSingleton(x: Singletons.single.type): Unit = wasm.native // error
+   |                    ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:47:15 -----------------------------------------------------
+47 |  def testUnit(x: Unit): Unit = wasm.native // error
+   |               ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:55:6 ------------------------------------------------------
+55 |  def testByte(): Byte = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:57:6 ------------------------------------------------------
+57 |  def testShort(): Short = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:59:6 ------------------------------------------------------
+59 |  def testBoolean(): Boolean = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:61:6 ------------------------------------------------------
+61 |  def testString(): String = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:63:6 ------------------------------------------------------
+63 |  def testChar(): Char = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:65:6 ------------------------------------------------------
+65 |  def testArrayBoolean(): Array[Boolean] = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:67:6 ------------------------------------------------------
+67 |  def testArrayChar(): Array[Char] = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:69:6 ------------------------------------------------------
+69 |  def testArrayString(): Array[String] = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:71:6 ------------------------------------------------------
+71 |  def testArrayArrayInt(): Array[Array[Int]] = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:73:6 ------------------------------------------------------
+73 |  def testAny(): Any = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:75:6 ------------------------------------------------------
+75 |  def testAnyRef(): AnyRef = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:77:6 ------------------------------------------------------
+77 |  def testNothing(): Nothing = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:79:6 ------------------------------------------------------
+79 |  def testNull(): Null = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:81:6 ------------------------------------------------------
+81 |  def testJLInteger(): java.lang.Integer = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:83:6 ------------------------------------------------------
+83 |  def testArrayJLInteger(): Array[java.lang.Integer] = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:85:6 ------------------------------------------------------
+85 |  def testListInt(): List[Int] = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:87:6 ------------------------------------------------------
+87 |  def testSingleton(): Singletons.single.type = wasm.native // error
+   |      ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:95:15 -----------------------------------------------------
+95 |  def testByte(x: Byte): Unit = ??? // error
+   |               ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:97:16 -----------------------------------------------------
+97 |  def testShort(x: Short): Unit = ??? // error
+   |                ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:99:18 -----------------------------------------------------
+99 |  def testBoolean(x: Boolean): Unit = ??? // error
+   |                  ^
+   |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:101:17 ----------------------------------------------------
+101 |  def testString(x: String): Unit = ??? // error
+    |                 ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:103:15 ----------------------------------------------------
+103 |  def testChar(x: Char): Unit = ??? // error
+    |               ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:105:23 ----------------------------------------------------
+105 |  def testArrayBoolean(x: Array[Boolean]): Unit = ??? // error
+    |                       ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:107:20 ----------------------------------------------------
+107 |  def testArrayChar(x: Array[Char]): Unit = ??? // error
+    |                    ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:109:22 ----------------------------------------------------
+109 |  def testArrayString(x: Array[String]): Unit = ??? // error
+    |                      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:111:24 ----------------------------------------------------
+111 |  def testArrayArrayInt(x: Array[Array[Int]]): Unit = ??? // error
+    |                        ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:113:14 ----------------------------------------------------
+113 |  def testAny(x: Any): Unit = ??? // error
+    |              ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:115:17 ----------------------------------------------------
+115 |  def testAnyRef(x: AnyRef): Unit = ??? // error
+    |                 ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:117:18 ----------------------------------------------------
+117 |  def testNothing(x: Nothing): Unit = ??? // error
+    |                  ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:119:15 ----------------------------------------------------
+119 |  def testNull(x: Null): Unit = ??? // error
+    |               ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:121:20 ----------------------------------------------------
+121 |  def testJLInteger(x: java.lang.Integer): Unit = ??? // error
+    |                    ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:123:25 ----------------------------------------------------
+123 |  def testArrayJLInteger(x: Array[java.lang.Integer]): Unit = ??? // error
+    |                         ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:125:18 ----------------------------------------------------
+125 |  def testListInt(x: List[Int]): Unit = ??? // error
+    |                  ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:127:20 ----------------------------------------------------
+127 |  def testSingleton(x: Singletons.single.type): Unit = ??? // error
+    |                    ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:129:15 ----------------------------------------------------
+129 |  def testUnit(x: Unit): Unit = ??? // error
+    |               ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:137:6 -----------------------------------------------------
+137 |  def testByte(): Byte = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:139:6 -----------------------------------------------------
+139 |  def testShort(): Short = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:141:6 -----------------------------------------------------
+141 |  def testBoolean(): Boolean = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:143:6 -----------------------------------------------------
+143 |  def testString(): String = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:145:6 -----------------------------------------------------
+145 |  def testChar(): Char = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:147:6 -----------------------------------------------------
+147 |  def testArrayBoolean(): Array[Boolean] = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:149:6 -----------------------------------------------------
+149 |  def testArrayChar(): Array[Char] = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:151:6 -----------------------------------------------------
+151 |  def testArrayString(): Array[String] = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:153:6 -----------------------------------------------------
+153 |  def testArrayArrayInt(): Array[Array[Int]] = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:155:6 -----------------------------------------------------
+155 |  def testAny(): Any = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:157:6 -----------------------------------------------------
+157 |  def testAnyRef(): AnyRef = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:159:6 -----------------------------------------------------
+159 |  def testNothing(): Nothing = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:161:6 -----------------------------------------------------
+161 |  def testNull(): Null = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:163:6 -----------------------------------------------------
+163 |  def testJLInteger(): java.lang.Integer = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:165:6 -----------------------------------------------------
+165 |  def testArrayJLInteger(): Array[java.lang.Integer] = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:167:6 -----------------------------------------------------
+167 |  def testListInt(): List[Int] = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type
+-- Error: tests/neg-scalajs/wasm-interop-invalid-types.scala:169:6 -----------------------------------------------------
+169 |  def testSingleton(): Singletons.single.type = ??? // error
+    |      ^
+    |Wasm imports and exports only support Int, Long, Float, Double, arrays of Byte, Short, Int, Long, Float and Double, and Unit as result type

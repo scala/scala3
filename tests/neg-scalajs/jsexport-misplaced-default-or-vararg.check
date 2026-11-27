@@ -1,0 +1,8 @@
+-- Error: tests/neg-scalajs/jsexport-misplaced-default-or-vararg.scala:5:2 ---------------------------------------------
+5 |  @JSExport // error
+  |  ^^^^^^^^^
+  |  In an exported method or constructor, all parameters with defaults must be at the end
+-- Error: tests/neg-scalajs/jsexport-misplaced-default-or-vararg.scala:10:2 --------------------------------------------
+10 |  @JSExport // error
+   |  ^^^^^^^^^
+   |  In an exported method or constructor, a *-parameter must come last (through all parameter lists)

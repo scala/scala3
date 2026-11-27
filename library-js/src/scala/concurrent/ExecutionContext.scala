@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -13,7 +13,6 @@
 package scala.concurrent
 
 import scala.language.`2.13`
-
 import java.util.concurrent.{ ExecutorService, Executor }
 import scala.annotation.implicitNotFound
 
@@ -32,8 +31,8 @@ import scala.annotation.implicitNotFound
  *  While it is possible to simply import
  *  `scala.concurrent.ExecutionContext.Implicits.global` to obtain an
  *  implicit `ExecutionContext`, application developers should carefully
- *  consider where they want to set execution policy;
- *  ideally, one place per application—or per logically related section of code—
+ *  consider where they want to define the execution policy;
+ *  ideally, one place per application — or per logically related section of code —
  *  will make a decision about which `ExecutionContext` to use.
  *  That is, you will mostly want to avoid hardcoding, especially via an import,
  *  `scala.concurrent.ExecutionContext.Implicits.global`.
@@ -57,12 +56,12 @@ import scala.annotation.implicitNotFound
  *  knowing that only that library's network operations will be affected.
  *  Application callback execution can be configured separately.
  */
-@implicitNotFound("""Cannot find an implicit ExecutionContext. You might pass
+@implicitNotFound("""Cannot find an implicit ExecutionContext. You might add
 an (implicit ec: ExecutionContext) parameter to your method.
 
 The ExecutionContext is used to configure how and on which
-thread pools Futures will run, so the specific ExecutionContext
-that is selected is important.
+thread pools asynchronous tasks (such as Futures) will run,
+so the specific ExecutionContext that is selected is important.
 
 If your application does not define an ExecutionContext elsewhere,
 consider using Scala's global ExecutionContext by defining
@@ -105,35 +104,97 @@ trait ExecutionContext {
 }
 
 /** An [[ExecutionContext]] that is also a
- *  Java [Executor](http://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executor.html).
+ *  Java [[java.util.concurrent.Executor Executor]].
  */
 trait ExecutionContextExecutor extends ExecutionContext with Executor
 
 /** An [[ExecutionContext]] that is also a
- *  Java [ExecutorService](http://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/ExecutorService.html).
+ *  Java [[java.util.concurrent.ExecutorService ExecutorService]].
  */
 trait ExecutionContextExecutorService extends ExecutionContextExecutor with ExecutorService
 
 
 /** Contains factory methods for creating execution contexts. */
 object ExecutionContext {
-  /** The explicit global `ExecutionContext`. Invoke `global` when you want to provide the global
-   *  `ExecutionContext` explicitly.
+  /** The global [[ExecutionContext]]. This default `ExecutionContext` implementation is backed by a work-stealing thread
+   *  pool. It can be configured via the following system properties:
    *
-   *  The default `ExecutionContext` implementation is backed by a work-stealing thread pool.
-   *  It can be configured via the following [[scala.sys.SystemProperties]]:
-   *
-   *  `scala.concurrent.context.minThreads` = defaults to "1"
-   *  `scala.concurrent.context.numThreads` = defaults to "x1" (i.e. the current number of available processors * 1)
-   *  `scala.concurrent.context.maxThreads` = defaults to "x1" (i.e. the current number of available processors * 1)
-   *  `scala.concurrent.context.maxExtraThreads` = defaults to "256"
+   *   - `scala.concurrent.context.minThreads` = defaults to "1"
+   *   - `scala.concurrent.context.numThreads` = defaults to "x1" (i.e. the current number of available processors * 1)
+   *   - `scala.concurrent.context.maxThreads` = defaults to "x1" (i.e. the current number of available processors * 1)
+   *   - `scala.concurrent.context.maxExtraThreads` = defaults to "256"
    *
    *  The pool size of threads is then `numThreads` bounded by `minThreads` on the lower end and `maxThreads` on the high end.
    *
    *  The `maxExtraThreads` is the maximum number of extra threads to have at any given time to evade deadlock,
-   *  see [[scala.concurrent.BlockContext]].
+   *  see [[scala.concurrent.blocking]].
    *
-   *  @return the global `ExecutionContext`
+   *  The `global` execution context can be used explicitly, by defining an
+   *  `implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global`, or by importing
+   *  [[ExecutionContext.Implicits.global]].
+   *
+   *  ## Batching short-lived nested tasks
+   *
+   *  Asynchronous code with short-lived nested tasks is executed more efficiently when using
+   *  `ExecutionContext.opportunistic` (continue reading to learn why it is `private[scala]` and how to access it).
+   *
+   *  `ExecutionContext.opportunistic` uses the same thread pool as `ExecutionContext.global`. It attempts to batch
+   *  nested task and execute them on the same thread as the enclosing task. This is ideally suited to execute
+   *  short-lived tasks as it reduces the overhead of context switching.
+   *
+   *  WARNING: long-running and/or blocking tasks should be demarcated within [[scala.concurrent.blocking]]-blocks
+   *          to ensure that any pending tasks in the current batch can be executed by another thread on `global`.
+   *
+   *  ### How to use
+   *
+   *  This field is `private[scala]` to maintain binary compatibility. It was added in 2.13.4, code that references it
+   *  directly fails to run with a 2.13.0-3 Scala library.
+   *
+   *  Libraries should not reference this field directly because users of the library might be using an earlier Scala
+   *  version. In order to use the batching `ExecutionContext` in a library, the code needs to fall back to `global`
+   *  in case the `opportunistic` field is missing (example below). The resulting `ExecutionContext` has batching
+   *  behavior in all Scala 2.13 versions (`global` is batching in 2.13.0-3).
+   *
+   *  ```scala sc:compile
+   *  implicit val ec: scala.concurrent.ExecutionContext = try {
+   *   scala.concurrent.ExecutionContext.getClass
+   *     .getDeclaredMethod("opportunistic")
+   *     .invoke(scala.concurrent.ExecutionContext)
+   *     .asInstanceOf[scala.concurrent.ExecutionContext]
+   *  } catch {
+   *   case _: NoSuchMethodException =>
+   *     scala.concurrent.ExecutionContext.global
+   *  }
+   *  ```
+   *
+   *  Application authors can safely use the field because the Scala version at run time is the same as at compile time.
+   *  Options to bypass the access restriction include:
+   *
+   *   1. Using a structural type (example below). This uses reflection at run time.
+   *   1. Writing a Scala `object` in the `scala` package (example below).
+   *   1. Writing a Java source file. This works because `private[scala]` is emitted as `public` in Java bytecode.
+   *
+   *  ```scala sc:compile
+   *  import scala.reflect.Selectable.reflectiveSelectable
+   *
+   *  type ExecutionContextCompanionApi = AnyRef {
+   *    def opportunistic: scala.concurrent.ExecutionContextExecutor
+   *  }
+   *
+   *  implicit val ec: scala.concurrent.ExecutionContext =
+   *    scala.concurrent.ExecutionContext
+   *      .asInstanceOf[ExecutionContextCompanionApi]
+   *      .opportunistic
+   *  ```
+   *
+   *  ```scala sc:compile
+   *  object OpportunisticEC {
+   *    implicit val ec: scala.concurrent.ExecutionContext =
+   *      scala.concurrent.ExecutionContext.opportunistic
+   *  }
+   *  ```
+   *
+   *  @return the global [[ExecutionContext]]
    */
   final lazy val global: ExecutionContextExecutor =
     scala.scalajs.concurrent.JSExecutionContext.queue
@@ -159,18 +220,43 @@ object ExecutionContext {
   object parasitic extends ExecutionContextExecutor with BatchingExecutor {
     override final def submitForExecution(runnable: Runnable): Unit = runnable.run()
     override final def execute(runnable: Runnable): Unit = submitSyncBatched(runnable)
-    override final def reportFailure(t: Throwable): Unit = defaultReporter(t)
+
+    override final def reportFailure(t: Throwable): Unit = {
+      import scala.scalajs.LinkingInfo.{linkTimeIf, moduleKind, ModuleKind}
+      linkTimeIf(moduleKind == ModuleKind.WasmModule) {
+        /* !!! Hard failure instead of reporting. This should not happen. The
+         * parasitic execution context should only be used for transformation
+         * tasks, which will carry the errors rather than reporting them.
+         * In a WasmModule, we cannot using Throwable.printStackTrace(), so
+         * this is the only recourse if something goes horribly wrong.
+         *
+         * Another approach would be to ignore the failure alltogether. That
+         * would be functionally closer to printing to stderr, but seems less
+         * prudent.
+         */
+        throw new Error("Unexpected call to parasitic.reportFailure", t)
+      } {
+        defaultReporter(t)
+      }
+    }
+  }
+
+  /** See [[ExecutionContext.global]]. */
+  private[scala] lazy val opportunistic: ExecutionContextExecutor = new ExecutionContextExecutor with BatchingExecutor {
+    final override def submitForExecution(runnable: Runnable): Unit = global.execute(runnable)
+
+    final override def execute(runnable: Runnable): Unit =
+      if ((!runnable.isInstanceOf[impl.Promise.Transformation[?, ?]] || runnable.asInstanceOf[impl.Promise.Transformation[?, ?]].benefitsFromBatching) && runnable.isInstanceOf[Batchable])
+        submitAsyncBatched(runnable)
+      else
+        submitForExecution(runnable)
+
+    override final def reportFailure(t: Throwable): Unit = global.reportFailure(t)
   }
 
   object Implicits {
-    /** The implicit global `ExecutionContext`. Import `global` when you want to provide the global
-     *  `ExecutionContext` implicitly.
-     *
-     *  The default `ExecutionContext` implementation is backed by a work-stealing thread pool. By default,
-     *  the thread pool uses a target number of worker threads equal to the number of
-     *  [available processors](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Runtime.html#availableProcessors()).
-     *
-     *  @return the global `ExecutionContext`
+    /** An accessor that can be used to import the global `ExecutionContext` into the implicit scope,
+     *  see [[ExecutionContext.global]].
      */
     implicit final def global: ExecutionContext = ExecutionContext.global
   }
@@ -181,7 +267,7 @@ object ExecutionContext {
    *  @param reporter  a function for error reporting
    *  @return          the `ExecutionContext` using the given `ExecutorService`
    */
-  def fromExecutorService(e: ExecutorService, reporter: Throwable => Unit): ExecutionContextExecutorService =
+  def fromExecutorService(e: ExecutorService | Null, reporter: Throwable => Unit): ExecutionContextExecutorService =
     impl.ExecutionContextImpl.fromExecutorService(e, reporter)
 
   /** Creates an `ExecutionContext` from the given `ExecutorService` with the [[scala.concurrent.ExecutionContext$.defaultReporter default reporter]].
@@ -189,7 +275,7 @@ object ExecutionContext {
    *  If it is guaranteed that none of the executed tasks are blocking, a single-threaded `ExecutorService`
    *  can be used to create an `ExecutionContext` as follows:
    *
-   *  ```
+   *  ```scala sc:compile
    *  import java.util.concurrent.Executors
    *  val ec = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())
    *  ```
@@ -197,7 +283,7 @@ object ExecutionContext {
    *  @param e the `ExecutorService` to use. If `null`, a new `ExecutorService` is created with [[scala.concurrent.ExecutionContext$.global default configuration]].
    *  @return  the `ExecutionContext` using the given `ExecutorService`
    */
-  def fromExecutorService(e: ExecutorService): ExecutionContextExecutorService = fromExecutorService(e, defaultReporter)
+  def fromExecutorService(e: ExecutorService | Null): ExecutionContextExecutorService = fromExecutorService(e, defaultReporter)
 
   /** Creates an `ExecutionContext` from the given `Executor`.
    *
@@ -205,7 +291,7 @@ object ExecutionContext {
    *  @param reporter  a function for error reporting
    *  @return          the `ExecutionContext` using the given `Executor`
    */
-  def fromExecutor(e: Executor, reporter: Throwable => Unit): ExecutionContextExecutor =
+  def fromExecutor(e: Executor | Null, reporter: Throwable => Unit): ExecutionContextExecutor =
     impl.ExecutionContextImpl.fromExecutor(e, reporter)
 
   /** Creates an `ExecutionContext` from the given `Executor` with the [[scala.concurrent.ExecutionContext$.defaultReporter default reporter]].
@@ -213,9 +299,9 @@ object ExecutionContext {
    *  @param e the `Executor` to use. If `null`, a new `Executor` is created with [[scala.concurrent.ExecutionContext$.global default configuration]].
    *  @return  the `ExecutionContext` using the given `Executor`
    */
-  def fromExecutor(e: Executor): ExecutionContextExecutor = fromExecutor(e, defaultReporter)
+  def fromExecutor(e: Executor | Null): ExecutionContextExecutor = fromExecutor(e, defaultReporter)
 
-  /** The default reporter simply prints the stack trace of the `Throwable` to [System.err](http://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/System.html#err).
+  /** The default reporter simply prints the stack trace of the `Throwable` to [[java.lang.System#err System.err]].
    *
    *  @return the function for error reporting
    */

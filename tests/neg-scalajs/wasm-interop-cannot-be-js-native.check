@@ -1,0 +1,12 @@
+-- Error: tests/neg-scalajs/wasm-interop-cannot-be-js-native.scala:8:3 -------------------------------------------------
+8 |  @WasmImport("env", "imported") // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  @WasmImport cannot be used together with @js.native
+-- Error: tests/neg-scalajs/wasm-interop-cannot-be-js-native.scala:12:3 ------------------------------------------------
+12 |  @WasmExport("exported") // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^
+   |  @WasmExport cannot be used together with @js.native
+-- Error: tests/neg-scalajs/wasm-interop-cannot-be-js-native.scala:13:25 -----------------------------------------------
+13 |  def exported(): Unit = ??? // error
+   |                         ^^^
+   |                         @js.native members may only call js.native.
