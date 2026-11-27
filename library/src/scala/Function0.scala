@@ -37,6 +37,7 @@ trait Function0[@specialized(Specializable.Primitives) +R] extends AnyRef {
    */
   def apply(): R
 
+  /** Returns the string `"<function0>"`. */
   override def toString(): String = "<function0>"
 }
 
