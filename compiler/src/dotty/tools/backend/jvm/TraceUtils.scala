@@ -69,6 +69,15 @@ object TraceUtils {
     sw.toString
   }
 
+  def traceInstructionsToString(instrs: Iterable[AbstractInsnNode]): String = {
+    val p = new Textifier
+    val tracer = new TraceMethodVisitor(p)
+    instrs.foreach(_.accept(tracer))
+    val w = new StringWriter()
+    p.print(new PrintWriter(w))
+    w.toString
+  }
+
   private def readClass(bytes: Array[Byte]): ClassNode = {
     val node = new ClassNode()
     new ClassReader(bytes).accept(node, 0)
