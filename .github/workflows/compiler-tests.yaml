@@ -34,7 +34,7 @@ jobs:
         with:
           cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
 
-      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - uses: sbt/setup-sbt@20cf087132cf939c160f0e53f87ba33634003e3e # v1.5.16
 
       - name: Test `scala3-compiler-nonbootstrapped`
         run: ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
@@ -62,7 +62,7 @@ jobs:
         with:
           cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
 
-      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - uses: sbt/setup-sbt@20cf087132cf939c160f0e53f87ba33634003e3e # v1.5.16
 
       - name: Test `scala3-compiler-bootstrapped`
         run: ./project/scripts/sbt scala3-compiler-bootstrapped/test
@@ -88,7 +88,7 @@ jobs:
       - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
         with:
           cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
-      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - uses: sbt/setup-sbt@20cf087132cf939c160f0e53f87ba33634003e3e # v1.5.16
       - name: Test `scala3-sbt-bridge-nonbootstrapped`
         run: ./project/scripts/sbt scala3-sbt-bridge-nonbootstrapped/test
 
@@ -110,7 +110,7 @@ jobs:
       - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
         with:
           cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
-      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - uses: sbt/setup-sbt@20cf087132cf939c160f0e53f87ba33634003e3e # v1.5.16
       - name: Test `scala3-sbt-bridge-nonbootstrapped` against compiler-interface 2.x
         run: ./project/scripts/sbt scala3-sbt-bridge-nonbootstrapped/test
 
@@ -130,7 +130,7 @@ jobs:
       - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
         with:
           cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
-      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - uses: sbt/setup-sbt@20cf087132cf939c160f0e53f87ba33634003e3e # v1.5.16
       - name: Test `scala3-sbt-bridge-bootstrapped`
         run: ./project/scripts/sbt scala3-sbt-bridge-bootstrapped/test
 
@@ -150,7 +150,7 @@ jobs:
       - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
         with:
           cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
-      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - uses: sbt/setup-sbt@20cf087132cf939c160f0e53f87ba33634003e3e # v1.5.16
       - name: Test `tasty-core-nonbootstrapped`
         run: ./project/scripts/sbt tasty-core-nonbootstrapped/test
 
@@ -170,7 +170,7 @@ jobs:
       - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
         with:
           cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
-      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - uses: sbt/setup-sbt@20cf087132cf939c160f0e53f87ba33634003e3e # v1.5.16
       - name: Test `tasty-core-bootstrapped`
         run: ./project/scripts/sbt tasty-core-bootstrapped/test
 
@@ -189,7 +189,7 @@ jobs:
       - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
         with:
           cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
-      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - uses: sbt/setup-sbt@20cf087132cf939c160f0e53f87ba33634003e3e # v1.5.16
       - name: Test `scala3-directives-parser-nonbootstrapped`
         run: ./project/scripts/sbt scala3-directives-parser-nonbootstrapped/test
 
@@ -208,7 +208,7 @@ jobs:
       - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
         with:
           cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
-      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - uses: sbt/setup-sbt@20cf087132cf939c160f0e53f87ba33634003e3e # v1.5.16
       - name: Test `scala3-directives-parser-bootstrapped`
         run: ./project/scripts/sbt scala3-directives-parser-bootstrapped/test
 
@@ -231,7 +231,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24.x'
-      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - uses: sbt/setup-sbt@20cf087132cf939c160f0e53f87ba33634003e3e # v1.5.16
       - name: Scala.js compiler tests
         run: ./project/scripts/sbt "sjsCompilerTests/test"
       - name: Scala.js sandbox
@@ -277,7 +277,7 @@ jobs:
       - uses: VirtusLab/scala-cli-setup@9d61091a7d9d19f69faa59b31cdbc6ef2537eccc # v1.19.0
         with:
           jvm: corretto:17
-      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - uses: sbt/setup-sbt@20cf087132cf939c160f0e53f87ba33634003e3e # v1.5.16
       - name: Test REPL on JDK ${{ matrix.jdk }}
         env:
           DOTTY_REPL_TEST_JAVA_HOME: ${{ steps.jdk.outputs.path }}
@@ -300,7 +300,7 @@ jobs:
       - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
         with:
           cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
-      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - uses: sbt/setup-sbt@20cf087132cf939c160f0e53f87ba33634003e3e # v1.5.16
       - name: Test Presentation Compiler
         run: ./project/scripts/sbt scala3-presentation-compiler/test
 
@@ -320,6 +320,6 @@ jobs:
       - uses: coursier/cache-action@ee0650f98295f27a505e4bfd284c9bfaa913a465 # v9.0.1
         with:
           cacheMode: ${{ github.ref != 'refs/heads/main' && 'read' || '' }}
-      - uses: sbt/setup-sbt@67d461eba2c4753196c230e02da850757ba4775e # v1.5.14
+      - uses: sbt/setup-sbt@20cf087132cf939c160f0e53f87ba33634003e3e # v1.5.16
       - name: Test `scala3-staging`
         run: ./project/scripts/sbt scala3-staging/test
