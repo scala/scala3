@@ -15,7 +15,7 @@ import PlainFile.*
 import java.nio.file.*
 import Files.*
 import org.junit.Test
-import org.junit.Assert.{assertEquals, assertFalse, assertNotEquals, assertTrue}
+import org.junit.Assert.{assertArrayEquals, assertEquals, assertFalse, assertTrue}
 
 import scala.util.Using
 
@@ -45,15 +45,39 @@ class SettingsTests:
     assertEquals("'not_here' does not exist or is not a directory or .jar file", summary.errors.head)
     assertEquals("missing argument for option -Vprint", summary.errors.last)
 
-  @Test def `output jar file is created eagerly`: Unit =
-    import TestConfiguration.basicClasspath
-    val source = "tests/pos/Foo.scala"
-    val out = Paths.get("out/jarredFoo.jar").normalize
-    if Files.exists(out) then Files.delete(out)
-    val args = List("-Xmain-class", "Jarred", "-classpath", basicClasspath, "-d", out.toString, source)
-    val summary = ScalaSettings.processArguments(args, processAll = true)
-    assertEquals(0, summary.errors.size)
-    assertTrue(Files.exists(out))
+  @Test def outputJarsAreWrittenOnFirstEntry(): Unit =
+    Using.resource(createTempDirectory("i27587")): dir =>
+      val source = Files.writeString(dir.resolve("Repro.scala"), "object A\n")
+      val early = dir.resolve("early.jar")
+      val out = dir.resolve("out.jar")
+      val args = List("-classpath", TestConfiguration.basicClasspath, "-Ypickle-write", early.toString, "-d", out.toString)
+      def compile(options: String*): Unit =
+        assertFalse(Main.process((args ++ options :+ source.toString).toArray).hasErrors)
+
+      compile("-Ystop-after:parser")
+      assertFalse(Files.exists(early))
+      assertFalse(Files.exists(out))
+
+      compile()
+      def entries(path: Path): Set[String] =
+        import scala.jdk.CollectionConverters.*
+        Using.resource(new java.util.jar.JarFile(path.toFile))(_.entries.asScala.map(_.getName).toSet)
+      assertTrue(entries(early).contains("A.tasty"))
+      assertTrue(entries(out).contains("A.class"))
+      val originalEarly = Files.readAllBytes(early)
+      val originalOut = Files.readAllBytes(out)
+      new interactive.InteractiveDriver(args, interactive.CachedLogicalPackage.none)
+      compile("-Ystop-after:parser")
+      Files.writeString(source, "")
+      compile()
+      assertArrayEquals(originalEarly, Files.readAllBytes(early))
+      assertArrayEquals(originalOut, Files.readAllBytes(out))
+
+      Files.writeString(source, "object B\n")
+      compile()
+      assertEquals(Set("META-INF/MANIFEST.MF", "B.tasty"), entries(early))
+      assertTrue(entries(out).contains("B.class"))
+      assertFalse(entries(out).contains("A.class"))
 
   @Test def `t8124 Don't crash on missing argument`: Unit =
     Using.resource(Files.createTempDirectory("testDir")): dir =>
@@ -294,44 +318,16 @@ class SettingsTests:
       assertTrue("Nothing to see here", summary.warnings.isEmpty)
       assertEquals(true, foo.value)
 
-  @Test def `Output setting is overriding existing jar`: Unit =
-    val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>
-      object Settings extends CommonScalaSettings:
-        val defaultDir = new PlainDirectory(Directory("."))
-        val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir)
-
-      import Settings.*
-      Files.write(file, "test".getBytes())
-      val fileStateBefore = String(Files.readAllBytes(file))
-      val args = List(s"-testOutput:${file.toString}")
-      val summary = processArguments(args, processAll = true)
-
-      assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overridden")
-
   @Test def `Output setting respects previous setting`: Unit =
-    val result = Using.resources(
-      Files.createTempFile("myfile", ".jar"), Files.createTempFile("myfile2", ".jar")
-    ): (file1, file2) =>
-      object Settings extends CommonScalaSettings:
-        val defaultDir = new PlainDirectory(Directory("."))
-        val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir, preferPrevious = true)
-
-      import Settings.*
-
-      Files.write(file1, "test1".getBytes())
-      Files.write(file2, "test2".getBytes())
-
-      val file1StateBefore = String(Files.readAllBytes(file1))
-      val file2StateBefore = String(Files.readAllBytes(file2))
-
-      val creationTime = Files.getLastModifiedTime(file1)
-      val args = List(s"-testOutput:${file1.toString}", s"-testOutput:${file2.toString}")
-      val summary = processArguments(args, processAll = true)
-
-      // The output is a new filesystem without information of original path
-      // We can't check the `testOutput.value` as in other tests.
-      assertNotEquals(file1StateBefore, String(Files.readAllBytes(file1)))
-      assertEquals(file2StateBefore, String(Files.readAllBytes(file2)))
+    Using.resource(createTempDirectory("earlyOutput")): dir =>
+      val first = dir.resolve("first.jar")
+      val second = dir.resolve("second.jar")
+      val args = List("-Ypickle-write", first.toString, "-Ypickle-write", second.toString)
+      val summary = ScalaSettings.processArguments(args, processAll = true)
+      withProcessedArgs(summary):
+        assertEquals(Some(first.toString), ScalaSettings.XearlyTastyOutput.value.map(_.path))
+      assertFalse(Files.exists(first))
+      assertFalse(Files.exists(second))
 
   @Test def `Output side effect is not present when setting is deprecated`: Unit =
     val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>

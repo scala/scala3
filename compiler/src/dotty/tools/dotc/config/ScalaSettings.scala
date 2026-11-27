@@ -123,7 +123,7 @@ trait CommonScalaSettings extends SettingGroup:
     override def load(argValue: String, state: SettingsState): AbstractFile =
       // TODO: use JAR compression level, Java output version
       val path = Directory(argValue)
-      if path.ext.isJar then JarArchive.create(path) else new PlainDirectory(path)
+      if path.ext.isJar then JarArchive.output(path) else new PlainDirectory(path)
   protected def FileContainerSetting(category: SettingCategory, name: String, allowsJar: Boolean, descr: String, default: AbstractFile, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[AbstractFile] =
     publish(Setting(category, prependName(name), descr, default, if allowsJar then "directory or .jar file" else "directory", aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs, lazyLoader = Some(FileContainerLazyLoader)))
 

@@ -1,7 +1,7 @@
 package dotty.tools.io
 
 import dotty.tools.io.AbstractFile
-import dotty.tools.io.JarArchive
+import dotty.tools.initialize
 import dotty.tools.io.PlainFile
 
 import java.io.BufferedOutputStream
@@ -133,23 +133,26 @@ object FileWriters {
 
   object FileWriter {
     def apply(file: AbstractFile, jarManifest: Seq[(Attributes.Name, String)], jarCompressionLevel: Int = Deflater.DEFAULT_COMPRESSION): FileWriter = file match
-      case jar: JarArchive =>
-        val jarFile = jar.underlyingSource
-        assert(jar.iterator.isEmpty, s"Unsafe writing to non-empty JAR: $jarFile")
-        new JarEntryWriter(jarFile, jarManifest, jarCompressionLevel)
+      case jar: JarDestination =>
+        new JarEntryWriter(jar, jarManifest, jarCompressionLevel)
       case _ if file.isVirtual => new VirtualFileWriter(file)
       case _ if file.isDirectory => new DirEntryWriter(file.file.nn.toPath)
       case _ => throw new IllegalStateException(s"don't know how to handle an output of $file [${file.getClass}]")
   }
 
-  private final class JarEntryWriter(file: AbstractFile, extraManifest: Seq[(Attributes.Name, String)], compressionLevel: Int) extends FileWriter {
+  private final class JarEntryWriter(archive: JarDestination, extraManifest: Seq[(Attributes.Name, String)], compressionLevel: Int) extends FileWriter {
     //keep these imports local - avoid confusion with scala naming
     import java.util.jar.Attributes.Name.MANIFEST_VERSION
     import java.util.jar.{JarOutputStream, Manifest}
 
     private val storeOnly = compressionLevel == Deflater.NO_COMPRESSION
 
-    private val jarWriter: JarOutputStream = {
+    private var stream: JarOutputStream | Null = null
+
+    private def openStream(): JarOutputStream = {
+      val destination = archive.writableArchive
+      val file = destination.underlyingSource
+      assert(destination.iterator.isEmpty, s"Unsafe writing to non-empty JAR: $file")
       import scala.util.Properties.*
       val manifest = new Manifest
       val attrs = manifest.getMainAttributes
@@ -179,6 +182,7 @@ object FileWriters {
         crc.update(bytes)
         entry.setCrc(crc.getValue)
       }
+      val jarWriter = initialize(stream, stream = _, openStream())
       jarWriter.putNextEntry(entry)
       try jarWriter.write(bytes, 0, bytes.length)
       finally jarWriter.flush()
@@ -188,10 +192,12 @@ object FileWriters {
       val pathInJar =
         if java.io.File.separatorChar == '/' then relativePath
         else relativePath.replace('/', java.io.File.separatorChar)
-      PlainFile.toPlainFile(Paths.get(s"${file.path}!$pathInJar"))
+      PlainFile.toPlainFile(Paths.get(s"${archive.path}!$pathInJar"))
     }
 
-    override def close(): Unit = this.synchronized(jarWriter.close())
+    override def close(): Unit = this.synchronized {
+      if stream != null then stream.nn.close()
+    }
   }
 
   private final class DirEntryWriter(base: Path) extends FileWriter {

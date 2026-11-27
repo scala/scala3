@@ -21,7 +21,7 @@ import collection.mutable
 import util.concurrent.Executor
 
 import compiletime.uninitialized
-import dotty.tools.io.{AbstractFile, JarArchive, VirtualFile}
+import dotty.tools.io.{AbstractFile, JarDestination, VirtualFile}
 import dotty.tools.dotc.printing.OutlinePrinter
 
 import scala.annotation.constructorOnly
@@ -34,7 +34,6 @@ import dotty.tools.dotc.util.chaining.*
 
 import scala.concurrent.ExecutionContext
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
-import java.nio.file.Files
 import java.util.ConcurrentModificationException
 
 object Pickler {
@@ -134,7 +133,7 @@ object Pickler {
           // when we are done, i.e. no suspended units,
           // we should close the file system so it can be read in the same JVM process.
           earlyOut match
-            case Some(jar: JarArchive) => jar.close()
+            case Some(jar: JarDestination) => jar.close()
             case _ =>
         catch
           case ex: Exception =>
@@ -557,12 +556,10 @@ class Pickler extends Phase {
           .addMode(Mode.ReadPositions)
       )
     if ctx.isBestEffort then
-      val outpath =
-        ctx.settings.outputDir.value.jpath.nn.toAbsolutePath.normalize
-          .resolve("META-INF")
-          .resolve("best-effort")
-      Files.createDirectories(outpath)
-      BestEffortTastyWriter.write(outpath, result)
+      val out = ctx.settings.outputDir.value
+      if !out.ext.isJar || result.exists(_.pickled.nonEmpty) then
+        val outpath = out.subdirectoryNamed("META-INF").subdirectoryNamed("best-effort").jpath.nn
+        BestEffortTastyWriter.write(outpath, result)
     result
   }
 
