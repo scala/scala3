@@ -14,7 +14,26 @@ package scala.runtime.java8
 
 import scala.language.`2.13`
 
+/** A `@FunctionalInterface` specialization of [[scala.Function2]] for a
+ *  function from an unboxed `Double` and an unboxed `Long` to an
+ *  unboxed `Boolean`, allowing a Java lambda or method reference (and the
+ *  compiler's `invokedynamic` lambda encoding) to implement
+ *  `Function2[Double, Long, Boolean]` without boxing.
+ */
 @FunctionalInterface trait JFunction2$mcZDJ$sp extends Function2[Any, Any, Any] with Serializable {
+  /** Applies this function to the given arguments.
+   *
+   *  @param v1 the 1st argument, as an unboxed `Double`
+   *  @param v2 the 2nd argument, as an unboxed `Long`
+   *  @return the result of applying this function, as an unboxed `Boolean`
+   */
   def apply$mcZDJ$sp(v1: Double, v2: Long): Boolean
+  /** Applies this function to the given arguments by delegating to
+   *  `apply$mcZDJ$sp`, unboxing the arguments and boxing the result.
+   *
+   *  @param v1 the 1st argument, unboxed to a `Double`
+   *  @param v2 the 2nd argument, unboxed to a `Long`
+   *  @return the result of applying this function, as a boxed `Boolean`
+   */
   override def apply(v1: Any, v2: Any): Any = scala.runtime.BoxesRunTime.boxToBoolean(apply$mcZDJ$sp(scala.runtime.BoxesRunTime.unboxToDouble(v1), scala.runtime.BoxesRunTime.unboxToLong(v2)))
 }
