@@ -78,6 +78,7 @@ object Typer {
     if !tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable && !ctx.mode.is(Interactive) then
       assert(tree.span.exists, i"position not set for $tree # ${tree.uniqueId} of ${tree.getClass} in ${tree.source}")
 
+  val EtaExpansionCtx = Property.Key[(Int,Boolean)]()
   /** An attachment for GADT constraints that were inferred for a pattern. */
   val InferredGadtConstraints = new Property.StickyKey[core.GadtConstraint]
 
@@ -1775,8 +1776,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // if expected parameter type(s) are wildcards, approximate from below.
           // if expected result type is a wildcard, approximate from above.
           // this can type the greatest set of admissible closures.
-
-          (pt1.argInfos.init, typeTree(interpolateWildcards(pt1.argInfos.last.hiBound)))
+          val retTypeHighBound = pt1.argInfos.last.hiBound
+          ctx.property(EtaExpansionCtx) match
+            case Some(_, true) if(!defn.isFunctionType(retTypeHighBound)) =>
+                (pt1.argInfos.init, untpd.TypeTree())
+            case _ => (pt1.argInfos.init, typeTree(interpolateWildcards(pt1.argInfos.last.hiBound)))
         case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
         if defn.isNonRefinedFunction(parent) && formals.length == defaultArity =>
           (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
@@ -4959,7 +4963,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 report.warning(em"${tree.symbol} is eta-expanded even though $samParent does not have the @FunctionalInterface annotation.", tree.srcPos)
               case _ =>
             }
-          simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
+          val (expd, moreEtaExpansion) = etaExpand(tree, wtp, arity)
+          val nextEtaExpansionCtx = ctx.property(EtaExpansionCtx) match
+            case Some((level,_)) => (level + 1, moreEtaExpansion)
+            case None => (0, moreEtaExpansion)
+          val ctx1 = ctx.fresh.setProperty(EtaExpansionCtx, nextEtaExpansionCtx)
+          simplify(typed(expd, pt)(using ctx1), pt, locked)
+
       else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
         readaptSimplified(tpd.Apply(tree, Nil))
       else if (wtp.isImplicitMethod)
