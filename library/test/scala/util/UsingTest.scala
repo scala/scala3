@@ -705,6 +705,139 @@ class UsingTest {
     group.assertAllClosed()
   }
 
+  /* `Using.unmanaged` */
+
+  private def acquire[R: Using.Releasable](resource: R)(using m: Using.Manager): resource.type = m(resource)
+
+  @Test
+  def unmanagedReleasesOnClose(): Unit = {
+    val group = new ResourceGroup
+    val (closer, (r1, r2)) = Using.unmanaged {
+      (acquire(group.newResource()), acquire(group.newResource()))
+    }
+    assertEquals(r1.identity(1) + r2.identity(1), 2)
+    closer.close()
+    group.assertAllClosed()
+  }
+
+  @Test
+  def unmanagedProvidesGivenManager(): Unit = {
+    val (closer, r) = Using.unmanaged(new SelfRegisteringResource)
+    assertFalse(r.closed)
+    closer.close()
+    assertTrue(r.closed)
+  }
+
+  @Test
+  def unmanagedReleasesOnException(): Unit = {
+    val group = new ResourceGroup
+    val ex = catchThrowable {
+      Using.unmanaged {
+        acquire(group.newResource())
+        acquire(group.newResource())
+        throw new UsingException("allocating")
+      }
+    }
+    assertThrowableClass[UsingException](ex)
+    assertNoSuppressed(ex)
+    group.assertAllClosed()
+  }
+
+  @Test
+  def unmanagedSuppressesCloseExceptions(): Unit = {
+    val ex = catchThrowable {
+      Using.unmanaged {
+        acquire(new ExceptionResource)
+        throw new UsingException("allocating")
+      }
+    }
+    assertThrowableClass[UsingException](ex)
+    assertSingleSuppressed[ClosingException](ex)
+  }
+
+  @Test
+  def unmanagedCloseIsIdempotent(): Unit = {
+    val (closer, _) = Using.unmanaged(acquire(new ExceptionResource))
+    assertThrowableClass[ClosingException](catchThrowable(closer.close()))
+    closer.close()
+  }
+
+  @Test
+  def unmanagedManagerRejectsResourcesAfterClose(): Unit = {
+    val (closer, m) = Using.unmanaged(summon[Using.Manager])
+    closer.close()
+    assertThrowableClass[IllegalStateException](catchThrowable(m(new NoOpResource)))
+  }
+
+  @Test
+  def unmanagedCloseSuppressesExceptions(): Unit = {
+    val (closer, _) = Using.unmanaged {
+      acquire(new ExceptionResource)
+      acquire(new ErrorResource)
+      acquire(new NoOpResource)
+    }
+    val ex = catchThrowable(closer.close())
+    assertThrowableClass[ClosingError](ex)
+    assertSingleSuppressed[ClosingException](ex)
+  }
+
+  @Test
+  def unmanagedCloserIsReleasable(): Unit = {
+    val group = new ResourceGroup
+    val res = Using.Manager { outer =>
+      val (inner, r) = Using.unmanaged(acquire(group.newResource()))
+      outer(inner)
+      r.identity(1)
+    }
+    assertEquals(res, scala.util.Success(1))
+    group.assertAllClosed()
+  }
+
+  /* `Using.managed` */
+
+  @Test
+  def managedReleasesResources(): Unit = {
+    val group = new ResourceGroup
+    val res = Using.managed {
+      acquire(group.newResource()).identity(1) + acquire(group.newResource()).identity(1)
+    }
+    assertEquals(res, 2)
+    group.assertAllClosed()
+  }
+
+  @Test
+  def managedProvidesGivenManager(): Unit = {
+    val r = Using.managed(new SelfRegisteringResource)
+    assertTrue(r.closed)
+  }
+
+  @Test
+  def managedThrows(): Unit = {
+    val group = new ResourceGroup
+    val ex = catchThrowable {
+      Using.managed {
+        acquire(group.newResource())
+        acquire(new ExceptionResource)
+        throw new UsingException("using")
+      }
+    }
+    assertThrowableClass[UsingException](ex)
+    assertSingleSuppressed[ClosingException](ex)
+    group.assertAllClosed()
+  }
+
+  /* `Using.track` */
+
+  @Test
+  def trackRegistersWithGivenManager(): Unit = {
+    val group = new ResourceGroup
+    val res = Using.managed {
+      Using.track(group.newResource()).identity(1) + Using.track(group.newResource()).identity(1)
+    }
+    assertEquals(res, 2)
+    group.assertAllClosed()
+  }
+
   /* misc */
 
   @Test
@@ -745,6 +878,12 @@ object UsingTest {
 
   final class NoOpResource extends BaseResource {
     override def close(): Unit = ()
+  }
+
+  final class SelfRegisteringResource(using m: Using.Manager) extends BaseResource {
+    var closed = false
+    override def close(): Unit = closed = true
+    m.acquire(this)
   }
 
   abstract class CustomResource[T <: Throwable](t: String => T) extends BaseResource {
