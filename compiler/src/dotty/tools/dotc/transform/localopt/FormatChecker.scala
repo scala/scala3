@@ -94,6 +94,8 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
       else if !matches.hasNext then insertStringConversion()
       else
         val cv = Conversion(matches.next(), n)
+        if cv.isFormatting then
+          formatted = true
         if cv.isLiteral then insertStringConversion()
         else if cv.isIndexed then
           if cv.index.getOrElse(-1) == n then accept(cv) else insertStringConversion()
@@ -104,6 +106,7 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
         val cv = Conversion(matches.next(), n)
         if n == 0 && cv.hasFlag('<') then cv.badFlag('<', "No last arg")
         else if !cv.isLiteral && !cv.isIndexed then errorLeading(cv)
+        formatted = true // note: could replace literals instead of always delegating to format
     end checkPart
 
     @tailrec
@@ -160,6 +163,9 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     def isError: Boolean   = kind == ErrorXn
     def isLiteral: Boolean = kind == LiteralXn
 
+    // true if not %s, or is %s but includes dynamic formatting
+    def isFormatting: Boolean = kind != Kind.StringXn || cc.isUpper || width.nonEmpty || flags.nonEmpty
+
     // descriptor is at index 0 of the part string
     def isLeading: Boolean = descriptor.at(Spec) == 0
 
@@ -173,14 +179,18 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
       def only_-(msg: String) =
         val badFlags = flags.filterNot { case '-' | '<' => true case _ => false }
         badFlags.isEmpty or badFlag(badFlags(0), s"Only '-' allowed for $msg")
-      def goodFlags =
+      def goodFlags = flags.isEmpty || {
+        for dupe <- flags.diff(flags.distinct).distinct do
+          errorAt(Flags, flags.lastIndexOf(dupe))(s"Duplicate flag '$dupe'")
         val badFlags = flags.filterNot(okFlags.contains)
         for f <- badFlags do badFlag(f, s"Illegal flag '$f'")
         badFlags.isEmpty
-      def goodIndex =
+      }
+      def goodIndex = !isIndexed || {
         if index.nonEmpty && hasFlag('<') then warningAt(Index)("Argument index ignored if '<' flag is present")
         val okRange = index.map(i => i > 0 && i <= argc).getOrElse(true)
         okRange || hasFlag('<') or errorAt(Index)("Argument index out of range")
+      }
     // begin verify
       kind match
         case StringXn        => goodies
@@ -303,7 +313,9 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     val literalHelp = "use %% for literal %, %n for newline"
   end Conversion
 
-  var reported = false
+  var formatted = false // a format spec besides bare %s was seen
+
+  var reported = false // an error was reported
 
   private def partPosAt(index: Int, offset: Int, end: Int) =
     val pos = partsElems(index).sourcePos

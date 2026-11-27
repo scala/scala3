@@ -198,3 +198,7 @@
 80 |    f"%%bci.2${'i'}%..2c2" // error
    |                   ^
    |                   Missing conversion operator in '%'; use %% for literal %, %n for newline
+-- [E209] Interpolation Error: tests/neg/f-interpolator-neg.scala:84:10 ------------------------------------------------
+84 |    f"$d%,,d" // error duplicate flag
+   |          ^
+   |          Duplicate flag ','

@@ -62,4 +62,30 @@ class StringInterpolatorOptTest extends DottyBytecodeTest {
           diffInstructions(instructions1, instructions2))
     }
   }
+
+  @Test def `f interpolator concatenates like s` =
+    val source =
+      """
+         |class C {
+         |  val one = 1
+         |  val two = "two"
+         |  val three = 3.0
+         |
+         |  def meth1: String = f"$one plus $two$three\n"
+         |  def meth2: String = s"$one plus $two$three\n"
+         |}
+      """.stripMargin
+
+    checkBCode(source): dir =>
+      val clsIn   = lookupClass(dir, "C.class")
+      val clsNode = loadClassNode(clsIn)
+      val meth1   = getMethod(clsNode, "meth1")
+      val meth2   = getMethod(clsNode, "meth2")
+
+      val instructions1 = instructionsFromMethod(meth1)
+      val instructions2 = instructionsFromMethod(meth2)
+
+      assert(instructions1 == instructions2,
+        "the `f` string interpolator should revert to `s` when not formatting\n" +
+          diffInstructions(instructions1, instructions2))
 }
