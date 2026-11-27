@@ -33,6 +33,7 @@ import scala.reflect.ClassTag
  */
 transparent trait IsSeq[Repr] extends IsIterable[Repr] {
 
+  /** A function that converts a `Repr` to a `SeqOps[A, Iterable, C]`, equivalent to `apply`. */
   @deprecated("'conversion' is now a method named 'apply'", "2.13.0")
   @untrackedCaptures
   override val conversion: Repr => SeqOps[A, Iterable, C] = apply(_)
@@ -58,9 +59,21 @@ object IsSeq {
       def apply(coll: Seq[Any]): SeqOps[Any, Iterable, Any] = coll
     }
 
+  /** Provides an `IsSeq` instance for any `SeqOps` subtype.
+   *
+   *  @tparam CC0 the collection type constructor, a subtype of `SeqOps`
+   *  @tparam A0 the element type of the collection
+   *  @return an `IsSeq` instance for `CC0[A0]`
+   */
   implicit def seqOpsIsSeq[CC0[X] <: SeqOps[X, Iterable, CC0[X]], A0]: IsSeq[CC0[A0]] { type A = A0; type C = CC0[A0] } =
     seqOpsIsSeqVal.asInstanceOf[IsSeq[CC0[A0]] { type A = A0; type C = CC0[A0] }]
 
+  /** Provides an `IsSeq` instance for any `SeqView` subtype.
+   *
+   *  @tparam CC0 the collection type constructor, a subtype of `SeqView`
+   *  @tparam A0 the element type of the collection
+   *  @return an `IsSeq` instance for `CC0[A0]`
+   */
   implicit def seqViewIsSeq[CC0[X] <: SeqView[X], A0]: IsSeq[CC0[A0]] { type A = A0; type C = View[A0] } =
     new IsSeq[CC0[A0]] {
       type A = A0
@@ -68,6 +81,8 @@ object IsSeq {
       def apply(coll: CC0[A0]): SeqOps[A0, View, View[A0]] = coll
     }
 
+  /** Provides an `IsSeq` instance for `String`, treating it as a sequence of characters.
+   */
   implicit val stringIsSeq: IsSeq[String] { type A = Char; type C = String } =
     new IsSeq[String] {
       type A = Char
@@ -86,6 +101,8 @@ object IsSeq {
         }
     }
 
+  /** Provides an `IsSeq` instance for `StringView`, treating it as a sequence of characters.
+   */
   implicit val stringViewIsSeq: IsSeq[StringView] { type A = Char; type C = View[Char] } =
     new IsSeq[StringView] {
       type A = Char
@@ -93,6 +110,12 @@ object IsSeq {
       def apply(coll: StringView): SeqOps[Char, View, View[Char]] = coll
     }
 
+  /** Provides an `IsSeq` instance for arrays of any element type that has an
+   *  available `ClassTag`.
+   *
+   *  @tparam A0 the element type of the array
+   *  @return an `IsSeq` instance for `Array[A0]`
+   */
   implicit def arrayIsSeq[A0 : ClassTag]: IsSeq[Array[A0]] { type A = A0; type C = Array[A0] } =
     new IsSeq[Array[A0]] {
       type A = A0
@@ -132,6 +155,11 @@ object IsSeq {
   // `Range` can not be unified with the `CC0` parameter of the
   // `seqOpsIsSeq` definition because it does not take a type parameter.
   // Hence the need for a separate case:
+  /** Provides an `IsSeq` instance for `Range` values.
+   *
+   *  @tparam C0 the specific `Range` type
+   *  @return an `IsSeq` instance for `C0`
+   */
   implicit def rangeIsSeq[C0 <: Range]: IsSeq[C0] { type A = Int; type C = immutable.IndexedSeq[Int] } =
     new IsSeq[C0] {
       type A = Int
