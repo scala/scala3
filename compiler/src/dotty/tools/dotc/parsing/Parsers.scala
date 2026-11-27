@@ -868,9 +868,11 @@ object Parsers {
           val res = !bq && op && loc
           res
         }
+      var contentStart = -1
       val t = enclosed(LBRACE, {
         canRewrite &= in.isAfterLineEnd // test (2)
         val curOffset = in.offset
+        contentStart = curOffset
         try {
           val bodyResolved = body
           bodyResolved match
@@ -884,6 +886,14 @@ object Parsers {
         }
       })
       canRewrite &= (in.isAfterLineEnd || statCtdTokens.contains(in.token)) // test (5)
+      // Under `-source:future`, a leading infix operator directly after the closing brace
+      // of a branch applies to the enclosing control expression (see `checkLeadingInfixAfterTail`).
+      // Without braces, an operator that is at least as indented as the contents of the
+      // block would continue the block instead, so keep the braces in that case.
+      if sourceVersion.enablesLeadingInfixAfterBlock
+         && in.isIdent && in.isOperator && in.isAfterLineEnd
+         && source.column(in.offset) >= source.column(contentStart)
+      then canRewrite = false
       if canRewrite && (!underColonSyntax || sourceVersion.enablesFewerBraces) then
         val openingPatchStr =
           if !colonRequired then ""
@@ -1236,7 +1246,7 @@ object Parsers {
       def recur(top: Tree): Tree =
         def isType = kind == ParseKind.Type
         def maybePostfix = kind == ParseKind.Expr && in.postfixOpsEnabled
-        if isIdent && isOperator then
+        if isIdent && isOperator && !isPendingLeadingInfix then
           val op = if isType then typeIdent() else termIdent()
           val top1 = reduceStack(base, top, precedence(op.name), !op.name.isRightAssocOperatorName, op.name, isType)
           opStack = OpInfo(top1, op, in.offset) :: opStack
@@ -2660,14 +2670,25 @@ object Parsers {
             wrapPlaceholders(t)
     }
 
-    def expr1(location: Location = Location.Elsewhere): Tree = in.token match
+    def expr1(location: Location = Location.Elsewhere): Tree =
+      val isControlExpr =
+        controlExprTokens.contains(in.token)
+        || isIdent(nme.inline) && in.lookahead.token == IF
+      val isSameLineTail = in.offset == sameLineTailStart
+      val t = expr1Core(location)
+      if isControlExpr then controlExprRest(t, isSameLineTail, location) else t
+
+    /** Tokens starting control expressions with branches or bodies parsed by `tailExpr` */
+    private val controlExprTokens = BitSet(IF, WHILE, TRY, FOR)
+
+    private def expr1Core(location: Location): Tree = in.token match
       case IF =>
         ifExpr(in.offset, If)
       case WHILE =>
         atSpan(in.skipToken()) {
           val cond = condExpr(DO)
           newLinesOpt()
-          val body = subExpr()
+          val body = tailExpr()
           WhileDo(cond, body)
         }
       case DO =>
@@ -2722,7 +2743,7 @@ object Parsers {
           val finalizer =
             if (in.token == FINALLY) {
               in.nextToken();
-              val expr = subExpr()
+              val expr = tailExpr()
               if expr.span.exists then expr
               else syntheticUnitLiteral // finally without an expression
             }
@@ -2761,7 +2782,7 @@ object Parsers {
                   syntaxError(em"`inline` must be followed by an `if` or a `match`", start)
                   t
         else expr1Rest(postfixExpr(location), location)
-    end expr1
+    end expr1Core
 
     def expr1Rest(t: Tree, location: Location): Tree =
       if in.token == EQUALS then
@@ -2820,8 +2841,8 @@ object Parsers {
       atSpan(start, in.skipToken()) {
         val cond = condExpr(THEN)
         newLinesOpt()
-        val thenp = subExpr()
-        val elsep = if (in.token == ELSE) { in.nextToken(); subExpr() }
+        val thenp = tailExpr()
+        val elsep = if (in.token == ELSE) { in.nextToken(); tailExpr() }
                     else EmptyTree
         mkIf(cond, thenp, elsep)
       }
@@ -2986,6 +3007,83 @@ object Parsers {
           atSpan(in.offset) { PrefixOp(termIdent(), simpleExpr(location)) }
       else simpleExpr(location)
 
+/* -------- LEADING INFIX OPERATORS AFTER BRANCHES ---------------------------- */
+
+    /*  In
+     *
+     *      if c then
+     *        a
+     *      else
+     *        b
+     *      + 1
+     *
+     *  the `else` branch is a block (indented or in braces) that is directly followed
+     *  by a leading infix operator. Before `-source:future`, `+ 1` continues the `else`
+     *  branch, which is surprising, so we warn about it. Under `-source:future`, it
+     *  applies to the whole conditional instead. This works in four steps:
+     *
+     *   1. `tailExpr` parses a branch or body of a control expression and records
+     *      where it starts.
+     *   2. If such a branch or body is a block that is directly followed by a leading
+     *      infix operator, `simpleExpr` calls `checkLeadingInfixAfterTail`, which warns
+     *      about the operator or, under `-source:future`, records it as pending.
+     *   3. `infixOps` does not take a pending operator, so the branch ends with the block.
+     *   4. Once a control expression is parsed, `expr1` continues it with the pending
+     *      operator, see `controlExprRest`.
+     */
+
+    /** The start of the last branch or body of a control expression */
+    private var tailStart: Offset = -1
+
+    /** The start of the last branch or body of a control expression that is on the
+     *  same line as its keyword, as the inner `if` in `else if`
+     */
+    private var sameLineTailStart: Offset = -1
+
+    /** The offset of a leading infix operator after a branch or body that applies
+     *  to the enclosing control expression (only under `-source:future`)
+     */
+    private var pendingLeadingInfix: Offset = -1
+
+    /** Step 1: Parse a branch or body of a control expression */
+    def tailExpr(): Tree =
+      tailStart = in.offset
+      if !in.isAfterLineEnd then sameLineTailStart = in.offset
+      subExpr()
+
+    /** Step 2: Called after a block that is a branch or body of a control expression */
+    def checkLeadingInfixAfterTail(): Unit =
+      if in.isIdent && in.isOperator && in.isAfterLineEnd then
+        if sourceVersion.enablesLeadingInfixAfterBlock then
+          pendingLeadingInfix = in.offset
+        else
+          val msg =
+            em"""Leading infix operator `${in.name}` applies only to the block above,
+                |not to the enclosing `if`, `while`, `for` or `try` expression.
+                |To make this explicit, indent the operator to the level of the block or,
+                |for a block in braces, move it to the line of the closing brace.
+                |To apply the operator to the whole expression, wrap that expression in parentheses.
+                |
+                |Under `-source:future`, the operator applies to the whole expression."""
+          if sourceVersion.isMigrating && sourceVersion.isAtLeast(`future`) then
+            report.migrationWarning(msg, source.atSpan(Span(in.offset)))
+          else
+            warning(msg)
+
+    /** Step 3: Is the current token a pending leading infix operator? */
+    def isPendingLeadingInfix: Boolean = in.offset == pendingLeadingInfix
+
+    /** Step 4: Continue control expression `t` with a pending leading infix operator.
+     *  If the control expression is itself a branch or body on the same line as its
+     *  keyword (`isSameLineTail`), as the inner `if` in `else if`, leave the operator
+     *  to the enclosing control expression.
+     */
+    def controlExprRest(t: Tree, isSameLineTail: Boolean, location: Location): Tree =
+      if isPendingLeadingInfix && !isSameLineTail then
+        pendingLeadingInfix = -1
+        postfixExprRest(t, location)
+      else t
+
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
      *                 |  ‘new’ TemplateBody
      *                 |  BlockExpr
@@ -3033,7 +3131,10 @@ object Parsers {
           atSpan(in.offset) { makeTupleOrParens(inParensWithCommas(exprsInParensOrBindings())) }
         case LBRACE | INDENT =>
           canApply = false
-          blockExpr()
+          val isTail = in.offset == tailStart
+          val t = blockExpr()
+          if isTail then checkLeadingInfixAfterTail()
+          t
         case QUOTE =>
           quote(location.inPattern)
         case NEW =>
@@ -3395,12 +3496,12 @@ object Parsers {
         newLinesOpt()
         if (in.token == YIELD) {
           in.nextToken()
-          ForYield(enums, subExpr())
+          ForYield(enums, tailExpr())
         }
         else if (in.token == DO) {
           if (rewriteToOldSyntax()) dropTerminator()
           in.nextToken()
-          ForDo(enums, subExpr())
+          ForDo(enums, tailExpr())
         }
         else {
           if (!wrappedEnums) syntaxErrorOrIncomplete(YieldOrDoExpectedInForComprehension())

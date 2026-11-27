@@ -1,0 +1,32 @@
+// Under -source:future -rewrite -indent, braces are kept if the closing brace is
+// followed by a leading infix operator that is at least as indented as the contents
+// of the block, since the operator would continue the block without braces.
+
+def c = true
+
+def deeper =
+  if c then {
+    1
+  } else {
+    2
+  }
+      + 100
+
+def aligned =
+  if c then {
+    1
+  } else {
+    2
+  }
+    + 100
+
+def lessIndented =
+  if c then {
+    1
+  } else {
+    2
+  }
+  + 100
+
+@main def Test =
+  println(List(deeper, aligned, lessIndented))
