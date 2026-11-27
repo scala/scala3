@@ -68,12 +68,39 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case _ =>
         tp
 
+    object OpaqueArrayAlias:
+      // First element of the returned tuple is the alias type itself.
+      // Second - element type of the underlying array;
+      //          a wildcard element is approximated by its upper bound.
+      def unapply(tp: Type)(using Context): Option[(Type, Type)] =
+        val tp1 = tp.stripTypeVar
+        if tp1.typeSymbol.isOpaqueAlias then
+          tp1 match
+            case tp1: TypeProxy =>
+              defn.ArrayOf.unapply(tp1.translucentSuperType).map(elemTp =>
+                // To support covariant aliases like 
+                // type IArray[+T] = Array[? <: T].
+                val elemTp1 = elemTp match
+                  case bounds: TypeBounds => bounds.hi
+                  case etp => etp
+                (tp1, elemTp1))
+            case _ => None
+        else None
+
     val tag = formal.argInfos match
       case arg :: Nil =>
         instArg(arg) match
           case defn.ArrayOf(elemTp) =>
             val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
             if etag.tpe.isError then EmptyTree else etag.select(nme.wrap)
+          case OpaqueArrayAlias(tp, elemTp) =>
+            val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
+            if etag.tpe.isError then EmptyTree
+            else
+              ref(defn.ClassTagModule).select(nme.apply)
+                .appliedToType(tp)
+                .appliedTo(etag.select(nme.wrap).select(nme.runtimeClass))
+                .withSpan(span)
           case tp if hasStableErasure(tp) && !tp.isBottomTypeAfterErasure =>
             val sym = tp.typeSymbol
             val classTagModul = ref(defn.ClassTagModule)
