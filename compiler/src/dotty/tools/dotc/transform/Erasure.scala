@@ -821,7 +821,7 @@ object Erasure {
           // A type application `f[T_1, ..., T_M]` of a polymorphic function with a function
           // result erases to `f` itself. This is OK since any actual implementation of `f`
           // will have to immediately follow the type parameters with a value parameter list
-          // (because of the restriction in Parsers that polymorphic function literals must
+          // (because of the restriction in Typer that polymorphic function literals must
           // have value parameters). So no side effects are possible between type and value
           // parameters and we can simply wait until the first value parameter is passed.
           typed(fun.qualifier, pt)
