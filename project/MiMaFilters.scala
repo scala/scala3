@@ -257,6 +257,39 @@ object MiMaFilters {
         ProblemFilters.exclude[FinalClassProblem]("scala.collection.immutable.Range$Partial$"),
         // The private `Sorting.mergeSort` function has a different implementation detail
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Sorting.scala$util$Sorting$$mergeSort$default$5"),
+        // https://github.com/scala/scala3/pull/26100 (it was a private object anyway)
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyList$MidEvaluation$"),
+        // More `object`s that are now compiled by Scala 3 instead of copied from Scala 2.13, and thus final
+        ProblemFilters.exclude[FinalClassProblem]("scala.Function1$UnliftOps$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.Accumulator$AccumulatorFactoryShape$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaBooleanSupplier$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaDoubleBinaryOperator$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaDoubleConsumer$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaDoublePredicate$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaDoubleSupplier$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaDoubleToIntFunction$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaDoubleToLongFunction$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaDoubleUnaryOperator$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaIntBinaryOperator$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaIntConsumer$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaIntPredicate$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaIntSupplier$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaIntToDoubleFunction$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaIntToLongFunction$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaIntUnaryOperator$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaLongBinaryOperator$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaLongConsumer$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaLongPredicate$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaLongSupplier$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaLongToDoubleFunction$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaLongToIntFunction$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.FunctionWrappers$FromJavaLongUnaryOperator$"),
+        // These are extension methods for `private` fields, so they cannot have been used externally, even if they were present in the Scala 2.13-compiled version
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.scala$collection$ArrayOps$$elemTag$extension(java.lang.Object)scala.reflect.ClassTag"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.iterateUntilEmpty$extension(java.lang.Object,scala.Function1)scala.collection.Iterator"),
+        // Fields on classes that are private but are public in bytecode
+        ProblemFilters.exclude[MissingFieldProblem]("scala.collection.ArrayOps#ArrayIterator.xs"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.collection.ArrayOps#ReverseIterator.xs"),
       ),
 
       // Breaking changes since last LTS
@@ -729,6 +762,28 @@ object MiMaFilters {
       BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.util.hashing.MurmurHash3$ArrayHashing$mcJ$sp"),
       BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.util.hashing.MurmurHash3$ArrayHashing$mcV$sp"),
       BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.util.hashing.MurmurHash3$ArrayHashing$mcZ$sp"),
+      // These are private in source code but used to be compiled by Scala 2.13 for @specialized
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ArrayIterator$mcB$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ArrayIterator$mcC$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ArrayIterator$mcD$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ArrayIterator$mcF$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ArrayIterator$mcI$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ArrayIterator$mcJ$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ArrayIterator$mcS$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ArrayIterator$mcZ$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ReverseIterator$mcB$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ReverseIterator$mcC$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ReverseIterator$mcD$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ReverseIterator$mcF$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ReverseIterator$mcI$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ReverseIterator$mcJ$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ReverseIterator$mcS$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ReverseIterator$mcV$sp"),
+      BinaryApi.keep[ClassNoLongerCheckedProblem]("scala.collection.ArrayOps$ReverseIterator$mcZ$sp"),
+      // This was always sealed but used to be compiled by Scala 2.13 for @specialized
+      // (and its implementors used to include a nonfinal `object` that is now final in Scala 3)
+      BinaryApi.keep[HierarchyNoLongerCheckedProblem]("scala.jdk.Accumulator$LowPriorityAccumulatorFactoryShape"),
+
     )
   }
 

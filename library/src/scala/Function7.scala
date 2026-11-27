@@ -42,7 +42,7 @@ trait Function7[-T1, -T2, -T3, -T4, -T5, -T6, -T7, +R] extends AnyRef {
    *
    *  @return   a function `f` such that `f(x1)(x2)(x3)(x4)(x5)(x6)(x7) == apply(x1, x2, x3, x4, x5, x6, x7)`
    */
-  @annotation.unspecialized def curried: T1 => T2 => T3 => T4 => T5 => T6 => T7 => R = {
+  def curried: T1 => T2 => T3 => T4 => T5 => T6 => T7 => R = {
     (x1: T1) => ((x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7) => this.apply(x1, x2, x3, x4, x5, x6, x7)).curried
   }
   /** Creates a tupled version of this function: instead of 7 arguments,
@@ -50,8 +50,7 @@ trait Function7[-T1, -T2, -T3, -T4, -T5, -T6, -T7, +R] extends AnyRef {
    *
    *  @return   a function `f` such that `f((x1, x2, x3, x4, x5, x6, x7)) == f(Tuple7(x1, x2, x3, x4, x5, x6, x7)) == apply(x1, x2, x3, x4, x5, x6, x7)`
    */
-
-  @annotation.unspecialized def tupled: ((T1, T2, T3, T4, T5, T6, T7)) => R = {
+  def tupled: ((T1, T2, T3, T4, T5, T6, T7)) => R = {
     case ((x1, x2, x3, x4, x5, x6, x7)) => apply(x1, x2, x3, x4, x5, x6, x7)
   }
   override def toString(): String = "<function7>"

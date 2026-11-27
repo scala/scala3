@@ -5,6 +5,7 @@ import ast.Trees.*, ast.tpd, core.*
 import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
 import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*, NameKinds.*
 import MegaPhase.MiniPhase
+import dotty.tools.dotc.config.Feature
 
 
 /** Specializes classes that inherit from `FunctionN` where there exists a
@@ -39,7 +40,8 @@ class SpecializeFunctions extends MiniPhase {
     //      def apply$mcDI$sp(v: Int): Double = v.toDouble():Double
     //      def apply(v1: Object): Object = Double.box(this.apply(Int.unbox(v1))) // erasure bridge
 
-    if ddef.name.asTermName.exclude(BodyRetainerName) != nme.apply
+    if Feature.shouldBehaveAsScala2 // scala2 specialization takes care of it
+       || ddef.name.asTermName.exclude(BodyRetainerName) != nme.apply
        || ddef.termParamss.length != 1
        || ddef.termParamss.head.length > 2
        || !ctx.owner.isClass
@@ -58,7 +60,11 @@ class SpecializeFunctions extends MiniPhase {
       defn.isSpecializableFunction(cls, paramTypes, retType)
     }
 
-    if (sym.is(Flags.Deferred) || sym.is(Flags.Inline) || !isSpecializable) return ddef
+    def alreadyExists = {
+      sym.owner.info.decl(specName.nn).exists
+    }
+
+    if (sym.is(Flags.Deferred) || sym.is(Flags.Inline) || !isSpecializable || alreadyExists) return ddef
 
     val specializedApply = newSymbol(
         cls,

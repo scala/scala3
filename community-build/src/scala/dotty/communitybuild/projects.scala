@@ -456,12 +456,6 @@ object projects:
     sbtPublishCommand = "compat3/publishLocal",
   )
 
-  lazy val scalaJava8Compat = SbtCommunityProject(
-    project        = "scala-java8-compat",
-    sbtTestCommand = "test",
-    sbtPublishCommand = "publishLocal",
-  )
-
   lazy val verify = SbtCommunityProject(
     project        = "verify",
     sbtTestCommand = "verifyJVM/test",
@@ -744,7 +738,6 @@ def allProjects = List(
   projects.catsEffect3,
   projects.scalaParallelCollections,
   projects.scalaCollectionCompat,
-  projects.scalaJava8Compat,
   projects.verify,
   projects.discipline,
   projects.disciplineMunit,

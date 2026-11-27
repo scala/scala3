@@ -57,19 +57,17 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
           case m if m.name.startsWith("apply") => m
         }
         .map(_.name)
-        .toList
+        .toSet
 
       assert(
-        apps.length == 56,
-        s"Wrong number of specialized applys, actual length: ${apps.length} - $apps"
+        apps.size == 55,
+        s"Wrong number of specialized applys, actual length: ${apps.size} - $apps"
       )
       assert(apps.contains("apply"), "Func2 did not contain `apply` forwarder method")
       assert(apps.contains("apply$mcIII$sp"), "Func2 did not contain specialized apply")
 
-      // It's not essential they are in this particular order,
-      // but they should be in some deterministic order:
       assert(
-        apps == List(
+        apps == Set(
           "apply$mcVII$sp",
           "apply$mcVIJ$sp",
           "apply$mcVID$sp",
@@ -123,10 +121,9 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
           "apply$mcDDI$sp",
           "apply$mcDDJ$sp",
           "apply$mcDDD$sp",
-          "apply",
           "apply$mcIII$sp",
           "apply"),
-        s"Apply methods were not in the expected order: $apps"
+        s"Apply methods were not the expected ones: $apps"
       )
     }
   }

@@ -63,7 +63,7 @@ class CompileProgressSpecification {
         "staging",
         "splicing",
         "pickleQuotes",
-        "MegaPhase{pruneErasedDefs,...,simplifySynchronized}",
+        "MegaPhase{pruneErasedDefs,...,scala2SpecializationForStdLib.PreErasure}",
         "erasure",
         "constructors",
         "genBCode"

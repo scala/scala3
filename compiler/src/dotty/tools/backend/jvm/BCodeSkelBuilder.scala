@@ -18,6 +18,7 @@ import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.transform.Scala2SpecializationForStdLib
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.report
 import SymbolUtils.given
@@ -465,18 +466,20 @@ trait BCodeSkelBuilder(val bTypes: KnownBTypes) extends BCodeHelpers {
     } // end of method initJClass
 
     private def javaFieldFlags(sym: Symbol)(using Context) = {
-      import asm.Opcodes.*
       import GenBCodeOps.addFlagIf
       BCodeUtils.javaFlags(sym)
-        .addFlagIf(sym.hasAnnotation(defn.TransientAnnot), ACC_TRANSIENT)
-        .addFlagIf(sym.hasAnnotation(defn.VolatileAnnot), ACC_VOLATILE)
-        .addFlagIf(!sym.is(Mutable), ACC_FINAL)
+        .addFlagIf(sym.hasAnnotation(defn.TransientAnnot), Opcodes.ACC_TRANSIENT)
+        .addFlagIf(sym.hasAnnotation(defn.VolatileAnnot), Opcodes.ACC_VOLATILE)
+        .addFlagIf(!sym.is(Mutable), Opcodes.ACC_FINAL)
     }
 
     private def addClassField(f: Symbol)(using Context): Unit = {
       val descriptor = symInfoTK(f).descriptor
       val javagensig = BCSignatureGen.getGenericSignature(f, descriptor)
-      val flags = javaFieldFlags(f)
+      var flags = javaFieldFlags(f)
+      
+      if Scala2SpecializationForStdLib.fieldShouldBePublic(f) then
+        flags = (flags & ~Opcodes.ACC_PRIVATE) | Opcodes.ACC_PUBLIC
 
       assert(!f.isStaticMember || !claszSymbol.is(Trait) || !f.is(Mutable),
         s"interface $claszSymbol cannot have non-final static field $f")

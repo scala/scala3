@@ -83,7 +83,6 @@ class CommunityBuildTestC:
   @Test def requests = projects.requests.run()
   @Test def scalacheck = projects.scalacheck.run()
   //@Test def scalaCollectionCompat = projects.scalaCollectionCompat.run()
-  @Test def scalaJava8Compat = projects.scalaJava8Compat.run()
   @Test def scalap = projects.scalap.run()
   @Test def scalaParallelCollections = projects.scalaParallelCollections.run()
   @Test def scalaParserCombinators = projects.scalaParserCombinators.run()

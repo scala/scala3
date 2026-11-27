@@ -255,12 +255,15 @@ sealed abstract class Range(
 
   final override def foreach[U](f: Int => U): Unit = {
     // Implementation chosen on the basis of favorable microbenchmarks
+    // then modified so this does not directly access any private JVM fields,
+    // and thus it can be inlined into callers
     // Note--initialization catches step == 0 so we don't need to here
     if (!isEmpty) {
       var i = start
+      val l = last
       while (true) {
         f(i)
-        if (i == lastElement) return
+        if (i == l) return
         i += step
       }
     }

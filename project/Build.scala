@@ -1099,7 +1099,6 @@ object Build {
 
   /* Configuration of the org.scala-lang:scala-library:*.**.**-bootstrapped project */
   lazy val `scala-library-bootstrapped` = project.in(file("library"))
-    .enablePlugins(ScalaLibraryPlugin)
     .settings(publishSettings)
     .settings(scalaLibrarySettings)
     .settings(
@@ -1123,6 +1122,7 @@ object Build {
       Compile / unmanagedResourceDirectories := Seq(baseDirectory.value / "resources"),
       Compile / compile / scalacOptions ++= Seq(
         "-opt", "-opt-inline:**,!java.**",
+        "-Ycompiling-stdlib",
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
@@ -1139,7 +1139,6 @@ object Build {
       mimaBackwardIssueFilters := MiMaFilters.ScalaLibrary.BackwardsBreakingChanges,
       mimaBinaryApi ++= MiMaFilters.ScalaLibrary.BinaryApiTracking,
       customMimaReportBinaryIssues("MiMaFilters.ScalaLibrary"),
-      scala2LibraryClasspath := Vector((`scala2-library` / Compile / packageBin).value),
       // Generate Scala 3 runtime properties overlay
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
       bspEnabled := enableBspAllProjects,
@@ -1191,12 +1190,26 @@ object Build {
       Compile / mainClass := None,
     )
 
+  /* Special project for files that are originally written in Java, cannot be directly adapted to Scala,
+     but that Scala.js special-cases using non-equivalent Scala versions */
+  lazy val `scala-library-sjs-aux` = project.in(file("library-js-aux"))
+    .dependsOn(`scala3-library-bootstrapped`)
+    .enablePlugins(DottyJSPlugin)
+    .settings(
+      name := "scala-library-sjs-aux",
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      scalaVersion := dottyNonBootstrappedVersion,
+      autoScalaLibrary := false,
+      bootstrappedScalaInstanceSettings,
+      bspEnabled := false,
+    )
+
   /* Configuration of the org.scala-js:scalajs-scalalib_2.13:*.**.**-bootstrapped project */
   lazy val `scala-library-sjs` = project.in(file("library-js"))
     // We add a dependency to the JVM library to have the classfile available
     // (as they are not part of this artifact)
     .dependsOn(`scala3-library-bootstrapped`)
-    .enablePlugins(ScalaLibraryPlugin, DottyJSPlugin)
+    .enablePlugins(DottyJSPlugin)
     .settings(publishSettings)
     .settings(
       name          := "scala-library-sjs",
@@ -1234,6 +1247,7 @@ object Build {
         }
       },
       Compile / compile / scalacOptions += "-Wconf:any:s",
+      Compile / compile / scalacOptions += "-Ycompiling-stdlib",
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
@@ -1253,13 +1267,16 @@ object Build {
             .exists(overwrittenSources.contains))
 
       },
-      // Drop all the tasty files and the classfiles when packaging bu the scalajs exclusive classes
-      // More info here: https://github.com/scala-js/scala-js/issues/5217
       Compile / packageBin / mappings := {
-        (Compile / packageBin / mappings).value.filter(file =>
+        val original = (Compile / packageBin / mappings).value
+        // Add the extra aux files
+        val aux = (`scala-library-sjs-aux` / Compile / packageBin / mappings).value
+        // Drop all the tasty files and the classfiles when packaging the scalajs exclusive classes
+        // More info here: https://github.com/scala-js/scala-js/issues/5217
+        (original ++ aux).filter(file =>
           file._2.endsWith(".sjsir")
-          || file._2.endsWith("UnitOps.tasty")         || file._2.endsWith("UnitOps.class") || file._2.endsWith("UnitOps$.class")
-          || file._2.endsWith("AnonFunctionXXL.tasty") || file._2.endsWith("AnonFunctionXXL.class"))
+            || file._2.endsWith("UnitOps.tasty")         || file._2.endsWith("UnitOps.class") || file._2.endsWith("UnitOps$.class")
+            || file._2.endsWith("AnonFunctionXXL.tasty") || file._2.endsWith("AnonFunctionXXL.class"))
       },
       libraryDependencies += (Dependencies.scalaJsLibrary % Provided).cross(CrossVersion.for3Use2_13),
       libraryDependencies += (Dependencies.scalaJsJavalib),
@@ -1286,9 +1303,9 @@ object Build {
       mimaForwardIssueFilters := MiMaFilters.ScalaLibrarySJS.ForwardsBreakingChanges,
       mimaBackwardIssueFilters := MiMaFilters.ScalaLibrarySJS.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.ScalaLibrarySJS"),
-      scala2LibraryClasspath := ScalaLibraryPlugin.fetchScalaJsScalaLibrary.value,
       bspEnabled := false,
       Compile / mainClass := None,
+      exportJars := true,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_sjs1_3:*.**.**-bootstrapped project */

@@ -243,6 +243,10 @@ class InlinerHeuristics(byteCodeRepository: BCodeRepository,
           }
 
           if (callsite.isNoInlineAnnotated) None
+          // We want `Range.foreach` to be inlined into callers, but for that to happen, it cannot itself refer to private JVM fields,
+          // so accessors shouldn't be inlined into it.
+          // Ideally we'd have proper heuristics around this.
+          else if (callsite.callsiteClass.internalName == "scala/collection/immutable/Range" && callsite.callsiteMethod.name.startsWith("foreach")) None
           else {
             val reason = shouldInlineAnnotated.orElse(shouldInlineHO).orElse(shouldInlineRefParam).orElse(shouldInlineArrayOp).orElse(shouldInlineForwarder)
             reason.flatMap(r => requestIfCanInline(callsite, r))
